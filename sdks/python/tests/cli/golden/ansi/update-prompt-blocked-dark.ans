@@ -1,55 +1,47 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [33m▲[0m  [1mThis version is no longer supported[0m
-[90m│[0m  No update is available here yet. You can keep using Tidewater Studio for now.
-[90m└[0m
+[2m└[0m  No update is available here yet. You can keep using Tidewater Studio for now.
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [33m▲[0m  [1mThis version is no longer supported[0m
-[90m│[0m  No update is available here yet. You can keep using Tidewater Studio for now.
-[90m└[0m
+[2m└[0m  No update is available here yet. You can keep using Tidewater Studio for now.
 ── no-color · 80 ──
-┌   Tidewater Studio  · update
+┌  [7m Tidewater Studio [0m · update
 │
-▲  This version is no longer supported
-│  No update is available here yet. You can keep using Tidewater Studio for now.
-└
+▲  [1mThis version is no longer supported[0m
+└  No update is available here yet. You can keep using Tidewater Studio for now.
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - update[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
 [33m![0m  [1mThis version is no longer supported[0m
-[90m|[0m  No update is available here yet. You can keep using Tidewater Studio for now.
-[90m`[0m
+[2m`[0m  No update is available here yet. You can keep using Tidewater Studio for now.
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [33m▲[0m  [1mThis version is no longer supported[0m
-[90m│[0m  No update is available here yet. You can keep using
-[90m│[0m  Tidewater Studio for now.
-[90m└[0m
+[2m│[0m  No update is available here yet. You can keep using
+[2m└[0m  Tidewater Studio for now.
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [33m▲[0m  [1mThis version is no longer supported[0m
-[90m│[0m  No update is available here yet. You can keep using
-[90m│[0m  Tidewater Studio for now.
-[90m└[0m
+[2m│[0m  No update is available here yet. You can keep using
+[2m└[0m  Tidewater Studio for now.
 ── no-color · 60 ──
-┌   Tidewater Studio  · update
+┌  [7m Tidewater Studio [0m · update
 │
-▲  This version is no longer supported
+▲  [1mThis version is no longer supported[0m
 │  No update is available here yet. You can keep using
-│  Tidewater Studio for now.
-└
+└  Tidewater Studio for now.
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - update[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
 [33m![0m  [1mThis version is no longer supported[0m
-[90m|[0m  No update is available here yet. You can keep using
-[90m|[0m  Tidewater Studio for now.
-[90m`[0m
+[2m|[0m  No update is available here yet. You can keep using
+[2m`[0m  Tidewater Studio for now.
 ── pipe · 80 ──
 Tidewater Studio · update
 This version is no longer supported

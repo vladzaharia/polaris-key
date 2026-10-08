@@ -485,8 +485,9 @@ def _rows(client: Any, locale: str = "en") -> Tuple[DeviceRow, ...]:
 
 def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False) -> Outcome:
     k = t.kit
-    verb = t.verb or "devices"
     action = words[0] if words else "list"
+    # The header names the sub-verb, as the Node kit's does (`devices list`, `devices rename`, …).
+    verb = f"{t.verb or 'devices'} {action}" if action in ("list", "rename", "deauthorize") else (t.verb or "devices")
     try:
         if action == "list":
             rows = _rows(client, k.copy.locale)

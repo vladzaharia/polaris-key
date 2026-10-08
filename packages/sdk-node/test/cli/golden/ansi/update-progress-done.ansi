@@ -1,89 +1,59 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update apply[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  [36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[39m[1m  100%[22m[90m · 61 MB[39m
-[32m✓[39m  [1mTidewater Studio 2.5.0 is ready[22m
-[90m│[39m  Restart Tidewater Studio to finish updating.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update apply[22m
+[2m│[22m
+[32m✓[39m  [1m2.5.0 is ready · 61 MB[22m
+[2m└[22m  Restart to finish updating.
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update apply[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  [36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[39m[1m  100%[22m[90m · 61 MB[39m
-[32m✓[39m  [1mTidewater Studio 2.5.0 is ready[22m
-[90m│[39m  Restart Tidewater Studio to finish updating.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update apply[22m
+[2m│[22m
+[32m✓[39m  [1m2.5.0 is ready · 61 MB[22m
+[2m└[22m  Restart to finish updating.
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · update apply[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  [36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[39m[1m  100%[22m[90m · 61 MB[39m
-[32m✓[39m  [1mTidewater Studio 2.5.0 is ready[22m
-[90m│[39m  Restart Tidewater Studio to finish updating.
-[90m└[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · update apply[22m
+[2m│[22m
+[32m✓[39m  [1m2.5.0 is ready · 61 MB[22m
+[2m└[22m  Restart to finish updating.
 
 #### no-color-80
-┌   Tidewater Studio  · update apply
+┌  [7m Tidewater Studio [27m · update apply
 │
-◆  Tidewater Studio 2.5.0
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  100% · 61 MB
-✓  Tidewater Studio 2.5.0 is ready
-│  Restart Tidewater Studio to finish updating.
-└
+✓  [1m2.5.0 is ready · 61 MB[22m
+└  Restart to finish updating.
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - update apply[39m
-[90m|[39m
-[36m*[39m  [1mTidewater Studio 2.5.0[22m
-[90m|[39m  [36m####################################[39m[1m  100%[22m[90m - 61 MB[39m
-[32m+[39m  [1mTidewater Studio 2.5.0 is ready[22m
-[90m|[39m  Restart Tidewater Studio to finish updating.
-[90m`[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - update apply[22m
+[2m|[22m
+[32m+[39m  [1m2.5.0 is ready - 61 MB[22m
+[2m`[22m  Restart to finish updating.
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update apply[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  [36m━━━━━━━━━━━━━━━━━━━━[39m[1m  100%[22m[90m · 61 MB[39m
-[32m✓[39m  [1mTidewater Studio 2.5.0 is ready[22m
-[90m│[39m  Restart Tidewater Studio to finish updating.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update apply[22m
+[2m│[22m
+[32m✓[39m  [1m2.5.0 is ready · 61 MB[22m
+[2m└[22m  Restart to finish updating.
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update apply[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  [36m━━━━━━━━━━━━━━━━━━━━[39m[1m  100%[22m[90m · 61 MB[39m
-[32m✓[39m  [1mTidewater Studio 2.5.0 is ready[22m
-[90m│[39m  Restart Tidewater Studio to finish updating.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update apply[22m
+[2m│[22m
+[32m✓[39m  [1m2.5.0 is ready · 61 MB[22m
+[2m└[22m  Restart to finish updating.
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · update apply[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  [36m━━━━━━━━━━━━━━━━━━━━[39m[1m  100%[22m[90m · 61 MB[39m
-[32m✓[39m  [1mTidewater Studio 2.5.0 is ready[22m
-[90m│[39m  Restart Tidewater Studio to finish updating.
-[90m└[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · update apply[22m
+[2m│[22m
+[32m✓[39m  [1m2.5.0 is ready · 61 MB[22m
+[2m└[22m  Restart to finish updating.
 
 #### no-color-60
-┌   Tidewater Studio  · update apply
+┌  [7m Tidewater Studio [27m · update apply
 │
-◆  Tidewater Studio 2.5.0
-│  ━━━━━━━━━━━━━━━━━━━━  100% · 61 MB
-✓  Tidewater Studio 2.5.0 is ready
-│  Restart Tidewater Studio to finish updating.
-└
+✓  [1m2.5.0 is ready · 61 MB[22m
+└  Restart to finish updating.
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - update apply[39m
-[90m|[39m
-[36m*[39m  [1mTidewater Studio 2.5.0[22m
-[90m|[39m  [36m####################[39m[1m  100%[22m[90m - 61 MB[39m
-[32m+[39m  [1mTidewater Studio 2.5.0 is ready[22m
-[90m|[39m  Restart Tidewater Studio to finish updating.
-[90m`[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - update apply[22m
+[2m|[22m
+[32m+[39m  [1m2.5.0 is ready - 61 MB[22m
+[2m`[22m  Restart to finish updating.

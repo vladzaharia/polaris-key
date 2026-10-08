@@ -12,7 +12,10 @@
 // code, the URL and the key hints within the rows; one blank rail row between blocks, never two.
 // The Python kit's tests/cli/test_responsive.py runs the same matrix through pyte.
 
-import { describe, expect, it } from "vitest";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterAll, describe, expect, it } from "vitest";
 import { createKitContext, type KitContext } from "../../src/cli/context.js";
 import {
   activateFlow,
@@ -54,8 +57,8 @@ const SHORT = {
 };
 type Values = typeof LONG;
 
-const COLUMNS = [40, 60, 80, 120] as const;
-const ROWS = [12, 24] as const;
+const COLUMNS = [24, 28, 32, 40, 60, 80, 120] as const;
+const ROWS = [8, 10, 12, 16, 17, 24] as const;
 const shown = (url: string) => url.replace(/^https?:\/\//, "");
 
 interface Run {
@@ -156,7 +159,13 @@ function signInClient(v: Values, gate: Promise<unknown>) {
 
 /** The text of the content column, rows joined: a URL or a code wrapped over rows reads whole. */
 const joined = (rows: Row[]) =>
-  rows.map((r) => [...r.text].slice(3).join("").trimEnd()).join("");
+  rows
+    .map((r) =>
+      (/^[│┌└◆◇✓✗▲] /.test(r.text) ? [...r.text].slice(3) : [...r.text])
+        .join("")
+        .trimEnd(),
+    )
+    .join("");
 
 /** The checks every screen passes. */
 function check(
@@ -181,12 +190,20 @@ function check(
   ).toEqual([]);
   const text = all.map((r) => r.text).join("\n");
   expect(text, `${label}: a "..." crop`).not.toContain("...");
+  if (process.env.DBG && label.startsWith(process.env.DBG))
+    require("node:fs").appendFileSync(
+      "/tmp/dump.txt",
+      label + "\n" + view.map((r) => r.text).join("\n") + "\n\n",
+    );
   const body = joined(view);
   if (want.code)
     expect(body, `${label}: the code is cut or off the screen`).toContain(
       want.code,
     );
-  if (want.url)
+  // Under 32 columns a URL needs most of the screen: below 12 rows it scrolls past, by design.
+  const [, cw, rw] = /(\d+)×(\d+)/.exec(label) ?? [];
+  const tiny = Number(cw) <= 32 && Number(rw) < 12;
+  if (want.url && !tiny)
     expect(body, `${label}: the URL is cut or off the screen`).toContain(
       shown(want.url),
     );
@@ -532,12 +549,15 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
             .map((r) => r.text)
             .join("\n");
           // Below 50 columns a command row stacks: the command, then its label under it.
-          if (columns < 50) expect(text).toMatch(/│ {2}tidewater activate\n/);
+          if (columns < 50)
+            expect(text).toMatch(/^(│ {2})?tidewater activate\n/m);
           // A finished download never reads "Up to date" above "Restart to finish updating".
           expect(text).not.toContain("Up to date");
           // The finished block replaces the bar: ready, the size, then what to do next.
           expect(text).toContain("2.5.0 is ready · 61 MB");
-          expect(text).toContain("Restart to finish updating.");
+          expect(text.replace(/\s+/g, " ")).toContain(
+            "Restart to finish updating.",
+          );
         });
       }
 });
@@ -806,5 +826,153 @@ describe("a terminal resized in the middle of a live region (80 → 50)", () => 
     const all = screen.all().map((r) => r.text);
     expect(all.filter((t) => t.includes("%"))).toHaveLength(0);
     expect(all.filter((t) => t.includes("· update apply"))).toHaveLength(1);
+  });
+});
+
+// ── Both kits draw the same text (UI-KITS §1.4) ───────────────────────────────────────────────
+// docs/design/ui-kits/terminal-parity.json holds the plain text of each case at 80×24. This test
+// records it (PKEY_UPDATE_PARITY=1) and checks it; sdks/python/tests/cli/test_responsive.py checks
+// the same file against the Python kit, so the two cannot drift apart.
+
+const PARITY = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../../docs/design/ui-kits/terminal-parity.json",
+);
+
+/** The countdown is the fixture's clock, not the kit's. */
+const clock = (t: string) => t.replace(/expires in \d+:\d\d/, "expires in N");
+
+const parityCases: Record<string, (h: Harness) => Promise<unknown>> = {
+  "status-revoked": (h) =>
+    statusFlow(h.ctx, stubClient({ status: () => ({ status: "revoked" }) })),
+  "offline-request": async (h) => offlineRequestFlow(h.ctx, stubClient()),
+  "devices-one": (h) =>
+    devicesListFlow(
+      h.ctx,
+      stubClient({
+        listDevices: async () => [
+          {
+            id: "dev_9fK2Lw7QmZ",
+            current: true,
+            status: "ok",
+            label: "Work laptop",
+            platform: "macOS",
+            arch: "arm64",
+          },
+        ],
+      }),
+    ),
+};
+
+/** Screens that wait for a key: the viewport at the moment a person looks at it. */
+const parityScreens: Record<
+  string,
+  (
+    h: Harness,
+    release: (v: unknown) => void,
+    wait: Promise<unknown>,
+  ) => Promise<unknown>
+> = {
+  "login-code": async (h, release, wait) => {
+    const done = loginFlow(h.ctx, signInClient(SHORT, wait), {
+      deviceCode: true,
+    });
+    await settle();
+    await h.snap();
+    release({ status: "expired" });
+    await done;
+  },
+  "device-limit": async (h) => {
+    const done = activateFlow(
+      h.ctx,
+      stubClient({
+        license: {
+          activateWithKey: async () => ({
+            kind: "device-limit",
+            code: "device_limit",
+            limit: 3,
+            deviceCount: 3,
+            manageUrl: "https://key.plrs.im/portal/tidewater/devices",
+          }),
+        },
+      }),
+      { key: KEY },
+    );
+    await settle();
+    await h.snap();
+    h.stdin.press("escape", { sequence: "\x1b" });
+    await done;
+  },
+};
+
+/** The whole terminal after a flow ended: what a person is left reading. */
+const parityEnds: Record<
+  string,
+  (h: Harness, wait: Promise<unknown>) => Promise<unknown>
+> = {
+  "login-cancelled": async (h, wait) => {
+    const done = loginFlow(h.ctx, signInClient(SHORT, wait), {
+      deviceCode: true,
+    });
+    await settle();
+    h.stdin.press("escape", { sequence: "\x1b" });
+    await done;
+  },
+};
+
+describe("both kits draw the same text at 80×24", () => {
+  const recorded: Record<string, string> = existsSync(PARITY)
+    ? JSON.parse(readFileSync(PARITY, "utf8"))
+    : {};
+  const drawn: Record<string, string> = {};
+  for (const [name, scenario] of Object.entries(parityCases))
+    it(name, async () => {
+      const { screen } = await run({ columns: 80, rows: 24 }, scenario);
+      const text = screen
+        .all()
+        .map((r) => r.text.trimEnd())
+        .join("\n")
+        .trimEnd();
+      drawn[name] = text;
+      if (process.env.PKEY_UPDATE_PARITY !== "1")
+        expect(text).toBe(recorded[name]);
+    });
+  for (const [name, scenario] of Object.entries(parityScreens))
+    it(name, async () => {
+      const gate = deferred<unknown>();
+      const { snaps } = await run(
+        { columns: 80, rows: 24, interactive: true },
+        (h) => scenario(h, gate.resolve, gate.promise),
+      );
+      const text = snaps[0]!
+        .map((r) => r.text.trimEnd())
+        .join("\n")
+        .trimEnd();
+      drawn[name] = text;
+      if (process.env.PKEY_UPDATE_PARITY !== "1")
+        expect(clock(text)).toBe(clock(recorded[name]!));
+    });
+  for (const [name, scenario] of Object.entries(parityEnds))
+    it(name, async () => {
+      const gate = deferred<unknown>();
+      const { screen } = await run(
+        { columns: 80, rows: 24, interactive: true },
+        (h) => scenario(h, gate.promise),
+      );
+      const text = screen
+        .all()
+        .map((r) => r.text.trimEnd())
+        .join("\n")
+        .trimEnd();
+      drawn[name] = text;
+      if (process.env.PKEY_UPDATE_PARITY !== "1")
+        expect(clock(text)).toBe(clock(recorded[name]!));
+    });
+  afterAll(() => {
+    if (process.env.PKEY_UPDATE_PARITY === "1")
+      writeFileSync(
+        PARITY,
+        `${JSON.stringify({ ...recorded, ...drawn }, null, 2)}\n`,
+      );
   });
 });

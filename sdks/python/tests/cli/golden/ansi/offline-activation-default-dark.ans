@@ -1,68 +1,56 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · offline-request[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · offline-request[0m
+[2m│[0m
 [38;2;114;202;190m◆[0m  [1mOffline activation[0m
-[90m│[0m  Send this request code to whoever gave you your license.
-[90m│[0m  [90mProduct: Tidewater Studio[0m
-[90m│[0m
-[90m│[0m     [1;7m dev_8f3a2c19e04b [0m
-[90m│[0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m                             [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▀▀▀▀▀█  ▄▄▀   ▀▀ █▀▀▀▀▀█  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ███ █ █▄█ █ ▀ ▀ █ ███ █  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ▀▀▀ █ █▄█▀████  █ ▀▀▀ █  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀▀▀▀▀▀▀ █ ▀▄▀▄▀ ▀ ▀▀▀▀▀▀▀  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▄█▀█▀▀  █▄▀  ▀▀▄ ▀█▀▀▀▄   [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▄▀▀██▀▄▀██▀  ▄█▄▄▀ ▀▀▀██  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▄▀███▀▀  ▄ ▀▄▄▄▀▀▄▀▀▀ ▄▀▀  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █  ▀▄█▀ ▄   ▄█▀█ ▄█▀ ▄▀▀█  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀ ▀▀  ▀▀▄█▄ ▀ ▀▀█▀▀▀█▄█▀▀  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▀▀▀▀▀█ ▄▄██▀ ▄▄█ ▀ █▀ ▀█  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ███ █ █  ▀▄▄▄▀▀▀█▀█▀▀▄█  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ▀▀▀ █ ▀▄  ▄█▀▄▄▀ █▄█▀ █  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀▀▀▀▀▀▀ ▀   ▀ ▀  ▀▀   ▀▀▀  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m                             [0m
-[90m│[0m
-[90m│[0m  Then load the activation file you get back, or paste its text.
-[90m│[0m  [1mtidewater import-bundle <file>[0m   [90mActivate from file[0m
-[90m└[0m
+[2m│[0m  Send this request code to whoever gave you your license.
+[2m│[0m
+[2m│[0m     [1;7m dev_8f3a2c19e04b [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m                             [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▀▀▀▀▀█  ▄▄▀   ▀▀ █▀▀▀▀▀█  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ███ █ █▄█ █ ▀ ▀ █ ███ █  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ▀▀▀ █ █▄█▀████  █ ▀▀▀ █  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀▀▀▀▀▀▀ █ ▀▄▀▄▀ ▀ ▀▀▀▀▀▀▀  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▄█▀█▀▀  █▄▀  ▀▀▄ ▀█▀▀▀▄   [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▄▀▀██▀▄▀██▀  ▄█▄▄▀ ▀▀▀██  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▄▀███▀▀  ▄ ▀▄▄▄▀▀▄▀▀▀ ▄▀▀  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █  ▀▄█▀ ▄   ▄█▀█ ▄█▀ ▄▀▀█  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀ ▀▀  ▀▀▄█▄ ▀ ▀▀█▀▀▀█▄█▀▀  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▀▀▀▀▀█ ▄▄██▀ ▄▄█ ▀ █▀ ▀█  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ███ █ █  ▀▄▄▄▀▀▀█▀█▀▀▄█  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ▀▀▀ █ ▀▄  ▄█▀▄▄▀ █▄█▀ █  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀▀▀▀▀▀▀ ▀   ▀ ▀  ▀▀   ▀▀▀  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m                             [0m
+[2m└[0m  [1mtidewater import-bundle <file>[0m   [2mActivate from an offline activation file[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · offline-request[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · offline-request[0m
+[2m│[0m
 [36m◆[0m  [1mOffline activation[0m
-[90m│[0m  Send this request code to whoever gave you your license.
-[90m│[0m  [90mProduct: Tidewater Studio[0m
-[90m│[0m
-[90m│[0m     [1;7m dev_8f3a2c19e04b [0m
-[90m│[0m
-[90m│[0m     [30;107m                             [0m
-[90m│[0m     [30;107m  █▀▀▀▀▀█  ▄▄▀   ▀▀ █▀▀▀▀▀█  [0m
-[90m│[0m     [30;107m  █ ███ █ █▄█ █ ▀ ▀ █ ███ █  [0m
-[90m│[0m     [30;107m  █ ▀▀▀ █ █▄█▀████  █ ▀▀▀ █  [0m
-[90m│[0m     [30;107m  ▀▀▀▀▀▀▀ █ ▀▄▀▄▀ ▀ ▀▀▀▀▀▀▀  [0m
-[90m│[0m     [30;107m  █▄█▀█▀▀  █▄▀  ▀▀▄ ▀█▀▀▀▄   [0m
-[90m│[0m     [30;107m  █▄▀▀██▀▄▀██▀  ▄█▄▄▀ ▀▀▀██  [0m
-[90m│[0m     [30;107m  ▄▀███▀▀  ▄ ▀▄▄▄▀▀▄▀▀▀ ▄▀▀  [0m
-[90m│[0m     [30;107m  █  ▀▄█▀ ▄   ▄█▀█ ▄█▀ ▄▀▀█  [0m
-[90m│[0m     [30;107m  ▀ ▀▀  ▀▀▄█▄ ▀ ▀▀█▀▀▀█▄█▀▀  [0m
-[90m│[0m     [30;107m  █▀▀▀▀▀█ ▄▄██▀ ▄▄█ ▀ █▀ ▀█  [0m
-[90m│[0m     [30;107m  █ ███ █ █  ▀▄▄▄▀▀▀█▀█▀▀▄█  [0m
-[90m│[0m     [30;107m  █ ▀▀▀ █ ▀▄  ▄█▀▄▄▀ █▄█▀ █  [0m
-[90m│[0m     [30;107m  ▀▀▀▀▀▀▀ ▀   ▀ ▀  ▀▀   ▀▀▀  [0m
-[90m│[0m     [30;107m                             [0m
-[90m│[0m
-[90m│[0m  Then load the activation file you get back, or paste its text.
-[90m│[0m  [1mtidewater import-bundle <file>[0m   [90mActivate from file[0m
-[90m└[0m
+[2m│[0m  Send this request code to whoever gave you your license.
+[2m│[0m
+[2m│[0m     [1;7m dev_8f3a2c19e04b [0m
+[2m│[0m     [30;107m                             [0m
+[2m│[0m     [30;107m  █▀▀▀▀▀█  ▄▄▀   ▀▀ █▀▀▀▀▀█  [0m
+[2m│[0m     [30;107m  █ ███ █ █▄█ █ ▀ ▀ █ ███ █  [0m
+[2m│[0m     [30;107m  █ ▀▀▀ █ █▄█▀████  █ ▀▀▀ █  [0m
+[2m│[0m     [30;107m  ▀▀▀▀▀▀▀ █ ▀▄▀▄▀ ▀ ▀▀▀▀▀▀▀  [0m
+[2m│[0m     [30;107m  █▄█▀█▀▀  █▄▀  ▀▀▄ ▀█▀▀▀▄   [0m
+[2m│[0m     [30;107m  █▄▀▀██▀▄▀██▀  ▄█▄▄▀ ▀▀▀██  [0m
+[2m│[0m     [30;107m  ▄▀███▀▀  ▄ ▀▄▄▄▀▀▄▀▀▀ ▄▀▀  [0m
+[2m│[0m     [30;107m  █  ▀▄█▀ ▄   ▄█▀█ ▄█▀ ▄▀▀█  [0m
+[2m│[0m     [30;107m  ▀ ▀▀  ▀▀▄█▄ ▀ ▀▀█▀▀▀█▄█▀▀  [0m
+[2m│[0m     [30;107m  █▀▀▀▀▀█ ▄▄██▀ ▄▄█ ▀ █▀ ▀█  [0m
+[2m│[0m     [30;107m  █ ███ █ █  ▀▄▄▄▀▀▀█▀█▀▀▄█  [0m
+[2m│[0m     [30;107m  █ ▀▀▀ █ ▀▄  ▄█▀▄▄▀ █▄█▀ █  [0m
+[2m│[0m     [30;107m  ▀▀▀▀▀▀▀ ▀   ▀ ▀  ▀▀   ▀▀▀  [0m
+[2m│[0m     [30;107m                             [0m
+[2m└[0m  [1mtidewater import-bundle <file>[0m   [2mActivate from an offline activation file[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · offline-request
+┌  [7m Tidewater Studio [0m · offline-request
 │
-◆  Offline activation
+◆  [1mOffline activation[0m
 │  Send this request code to whoever gave you your license.
-│  Product: Tidewater Studio
 │
-│      dev_8f3a2c19e04b 
-│
+│     [1;7m dev_8f3a2c19e04b [0m
 │     █████████████████████████████
 │     ██ ▄▄▄▄▄ ██▀▀▄███▄▄█ ▄▄▄▄▄ ██
 │     ██ █   █ █ ▀ █ █▄█▄█ █   █ ██
@@ -78,89 +66,71 @@
 │     ██ █▄▄▄█ █▄▀██▀ ▄▀▀▄█ ▀ ▄█ ██
 │     ██▄▄▄▄▄▄▄█▄███▄█▄██▄▄███▄▄▄██
 │     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-│
-│  Then load the activation file you get back, or paste its text.
-│  tidewater import-bundle <file>   Activate from file
-└
+└  [1mtidewater import-bundle <file>[0m   Activate from an offline activation file
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - offline-request[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - offline-request[0m
+[2m|[0m
 [36m*[0m  [1mOffline activation[0m
-[90m|[0m  Send this request code to whoever gave you your license.
-[90m|[0m  [90mProduct: Tidewater Studio[0m
-[90m|[0m
-[90m|[0m     [1;7m dev_8f3a2c19e04b [0m
-[90m|[0m
-[90m|[0m  Then load the activation file you get back, or paste its text.
-[90m|[0m  [1mtidewater import-bundle <file>[0m   [90mActivate from file[0m
-[90m`[0m
+[2m|[0m  Send this request code to whoever gave you your license.
+[2m|[0m
+[2m|[0m     [1;7m dev_8f3a2c19e04b [0m
+[2m|[0m
+[2m`[0m  [1mtidewater import-bundle <file>[0m   [2mActivate from an offline activation file[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · offline-request[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · offline-request[0m
+[2m│[0m
 [38;2;114;202;190m◆[0m  [1mOffline activation[0m
-[90m│[0m  Send this request code to whoever gave you your license.
-[90m│[0m  [90mProduct: Tidewater Studio[0m
-[90m│[0m
-[90m│[0m     [1;7m dev_8f3a2c19e04b [0m
-[90m│[0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m                             [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▀▀▀▀▀█  ▄▄▀   ▀▀ █▀▀▀▀▀█  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ███ █ █▄█ █ ▀ ▀ █ ███ █  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ▀▀▀ █ █▄█▀████  █ ▀▀▀ █  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀▀▀▀▀▀▀ █ ▀▄▀▄▀ ▀ ▀▀▀▀▀▀▀  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▄█▀█▀▀  █▄▀  ▀▀▄ ▀█▀▀▀▄   [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▄▀▀██▀▄▀██▀  ▄█▄▄▀ ▀▀▀██  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▄▀███▀▀  ▄ ▀▄▄▄▀▀▄▀▀▀ ▄▀▀  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █  ▀▄█▀ ▄   ▄█▀█ ▄█▀ ▄▀▀█  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀ ▀▀  ▀▀▄█▄ ▀ ▀▀█▀▀▀█▄█▀▀  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▀▀▀▀▀█ ▄▄██▀ ▄▄█ ▀ █▀ ▀█  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ███ █ █  ▀▄▄▄▀▀▀█▀█▀▀▄█  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ▀▀▀ █ ▀▄  ▄█▀▄▄▀ █▄█▀ █  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀▀▀▀▀▀▀ ▀   ▀ ▀  ▀▀   ▀▀▀  [0m
-[90m│[0m     [38;2;0;0;0;48;2;255;255;255m                             [0m
-[90m│[0m
-[90m│[0m  Then load the activation file you get back, or paste
-[90m│[0m  its text.
-[90m│[0m  [1mtidewater import-bundle <file>[0m   [90mActivate from file[0m
-[90m└[0m
+[2m│[0m  Send this request code to whoever gave you your license.
+[2m│[0m
+[2m│[0m     [1;7m dev_8f3a2c19e04b [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m                             [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▀▀▀▀▀█  ▄▄▀   ▀▀ █▀▀▀▀▀█  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ███ █ █▄█ █ ▀ ▀ █ ███ █  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ▀▀▀ █ █▄█▀████  █ ▀▀▀ █  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀▀▀▀▀▀▀ █ ▀▄▀▄▀ ▀ ▀▀▀▀▀▀▀  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▄█▀█▀▀  █▄▀  ▀▀▄ ▀█▀▀▀▄   [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▄▀▀██▀▄▀██▀  ▄█▄▄▀ ▀▀▀██  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▄▀███▀▀  ▄ ▀▄▄▄▀▀▄▀▀▀ ▄▀▀  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █  ▀▄█▀ ▄   ▄█▀█ ▄█▀ ▄▀▀█  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀ ▀▀  ▀▀▄█▄ ▀ ▀▀█▀▀▀█▄█▀▀  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █▀▀▀▀▀█ ▄▄██▀ ▄▄█ ▀ █▀ ▀█  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ███ █ █  ▀▄▄▄▀▀▀█▀█▀▀▄█  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  █ ▀▀▀ █ ▀▄  ▄█▀▄▄▀ █▄█▀ █  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m  ▀▀▀▀▀▀▀ ▀   ▀ ▀  ▀▀   ▀▀▀  [0m
+[2m│[0m     [38;2;0;0;0;48;2;255;255;255m                             [0m
+[2m│[0m  [1mtidewater import-bundle <file>[0m
+[2m└[0m    [2mActivate from an offline activation file[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · offline-request[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · offline-request[0m
+[2m│[0m
 [36m◆[0m  [1mOffline activation[0m
-[90m│[0m  Send this request code to whoever gave you your license.
-[90m│[0m  [90mProduct: Tidewater Studio[0m
-[90m│[0m
-[90m│[0m     [1;7m dev_8f3a2c19e04b [0m
-[90m│[0m
-[90m│[0m     [30;107m                             [0m
-[90m│[0m     [30;107m  █▀▀▀▀▀█  ▄▄▀   ▀▀ █▀▀▀▀▀█  [0m
-[90m│[0m     [30;107m  █ ███ █ █▄█ █ ▀ ▀ █ ███ █  [0m
-[90m│[0m     [30;107m  █ ▀▀▀ █ █▄█▀████  █ ▀▀▀ █  [0m
-[90m│[0m     [30;107m  ▀▀▀▀▀▀▀ █ ▀▄▀▄▀ ▀ ▀▀▀▀▀▀▀  [0m
-[90m│[0m     [30;107m  █▄█▀█▀▀  █▄▀  ▀▀▄ ▀█▀▀▀▄   [0m
-[90m│[0m     [30;107m  █▄▀▀██▀▄▀██▀  ▄█▄▄▀ ▀▀▀██  [0m
-[90m│[0m     [30;107m  ▄▀███▀▀  ▄ ▀▄▄▄▀▀▄▀▀▀ ▄▀▀  [0m
-[90m│[0m     [30;107m  █  ▀▄█▀ ▄   ▄█▀█ ▄█▀ ▄▀▀█  [0m
-[90m│[0m     [30;107m  ▀ ▀▀  ▀▀▄█▄ ▀ ▀▀█▀▀▀█▄█▀▀  [0m
-[90m│[0m     [30;107m  █▀▀▀▀▀█ ▄▄██▀ ▄▄█ ▀ █▀ ▀█  [0m
-[90m│[0m     [30;107m  █ ███ █ █  ▀▄▄▄▀▀▀█▀█▀▀▄█  [0m
-[90m│[0m     [30;107m  █ ▀▀▀ █ ▀▄  ▄█▀▄▄▀ █▄█▀ █  [0m
-[90m│[0m     [30;107m  ▀▀▀▀▀▀▀ ▀   ▀ ▀  ▀▀   ▀▀▀  [0m
-[90m│[0m     [30;107m                             [0m
-[90m│[0m
-[90m│[0m  Then load the activation file you get back, or paste
-[90m│[0m  its text.
-[90m│[0m  [1mtidewater import-bundle <file>[0m   [90mActivate from file[0m
-[90m└[0m
+[2m│[0m  Send this request code to whoever gave you your license.
+[2m│[0m
+[2m│[0m     [1;7m dev_8f3a2c19e04b [0m
+[2m│[0m     [30;107m                             [0m
+[2m│[0m     [30;107m  █▀▀▀▀▀█  ▄▄▀   ▀▀ █▀▀▀▀▀█  [0m
+[2m│[0m     [30;107m  █ ███ █ █▄█ █ ▀ ▀ █ ███ █  [0m
+[2m│[0m     [30;107m  █ ▀▀▀ █ █▄█▀████  █ ▀▀▀ █  [0m
+[2m│[0m     [30;107m  ▀▀▀▀▀▀▀ █ ▀▄▀▄▀ ▀ ▀▀▀▀▀▀▀  [0m
+[2m│[0m     [30;107m  █▄█▀█▀▀  █▄▀  ▀▀▄ ▀█▀▀▀▄   [0m
+[2m│[0m     [30;107m  █▄▀▀██▀▄▀██▀  ▄█▄▄▀ ▀▀▀██  [0m
+[2m│[0m     [30;107m  ▄▀███▀▀  ▄ ▀▄▄▄▀▀▄▀▀▀ ▄▀▀  [0m
+[2m│[0m     [30;107m  █  ▀▄█▀ ▄   ▄█▀█ ▄█▀ ▄▀▀█  [0m
+[2m│[0m     [30;107m  ▀ ▀▀  ▀▀▄█▄ ▀ ▀▀█▀▀▀█▄█▀▀  [0m
+[2m│[0m     [30;107m  █▀▀▀▀▀█ ▄▄██▀ ▄▄█ ▀ █▀ ▀█  [0m
+[2m│[0m     [30;107m  █ ███ █ █  ▀▄▄▄▀▀▀█▀█▀▀▄█  [0m
+[2m│[0m     [30;107m  █ ▀▀▀ █ ▀▄  ▄█▀▄▄▀ █▄█▀ █  [0m
+[2m│[0m     [30;107m  ▀▀▀▀▀▀▀ ▀   ▀ ▀  ▀▀   ▀▀▀  [0m
+[2m│[0m     [30;107m                             [0m
+[2m│[0m  [1mtidewater import-bundle <file>[0m
+[2m└[0m    [2mActivate from an offline activation file[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · offline-request
+┌  [7m Tidewater Studio [0m · offline-request
 │
-◆  Offline activation
+◆  [1mOffline activation[0m
 │  Send this request code to whoever gave you your license.
-│  Product: Tidewater Studio
 │
-│      dev_8f3a2c19e04b 
-│
+│     [1;7m dev_8f3a2c19e04b [0m
 │     █████████████████████████████
 │     ██ ▄▄▄▄▄ ██▀▀▄███▄▄█ ▄▄▄▄▄ ██
 │     ██ █   █ █ ▀ █ █▄█▄█ █   █ ██
@@ -176,31 +146,23 @@
 │     ██ █▄▄▄█ █▄▀██▀ ▄▀▀▄█ ▀ ▄█ ██
 │     ██▄▄▄▄▄▄▄█▄███▄█▄██▄▄███▄▄▄██
 │     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
-│
-│  Then load the activation file you get back, or paste
-│  its text.
-│  tidewater import-bundle <file>   Activate from file
-└
+│  [1mtidewater import-bundle <file>[0m
+└    Activate from an offline activation file
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - offline-request[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - offline-request[0m
+[2m|[0m
 [36m*[0m  [1mOffline activation[0m
-[90m|[0m  Send this request code to whoever gave you your license.
-[90m|[0m  [90mProduct: Tidewater Studio[0m
-[90m|[0m
-[90m|[0m     [1;7m dev_8f3a2c19e04b [0m
-[90m|[0m
-[90m|[0m  Then load the activation file you get back, or paste
-[90m|[0m  its text.
-[90m|[0m  [1mtidewater import-bundle <file>[0m   [90mActivate from file[0m
-[90m`[0m
+[2m|[0m  Send this request code to whoever gave you your license.
+[2m|[0m
+[2m|[0m     [1;7m dev_8f3a2c19e04b [0m
+[2m|[0m
+[2m|[0m  [1mtidewater import-bundle <file>[0m
+[2m`[0m    [2mActivate from an offline activation file[0m
 ── pipe · 80 ──
 Tidewater Studio · offline-request
 Offline activation
 Send this request code to whoever gave you your license.
-Product: Tidewater Studio
 
 dev_8f3a2c19e04b
 
-Then load the activation file you get back, or paste its text.
-tidewater import-bundle <file>   Activate from file
+tidewater import-bundle <file>   Activate from an offline activation file

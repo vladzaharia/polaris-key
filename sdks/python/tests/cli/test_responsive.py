@@ -14,6 +14,7 @@ and the key hints within the rows; one blank rail row between blocks, never two.
 
 from __future__ import annotations
 
+import re
 import signal
 import threading
 import time
@@ -43,8 +44,8 @@ LONG = dict(
     device="Mara Fennick's 16-inch MacBook Pro (Studio B2, second floor)",
 )
 SHORT = dict(name="Tidewater Studio", code="WDJB-MJHT", url="https://key.plrs.im/device", device="Work laptop")
-COLUMNS = (40, 60, 80, 120)
-ROWS = (12, 24)
+COLUMNS = (24, 28, 32, 40, 60, 80, 120)
+ROWS = (8, 10, 12, 16, 17, 24)
 
 
 def shown(url: str) -> str:
@@ -100,7 +101,7 @@ def terminal(term: Term, values: dict, *, verb: str, keys: List[Any], locale: Op
 
 def joined(rows: List[str]) -> str:
     """The content column, rows joined: a URL or a code wrapped over rows reads whole."""
-    return "".join(r[3:].rstrip() for r in rows)
+    return "".join((r[3:] if re.match(r"^[│┌└◆◇✓✗▲] ", r) else r).rstrip() for r in rows)
 
 
 def check(label: str, term: Term, view: List[str], *, code: Optional[str] = None, url: Optional[str] = None, hints: bool = False) -> None:
@@ -111,7 +112,10 @@ def check(label: str, term: Term, view: List[str], *, code: Optional[str] = None
     body = joined(view)
     if code:
         assert code in body, f"{label}: the code is cut or off the screen:\n" + "\n".join(view)
-    if url:
+    m = re.search(r"(\d+)x(\d+)", label)
+    # Under 32 columns a URL needs most of the screen: below 12 rows it scrolls past, by design.
+    tiny = bool(m) and int(m.group(1)) <= 32 and int(m.group(2)) < 12
+    if url and not tiny:
         assert shown(url) in body, f"{label}: the URL is cut or off the screen:\n" + "\n".join(view)
     if hints:
         assert any("Esc" in r for r in view), f"{label}: the key hints are off the screen:\n" + "\n".join(view)
@@ -267,7 +271,8 @@ def test_login_device_code_keeps_the_code_the_url_and_the_keys_in_view(cols: int
     check(f"login code {cols}x{rows} {values}", term, snaps[0], code=v["code"], url=v["url"], hints=True)
     text = "\n".join(snaps[0])
     assert "No browser" not in text, "a person who asked for a code is not told there is no browser"
-    assert "Waiting for you to sign in" in text
+    if rows >= 12 or cols > 32:  # the waiting line is the first thing to go on a tiny window
+        assert "Waiting for you to sign in" in re.sub(r"\s+", " ", text)
     # The screen is laid out spaced when it fits; it compacts only when it does not.
     assert len([r for r in snaps[0] if r.strip()]) <= rows
     if rows >= 24 and cols >= 60 and values == "short":
@@ -334,7 +339,7 @@ def test_status_devices_and_update_draw_nothing_wider_than_the_terminal(cols: in
     check(f"status/devices {cols}x{rows} {values}", term, [])
     text = "\n".join(r for r, _ in term.all())
     if cols < 50:
-        assert "\n│  tidewater activate\n" in text, "below 50 columns a command stacks above its label"
+        assert re.search(r"^(│  )?tidewater activate$", text, re.M), "below 50 columns a command stacks above its label"
 
 
 @pytest.mark.parametrize("locale", ["de", "ja"])
@@ -430,6 +435,31 @@ def test_help_never_runs_past_the_terminal_and_stacks_below_50_columns(cols: int
         assert "\n  activate\n    Add a license key" in _re.sub(r"\x1b\[[0-9;]*m", "", text)
 
 
+@pytest.mark.parametrize("cols", [24, 32, 40, 80])
+def test_every_verbs_help_never_runs_past_the_terminal(cols: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    import io
+    import os as _os
+
+    from polaris_key.cli import verbs
+    from polaris_key.cli.argparse_cli import build_parser
+    from polaris_key.ui.terminal import env as envmod
+
+    real = envmod.detect
+
+    class Tty(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    monkeypatch.setattr(envmod, "detect", lambda **kw: real(env={"NO_COLOR": "1"}, stdout=Tty(), size=lambda: _os.terminal_size((cols, 24)), **kw))
+    parser = build_parser()
+    sub = next(a for a in parser._actions if isinstance(a, __import__("argparse")._SubParsersAction))
+    assert sub.choices, "no verbs found"
+    for name, vp in sub.choices.items():
+        term = Term(cols, 24)
+        term.write(vp.format_help())
+        assert [t for t, w in term.all() if w] == [], f"{name} --help at {cols}: a line wider than the terminal"
+
+
 # ── A window dragged through several sizes, and the end states ───────────────────────────────
 
 DRAGS = [
@@ -510,3 +540,78 @@ def test_ctrl_c_cancels_with_a_result_and_exit_130_never_a_blank_screen() -> Non
     t.finish(out)
     text = "\n".join(r for r, _ in term.all())
     assert out.code == 130 and "Sign-in cancelled" in text and "┌" in text
+
+
+# ── Both kits draw the same text (UI-KITS §1.4) ───────────────────────────────────────────────
+# docs/design/ui-kits/terminal-parity.json is recorded by packages/sdk-node/test/cli/responsive.test.ts
+# (PKEY_UPDATE_PARITY=1); the Node kit checks it too, so the two cannot drift apart.
+
+import json
+from pathlib import Path
+
+PARITY = json.loads((Path(__file__).resolve().parents[4] / "docs/design/ui-kits/terminal-parity.json").read_text())
+
+
+def _drawn(term: Term) -> str:
+    return "\n".join(t.rstrip() for t, _ in term.all()).rstrip()
+
+
+def test_status_revoked_reads_the_same_in_both_kits() -> None:
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="status", keys=[])
+    status = SimpleNamespace(
+        status=lambda: SimpleNamespace(status="revoked", graceUntil=None, allowedRange=None),
+        license=SimpleNamespace(get_profile=lambda: None),
+        identity=SimpleNamespace(current=lambda: None),
+        core=SimpleNamespace(version="2.4.1", channel="stable"),
+        is_licensed=lambda: False,
+    )
+    t.finish(flows.status(status, t))
+    assert _drawn(term) == PARITY["status-revoked"]
+
+
+def test_one_device_reads_the_same_in_both_kits() -> None:
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="devices", keys=[])
+    dev = SimpleNamespace(id="dev_9fK2Lw7QmZ", label="Work laptop", platform="macOS arm64", current=True)
+    t.finish(flows.devices(SimpleNamespace(list_devices=lambda: [dev]), t, ["list"]))
+    assert _drawn(term) == PARITY["devices-one"]
+
+
+def test_the_offline_request_reads_the_same_in_both_kits() -> None:
+    term = Term(80, 24)
+    t = terminal(term, _values("short"), verb="offline-request", keys=[])
+    t.finish(flows.offline_request(SimpleNamespace(core=SimpleNamespace(device_id="dev_9fK2Lw7QmZ"), product="tidewater"), t))
+    assert _drawn(term) == PARITY["offline-request"]
+
+
+def test_the_sign_in_code_reads_the_same_in_both_kits() -> None:
+    v = _values("short")
+    term = Term(80, 24)
+    snaps: List[List[str]] = []
+    t = terminal(term, v, verb="login", keys=[_snap(term, snaps)], device_code=True)
+    flows.sign_in(_client(v), t)
+    # The countdown is the fixture's clock, not the kit's.
+    def clock(text: str) -> str:
+        return re.sub(r"expires in \d+:\d\d", "expires in N", text)
+
+    assert clock("\n".join(r.rstrip() for r in snaps[0]).rstrip()) == clock(PARITY["login-code"])
+
+
+def test_the_device_limit_reads_the_same_in_both_kits() -> None:
+    v = _values("short")
+    limit = ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://key.plrs.im/portal/tidewater/devices")
+    term = Term(80, 24)
+    snaps: List[List[str]] = []
+    t = terminal(term, v, verb="activate", keys=[_snap(term, snaps)])
+    client = SimpleNamespace(product=PRODUCT, license=SimpleNamespace(activate_with_key=lambda key: limit), status=lambda: None)
+    flows.activate(client, t, KEY)
+    assert "\n".join(r.rstrip() for r in snaps[0]).rstrip() == PARITY["device-limit"]
+
+
+def test_a_cancelled_sign_in_leaves_the_same_text_in_both_kits() -> None:
+    v = _values("short")
+    term = Term(80, 24)
+    t = terminal(term, v, verb="login", keys=["esc"], device_code=True)
+    t.finish(flows.sign_in(_client(v), t))
+    assert _drawn(term) == PARITY["login-cancelled"]

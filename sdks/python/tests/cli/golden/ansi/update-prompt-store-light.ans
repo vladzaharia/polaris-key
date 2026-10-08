@@ -1,83 +1,66 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [38;2;20;121;111m◆[0m  [1mTidewater Studio 2.5[0m
-[90m│[0m  [90mVersion 2.4.1[0m
-[90m│[0m
-[90m│[0m  It installs through the store or platform you got Tidewater Studio from.
-[90m│[0m  ]8;;https://apps.apple.com/app/id6450000000\[4;90mapps.apple.com/app/id6450000000[0m]8;;\
-[90m└[0m
+[2m│[0m
+[2m│[0m  It installs through the store or platform you got Tidewater Studio from.
+[2m└[0m  ]8;;https://apps.apple.com/app/id6450000000\[2;4mapps.apple.com/app/id6450000000[0m]8;;\
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [36m◆[0m  [1mTidewater Studio 2.5[0m
-[90m│[0m  [90mVersion 2.4.1[0m
-[90m│[0m
-[90m│[0m  It installs through the store or platform you got Tidewater Studio from.
-[90m│[0m  ]8;;https://apps.apple.com/app/id6450000000\[4;90mapps.apple.com/app/id6450000000[0m]8;;\
-[90m└[0m
+[2m│[0m
+[2m│[0m  It installs through the store or platform you got Tidewater Studio from.
+[2m└[0m  ]8;;https://apps.apple.com/app/id6450000000\[2;4mapps.apple.com/app/id6450000000[0m]8;;\
 ── no-color · 80 ──
-┌   Tidewater Studio  · update
+┌  [7m Tidewater Studio [0m · update
 │
-◆  Tidewater Studio 2.5
-│  Version 2.4.1
+◆  [1mTidewater Studio 2.5[0m
 │
 │  It installs through the store or platform you got Tidewater Studio from.
-│  apps.apple.com/app/id6450000000
-└
+└  apps.apple.com/app/id6450000000
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - update[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
 [36m*[0m  [1mTidewater Studio 2.5[0m
-[90m|[0m  [90mVersion 2.4.1[0m
-[90m|[0m
-[90m|[0m  It installs through the store or platform you got Tidewater Studio from.
-[90m|[0m  ]8;;https://apps.apple.com/app/id6450000000\[4;90mapps.apple.com/app/id6450000000[0m]8;;\
-[90m`[0m
+[2m|[0m
+[2m|[0m  It installs through the store or platform you got Tidewater Studio from.
+[2m`[0m  ]8;;https://apps.apple.com/app/id6450000000\[2;4mapps.apple.com/app/id6450000000[0m]8;;\
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [38;2;20;121;111m◆[0m  [1mTidewater Studio 2.5[0m
-[90m│[0m  [90mVersion 2.4.1[0m
-[90m│[0m
-[90m│[0m  It installs through the store or platform you got
-[90m│[0m  Tidewater Studio from.
-[90m│[0m  ]8;;https://apps.apple.com/app/id6450000000\[4;90mapps.apple.com/app/id6450000000[0m]8;;\
-[90m└[0m
+[2m│[0m
+[2m│[0m  It installs through the store or platform you got
+[2m│[0m  Tidewater Studio from.
+[2m└[0m  ]8;;https://apps.apple.com/app/id6450000000\[2;4mapps.apple.com/app/id6450000000[0m]8;;\
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [36m◆[0m  [1mTidewater Studio 2.5[0m
-[90m│[0m  [90mVersion 2.4.1[0m
-[90m│[0m
-[90m│[0m  It installs through the store or platform you got
-[90m│[0m  Tidewater Studio from.
-[90m│[0m  ]8;;https://apps.apple.com/app/id6450000000\[4;90mapps.apple.com/app/id6450000000[0m]8;;\
-[90m└[0m
+[2m│[0m
+[2m│[0m  It installs through the store or platform you got
+[2m│[0m  Tidewater Studio from.
+[2m└[0m  ]8;;https://apps.apple.com/app/id6450000000\[2;4mapps.apple.com/app/id6450000000[0m]8;;\
 ── no-color · 60 ──
-┌   Tidewater Studio  · update
+┌  [7m Tidewater Studio [0m · update
 │
-◆  Tidewater Studio 2.5
-│  Version 2.4.1
+◆  [1mTidewater Studio 2.5[0m
 │
 │  It installs through the store or platform you got
 │  Tidewater Studio from.
-│  apps.apple.com/app/id6450000000
-└
+└  apps.apple.com/app/id6450000000
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - update[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
 [36m*[0m  [1mTidewater Studio 2.5[0m
-[90m|[0m  [90mVersion 2.4.1[0m
-[90m|[0m
-[90m|[0m  It installs through the store or platform you got
-[90m|[0m  Tidewater Studio from.
-[90m|[0m  ]8;;https://apps.apple.com/app/id6450000000\[4;90mapps.apple.com/app/id6450000000[0m]8;;\
-[90m`[0m
+[2m|[0m
+[2m|[0m  It installs through the store or platform you got
+[2m|[0m  Tidewater Studio from.
+[2m`[0m  ]8;;https://apps.apple.com/app/id6450000000\[2;4mapps.apple.com/app/id6450000000[0m]8;;\
 ── pipe · 80 ──
 Tidewater Studio · update
 Tidewater Studio 2.5
-Version 2.4.1
 
 It installs through the store or platform you got Tidewater Studio from.
 apps.apple.com/app/id6450000000

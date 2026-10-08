@@ -976,7 +976,7 @@ export async function loginFlow(
       const text = useCode
         ? t(browser ? "cli.keys.codeBrowser" : "cli.keys.code")
         : t("signin.cli.keys");
-      const hints = hintsRow(ctx, text, "rail");
+      const hints = hintsRow(ctx, text);
       if (useCode && ctx.now() - copiedAt < 2000) {
         // The copy hint gives way to "Copied" on the same row; never an extra row.
         const rest = text.split(" · ").slice(1).join(" · ");
@@ -2409,7 +2409,14 @@ export function offlineRequestFlow(
       },
     ],
   });
-  const plain = [...head, ...gap(ctx), codeLine, ...gap(ctx), ...footer];
+  const plain = [
+    ...head,
+    ...gap(ctx),
+    codeLine,
+    ...gap(ctx),
+    ...footer,
+    endRow(),
+  ];
   const asRows = (rows: RailRow[]) => ctx.render(closeRail(rows));
   if (qr) {
     const left = asRows(plain);
@@ -2443,6 +2450,7 @@ export function offlineRequestFlow(
       codeLine,
       ...qr.map(qrRow),
       ...footer,
+      endRow(),
     ];
     const lines = asRows(stacked);
     if (

@@ -1,127 +1,79 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · activate[0m
-[90m│[0m
-[32m◇[0m  License key[90m · pkey_tidewater_…3WPLDA[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
 [33m▲[0m  [1mYour license is on 3 of 3 devices[0m
-[90m│[0m  [90m●●●[0m [90m3 of 3 in use[0m
-[90m│[0m  To use it on this computer, replace one. You can add it back later.
-[90m│[0m
-[38;2;114;202;190m◆[0m  [1mReplace a device[0m
-[90m│[0m  Replace a device in your browser. Tidewater Studio continues when
-[90m│[0m  you're done.
-[90m│[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[4;90mkey.plrs.im/portal/tidewater/devices[0m]8;;\
-[90m└[0m  [1mEnter[0m [90mTry again · [0m[1mEsc[0m [90mCancel[0m
+[2m│[0m  [1m●●●[0m
+[2m│[0m  Replace a device in your browser, then try again here.
+[2m│[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[2;4mkey.plrs.im/portal/tidewater/devices[0m]8;;\
+[2m└[0m  [1mEnter[0m [2mtry again · [0m[1mEsc[0m [2mcancel[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · activate[0m
-[90m│[0m
-[32m◇[0m  License key[90m · pkey_tidewater_…3WPLDA[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
 [33m▲[0m  [1mYour license is on 3 of 3 devices[0m
-[90m│[0m  [90m●●●[0m [90m3 of 3 in use[0m
-[90m│[0m  To use it on this computer, replace one. You can add it back later.
-[90m│[0m
-[36m◆[0m  [1mReplace a device[0m
-[90m│[0m  Replace a device in your browser. Tidewater Studio continues when
-[90m│[0m  you're done.
-[90m│[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[4;90mkey.plrs.im/portal/tidewater/devices[0m]8;;\
-[90m└[0m  [1mEnter[0m [90mTry again · [0m[1mEsc[0m [90mCancel[0m
+[2m│[0m  [1m●●●[0m
+[2m│[0m  Replace a device in your browser, then try again here.
+[2m│[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[2;4mkey.plrs.im/portal/tidewater/devices[0m]8;;\
+[2m└[0m  [1mEnter[0m [2mtry again · [0m[1mEsc[0m [2mcancel[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · activate
+┌  [7m Tidewater Studio [0m · activate
 │
-◇  License key · pkey_tidewater_…3WPLDA
-│
-▲  Your license is on 3 of 3 devices
-│  ●●● 3 of 3 in use
-│  To use it on this computer, replace one. You can add it back later.
-│
-◆  Replace a device
-│  Replace a device in your browser. Tidewater Studio continues when
-│  you're done.
+◇  License key · pkey_tidewater_••••••
+▲  [1mYour license is on 3 of 3 devices[0m
+│  [1m●●●[0m
+│  Replace a device in your browser, then try again here.
 │  key.plrs.im/portal/tidewater/devices
-└  Enter Try again · Esc Cancel
+└  [1mEnter[0m try again · [1mEsc[0m cancel
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - activate[0m
-[90m|[0m
-[32mo[0m  License key[90m - pkey_tidewater_...3WPLDA[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
 [33m![0m  [1mYour license is on 3 of 3 devices[0m
-[90m|[0m  [90m###[0m [90m3 of 3 in use[0m
-[90m|[0m  To use it on this computer, replace one. You can add it back later.
-[90m|[0m
-[36m*[0m  [1mReplace a device[0m
-[90m|[0m  Replace a device in your browser. Tidewater Studio continues when
-[90m|[0m  you're done.
-[90m|[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[4;90mkey.plrs.im/portal/tidewater/devices[0m]8;;\
-[90m`[0m  [1mEnter[0m [90mTry again - [0m[1mEsc[0m [90mCancel[0m
+[2m|[0m  [1m###[0m
+[2m|[0m  Replace a device in your browser, then try again here.
+[2m|[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[2;4mkey.plrs.im/portal/tidewater/devices[0m]8;;\
+[2m`[0m  [1mEnter[0m [2mtry again - [0m[1mEsc[0m [2mcancel[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · activate[0m
-[90m│[0m
-[32m◇[0m  License key[90m · pkey_tidewater_…3WPLDA[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
 [33m▲[0m  [1mYour license is on 3 of 3 devices[0m
-[90m│[0m  [90m●●●[0m [90m3 of 3 in use[0m
-[90m│[0m  To use it on this computer, replace one. You can add it
-[90m│[0m  back later.
-[90m│[0m
-[38;2;114;202;190m◆[0m  [1mReplace a device[0m
-[90m│[0m  Replace a device in your browser. Tidewater Studio
-[90m│[0m  continues when you're done.
-[90m│[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[4;90mkey.plrs.im/portal/tidewater/devices[0m]8;;\
-[90m└[0m  [1mEnter[0m [90mTry again · [0m[1mEsc[0m [90mCancel[0m
+[2m│[0m  [1m●●●[0m
+[2m│[0m  Replace a device in your browser, then try again here.
+[2m│[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[2;4mkey.plrs.im/portal/tidewater/devices[0m]8;;\
+[2m└[0m  [1mEnter[0m [2mtry again · [0m[1mEsc[0m [2mcancel[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · activate[0m
-[90m│[0m
-[32m◇[0m  License key[90m · pkey_tidewater_…3WPLDA[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · activate[0m
+[2m│[0m
+[32m◇[0m  License key[2m · pkey_tidewater_••••••[0m
 [33m▲[0m  [1mYour license is on 3 of 3 devices[0m
-[90m│[0m  [90m●●●[0m [90m3 of 3 in use[0m
-[90m│[0m  To use it on this computer, replace one. You can add it
-[90m│[0m  back later.
-[90m│[0m
-[36m◆[0m  [1mReplace a device[0m
-[90m│[0m  Replace a device in your browser. Tidewater Studio
-[90m│[0m  continues when you're done.
-[90m│[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[4;90mkey.plrs.im/portal/tidewater/devices[0m]8;;\
-[90m└[0m  [1mEnter[0m [90mTry again · [0m[1mEsc[0m [90mCancel[0m
+[2m│[0m  [1m●●●[0m
+[2m│[0m  Replace a device in your browser, then try again here.
+[2m│[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[2;4mkey.plrs.im/portal/tidewater/devices[0m]8;;\
+[2m└[0m  [1mEnter[0m [2mtry again · [0m[1mEsc[0m [2mcancel[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · activate
+┌  [7m Tidewater Studio [0m · activate
 │
-◇  License key · pkey_tidewater_…3WPLDA
-│
-▲  Your license is on 3 of 3 devices
-│  ●●● 3 of 3 in use
-│  To use it on this computer, replace one. You can add it
-│  back later.
-│
-◆  Replace a device
-│  Replace a device in your browser. Tidewater Studio
-│  continues when you're done.
+◇  License key · pkey_tidewater_••••••
+▲  [1mYour license is on 3 of 3 devices[0m
+│  [1m●●●[0m
+│  Replace a device in your browser, then try again here.
 │  key.plrs.im/portal/tidewater/devices
-└  Enter Try again · Esc Cancel
+└  [1mEnter[0m try again · [1mEsc[0m cancel
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - activate[0m
-[90m|[0m
-[32mo[0m  License key[90m - pkey_tidewater_...3WPLDA[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - activate[0m
+[2m|[0m
+[32mo[0m  License key[2m - pkey_tidewater_******[0m
 [33m![0m  [1mYour license is on 3 of 3 devices[0m
-[90m|[0m  [90m###[0m [90m3 of 3 in use[0m
-[90m|[0m  To use it on this computer, replace one. You can add it
-[90m|[0m  back later.
-[90m|[0m
-[36m*[0m  [1mReplace a device[0m
-[90m|[0m  Replace a device in your browser. Tidewater Studio
-[90m|[0m  continues when you're done.
-[90m|[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[4;90mkey.plrs.im/portal/tidewater/devices[0m]8;;\
-[90m`[0m  [1mEnter[0m [90mTry again - [0m[1mEsc[0m [90mCancel[0m
+[2m|[0m  [1m###[0m
+[2m|[0m  Replace a device in your browser, then try again here.
+[2m|[0m  ]8;;https://key.plrs.im/portal/tidewater/devices\[2;4mkey.plrs.im/portal/tidewater/devices[0m]8;;\
+[2m`[0m  [1mEnter[0m [2mtry again - [0m[1mEsc[0m [2mcancel[0m
 ── pipe · 80 ──
 Tidewater Studio · activate
-License key · pkey_tidewater_…3WPLDA
-
+License key · pkey_tidewater_••••••
 Your license is on 3 of 3 devices
 3 of 3 in use
-To use it on this computer, replace one. You can add it back later.
-
-Replace a device
-Replace a device in your browser. Tidewater Studio continues when you're done.
+Replace a device in your browser, then try again here.
 key.plrs.im/portal/tidewater/devices

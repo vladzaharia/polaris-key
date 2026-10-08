@@ -143,6 +143,31 @@ describe("the terminal kit's baselines", () => {
     });
   }
 
+  it("every fixture fits 32 columns in English and Japanese, wrapping nothing past the edge", async () => {
+    for (const locale of ["en", "ja"])
+      for (const s of SCENARIOS) {
+        const r = await render(
+          {
+            ...s.opts,
+            variant: {
+              id: "no-color-32",
+              color: "none",
+              ascii: false,
+              columns: 32,
+              scheme: "dark",
+            },
+            theme: { copy: { locale } },
+          },
+          s.run,
+        );
+        for (const line of stripAnsi(r.text).split("\n"))
+          expect(
+            cellWidth(line),
+            `${s.name} ${locale}: "${line}"`,
+          ).toBeLessThanOrEqual(32);
+      }
+  });
+
   it("shows only catalog copy and each scenario's data (the string lint, by pseudo-locale)", async () => {
     const pseudo = Object.fromEntries(
       Object.entries(KIT_COPY.en).map(([k, v]) => [k, `⟦${v}⟧`]),
@@ -159,11 +184,13 @@ describe("the terminal kit's baselines", () => {
       let text = stripAnsi(`${r.text}\n${r.stderr}`);
       // Catalog text, possibly wrapped across lines and rails.
       text = text.replace(/⟦[^⟧]*⟧/gs, " ");
+      // A catalog string cut at its separators ("Copied" for the first key hint) leaves a stray close.
+      text = text.replace(/[^⟦⟧\n]*⟧/g, " ");
       for (const d of [...s.data].sort((a, b) => b.length - a.length))
         text = text.split(d).join(" ");
       // Glyphs, rails, bullets, codes and the figures the platform formats (Intl).
       text = text
-        .replace(/[\s│┌└◆◇✓✗▲●○━·…•▌⠋█▀▄|`*+!#()\-[\]⟦⟧:,./%<>]/g, " ")
+        .replace(/[\s│┌└◆◇✓✗▲●○━─·…•▌⠋█▀▄|`*+!#()\-[\]⟦⟧:,./%<>]/g, " ")
         .replace(/\b\d+(\.\d+)?\b/g, " ")
         .replace(/\b(MB|kB|sec|min|hr|Oct|Sep)\b/g, " ")
         .trim();

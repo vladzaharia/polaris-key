@@ -1,79 +1,62 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
-[33m▲[0m  [1mActivate[0m
-[90m│[0m  Enter a license key or sign in to continue.
-[90m│[0m
-[90m│[0m  [1mtidewater activate[0m   [90mUse a license key[0m
-[90m│[0m  [1mtidewater sign-in[0m    [90mSign in[0m
-[90m└[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mActivate[0m
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m   [2mUse a license key[0m
+[2m└[0m  [1mtidewater login[0m      [2mSign in[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
-[33m▲[0m  [1mActivate[0m
-[90m│[0m  Enter a license key or sign in to continue.
-[90m│[0m
-[90m│[0m  [1mtidewater activate[0m   [90mUse a license key[0m
-[90m│[0m  [1mtidewater sign-in[0m    [90mSign in[0m
-[90m└[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[36m◆[0m  [1mActivate[0m
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m   [2mUse a license key[0m
+[2m└[0m  [1mtidewater login[0m      [2mSign in[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [0m · status
 │
-▲  Activate
-│  Enter a license key or sign in to continue.
+◆  [1mActivate[0m
 │
-│  tidewater activate   Use a license key
-│  tidewater sign-in    Sign in
-└
+│  [1mtidewater activate[0m   Use a license key
+└  [1mtidewater login[0m      Sign in
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
-[90m|[0m
-[33m![0m  [1mActivate[0m
-[90m|[0m  Enter a license key or sign in to continue.
-[90m|[0m
-[90m|[0m  [1mtidewater activate[0m   [90mUse a license key[0m
-[90m|[0m  [1mtidewater sign-in[0m    [90mSign in[0m
-[90m`[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
+[36m*[0m  [1mActivate[0m
+[2m|[0m
+[2m|[0m  [1mtidewater activate[0m   [2mUse a license key[0m
+[2m`[0m  [1mtidewater login[0m      [2mSign in[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
-[33m▲[0m  [1mActivate[0m
-[90m│[0m  Enter a license key or sign in to continue.
-[90m│[0m
-[90m│[0m  [1mtidewater activate[0m   [90mUse a license key[0m
-[90m│[0m  [1mtidewater sign-in[0m    [90mSign in[0m
-[90m└[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mActivate[0m
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m   [2mUse a license key[0m
+[2m└[0m  [1mtidewater login[0m      [2mSign in[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
-[33m▲[0m  [1mActivate[0m
-[90m│[0m  Enter a license key or sign in to continue.
-[90m│[0m
-[90m│[0m  [1mtidewater activate[0m   [90mUse a license key[0m
-[90m│[0m  [1mtidewater sign-in[0m    [90mSign in[0m
-[90m└[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[36m◆[0m  [1mActivate[0m
+[2m│[0m
+[2m│[0m  [1mtidewater activate[0m   [2mUse a license key[0m
+[2m└[0m  [1mtidewater login[0m      [2mSign in[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [0m · status
 │
-▲  Activate
-│  Enter a license key or sign in to continue.
+◆  [1mActivate[0m
 │
-│  tidewater activate   Use a license key
-│  tidewater sign-in    Sign in
-└
+│  [1mtidewater activate[0m   Use a license key
+└  [1mtidewater login[0m      Sign in
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
-[90m|[0m
-[33m![0m  [1mActivate[0m
-[90m|[0m  Enter a license key or sign in to continue.
-[90m|[0m
-[90m|[0m  [1mtidewater activate[0m   [90mUse a license key[0m
-[90m|[0m  [1mtidewater sign-in[0m    [90mSign in[0m
-[90m`[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
+[36m*[0m  [1mActivate[0m
+[2m|[0m
+[2m|[0m  [1mtidewater activate[0m   [2mUse a license key[0m
+[2m`[0m  [1mtidewater login[0m      [2mSign in[0m
 ── pipe · 80 ──
 Tidewater Studio · status
 Activate
-Enter a license key or sign in to continue.
 
 tidewater activate   Use a license key
-tidewater sign-in    Sign in
+tidewater login      Sign in

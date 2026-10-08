@@ -1,106 +1,80 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [33m▲[0m  [1mUpdate to keep using Tidewater Studio[0m
-[90m│[0m  This version is below the minimum supported version. Update to keep using
-[90m│[0m  Tidewater Studio.
-[90m│[0m  [90mTidewater Studio 2.5[0m
-[90m│[0m  [33m▲[0m This update includes an important security fix.
-[90m│[0m
-[90m│[0m  [1mtidewater update apply[0m   [90mUpdate now[0m
-[90m│[0m  [1mtidewater changelog[0m      [90mWhat's new[0m
-[90m└[0m
+[2m│[0m  This version is below the minimum supported version. Update to keep using
+[2m│[0m  Tidewater Studio.
+[2m│[0m  [33m▲[0m This update includes an important security fix.
+[2m│[0m
+[2m└[0m  [1mtidewater update apply[0m   [2mInstall[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [33m▲[0m  [1mUpdate to keep using Tidewater Studio[0m
-[90m│[0m  This version is below the minimum supported version. Update to keep using
-[90m│[0m  Tidewater Studio.
-[90m│[0m  [90mTidewater Studio 2.5[0m
-[90m│[0m  [33m▲[0m This update includes an important security fix.
-[90m│[0m
-[90m│[0m  [1mtidewater update apply[0m   [90mUpdate now[0m
-[90m│[0m  [1mtidewater changelog[0m      [90mWhat's new[0m
-[90m└[0m
+[2m│[0m  This version is below the minimum supported version. Update to keep using
+[2m│[0m  Tidewater Studio.
+[2m│[0m  [33m▲[0m This update includes an important security fix.
+[2m│[0m
+[2m└[0m  [1mtidewater update apply[0m   [2mInstall[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · update
+┌  [7m Tidewater Studio [0m · update
 │
-▲  Update to keep using Tidewater Studio
+▲  [1mUpdate to keep using Tidewater Studio[0m
 │  This version is below the minimum supported version. Update to keep using
 │  Tidewater Studio.
-│  Tidewater Studio 2.5
 │  ▲ This update includes an important security fix.
 │
-│  tidewater update apply   Update now
-│  tidewater changelog      What's new
-└
+└  [1mtidewater update apply[0m   Install
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - update[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
 [33m![0m  [1mUpdate to keep using Tidewater Studio[0m
-[90m|[0m  This version is below the minimum supported version. Update to keep using
-[90m|[0m  Tidewater Studio.
-[90m|[0m  [90mTidewater Studio 2.5[0m
-[90m|[0m  [33m![0m This update includes an important security fix.
-[90m|[0m
-[90m|[0m  [1mtidewater update apply[0m   [90mUpdate now[0m
-[90m|[0m  [1mtidewater changelog[0m      [90mWhat's new[0m
-[90m`[0m
+[2m|[0m  This version is below the minimum supported version. Update to keep using
+[2m|[0m  Tidewater Studio.
+[2m|[0m  [33m![0m This update includes an important security fix.
+[2m|[0m
+[2m`[0m  [1mtidewater update apply[0m   [2mInstall[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [33m▲[0m  [1mUpdate to keep using Tidewater Studio[0m
-[90m│[0m  This version is below the minimum supported version.
-[90m│[0m  Update to keep using Tidewater Studio.
-[90m│[0m  [90mTidewater Studio 2.5[0m
-[90m│[0m  [33m▲[0m This update includes an important security fix.
-[90m│[0m
-[90m│[0m  [1mtidewater update apply[0m   [90mUpdate now[0m
-[90m│[0m  [1mtidewater changelog[0m      [90mWhat's new[0m
-[90m└[0m
+[2m│[0m  This version is below the minimum supported version.
+[2m│[0m  Update to keep using Tidewater Studio.
+[2m│[0m  [33m▲[0m This update includes an important security fix.
+[2m│[0m
+[2m└[0m  [1mtidewater update apply[0m   [2mInstall[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · update[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · update[0m
+[2m│[0m
 [33m▲[0m  [1mUpdate to keep using Tidewater Studio[0m
-[90m│[0m  This version is below the minimum supported version.
-[90m│[0m  Update to keep using Tidewater Studio.
-[90m│[0m  [90mTidewater Studio 2.5[0m
-[90m│[0m  [33m▲[0m This update includes an important security fix.
-[90m│[0m
-[90m│[0m  [1mtidewater update apply[0m   [90mUpdate now[0m
-[90m│[0m  [1mtidewater changelog[0m      [90mWhat's new[0m
-[90m└[0m
+[2m│[0m  This version is below the minimum supported version.
+[2m│[0m  Update to keep using Tidewater Studio.
+[2m│[0m  [33m▲[0m This update includes an important security fix.
+[2m│[0m
+[2m└[0m  [1mtidewater update apply[0m   [2mInstall[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · update
+┌  [7m Tidewater Studio [0m · update
 │
-▲  Update to keep using Tidewater Studio
+▲  [1mUpdate to keep using Tidewater Studio[0m
 │  This version is below the minimum supported version.
 │  Update to keep using Tidewater Studio.
-│  Tidewater Studio 2.5
 │  ▲ This update includes an important security fix.
 │
-│  tidewater update apply   Update now
-│  tidewater changelog      What's new
-└
+└  [1mtidewater update apply[0m   Install
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - update[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - update[0m
+[2m|[0m
 [33m![0m  [1mUpdate to keep using Tidewater Studio[0m
-[90m|[0m  This version is below the minimum supported version.
-[90m|[0m  Update to keep using Tidewater Studio.
-[90m|[0m  [90mTidewater Studio 2.5[0m
-[90m|[0m  [33m![0m This update includes an important security fix.
-[90m|[0m
-[90m|[0m  [1mtidewater update apply[0m   [90mUpdate now[0m
-[90m|[0m  [1mtidewater changelog[0m      [90mWhat's new[0m
-[90m`[0m
+[2m|[0m  This version is below the minimum supported version.
+[2m|[0m  Update to keep using Tidewater Studio.
+[2m|[0m  [33m![0m This update includes an important security fix.
+[2m|[0m
+[2m`[0m  [1mtidewater update apply[0m   [2mInstall[0m
 ── pipe · 80 ──
 Tidewater Studio · update
 Update to keep using Tidewater Studio
 This version is below the minimum supported version. Update to keep using
 Tidewater Studio.
-Tidewater Studio 2.5
 This update includes an important security fix.
 
-tidewater update apply   Update now
-tidewater changelog      What's new
+tidewater update apply   Install

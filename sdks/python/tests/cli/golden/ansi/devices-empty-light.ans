@@ -1,51 +1,43 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · devices[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices[0m
+[2m│[0m
 [38;2;20;121;111m◆[0m  [1mYour devices[0m
-[90m│[0m  [90mNo devices are using this license yet.[0m
-[90m└[0m
+[2m└[0m  [2mNo devices are using this license yet.[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · devices[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices[0m
+[2m│[0m
 [36m◆[0m  [1mYour devices[0m
-[90m│[0m  [90mNo devices are using this license yet.[0m
-[90m└[0m
+[2m└[0m  [2mNo devices are using this license yet.[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · devices
+┌  [7m Tidewater Studio [0m · devices
 │
-◆  Your devices
-│  No devices are using this license yet.
-└
+◆  [1mYour devices[0m
+└  No devices are using this license yet.
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - devices[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices[0m
+[2m|[0m
 [36m*[0m  [1mYour devices[0m
-[90m|[0m  [90mNo devices are using this license yet.[0m
-[90m`[0m
+[2m`[0m  [2mNo devices are using this license yet.[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · devices[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices[0m
+[2m│[0m
 [38;2;20;121;111m◆[0m  [1mYour devices[0m
-[90m│[0m  [90mNo devices are using this license yet.[0m
-[90m└[0m
+[2m└[0m  [2mNo devices are using this license yet.[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · devices[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices[0m
+[2m│[0m
 [36m◆[0m  [1mYour devices[0m
-[90m│[0m  [90mNo devices are using this license yet.[0m
-[90m└[0m
+[2m└[0m  [2mNo devices are using this license yet.[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · devices
+┌  [7m Tidewater Studio [0m · devices
 │
-◆  Your devices
-│  No devices are using this license yet.
-└
+◆  [1mYour devices[0m
+└  No devices are using this license yet.
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - devices[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices[0m
+[2m|[0m
 [36m*[0m  [1mYour devices[0m
-[90m|[0m  [90mNo devices are using this license yet.[0m
-[90m`[0m
+[2m`[0m  [2mNo devices are using this license yet.[0m
 ── pipe · 80 ──
 Tidewater Studio · devices
 Your devices

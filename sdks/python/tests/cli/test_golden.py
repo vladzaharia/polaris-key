@@ -77,3 +77,19 @@ def test_the_svg_is_a_pure_function_of_the_ansi() -> None:
     fx = FIXTURES[0]
     _, text = render(fx, env("truecolor", "unicode", 80, "dark"))
     assert svg.render(text, "dark", 80) == svg.render(text, "dark", 80)
+
+
+@pytest.mark.parametrize("locale", ["en", "ja"])
+def test_every_fixture_fits_32_columns(locale: str) -> None:
+    """Narrow windows (UI-KITS §1.4): no fixture draws a line wider than 32 cells, in English or in
+    Japanese (whose characters take two)."""
+    from polaris_key.ui.core import Theme
+    from polaris_key.ui.terminal.text import cell_len
+
+    from .fixtures import kit
+
+    for fx in FIXTURES:
+        e = env("none", "unicode", 32, "dark").but(columns=32)
+        k = kit(e, Theme(copy={"locale": locale}))
+        for ln in fx.draw(k):
+            assert cell_len(ln.text.rstrip()) <= 32, f"{fx.name} {locale}: {ln.text!r}"

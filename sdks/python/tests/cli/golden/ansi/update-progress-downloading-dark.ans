@@ -1,59 +1,51 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · packs[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · packs[0m
+[2m│[0m
 [38;2;114;202;190m◆[0m  [1mstudio-presets[0m
-[90m│[0m  [38;2;114;202;190m━━━━━━━━━━━━━━━[0m[90m━━━━━━━━━━━━━━━━━━━━━[0m 42%
-[90m│[0m  [90m38 MB of 91 MB · 1 min left[0m
-[90m└[0m
+[2m│[0m  [38;2;114;202;190m━━━━━━━━━━━━━━━[0m[2m─────────────────────[0m 42%
+[2m└[0m  [2m38 MB of 91 MB · 1 min left[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · packs[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · packs[0m
+[2m│[0m
 [36m◆[0m  [1mstudio-presets[0m
-[90m│[0m  [36m━━━━━━━━━━━━━━━[0m[90m━━━━━━━━━━━━━━━━━━━━━[0m 42%
-[90m│[0m  [90m38 MB of 91 MB · 1 min left[0m
-[90m└[0m
+[2m│[0m  [36m━━━━━━━━━━━━━━━[0m[2m─────────────────────[0m 42%
+[2m└[0m  [2m38 MB of 91 MB · 1 min left[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · packs
+┌  [7m Tidewater Studio [0m · packs
 │
-◆  studio-presets
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 42%
-│  38 MB of 91 MB · 1 min left
-└
+◆  [1mstudio-presets[0m
+│  ━━━━━━━━━━━━━━━───────────────────── 42%
+└  38 MB of 91 MB · 1 min left
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - packs[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - packs[0m
+[2m|[0m
 [36m*[0m  [1mstudio-presets[0m
-[90m|[0m  [36m###############[0m[90m---------------------[0m 42%
-[90m|[0m  [90m38 MB of 91 MB · 1 min left[0m
-[90m`[0m
+[2m|[0m  [36m###############[0m[2m---------------------[0m 42%
+[2m`[0m  [2m38 MB of 91 MB · 1 min left[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · packs[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · packs[0m
+[2m│[0m
 [38;2;114;202;190m◆[0m  [1mstudio-presets[0m
-[90m│[0m  [38;2;114;202;190m━━━━━━━━━━━[0m[90m━━━━━━━━━━━━━━━━[0m 42%
-[90m│[0m  [90m38 MB of 91 MB · 1 min left[0m
-[90m└[0m
+[2m│[0m  [38;2;114;202;190m━━━━━━━━━━━[0m[2m────────────────[0m 42%
+[2m└[0m  [2m38 MB of 91 MB · 1 min left[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · packs[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · packs[0m
+[2m│[0m
 [36m◆[0m  [1mstudio-presets[0m
-[90m│[0m  [36m━━━━━━━━━━━[0m[90m━━━━━━━━━━━━━━━━[0m 42%
-[90m│[0m  [90m38 MB of 91 MB · 1 min left[0m
-[90m└[0m
+[2m│[0m  [36m━━━━━━━━━━━[0m[2m────────────────[0m 42%
+[2m└[0m  [2m38 MB of 91 MB · 1 min left[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · packs
+┌  [7m Tidewater Studio [0m · packs
 │
-◆  studio-presets
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━ 42%
-│  38 MB of 91 MB · 1 min left
-└
+◆  [1mstudio-presets[0m
+│  ━━━━━━━━━━━──────────────── 42%
+└  38 MB of 91 MB · 1 min left
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - packs[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - packs[0m
+[2m|[0m
 [36m*[0m  [1mstudio-presets[0m
-[90m|[0m  [36m###########[0m[90m----------------[0m 42%
-[90m|[0m  [90m38 MB of 91 MB · 1 min left[0m
-[90m`[0m
+[2m|[0m  [36m###########[0m[2m----------------[0m 42%
+[2m`[0m  [2m38 MB of 91 MB · 1 min left[0m
 ── pipe · 80 ──
 Tidewater Studio · packs
 studio-presets

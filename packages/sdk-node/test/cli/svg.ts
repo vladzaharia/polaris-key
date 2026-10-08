@@ -6,7 +6,7 @@
 
 import { charWidth } from "../../src/cli/term/width.js";
 
-export type SvgTheme = "dark" | "light";
+export type SvgTheme = "dark" | "light" | "solarized-dark" | "solarized-light";
 
 interface Palette extends Record<string, string> {
   bg: string;
@@ -16,7 +16,7 @@ interface Palette extends Record<string, string> {
   "90": string;
 }
 
-const PALETTE: Record<SvgTheme, Palette> = {
+const PALETTE = {
   dark: {
     bg: "#101114",
     frame: "#26282e",
@@ -41,7 +41,47 @@ const PALETTE: Record<SvgTheme, Palette> = {
     "36": "#1b7c83",
     "90": "#6e7781",
   },
+} as unknown as Record<SvgTheme, Palette>;
+
+// Solarized, the QA palettes where faint text is most at risk (base01 on base03 is already low).
+PALETTE["solarized-dark"] = {
+  bg: "#002b36",
+  frame: "#073642",
+  fg: "#839496",
+  strong: "#93a1a1",
+  "31": "#dc322f",
+  "32": "#859900",
+  "33": "#b58900",
+  "35": "#d33682",
+  "36": "#2aa198",
+  "90": "#586e75",
 };
+PALETTE["solarized-light"] = {
+  bg: "#fdf6e3",
+  frame: "#eee8d5",
+  fg: "#657b83",
+  strong: "#073642",
+  "31": "#dc322f",
+  "32": "#859900",
+  "33": "#b58900",
+  "35": "#d33682",
+  "36": "#2aa198",
+  "90": "#93a1a1",
+};
+
+/** Faint text (SGR 2): the foreground at 60% over the background, as terminals draw it. */
+export function faint(fg: string, bg: string): string {
+  const px = (h: string) =>
+    [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [a, b] = [px(fg), px(bg)];
+  return `#${a
+    .map((v, i) =>
+      Math.round(v! * 0.6 + b[i]! * 0.4)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
 
 const CELL_W = 8.4;
 const CELL_H = 16.8;
@@ -52,6 +92,7 @@ interface Style {
   fg: string | null;
   bg: string | null;
   bold: boolean;
+  dim: boolean;
   underline: boolean;
   inverse: boolean;
 }
@@ -65,6 +106,7 @@ const plain = (): Style => ({
   fg: null,
   bg: null,
   bold: false,
+  dim: false,
   underline: false,
   inverse: false,
 });
@@ -76,8 +118,11 @@ function applySgr(style: Style, params: string): Style {
     const n = p[i]!;
     if (n === 0) Object.assign(s, plain());
     else if (n === 1) s.bold = true;
-    else if (n === 22) s.bold = false;
-    else if (n === 4) s.underline = true;
+    else if (n === 2) s.dim = true;
+    else if (n === 22) {
+      s.bold = false;
+      s.dim = false;
+    } else if (n === 4) s.underline = true;
     else if (n === 24) s.underline = false;
     else if (n === 7) s.inverse = true;
     else if (n === 27) s.inverse = false;
@@ -167,6 +212,26 @@ export function ansiToSvg(
         );
       i = j;
     }
+    // Block elements fill their whole cell, whatever the font does with them.
+    cs.forEach((c, k) => {
+      const h =
+        c.ch === "█"
+          ? [0, 1]
+          : c.ch === "▀"
+            ? [0, 0.5]
+            : c.ch === "▄"
+              ? [0.5, 1]
+              : null;
+      if (!h) return;
+      const fg = c.style.inverse
+        ? c.style.bg
+          ? colour(c.style.bg, o.theme, pal.bg)
+          : pal.bg
+        : colour(c.style.fg, o.theme, c.style.bold ? pal.strong : pal.fg);
+      parts.push(
+        `<rect x="${(PAD + k * CELL_W).toFixed(1)}" y="${(y + h[0]! * CELL_H).toFixed(1)}" width="${CELL_W.toFixed(1)}" height="${((h[1]! - h[0]!) * CELL_H).toFixed(1)}" fill="${fg}"/>`,
+      );
+    });
     // Then text, one run per style, each glyph placed on its cell.
     i = 0;
     while (i < cs.length) {
@@ -179,15 +244,16 @@ export function ansiToSvg(
         j++;
       const run = cs.slice(i, j);
       if (run.some((c) => c.ch.trim() !== "")) {
-        const fg = s.inverse
+        const base = s.inverse
           ? s.bg
             ? colour(s.bg, o.theme, pal.bg)
             : pal.bg
           : colour(s.fg, o.theme, s.bold ? pal.strong : pal.fg);
+        const fg = s.dim && !s.inverse ? faint(base, pal.bg) : base;
         // Spaces are not drawn: every glyph gets its own cell's x, so nothing can collapse.
         const placed = run
           .map((c, k) => ({ ch: c.ch, x: (PAD + (i + k) * CELL_W).toFixed(1) }))
-          .filter((c) => c.ch !== "" && c.ch !== " ");
+          .filter((c) => c.ch !== "" && c.ch !== " " && !"█▀▄".includes(c.ch));
         const xs = placed.map((c) => c.x);
         const glyphs = placed.map((c) => c.ch).join("");
         parts.push(

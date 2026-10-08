@@ -1,99 +1,79 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
-[36m◆[39m  [1mActivate[22m
-[90m│[39m  Enter a license key or sign in to continue.
-[90m│[39m
-[90m│[39m  [1mtidewater activate[22m   [90mUse a license key[39m
-[90m│[39m  [1mtidewater login[22m      [90mSign in[39m
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mActivate[22m
+[2m│[22m
+[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
+[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
-[36m◆[39m  [1mActivate[22m
-[90m│[39m  Enter a license key or sign in to continue.
-[90m│[39m
-[90m│[39m  [1mtidewater activate[22m   [90mUse a license key[39m
-[90m│[39m  [1mtidewater login[22m      [90mSign in[39m
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mActivate[22m
+[2m│[22m
+[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
+[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
+[2m│[22m
 [36m◆[39m  [1mActivate[22m
-[90m│[39m  Enter a license key or sign in to continue.
-[90m│[39m
-[90m│[39m  [1mtidewater activate[22m   [90mUse a license key[39m
-[90m│[39m  [1mtidewater login[22m      [90mSign in[39m
-[90m└[39m
+[2m│[22m
+[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
+[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
 
 #### no-color-80
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [27m · status
 │
-◆  Activate
-│  Enter a license key or sign in to continue.
+◆  [1mActivate[22m
 │
-│  tidewater activate   Use a license key
-│  tidewater login      Sign in
-└
+│  [1mtidewater activate[22m   Use a license key
+└  [1mtidewater login[22m      Sign in
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
+[2m|[22m
 [36m*[39m  [1mActivate[22m
-[90m|[39m  Enter a license key or sign in to continue.
-[90m|[39m
-[90m|[39m  [1mtidewater activate[22m   [90mUse a license key[39m
-[90m|[39m  [1mtidewater login[22m      [90mSign in[39m
-[90m`[39m
+[2m|[22m
+[2m|[22m  [1mtidewater activate[22m   [2mUse a license key[22m
+[2m`[22m  [1mtidewater login[22m      [2mSign in[22m
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
-[36m◆[39m  [1mActivate[22m
-[90m│[39m  Enter a license key or sign in to continue.
-[90m│[39m
-[90m│[39m  [1mtidewater activate[22m   [90mUse a license key[39m
-[90m│[39m  [1mtidewater login[22m      [90mSign in[39m
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mActivate[22m
+[2m│[22m
+[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
+[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
-[36m◆[39m  [1mActivate[22m
-[90m│[39m  Enter a license key or sign in to continue.
-[90m│[39m
-[90m│[39m  [1mtidewater activate[22m   [90mUse a license key[39m
-[90m│[39m  [1mtidewater login[22m      [90mSign in[39m
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mActivate[22m
+[2m│[22m
+[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
+[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
+[2m│[22m
 [36m◆[39m  [1mActivate[22m
-[90m│[39m  Enter a license key or sign in to continue.
-[90m│[39m
-[90m│[39m  [1mtidewater activate[22m   [90mUse a license key[39m
-[90m│[39m  [1mtidewater login[22m      [90mSign in[39m
-[90m└[39m
+[2m│[22m
+[2m│[22m  [1mtidewater activate[22m   [2mUse a license key[22m
+[2m└[22m  [1mtidewater login[22m      [2mSign in[22m
 
 #### no-color-60
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [27m · status
 │
-◆  Activate
-│  Enter a license key or sign in to continue.
+◆  [1mActivate[22m
 │
-│  tidewater activate   Use a license key
-│  tidewater login      Sign in
-└
+│  [1mtidewater activate[22m   Use a license key
+└  [1mtidewater login[22m      Sign in
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
+[2m|[22m
 [36m*[39m  [1mActivate[22m
-[90m|[39m  Enter a license key or sign in to continue.
-[90m|[39m
-[90m|[39m  [1mtidewater activate[22m   [90mUse a license key[39m
-[90m|[39m  [1mtidewater login[22m      [90mSign in[39m
-[90m`[39m
+[2m|[22m
+[2m|[22m  [1mtidewater activate[22m   [2mUse a license key[22m
+[2m`[22m  [1mtidewater login[22m      [2mSign in[22m

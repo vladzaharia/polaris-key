@@ -152,7 +152,16 @@ export function railLines(
   for (const row of closeRail(rows)) {
     const { first, next } = markGlyph(row.mark, symbols, painter);
     const noRail = row.mark === "none" || narrow;
-    const width = noRail ? contentWidth(columns) : contentWidth(columns);
+    // A narrow step keeps its mark and a space on its first line, and hangs under it.
+    const marked =
+      narrow &&
+      row.mark !== "none" &&
+      row.mark !== "rail" &&
+      row.mark !== "start" &&
+      row.mark !== "end";
+    const width = marked
+      ? Math.max(5, contentWidth(columns) - 2)
+      : contentWidth(columns);
     const wrapped = row.spans.length
       ? wrapSpans(row.spans, width, symbols.ellipsis)
       : [[]];
@@ -169,12 +178,7 @@ export function railLines(
       const body = painter.line(line);
       if (narrow && row.mark !== "none") {
         // No rail on a narrow line: a step keeps its mark (✓ ✗ ▲ or the spinner) on its first line.
-        const stepMark =
-          i === 0 &&
-          row.mark !== "rail" &&
-          row.mark !== "start" &&
-          row.mark !== "end";
-        out.push(stepMark && body ? `${first} ${body}` : body);
+        out.push(marked && body ? `${i === 0 ? first : " "} ${body}` : body);
       } else if (noRail) out.push(body);
       else out.push(body ? `${glyph}${gap}${body}` : glyph);
     });

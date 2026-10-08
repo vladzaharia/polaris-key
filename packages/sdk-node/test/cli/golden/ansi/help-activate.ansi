@@ -1,8 +1,8 @@
 #### truecolor-80-dark
 [1mtidewater activate[22m
-[90mAdd a license key (prompts; never an argument)[39m
+[2mAdd a license key (prompts; never an argument)[22m
 
-[90mUsage[39m  tidewater activate [key] [options]
+[2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
   [1m--json[22m      JSON output for scripts, on every command
@@ -12,9 +12,9 @@
 
 #### truecolor-80-light
 [1mtidewater activate[22m
-[90mAdd a license key (prompts; never an argument)[39m
+[2mAdd a license key (prompts; never an argument)[22m
 
-[90mUsage[39m  tidewater activate [key] [options]
+[2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
   [1m--json[22m      JSON output for scripts, on every command
@@ -24,9 +24,9 @@
 
 #### ansi16-80
 [1mtidewater activate[22m
-[90mAdd a license key (prompts; never an argument)[39m
+[2mAdd a license key (prompts; never an argument)[22m
 
-[90mUsage[39m  tidewater activate [key] [options]
+[2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
   [1m--json[22m      JSON output for scripts, on every command
@@ -35,22 +35,22 @@
   [1m-h, --help[22m  Help for a command
 
 #### no-color-80
-tidewater activate
+[1mtidewater activate[22m
 Add a license key (prompts; never an argument)
 
 Usage  tidewater activate [key] [options]
 
-Options
-  --json      JSON output for scripts, on every command
-  --no-color  Plain text (also NO_COLOR=1)
-  --ascii     ASCII symbols only
-  -h, --help  Help for a command
+[1mOptions[22m
+  [1m--json[22m      JSON output for scripts, on every command
+  [1m--no-color[22m  Plain text (also NO_COLOR=1)
+  [1m--ascii[22m     ASCII symbols only
+  [1m-h, --help[22m  Help for a command
 
 #### ascii-80
 [1mtidewater activate[22m
-[90mAdd a license key (prompts; never an argument)[39m
+[2mAdd a license key (prompts; never an argument)[22m
 
-[90mUsage[39m  tidewater activate [key] [options]
+[2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
   [1m--json[22m      JSON output for scripts, on every command
@@ -60,9 +60,9 @@ Options
 
 #### truecolor-60-dark
 [1mtidewater activate[22m
-[90mAdd a license key (prompts; never an argument)[39m
+[2mAdd a license key (prompts; never an argument)[22m
 
-[90mUsage[39m  tidewater activate [key] [options]
+[2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
   [1m--json[22m      JSON output for scripts, on every command
@@ -72,9 +72,9 @@ Options
 
 #### truecolor-60-light
 [1mtidewater activate[22m
-[90mAdd a license key (prompts; never an argument)[39m
+[2mAdd a license key (prompts; never an argument)[22m
 
-[90mUsage[39m  tidewater activate [key] [options]
+[2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
   [1m--json[22m      JSON output for scripts, on every command
@@ -84,9 +84,9 @@ Options
 
 #### ansi16-60
 [1mtidewater activate[22m
-[90mAdd a license key (prompts; never an argument)[39m
+[2mAdd a license key (prompts; never an argument)[22m
 
-[90mUsage[39m  tidewater activate [key] [options]
+[2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
   [1m--json[22m      JSON output for scripts, on every command
@@ -95,22 +95,22 @@ Options
   [1m-h, --help[22m  Help for a command
 
 #### no-color-60
-tidewater activate
+[1mtidewater activate[22m
 Add a license key (prompts; never an argument)
 
 Usage  tidewater activate [key] [options]
 
-Options
-  --json      JSON output for scripts, on every command
-  --no-color  Plain text (also NO_COLOR=1)
-  --ascii     ASCII symbols only
-  -h, --help  Help for a command
+[1mOptions[22m
+  [1m--json[22m      JSON output for scripts, on every command
+  [1m--no-color[22m  Plain text (also NO_COLOR=1)
+  [1m--ascii[22m     ASCII symbols only
+  [1m-h, --help[22m  Help for a command
 
 #### ascii-60
 [1mtidewater activate[22m
-[90mAdd a license key (prompts; never an argument)[39m
+[2mAdd a license key (prompts; never an argument)[22m
 
-[90mUsage[39m  tidewater activate [key] [options]
+[2mUsage[22m  tidewater activate [key] [options]
 
 [1mOptions[22m
   [1m--json[22m      JSON output for scripts, on every command

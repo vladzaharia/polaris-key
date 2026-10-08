@@ -788,3 +788,21 @@ describe("help and completion", () => {
     );
   });
 });
+
+describe("faint text on the Solarized QA palettes", () => {
+  it("renders SGR 2 distinct from, and no brighter than, the plain text", async () => {
+    const { ansiToSvg } = await import("./svg.js");
+    for (const theme of ["solarized-dark", "solarized-light"] as const) {
+      const svg = ansiToSvg("\x1b[2mmuted\x1b[0m plain", {
+        theme,
+        columns: 20,
+        title: "t",
+      });
+      const fills = [
+        ...svg.matchAll(/<text x="[^"]*" y="[\d.]+" fill="(#\w+)"/g),
+      ].map((m) => m[1]);
+      expect(fills).toHaveLength(2);
+      expect(fills[0]).not.toBe(fills[1]);
+    }
+  });
+});

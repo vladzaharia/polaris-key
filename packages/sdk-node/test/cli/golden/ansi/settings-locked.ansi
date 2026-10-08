@@ -1,79 +1,69 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · config list[39m
-[90m│[39m
-[36m◆[39m  [1mSettings[22m
-[90m│[39m  telemetry.enabled   [1mfalse[22m[90m  · Locked[39m
-[90m│[39m  ui.theme            [1mdark[22m[90m  · Default[39m
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config list[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mSettings[22m
+[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · config list[39m
-[90m│[39m
-[36m◆[39m  [1mSettings[22m
-[90m│[39m  telemetry.enabled   [1mfalse[22m[90m  · Locked[39m
-[90m│[39m  ui.theme            [1mdark[22m[90m  · Default[39m
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config list[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mSettings[22m
+[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · config list[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · config list[22m
+[2m│[22m
 [36m◆[39m  [1mSettings[22m
-[90m│[39m  telemetry.enabled   [1mfalse[22m[90m  · Locked[39m
-[90m│[39m  ui.theme            [1mdark[22m[90m  · Default[39m
-[90m└[39m
+[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### no-color-80
-┌   Tidewater Studio  · config list
+┌  [7m Tidewater Studio [27m · config list
 │
-◆  Settings
-│  telemetry.enabled   false  · Locked
-│  ui.theme            dark  · Default
-└
+◆  [1mSettings[22m
+│  telemetry.enabled   [1mfalse[22m  · Locked
+└  ui.theme            [1mdark[22m  · Default
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - config list[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - config list[22m
+[2m|[22m
 [36m*[39m  [1mSettings[22m
-[90m|[39m  telemetry.enabled   [1mfalse[22m[90m  - Locked[39m
-[90m|[39m  ui.theme            [1mdark[22m[90m  - Default[39m
-[90m`[39m
+[2m|[22m  telemetry.enabled   [1mfalse[22m[2m  - Locked[22m
+[2m`[22m  ui.theme            [1mdark[22m[2m  - Default[22m
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · config list[39m
-[90m│[39m
-[36m◆[39m  [1mSettings[22m
-[90m│[39m  telemetry.enabled   [1mfalse[22m[90m  · Locked[39m
-[90m│[39m  ui.theme            [1mdark[22m[90m  · Default[39m
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config list[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mSettings[22m
+[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · config list[39m
-[90m│[39m
-[36m◆[39m  [1mSettings[22m
-[90m│[39m  telemetry.enabled   [1mfalse[22m[90m  · Locked[39m
-[90m│[39m  ui.theme            [1mdark[22m[90m  · Default[39m
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · config list[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mSettings[22m
+[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · config list[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · config list[22m
+[2m│[22m
 [36m◆[39m  [1mSettings[22m
-[90m│[39m  telemetry.enabled   [1mfalse[22m[90m  · Locked[39m
-[90m│[39m  ui.theme            [1mdark[22m[90m  · Default[39m
-[90m└[39m
+[2m│[22m  telemetry.enabled   [1mfalse[22m[2m  · Locked[22m
+[2m└[22m  ui.theme            [1mdark[22m[2m  · Default[22m
 
 #### no-color-60
-┌   Tidewater Studio  · config list
+┌  [7m Tidewater Studio [27m · config list
 │
-◆  Settings
-│  telemetry.enabled   false  · Locked
-│  ui.theme            dark  · Default
-└
+◆  [1mSettings[22m
+│  telemetry.enabled   [1mfalse[22m  · Locked
+└  ui.theme            [1mdark[22m  · Default
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - config list[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - config list[22m
+[2m|[22m
 [36m*[39m  [1mSettings[22m
-[90m|[39m  telemetry.enabled   [1mfalse[22m[90m  - Locked[39m
-[90m|[39m  ui.theme            [1mdark[22m[90m  - Default[39m
-[90m`[39m
+[2m|[22m  telemetry.enabled   [1mfalse[22m[2m  - Locked[22m
+[2m`[22m  ui.theme            [1mdark[22m[2m  - Default[22m

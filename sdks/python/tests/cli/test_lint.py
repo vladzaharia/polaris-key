@@ -65,6 +65,7 @@ BORROWS: Dict[str, Dict[str, str]] = {
     "StatusScreen": {
         "status.contact": "channel-not-entitled names the developer",
         "cli.fix.signIn": "a revoked device can be fixed with the account's license",
+        "cli.status.fixes": "the heading over the fix commands, as the Node kit's",
     },
     "Boot": {
         "status.update": "the blocked boot's fix is the update verb",

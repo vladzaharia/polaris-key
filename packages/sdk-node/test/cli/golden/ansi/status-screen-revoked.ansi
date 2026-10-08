@@ -1,114 +1,104 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again to continue.
-[90m│[39m
-[90m│[39m  To keep using Tidewater Studio:
-[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
-[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This device was signed out. Sign in or activate again to continue.
+[2m│[22m
+[2m│[22m  To keep using Tidewater Studio:
+[2m│[22m  [1mtidewater activate[22m   [2mUse a different key[22m
+[2m└[22m  [1mtidewater login[22m      [2mUse the license on your account[22m
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again to continue.
-[90m│[39m
-[90m│[39m  To keep using Tidewater Studio:
-[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
-[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This device was signed out. Sign in or activate again to continue.
+[2m│[22m
+[2m│[22m  To keep using Tidewater Studio:
+[2m│[22m  [1mtidewater activate[22m   [2mUse a different key[22m
+[2m└[22m  [1mtidewater login[22m      [2mUse the license on your account[22m
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again to continue.
-[90m│[39m
-[90m│[39m  To keep using Tidewater Studio:
-[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
-[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This device was signed out. Sign in or activate again to continue.
+[2m│[22m
+[2m│[22m  To keep using Tidewater Studio:
+[2m│[22m  [1mtidewater activate[22m   [2mUse a different key[22m
+[2m└[22m  [1mtidewater login[22m      [2mUse the license on your account[22m
 
 #### no-color-80
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [27m · status
 │
-✗  Signed out
+✗  [1mSigned out[22m
 │  This device was signed out. Sign in or activate again to continue.
 │
 │  To keep using Tidewater Studio:
-│  tidewater activate   Use a different key
-│  tidewater login      Use the license on your account
-└
+│  [1mtidewater activate[22m   Use a different key
+└  [1mtidewater login[22m      Use the license on your account
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
+[2m|[22m
 [31mx[39m  [1mSigned out[22m
-[90m|[39m  This device was signed out. Sign in or activate again to continue.
-[90m|[39m
-[90m|[39m  To keep using Tidewater Studio:
-[90m|[39m  [1mtidewater activate[22m   [90mUse a different key[39m
-[90m|[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
-[90m`[39m
+[2m|[22m  This device was signed out. Sign in or activate again to continue.
+[2m|[22m
+[2m|[22m  To keep using Tidewater Studio:
+[2m|[22m  [1mtidewater activate[22m   [2mUse a different key[22m
+[2m`[22m  [1mtidewater login[22m      [2mUse the license on your account[22m
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again
-[90m│[39m  to continue.
-[90m│[39m
-[90m│[39m  To keep using Tidewater Studio:
-[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
-[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This device was signed out. Sign in or activate again
+[2m│[22m  to continue.
+[2m│[22m
+[2m│[22m  To keep using Tidewater Studio:
+[2m│[22m  [1mtidewater activate[22m   [2mUse a different key[22m
+[2m└[22m  [1mtidewater login[22m      [2mUse the license on your account[22m
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again
-[90m│[39m  to continue.
-[90m│[39m
-[90m│[39m  To keep using Tidewater Studio:
-[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
-[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This device was signed out. Sign in or activate again
+[2m│[22m  to continue.
+[2m│[22m
+[2m│[22m  To keep using Tidewater Studio:
+[2m│[22m  [1mtidewater activate[22m   [2mUse a different key[22m
+[2m└[22m  [1mtidewater login[22m      [2mUse the license on your account[22m
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mSigned out[22m
-[90m│[39m  This device was signed out. Sign in or activate again
-[90m│[39m  to continue.
-[90m│[39m
-[90m│[39m  To keep using Tidewater Studio:
-[90m│[39m  [1mtidewater activate[22m   [90mUse a different key[39m
-[90m│[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This device was signed out. Sign in or activate again
+[2m│[22m  to continue.
+[2m│[22m
+[2m│[22m  To keep using Tidewater Studio:
+[2m│[22m  [1mtidewater activate[22m   [2mUse a different key[22m
+[2m└[22m  [1mtidewater login[22m      [2mUse the license on your account[22m
 
 #### no-color-60
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [27m · status
 │
-✗  Signed out
+✗  [1mSigned out[22m
 │  This device was signed out. Sign in or activate again
 │  to continue.
 │
 │  To keep using Tidewater Studio:
-│  tidewater activate   Use a different key
-│  tidewater login      Use the license on your account
-└
+│  [1mtidewater activate[22m   Use a different key
+└  [1mtidewater login[22m      Use the license on your account
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
+[2m|[22m
 [31mx[39m  [1mSigned out[22m
-[90m|[39m  This device was signed out. Sign in or activate again
-[90m|[39m  to continue.
-[90m|[39m
-[90m|[39m  To keep using Tidewater Studio:
-[90m|[39m  [1mtidewater activate[22m   [90mUse a different key[39m
-[90m|[39m  [1mtidewater login[22m      [90mUse the license on your account[39m
-[90m`[39m
+[2m|[22m  This device was signed out. Sign in or activate again
+[2m|[22m  to continue.
+[2m|[22m
+[2m|[22m  To keep using Tidewater Studio:
+[2m|[22m  [1mtidewater activate[22m   [2mUse a different key[22m
+[2m`[22m  [1mtidewater login[22m      [2mUse the license on your account[22m

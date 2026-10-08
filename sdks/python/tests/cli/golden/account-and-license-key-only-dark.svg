@@ -1,24 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="145.6" viewBox="0 0 705.6 145.6" role="img" aria-label="AccountAndLicense, key-only, terminal, dark theme">
-<rect width="705.6" height="145.6" rx="12" fill="#101114" stroke="#26282e"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="112" viewBox="0 0 705.6 112" role="img" aria-label="AccountAndLicense, key-only, terminal, dark theme">
+<rect width="705.6" height="112" rx="12" fill="#101114" stroke="#26282e"/>
 <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
 <rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="22.4" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="21.9" width="4.7" height="1" fill="#7f848e"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#d7dae0"/>
 <text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="26.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· status</text>
-<rect x="20.5" y="30.8" width="1" height="16.8" fill="#7f848e"/>
-<text x="21" y="60.2" text-anchor="middle" fill="#72cabe">◆</text>
-<text x="42" y="60.2" textLength="159.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Account and license</text>
-<rect x="20.5" y="64.4" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="77" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Active</text>
-<text x="100.8" y="77" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">·</text>
-<text x="117.6" y="77" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Pro license</text>
-<text x="218.4" y="77" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· Lifetime</text>
-<rect x="20.5" y="81.2" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="93.8" textLength="235.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Activated with a license key</text>
-<rect x="20.5" y="98" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="110.6" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Version 2.4.1</text>
-<text x="159.6" y="110.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· stable</text>
-<rect x="20.5" y="114.8" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="122.7" width="4.7" height="1" fill="#7f848e"/>
+<text x="201.6" y="26.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· status</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#d7dae0"/>
+<text x="21" y="60.2" text-anchor="middle" fill="#5fd38d">✓</text>
+<text x="42" y="60.2" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License</text>
+<text x="126" y="60.2" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Pro</text>
+<text x="159.6" y="60.2" textLength="344.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· Lifetime · Activated with a license key</text>
+<text x="21" y="77" text-anchor="middle" fill="#5fd38d">✓</text>
+<text x="42" y="77" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Version</text>
+<text x="126" y="77" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">2.4.1</text>
+<text x="176.4" y="77" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· stable</text>
+<rect x="20.5" y="81.2" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="89.1" width="4.7" height="1" fill="#d7dae0"/>
 </g></svg>

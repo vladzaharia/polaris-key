@@ -1,31 +1,31 @@
 ── truecolor · 80 ──
 [33m▲[0m  The last update didn't start, so the previous version was restored.
-[32m✓[0m  [1mTidewater Studio[0m[90m · Ready[0m
+[32m✓[0m  [1mTidewater Studio[0m[2m · Ready[0m
 ── ansi16 · 80 ──
 [33m▲[0m  The last update didn't start, so the previous version was restored.
-[32m✓[0m  [1mTidewater Studio[0m[90m · Ready[0m
+[32m✓[0m  [1mTidewater Studio[0m[2m · Ready[0m
 ── no-color · 80 ──
 ▲  The last update didn't start, so the previous version was restored.
-✓  Tidewater Studio · Ready
+✓  [1mTidewater Studio[0m · Ready
 ── ascii · 80 ──
 [33m![0m  The last update didn't start, so the previous version was restored.
-[32m+[0m  [1mTidewater Studio[0m[90m - Ready[0m
+[32m+[0m  [1mTidewater Studio[0m[2m - Ready[0m
 ── truecolor · 60 ──
 [33m▲[0m  The last update didn't start, so the previous version
-[90m│[0m  was restored.
-[32m✓[0m  [1mTidewater Studio[0m[90m · Ready[0m
+[2m│[0m  was restored.
+[32m✓[0m  [1mTidewater Studio[0m[2m · Ready[0m
 ── ansi16 · 60 ──
 [33m▲[0m  The last update didn't start, so the previous version
-[90m│[0m  was restored.
-[32m✓[0m  [1mTidewater Studio[0m[90m · Ready[0m
+[2m│[0m  was restored.
+[32m✓[0m  [1mTidewater Studio[0m[2m · Ready[0m
 ── no-color · 60 ──
 ▲  The last update didn't start, so the previous version
 │  was restored.
-✓  Tidewater Studio · Ready
+✓  [1mTidewater Studio[0m · Ready
 ── ascii · 60 ──
 [33m![0m  The last update didn't start, so the previous version
-[90m|[0m  was restored.
-[32m+[0m  [1mTidewater Studio[0m[90m - Ready[0m
+[2m|[0m  was restored.
+[32m+[0m  [1mTidewater Studio[0m[2m - Ready[0m
 ── pipe · 80 ──
 The last update didn't start, so the previous version was restored.
 Tidewater Studio · Ready

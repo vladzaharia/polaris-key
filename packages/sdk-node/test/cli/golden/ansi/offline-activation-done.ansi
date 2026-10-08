@@ -1,59 +1,59 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · import-bundle[22m
+[2m│[22m
 [32m✓[39m  [1mActivated from the offline file.[22m
-[90m└[39m
+[2m└[22m
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · import-bundle[22m
+[2m│[22m
 [32m✓[39m  [1mActivated from the offline file.[22m
-[90m└[39m
+[2m└[22m
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · import-bundle[22m
+[2m│[22m
 [32m✓[39m  [1mActivated from the offline file.[22m
-[90m└[39m
+[2m└[22m
 
 #### no-color-80
-┌   Tidewater Studio  · import-bundle
+┌  [7m Tidewater Studio [27m · import-bundle
 │
-✓  Activated from the offline file.
+✓  [1mActivated from the offline file.[22m
 └
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - import-bundle[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - import-bundle[22m
+[2m|[22m
 [32m+[39m  [1mActivated from the offline file.[22m
-[90m`[39m
+[2m`[22m
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · import-bundle[22m
+[2m│[22m
 [32m✓[39m  [1mActivated from the offline file.[22m
-[90m└[39m
+[2m└[22m
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · import-bundle[22m
+[2m│[22m
 [32m✓[39m  [1mActivated from the offline file.[22m
-[90m└[39m
+[2m└[22m
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · import-bundle[22m
+[2m│[22m
 [32m✓[39m  [1mActivated from the offline file.[22m
-[90m└[39m
+[2m└[22m
 
 #### no-color-60
-┌   Tidewater Studio  · import-bundle
+┌  [7m Tidewater Studio [27m · import-bundle
 │
-✓  Activated from the offline file.
+✓  [1mActivated from the offline file.[22m
 └
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - import-bundle[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - import-bundle[22m
+[2m|[22m
 [32m+[39m  [1mActivated from the offline file.[22m
-[90m`[39m
+[2m`[22m

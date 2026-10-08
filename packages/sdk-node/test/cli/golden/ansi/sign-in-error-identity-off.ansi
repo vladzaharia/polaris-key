@@ -1,69 +1,59 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · login[39m
-[90m│[39m
-[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in. Open Tidewater Studio and
-[90m│[39m  enter your license key there.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
+[2m│[22m
+[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in.
+[2m└[22m  Run tidewater activate with your license key.
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · login[39m
-[90m│[39m
-[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in. Open Tidewater Studio and
-[90m│[39m  enter your license key there.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
+[2m│[22m
+[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in.
+[2m└[22m  Run tidewater activate with your license key.
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · login[39m
-[90m│[39m
-[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in. Open Tidewater Studio and
-[90m│[39m  enter your license key there.
-[90m└[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · login[22m
+[2m│[22m
+[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in.
+[2m└[22m  Run tidewater activate with your license key.
 
 #### no-color-80
-┌   Tidewater Studio  · login
+┌  [7m Tidewater Studio [27m · login
 │
-✗  Tidewater Studio doesn't use Polaris Key sign-in. Open Tidewater Studio and
-│  enter your license key there.
-└
+✗  Tidewater Studio doesn't use Polaris Key sign-in.
+└  Run tidewater activate with your license key.
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - login[39m
-[90m|[39m
-[31mx[39m  Tidewater Studio doesn't use Polaris Key sign-in. Open Tidewater Studio and
-[90m|[39m  enter your license key there.
-[90m`[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - login[22m
+[2m|[22m
+[31mx[39m  Tidewater Studio doesn't use Polaris Key sign-in.
+[2m`[22m  Run tidewater activate with your license key.
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · login[39m
-[90m│[39m
-[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in. Open
-[90m│[39m  Tidewater Studio and enter your license key there.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
+[2m│[22m
+[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in.
+[2m└[22m  Run tidewater activate with your license key.
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · login[39m
-[90m│[39m
-[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in. Open
-[90m│[39m  Tidewater Studio and enter your license key there.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
+[2m│[22m
+[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in.
+[2m└[22m  Run tidewater activate with your license key.
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · login[39m
-[90m│[39m
-[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in. Open
-[90m│[39m  Tidewater Studio and enter your license key there.
-[90m└[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · login[22m
+[2m│[22m
+[31m✗[39m  Tidewater Studio doesn't use Polaris Key sign-in.
+[2m└[22m  Run tidewater activate with your license key.
 
 #### no-color-60
-┌   Tidewater Studio  · login
+┌  [7m Tidewater Studio [27m · login
 │
-✗  Tidewater Studio doesn't use Polaris Key sign-in. Open
-│  Tidewater Studio and enter your license key there.
-└
+✗  Tidewater Studio doesn't use Polaris Key sign-in.
+└  Run tidewater activate with your license key.
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - login[39m
-[90m|[39m
-[31mx[39m  Tidewater Studio doesn't use Polaris Key sign-in. Open
-[90m|[39m  Tidewater Studio and enter your license key there.
-[90m`[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - login[22m
+[2m|[22m
+[31mx[39m  Tidewater Studio doesn't use Polaris Key sign-in.
+[2m`[22m  Run tidewater activate with your license key.

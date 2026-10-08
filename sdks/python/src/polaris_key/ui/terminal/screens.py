@@ -104,7 +104,7 @@ def _fixes(k: Kit, fixes: Sequence[Tuple[str, str]]) -> Lines:
 def _code_row(k: Kit, code: str) -> Lines:
     """The user code in reverse video, under the content column (wrapped after a hyphen, never
     cut, when it is wider than a line)."""
-    return k.body(([Span("   ")] if k.decor and not k.narrow else []) + [k.code(code)])
+    return [replace(ln, keep=True) for ln in k.body(([Span("   ")] if k.decor and not k.narrow else []) + [k.code(code)])]
 
 
 def _code_title_message(k: Kit, code: Optional[str], *, group: str = "codes") -> Tuple[Span, Span]:
@@ -184,6 +184,7 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
         }[v.state]
         if fixes:
             body += _gap(k)
+            body += k.body([k.t("cli.status.fixes", product=k.product)])
             body += _fixes(k, fixes)
         if v.state == "channel-not-entitled" and v.developer:
             body += k.body([k.t("status.contact", "muted", developer=v.developer)])
@@ -303,7 +304,7 @@ def device_limit(k: Kit, v: ActivateView, verb: str = "activate", *, opened: boo
     if v.manage_url:
         # The terminal does not poll: it never promises the product continues by itself.
         body += k.body([k.t("cli.deviceLimit.body")])
-        body += k.body([k.link(v.manage_url, None, "muted")])
+        body += [replace(ln, keep=True) for ln in k.body([k.link(v.manage_url, None, "muted")])]
         if ended:
             end = [k.t("cli.deviceLimit.again", command=f"{k.prog} {verb}")]
         elif k.env.interactive:
@@ -331,7 +332,15 @@ def _wait_line(k: Kit, key: str, frame: int, **args: Any) -> Lines:
     glyph = _spinner(k, frame) if k.env.motion else k.env.symbol["ellipsis"]
     if not k.decor:
         return [Line([k.t(key, **args)])]
-    return [Line([Span(glyph, ("muted",), None, "symbol"), Span("  "), k.t(key, **args)], role="spinner")]
+    # The glyph takes the rail's column; a status that is wider than the line wraps under itself,
+    # and the waiting role sits on its last line (where the key hints join).
+    rows = wrap([k.t(key, **args)], k.body_width - (2 if k.narrow else 0)) or [[]]
+    mark = Span(glyph, ("muted",), None, "symbol")
+    out = [Line([mark, Span(" " if k.narrow else "  ")] + rows[0])]
+    for r in rows[1:]:
+        out.append(Line(([Span("  ")] if k.narrow else k._prefix("rail")) + r))
+    out[-1] = replace(out[-1], role="spinner")
+    return out
 
 
 def _again(k: Kit, verb: str) -> Lines:
@@ -364,7 +373,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
             body += k.step("done", [k.t("signin.cli.headless")])
         elif v.no_browser:
             body += k.step("warn", [k.t("signin.handoff.noBrowser", "strong")])
-        elif not v.headless:
+        elif not v.headless or k.env.device_code:
             body += k.step("active", [k.t("signin.handoff.codeTitle", "strong")])
         body += _with_link(k, "signin.handoff.codeBody", url)
         body += _code_rows(k, v.user_code or "")
@@ -429,7 +438,11 @@ def _with_link(k: Kit, key: str, url: str) -> Lines:
     text = k.s(key, url=marker)
     before, _, after = text.partition(marker)
     spans = [Span(before, (), None, "key:" + key), k.link(url), Span(after, (), None, "key:" + key)]
-    return k.body([s for s in spans if s.text])
+    # The lines that hold the URL stay when the screen is cut to the height; the lead-in goes first.
+    return [
+        replace(ln, keep=any(sp.src == "data:url" for sp in ln.spans))
+        for ln in k.body([s for s in spans if s.text])
+    ]
 
 
 def _if_not_opened(k: Kit, url: str) -> Lines:

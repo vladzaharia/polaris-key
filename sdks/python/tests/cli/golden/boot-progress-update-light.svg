@@ -3,7 +3,8 @@
 <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
 <text x="21" y="26.6" text-anchor="middle" fill="#1a7f37">✓</text>
 <text x="42" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Tidewater Studio</text>
-<text x="184.8" y="26.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· Ready</text>
+<text x="184.8" y="26.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">· Ready</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#24292f"/>
 <text x="42" y="43.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater update</text>
-<text x="201.6" y="43.4" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">An update is available</text>
+<text x="201.6" y="43.4" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">An update is available</text>
 </g></svg>

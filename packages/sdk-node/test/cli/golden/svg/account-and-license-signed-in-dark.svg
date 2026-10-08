@@ -5,20 +5,21 @@
 <text x="353" y="21" text-anchor="middle" font-family="Rubik, system-ui, sans-serif" font-size="12" font-weight="500" fill="#7f848e">tidewater — 80 × 24</text>
 <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="14">
 <rect x="42.0" y="50.8" width="151.2" height="16.8" fill="#26847a"/>
-<text x="16.8" y="63.4" fill="#7f848e">┌</text>
+<text x="16.8" y="63.4" fill="#878a8e">┌</text>
 <text x="50.4 58.8 67.2 75.6 84.0 92.4 100.8 109.2 117.6 134.4 142.8 151.2 159.6 168.0 176.4" y="63.4" fill="#ffffff">TidewaterStudio</text>
-<text x="201.6 218.4 226.8 235.2 243.6 252.0 260.4" y="63.4" fill="#7f848e">·status</text>
-<text x="16.8" y="80.2" fill="#7f848e">│</text>
+<text x="201.6 218.4 226.8 235.2 243.6 252.0 260.4" y="63.4" fill="#878a8e">·status</text>
+<text x="16.8" y="80.2" fill="#878a8e">│</text>
 <text x="16.8" y="97.0" fill="#5fd38d">✓</text>
 <text x="42.0 50.4 58.8 67.2 75.6 84.0 92.4" y="97.0" fill="#d7dae0">License</text>
-<text x="126.0 134.4 142.8 159.6 168.0 176.4 184.8 193.2 201.6 210.0" y="97.0" fill="#ffffff" font-weight="600">Prolicense</text>
-<text x="226.8 243.6 252.0 260.4 268.8 277.2 285.6 294.0 302.4 310.8 319.2 327.6 336.0 344.4 352.8 361.2 369.6 378.0 386.4 394.8" y="97.0" fill="#7f848e">·mara@fennick.studio</text>
+<text x="126.0 134.4 142.8" y="97.0" fill="#ffffff" font-weight="600">Pro</text>
+<text x="159.6 176.4 184.8 193.2 201.6 210.0 218.4 226.8 235.2 243.6 252.0 260.4 268.8 277.2 285.6 294.0 302.4 310.8 319.2 327.6" y="97.0" fill="#878a8e">·mara@fennick.studio</text>
 <text x="16.8" y="113.8" fill="#5fd38d">✓</text>
-<text x="42.0 50.4 58.8 67.2 75.6 84.0 92.4 126.0 134.4 142.8 151.2 159.6 176.4 184.8 193.2 201.6 210.0 218.4 226.8 243.6 252.0 260.4 268.8 277.2 294.0 302.4 310.8 327.6 336.0" y="113.8" fill="#d7dae0">OfflineWorksofflineuntilOct19</text>
+<text x="42.0 50.4 58.8 67.2 75.6 84.0 92.4" y="113.8" fill="#d7dae0">Offline</text>
+<text x="126.0 134.4 142.8 151.2 159.6 176.4 184.8 193.2 210.0 218.4" y="113.8" fill="#ffffff" font-weight="600">untilOct19</text>
 <text x="16.8" y="130.6" fill="#5fd38d">✓</text>
 <text x="42.0 50.4 58.8 67.2 75.6 84.0 92.4" y="130.6" fill="#d7dae0">Version</text>
 <text x="126.0 134.4 142.8 151.2 159.6" y="130.6" fill="#ffffff" font-weight="600">2.4.1</text>
-<text x="176.4 193.2 201.6 210.0 218.4 226.8 235.2" y="130.6" fill="#7f848e">·stable</text>
-<text x="16.8" y="147.4" fill="#7f848e">└</text>
+<text x="176.4 193.2 201.6 210.0 218.4 226.8 235.2" y="130.6" fill="#878a8e">·stable</text>
+<text x="16.8" y="147.4" fill="#878a8e">└</text>
 </g>
 </svg>

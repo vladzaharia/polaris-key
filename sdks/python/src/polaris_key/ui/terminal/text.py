@@ -91,9 +91,12 @@ class Line:
     #: scrollback (they cannot be erased, and are never printed a second time).
     role: Optional[str] = None
     hint_spans: Optional[List[Span]] = None
+    #: Essential when a live screen is cut to the terminal's height (the URL line, the code, the
+    #: key hints): every other line leaves first, from the top.
+    keep: bool = False
 
     def __add__(self, other: "Line") -> "Line":
-        return Line(self.spans + other.spans, self.drop, self.role, self.hint_spans)
+        return Line(self.spans + other.spans, self.drop, self.role, self.hint_spans, self.keep)
 
     @property
     def text(self) -> str:

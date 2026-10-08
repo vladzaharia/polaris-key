@@ -270,7 +270,7 @@ class Kit:
         out = [Line(self._prefix("rail") + r) for r in rows]
         out[-1] = Line(self._prefix("railEnd") + rows[-1])
         if hints and spans:
-            out[-1] = Line(out[-1].spans, role="hints", hint_spans=list(spans))
+            out[-1] = Line(out[-1].spans, role="hints", hint_spans=list(spans), keep=True)
         return out
 
     # ── Parts ─────────────────────────────────────────────────────────────────────────────

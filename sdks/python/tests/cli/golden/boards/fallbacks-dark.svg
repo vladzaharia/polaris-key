@@ -1,140 +1,117 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="1019.2" viewBox="0 0 705.6 1019.2" role="img" aria-label="Fallbacks, dark theme">
-<rect width="705.6" height="1019.2" rx="12" fill="#101114" stroke="#26282e"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="683.2" viewBox="0 0 705.6 683.2" role="img" aria-label="Fallbacks, dark theme">
+<rect width="705.6" height="683.2" rx="12" fill="#101114" stroke="#26282e"/>
 <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
 <text x="16.8" y="26.6" textLength="117.6" lengthAdjust="spacingAndGlyphs" fill="#7f848e">truecolor · 80</text>
 <rect x="42" y="30.8" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="39.2" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="38.7" width="4.7" height="1" fill="#7f848e"/>
+<rect x="20.5" y="39.2" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="38.7" width="4.7" height="1" fill="#d7dae0"/>
 <text x="50.4" y="43.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="43.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· activate</text>
-<rect x="20.5" y="47.6" width="1" height="16.8" fill="#7f848e"/>
+<text x="201.6" y="43.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· activate</text>
+<rect x="20.5" y="47.6" width="1" height="16.8" fill="#d7dae0"/>
 <text x="21" y="77" text-anchor="middle" fill="#5fd38d">◇</text>
-<text x="42" y="77" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License key</text>
-<text x="142.8" y="77" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· pkey_tidewater_</text>
-<text x="289.8" y="77" text-anchor="middle" fill="#7f848e">…</text>
-<text x="294" y="77" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">3WPLDA</text>
-<rect x="20.5" y="81.2" width="1" height="16.8" fill="#7f848e"/>
-<text x="21" y="110.6" text-anchor="middle" fill="#e5c07b">▲</text>
-<text x="42" y="110.6" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Your license is on 3 of 3 devices</text>
-<rect x="20.5" y="114.8" width="1" height="16.8" fill="#7f848e"/>
-<text x="46.2" y="127.4" text-anchor="middle" fill="#7f848e">●</text>
-<text x="54.6" y="127.4" text-anchor="middle" fill="#7f848e">●</text>
-<text x="63" y="127.4" text-anchor="middle" fill="#7f848e">●</text>
-<text x="75.6" y="127.4" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">3 of 3 in use</text>
-<rect x="20.5" y="131.6" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="144.2" textLength="562.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">To use it on this computer, replace one. You can add it back later.</text>
-<rect x="20.5" y="148.4" width="1" height="16.8" fill="#7f848e"/>
-<text x="21" y="177.8" text-anchor="middle" fill="#72cabe">◆</text>
-<text x="42" y="177.8" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Replace a device</text>
-<rect x="20.5" y="182" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="194.6" textLength="546" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Replace a device in your browser. Tidewater Studio continues when</text>
-<rect x="20.5" y="198.8" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="211.4" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">you&#x27;re done.</text>
-<rect x="20.5" y="215.6" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="228.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
-<rect x="20.5" y="232.4" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="240.3" width="4.7" height="1" fill="#7f848e"/>
-<text x="42" y="245" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Enter</text>
-<text x="92.4" y="245" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Open in browser ·</text>
-<text x="243.6" y="245" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Esc</text>
-<text x="277.2" y="245" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Cancel</text>
-<text x="16.8" y="278.6" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">ansi16 · 80</text>
-<rect x="42" y="282.8" width="151.2" height="16.8" fill="#56b6c2"/>
-<rect x="20.5" y="291.2" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="290.7" width="4.7" height="1" fill="#7f848e"/>
-<text x="50.4" y="295.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#101114" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="295.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· activate</text>
-<rect x="20.5" y="299.6" width="1" height="16.8" fill="#7f848e"/>
-<text x="21" y="329" text-anchor="middle" fill="#5fd38d">◇</text>
-<text x="42" y="329" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License key</text>
-<text x="142.8" y="329" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· pkey_tidewater_</text>
-<text x="289.8" y="329" text-anchor="middle" fill="#7f848e">…</text>
-<text x="294" y="329" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">3WPLDA</text>
-<rect x="20.5" y="333.2" width="1" height="16.8" fill="#7f848e"/>
-<text x="21" y="362.6" text-anchor="middle" fill="#e5c07b">▲</text>
-<text x="42" y="362.6" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Your license is on 3 of 3 devices</text>
-<rect x="20.5" y="366.8" width="1" height="16.8" fill="#7f848e"/>
-<text x="46.2" y="379.4" text-anchor="middle" fill="#7f848e">●</text>
-<text x="54.6" y="379.4" text-anchor="middle" fill="#7f848e">●</text>
-<text x="63" y="379.4" text-anchor="middle" fill="#7f848e">●</text>
-<text x="75.6" y="379.4" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">3 of 3 in use</text>
-<rect x="20.5" y="383.6" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="396.2" textLength="562.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">To use it on this computer, replace one. You can add it back later.</text>
-<rect x="20.5" y="400.4" width="1" height="16.8" fill="#7f848e"/>
-<text x="21" y="429.8" text-anchor="middle" fill="#56b6c2">◆</text>
-<text x="42" y="429.8" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Replace a device</text>
-<rect x="20.5" y="434" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="446.6" textLength="546" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Replace a device in your browser. Tidewater Studio continues when</text>
-<rect x="20.5" y="450.8" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="463.4" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">you&#x27;re done.</text>
-<rect x="20.5" y="467.6" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="480.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
-<rect x="20.5" y="484.4" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="492.3" width="4.7" height="1" fill="#7f848e"/>
+<text x="42" y="77" textLength="243.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License key · pkey_tidewater_</text>
+<text x="289.8" y="77" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="298.2" y="77" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="306.6" y="77" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="315" y="77" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="323.4" y="77" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="331.8" y="77" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="21" y="93.8" text-anchor="middle" fill="#e5c07b">▲</text>
+<text x="42" y="93.8" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Your license is on 3 of 3 devices</text>
+<rect x="20.5" y="98" width="1" height="16.8" fill="#d7dae0"/>
+<text x="46.2" y="110.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<text x="54.6" y="110.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<text x="63" y="110.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<rect x="20.5" y="114.8" width="1" height="16.8" fill="#d7dae0"/>
+<text x="42" y="127.4" textLength="453.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Replace a device in your browser, then try again here.</text>
+<rect x="20.5" y="131.6" width="1" height="16.8" fill="#d7dae0"/>
+<text x="42" y="144.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
+<rect x="20.5" y="148.4" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="156.3" width="4.7" height="1" fill="#d7dae0"/>
+<text x="42" y="161" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Enter</text>
+<text x="92.4" y="161" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">open in browser ·</text>
+<text x="243.6" y="161" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Esc</text>
+<text x="277.2" y="161" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">cancel</text>
+<text x="16.8" y="194.6" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">ansi16 · 80</text>
+<rect x="42" y="198.8" width="151.2" height="16.8" fill="#56b6c2"/>
+<rect x="20.5" y="207.2" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="206.7" width="4.7" height="1" fill="#d7dae0"/>
+<text x="50.4" y="211.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#101114" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="211.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· activate</text>
+<rect x="20.5" y="215.6" width="1" height="16.8" fill="#d7dae0"/>
+<text x="21" y="245" text-anchor="middle" fill="#5fd38d">◇</text>
+<text x="42" y="245" textLength="243.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License key · pkey_tidewater_</text>
+<text x="289.8" y="245" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="298.2" y="245" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="306.6" y="245" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="315" y="245" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="323.4" y="245" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="331.8" y="245" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="21" y="261.8" text-anchor="middle" fill="#e5c07b">▲</text>
+<text x="42" y="261.8" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Your license is on 3 of 3 devices</text>
+<rect x="20.5" y="266" width="1" height="16.8" fill="#d7dae0"/>
+<text x="46.2" y="278.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<text x="54.6" y="278.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<text x="63" y="278.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<rect x="20.5" y="282.8" width="1" height="16.8" fill="#d7dae0"/>
+<text x="42" y="295.4" textLength="453.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Replace a device in your browser, then try again here.</text>
+<rect x="20.5" y="299.6" width="1" height="16.8" fill="#d7dae0"/>
+<text x="42" y="312.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
+<rect x="20.5" y="316.4" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="324.3" width="4.7" height="1" fill="#d7dae0"/>
+<text x="42" y="329" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Enter</text>
+<text x="92.4" y="329" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">open in browser ·</text>
+<text x="243.6" y="329" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Esc</text>
+<text x="277.2" y="329" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">cancel</text>
+<text x="16.8" y="362.6" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">no-color · 80</text>
+<rect x="42" y="366.8" width="151.2" height="16.8" fill="#d7dae0"/>
+<rect x="20.5" y="375.2" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="374.7" width="4.7" height="1" fill="#d7dae0"/>
+<text x="50.4" y="379.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#101114">Tidewater Studio</text>
+<text x="201.6" y="379.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· activate</text>
+<rect x="20.5" y="383.6" width="1" height="16.8" fill="#d7dae0"/>
+<text x="21" y="413" text-anchor="middle" fill="#d7dae0">◇</text>
+<text x="42" y="413" textLength="243.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License key · pkey_tidewater_</text>
+<text x="289.8" y="413" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="298.2" y="413" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="306.6" y="413" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="315" y="413" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="323.4" y="413" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="331.8" y="413" text-anchor="middle" fill="#d7dae0">•</text>
+<text x="21" y="429.8" text-anchor="middle" fill="#d7dae0">▲</text>
+<text x="42" y="429.8" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Your license is on 3 of 3 devices</text>
+<rect x="20.5" y="434" width="1" height="16.8" fill="#d7dae0"/>
+<text x="46.2" y="446.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<text x="54.6" y="446.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<text x="63" y="446.6" text-anchor="middle" fill="#d7dae0" font-weight="600">●</text>
+<rect x="20.5" y="450.8" width="1" height="16.8" fill="#d7dae0"/>
+<text x="42" y="463.4" textLength="453.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Replace a device in your browser, then try again here.</text>
+<rect x="20.5" y="467.6" width="1" height="16.8" fill="#d7dae0"/>
+<text x="42" y="480.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">key.plrs.im/portal/tidewater/devices</text>
+<rect x="20.5" y="484.4" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="492.3" width="4.7" height="1" fill="#d7dae0"/>
 <text x="42" y="497" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Enter</text>
-<text x="92.4" y="497" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Open in browser ·</text>
+<text x="92.4" y="497" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">open in browser ·</text>
 <text x="243.6" y="497" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Esc</text>
-<text x="277.2" y="497" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Cancel</text>
-<text x="16.8" y="530.6" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">no-color · 80</text>
-<rect x="20.5" y="543.2" width="1" height="8.4" fill="#d7dae0"/>
-<rect x="20.5" y="542.7" width="4.7" height="1" fill="#d7dae0"/>
-<text x="50.4" y="547.4" textLength="235.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Tidewater Studio  · activate</text>
-<rect x="20.5" y="551.6" width="1" height="16.8" fill="#d7dae0"/>
-<text x="21" y="581" text-anchor="middle" fill="#d7dae0">◇</text>
-<text x="42" y="581" textLength="243.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License key · pkey_tidewater_</text>
-<text x="289.8" y="581" text-anchor="middle" fill="#d7dae0">…</text>
-<text x="294" y="581" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">3WPLDA</text>
-<rect x="20.5" y="585.2" width="1" height="16.8" fill="#d7dae0"/>
-<text x="21" y="614.6" text-anchor="middle" fill="#d7dae0">▲</text>
-<text x="42" y="614.6" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Your license is on 3 of 3 devices</text>
-<rect x="20.5" y="618.8" width="1" height="16.8" fill="#d7dae0"/>
-<text x="46.2" y="631.4" text-anchor="middle" fill="#d7dae0">●</text>
-<text x="54.6" y="631.4" text-anchor="middle" fill="#d7dae0">●</text>
-<text x="63" y="631.4" text-anchor="middle" fill="#d7dae0">●</text>
-<text x="75.6" y="631.4" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">3 of 3 in use</text>
-<rect x="20.5" y="635.6" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="648.2" textLength="562.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">To use it on this computer, replace one. You can add it back later.</text>
-<rect x="20.5" y="652.4" width="1" height="16.8" fill="#d7dae0"/>
-<text x="21" y="681.8" text-anchor="middle" fill="#d7dae0">◆</text>
-<text x="42" y="681.8" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Replace a device</text>
-<rect x="20.5" y="686" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="698.6" textLength="546" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Replace a device in your browser. Tidewater Studio continues when</text>
-<rect x="20.5" y="702.8" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="715.4" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">you&#x27;re done.</text>
-<rect x="20.5" y="719.6" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="732.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">key.plrs.im/portal/tidewater/devices</text>
-<rect x="20.5" y="736.4" width="1" height="8.4" fill="#d7dae0"/>
-<rect x="20.5" y="744.3" width="4.7" height="1" fill="#d7dae0"/>
-<text x="42" y="749" textLength="285.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Enter Open in browser · Esc Cancel</text>
-<text x="16.8" y="782.6" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">ascii · 80</text>
-<rect x="42" y="786.8" width="151.2" height="16.8" fill="#56b6c2"/>
-<text x="16.8" y="799.4" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">+</text>
-<text x="50.4" y="799.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#101114" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="799.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">- activate</text>
-<text x="16.8" y="816.2" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">|</text>
-<text x="16.8" y="833" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd38d">o</text>
-<text x="42" y="833" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License key</text>
-<text x="142.8" y="833" textLength="218.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">- pkey_tidewater_...3WPLDA</text>
-<text x="16.8" y="849.8" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">|</text>
-<text x="16.8" y="866.6" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#e5c07b">!</text>
-<text x="42" y="866.6" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Your license is on 3 of 3 devices</text>
-<text x="16.8" y="883.4" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">|</text>
-<text x="42" y="883.4" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">###</text>
-<text x="75.6" y="883.4" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">3 of 3 in use</text>
-<text x="16.8" y="900.2" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">|</text>
-<text x="42" y="900.2" textLength="562.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">To use it on this computer, replace one. You can add it back later.</text>
-<text x="16.8" y="917" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">|</text>
-<text x="16.8" y="933.8" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#56b6c2">*</text>
-<text x="42" y="933.8" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Replace a device</text>
-<text x="16.8" y="950.6" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">|</text>
-<text x="42" y="950.6" textLength="546" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Replace a device in your browser. Tidewater Studio continues when</text>
-<text x="16.8" y="967.4" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">|</text>
-<text x="42" y="967.4" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">you&#x27;re done.</text>
-<text x="16.8" y="984.2" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">|</text>
-<text x="42" y="984.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
-<text x="16.8" y="1001" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">`</text>
-<text x="42" y="1001" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Enter</text>
-<text x="92.4" y="1001" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Open in browser -</text>
-<text x="243.6" y="1001" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Esc</text>
-<text x="277.2" y="1001" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Cancel</text>
+<text x="277.2" y="497" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">cancel</text>
+<text x="16.8" y="530.6" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">ascii · 80</text>
+<rect x="42" y="534.8" width="151.2" height="16.8" fill="#56b6c2"/>
+<text x="16.8" y="547.4" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">+</text>
+<text x="50.4" y="547.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#101114" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="547.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">- activate</text>
+<text x="16.8" y="564.2" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">|</text>
+<text x="16.8" y="581" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#5fd38d">o</text>
+<text x="42" y="581" textLength="294" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">License key - pkey_tidewater_******</text>
+<text x="16.8" y="597.8" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#e5c07b">!</text>
+<text x="42" y="597.8" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Your license is on 3 of 3 devices</text>
+<text x="16.8" y="614.6" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">|</text>
+<text x="42" y="614.6" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">###</text>
+<text x="16.8" y="631.4" textLength="478.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">|  Replace a device in your browser, then try again here.</text>
+<text x="16.8" y="648.2" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">|</text>
+<text x="42" y="648.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
+<text x="16.8" y="665" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">`</text>
+<text x="42" y="665" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Enter</text>
+<text x="92.4" y="665" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">open in browser -</text>
+<text x="243.6" y="665" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Esc</text>
+<text x="277.2" y="665" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">cancel</text>
 </g></svg>

@@ -46,7 +46,7 @@ def inline_hints(lines: Sequence[Line], columns: int, separator: str) -> List[Li
     joined = lines[s].spans + [Span(" " + separator + " ", ("muted",), None, "symbol")] + list(lines[h].hint_spans or [])
     if _width(joined) > columns:
         return list(lines)
-    return [replace(ln, spans=joined) if i == s else ln for i, ln in enumerate(lines) if i != h]
+    return [replace(ln, spans=joined, keep=True) if i == s else ln for i, ln in enumerate(lines) if i != h]
 
 
 def fit_screen(lines: Sequence[Line], max_rows: int, columns: int, separator: str) -> Fitted:
@@ -67,5 +67,12 @@ def fit_screen(lines: Sequence[Line], max_rows: int, columns: int, separator: st
         if len(cur) <= max_rows:
             break
         cur = [ln for ln in cur if ln.drop != tier]
+    # Still too tall: the lines that are not essential leave from the top (the header, the lead-in,
+    # the waiting line), one at a time; the URL line, the code and the key hints stay.
+    while len(cur) > max_rows:
+        i = next((j for j, ln in enumerate(cur) if not ln.keep), -1)
+        if i < 0:
+            break
+        cur = cur[:i] + cur[i + 1 :]
     cut = max(0, len(cur) - max_rows)
     return Fitted(cur[cut:] if cut else cur, head_of(cur, cut))
