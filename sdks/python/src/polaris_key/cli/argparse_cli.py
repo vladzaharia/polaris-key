@@ -159,26 +159,49 @@ HELP_GROUPS = (
 
 class GroupedHelpParser(argparse.ArgumentParser):
     """``polaris-key --help``: the verbs grouped by owning service, commands in ``strong`` and
-    their descriptions in mute (UI-KITS §1.5 rule 13), in 80 columns."""
+    their descriptions in mute (UI-KITS §1.5 rule 13), in 80 columns or the terminal's width.
+    Descriptions wrap under their column; below 50 columns each command stacks above its
+    description, as the Node kit's help does."""
 
     def format_help(self) -> str:
         from ..ui import ansi
         from ..ui.terminal.env import detect
-        from ..ui.terminal.text import Line, Palette, Span, to_ansi
+        from ..ui.terminal.parts import STACK_COLUMNS
+        from ..ui.terminal.text import Line, Palette, Span, cell_len, to_ansi, wrap
 
         env = detect()
         pal = Palette(color=env.color)
+        cols = env.width
         rows: List[str] = []
 
         def line(*spans: Span) -> None:
-            rows.append(to_ansi(Line(list(spans)), pal))
+            for r in wrap(list(spans), cols) if spans else [[]]:
+                rows.append(to_ansi(Line(r), pal))
+
+        width = max(len(v.name) for v in verbs.VERBS) + 4
+        stacked = cols < STACK_COLUMNS or cols - 2 - width < 16
+
+        def pair(term: str, text: str) -> None:
+            if stacked:
+                rows.append(to_ansi(Line([Span("  "), Span(term, ("strong",))]), pal))
+                for r in wrap([Span(text, ("muted",))], max(1, cols - 4)):
+                    rows.append(to_ansi(Line([Span("    ")] + r), pal))
+                return
+            body = wrap([Span(text, ("muted",))], max(1, cols - 2 - width))
+            pad = Span(" " * (width - cell_len(term)))
+            for i, r in enumerate(body):
+                head = [Span("  "), Span(term, ("strong",)), pad] if i == 0 else [Span(" " * (2 + width))]
+                rows.append(to_ansi(Line(head + r), pal))
 
         sep = " " + ansi.SYMBOLS[env.symbols]["separator"] + " "
         line(Span(self.prog, ("strong",)), Span(sep, ("muted",)), Span(self.description or "", ("muted",)))
         line()
-        line(Span("Usage", ("muted",)), Span(f"  {self.prog} <command> --product <slug> [options]"))
-        line(Span("       ", ()), Span(f"{self.prog} <command> --help", ("muted",)))
-        width = max(len(v.name) for v in verbs.VERBS) + 4
+        # The usage lines hang under their text (seven cells in, past "Usage  ").
+        usage = wrap([Span(f"{self.prog} <command> --product <slug> [options]")], max(1, cols - 7))
+        usage += wrap([Span(f"{self.prog} <command> --help", ("muted",))], max(1, cols - 7))
+        for i, r in enumerate(usage):
+            head = [Span("Usage", ("muted",)), Span("  ")] if i == 0 else [Span(" " * 7)]
+            rows.append(to_ansi(Line(head + r), pal))
         for title, group in HELP_GROUPS:
             members = [v for v in verbs.VERBS if v.group == group]
             if not members:
@@ -186,12 +209,12 @@ class GroupedHelpParser(argparse.ArgumentParser):
             line()
             line(Span(title, ("strong",)))
             for v in members:
-                line(Span("  " + v.name.ljust(width), ("strong",)), Span(v.help, ("muted",)))
+                pair(v.name, v.help)
         line()
         line(Span("Every command takes", ("strong",)))
         for o in verbs.UI_OPTS:
-            line(Span("  " + f"--{o.name}".ljust(width), ("strong",)), Span(o.help, ("muted",)))
-        line(Span("  " + "-h, --help".ljust(width), ("strong",)), Span("Help for a command.", ("muted",)))
+            pair(f"--{o.name}", o.help)
+        pair("-h, --help", "Help for a command.")
         return "\n".join(r.rstrip() for r in rows) + "\n"
 
 

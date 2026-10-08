@@ -338,3 +338,29 @@ def test_a_resize_redraws_the_progress_bar_in_place() -> None:
     assert len([r for r in mid[0] if "· update" in r]) == 1, "one header"
     check("resize update (end)", term, [])
     assert len([r for r, _ in term.all() if "· update" in r]) == 1
+
+
+# ── Help ─────────────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("cols", COLUMNS)
+def test_help_never_runs_past_the_terminal_and_stacks_below_50_columns(cols: int, monkeypatch: pytest.MonkeyPatch) -> None:
+    import io
+    import os as _os
+
+    from polaris_key.cli.argparse_cli import build_parser
+    from polaris_key.ui.terminal import env as envmod
+
+    real = envmod.detect
+
+    class Tty(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    monkeypatch.setattr(envmod, "detect", lambda **kw: real(env={"NO_COLOR": "1"}, stdout=Tty(), size=lambda: _os.terminal_size((cols, 24)), **kw))
+    text = build_parser().format_help()
+    term = Term(cols, 24)
+    term.write(text)
+    assert [t for t, w in term.all() if w] == [], f"help {cols}: a line wider than the terminal"
+    if cols < 50:
+        assert "\n  activate\n    Add a license key" in text
