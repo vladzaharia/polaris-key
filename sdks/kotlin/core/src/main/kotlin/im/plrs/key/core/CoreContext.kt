@@ -8,15 +8,22 @@
 //
 // Concurrency: suspend functions; the mutable state is guarded by one Mutex held only for
 // bookkeeping, never across network I/O, so the licence and config fetches of one pass overlap.
+//
+// SP-50: every public suspend function is main-safe (store and state-file I/O run on
+// `Dispatchers.IO`; the transport reads on its own), and the context starts itself: the first call
+// that needs the device id, the token or the cache loads them (`ensureStarted`), so a client a host
+// never `start()`ed still sends its device id and sees its stored licence.
 
 package im.plrs.key.core
 
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 
 /** What Core needs. Per-service inputs live in that service's own options. */
@@ -32,7 +39,11 @@ public data class CoreOptions @JvmOverloads constructor(
     val pinnedKeys: TrustSet,
     /** Refresh the signed trust manifest inside `sync()` on Core's own cadence (§4.2). */
     val trustRefresh: Boolean = true,
-    /** Defaults to a [FileStore] in [FileStore.defaultDirectory]. */
+    /**
+     * Defaults to a [FileStore] in [FileStore.defaultDirectory] on a JVM desktop. On Android there is
+     * no default: `PolarisKeyAndroid.client` supplies the Keystore store, and a client built without
+     * one throws `invalid-options` (SP-50).
+     */
     val store: Store? = null,
     /** Defaults to [OkHttpTransport]; [NoNetworkTransport] gives the §7.3 local-only build. */
     val transport: PolarisTransport? = null,
@@ -135,7 +146,8 @@ public class CoreContext(options: CoreOptions) {
 
     /**
      * The release channel every request names (`X-PKey-Channel`) and decisions default to: the
-     * persisted preference [setChannel] wrote, else [buildChannel].
+     * persisted preference [setChannel] wrote, else [buildChannel]. Loaded off the main thread by
+     * [start]; read before then, it reads the preference file itself.
      */
     public val channel: String
         get() {
@@ -157,27 +169,31 @@ public class CoreContext(options: CoreOptions) {
      * caller checks the outlet lock and the licence's channels first (`PolarisKeyClient.setChannel`);
      * the next sync and decision use it.
      */
-    public fun setChannel(channel: String?) {
+    public suspend fun setChannel(channel: String?) {
         if (channel != null) require(CHANNEL_PREFERENCE.matches(channel)) { "not a channel name: $channel" }
-        if (channel == null || channel == buildChannel) channelSlot.write("") else channelSlot.write(channel)
+        io { if (channel == null || channel == buildChannel) channelSlot.write("") else channelSlot.write(channel) }
         preferred = channel?.takeIf { it != buildChannel }
         preferenceLoaded = true
     }
     public val pinnedTrust: TrustSet = options.pinnedKeys
     public val trustRefreshEnabled: Boolean = options.trustRefresh
-    public val store: Store = options.store ?: FileStore(options.productSlug, FileStore.defaultDirectory(options.productSlug))
+    public val store: Store = options.store ?: defaultStore(options.productSlug)
     public val transport: PolarisTransport = options.transport ?: OkHttpTransport()
     public val requestTimeoutSeconds: Double = options.requestTimeoutSeconds
 
     /**
      * The update-health journal (notes/SDK-PARITY-PASS.md §3.13): `update-events.json` in the store's
      * state directory, or memory when the store has none. Every update and pack emitter writes here;
-     * the device report carries the pending events.
+     * the device report carries the pending events. Built on first use: the store's state directory
+     * may be resolved from the platform (Android's no-backup directory), which is disk work (SP-50).
      */
-    public val updateEvents: UpdateEventJournal = UpdateEventJournal(
-        store.stateDirectory?.let { FileStateSlot(java.io.File(it, "update-events.json")) } ?: MemoryStateSlot(),
-        options.clock ?: { System.currentTimeMillis() / 1000 },
-    ).also { j -> j.context = { null to channel } }
+    public val updateEvents: UpdateEventJournal by lazy {
+        UpdateEventJournal(
+            store.stateDirectory?.let { FileStateSlot(java.io.File(it, "update-events.json")) } ?: MemoryStateSlot(),
+            journalClock,
+        ).also { j -> j.context = { null to channel } }
+    }
+    private val journalClock: () -> Long = options.clock ?: { System.currentTimeMillis() / 1000 }
 
     /** True when the transport refuses to dial (§7.3). */
     public val localOnly: Boolean = transport === NoNetworkTransport
@@ -186,7 +202,8 @@ public class CoreContext(options: CoreOptions) {
     private val defaultDeviceNameHook: () -> String? = options.defaultDeviceName ?: ::jvmDefaultDeviceName
 
     /** The label to send (§12.7.1): [override], else `CoreOptions.deviceName`, else the platform default; null sends none. */
-    public fun deviceLabel(override: String? = null): String? = resolveDeviceLabel(override, deviceNameOption, defaultDeviceNameHook)
+    public suspend fun deviceLabel(override: String? = null): String? =
+        io { resolveDeviceLabel(override, deviceNameOption, defaultDeviceNameHook) }
     private val systemClock: () -> Long = options.clock ?: { System.currentTimeMillis() / 1000 }
     private val systemClockMillis: () -> Long =
         options.clock?.let { c -> { c() * 1000 } } ?: { System.currentTimeMillis() }
@@ -208,32 +225,61 @@ public class CoreContext(options: CoreOptions) {
 
     @Volatile private var packSetIdSource: (suspend () -> String?)? = null
 
-    /** Load device id, token and the cached artifacts, re-verifying everything. NO NETWORK. */
-    public suspend fun start() {
-        val deviceId = store.getDeviceId()
-        val token = store.getToken()
-        val cached = store.readCache()
+    private val startLock = Mutex()
+    @Volatile private var started = false
+
+    /** Blocking state-file work, off the caller's dispatcher (SP-50: main-safe). */
+    private suspend inline fun <T> io(crossinline block: suspend () -> T): T = withContext(Dispatchers.IO) { block() }
+
+    /** A store call: on `Dispatchers.IO` unless the store is memory-only ([Store.blocking]). */
+    private suspend inline fun <T> onStore(crossinline block: suspend () -> T): T = if (store.blocking) io(block) else block()
+
+    /** The state lock, after the context has started (see the file comment). */
+    private suspend inline fun <T> locked(action: () -> T): T {
+        ensureStarted()
+        return lock.withLock(action = action)
+    }
+
+    /**
+     * Load device id, token and the cached artifacts, re-verifying everything. NO NETWORK. Calling it
+     * again reloads from the store. Optional: every call that needs this state loads it first.
+     */
+    public suspend fun start(): Unit = startLock.withLock { load() }
+
+    /** [start] unless it has run: the first call loads, later calls return at once. */
+    public suspend fun ensureStarted() {
+        if (started) return
+        startLock.withLock { if (!started) load() }
+    }
+
+    private suspend fun load() {
+        val (deviceId, token, cached) = onStore { Triple(store.getDeviceId(), store.getToken(), store.readCache()) }
+        val channelPreference = io { channelSlot.read() }
         lock.withLock {
             deviceIdValue = deviceId
             tokenValue = token
             tokenSourceValue = null
             loadCache(cached)
+            started = true
         }
+        preferred = channelPreference?.trim()?.takeIf { CHANNEL_PREFERENCE.matches(it) }
+        preferenceLoaded = true
     }
 
     // ── Identity and credential ────────────────────────────────────────────────────────────
-    public suspend fun deviceId(): String = lock.withLock { deviceIdValue }
+    public suspend fun deviceId(): String = locked { deviceIdValue }
 
-    public suspend fun token(): String? = lock.withLock { tokenValue }
+    public suspend fun token(): String? = locked { tokenValue }
 
-    public suspend fun tokenSource(): TokenSource? = lock.withLock { tokenSourceValue }
+    public suspend fun tokenSource(): TokenSource? = locked { tokenSourceValue }
 
     /** Where the store keeps the token (P1b-09); null when it does not report. */
-    public suspend fun storeStatus(): StoreStatus? = store.status()
+    public suspend fun storeStatus(): StoreStatus? = onStore { store.status() }
 
     /** Store [token]; [source] is how it was obtained (null = unknown). Throws on a store failure. */
     public suspend fun setToken(token: String, source: TokenSource? = null) {
-        store.setToken(token)
+        ensureStarted()
+        onStore { store.setToken(token) }
         lock.withLock {
             tokenValue = token
             tokenSourceValue = source
@@ -242,7 +288,7 @@ public class CoreContext(options: CoreOptions) {
 
     /** Wipe every credential and artifact except the v4 update slices, which re-verify. */
     public suspend fun clearAll() {
-        val carried = lock.withLock {
+        val carried = locked {
             val r = record
             tokenValue = null
             tokenSourceValue = null
@@ -265,12 +311,12 @@ public class CoreContext(options: CoreOptions) {
         }
         var failure: Exception? = null
         try {
-            store.clearToken()
+            onStore { store.clearToken() }
         } catch (e: Exception) {
             failure = e
         }
         try {
-            if (carried == null) store.clearCache() else store.writeCache(carried)
+            onStore { if (carried == null) store.clearCache() else store.writeCache(carried) }
         } catch (e: Exception) {
             failure = failure ?: e
         }
@@ -278,16 +324,16 @@ public class CoreContext(options: CoreOptions) {
     }
 
     // ── Clock (§4.2) ───────────────────────────────────────────────────────────────────────
-    public suspend fun highWaterMark(): Long = lock.withLock { clock.highWaterMark }
+    public suspend fun highWaterMark(): Long = locked { clock.highWaterMark }
 
     /** The time every gate comparison and network-path claim check runs at. */
-    public suspend fun now(systemNow: Long? = null): Long = lock.withLock { clock.effectiveNow(systemNow ?: systemClock()) }
+    public suspend fun now(systemNow: Long? = null): Long = locked { clock.effectiveNow(systemNow ?: systemClock()) }
 
     // ── Trust (§1) ─────────────────────────────────────────────────────────────────────────
     /** The effective set: manifest keys UNION pins, pins last. */
-    public suspend fun trust(): TrustSet = lock.withLock { mergeTrust(pinnedTrust, manifestKeys) }
+    public suspend fun trust(): TrustSet = locked { mergeTrust(pinnedTrust, manifestKeys) }
 
-    public suspend fun trustManifest(): TrustManifestDoc? = lock.withLock { manifest }
+    public suspend fun trustManifest(): TrustManifestDoc? = locked { manifest }
 
     /** Verify a manifest against the PINS ONLY and install what it publishes (caller holds the lock). */
     private fun applyTrustManifest(jws: String, checkFreshness: Boolean): Boolean {
@@ -316,7 +362,7 @@ public class CoreContext(options: CoreOptions) {
         }
         if (!response.isOk || response.body.size > JwsVerifier.MAX_HEADER_B64 + JwsVerifier.MAX_PAYLOAD_B64 + 128) return false
         val jws = response.text
-        val applied = lock.withLock {
+        val applied = locked {
             applyTrustManifest(jws, checkFreshness = true).also { ok ->
                 // The effective trust set may have changed: the committed feeds are re-verified.
                 if (ok) reloadUpdateSlices()
@@ -425,10 +471,10 @@ public class CoreContext(options: CoreOptions) {
     }
 
     // ── Cache (§4.1) ───────────────────────────────────────────────────────────────────────
-    public suspend fun cache(): LoadedCache = lock.withLock { loaded }
+    public suspend fun cache(): LoadedCache = locked { loaded }
 
     /** The ETag held for one document (a non-security validator). */
-    public suspend fun etag(slice: DocumentSlice): String? = lock.withLock { record?.etags?.get(slice) }
+    public suspend fun etag(slice: DocumentSlice): String? = locked { record?.etags?.get(slice) }
 
     /** Re-verify the whole record and derive every counter from it (caller holds the lock). */
     private fun loadCache(stored: CacheRecord?) {
@@ -502,10 +548,10 @@ public class CoreContext(options: CoreOptions) {
     }
 
     /** Each canonical channel's `seq` floor, derived from the committed feed that re-verified. */
-    public suspend fun feedFloors(): Map<String, FeedFloor> = lock.withLock { feedFloorsValue }
+    public suspend fun feedFloors(): Map<String, FeedFloor> = locked { feedFloorsValue }
 
     /** The `feeds` and `releaseRecords` slices as Core holds them (re-verified on load). */
-    public suspend fun updateSlices(): UpdateSlices = lock.withLock { UpdateSlices(record?.feeds ?: emptyMap(), record?.releaseRecords ?: emptyMap()) }
+    public suspend fun updateSlices(): UpdateSlices = locked { UpdateSlices(record?.feeds ?: emptyMap(), record?.releaseRecords ?: emptyMap()) }
 
     /**
      * Write the update slices through Core's read-modify-write (§4.1's only mutation path) and
@@ -542,7 +588,7 @@ public class CoreContext(options: CoreOptions) {
 
     /** Read-modify-write the whole record: the ONLY mutation path (§4.1). */
     private suspend fun patchCache(mutate: (CacheRecord) -> CacheRecord) {
-        val next = lock.withLock {
+        val next = locked {
             val n = mutate(record ?: CacheRecord()).copy(v = CACHE_RECORD_VERSION)
             record = n
             loaded = loaded.copy(
@@ -553,7 +599,7 @@ public class CoreContext(options: CoreOptions) {
             n
         }
         try {
-            store.writeCache(next)
+            onStore { store.writeCache(next) }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -570,7 +616,7 @@ public class CoreContext(options: CoreOptions) {
             is BundleInspection.Ok -> inspection.bundle
             is BundleInspection.Refused -> throw PolarisException(inspection.reason.code, "the offline bundle was refused at ${inspection.reason.code}")
         }
-        val stored = lock.withLock {
+        val stored = locked {
             val base = record ?: CacheRecord()
             val docs = LinkedHashMap<DocumentSlice, String>()
             bundle.license?.let { docs[DocumentSlice.license] = it.jws }
@@ -587,7 +633,7 @@ public class CoreContext(options: CoreOptions) {
             loadCache(next)
             next
         }
-        store.writeCache(stored)
+        onStore { store.writeCache(stored) }
         return bundle
     }
 
@@ -618,7 +664,7 @@ public class CoreContext(options: CoreOptions) {
         reacquire: ReacquireFn? = null,
         report: (suspend () -> Unit)? = null,
     ): SyncResult {
-        lock.withLock {
+        locked {
             if (tokenValue == null) return SyncResult()
             reacquireSpent = false
             reacquireInFlight = null
@@ -741,7 +787,7 @@ public class CoreContext(options: CoreOptions) {
 
     /** The single re-acquire for an authenticated call made OUTSIDE a pass; returns the new token. */
     public suspend fun reacquireOutsideSync(reacquire: ReacquireFn): String? {
-        val (current, source) = lock.withLock { (tokenValue ?: return null) to tokenSourceValue }
+        val (current, source) = locked { (tokenValue ?: return null) to tokenSourceValue }
         val next = reacquire(current, source) ?: return null
         setToken(next.token, next.source)
         return next.token
@@ -790,7 +836,7 @@ public class CoreContext(options: CoreOptions) {
     public suspend fun licenseStatus(now: Long? = null): LicenseState {
         val enabled = enabled(ServiceSlug.license)
         val effective = now(now)
-        return lock.withLock {
+        return locked {
             val activation = when {
                 tokenValue != null -> ActivationSource.token
                 loaded.importedBundle != null && loaded.license != null -> ActivationSource.bundle
@@ -812,16 +858,32 @@ public class CoreContext(options: CoreOptions) {
     }
 
     /** The verified config values (`config` of the current config document), for reports and hosts. */
-    public suspend fun configValues(): JsonObject = lock.withLock {
+    public suspend fun configValues(): JsonObject = locked {
         JsonObject(loaded.config?.doc?.config?.mapValues { it.value.value } ?: emptyMap())
     }
 
     /** The verified entitlement values of the current licence document. */
-    public suspend fun entitlementValues(): JsonObject = lock.withLock {
+    public suspend fun entitlementValues(): JsonObject = locked {
         JsonObject(loaded.license?.doc?.entitlements?.mapValues { it.value.value } ?: emptyMap())
     }
 
     public companion object {
+        /**
+         * The store a client gets when [CoreOptions.store] is unset: a [FileStore] on a JVM desktop.
+         * On Android there is none (`user.home` is empty there, so a FileStore would land in `/`):
+         * a clear `invalid-options` instead of a store that fails at the first write (SP-50).
+         */
+        public fun defaultStore(productSlug: String, android: Boolean = RuntimeFamily.isAndroid): Store {
+            if (android) {
+                throw PolarisException(
+                    ErrorCode.invalidOptions,
+                    "On Android, create the client with PolarisKeyAndroid.client(context, options) (the Keystore store), " +
+                        "or pass CoreOptions.store.",
+                )
+            }
+            return FileStore(productSlug, FileStore.defaultDirectory(productSlug))
+        }
+
         /** A context over a [FileStore] at [directory]. */
         public fun withFileStore(options: CoreOptions, directory: File): CoreContext =
             CoreContext(options.copy(store = FileStore(options.productSlug, directory)))

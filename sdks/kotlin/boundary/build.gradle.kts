@@ -51,4 +51,7 @@ dependencies {
     implementation(project(":platform"))
     implementation(project(":godot"))
     implementation(project(":android"))
+    // The opt-in pack decoder (SP-50), so the APK still carries zstd-jni's natives for
+    // tools/check_flavours.sh to check: its Android variant must resolve to the 16 KB-aligned AAR.
+    implementation(project(":zstd"))
 }

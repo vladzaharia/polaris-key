@@ -149,8 +149,10 @@ public class BootGuard(
     /** The version a rollback refused, for `UpdateClient.decide(skipVersion = …)`. */
     public val skipVersion: String? get() = BootGuardState.parse(store.read()).skipVersion
 
-    /** The GUARD stage. */
-    public suspend fun run(): GuardOutcome {
+    /** The GUARD stage. Main-safe: the state file and the slots are read on `Dispatchers.IO` (SP-50). */
+    public suspend fun run(): GuardOutcome = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { runOnIo() }
+
+    private suspend fun runOnIo(): GuardOutcome {
         val loaded = BootGuardState.parse(store.read())
         var st = loaded
         val s = slots ?: return GuardOutcome(BootEvent.GuardResult.ok, false, BootGuardAction.none)

@@ -86,7 +86,7 @@ public class ReleaseClient(
      * `service-unavailable` (discovery names no builds route), the Worker's refusal code,
      * `network-error`, `payload-mismatch`.
      */
-    public suspend fun fetch(target: ReleaseTarget, to: java.io.File, onProgress: ((Long, Long) -> Unit)? = null): FetchedFile {
+    public suspend fun fetch(target: ReleaseTarget, to: java.io.File, onProgress: ((Long, Long) -> Unit)? = null): FetchedFile = io {
         core.requireService(ServiceSlug.release, Feature.releaseDownload)
         val (record, buildId, version) = when (target) {
             is ReleaseTarget.Record -> Triple(target.record, target.buildId, target.record.version)
@@ -114,8 +114,12 @@ public class ReleaseClient(
         val fetched = attestAndRetry(attest) { core.fetchVerified(url, to, artifact.size, artifact.sha256.lowercase(), bearer = true, onProgress = onProgress) }
         // Named by the record's tag when it has one, else the version (the Worker's releaseId).
         core.updateEvents.record(UpdateEvent.updateDownloaded, im.plrs.key.core.releaseId(version, record.tag), fromRelease = core.version)
-        return fetched
+        return@io fetched
     }
+
+    /** SP-50: `fetch` journals and writes files; it runs on `Dispatchers.IO`. */
+    private suspend inline fun <T> io(crossinline block: suspend () -> T): T =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { block() }
 
     private suspend fun recordOf(sha256: String): ReleaseRecordDoc {
         val r = records ?: throw PolarisException(ErrorCode.notConfigured, "fetch() by hash needs pinned release keys (UpdateClientOptions.pinnedReleaseKeys); pass a verified ReleaseTarget.Record instead.")

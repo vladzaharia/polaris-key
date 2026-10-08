@@ -10,6 +10,9 @@
 // Edge-minted tokens are cached IN MEMORY ONLY, per recipe, each bound to the device token it was
 // minted with: they are live credentials for someone else's API, so they never reach the cache
 // file or a keystore, and a deactivation, a revoked token or a different identity invalidates them.
+//
+// SP-50: main-safe. The persisted overrides are read on first use and written on `Dispatchers.IO`,
+// never in the constructor, so building a client on the main thread touches no file.
 
 package im.plrs.key.config
 
@@ -36,7 +39,9 @@ import im.plrs.key.core.ReacquireFn
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.stringValue
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonElement
 
@@ -78,12 +83,24 @@ public class ConfigClient(
 ) {
     /** The host's static overrides; persisted user overrides layer over them. */
     private val hostOverrides = options.localOverrides
-    private val localSlot: StateSlot = options.localStore
-        ?: core.store.stateDirectory?.let { FileStateSlot(java.io.File(it, "local-config.json")) }
-        ?: MemoryStateSlot()
-    private val localLock = Any()
-    @Volatile private var persisted: Map<String, JsonElement> = readPersisted()
-    private val localOverrides: Map<String, JsonElement> get() = hostOverrides + persisted
+    private val localStoreOption = options.localStore
+    private val localSlot: StateSlot by lazy {
+        localStoreOption
+            ?: core.store.stateDirectory?.let { FileStateSlot(java.io.File(it, "local-config.json")) }
+            ?: MemoryStateSlot()
+    }
+    private val localLock = Mutex()
+    @Volatile private var persistedValue: Map<String, JsonElement>? = null
+
+    /** The persisted overrides, read from [localSlot] on first use (off the caller's dispatcher). */
+    private suspend fun persisted(): Map<String, JsonElement> =
+        persistedValue ?: localLock.withLock { loadedLocked() }
+
+    /** Caller holds [localLock]. */
+    private suspend fun loadedLocked(): Map<String, JsonElement> =
+        persistedValue ?: withContext(Dispatchers.IO) { readPersisted() }.also { persistedValue = it }
+
+    private suspend fun localOverrides(): Map<String, JsonElement> = hostOverrides + persisted()
     @Volatile private var catalogCache: Catalog? = null
     private val settings = java.util.concurrent.ConcurrentHashMap<String, MutableStateFlow<JsonElement?>>()
     private val changeFlow = MutableSharedFlow<ConfigChange>(extraBufferCapacity = 64)
@@ -187,35 +204,37 @@ public class ConfigClient(
         val problem = catalogCache?.entry(key)?.problem(value)
             ?: entry?.takeIf { !sameJsonType(it.value, value) }?.let { "$key takes the same type as its current value" }
         if (problem != null) throw PolarisException(ErrorCode.invalidOptions, problem)
-        synchronized(localLock) {
-            persisted = persisted + (key to value)
-            writePersisted(persisted)
-        }
+        localLock.withLock { save(loadedLocked() + (key to value)) }
         publish()
     }
 
     /** Remove the local override for [key] (the remote default, environment or fallback answer again). */
     public suspend fun clear(key: String) {
-        synchronized(localLock) {
-            if (!persisted.containsKey(key)) return
-            persisted = persisted - key
-            writePersisted(persisted)
+        localLock.withLock {
+            val current = loadedLocked()
+            if (!current.containsKey(key)) return
+            save(current - key)
         }
         publish()
     }
 
     /** Remove every persisted local override. */
     public suspend fun clearAll() {
-        synchronized(localLock) {
-            if (persisted.isEmpty()) return
-            persisted = emptyMap()
-            writePersisted(persisted)
+        localLock.withLock {
+            if (loadedLocked().isEmpty()) return
+            save(emptyMap())
         }
         publish()
     }
 
     /** The persisted local overrides (not the host's static ones). */
-    public fun localValues(): Map<String, JsonElement> = persisted
+    public suspend fun localValues(): Map<String, JsonElement> = persisted()
+
+    /** Caller holds [localLock]: write [values], then hold them. */
+    private suspend fun save(values: Map<String, JsonElement>) {
+        withContext(Dispatchers.IO) { writePersisted(values) }
+        persistedValue = values
+    }
 
     /**
      * A live handle on [key]'s effective value: the current value now, then every change (a local
@@ -235,7 +254,7 @@ public class ConfigClient(
         val ctx = context()
         val keys = LinkedHashSet<String>(settings.keys)
         doc()?.config?.keys?.let { keys += it }
-        keys += localOverrides.keys
+        keys += localOverrides().keys
         keys += lastSeen.keys
         for (key in keys) {
             val now = ConfigResolution.resolveValue(ctx, key)
@@ -264,7 +283,7 @@ public class ConfigClient(
     /** The product's active catalog version, as the last verified document stated it. */
     public suspend fun schemaVersion(): Long? = doc()?.schemaVersion
 
-    private suspend fun context(): ResolveContext = ResolveContext(doc()?.config, localOverrides, environment, envPrefix)
+    private suspend fun context(): ResolveContext = ResolveContext(doc()?.config, localOverrides(), environment, envPrefix)
 
     /** The effective value for [key], honouring management state and the override layers. */
     public suspend fun config(key: String, default: JsonElement): JsonElement =

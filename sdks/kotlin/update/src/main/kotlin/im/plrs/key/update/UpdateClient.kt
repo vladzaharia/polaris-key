@@ -267,6 +267,13 @@ public class UpdateClient private constructor(
         this(core, configure(options, core.pinnedTrust), content)
 
     private val serial = Mutex()
+    /**
+     * SP-50: the decision, the record and the feed run on `Dispatchers.IO` (the journal and the cache
+     * are blocking work), so each is main-safe.
+     */
+    private suspend inline fun <T> io(crossinline block: suspend () -> T): T =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { block() }
+
     private val offerFlow = kotlinx.coroutines.flow.MutableSharedFlow<UpdateCheck>(replay = 1, extraBufferCapacity = 4)
 
     /** Every decision that offers a newer app build (`code-ready`, `binary`, `store`, `platform`); replays the last. */
@@ -347,13 +354,13 @@ public class UpdateClient private constructor(
      * decision too (plans/P4-13.md §2.5 steps 10–14).
      */
     public suspend fun decide(channel: String? = null, staged: StagedUpdate? = null, skipVersion: String? = null): UpdateCheck =
-        serial.withLock { decideNow(channel, staged, skipVersion) }
+        io { serial.withLock { decideNow(channel, staged, skipVersion) } }
 
     /** The verified feed `decide()` would decide from (§2.5 steps 1–10), without the record. */
-    public suspend fun channelFeed(channel: String? = null): FeedCheck = serial.withLock { channelFeedNow(channel) }
+    public suspend fun channelFeed(channel: String? = null): FeedCheck = io { serial.withLock { channelFeedNow(channel) } }
 
     /** One release record by its lowercase hex SHA-256 (§2.5 steps 11–16), from the cache or the network. */
-    public suspend fun releaseRecord(hash: String): ReleaseRecordCheck = serial.withLock { releaseRecordNow(hash) }
+    public suspend fun releaseRecord(hash: String): ReleaseRecordCheck = io { serial.withLock { releaseRecordNow(hash) } }
 
     /**
      * A build's download URL (plans/P3-01.md §2.4 "Bytes"): discovery's `distribution.endpoints.builds`,
@@ -398,10 +405,12 @@ public class UpdateClient private constructor(
      */
     public suspend fun install(check: UpdateCheck): InstallResult {
         val driver = installDriver
+        // The driver runs where the caller is (Play's In-App Updates start from the activity); each
+        // driver keeps its own file work off the main thread (SP-50).
         val result = driver.install(check)
         // §3.13: the desktop driver (UK-40) journals nothing itself; the Android drivers do.
         if (driver is DesktopInstallDriver && result == InstallResult.Started) {
-            check.releaseId?.let { core.updateEvents.record(UpdateEvent.updateApplied, it, fromRelease = core.version) }
+            check.releaseId?.let { io { core.updateEvents.record(UpdateEvent.updateApplied, it, fromRelease = core.version) } }
         }
         return result
     }

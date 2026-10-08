@@ -166,8 +166,9 @@ public class LicenseClient(
     }
 
     // ── Activation ───────────────────────────────────────────────────────────────────────────
-    private fun fingerprint(): HardwareFingerprint? =
-        if (fingerprintEnabled) fingerprintSource.collect(core.product) else null
+    /** Collected on `Dispatchers.IO`: a source reads files, the Keystore or a subprocess (SP-50). */
+    private suspend fun fingerprint(): HardwareFingerprint? =
+        if (fingerprintEnabled) kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { fingerprintSource.collect(core.product) } else null
 
     /** Obtain a licence with no key and no sign-in, when the product offers a free tier. */
     public suspend fun enroll(): ActivationResult =

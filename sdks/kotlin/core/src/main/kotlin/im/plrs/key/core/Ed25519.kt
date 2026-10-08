@@ -3,9 +3,17 @@
 // One port, two backends:
 //
 //   JcaEd25519Verifier   `Signature.getInstance("Ed25519")`: JDK 15+ and Android API 33+.
-//   TinkEd25519Verifier  Tink's pure-Java `Ed25519Verify`, for Android API 24–32. Tink is a
-//                        compileOnly dependency of :core: the Android glue (P6-12) brings
-//                        tink-android, and a test classpath brings tink.
+//   TinkEd25519Verifier  Tink's pure-Java `Ed25519Verify`. Tink is a compileOnly dependency of
+//                        :core: the Android glue (P6-12) brings tink-android, and a test classpath
+//                        brings tink.
+//
+// SP-50: a backend is chosen by a KNOWN-ANSWER TEST, never by whether its classes load. On Android
+// 16 (API 36) `KeyFactory.getInstance("Ed25519")` resolves to the AndroidKeyStore provider, which
+// loads fine and then rejects every valid signature, the RFC 8032 vectors included. So `Ed25519.select`
+// runs RFC 8032 §7.1 TEST 1 and TEST 2 (each must verify) and a one-bit change of each (each must
+// fail) through every candidate, in the runtime's order of preference (Tink first on Android, the
+// JCA first elsewhere), and takes the first that answers all four correctly; none is the
+// fail-closed `UnavailableEd25519Verifier`.
 //
 // The verdict must not depend on the backend, so the strictness the contract asks for is not left
 // to either: `Ed25519Strict.prechecks` refuses a non-canonical S (S ≥ L), a non-canonical A or R
@@ -27,7 +35,7 @@ public interface Ed25519Verifier {
     public fun verify(publicKey: ByteArray, message: ByteArray, signature: ByteArray): Boolean
 }
 
-/** The JCA backend (JDK 15+, Android API 33+). */
+/** The JCA backend (JDK 15+, Android API 33+, where its known-answer test passes). */
 public object JcaEd25519Verifier : Ed25519Verifier {
     override val name: String = "jca"
 
@@ -61,15 +69,14 @@ public object JcaEd25519Verifier : Ed25519Verifier {
     }
 }
 
-/** The Tink backend (Android API 24–32). Present only when Tink is on the classpath. */
+/** The Tink backend (preferred on Android). Present only when Tink is on the classpath. */
 public object TinkEd25519Verifier : Ed25519Verifier {
     override val name: String = "tink"
 
-    /** True when Tink's `Ed25519Verify` can be loaded. */
+    /** True when Tink's `Ed25519Verify` can be loaded (named directly, so a minifier keeps it). */
     public val isAvailable: Boolean by lazy {
         try {
-            Class.forName("com.google.crypto.tink.subtle.Ed25519Verify")
-            true
+            com.google.crypto.tink.subtle.Ed25519Verify::class.java.name.isNotEmpty()
         } catch (e: Throwable) {
             false
         }
@@ -95,17 +102,58 @@ public object UnavailableEd25519Verifier : Ed25519Verifier {
 
 /** The process-wide backend selection. */
 public object Ed25519 {
+    /** The candidates in this runtime's order of preference: Tink first on Android, the JCA first elsewhere. */
+    public fun candidates(android: Boolean = RuntimeFamily.isAndroid): List<Ed25519Verifier> =
+        if (android) listOf(TinkEd25519Verifier, JcaEd25519Verifier) else listOf(JcaEd25519Verifier, TinkEd25519Verifier)
+
+    /** The first of [candidates] that passes [knownAnswer], else [UnavailableEd25519Verifier]. */
+    public fun select(candidates: List<Ed25519Verifier> = candidates()): Ed25519Verifier =
+        candidates.firstOrNull { knownAnswer(it) } ?: UnavailableEd25519Verifier
+
     /**
-     * The backend every verification uses: the JCA where it has Ed25519, else Tink, else
-     * [UnavailableEd25519Verifier] (every document is then refused, never accepted unverified).
-     * A host may set it, for example to force Tink in a test.
+     * RFC 8032 §7.1 TEST 1 (the empty message) and TEST 2 (one byte) must verify, and the same
+     * signatures with one bit flipped must not. Never throws: a backend that throws fails.
      */
-    @Volatile
-    public var verifier: Ed25519Verifier = when {
-        JcaEd25519Verifier.isAvailable -> JcaEd25519Verifier
-        TinkEd25519Verifier.isAvailable -> TinkEd25519Verifier
-        else -> UnavailableEd25519Verifier
+    public fun knownAnswer(verifier: Ed25519Verifier): Boolean = try {
+        KNOWN_ANSWERS.all { (key, message, signature) ->
+            val tampered = signature.copyOf().also { it[0] = (it[0].toInt() xor 1).toByte() }
+            verifier.verify(key, message, signature) && !verifier.verify(key, message, tampered)
+        }
+    } catch (e: Throwable) {
+        false
     }
+
+    private fun hex(s: String): ByteArray = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
+
+    /** RFC 8032 §7.1 TEST 1 and TEST 2: (public key, message, signature). */
+    private val KNOWN_ANSWERS: List<Triple<ByteArray, ByteArray, ByteArray>> by lazy {
+        listOf(
+            Triple(
+                hex("d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"),
+                ByteArray(0),
+                hex(
+                    "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b",
+                ),
+            ),
+            Triple(
+                hex("3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c"),
+                hex("72"),
+                hex(
+                    "92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00",
+                ),
+            ),
+        )
+    }
+
+    /**
+     * The backend every verification uses: [select] over this runtime's candidates (see the file
+     * comment), so a backend that loads but answers wrongly is never used and an unusable runtime
+     * refuses every document instead of accepting one unverified. A host may set it, for example to
+     * force Tink in a test.
+     */
+    // Last: its initializer runs the known-answer test over KNOWN_ANSWERS, declared above.
+    @Volatile
+    public var verifier: Ed25519Verifier = select()
 }
 
 /** V4 §1.1's byte comparisons on the trusted key A and the signature R ‖ S. */

@@ -33,7 +33,9 @@ base { archivesName.set("polaris-key-core") }
 dependencies {
     api(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.serialization.json)
-    implementation(libs.okhttp)
+    // `api`: OkHttpTransport's public constructor takes an OkHttpClient, so a consumer that writes
+    // `OkHttpTransport()` must see OkHttp's types (SP-50).
+    api(libs.okhttp)
     compileOnly(libs.tink)
     // UK-40: the OS keyring binding is optional (KeyringStore's `dependency` N/A when absent).
     compileOnly(libs.java.keyring)

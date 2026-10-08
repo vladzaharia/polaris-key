@@ -160,6 +160,13 @@ public interface Store {
      * journal, local config overrides, boot-guard slots); null keeps that state in memory.
      */
     public val stateDirectory: File? get() = null
+
+    /**
+     * Whether these calls block on I/O (SP-50). Core calls a blocking store on `Dispatchers.IO`, so
+     * a host's own store needs no dispatcher of its own; a memory-only store answers false and is
+     * called in place.
+     */
+    public val blocking: Boolean get() = true
 }
 
 /** In-memory store: nothing survives the process. */
@@ -184,6 +191,9 @@ public class InMemoryStore(productSlug: String = "test", deviceId: String? = nul
     override suspend fun clearCache(): Unit = lock.withLock { cache = null }
 
     override suspend fun status(): StoreStatus = StoreStatus(StoreBackend.memory, StoreStatus.Degraded(StoreDegradedReason.notPersistent))
+
+    /** Memory only: Core calls it in place. */
+    override val blocking: Boolean get() = false
 }
 
 /**
@@ -193,35 +203,39 @@ public class InMemoryStore(productSlug: String = "test", deviceId: String? = nul
 public class FileStore(public val productSlug: String, public val directory: File) : Store {
     override val stateDirectory: File get() = directory
     private val lock = Mutex()
+
+    /** The store's lock, on `Dispatchers.IO`: every file (and keyring) access is main-safe (SP-50). */
+    private suspend inline fun <T> locked(crossinline block: suspend () -> T): T =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { lock.withLock { block() } }
     private val tokenFile = File(directory, "token")
     private val deviceFile = File(directory, "device-id")
     private val cacheFile = File(directory, "cache.json")
 
-    override suspend fun getToken(): String? = lock.withLock { read(tokenFile)?.trim()?.ifEmpty { null } }
+    override suspend fun getToken(): String? = locked { read(tokenFile)?.trim()?.ifEmpty { null } }
 
-    override suspend fun setToken(token: String): Unit = lock.withLock { write(tokenFile, token) }
+    override suspend fun setToken(token: String): Unit = locked { write(tokenFile, token) }
 
-    override suspend fun clearToken(): Unit = lock.withLock { delete(tokenFile) }
+    override suspend fun clearToken(): Unit = locked { delete(tokenFile) }
 
-    override suspend fun getDeviceId(): String = lock.withLock {
-        read(deviceFile)?.trim()?.takeIf { it.isNotEmpty() }?.let { return@withLock it }
+    override suspend fun getDeviceId(): String = locked {
+        read(deviceFile)?.trim()?.takeIf { it.isNotEmpty() }?.let { return@locked it }
         val id = DeviceId.derive(productSlug)
         write(deviceFile, id)
         id
     }
 
-    override suspend fun readCache(): CacheRecord? = lock.withLock {
+    override suspend fun readCache(): CacheRecord? = locked {
         val text = try {
             read(cacheFile)
         } catch (e: StoreException) {
             null
-        } ?: return@withLock null
+        } ?: return@locked null
         CacheRecord.fromJson(JsonText.parseOrNull(text))
     }
 
-    override suspend fun writeCache(record: CacheRecord): Unit = lock.withLock { write(cacheFile, record.toJson().toString()) }
+    override suspend fun writeCache(record: CacheRecord): Unit = locked { write(cacheFile, record.toJson().toString()) }
 
-    override suspend fun clearCache(): Unit = lock.withLock { delete(cacheFile) }
+    override suspend fun clearCache(): Unit = locked { delete(cacheFile) }
 
     override suspend fun status(): StoreStatus =
         StoreStatus(
@@ -286,14 +300,31 @@ public class FileStore(public val productSlug: String, public val directory: Fil
     }
 
     public companion object {
-        /** `<base>/polaris-key/<product>`: base is `$XDG_STATE_HOME`, `%LOCALAPPDATA%` or `~`-relative. */
-        public fun defaultDirectory(productSlug: String): File {
-            val os = System.getProperty("os.name").orEmpty()
-            val home = System.getProperty("user.home").orEmpty()
+        /**
+         * `<base>/polaris-key/<product>`: base is `$XDG_STATE_HOME`, `%LOCALAPPDATA%` or `~`-relative.
+         * Throws `invalid-options` when the base would be `~`-relative and there is no home directory
+         * (`user.home` empty, as on Android): never a directory under `/` (SP-50).
+         */
+        public fun defaultDirectory(
+            productSlug: String,
+            home: String = System.getProperty("user.home").orEmpty(),
+            os: String = System.getProperty("os.name").orEmpty(),
+            env: (String) -> String? = System::getenv,
+        ): File {
+            fun fromHome(path: String): File {
+                if (home.isBlank() || home == "?") {
+                    throw PolarisException(
+                        ErrorCode.invalidOptions,
+                        "There is no home directory to keep the device token in (user.home is empty): pass CoreOptions.store, " +
+                            "or a data directory (PolarisKeyDesktop's DesktopOptions.dataDirectory).",
+                    )
+                }
+                return File(home, path)
+            }
             val base = when {
-                os.startsWith("Windows", true) -> System.getenv("LOCALAPPDATA")?.let(::File) ?: File(home, "AppData/Local")
-                os.startsWith("Mac", true) -> File(home, "Library/Application Support")
-                else -> System.getenv("XDG_STATE_HOME")?.takeIf { it.isNotEmpty() }?.let(::File) ?: File(home, ".local/state")
+                os.startsWith("Windows", true) -> env("LOCALAPPDATA")?.takeIf { it.isNotEmpty() }?.let(::File) ?: fromHome("AppData/Local")
+                os.startsWith("Mac", true) -> fromHome("Library/Application Support")
+                else -> env("XDG_STATE_HOME")?.takeIf { it.isNotEmpty() }?.let(::File) ?: fromHome(".local/state")
             }
             return File(File(base, "polaris-key"), productSlug)
         }

@@ -11,6 +11,9 @@
 //
 // It adds no look of its own: every screen is the kit's, and restyling the kit belongs to the UI-kit
 // program (docs/design/UI-KITS.md).
+//
+// SP-50: it starts the client before anything else reads it (`client.start()`, once and main-safe),
+// and builds the boot host off the main thread (the default boot guard checks for update slots on disk).
 
 package im.plrs.key.ui
 
@@ -29,8 +32,10 @@ import im.plrs.key.core.BootOptions
 import im.plrs.key.core.LicenseState
 import im.plrs.key.sdk.bootHost
 import im.plrs.key.sdk.PolarisKeyClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 
 /** The client PolarisKeyApp (or PolarisKeyProvider) provides; null outside one. */
@@ -98,9 +103,10 @@ public fun PolarisKeyApp(
     val gate = remember(client) { PolarisGateState(client.gateActions(), scope) }
     val packState = remember(client, packs) { if (packs) PolarisPackProgressState(client.packProgressSource()) else null }
     LaunchedEffect(client, bootOptions) {
+        client.start()
         gate.start()
         update.follow(updateActions, this)
-        boot.launch(this, client.bootHost(onCheck = update::show))
+        boot.launch(this, withContext(Dispatchers.IO) { client.bootHost(onCheck = update::show) })
     }
     PolarisKeyProvider(client) {
         PolarisBoot(
