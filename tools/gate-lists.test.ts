@@ -32,7 +32,15 @@ const LISTS: [string, string][] = [
   ["CONTRIBUTING.md", read("CONTRIBUTING.md")],
   [
     "packages/docs/src/content/docs/contribute/setup.md",
-    read("packages", "docs", "src", "content", "docs", "contribute", "setup.md"),
+    read(
+      "packages",
+      "docs",
+      "src",
+      "content",
+      "docs",
+      "contribute",
+      "setup.md",
+    ),
   ],
 ];
 

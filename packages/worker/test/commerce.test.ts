@@ -1096,7 +1096,10 @@ describe("commerce: admin", () => {
     // config key, would take the purchase and unlock nothing.
     for (const [flag, message] of [
       ["extras.diceSkin", "the catalog declares no flag extras.diceSkin"],
-      ["extras.theme", "extras.theme is a config key in the catalog, not a flag"],
+      [
+        "extras.theme",
+        "extras.theme is a config key in the catalog, not a flag",
+      ],
     ] as const) {
       const r = await admin(cw, "PUT", "/commerce/products", {
         store: "play",

@@ -122,7 +122,10 @@ describe("prose that counts the services", () => {
       const text = readFileSync(file, "utf8").replace(/\s+/g, " ");
       for (const m of text.matchAll(WHOLE_SET)) {
         counted++;
-        const word = m.slice(1).find((g) => g !== undefined)!.toLowerCase();
+        const word = m
+          .slice(1)
+          .find((g) => g !== undefined)!
+          .toLowerCase();
         if (word !== expected)
           wrong.push(`${relative(repoRoot, file)}: "${m[0]}"`);
       }
