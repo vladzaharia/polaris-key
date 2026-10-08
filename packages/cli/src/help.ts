@@ -830,7 +830,14 @@ export function findCommand(name: string): PkeyCommand | undefined {
 
 // ── Rendering ────────────────────────────────────────────────────────────────────────────────
 
-/** Two columns: each term strong, its description muted and wrapped under its own column. */
+/** Below this many columns a help row stacks: the term, then its description under it. */
+const STACK_COLUMNS = 50;
+
+/**
+ * Two columns: each term strong, its description muted and wrapped under its own column, never
+ * past the terminal's width. Below 50 columns, or when the description column would be narrower
+ * than 16 cells, each term stacks above its description (two cells further in).
+ */
 function twoColumns(
   term: Term,
   rows: ReadonlyArray<readonly [string, string]>,
@@ -838,13 +845,15 @@ function twoColumns(
   indent = 2,
 ): string[] {
   const { painter, caps } = term;
-  const descCol = indent + column + 2;
-  const width = Math.max(20, caps.columns - descCol);
+  const stacked =
+    caps.columns < STACK_COLUMNS || caps.columns - (indent + column + 2) < 16;
+  const descCol = stacked ? indent + 2 : indent + column + 2;
+  const width = Math.max(1, caps.columns - descCol);
   const out: string[] = [];
   for (const [t, text] of rows) {
     const lines = wrapSpans([{ text, style: ["muted"] }], width);
     const name = painter.style(t, ["strong"]);
-    const fits = cellWidth(t) <= column;
+    const fits = !stacked && cellWidth(t) <= column;
     if (!fits) out.push(`${" ".repeat(indent)}${name}`);
     lines.forEach((l, i) => {
       const body = painter.line(l);
@@ -1004,7 +1013,7 @@ function rowSubs(term: string): string[] {
 
 /** Paragraph text wrapped to the terminal, indented. */
 function paragraph(term: Term, text: string, indent = 2): string[] {
-  const width = Math.max(20, term.caps.columns - indent);
+  const width = Math.max(1, term.caps.columns - indent);
   return wrapSpans([{ text }], width).map(
     (l) => `${" ".repeat(indent)}${term.painter.line(l)}`,
   );

@@ -11558,6 +11558,10 @@ var TERMINAL_LAYOUT = {
 };
 
 // ../sdk-node/dist/cli/term/caps.js
+var MIN_LAYOUT_COLUMNS = 32;
+function layoutColumns(columns) {
+  return Math.max(MIN_LAYOUT_COLUMNS, Math.min(TERMINAL_LAYOUT.columns, Math.floor(columns)));
+}
 var truthy = (v) => v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !== "false";
 function isCi(env) {
   return truthy(env.CI) || truthy(env.GITHUB_ACTIONS) || truthy(env.BUILDKITE);
@@ -11617,7 +11621,7 @@ function detectTerminal(opts = {}) {
     dumb,
     animate: tty && !ci && !dumb && !json && !reduced,
     links: tty && !dumb && !ci && !json,
-    columns: Math.max(20, Math.min(TERMINAL_LAYOUT.columns, termCols)),
+    columns: layoutColumns(termCols),
     rows: tty && out?.rows ? out.rows : 24,
     scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
     ci,
@@ -11849,8 +11853,50 @@ function pieces(span) {
   }
   return out;
 }
+function splitAt(text, after, before) {
+  const out = [];
+  let cur = "";
+  for (const ch of text) {
+    if (before?.test(ch) && cur !== "") {
+      out.push(cur);
+      cur = "";
+    }
+    cur += ch;
+    if (after.test(ch)) {
+      out.push(cur);
+      cur = "";
+    }
+  }
+  if (cur)
+    out.push(cur);
+  return out;
+}
+function hardSplit(text, width) {
+  const out = [];
+  let cur = "";
+  let w = 0;
+  for (const ch of text) {
+    const cw = charWidth(ch);
+    if (w + cw > width && cur !== "") {
+      out.push(cur);
+      cur = "";
+      w = 0;
+    }
+    cur += ch;
+    w += cw;
+  }
+  if (cur)
+    out.push(cur);
+  return out;
+}
+function breakPieces(text, kind, width) {
+  const w = Math.max(1, width);
+  const first = kind === "url" ? splitAt(text, /\//, /[?&]/) : splitAt(text, /-/);
+  const second = kind === "url" ? first.flatMap((p) => cellWidth(p) > w ? splitAt(p, /-/, /\./) : [p]) : first;
+  return second.flatMap((p) => cellWidth(p) > w ? hardSplit(p, w) : [p]);
+}
 function wrapSpans(spans, width, ellipsis = "…") {
-  const lines3 = wrapPieces(spans, width, ellipsis);
+  const lines3 = wrapPieces(shrinkToFit(spans, width, ellipsis), width, ellipsis);
   balanceLast(lines3, width);
   return lines3.map(merge);
 }
@@ -11859,7 +11905,7 @@ var widthOf = (pieces2) => cellWidth(textOf(pieces2).trimEnd());
 var words = (pieces2) => pieces2.filter((p) => p.text.trim() !== "");
 function isOrphan(pieces2) {
   const ws = words(pieces2);
-  if (ws.length !== 1 || ws[0].keep)
+  if (ws.length !== 1 || ws[0].keep || ws[0].break)
     return false;
   return ![...ws[0].text].some((c) => charWidth(c) === 2);
 }
@@ -11870,6 +11916,8 @@ function balanceLast(lines3, width) {
   const prev = lines3[n - 2];
   const last = lines3[n - 1];
   for (let k = prev.length - 1; k >= 1; k--) {
+    if (prev.slice(k).some((p) => p.break))
+      return;
     const head = prev.slice(0, k);
     const moved = prev.slice(k).map((p, i, all) => i === all.length - 1 && !/\s$/.test(p.text) ? { ...p, text: `${p.text} ` } : p);
     const tail = [...moved, ...last];
@@ -11885,12 +11933,28 @@ function balanceLast(lines3, width) {
 function wrapPieces(spans, width, ellipsis) {
   const lines3 = [[]];
   let w = 0;
+  const newLine = () => {
+    lines3.push([]);
+    w = 0;
+  };
   for (const span of spans) {
+    if (span.break) {
+      const tw = cellWidth(span.text);
+      if (w > 0 && w + tw > width)
+        newLine();
+      for (const text of breakPieces(span.text, span.break, width)) {
+        const pw = cellWidth(text);
+        if (w > 0 && w + pw > width)
+          newLine();
+        lines3[lines3.length - 1].push({ ...span, text });
+        w += pw;
+      }
+      continue;
+    }
     for (let p of pieces(span)) {
       const pw = cellWidth(p.text.trimEnd());
       if (w > 0 && w + pw > width) {
-        lines3.push([]);
-        w = 0;
+        newLine();
         if (/^\s+$/.test(p.text))
           continue;
       }
@@ -11902,17 +11966,35 @@ function wrapPieces(spans, width, ellipsis) {
   }
   return lines3;
 }
+var SHRINK_FLOOR = 8;
+function shrinkToFit(spans, width, ellipsis) {
+  const total = cellWidth(spans.map((s) => s.text).join("").trimEnd());
+  const i = spans.findIndex((s) => s.shrink);
+  if (i < 0 || total <= width)
+    return spans;
+  const span = spans[i];
+  const lead = /^\s*/.exec(span.text)[0];
+  const trail = /\s*$/.exec(span.text)[0];
+  const inner = span.text.slice(lead.length, span.text.length - trail.length);
+  const room = Math.max(SHRINK_FLOOR, cellWidth(inner) - (total - width));
+  const out = [...spans];
+  out[i] = {
+    ...span,
+    text: `${lead}${truncateEnd(inner, room, ellipsis)}${trail}`
+  };
+  return out;
+}
 function merge(pieces2) {
   const out = [];
   for (const p of pieces2) {
     const last2 = out[out.length - 1];
-    if (last2 && last2.link === p.link && last2.keep === p.keep && (last2.style ?? []).join() === (p.style ?? []).join())
+    if (last2 && last2.link === p.link && last2.keep === p.keep && last2.break === p.break && (last2.style ?? []).join() === (p.style ?? []).join())
       last2.text += p.text;
     else
       out.push({ ...p });
   }
   const last = out[out.length - 1];
-  if (last && !last.keep)
+  if (last && !last.keep && !last.break)
     last.text = last.text.trimEnd();
   return out.filter((s) => s.text !== "");
 }
@@ -11937,6 +12019,20 @@ var ERASE_LINE = "\r\x1B[2K";
 var UP = "\x1B[1A";
 var HIDE_CURSOR = "\x1B[?25l";
 var SHOW_CURSOR = "\x1B[?25h";
+function physicalRows(widths, columns) {
+  const c = columns && columns > 0 ? columns : Infinity;
+  return widths.reduce((n, w) => n + Math.max(1, Math.ceil(w / c)), 0);
+}
+function eraseRows(n) {
+  if (n <= 0)
+    return "";
+  let s = ERASE_LINE;
+  for (let i = 1; i < n; i++)
+    s += UP + ERASE_LINE;
+  return s;
+}
+var widthsOf = (lines3) => lines3.map((l) => cellWidth(l));
+var linesOf = (f) => typeof f === "function" ? f() : f;
 function guardCursor(out) {
   if (!out.isTTY || typeof process === "undefined")
     return () => void 0;
@@ -11960,67 +12056,157 @@ function guardCursor(out) {
 var LiveRegion = class {
   out;
   caps;
-  drawn = 0;
+  host;
+  drawn = [];
+  frame = null;
+  /** Lines at the top of the current frame already printed above the region. */
+  head = 0;
   printedOnce = false;
   hidden = false;
+  listening = false;
   unguard = () => void 0;
-  constructor(out, caps) {
+  constructor(out, caps, host) {
     this.out = out;
     this.caps = caps;
+    this.host = host;
+  }
+  get columns() {
+    return this.out.columns;
+  }
+  get rows() {
+    return this.caps.rows ?? this.out.rows ?? Infinity;
   }
   erase() {
-    if (this.drawn === 0)
-      return "";
-    let s = ERASE_LINE;
-    for (let i = 1; i < this.drawn; i++)
-      s += UP + ERASE_LINE;
-    this.drawn = 0;
+    const s = eraseRows(physicalRows(this.drawn, this.columns));
+    this.drawn = [];
     return s;
   }
-  /** Show `lines` in place of the previous frame. */
-  draw(lines3) {
+  /** The frame's lines from `head` on, printing any that do not fit above the region. */
+  place(lines3) {
+    const widths = widthsOf(lines3);
+    let start = Math.min(this.head, lines3.length);
+    while (start < lines3.length - 1 && physicalRows(widths.slice(start), this.columns) > this.rows)
+      start++;
+    let s = "";
+    if (start > this.head) {
+      const fixed = lines3.slice(this.head, start);
+      s += `${fixed.join("\n")}
+`;
+      this.host?.printed.push({
+        lines: fixed,
+        widths: widths.slice(this.head, start),
+        redraw: null,
+        owner: this
+      });
+      this.head = start;
+    }
+    s += lines3.slice(start).join("\n");
+    this.drawn = widths.slice(start);
+    return s;
+  }
+  listen(on) {
+    if (on === this.listening)
+      return;
+    this.listening = on;
+    if (on)
+      this.out.on?.("resize", this.onResize);
+    else {
+      const off = this.out.off ?? this.out.removeListener;
+      off?.call(this.out, "resize", this.onResize);
+    }
+  }
+  /** SIGWINCH: lay the region (and the flow's lines above it, when they are all on the screen) out again. */
+  onResize = () => {
+    if (!this.caps.animate || this.frame === null)
+      return;
+    this.host?.refreshSize();
+    const region = physicalRows(this.drawn, this.columns);
+    const printed = this.host?.printed ?? [];
+    const above = printed.reduce((n, b) => n + physicalRows(b.widths, this.columns), 0);
+    let s;
+    if (printed.length > 0 && above + region <= this.rows) {
+      s = eraseRows(above + region);
+      for (let i = printed.length - 1; i >= 0; i--)
+        if (printed[i].owner === this)
+          printed.splice(i, 1);
+      this.head = 0;
+      for (const b of printed) {
+        if (b.redraw) {
+          b.lines = b.redraw();
+          b.widths = widthsOf(b.lines);
+        }
+        if (b.lines.length)
+          s += `${b.lines.join("\n")}
+`;
+      }
+    } else
+      s = eraseRows(region);
+    this.drawn = [];
+    s += this.place(linesOf(this.frame));
+    this.out.write(s);
+  };
+  /** Show `frame` in place of the previous one. */
+  draw(frame) {
     if (!this.caps.animate) {
+      const lines3 = linesOf(frame);
       if (!this.printedOnce && lines3.length)
         this.out.write(`${lines3.join("\n")}
 `);
       this.printedOnce = true;
       return;
     }
+    this.frame = frame;
     let s = this.erase();
     if (!this.hidden) {
       s = HIDE_CURSOR + s;
       this.hidden = true;
       this.unguard = guardCursor(this.out);
     }
-    s += lines3.join("\n");
-    this.drawn = lines3.length;
+    this.listen(true);
+    s += this.place(linesOf(frame));
     this.out.write(s);
   }
   /** Print lines above the region (they stay), then redraw nothing until the next draw. */
-  print(lines3) {
+  print(frame) {
+    const lines3 = linesOf(frame);
     const s = this.caps.animate ? this.erase() : "";
     this.out.write(`${s}${lines3.join("\n")}
 `);
+    this.keep(frame, lines3);
     this.printedOnce = false;
   }
-  /** Replace the region with its final lines and stop. */
-  commit(lines3) {
-    const s = this.caps.animate ? this.erase() : "";
+  keep(frame, lines3) {
+    if (lines3.length)
+      this.host?.printed.push({
+        lines: lines3,
+        widths: widthsOf(lines3),
+        redraw: typeof frame === "function" ? frame : null
+      });
+  }
+  stop() {
     const show3 = this.hidden ? SHOW_CURSOR : "";
     this.hidden = false;
     this.unguard();
     this.unguard = () => void 0;
+    this.listen(false);
+    this.frame = null;
+    this.head = 0;
+    return show3;
+  }
+  /** Replace the region with its final lines and stop. */
+  commit(frame = []) {
+    const lines3 = linesOf(frame);
+    const s = this.caps.animate ? this.erase() : "";
+    const show3 = this.stop();
     this.out.write(`${s}${lines3.length ? `${lines3.join("\n")}
 ` : ""}${show3}`);
+    this.keep(frame, lines3);
     this.printedOnce = false;
   }
   /** Clear the region without printing (Ctrl-C, an error path). */
   close() {
     const s = this.caps.animate ? this.erase() : "";
-    const show3 = this.hidden ? SHOW_CURSOR : "";
-    this.hidden = false;
-    this.unguard();
-    this.unguard = () => void 0;
+    const show3 = this.stop();
     if (s || show3)
       this.out.write(s + show3);
   }
@@ -22596,15 +22782,17 @@ var VALUELESS = [
 function findCommand(name) {
   return COMMANDS.find((c) => c.name === name);
 }
+var STACK_COLUMNS = 50;
 function twoColumns(term, rows, column, indent = 2) {
   const { painter, caps } = term;
-  const descCol = indent + column + 2;
-  const width = Math.max(20, caps.columns - descCol);
+  const stacked = caps.columns < STACK_COLUMNS || caps.columns - (indent + column + 2) < 16;
+  const descCol = stacked ? indent + 2 : indent + column + 2;
+  const width = Math.max(1, caps.columns - descCol);
   const out = [];
   for (const [t, text] of rows) {
     const lines3 = wrapSpans([{ text, style: ["muted"] }], width);
     const name = painter.style(t, ["strong"]);
-    const fits = cellWidth(t) <= column;
+    const fits = !stacked && cellWidth(t) <= column;
     if (!fits) out.push(`${" ".repeat(indent)}${name}`);
     lines3.forEach((l, i) => {
       const body = painter.line(l);
@@ -22729,7 +22917,7 @@ function rowSubs(term) {
   return (term.split(" ")[1] ?? "").split("|");
 }
 function paragraph(term, text, indent = 2) {
-  const width = Math.max(20, term.caps.columns - indent);
+  const width = Math.max(1, term.caps.columns - indent);
   return wrapSpans([{ text }], width).map(
     (l) => `${" ".repeat(indent)}${term.painter.line(l)}`
   );
