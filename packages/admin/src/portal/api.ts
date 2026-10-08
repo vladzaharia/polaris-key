@@ -377,6 +377,21 @@ export interface PortalDownloads {
   }>;
   extras: PortalDownloadFile[];
   stores: PortalStoreLink[];
+  /** The download page's install sources (Homebrew, Scoop, AltStore, F-Droid, Obtainium…),
+   *  shown under each platform so an owner sees every channel (P0-48). An older Worker omits it. */
+  installSources?: PortalInstallSource[];
+}
+
+/**
+ * One install source (P0-48): a store link's shape, where `deepLink` is the app's own link (the
+ * one to open) and `url` the source or repository URL to paste by hand (a browser shows JSON or a
+ * 404 there, so it is never the link).
+ */
+export interface PortalInstallSource extends PortalStoreLink {
+  /** F-Droid only: the repository's signing-certificate SHA-256, else `null`. */
+  fingerprint: string | null;
+  /** A QR code of the deep link as a `data:image/svg+xml` URI, for a phone to scan; or `null`. */
+  qr: string | null;
 }
 
 // ── Package access (F-21; PORTAL.md §4.20, §4.21, G13) ───────────────────────────────────

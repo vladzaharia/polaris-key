@@ -871,9 +871,13 @@ don't apply are **omitted**, with their TOC entry and pill (P14).
 **Get it:** the recommended panel (honest platform detection: a Universal build is named as such;
 both Mac builds otherwise, Apple silicon first), **Change platform**, **Also yours on** store pills
 (App Store, Google Play, **Steam: Activate key** with the `registerkey` link, Microsoft Store,
-Flathub), **All platforms** grouped by OS then **Extras**, each file with a copyable middle-truncated
-SHA-256, and "Download links are made fresh when you click". Phone: "On this iPhone" with the store
-action and **Email me the desktop links**.
+Flathub), **All platforms** grouped by OS (the device's own OS first) then **Extras**, each file
+with a copyable middle-truncated SHA-256, each OS's files followed by its **Other ways to install**
+(P0-48: the download page's Homebrew, Scoop, winget, AltStore, SideStore, AltStore PAL, F-Droid
+and Obtainium, each opening the app's deep link, never a raw source URL, with the source URL or
+command to copy, F-Droid's fingerprint, and on a computer a QR code for the phone), and "Download
+links are made fresh when you click". Phone: "Install on this iPhone" with the store and the
+sources that work on it, and **Email me the desktop links**.
 
 **Cloud Sync** (only when the product has the Cloud Sync service turned on, S-17):
 

@@ -24,7 +24,9 @@
  *   - the store links (`storeLink`: every URL built from a re-validated identity) and their
  *     liveness (`storeState`: reported live for a non-yanked channel release that no rollout
  *     holds back). A store that is not live is still returned, flagged, so the portal can say
- *     "coming soon" rather than nothing; the page omits it.
+ *     "coming soon" rather than nothing; the page omits it;
+ *   - on request (`installSources`, P0-48), the page's own install sources (Homebrew, Scoop,
+ *     AltStore, SideStore, F-Droid, Obtainium), read from the page model itself.
  *
  * Read-only, like every hook.
  */
@@ -40,10 +42,12 @@ import type {
   CustomerDownloadsQuery,
   CustomerFile,
   CustomerPick,
+  CustomerInstallSource,
   CustomerRelease,
   CustomerStoreLink,
   HookContext,
 } from "../../../core/hooks.js";
+import { qrSvg } from "../../../core/qr.js";
 import {
   PAGE_PLATFORMS,
   type PagePlatform,
@@ -52,15 +56,21 @@ import { listOutlets } from "../outlets.js";
 import { feedOutlet, MAX_FEED_SCAN } from "../feeds/select.js";
 import {
   ARCH_PREFERENCE,
+  buildDownloadModel,
   FINGERPRINT_RE,
   formatOf,
+  INSTALL_SOURCE_KINDS,
   lineOf,
   minOsOf,
   STORE_KINDS,
   storeLink,
   storeState,
+  type PageAction,
   type StoreKind,
 } from "./model.js";
+import { consoleOriginOf } from "./index.js";
+// The download page's own escaper (`render.ts`), so the portal's QR label matches the page's.
+import { escapeHtmlDecimalApostrophe as esc } from "../../../core/platform.js";
 
 /** The most releases one answer reads (each costs a builds and an artifacts read). */
 export const CUSTOMER_MAX_RELEASES = 20;
@@ -274,5 +284,68 @@ export async function customerDownloads(
     );
   }
 
-  return { channel: history.channel, releases, stores };
+  return {
+    channel: history.channel,
+    releases,
+    stores,
+    ...(q.installSources
+      ? { installSources: await installSources(ctx, history.channel) }
+      : {}),
+  };
+}
+
+/**
+ * The download page's install sources for one channel (P0-48): what a stranger is offered there
+ * beyond the stores and the files, so an owner signed in to the portal sees every channel too.
+ * Taken from the page model itself, not rebuilt: the same feed liveness, the same validated
+ * identities, the same URLs. Empty when the page has no model (a non-public deliverable has no
+ * feeds), and the feed-served sources are left out when the console origin is unknown.
+ */
+async function installSources(
+  ctx: HookContext,
+  channel: string,
+): Promise<CustomerInstallSource[]> {
+  const model = await buildDownloadModel({
+    db: ctx.db,
+    env: ctx.env,
+    product: { slug: ctx.product.slug, name: ctx.product.name },
+    hooks: ctx.hooks,
+    consoleOrigin: consoleOriginOf(ctx.env),
+    bytesOrigin: null,
+    channel,
+  });
+  const kinds: readonly string[] = INSTALL_SOURCE_KINDS;
+  return (model?.actions ?? [])
+    .filter((a) => kinds.includes(a.kind))
+    .map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      outletId: a.outletId,
+      platforms: [...a.platforms],
+      label: a.label,
+      url: a.url,
+      deepLink: a.deepLink,
+      command: a.command,
+      activateUrl: null,
+      live: true,
+      version: a.version,
+      fingerprint: a.fingerprint,
+      qr: scanCode(a),
+    }));
+}
+
+/**
+ * The QR code the portal shows on a computer, for the phone that will act on it (P0-48): the
+ * deep link where there is one (scanned, `altstore://` or `fdroidrepos://` opens the app that
+ * adds the source, while the source's `https:` URL opens JSON or a 404 in a browser), else the
+ * page's own QR text (also when the deep link is too long to encode). A `data:` URI, as the
+ * portal's sign-in code is (`identity/portal/deviceLogin.ts`): the portal's CSP allows
+ * `img-src 'self' data:`. `null` for a command, or when neither fits the encoder (`core/qr.ts`).
+ */
+function scanCode(a: PageAction): string | null {
+  for (const text of [a.deepLink, a.qr]) {
+    const svg = text ? qrSvg(text, esc(`QR code: ${a.label}`)) : null;
+    if (svg) return `data:image/svg+xml;base64,${btoa(svg)}`;
+  }
+  return null;
 }

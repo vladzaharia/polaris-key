@@ -35,6 +35,9 @@ pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in pl
 pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
 pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
+pnpm gen:platform-inventory -- --check  # platform-inventory drift gate (Env ↔ inventory ↔ wrangler.toml)
+pnpm gen:settings -- --check     # settings drift gate (registry → settings reference page + console search index)
+pnpm gen:brand -- --check        # brand-token drift gate (packages/brand → CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin)
 pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift gate (after pnpm build)
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck

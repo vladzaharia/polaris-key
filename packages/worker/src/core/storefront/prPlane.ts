@@ -476,13 +476,6 @@ export type PrVerdict =
   | "needs-author-feedback"
   | "validation-issue"
   | "in-review";
-export const PR_VERDICTS: readonly PrVerdict[] = [
-  "merged",
-  "closed",
-  "needs-author-feedback",
-  "validation-issue",
-  "in-review",
-];
 
 export function prVerdict(
   store: PrPlaneStore,

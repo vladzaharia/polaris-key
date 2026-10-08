@@ -45,20 +45,6 @@ export type RefusalReason =
   | "license_unusable"
   | "key_entry_limit";
 
-export const REFUSAL_REASONS: readonly RefusalReason[] = [
-  "device_limit",
-  "hardware_mismatch",
-  "fingerprint_required",
-  "license_unusable",
-  "key_entry_limit",
-];
-
-export function isRefusalReason(v: unknown): v is RefusalReason {
-  return (
-    typeof v === "string" && (REFUSAL_REASONS as readonly string[]).includes(v)
-  );
-}
-
 /** What the refusal site knows about the device it turned away. */
 export interface RefusalInput {
   product: string;

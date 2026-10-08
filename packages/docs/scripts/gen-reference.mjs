@@ -317,7 +317,9 @@ rows answer only on the registry host, \`pkg.plrs.im\`, and are shown with it.`,
 }
 
 // ── 6. D1 data model ───────────────────────────────────────────────────────────
-const TABLE_OWNERS = {
+// Exported for the worker's table-crossing report (test/tableCrossings.test.ts, P0-48) until the
+// map moves into the worker (P0-18), when this generator imports it from there instead.
+export const TABLE_OWNERS = {
   core: [
     "products",
     "product_keys",

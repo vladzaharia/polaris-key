@@ -13614,12 +13614,12 @@ var RESERVED_ENTITLEMENT_KEYS = [
   {
     key: "app.minVersion",
     type: "string",
-    rule: "The lower of the tier's and the license's minimum version."
+    rule: "The higher of the tier's and the license's minimum version: a license can narrow its tier's version window, never widen it."
   },
   {
     key: "app.maxVersion",
     type: "string",
-    rule: "The higher of the tier's and the license's maximum version."
+    rule: "The lower of the tier's and the license's maximum version: a license can narrow its tier's version window, never widen it."
   },
   {
     key: "license.tier",
@@ -43062,7 +43062,7 @@ async function cmdSdk(parsed, cwd, stdout, fetchImpl) {
   const lang = flagString(parsed, "lang");
   if (lang === void 0) {
     const product2 = flagString(parsed, "product") ?? parsed.positional[0];
-    const baseUrl = flagString(parsed, "base-url") ?? "https://key.example.com";
+    const baseUrl = flagString(parsed, "base-url") ?? DEFAULT_BASE_URL;
     if (!product2) throw new Error(SDK_CONFIG_USAGE);
     stdout.write(
       `${sdkSnippet({
