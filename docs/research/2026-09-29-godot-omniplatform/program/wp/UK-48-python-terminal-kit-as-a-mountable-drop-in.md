@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (SDK usability review (2026-10-08))                            |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                               |
-| Depends on  | none                                                                                                                                 |
+| Depends on  | [UK-51](UK-51-terminal-drop-in-contract.md)                                                                                          |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-64](SP-64-framework-drop-ins-integration-and-docs.md), [UK-53](UK-53-textual-screens.md) |
 | Role        | `pkey-implementer`                                                                                                                   |
 | Plan mode   | no                                                                                                                                   |

@@ -4,7 +4,7 @@
 | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | DOC: Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/) (Developers: features) |
 | Size        | 0.4 engineer-weeks                                                                                                          |
-| Depends on  | [DOC-03a](DOC-03a-skeleton-and-contracts.md)                                                                                |
+| Depends on  | [DOC-03a](DOC-03a-skeleton-and-contracts.md), [SP-54](SP-54-signed-in-subject-in-licence-document.md)                       |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                      |
 | Role        | `pkey-implementer`                                                                                                          |
 | Plan mode   | no                                                                                                                          |

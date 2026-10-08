@@ -1,16 +1,16 @@
 # SP-54 Signed-in subject in the licence document (`profile.user` whenever `devices.subject` is set)
 
-| Field       | Value                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (framework drop-ins (2026-10-08))                                           |
-| Size        | 0.6–0.9 engineer-weeks                                                                                                     |
-| Depends on  | [I-05](I-05-accounts-core.md)                                                                                              |
-| Unblocks    | none                                                                                                                       |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                      |
-| Plan mode   | yes: a `pkey-wire-planner` writes `plans/SP-54.md` first (it amends the approved `plans/I-24.md`); no code before approval |
-| Gates       | `plan-mode`, `corpus`, `threat-model`, `drift-gate`                                                                        |
-| Human input | none                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                  |
+| Field       | Value                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (framework drop-ins (2026-10-08))                                                 |
+| Size        | 0.6–0.9 engineer-weeks                                                                                                           |
+| Depends on  | [I-05](I-05-accounts-core.md)                                                                                                    |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-64](SP-64-framework-drop-ins-integration-and-docs.md), [DOC-09b](DOC-09b-sign-in.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                            |
+| Plan mode   | yes: a `pkey-wire-planner` writes `plans/SP-54.md` first (it amends the approved `plans/I-24.md`); no code before approval       |
+| Gates       | `plan-mode`, `corpus`, `threat-model`, `drift-gate`                                                                              |
+| Human input | none                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                        |
 
 ## Goal
 
@@ -18,7 +18,7 @@ Signed-in subject in the licence document (`profile.user` whenever `devices.subj
 
 ## Why
 
-The owner asked for drop-ins that gate a server route or a CLI command with the app's signed licence document, verified offline ([plan](../../../2026-10-08-framework-drop-ins/README.md) §1, §4). The owner approved the plan and decided its eleven questions on 2026-10-08. This is its package SP-54 (optional).
+The owner asked for drop-ins that gate a server route or a CLI command with the app's signed licence document, verified offline ([plan](../../../2026-10-08-framework-drop-ins/README.md) §1, §4). The owner approved the plan and decided its eleven questions on 2026-10-08. This is its package SP-54.
 
 ## Read first
 
@@ -41,7 +41,8 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
-2. Write the plan and stop for approval.
+2. Wait for the approved `plans/SP-54.md`.
+3. Implement the scope; run the green gate; hand off.
 
 ## Acceptance criteria
 

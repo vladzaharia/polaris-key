@@ -20,7 +20,7 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
 
-- Push delivery uses SP-66's format once SP-66 is approved (webhooks are later; decision 11).
+- Until SP-66 is approved CM-22 ships no developer webhook; `purchase.refunded` is an event only (→ SP-67).
 
 ## Approved plans (2026-10-08)
 

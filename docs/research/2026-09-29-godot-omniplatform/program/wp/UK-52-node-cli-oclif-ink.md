@@ -27,7 +27,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Scope
 
-**In:** A separate package `@polaris-key/oclif` (a plugin with `init` and `prerun` gate hooks, read from a command's `static polarisKey`), and Ink components (`<PolarisGate>`) in `@polaris-key/node/ink`. Both follow UK-51's rows and exit 4.
+**In:** A separate package `@polaris-key/oclif` (a plugin with `init` and `prerun` gate hooks, read from a command's `static polarisKey`), and Ink components (`<PolarisGate>`) in `@polaris-key/node/ink`. Both follow UK-51's rows and exit 4. `@polaris-key/oclif` joins `publish-sdks.yml`'s npm tiers and the feed-closure check (P0-52's lockstep set).
 
 **Out** (and where it belongs instead):
 

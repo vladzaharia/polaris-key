@@ -16,7 +16,7 @@
 
 The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
 
-- The lockstep set gains `@polaris-key/server` and `@polaris-key/oclif`.
+- P0-52 is already built. The lockstep set gains `@polaris-key/server` and `@polaris-key/oclif` in SP-55 and UK-52, which join `publish-sdks.yml`'s npm tiers and the feed-closure check.
 
 ## Goal
 

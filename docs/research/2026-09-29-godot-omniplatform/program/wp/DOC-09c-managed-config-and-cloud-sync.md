@@ -16,7 +16,7 @@
 
 The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
 
-- Managed config carries the server lane.
+- Managed config carries the server lane, written on the plain client; `serverClient()` (SP-63, optional) is a later improvement.
 
 ## Goal
 

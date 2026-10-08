@@ -27,7 +27,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Scope
 
-**In:** One new package `@polaris-key/server` whose root is the Fetch core (`authenticate(request)`), with the subpaths `./express`, `./hono`, `./next` (App Router route handlers) and `./testing`, each on an optional peer dependency; it depends on `client-core`, `jws` and `protocol` only. `requireLicense`, `requireEntitlement(n)`, `requireSignIn()`, `polarisKey()`, the trust-manifest fetch and LRU cache of §5.1, the `PolarisAuth` context, `onRefusal`/`errors: "throw"`/`onVerdict`, and `POLARIS_REQUEST_HEADERS`. Replays `backend-matrix.json` `verdict` and `problem`. `examples/server-express`, `-hono`, `-next`. In 0.9 `verifyLicenseDocument` moves here from `@polaris-key/node/server` with a `replaces` row and no alias; `examples/node-express` is rewritten on the drop-in.
+**In:** One new package `@polaris-key/server` whose root is the Fetch core (`authenticate(request)`), with the subpaths `./express`, `./hono`, `./next` (App Router route handlers) and `./testing`, each on an optional peer dependency; it depends on `client-core`, `jws` and `protocol` only. `requireLicense`, `requireEntitlement(n)`, `requireSignIn()`, `polarisKey()`, the trust-manifest fetch and LRU cache of §5.1, the `PolarisAuth` context, `onRefusal`/`errors: "throw"`/`onVerdict`, and `POLARIS_REQUEST_HEADERS`. Replays `backend-matrix.json` `verdict` and `problem`. `examples/server-express`, `-hono`, `-next`. In 0.9 `verifyLicenseDocument` moves here from `@polaris-key/node/server` with a `replaces` row and no alias; `examples/node-express` is rewritten on the drop-in. The package joins `publish-sdks.yml`'s npm tiers and the feed-closure check (P0-52's lockstep set).
 
 **Out** (and where it belongs instead):
 
@@ -35,7 +35,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Design notes
 
-- Node needs ≥ 22.13; Hono, Bun and Deno users live in `@polaris-key/server`, not `@polaris-key/node` (§8).
+- `@polaris-key/node` needs Node ≥ 22.13; Hono, Bun and Deno users live in `@polaris-key/server`, not `@polaris-key/node` (§8).
 - Next.js is header-only in v1 (route handlers); a cookie mode can follow after SP-40 (decision 9).
 
 ## Steps

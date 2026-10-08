@@ -878,7 +878,7 @@ framework}`.
 | Id    | Title                                                                                                                              | Phase | Weeks   | Depends on                                  | Plan mode                                         | Role              | Tier                      |
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------- | ----- | ------- | ------------------------------------------- | ------------------------------------------------- | ----------------- | ------------------------- |
 | SP-53 | Backend credential contract: `X-PKey-License`, the verdict, `backend` codes and copy, `backend-matrix.json`, client-core `backend` | SP    | 1.0–1.4 | —                                           | yes (executes §9.1)                               | pkey-implementer  | must                      |
-| SP-54 | Signed-in subject in the licence document (`profile.user` whenever `devices.subject` is set)                                       | SP    | 0.6–0.9 | I-05                                        | yes (`plans/SP-54.md` by pkey-wire-planner first) | pkey-implementer  | should                    |
+| SP-54 | Signed-in subject in the licence document (`profile.user` whenever `devices.subject` is set)                                       | SP    | 0.6–0.9 | I-05                                        | yes (`plans/SP-54.md` by pkey-wire-planner first) | pkey-implementer  | must                      |
 | SP-55 | `@polaris-key/server`: the Fetch core, Express, Hono and Next.js, `/testing`, their example apps                                   | SP    | 1.6–2.2 | SP-53                                       | no                                                | pkey-implementer  | must                      |
 | SP-56 | Python server drop-ins: `polaris_key.server` with FastAPI/Starlette, Django and DRF, Flask                                         | SP    | 1.4–1.9 | SP-53                                       | no                                                | pkey-sdk-porter   | must                      |
 | SP-57 | Kotlin server drop-ins: `polaris-key-server` and the Ktor plugin                                                                   | SP    | 1.0–1.4 | SP-53                                       | no                                                | pkey-sdk-porter   | must                      |
@@ -902,8 +902,8 @@ Totals by tier:
 
 | Tier   | Weeks                                                              |
 | ------ | ------------------------------------------------------------------ |
-| Must   | 9.3–12.9                                                           |
-| Should | 7.5–10.5                                                           |
+| Must   | 9.9–13.8                                                           |
+| Should | 6.9–9.6                                                            |
 | Later  | 2.7–3.9 (SP-66 and SP-67 wait for the owner's go on push webhooks) |
 | All    | about 20–27                                                        |
 
@@ -926,10 +926,7 @@ Totals by tier:
 
 ## 13. Open questions
 
-Each question has a recommendation. **The owner decided all eleven on 2026-10-08 (lead authority):**
-1 the header is `X-PKey-License`; 2 default freshness is one hour (the document's `expiresAt`); 3 the one-hour replay window is accepted in v1 and documented; 4 `profile.user` is added now, via SP-54; 5 one `@polaris-key/server` with a subpath per framework; 6 `apple/swift-crypto` is added for Linux builds; 7 no online checks in v1; 8 a server is a device with its own licence; 9 Next.js is header-only in v1 (route handlers); 10 a refused CLI gate exits 4; 11 webhooks come later (SP-66 is a held plan, deferred until the owner's go).
-
-The recommendations below stand as decided.
+Each question has a recommendation. The owner accepted every recommendation below (lead authority, 2026-10-08).
 
 1. **Header or `Authorization`?** Recommend `X-PKey-License`. It follows the `X-PKey-*` family,
    leaves the app's own `Authorization` alone, and matches today's example.

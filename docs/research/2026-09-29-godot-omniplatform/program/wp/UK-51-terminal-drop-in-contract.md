@@ -1,16 +1,16 @@
 # UK-51 Terminal drop-in contract: the `cli` family in `ui-matrix.json`, exit 4
 
-| Field       | Value                                                                                                                                                             |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (framework drop-ins (2026-10-08))                                                           |
-| Size        | 0.4–0.6 engineer-weeks                                                                                                                                            |
-| Depends on  | [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                                                            |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-52](UK-52-node-cli-oclif-ink.md), [UK-53](UK-53-textual-screens.md), [UK-54](UK-54-jvm-terminal-kit-clikt-picocli.md) |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                             |
-| Plan mode   | yes: executes the approved plan [ADME.md](../../../2026-10-08-framework-drop-ins/README.md) §7.1 and §9.3                                                         |
-| Gates       | `plan-mode`, `corpus`, `drift-gate`                                                                                                                               |
-| Human input | none                                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                         |
+| Field       | Value                                                                                                                                                                                                                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (framework drop-ins (2026-10-08))                                                                                                                                                                                |
+| Size        | 0.4–0.6 engineer-weeks                                                                                                                                                                                                                                                                 |
+| Depends on  | [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                                                                                                                                                                                 |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-46](UK-46-node-terminal-kit-for-existing-clis.md), [UK-48](UK-48-python-terminal-kit-as-a-mountable-drop-in.md), [UK-52](UK-52-node-cli-oclif-ink.md), [UK-53](UK-53-textual-screens.md), [UK-54](UK-54-jvm-terminal-kit-clikt-picocli.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                     |
+| Plan mode   | no: executes the approved plan [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §7.1 and §9.3                                                                                                                                                               |
+| Gates       | `corpus`, `drift-gate`                                                                                                                                                                                                                                                                 |
+| Human input | none                                                                                                                                                                                                                                                                                   |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                              |
 
 ## Goal
 
@@ -27,7 +27,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Scope
 
-**In:** Execute §7.1 and §9.3: a `cli` family in `ui-matrix.json` — verb ids and sets (`END_USER` default, developer verbs opt-in), mount and collision outcomes (`polaris-verb-collision`), help grouping (`cli.help.group`), the gate outcome for each gate state × TTY × `--json`, and exit 4. `EXIT.licenseRequired = 4` in Node's `cli/json.ts` and Python's exit table (`status` keeps exit 1). `uiMatrixVersion` becomes 2 if UK-02b has shipped, else it rides UK-02b's version 1.
+**In:** Execute §7.1 and §9.3: a `cli` family in `ui-matrix.json` — verb ids and sets (`END_USER` default, developer verbs opt-in), mount and collision outcomes (`polaris-verb-collision`), help grouping (`cli.help.group`), the gate outcome for each gate state × TTY × `--json`, and exit 4. `EXIT.licenseRequired = 4` in Node's `cli/json.ts` and Python's exit table (`status` keeps exit 1). `uiMatrixVersion` becomes 2.
 
 **Out** (and where it belongs instead):
 
