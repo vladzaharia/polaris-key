@@ -38,6 +38,8 @@ public final class PolarisKeyModel {
     public var lastError: String?
     /// The last activation or enrolment, typed, so a view can branch on its kind.
     public private(set) var lastActivation: ActivationResult?
+    /// The key of the last activation attempt, kept to retry once after Replace a device.
+    public private(set) var lastKey: String?
     /// Set by `updateAvailable` events.
     public private(set) var availableUpdate: String?
     /// Epoch seconds of the last sync this model ran.
@@ -107,6 +109,7 @@ public final class PolarisKeyModel {
         isWorking = true
         defer { isWorking = false }
         let result = await client.activate(key: trimmed)
+        lastKey = trimmed
         lastActivation = result
         lastError = copy.activationMessage(result)
         await reload()
@@ -139,6 +142,17 @@ public final class PolarisKeyModel {
     /// Whether `flag` is on (`isEnabled(flag:)`; false whenever the gate is not usable).
     public func isEnabled(flag: String) async -> Bool {
         await client.isEnabled(flag: flag)
+    }
+
+    /// The portal link that frees a seat after the last activation was refused with `device_limit`
+    /// (with the key as a fragment on an `/activate` link, never on a QR), or nil. The gate offers
+    /// it as Replace a device.
+    public var offeredManageURL: String? {
+        guard case .deviceLimit(_, _, let served)? = lastActivation, let key = lastKey else {
+            return nil
+        }
+        return PolarisGateModel.offeredManageURL(
+            served, key: key, returnURL: nil, presentation: PolarisManagePresentation.current)
     }
 
     /// Shown in place of the key field on store outlets that forbid key entry (App Store 3.1.1).

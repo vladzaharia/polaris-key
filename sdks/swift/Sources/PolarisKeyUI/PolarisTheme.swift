@@ -50,12 +50,12 @@ public struct PolarisCopy: Sendable {
     public init(
         productName: String = "this app",
         welcomeTitle: String? = nil,
-        welcomeSubtitle: String = "Sign in or enter a license key to continue.",
-        signInButton: String = "Sign in",
+        welcomeSubtitle: String = "",
+        signInButton: String = KitButtonCase.button("Sign in"),
         orDividerLabel: String = "or",
         licenseKeyPlaceholder: String = "License key",
         activateButton: String = "Activate",
-        retryButton: String = "Retry",
+        retryButton: String = KitButtonCase.button("Try again"),
         reconnectButton: String = "Reconnect",
         graceTitle: String = ErrorCopy.title(LicenseStatus.grace.rawValue),
         graceSubtitle: String = ErrorCopy.message(LicenseStatus.grace.rawValue),
@@ -70,7 +70,7 @@ public struct PolarisCopy: Sendable {
         versionBlockSubtitle: String = "Your current version isn't permitted to run.",
         activationMessages: [String: String] = [:],
         signOutFailedMessage: String = "Sign-out couldn't clear the stored license.",
-        freeDeviceButton: String = "Replace a device",
+        freeDeviceButton: String = KitButtonCase.button("Replace a device"),
         freeDeviceScanCaption: String =
             "Scan with your phone to free a device, then try again."
     ) {
@@ -106,6 +106,11 @@ public struct PolarisCopy: Sendable {
         let generic = "Welcome to \(PolarisCopy().productName)"
         return welcomeTitle == generic && productName == PolarisCopy().productName
             ? "Welcome to \(name)" : welcomeTitle
+    }
+
+    /// Every button and link label on the gate, for the title-case parity test.
+    public var buttonLabels: [String] {
+        [signInButton, activateButton, retryButton, reconnectButton, freeDeviceButton]
     }
 
     /// The sentence for an activation outcome: the product's override for its code, else the

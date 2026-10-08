@@ -221,7 +221,9 @@ struct PolarisProductIcon: View {
                     picture
                 }
             case .monogram(let letter):
-                shape.fill(style.sunken)
+                // An OPAQUE tile, grouped before any shadow, so a drop shadow never shows through
+                // as a grey smudge behind the letter.
+                shape.fill(style.palette.raised)
                     .overlay(shape.strokeBorder(style.palette.borderSubtle, lineWidth: 1))
                     .overlay(
                         Text(letter)
@@ -229,30 +231,36 @@ struct PolarisProductIcon: View {
                             .foregroundStyle(style.palette.textStrong)
                     )
                     .frame(width: size, height: size)
+                    .compositingGroup()
             }
         }
         .accessibilityHidden(true)
     }
 }
 
-/// The product header on a focused step (UI-KITS §1.2): the icon at 32 pt beside the product's
-/// name in the strong text colour, the strongest line in the header.
+/// The product header on a focused step (UI-KITS §1.2): the icon beside the product's name in the
+/// strong text colour, the strongest line in the header. In the split the pane carries the icon, so
+/// the header is the name alone (`showsIcon: false`).
 struct PolarisProductHeader: View {
     let identity: PolarisProductIdentity
     let style: PolarisKitStyle
     var alignment: HorizontalAlignment = .center
+    var showsIcon = true
 
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 32
 
     var body: some View {
         HStack(spacing: PolarisSpace.xs) {
-            PolarisProductIcon(identity: identity, size: min(iconSize, 48), style: style)
+            if showsIcon {
+                PolarisProductIcon(identity: identity, size: min(iconSize, 48), style: style)
+            }
             Text(identity.name)
                 .font(style.font(.label))
                 .foregroundStyle(style.palette.textStrong)
                 .lineLimit(2)
                 .multilineTextAlignment(alignment == .leading ? .leading : .center)
         }
+        .frame(maxWidth: .infinity, alignment: alignment == .leading ? .leading : .center)
         .accessibilityElement(children: .combine)
     }
 }

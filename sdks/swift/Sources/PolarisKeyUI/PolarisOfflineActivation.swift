@@ -25,8 +25,8 @@ public struct PolarisOfflineActivation: View {
     @State private var deviceId = ""
     @State private var message: String?
     @State private var imported = false
+    @State private var picking = false
     @State private var importing = false
-    @State private var copied = false
 
     public init(
         model: PolarisKeyModel, theme: PolarisTheme = PolarisTheme(),
@@ -41,28 +41,31 @@ public struct PolarisOfflineActivation: View {
 
     public var body: some View {
         PolarisOfflineSurface(
-            product: model.client.product, deviceId: deviceId, message: message,
-            imported: imported, copied: copied, theme: theme,
-            onCopy: {
-                PolarisPasteboard.copy(deviceId)
-                copied = true
+            productName: PolarisProductIdentity.resolve(theme: theme, presentation: nil).name,
+            deviceId: deviceId, message: message, imported: imported, importing: importing,
+            theme: theme,
+            onImportFile: { picking = true },
+            onPaste: {
+                if let text = PolarisPasteboard.string(),
+                    !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                {
+                    importBundle(text)
+                } else {
+                    message = copy.offlineEmpty
+                }
             },
-            onImportFile: { importing = true },
-            onPaste: { if let text = PolarisPasteboard.string() { importBundle(text) } },
+            onDropText: { importBundle($0) },
             onDone: onDone
         )
-        .dropDestination(for: String.self) { items, _ in
-            guard let text = items.first else { return false }
-            importBundle(text)
-            return true
-        }
         .fileImporter(
-            isPresented: $importing, allowedContentTypes: [.data, .plainText, .text]
+            isPresented: $picking, allowedContentTypes: [.data, .plainText, .text]
         ) { result in
             guard case .success(let url) = result else { return }
+            importing = true
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             guard let data = try? Data(contentsOf: url) else {
+                importing = false
                 message = ErrorCopy.message(ErrorCode.bundle)
                 return
             }
@@ -72,6 +75,7 @@ public struct PolarisOfflineActivation: View {
     }
 
     private func importBundle(_ text: String) {
+        importing = true
         // A dropped file arrives as its URL string on some platforms.
         if let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
             url.isFileURL, let data = try? Data(contentsOf: url)
@@ -80,6 +84,7 @@ public struct PolarisOfflineActivation: View {
         }
         let jws = text.trimmingCharacters(in: .whitespacesAndNewlines)
         Task {
+            defer { importing = false }
             do {
                 _ = try await model.client.importBundle(jws)
                 imported = true
@@ -96,24 +101,39 @@ public struct PolarisOfflineActivation: View {
     }
 }
 
-/// The offline card for one state, without a live client (previews and render tests).
+/// The offline page for one state, without a live client (previews and render tests).
+///
+/// The request code is the device id alone, and Copy and the QR carry exactly what is shown; the
+/// product sits on its own meta line above. The code never truncates (it wraps), and while the id
+/// loads a redacted placeholder of the same length stands in with no Copy.
 struct PolarisOfflineSurface: View {
-    let product: String
+    let productName: String
     let deviceId: String
     let message: String?
     let imported: Bool
-    let copied: Bool
+    var importing = false
     let theme: PolarisTheme
-    let onCopy: () -> Void
     let onImportFile: () -> Void
     let onPaste: () -> Void
+    var onDropText: (String) -> Void = { _ in }
     let onDone: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.polarisKeyBranding) private var branding
     @Environment(\.polarisKeyPresentation) private var presentation
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var targeted = false
 
     private var copy: PolarisKitCopy { theme.copy.kit }
+
+    /// Drag and drop is offered on macOS and iPad (regular width), not on iPhone.
+    private var offersDrop: Bool {
+        #if os(macOS)
+            return true
+        #else
+            return sizeClass == .regular
+        #endif
+    }
 
     var body: some View {
         let style = PolarisKitStyle(
@@ -121,16 +141,20 @@ struct PolarisOfflineSurface: View {
         let identity = PolarisProductIdentity.resolve(theme: theme, presentation: presentation)
         PolarisAdaptivePage(style: style, identity: identity) { layout in
             PolarisPageHeading(
-                title: copy.offlineTitle, identity: identity, style: style, layout: layout,
-                symbol: imported ? "checkmark.seal.fill" : nil)
+                title: imported ? copy.importedMessage : copy.offlineTitle, identity: identity,
+                style: style, layout: layout, symbol: imported ? "checkmark.seal.fill" : nil)
         } detail: { layout in
-            PolarisPageText(
-                text: Text(imported ? copy.importedMessage : copy.offlineSubtitle), style: style,
-                layout: layout)
+            if !imported {
+                VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.xxs) {
+                    PolarisPageText(text: Text(copy.offlineRequest), style: style, layout: layout)
+                    PolarisPageText(text: Text(copy.offlineLoadHint), style: style, layout: layout)
+                }
+            }
         } act: { layout in
             if imported {
                 PolarisPageActions(
-                    primaryTitle: copy.confirmContinue, primary: onDone, layout: layout)
+                    primaryTitle: copy.confirmContinue, primary: onDone, layout: layout,
+                    style: style)
             } else {
                 request(style: style, layout: layout)
             }
@@ -138,66 +162,112 @@ struct PolarisOfflineSurface: View {
         .modifier(KitTint(color: style.tint))
     }
 
-    /// The request code (with Copy, and a QR another phone can scan when this device is offline),
-    /// then the ways to bring the activation file back.
+    /// A placeholder of the id's real length (32 characters), drawn redacted while it loads.
+    private var shownCode: String {
+        deviceId.isEmpty ? String(repeating: "x", count: 32) : deviceId
+    }
+
     @ViewBuilder private func request(style: PolarisKitStyle, layout: PolarisKitLayout)
         -> some View
     {
-        VStack(spacing: PolarisSpace.l) {
-            VStack(spacing: PolarisSpace.xs) {
+        VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.l) {
+            VStack(alignment: .leading, spacing: PolarisSpace.xs) {
+                Text(String(format: copy.offlineProductLabel, productName))
+                    .font(style.font(.meta)).foregroundStyle(style.palette.textMuted)
                 Text(copy.requestCodeLabel)
                     .font(style.font(.meta)).foregroundStyle(style.palette.textMuted)
-                    .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
-                HStack(spacing: PolarisSpace.s) {
-                    Text("\(product) · \(deviceId)")
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(style.palette.textStrong)
-                        // Never truncated: every character is needed to mint the bundle.
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.6)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    if !deviceId.isEmpty {
-                        Button(action: onCopy) {
-                            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                                .imageScale(.large)
-                                .frame(minWidth: 28, minHeight: 28)
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel(copied ? copy.copiedLabel : copy.copyButton)
-                    }
-                }
-                .padding(.vertical, PolarisSpace.s)
-                .padding(.horizontal, PolarisSpace.m)
-                .background(
-                    style.sunken, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                if !deviceId.isEmpty, layout != .sideBySide {
-                    PolarisQRCode(deviceId, accessibilityLabel: copy.requestCodeLabel)
-                        .frame(maxWidth: 128, maxHeight: 128)
-                        .padding(.top, PolarisSpace.xs)
-                        .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
-                }
+                codeCard(style: style, layout: layout)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .modifier(OfflineDropTarget(
+                enabled: offersDrop, targeted: $targeted, caption: copy.dropHint, style: style,
+                onDrop: onDropText))
+
+            if let message {
+                PolarisErrorLine(message: message, theme: theme, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            PolarisPageActions(
+                primaryTitle: copy.importFileButton, primary: onImportFile,
+                secondaryTitle: copy.cancelButton, secondary: onDone,
+                leadingTitle: copy.pasteButton, leading: onPaste, layout: layout, style: style,
+                primaryDisabled: importing)
+            if importing { ProgressView().controlSize(.small) }
+        }
+    }
+
+    /// The code card, with the QR beside it in the split and under it elsewhere.
+    @ViewBuilder private func codeCard(style: PolarisKitStyle, layout: PolarisKitLayout)
+        -> some View
+    {
+        let card = HStack(spacing: PolarisSpace.s) {
+            Text(shownCode)
+                .font(style.monoFont(size: 15))
+                .foregroundStyle(style.palette.textStrong)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .redacted(reason: deviceId.isEmpty ? .placeholder : [])
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if !deviceId.isEmpty {
+                PolarisCopyButton(
+                    value: deviceId, title: copy.copyCodeLabel, copiedTitle: copy.copiedLabel,
+                    style: style)
+            }
+        }
+        .padding(.vertical, PolarisSpace.s)
+        .padding(.horizontal, PolarisSpace.m)
+        .background(style.tileFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(style.palette.borderSubtle, lineWidth: 1))
+        if deviceId.isEmpty {
+            card
+        } else if layout == .split {
+            HStack(alignment: .center, spacing: PolarisSpace.m) {
+                card
+                PolarisQRCode(deviceId, accessibilityLabel: copy.requestCodeLabel)
+                    .frame(width: 96, height: 96)
+            }
+        } else if layout == .column {
             VStack(spacing: PolarisSpace.s) {
-                PolarisPageActions(
-                    primaryTitle: copy.importFileButton, primary: onImportFile,
-                    secondaryTitle: copy.pasteButton, secondary: onPaste, layout: layout,
-                    secondaryCancels: false)
-                Text(copy.dropHint)
-                    .font(style.font(.meta)).foregroundStyle(style.palette.textMuted)
-                    .multilineTextAlignment(layout.textAlignment)
-                    .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
-                if let message {
-                    PolarisErrorLine(
-                        message: message, theme: theme, alignment: layout.textAlignment
-                    )
-                    .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
-                }
-                Button(copy.cancelButton, action: onDone)
-                    .buttonStyle(.borderless)
-                    .keyboardShortcut(.cancelAction)
-                    .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+                card
+                PolarisQRCode(deviceId, accessibilityLabel: copy.requestCodeLabel)
+                    .frame(width: 128, height: 128)
             }
+        } else {
+            card
+        }
+    }
+}
+
+/// The request area as a drop target: a dashed outline that highlights while a file is over it,
+/// with the drop hint as its caption. A no-op where drops are not offered (iPhone).
+private struct OfflineDropTarget: ViewModifier {
+    let enabled: Bool
+    @Binding var targeted: Bool
+    let caption: String
+    let style: PolarisKitStyle
+    let onDrop: (String) -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            VStack(alignment: .leading, spacing: PolarisSpace.xs) {
+                content
+                Text(caption).font(style.font(.meta)).foregroundStyle(style.palette.textMuted)
+            }
+            .padding(PolarisSpace.s)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(
+                        targeted ? AnyShapeStyle(style.textTintStyle) : AnyShapeStyle(style.palette.borderSubtle),
+                        style: StrokeStyle(lineWidth: 1.5, dash: [6, 4])))
+            .dropDestination(for: String.self) { items, _ in
+                guard let text = items.first else { return false }
+                onDrop(text)
+                return true
+            } isTargeted: { targeted = $0 }
+        } else {
+            content
         }
     }
 }

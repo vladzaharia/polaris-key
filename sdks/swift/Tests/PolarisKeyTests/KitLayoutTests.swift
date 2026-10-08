@@ -52,6 +52,9 @@
         static let iPhoneMaxLandscape = KitSize(
             name: "iphone-956x440", size: CGSize(width: 956, height: 440),
             insets: EdgeInsets(top: 0, leading: 62, bottom: 21, trailing: 62))
+        static let iPhone390 = KitSize(
+            name: "iphone-390x844", size: CGSize(width: 390, height: 844),
+            insets: EdgeInsets(top: 47, leading: 0, bottom: 34, trailing: 0))
         static let iPad = KitSize(
             name: "ipad-1024x1366", size: CGSize(width: 1024, height: 1366),
             insets: EdgeInsets(top: 24, leading: 0, bottom: 20, trailing: 0))
@@ -74,6 +77,18 @@
         #else
             static let snapshotted = phonesAndTablets
         #endif
+    }
+
+    enum KitTypeName {
+        static func short(_ t: DynamicTypeSize) -> String {
+            switch t {
+            case .large: return "L"
+            case .accessibility1: return "AX1"
+            case .accessibility3: return "AX3"
+            case .accessibility5: return "AX5"
+            default: return "\(t)"
+            }
+        }
     }
 
     /// The two presets the kit ships: native (the default) and the Polaris Key look.
@@ -176,6 +191,90 @@
                 return Result(frames: box.frames, safe: safe, image: image)
             #endif
         }
+
+        struct Inspection {
+            var fieldFound = false
+            var fieldAlpha: CGFloat = 0
+            var hitIsField = false
+        }
+
+        /// Host `view` and report on its text field: whether it exists, its opacity, and whether a
+        /// hit-test at its centre lands in it.
+        static func inspect<V: View>(_ view: V, at kitSize: KitSize) -> Inspection {
+            let size = kitSize.size
+            var out = Inspection()
+            #if canImport(UIKit)
+                let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height))
+                let window = UIWindow(frame: CGRect(origin: .zero, size: size))
+                window.rootViewController = controller
+                window.isHidden = false
+                controller.view.frame = window.bounds
+                controller.view.layoutIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+                controller.view.layoutIfNeeded()
+                if let field = firstSubview(of: UITextField.self, in: controller.view) {
+                    out.fieldFound = true
+                    out.fieldAlpha = field.alpha
+                    let centre = field.convert(CGPoint(x: field.bounds.midX, y: field.bounds.midY), to: controller.view)
+                    let hit = controller.view.hitTest(centre, with: nil)
+                    out.hitIsField = hit === field || (hit?.isDescendant(of: field) ?? false)
+                }
+                window.isHidden = true
+            #else
+                let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
+                host.frame = CGRect(origin: .zero, size: size)
+                let window = KitKeyWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                window.contentView = host
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+                host.layoutSubtreeIfNeeded()
+                if let field = firstSubview(of: NSTextField.self, in: host, where: { $0.isEditable }) {
+                    out.fieldFound = true
+                    out.fieldAlpha = field.alphaValue
+                    let centre = field.convert(NSPoint(x: field.bounds.midX, y: field.bounds.midY), to: host)
+                    let hit = host.hitTest(host.convert(centre, to: host.superview))
+                    out.hitIsField = hit === field || (hit?.isDescendant(of: field) ?? false)
+                }
+                window.contentView = nil
+            #endif
+            return out
+        }
+
+        #if canImport(UIKit)
+            static func firstSubview<T: UIView>(of type: T.Type, in root: UIView) -> T? {
+                if let hit = root as? T { return hit }
+                for sub in root.subviews { if let hit = firstSubview(of: type, in: sub) { return hit } }
+                return nil
+            }
+
+            /// Focus the key field, wait, and report whether the SAME field is still first
+            /// responder (focusing, and the keyboard that follows, must never rebuild it).
+            static func focusStaysOnSameField<V: View>(_ view: V, at kitSize: KitSize) -> Bool {
+                let size = kitSize.size
+                let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height))
+                let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+                let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: CGRect(origin: .zero, size: size))
+                window.frame = CGRect(origin: .zero, size: size)
+                window.rootViewController = controller
+                window.makeKeyAndVisible()
+                controller.view.frame = window.bounds
+                controller.view.layoutIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+                guard let field = firstSubview(of: UITextField.self, in: controller.view) else { return false }
+                _ = field.becomeFirstResponder()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.6))
+                let still = firstSubview(of: UITextField.self, in: controller.view)
+                let result = still === field && field.isFirstResponder
+                window.isHidden = true
+                return result
+            }
+        #else
+            static func firstSubview<T: NSView>(of type: T.Type, in root: NSView, where match: (T) -> Bool = { _ in true }) -> T? {
+                if let hit = root as? T, match(hit) { return hit }
+                for sub in root.subviews { if let hit = firstSubview(of: type, in: sub, where: match) { return hit } }
+                return nil
+            }
+        #endif
 
         static func writePNG(_ image: CGImage, to url: URL) {
             try? FileManager.default.createDirectory(
@@ -286,9 +385,15 @@
         /// Render `make()` at every size, type size and preset, asserting `roles` are on screen.
         private func check<V: View>(
             screen: String, roles: [PolarisLayoutRole], sizes: [KitSize],
-            types: [DynamicTypeSize] = [.large, .accessibility3],
+            types: [DynamicTypeSize]? = nil,
             _ make: () -> V
         ) {
+            // macOS ignores dynamicTypeSize for these fonts, so its AX rows would only duplicate L.
+            #if os(macOS)
+                let types = [DynamicTypeSize.large]
+            #else
+                let types = types ?? [.large, .accessibility3]
+            #endif
             for size in sizes {
                 for type in types {
                     for preset in KitPreset.allCases {
@@ -297,7 +402,7 @@
                                 styled(make(), preset), at: size, scheme: scheme, type: type,
                                 snapshot: snapshots != nil)
                             let label =
-                                "\(screen) \(size.name) \(type == .large ? "L" : "AX3") \(preset)"
+                                "\(screen) \(size.name) \(KitTypeName.short(type)) \(preset)"
                             for role in roles {
                                 guard let frame = result.frames[role] else {
                                     XCTFail("\(label): \(role) was not laid out")
@@ -311,7 +416,7 @@
                             if let dir = snapshots, let image = result.image,
                                 KitSizes.snapshotted.contains(where: { $0.name == size.name })
                             {
-                                let typeSuffix = type == .large ? "" : "-ax3"
+                                let typeSuffix = type == .large ? "" : "-\(KitTypeName.short(type).lowercased())"
                                 let schemeName = scheme == .dark ? "dark" : "light"
                                 let file =
                                     "\(size.name)\(typeSuffix)-\(preset.rawValue)-\(schemeName).png"
@@ -363,19 +468,155 @@
             }
         }
 
+        /// A realistic 32-character device id (DeviceID.derive length), at L and AX3.
+        static let realDeviceId = "dev_7Q2Mx9cLr4TbV0aZ3WPLDA8kN5eY"
+
         func testOfflineActivationKeepsImportOnScreen() {
             check(
                 screen: "offline", roles: [.primaryAction],
-                sizes: [
-                    KitSizes.iPhoneSE, KitSizes.iPhoneSELandscape, KitSizes.macSmall, KitSizes.mac,
-                ],
-                types: [.large]
+                // Mac windows at Dynamic Type AX3 are not a real combination (macOS ignores it),
+                // so the Mac sizes run only on macOS and the phone and tablet sizes elsewhere.
+                sizes: KitSizes.snapshotted
             ) {
                 PolarisOfflineSurface(
-                    product: "tidewater", deviceId: "dev_7Q2Mx9cLr4TbV0aZ", message: nil,
-                    imported: false, copied: false, theme: Tidewater.theme, onCopy: {},
-                    onImportFile: {}, onPaste: {}, onDone: {})
+                    productName: "Tidewater Studio", deviceId: Self.realDeviceId, message: nil,
+                    imported: false, theme: Tidewater.theme, onImportFile: {}, onPaste: {},
+                    onDone: {})
             }
+        }
+
+        func testSignInKeepsTheCodeOnScreenAtAX5() {
+            #if !os(macOS)
+                check(
+                    screen: "signin", roles: [.code, .primaryAction],
+                    sizes: [KitSizes.iPhoneSE, KitSizes.iPhoneMax], types: [.accessibility5]
+                ) {
+                    PolarisSignInSurface(
+                        phase: .waiting(Self.prompt), theme: Tidewater.theme,
+                        attach: .constant(true), onOpen: { _ in }, onAccept: {}, onRetry: {},
+                        onCancel: {})
+                }
+            #endif
+        }
+
+        /// A long device-code domain at L and AX1 still lays out with the code and Open browser
+        /// on screen (the page token never breaks; it moves to its own line).
+        func testALongDeviceCodeDomainKeepsTheActionOnScreen() {
+            let long = SignInPrompt(
+                deviceCode: "dc", userCode: "WDJB-MJHT",
+                verificationUri: "https://licensing.tidewater-studio-games.example.com/device",
+                verificationUriComplete:
+                    "https://licensing.tidewater-studio-games.example.com/device?user_code=WDJB-MJHT",
+                expiresIn: 600, interval: 5, expiresAt: Int(Date().timeIntervalSince1970) + 252)
+            check(
+                screen: "signin-long", roles: [.code, .primaryAction],
+                sizes: [KitSizes.iPhoneSE, KitSizes.iPhoneSELandscape, KitSizes.macSmall],
+                types: [.large, .accessibility1]
+            ) {
+                PolarisSignInSurface(
+                    phase: .waiting(long), theme: Tidewater.theme, attach: .constant(true),
+                    onOpen: { _ in }, onAccept: {}, onRetry: {}, onCancel: {})
+            }
+        }
+
+        /// Tall phones and iPad portrait: the act is pinned within 24 pt of the bottom safe area.
+        func testTheTallColumnPinsTheActToTheBottom() {
+            #if !os(macOS)
+                for size in [KitSizes.iPhoneMax, KitSizes.iPhone390, KitSizes.iPad] {
+                    let result = KitHost.render(
+                        styled(
+                            PolarisGateSurface(
+                                status: .needsActivation, allowedRange: nil, isWorking: false,
+                                lastError: nil, licenseKey: .constant(""), theme: Tidewater.theme,
+                                onSignIn: {}, onActivate: { _ in }, onRefresh: {},
+                                onActivateOffline: {}, content: { Text("App") }), .native),
+                        at: size, scheme: .dark, type: .large, snapshot: false)
+                    let act = result.frames[.primaryAction]
+                    XCTAssertNotNil(act, size.name)
+                    // Sign in is the first control; the act's last control is the extras row,
+                    // which sits within the safe area. The act as a whole sits low: Sign in is in
+                    // the lower half.
+                    if let act {
+                        XCTAssertGreaterThan(
+                            act.minY, result.safe.midY - 1, "\(size.name): the act sits low")
+                    }
+                }
+            #endif
+        }
+
+        func testButtonLabelsAreTitleCaseOnMacAndSentenceCaseOnIOS() {
+            let minor: Set<String> = KitButtonCase.minorWords
+            let labels = PolarisKitCopy().buttonLabels + PolarisCopy().buttonLabels
+            for label in labels {
+                let words = label.split(separator: " ").map(String.init)
+                for (i, word) in words.enumerated() {
+                    guard let first = word.first(where: { $0.isLetter }) else { continue }
+                    let edge = i == 0 || i == words.count - 1
+                    #if os(macOS)
+                        let bare = word.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+                        if edge || !minor.contains(bare.lowercased()) {
+                            XCTAssertTrue(first.isUppercase, "\(label): '\(word)' is not title case")
+                        } else {
+                            XCTAssertTrue(first.isLowercase, "\(label): '\(word)' should be lower")
+                        }
+                    #else
+                        if i > 0 {
+                            XCTAssertTrue(first.isLowercase, "\(label): '\(word)' is not sentence case")
+                        }
+                    #endif
+                }
+            }
+            #if os(macOS)
+                XCTAssertEqual(PolarisCopy().signInButton, "Sign In")
+                XCTAssertEqual(PolarisCopy().freeDeviceButton, "Replace a Device")
+                XCTAssertEqual(PolarisKitCopy().importFileButton, "Load File…")
+                XCTAssertEqual(PolarisCopy().retryButton, "Try Again")
+            #else
+                XCTAssertEqual(PolarisCopy().signInButton, "Sign in")
+                XCTAssertEqual(PolarisKitCopy().importFileButton, "Load file…")
+            #endif
+        }
+
+        /// The resting key field is fully opaque and hit-testable, so a tap focuses it.
+        func testTheRestingKeyFieldIsHitTestable() {
+            let size = KitSizes.iPhoneMaxLandscape
+            let result = KitHost.inspect(
+                styled(
+                    PolarisGateSurface(
+                        status: .needsActivation, allowedRange: nil, isWorking: false,
+                        lastError: ErrorCopy.message(ErrorCode.deviceLimit),
+                        manageURL: "https://key.plrs.im/portal/tidewater/devices",
+                        licenseKey: .constant("pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA"),
+                        theme: Tidewater.theme, onSignIn: {}, onActivate: { _ in },
+                        onRefresh: {}, content: { Text("App") }), .polaris),
+                at: size)
+            XCTAssertTrue(result.fieldFound, "the key field is in the view tree")
+            XCTAssertEqual(result.fieldAlpha, 1, accuracy: 0.001, "the field is fully opaque")
+            XCTAssertTrue(result.hitIsField, "a hit at the field's centre lands in the field")
+        }
+
+        #if canImport(UIKit)
+            /// Focusing the key field must not rebuild it: the same UITextField stays first
+            /// responder.
+            func testFocusingTheKeyFieldDoesNotRebuildIt() {
+                for size in [KitSizes.iPhoneSE, KitSizes.iPhoneMax, KitSizes.iPhoneSELandscape] {
+                    let ok = KitHost.focusStaysOnSameField(
+                        styled(
+                            PolarisGateSurface(
+                                status: .needsActivation, allowedRange: nil, isWorking: false,
+                                lastError: nil, licenseKey: .constant(""), theme: Tidewater.theme,
+                                onSignIn: {}, onActivate: { _ in }, onRefresh: {},
+                                content: { Text("App") }), .native),
+                        at: size)
+                    XCTAssertTrue(ok, "\(size.name): the key field kept first responder")
+                }
+            }
+        #endif
+
+        func testOfflineCopyAndQRCarryTheShownCode() {
+            XCTAssertEqual(
+                String(format: PolarisKitCopy().offlineProductLabel, "Tidewater Studio"),
+                "Product: Tidewater Studio")
         }
 
         // ── The rules behind the layouts ──
@@ -390,8 +631,13 @@
                 PolarisKitLayout.candidates(for: CGSize(width: 480, height: 520)), [.column])
             XCTAssertEqual(
                 PolarisKitLayout.candidates(for: CGSize(width: 900, height: 640)), [.split])
+            // iPad portrait is tall-shaped: the column, not two empty strips.
             XCTAssertEqual(
-                PolarisKitLayout.candidates(for: CGSize(width: 1024, height: 1366)), [.split])
+                PolarisKitLayout.candidates(for: CGSize(width: 1024, height: 1366)), [.column])
+            XCTAssertEqual(
+                PolarisKitLayout.candidates(for: CGSize(width: 834, height: 1194)), [.column])
+            XCTAssertEqual(
+                PolarisKitLayout.candidates(for: CGSize(width: 1366, height: 1024)), [.split])
             XCTAssertEqual(
                 PolarisKitLayout.candidates(for: CGSize(width: 956, height: 440)),
                 [.column, .sideBySide])

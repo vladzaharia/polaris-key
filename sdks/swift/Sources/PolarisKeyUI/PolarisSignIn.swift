@@ -177,8 +177,10 @@ struct PolarisSignInSurface: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.polarisKeyBranding) private var branding
     @Environment(\.polarisKeyPresentation) private var presentation
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var copy: PolarisKitCopy { theme.copy.kit }
+    private var isAX: Bool { dynamicTypeSize.isAccessibilitySize }
 
     /// Whether the code view shows a QR code: on TV screens only (SIGN-IN.md D-67).
     static var showsQRCode: Bool { PolarisManagePresentation.current == .qr }
@@ -220,12 +222,12 @@ struct PolarisSignInSurface: View {
                 symbol: "checkmark.circle.fill")
         case .expired:
             PolarisPageHeading(
-                title: ErrorCopy.title(ErrorCode.signInExpired), identity: identity, style: style,
+                title: copy.signInExpiredTitle, identity: identity, style: style,
                 layout: layout, symbol: "clock.badge.exclamationmark",
                 symbolTint: style.palette.warning)
-        case .failed:
+        case .failed(let code, _):
             PolarisPageHeading(
-                title: copy.signInTitle, identity: identity, style: style, layout: layout,
+                title: ErrorCopy.title(code), identity: identity, style: style, layout: layout,
                 symbol: "exclamationmark.triangle.fill", symbolTint: style.palette.danger)
         }
     }
@@ -237,20 +239,17 @@ struct PolarisSignInSurface: View {
     {
         switch phase {
         case .idle, .starting:
-            PolarisPageText(text: Text(copy.startingSignIn), style: style, layout: layout)
+            EmptyView()
         case .waiting(let prompt):
-            VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.xs) {
-                if Self.showsQRCode {
-                    PolarisPageText(text: Text(copy.signInSubtitle), style: style, layout: layout)
-                } else {
-                    PolarisPageText(
-                        text: Self.lede(
-                            copy.signInCodeBody, page: Self.displayURL(prompt.verificationUri),
-                            emphasis: style.palette.textStrong),
-                        style: style, layout: layout)
-                }
-                PolarisPageText(
-                    text: Text(copy.signInCodeCheck), style: style, layout: layout, role: .meta)
+            if Self.showsQRCode {
+                PolarisPageText(text: Text(copy.signInSubtitle), style: style, layout: layout)
+            } else {
+                // The instruction is essential, so it stays before the code even when compressed.
+                // "Check the code there matches this one." sits directly under the code row (in the
+                // act), not here.
+                PolarisPageLede(
+                    template: copy.signInCodeBody, page: Self.displayURL(prompt.verificationUri),
+                    style: style, layout: layout)
             }
         case .confirm(_, let identity, _):
             PolarisPageText(
@@ -259,9 +258,7 @@ struct PolarisSignInSurface: View {
             PolarisPageText(
                 text: Text(Self.identityLines(ready.identity)), style: style, layout: layout)
         case .expired:
-            PolarisPageText(
-                text: Text(ErrorCopy.message(ErrorCode.signInExpired)), style: style,
-                layout: layout)
+            PolarisPageText(text: Text(copy.signInExpiredBody), style: style, layout: layout)
         case .failed(_, let message):
             PolarisErrorLine(message: message, theme: theme, alignment: layout.textAlignment)
                 .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
@@ -274,7 +271,17 @@ struct PolarisSignInSurface: View {
     {
         switch phase {
         case .idle, .starting:
-            ProgressView().accessibilityLabel(copy.startingSignIn)
+            VStack(spacing: PolarisSpace.m) {
+                ProgressView().accessibilityLabel(copy.startingSignIn)
+                // Cancel is always reachable (Escape in the macOS sheet), so sign-in is never a
+                // dead end while beginSignIn runs.
+                Button(copy.cancelButton, action: onCancel)
+                    .polarisSecondaryButton()
+                    .modifier(KitTint(color: style.textTint))
+                    .modifier(PolarisButtonFont(style: style))
+                    .keyboardShortcut(.cancelAction)
+                    .frame(maxWidth: layout == .column ? .infinity : nil)
+            }
         case .waiting(let prompt):
             waiting(prompt, style: style, layout: layout)
         case .confirm(_, _, let attachable):
@@ -285,55 +292,85 @@ struct PolarisSignInSurface: View {
                 }
                 PolarisPageActions(
                     primaryTitle: copy.confirmContinue, primary: onAccept,
-                    secondaryTitle: copy.cancelButton, secondary: onCancel, layout: layout)
+                    secondaryTitle: copy.cancelButton, secondary: onCancel, layout: layout,
+                    style: style)
             }
         case .ready:
             EmptyView()
         case .expired, .failed:
             PolarisPageActions(
                 primaryTitle: copy.tryAgainButton, primary: onRetry,
-                secondaryTitle: copy.cancelButton, secondary: onCancel, layout: layout)
+                secondaryTitle: copy.cancelButton, secondary: onCancel, layout: layout, style: style)
         }
     }
 
     @ViewBuilder private func waiting(
         _ prompt: SignInPrompt, style: PolarisKitStyle, layout: PolarisKitLayout
     ) -> some View {
-        VStack(spacing: PolarisSpace.l) {
-            VStack(spacing: PolarisSpace.s) {
-                if Self.showsQRCode {
-                    PolarisQRCode(
-                        prompt.verificationUriComplete, accessibilityLabel: copy.signInQRLabel
-                    )
-                    .frame(maxWidth: 200, maxHeight: 200)
-                }
-                PolarisUserCode(code: prompt.userCode, style: style, copy: copy)
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: PolarisSpace.m) {
-                        PolarisCountdown(
-                            expiresAt: prompt.expiresAt, lifetime: prompt.expiresIn,
-                            label: copy.codeExpiresIn, style: style)
-                        Spacer(minLength: 0)
-                        copyLink(prompt, style: style)
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let expired = Int(context.date.timeIntervalSince1970) >= prompt.expiresAt
+            VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.l) {
+                VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.s) {
+                    if Self.showsQRCode {
+                        PolarisQRCode(
+                            prompt.verificationUriComplete, accessibilityLabel: copy.signInQRLabel
+                        )
+                        .frame(maxWidth: 200, maxHeight: 200)
                     }
-                    VStack(spacing: PolarisSpace.xs) {
-                        PolarisCountdown(
-                            expiresAt: prompt.expiresAt, lifetime: prompt.expiresIn,
-                            label: copy.codeExpiresIn, style: style)
-                        copyLink(prompt, style: style)
-                    }
+                    PolarisUserCode(code: prompt.userCode, style: style, copy: copy)
+                    codeRow(prompt, style: style, layout: layout)
+                    // The match check sits directly under the code row (SIGN-IN.md §3.17).
+                    PolarisPageText(
+                        text: Text(copy.signInCodeCheck), style: style, layout: layout, role: .meta)
                 }
-                .padding(.horizontal, PolarisSpace.xxs)
-            }
-            if let url = URL(string: prompt.verificationUriComplete) {
-                PolarisPageActions(
-                    primaryTitle: copy.openBrowserButton, primary: { onOpen(url) },
-                    secondaryTitle: copy.cancelButton, secondary: onCancel, layout: layout)
-            } else {
-                PolarisPageActions(
-                    primaryTitle: copy.cancelButton, primary: onCancel, layout: layout)
+                if expired {
+                    // The code has run out: offer Try again rather than leave Open browser live.
+                    PolarisPageActions(
+                        primaryTitle: copy.tryAgainButton, primary: onRetry,
+                        secondaryTitle: copy.cancelButton, secondary: onCancel, layout: layout,
+                        style: style)
+                } else if let url = URL(string: prompt.verificationUriComplete) {
+                    PolarisPageActions(
+                        primaryTitle: copy.openBrowserButton, primary: { onOpen(url) },
+                        secondaryTitle: copy.cancelButton, secondary: onCancel, layout: layout,
+                        style: style)
+                } else {
+                    PolarisPageActions(
+                        primaryTitle: copy.cancelButton, primary: onCancel, layout: layout,
+                        style: style)
+                }
             }
         }
+    }
+
+    /// The countdown and Copy link (and, at accessibility sizes, a labelled Copy code), on one row
+    /// that stacks when it does not fit, aligned for the arrangement.
+    @ViewBuilder private func codeRow(
+        _ prompt: SignInPrompt, style: PolarisKitStyle, layout: PolarisKitLayout
+    ) -> some View {
+        let countdown = PolarisCountdown(
+            expiresAt: prompt.expiresAt, lifetime: prompt.expiresIn, label: copy.codeExpiresIn,
+            style: style)
+        VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.xs) {
+            if isAX {
+                PolarisCopyButton(
+                    value: prompt.userCode, title: copy.copyCodeLabel, copiedTitle: copy.copiedLabel,
+                    showsTitle: true, systemImage: "doc.on.doc", style: style)
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: PolarisSpace.m) {
+                    countdown
+                    Spacer(minLength: 0)
+                    copyLink(prompt, style: style)
+                }
+                VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.xs) {
+                    countdown
+                    copyLink(prompt, style: style)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+        .padding(.horizontal, PolarisSpace.xxs)
     }
 
     @ViewBuilder private func copyLink(_ prompt: SignInPrompt, style: PolarisKitStyle)
@@ -356,22 +393,92 @@ struct PolarisSignInSurface: View {
         return page
     }
 
-    /// The code view's lede with the page in the strong text colour and weight. The page never
-    /// breaks across lines (a word joiner holds each "/" and "." to its neighbours), so it reads
-    /// as one thing to type. A product's override without the `%@` placeholder renders as given.
-    static func lede(_ template: String, page: String, emphasis: Color) -> Text {
-        let parts = template.components(separatedBy: "%@")
+    static func identityLines(_ identity: SignInIdentity?) -> String {
+        [identity?.name, identity?.email].compactMap { $0 }.joined(separator: "\n")
+    }
+}
+
+/// The device-code lede. The verification page is rendered strong and never breaks or hyphenates:
+/// a word joiner glues every character of the page token, so it moves to its own line whole rather
+/// than split. When even one line of the token does not fit the column, the catalog sentence is
+/// split at its `%@` — the prose, then the page alone on one line (shrinking, never cut), then the
+/// rest — so it is still the catalog string verbatim.
+struct PolarisPageLede: View {
+    let template: String
+    let page: String
+    let style: PolarisKitStyle
+    let layout: PolarisKitLayout
+
+    @State private var tokenWidth: CGFloat = 0
+    @State private var available: CGFloat = 0
+
+    private var parts: [String] { template.components(separatedBy: "%@") }
+
+    /// The page with a word joiner between every character, so it never breaks internally.
+    private var glued: String {
+        page.map(String.init).joined(separator: "\u{2060}")
+    }
+
+    var body: some View {
+        let fitsInline = tokenWidth <= 0 || available <= 0 || tokenWidth <= available
+        Group {
+            if parts.count == 2, !fitsInline {
+                split
+            } else {
+                PolarisPageText(text: inline, style: style, layout: layout)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+        .background(widthProbe)
+        .background(tokenProbe)
+    }
+
+    private var inline: Text {
         guard parts.count == 2 else { return Text(template) }
-        let joiner = "\u{2060}"
-        let unbroken = page.map { $0 == "/" || $0 == "." ? "\(joiner)\($0)\(joiner)" : String($0) }
-            .joined()
-        var url = AttributedString(unbroken)
+        var url = AttributedString(glued)
         url.inlinePresentationIntent = .stronglyEmphasized
-        url.foregroundColor = emphasis
+        url.foregroundColor = style.palette.textStrong
         return Text(AttributedString(parts[0]) + url + AttributedString(parts[1]))
     }
 
-    static func identityLines(_ identity: SignInIdentity?) -> String {
-        [identity?.name, identity?.email].compactMap { $0 }.joined(separator: "\n")
+    @ViewBuilder private var split: some View {
+        VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.xxs) {
+            if let before = parts.first, !before.trimmingCharacters(in: .whitespaces).isEmpty {
+                PolarisPageText(text: Text(before.trimmingCharacters(in: .whitespaces)), style: style, layout: layout)
+            }
+            Text(page)
+                .font(style.font(.subtitle).weight(.semibold))
+                .foregroundStyle(style.palette.textStrong)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .textSelection(.enabled)
+            if parts.count == 2, !parts[1].trimmingCharacters(in: .whitespaces).isEmpty {
+                PolarisPageText(text: Text(parts[1].trimmingCharacters(in: .whitespaces)), style: style, layout: layout)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+    }
+
+    private var widthProbe: some View {
+        GeometryReader { g in
+            Color.clear
+                .onAppear { available = g.size.width }
+                .onChange(of: g.size.width) { _, w in available = w }
+        }
+    }
+
+    private var tokenProbe: some View {
+        Text(page)
+            .font(style.font(.subtitle).weight(.semibold))
+            .fixedSize()
+            .hidden()
+            .background(
+                GeometryReader { g in
+                    Color.clear
+                        .onAppear { tokenWidth = g.size.width }
+                        .onChange(of: g.size.width) { _, w in tokenWidth = w }
+                }
+            )
+            .accessibilityHidden(true)
     }
 }

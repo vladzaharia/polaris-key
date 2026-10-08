@@ -24,6 +24,9 @@ public struct PolarisGate<Content: View>: View {
 
     @State private var licenseKey = ""
     @State private var sheet: GateSheet?
+    @State private var openedManage = false
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     enum GateSheet: String, Identifiable {
         case signIn, offline
@@ -47,6 +50,7 @@ public struct PolarisGate<Content: View>: View {
             allowedRange: model.state.allowedRange,
             isWorking: model.isWorking,
             lastError: model.lastError,
+            manageURL: model.offeredManageURL,
             licenseKey: $licenseKey,
             theme: theme,
             onSignIn: model.identityEnabled ? { sheet = .signIn } : nil,
@@ -57,6 +61,18 @@ public struct PolarisGate<Content: View>: View {
             showsKeyEntry: showsKeyEntry,
             content: content
         )
+        .onChange(of: model.offeredManageURL) { _, url in
+            if url != nil { openedManage = false }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // After Replace a device, retry the same key once when the person comes back; a second
+            // refusal shows the callout again.
+            guard phase == .active, !openedManage, model.offeredManageURL != nil,
+                let key = model.lastKey
+            else { return }
+            openedManage = true
+            Task { await model.activate(key: key) }
+        }
         .sheet(item: $sheet) { which in
             Group {
                 switch which {

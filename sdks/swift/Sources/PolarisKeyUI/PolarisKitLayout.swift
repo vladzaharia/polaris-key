@@ -3,19 +3,22 @@
 // themselves out in the space they are given, and the spacing scale they share.
 //
 // Every surface is three parts: a heading (the product and the title), a detail (what to do) and
-// an act (the code, the form and the actions). The page arranges them by size, never by device:
+// an act (the code, the form and the actions). The page arranges them by the container's SHAPE,
+// never by device:
 //
-//   column       one centred column: phones in portrait, sheets and narrow windows. When the
-//                column is taller than the screen (large Dynamic Type on a small phone) the act
-//                moves up under the heading and the detail follows, so the code and the primary
-//                action are on screen without scrolling, and the rest scrolls.
-//   sideBySide   heading and detail on the leading side, the act on the trailing side: a phone in
-//                landscape and short windows, where a column would push the act below the fold.
-//   split        the product's identity pane beside the form (the split Welcome): iPad and roomy
-//                Mac windows, instead of a small card in empty space.
+//   column       one centred column: phones in portrait, sheets, narrow or portrait windows.
+//   sideBySide   heading and detail on the leading side, the act on the trailing side: a landscape
+//                phone and short, wide windows, where a column would push the act below the fold.
+//   split        the product's icon pane beside the form: landscape-shaped windows at least
+//                760 x 520, instead of a small card in empty space.
 //
-// `ViewThatFits` picks between column and sideBySide by whether the column fits, so Dynamic Type,
-// long product names and localised copy choose the layout, not a hard-coded device list.
+// The arrangement is a pure function of the keyboard-independent container size, so focusing a
+// text field never changes it. Within an arrangement, the whole page is ONE always-present
+// ScrollView over ONE stack whose order never changes (heading, detail, act); the page measures the
+// stack's natural height against the container and switches only parameters — whether the hero and
+// optional detail show, whether the type is capped, and the spacers — so a text field keeps its
+// identity and its keyboard. A tall container pins the act to the bottom; a short one drops the
+// decoration and scrolls.
 
 import SwiftUI
 
@@ -38,18 +41,26 @@ enum PolarisKitLayout: Equatable, Sendable {
     case sideBySide
     case split
 
-    /// The narrowest container that can hold two columns side by side.
+    /// The narrowest container that gets two columns side by side.
     static let twoColumnMinWidth: CGFloat = 560
-    /// The smallest container that gets the identity pane beside the form.
+    /// The smallest container that gets the icon pane beside the form.
     static let splitMinSize = CGSize(width: 760, height: 520)
-    /// The column's and the split form's comfortable maximum width.
+    /// The split needs a landscape-shaped container: wider than this multiple of its height. iPad
+    /// portrait (1024 x 1366) is tall-shaped, so it gets the column, not two three-quarters-empty
+    /// strips.
+    static let splitAspect: CGFloat = 1.15
+    /// The column's and the split form's comfortable maximum width (raised at regular width).
     static let columnMaxWidth: CGFloat = 440
+    static let columnMaxWidthRegular: CGFloat = 480
     /// The act's maximum width beside the detail.
     static let actMaxWidth: CGFloat = 380
+    /// A container at least this much taller than its content gets the tall form.
+    static let tallSlack: CGFloat = 160
 
-    /// Whether the container is wide and tall enough for the identity pane.
+    /// Whether the container is wide, tall and landscape-shaped enough for the icon pane.
     static func allowsSplit(_ size: CGSize) -> Bool {
         size.width >= splitMinSize.width && size.height >= splitMinSize.height
+            && size.width >= size.height * splitAspect
     }
 
     /// Whether the container is wide enough for two columns.
@@ -57,17 +68,96 @@ enum PolarisKitLayout: Equatable, Sendable {
         size.width >= twoColumnMinWidth
     }
 
-    /// The candidates for a container, in the order `ViewThatFits` tries them; the last one also
-    /// takes over, scrolling, when nothing fits.
+    /// The arrangement for a container of this size (pure, keyboard-independent).
+    static func arrangement(for size: CGSize) -> PolarisKitLayout {
+        if allowsSplit(size) { return .split }
+        if allowsTwoColumns(size) && size.width > size.height { return .sideBySide }
+        return .column
+    }
+
+    /// The candidates a layout test checks for a size. Kept for the test's shape assertions.
     static func candidates(for size: CGSize) -> [PolarisKitLayout] {
-        if allowsSplit(size) { return [.split] }
-        return allowsTwoColumns(size) ? [.column, .sideBySide] : [.column]
+        switch arrangement(for: size) {
+        case .split: return [.split]
+        case .sideBySide: return [.column, .sideBySide]
+        case .column: return [.column]
+        }
     }
 
     /// Text alignment in this arrangement: centred in a column, leading beside something else.
     var textAlignment: TextAlignment { self == .column ? .center : .leading }
     var horizontalAlignment: HorizontalAlignment { self == .column ? .center : .leading }
     var frameAlignment: Alignment { self == .column ? .center : .leading }
+}
+
+/// Where a page is in its container: how much room it has, and whether it is compressed (the full
+/// content does not fit, so decoration and optional detail give way and the type is capped) or tall
+/// (plenty of room, so the heading sits high and the act is pinned to the bottom).
+struct PolarisPageFit: Equatable {
+    var compressed = false
+    var tall = false
+    /// The spare height of a tall page, so the heading can sit a third of the way down.
+    var slack: CGFloat = 0
+}
+
+// ── Environment: the page's fit, read by headings and decoration ───────────────────────────────
+
+private struct PolarisPageFitKey: EnvironmentKey {
+    static let defaultValue = PolarisPageFit()
+}
+
+extension EnvironmentValues {
+    /// The page's fit for this subtree.
+    var polarisPageFit: PolarisPageFit {
+        get { self[PolarisPageFitKey.self] }
+        set { self[PolarisPageFitKey.self] = newValue }
+    }
+}
+
+/// Decoration that a compressed page drops (the Welcome's hero icon, the gate's optional subtitle),
+/// so the essential act fits.
+struct PolarisPageDecoration<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    @Environment(\.polarisPageFit) private var fit
+
+    var body: some View {
+        if !fit.compressed { content() }
+    }
+}
+
+// ── Measurement ────────────────────────────────────────────────────────────────────────────────
+
+private struct PolarisHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct PolarisStableSizeKey: PreferenceKey {
+    static let defaultValue: CGSize = .zero
+    static func reduce(value: inout CGSize, nextValue: () -> CGSize) {
+        let next = nextValue()
+        if next != .zero { value = next }
+    }
+}
+
+/// An id for the page's act, so the ScrollView can bring it into view when the keyboard covers it.
+private enum PolarisPageAnchor: Hashable { case act }
+
+/// A monotonic token a focused field raises to ask the page to scroll its act into view.
+struct PolarisScrollRequestKey: PreferenceKey {
+    static let defaultValue = 0
+    static func reduce(value: inout Int, nextValue: () -> Int) {
+        value = max(value, nextValue())
+    }
+}
+
+extension View {
+    /// Ask the enclosing page to scroll its act into view (raise a new token on each focus gain).
+    func polarisScrollRequest(_ token: Int) -> some View {
+        preference(key: PolarisScrollRequestKey.self, value: token)
+    }
 }
 
 /// A full-screen kit page: heading, detail and act, arranged for the container (see the file
@@ -79,155 +169,183 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
     @ViewBuilder let detail: (PolarisKitLayout) -> Detail
     @ViewBuilder let act: (PolarisKitLayout) -> Act
 
+    /// The container size, measured ignoring the keyboard, so the arrangement never changes when a
+    /// field is focused.
+    @State private var size: CGSize = .zero
+    /// The natural height of the full (uncompressed) column, from a hidden measurer.
+    @State private var naturalColumnHeight: CGFloat = 0
+    @State private var scrollToken = 0
+
     var body: some View {
-        GeometryReader { proxy in
-            let size = proxy.size
-            Group {
-                if PolarisKitLayout.allowsSplit(size) {
-                    split(size)
-                } else if PolarisKitLayout.allowsTwoColumns(size) {
-                    ViewThatFits(in: .vertical) {
-                        column(prioritised: false)
-                        sideBySide(alignment: .center)
-                        ScrollView(.vertical) { sideBySide(alignment: .top) }
-                            .scrollBounceBehavior(.basedOnSize)
-                    }
-                } else {
-                    ViewThatFits(in: .vertical) {
-                        column(prioritised: false)
-                        ScrollView(.vertical) { column(prioritised: true) }
-                            .scrollBounceBehavior(.basedOnSize)
-                    }
+        let arrangement = PolarisKitLayout.arrangement(for: size)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                arranged(arrangement)
+                    .frame(minHeight: size.height > 0 ? size.height : nil, alignment: .top)
+                    .frame(maxWidth: .infinity)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            #if os(iOS)
+                .scrollDismissesKeyboard(.interactively)
+            #endif
+            .onPreferenceChange(PolarisScrollRequestKey.self) { token in
+                guard token != scrollToken else { return }
+                scrollToken = token
+                withAnimation(.easeOut(duration: 0.2)) {
+                    proxy.scrollTo(PolarisPageAnchor.act, anchor: .bottom)
                 }
             }
-            .frame(width: size.width, height: size.height)
         }
         .background(style.palette.page.ignoresSafeArea())
+        .background(sizeProbe)
+        .background(columnMeasurer)
     }
 
-    /// One column. Prioritised, the act comes straight after the heading.
-    private func column(prioritised: Bool) -> some View {
-        stack(.column, prioritised: prioritised)
-            .frame(maxWidth: PolarisKitLayout.columnMaxWidth)
-        .padding(PolarisSpace.l)
-        .frame(maxWidth: .infinity)
+    // ── the three arrangements, from one set of closures ──
+
+    @ViewBuilder private func arranged(_ arrangement: PolarisKitLayout) -> some View {
+        switch arrangement {
+        case .split: split(size)
+        case .sideBySide: sideBySide()
+        case .column: column()
+        }
     }
 
-    private func sideBySide(alignment: VerticalAlignment) -> some View {
-        HStack(alignment: alignment, spacing: PolarisSpace.xl) {
+    private var columnWidth: CGFloat {
+        let regular = size.width >= PolarisKitLayout.twoColumnMinWidth
+        return regular ? PolarisKitLayout.columnMaxWidthRegular : PolarisKitLayout.columnMaxWidth
+    }
+
+    private func fit(_ available: CGFloat) -> PolarisPageFit {
+        guard naturalColumnHeight > 0, available > 0 else { return PolarisPageFit() }
+        if naturalColumnHeight > available { return PolarisPageFit(compressed: true, tall: false) }
+        let slack = available - naturalColumnHeight
+        return PolarisPageFit(compressed: false, tall: slack >= PolarisKitLayout.tallSlack, slack: slack)
+    }
+
+    private func column() -> some View {
+        let available = size.height - PolarisSpace.l * 2
+        let f = fit(available)
+        return stack(.column, fit: f)
+            .frame(maxWidth: columnWidth)
+            .padding(f.compressed ? PolarisSpace.s : PolarisSpace.l)
+            .frame(maxWidth: .infinity)
+            .environment(\.polarisPageFit, f)
+            .modifier(PolarisCompressedType(compressed: f.compressed))
+    }
+
+    private func sideBySide() -> some View {
+        // Beside each other the content is shorter, so it is compressed only when it still overruns.
+        let f = PolarisPageFit(compressed: naturalColumnHeight > size.height, tall: false)
+        return HStack(alignment: .center, spacing: PolarisSpace.xl) {
             VStack(alignment: .leading, spacing: PolarisSpace.s) {
                 heading(.sideBySide)
                 detail(.sideBySide)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(spacing: PolarisSpace.m) { act(.sideBySide) }
-                .frame(maxWidth: PolarisKitLayout.actMaxWidth)
+            VStack(spacing: PolarisSpace.m) { actWithAnchor(.sideBySide) }
+                .frame(minWidth: 0, maxWidth: PolarisKitLayout.actMaxWidth)
+                .layoutPriority(1)
         }
         .padding(.horizontal, PolarisSpace.xl)
         .padding(.vertical, PolarisSpace.l)
         .frame(maxWidth: 880)
         .frame(maxWidth: .infinity)
+        .environment(\.polarisPageFit, f)
+        .modifier(PolarisCompressedType(compressed: f.compressed))
     }
 
     private func split(_ size: CGSize) -> some View {
         let paneWidth = min(max(size.width * 0.42, 300), 600)
         return HStack(spacing: 0) {
-            PolarisIdentityPane(identity: identity, style: style)
+            PolarisIdentityPane(identity: identity, style: style, paneWidth: paneWidth)
                 .frame(width: paneWidth)
-            ViewThatFits(in: .vertical) {
-                splitForm(prioritised: false)
-                ScrollView(.vertical) { splitForm(prioritised: true) }
-                    .scrollBounceBehavior(.basedOnSize)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            let f = fit(size.height - PolarisSpace.xxl * 2)
+            stack(.split, fit: f)
+                .frame(maxWidth: PolarisKitLayout.columnMaxWidthRegular, alignment: .leading)
+                .padding(f.compressed ? PolarisSpace.l : PolarisSpace.xxl)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .modifier(PolarisCompressedType(compressed: f.compressed))
         }
     }
 
-    private func splitForm(prioritised: Bool) -> some View {
-        stack(.split, prioritised: prioritised)
-            .frame(maxWidth: PolarisKitLayout.columnMaxWidth, alignment: .leading)
-        .padding(PolarisSpace.xxl)
-        .frame(maxWidth: .infinity)
-    }
-}
-
-extension PolarisAdaptivePage {
-    /// Heading, detail and act in one stack with the kit's rhythm: the detail 12 under the
-    /// heading (one group), the act 24 under it. Prioritised, the act follows the heading and the
-    /// detail comes last.
-    fileprivate func stack(_ layout: PolarisKitLayout, prioritised: Bool) -> some View {
+    /// Heading, detail and act in one stack whose order never changes. The tall form lifts the
+    /// heading to a third of the height and pins the act to the bottom; otherwise it is centred.
+    @ViewBuilder private func stack(_ layout: PolarisKitLayout, fit f: PolarisPageFit) -> some View {
         VStack(alignment: layout.horizontalAlignment, spacing: 0) {
+            if f.tall { Color.clear.frame(height: f.slack / 3) }
             heading(layout)
-            if prioritised {
-                act(layout).padding(.top, PolarisSpace.l)
-                detail(layout).padding(.top, PolarisSpace.l)
+            detail(layout).padding(.top, f.compressed ? PolarisSpace.xxs : PolarisSpace.s)
+            if f.tall {
+                Spacer(minLength: PolarisSpace.l)
+                actWithAnchor(layout).padding(.bottom, PolarisSpace.l)
             } else {
-                detail(layout).padding(.top, PolarisSpace.s)
-                act(layout).padding(.top, PolarisSpace.l)
+                actWithAnchor(layout).padding(.top, f.compressed ? PolarisSpace.s : PolarisSpace.l)
             }
         }
-        .environment(\.polarisPageIsCompressed, prioritised)
+        .environment(\.polarisPageFit, f)
+    }
+
+    private func actWithAnchor(_ layout: PolarisKitLayout) -> some View {
+        act(layout).id(PolarisPageAnchor.act)
+    }
+
+    // ── keyboard-independent size, and the hidden natural-height measurer ──
+
+    private var sizeProbe: some View {
+        GeometryReader { g in
+            Color.clear.preference(key: PolarisStableSizeKey.self, value: g.size)
+        }
+        .ignoresSafeArea(.keyboard)
+        .onPreferenceChange(PolarisStableSizeKey.self) { s in
+            if s != .zero { size = s }
+        }
+    }
+
+    /// Measure the full, uncompressed column once, hidden, so compression and the tall form never
+    /// feed back into the height they are decided from.
+    private var columnMeasurer: some View {
+        VStack(alignment: .center, spacing: 0) {
+            heading(.column)
+            detail(.column).padding(.top, PolarisSpace.s)
+            act(.column).padding(.top, PolarisSpace.l)
+        }
+        .environment(\.polarisPageFit, PolarisPageFit())
+        .frame(width: columnWidth)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(
+            GeometryReader { g in
+                Color.clear.preference(key: PolarisHeightKey.self, value: g.size.height)
+            }
+        )
+        .onPreferenceChange(PolarisHeightKey.self) { h in
+            if h > 0 { naturalColumnHeight = h }
+        }
+        .hidden()
+        .accessibilityHidden(true)
+        .allowsHitTesting(false)
+        .disabled(true)
     }
 }
 
-private struct PolarisPageCompressedKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-extension EnvironmentValues {
-    /// True inside a page that did not fit and put its act first: decoration gives way there.
-    var polarisPageIsCompressed: Bool {
-        get { self[PolarisPageCompressedKey.self] }
-        set { self[PolarisPageCompressedKey.self] = newValue }
-    }
-}
-
-/// Decoration that a compressed page drops (the Welcome's hero icon), so the act fits.
-struct PolarisPageDecoration<Content: View>: View {
-    @ViewBuilder let content: () -> Content
-    @Environment(\.polarisPageIsCompressed) private var compressed
-
-    var body: some View {
-        if !compressed { content() }
-    }
-}
-
-/// The split Welcome's identity pane: the product's icon at hero size over a quiet ground, its name
-/// and developer under it. Under `.polarisKey` branding the ground takes a wash of the product's
-/// accent; natively it is the system's raised ground, so the host's look leads.
+/// The split's icon pane: the product's icon at hero size over a quiet ground, no text (the form
+/// names the product), hidden from VoiceOver as decoration. Under `.polarisKey` the ground takes a
+/// wash of the product's accent; natively it is a ground one step quieter than the form.
 struct PolarisIdentityPane: View {
     let identity: PolarisProductIdentity
     let style: PolarisKitStyle
-
-    #if os(macOS)
-        @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 128
-    #else
-        @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 120
-    #endif
+    let paneWidth: CGFloat
 
     var body: some View {
-        VStack(spacing: PolarisSpace.m) {
-            PolarisProductIcon(identity: identity, size: min(heroSize, 160), style: style)
-                .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
-            VStack(spacing: PolarisSpace.xxs) {
-                Text(identity.name)
-                    .font(style.font(.paneTitle))
-                    .foregroundStyle(style.palette.textStrong)
-                if let developer = identity.developer {
-                    Text(developer)
-                        .font(style.font(.caption))
-                        .foregroundStyle(style.palette.textMuted)
-                }
+        let hero = min(max(paneWidth * 0.32, 128), 192)
+        return PolarisProductIcon(identity: identity, size: hero, style: style)
+            .modifier(PolarisHeroShadow())
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(ground.ignoresSafeArea())
+            .overlay(alignment: .trailing) {
+                Rectangle().fill(style.palette.borderSubtle).frame(width: 1).ignoresSafeArea()
             }
-            .multilineTextAlignment(.center)
-            .accessibilityElement(children: .combine)
-        }
-        .padding(PolarisSpace.xl)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(ground.ignoresSafeArea())
-        .overlay(alignment: .trailing) {
-            Rectangle().fill(style.palette.borderSubtle).frame(width: 1).ignoresSafeArea()
-        }
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder private var ground: some View {
@@ -239,16 +357,23 @@ struct PolarisIdentityPane: View {
                     startRadius: 0, endRadius: 420)
             }
         } else {
-            style.palette.raised
+            style.paneGround
         }
+    }
+}
+
+/// A soft drop shadow, grouped so it never shows through a translucent icon.
+struct PolarisHeroShadow: ViewModifier {
+    func body(content: Content) -> some View {
+        content.compositingGroup().shadow(color: .black.opacity(0.18), radius: 16, y: 6)
     }
 }
 
 // ── The layout probe ─────────────────────────────────────────────────────────────────────
 
-/// The elements a layout test needs to find on screen: the user code, the screen's primary
-/// action, and the gate's Activate when Sign in is the primary. Each publishes its bounds as an
-/// anchor; nothing reads them outside tests.
+/// The elements a layout test needs to find on screen: the user code, the screen's primary action,
+/// and the gate's Activate when Sign in is the primary. Each publishes its bounds as an anchor;
+/// nothing reads them outside tests.
 enum PolarisLayoutRole: Hashable, Sendable {
     case code
     case primaryAction

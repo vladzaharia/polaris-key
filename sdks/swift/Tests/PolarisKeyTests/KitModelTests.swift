@@ -162,9 +162,8 @@ final class KitModelTests: XCTestCase {
     func testOfflineSurfacesRender() {
         for (imported, message) in [(false, nil), (false, ErrorCopy.message("bundle-trust-rejected")), (true, nil)] {
             let view = PolarisOfflineSurface(
-                product: "djdl", deviceId: "DEVICE0001", message: message, imported: imported,
-                copied: false, theme: PolarisTheme(), onCopy: {}, onImportFile: {}, onPaste: {},
-                onDone: {})
+                productName: "djdl", deviceId: "DEVICE0001", message: message, imported: imported,
+                theme: PolarisTheme(), onImportFile: {}, onPaste: {}, onDone: {})
             XCTAssertTrue(renders(view))
         }
     }

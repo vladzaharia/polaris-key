@@ -112,6 +112,24 @@ public struct PolarisTypography: Sendable, Equatable {
         }
     }
 
+    /// The monospaced face at a fixed size: JetBrains Mono under `.brand` (the bundled variable
+    /// TTF, which KitTokens' code role names), SF Mono under `.system`, and the product's own mono
+    /// under `.custom` (falling back to its regular face). Used for the user code, the license key
+    /// and the offline request code.
+    func monoFont(size: CGFloat) -> Font {
+        switch family {
+        case .system:
+            return .system(size: size, weight: .medium, design: .monospaced)
+        case .brand:
+            if BrandFonts.monoAvailable {
+                return .custom(BrandFonts.monoName, fixedSize: size)
+            }
+            return .system(size: size, weight: .medium, design: .monospaced)
+        case .custom(let regular, _):
+            return .custom(regular, fixedSize: size)
+        }
+    }
+
     /// The family at a fixed size (a glyph drawn inside a fixed tile, such as the monogram).
     func fixedFont(size: CGFloat, bold: Bool) -> Font {
         switch resolvedFamily {
@@ -164,17 +182,20 @@ public struct PolarisTypography: Sendable, Equatable {
     }
 }
 
-/// Process-scoped registration of the bundled Rubik faces.
+/// Process-scoped registration of the bundled Rubik and JetBrains Mono faces.
 enum BrandFonts {
     static let regularName = "Rubik-Regular"
     static let boldName = "Rubik-Bold"
+    /// JetBrains Mono's PostScript name (the bundled `JetBrainsMono-Variable.ttf`).
+    static let monoName = "JetBrainsMono-Regular"
+    static let monoFile = "JetBrainsMono-Variable"
 
-    /// The bundled font files, in `Resources/Brand/fonts/`.
-    static func url(_ name: String) -> URL? {
-        brandResourceURL("fonts/\(name).ttf")
+    /// A bundled font file, in `Resources/Brand/fonts/`.
+    static func url(_ file: String) -> URL? {
+        brandResourceURL("fonts/\(file).ttf")
     }
 
-    /// Registers both faces once per process; true when both can be instantiated by name.
+    /// Registers the Rubik faces once per process; true when both can be instantiated by name.
     static let isAvailable: Bool = {
         for name in [regularName, boldName] {
             if let url = url(name) {
@@ -184,6 +205,14 @@ enum BrandFonts {
             }
         }
         return [regularName, boldName].allSatisfy(isInstalled)
+    }()
+
+    /// Registers JetBrains Mono once per process; true when it can be instantiated by name.
+    static let monoAvailable: Bool = {
+        if let url = url(monoFile) {
+            _ = CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+        return isInstalled(monoName)
     }()
 
     static func isInstalled(_ postScriptName: String) -> Bool {
