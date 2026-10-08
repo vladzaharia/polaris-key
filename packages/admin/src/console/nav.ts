@@ -545,12 +545,14 @@ export const SECTIONS: NavSection[] = [
     docs: "/docs/services/distribution/",
     items: [
       {
+        // UX-31 made the matrix Rollouts' Matrix and Readiness views; the old URL (and `g m`)
+        // redirects there, so it is no longer a sidebar or palette item of its own (P0-47).
         page: "matrix",
         label: "Matrix",
         path: "distribution/matrix",
         icon: LayoutGrid,
         docs: "/docs/admin/distribution-matrix/",
-        inNav: true,
+        inNav: false,
         ready: true,
         shortcut: "m",
       },
@@ -813,13 +815,15 @@ const PLATFORM_PAGES: NavPage[] = [
   },
   {
     // U-03: the one-time move of licence config and secret overrides onto account overrides,
-    // and its report for the 90 days after the run.
+    // and its report for the 90 days after the run. The run is cancelled (owner decision 1), so
+    // the page leaves the sidebar and the palette (P0-47); it still answers its URL and the
+    // licence notice's link until U-27 removes it.
     page: "platform-override-migration",
     label: "Override migration",
     path: "platform/override-migration",
     icon: ArrowRightLeft,
     docs: "/docs/services/config/",
-    inNav: true,
+    inNav: false,
     ready: true,
     group: "platform",
   },
