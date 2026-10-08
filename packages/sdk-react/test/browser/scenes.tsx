@@ -1,6 +1,7 @@
 // The drop-in kit's screens as a host page renders them, over the tests' fake desktop bridge: one
 // scene per component state the responsive suite measures. The host page sets no font of its
-// own, so a scene also shows what the kit does on a bare page.
+// own, so a scene also shows what the kit does on a bare page; the "host" preset adds a host
+// font and a host accent, the "polaris-key" preset the brand.
 
 import type { ReactNode } from "react";
 import { PolarisKeyProvider } from "../../src/react/Provider.js";
@@ -31,6 +32,26 @@ import {
 
 export type Scheme = "dark" | "light";
 
+/** Which look a scene renders in: the neutral default, the Polaris Key brand, or a host that
+ *  sets its own font and points the accent at its own variable. */
+export type Preset = "neutral" | "polaris-key" | "host";
+
+let preset: Preset = "neutral";
+
+/** The preset the next `provider()` renders in (the suite sets it per run). */
+export function setPreset(next: Preset): void {
+  preset = next;
+}
+
+/** The font a preset's kit text starts with ("system-ui" on a page that sets none). */
+export function presetFont(p: Preset): string {
+  return p === "polaris-key"
+    ? "Rubik"
+    : p === "host"
+      ? "Trebuchet MS"
+      : "system-ui";
+}
+
 export interface Scene {
   /** The directory the screenshots go in: `react.<id>`. */
   id: string;
@@ -43,13 +64,17 @@ export interface Scene {
   primary: string | null;
   /** The element the scene is ready on. */
   ready: string;
+  /** The element that holds focus once the scene is ready. */
+  focus?: string;
+  /** A full-window gate screen: full-bleed on a phone. */
+  gate?: boolean;
 }
 
-const MANAGE =
+export const MANAGE =
   "https://key.plrs.im/portal/tidewater-studio-professional-mastering-suite/devices?return=https%3A%2F%2Fexample.com";
-const ALL = services("license", "config", "identity", "update");
+export const ALL = services("license", "config", "identity", "update");
 
-const roster = [
+export const roster = [
   {
     id: "dev_9fK2Lw7QmZ",
     current: true,
@@ -76,7 +101,7 @@ const roster = [
   },
 ];
 
-function adapterFor(
+export function adapterFor(
   state: BridgeState,
   tweak?: (bridge: ReturnType<typeof makeFakeBridge>) => void,
 ): PolarisAdapter {
@@ -124,7 +149,7 @@ function withManageError(real: PolarisAdapter): PolarisAdapter {
 
 /** The host app around a component. `data-host-content` marks the host's own text, which the
  *  suite does not hold to the kit's rules (it sets no font, on purpose). */
-function host(children: ReactNode): ReactNode {
+export function host(children: ReactNode): ReactNode {
   return (
     <main style={{ padding: "1rem" }} data-host-content="">
       <h1 style={{ margin: "0 0 1rem" }}>Tidewater Studio</h1>
@@ -133,29 +158,64 @@ function host(children: ReactNode): ReactNode {
   );
 }
 
-function provider(
+export function provider(
   adapter: PolarisAdapter,
-  scheme: Scheme,
+  scheme: Scheme | "system",
   children: ReactNode,
 ): { node: ReactNode; adapter: PolarisAdapter } {
+  const copy = { productName: "Tidewater Studio" };
+  const theme =
+    preset === "polaris-key"
+      ? { branding: "polaris-key" as const, copy }
+      : preset === "host"
+        ? {
+            copy,
+            tokens: {
+              fontFamily: "inherit",
+              accent: "var(--app-accent)",
+              accentHover: "var(--app-accent)",
+              accentText: "#ffffff",
+            },
+          }
+        : { copy };
+  const node = (
+    <PolarisKeyProvider
+      productSlug="tidewater"
+      adapter={adapter}
+      colorScheme={scheme}
+      theme={theme}
+    >
+      {children}
+    </PolarisKeyProvider>
+  );
   return {
     adapter,
-    node: (
-      <PolarisKeyProvider
-        productSlug="tidewater"
-        adapter={adapter}
-        colorScheme={scheme}
-        theme={{ copy: { productName: "Tidewater Studio" } }}
-      >
-        {children}
-      </PolarisKeyProvider>
-    ),
+    node:
+      preset === "host" ? (
+        <div
+          style={
+            {
+              fontFamily: '"Trebuchet MS", sans-serif',
+              "--app-accent": "#0b5cad",
+            } as React.CSSProperties
+          }
+        >
+          {node}
+        </div>
+      ) : (
+        node
+      ),
   };
 }
 
 const app = host(<p>Host app content.</p>);
 
 async function typeKey(root: HTMLElement): Promise<void> {
+  const reveal = root.querySelector<HTMLButtonElement>(
+    "[data-polaris-use-key]",
+  );
+  reveal?.click();
+  await new Promise((r) => setTimeout(r, 0));
   const input = root.querySelector<HTMLInputElement>(
     "[data-polaris-key-input]",
   );
@@ -171,84 +231,143 @@ async function typeKey(root: HTMLElement): Promise<void> {
   input.form!.requestSubmit();
 }
 
+function gate(
+  state: BridgeState,
+  scheme: Scheme,
+  tweak?: (bridge: ReturnType<typeof makeFakeBridge>) => void,
+  wrap: (a: PolarisAdapter) => PolarisAdapter = (a) => a,
+) {
+  return provider(
+    wrap(adapterFor(state, tweak)),
+    scheme,
+    <LicenseGate returnUrl="https://example.com">{app}</LicenseGate>,
+  );
+}
+
+const blocked = (reason: string, allowedRange?: object): BridgeState =>
+  okBridgeState({
+    capabilities: ALL,
+    blocked: { reason, ...(allowedRange ? { allowedRange } : {}) },
+  } as never);
+
 export const SCENES: Scene[] = [
   {
     id: "license-gate.login",
-    render: (scheme) =>
-      provider(
-        adapterFor(emptyBridgeState({ capabilities: ALL })),
-        scheme,
-        <LicenseGate returnUrl="https://example.com">{app}</LicenseGate>,
-      ),
+    render: (scheme) => gate(emptyBridgeState({ capabilities: ALL }), scheme),
     ready: "[data-polaris-oidc]",
     primary: "[data-polaris-oidc]",
+    focus: "[data-polaris-oidc]",
+    gate: true,
   },
   {
     id: "license-gate.device-limit",
     render: (scheme) =>
-      provider(
-        adapterFor(emptyBridgeState({ capabilities: ALL }), (bridge) => {
-          bridge.submitKey = async () =>
-            ({
-              kind: "device-limit",
-              limit: 3,
-              deviceCount: 3,
-              manageUrl: MANAGE,
-            }) as BridgeActivation;
-        }),
-        scheme,
-        <LicenseGate returnUrl="https://example.com">{app}</LicenseGate>,
-      ),
+      gate(emptyBridgeState({ capabilities: ALL }), scheme, (bridge) => {
+        bridge.submitKey = async () =>
+          ({
+            kind: "device-limit",
+            limit: 3,
+            deviceCount: 3,
+            manageUrl: MANAGE,
+          }) as BridgeActivation;
+      }),
     act: typeKey,
-    before: "[data-polaris-key-input]",
+    before: "[data-polaris-use-key]",
     ready: "[data-polaris-free-device]",
     primary: "[data-polaris-free-device]",
+    focus: "[data-polaris-free-device]",
+    gate: true,
   },
   {
     id: "license-gate.error",
     render: (scheme) =>
-      provider(
-        withManageError(adapterFor(emptyBridgeState({ capabilities: ALL }))),
+      gate(
+        emptyBridgeState({ capabilities: ALL }),
         scheme,
-        <LicenseGate returnUrl="https://example.com">{app}</LicenseGate>,
+        undefined,
+        withManageError,
       ),
     ready: '[data-polaris-gate="error"] [data-polaris-actions]',
     primary: '[data-polaris-gate="error"] [data-polaris-actions] button',
+    focus: '[data-polaris-gate="error"] [data-polaris-actions] button',
+    gate: true,
+  },
+  {
+    id: "license-gate.network-error",
+    render: (scheme) =>
+      gate(emptyBridgeState({ capabilities: ALL }), scheme, (bridge) => {
+        bridge.getSyncState = async () => {
+          throw new Error("fetch failed");
+        };
+      }),
+    ready: '[data-polaris-gate="error"] [data-polaris-actions]',
+    primary: '[data-polaris-gate="error"] [data-polaris-actions] button',
+    focus: '[data-polaris-gate="error"] [data-polaris-actions] button',
+    gate: true,
+  },
+  {
+    id: "license-gate.loading",
+    render: (scheme) =>
+      gate(emptyBridgeState({ capabilities: ALL }), scheme, (bridge) => {
+        bridge.getSyncState = () => new Promise(() => undefined);
+      }),
+    ready: '[data-polaris-gate="loading"] [role="status"]',
+    primary: null,
+    gate: false,
   },
   {
     id: "license-gate.expired",
     render: (scheme) =>
-      provider(
-        adapterFor(
-          okBridgeState({
-            capabilities: ALL,
-            doc: makeDoc({ issuedAt: 100, expiresAt: 200, graceUntil: 300 }),
-          }),
-        ),
+      gate(
+        okBridgeState({
+          capabilities: ALL,
+          doc: makeDoc({ issuedAt: 100, expiresAt: 200, graceUntil: 300 }),
+        }),
         scheme,
-        <LicenseGate>{app}</LicenseGate>,
       ),
     ready: '[data-polaris-gate="expired"] [data-polaris-oidc]',
     primary: "[data-polaris-oidc]",
+    focus: "[data-polaris-oidc]",
+    gate: true,
+  },
+  {
+    id: "license-gate.revoked",
+    render: (scheme) =>
+      gate(
+        okBridgeState({ capabilities: ALL, lastSyncUnauthorized: true }),
+        scheme,
+      ),
+    ready: '[data-polaris-gate="revoked"] [data-polaris-oidc]',
+    primary: "[data-polaris-oidc]",
+    focus: "[data-polaris-oidc]",
+    gate: true,
   },
   {
     id: "license-gate.version",
     render: (scheme) =>
-      provider(
-        adapterFor(
-          okBridgeState({
-            capabilities: ALL,
-            blocked: {
-              reason: "version-too-old",
-              allowedRange: { min: "5.0.0" },
-            },
-          } as never),
-        ),
-        scheme,
-        <LicenseGate>{app}</LicenseGate>,
-      ),
-    ready: '[data-polaris-gate="version-block"] button',
-    primary: '[data-polaris-gate="version-block"] button',
+      gate(blocked("version-too-old", { min: "5.0.0" }), scheme),
+    ready: '[data-polaris-gate="version-block"] [data-polaris-actions] button',
+    primary:
+      '[data-polaris-gate="version-block"] [data-polaris-actions] button',
+    focus: '[data-polaris-gate="version-block"] [data-polaris-actions] button',
+    gate: true,
+  },
+  {
+    id: "license-gate.version-too-new",
+    render: (scheme) =>
+      gate(blocked("version-too-new", { max: "3.0.0" }), scheme),
+    ready: '[data-polaris-gate="version-block"] [data-polaris-actions] button',
+    primary:
+      '[data-polaris-gate="version-block"] [data-polaris-actions] button',
+    gate: true,
+  },
+  {
+    id: "license-gate.channel",
+    render: (scheme) => gate(blocked("channel-not-entitled"), scheme),
+    ready: '[data-polaris-gate="version-block"] [data-polaris-actions] button',
+    primary:
+      '[data-polaris-gate="version-block"] [data-polaris-actions] button',
+    gate: true,
   },
   {
     id: "license-gate.grace",
@@ -283,6 +402,7 @@ export const SCENES: Scene[] = [
       ),
     ready: '[data-polaris-update="dialog"] [data-polaris-actions]',
     primary: '[data-polaris-update="dialog"] [data-polaris-actions] button',
+    focus: '[data-polaris-update="dialog"] [data-polaris-actions] button',
   },
   {
     id: "update-prompt.banner",
@@ -327,6 +447,7 @@ export const SCENES: Scene[] = [
     before: "[data-polaris-device-rename]",
     ready: "[data-polaris-device-input]",
     primary: '[data-polaris-device-rename-form] button[type="submit"]',
+    focus: "[data-polaris-device-input]",
   },
   {
     id: "config-panel",
@@ -346,7 +467,8 @@ export const SCENES: Scene[] = [
         host(<ConfigPanel onOverride={() => undefined} />),
       ),
     ready: "[data-polaris-config-input]",
-    primary: "[data-polaris-config-input]",
+    // Each row carries its own action; the title check covers the panel.
+    primary: null,
   },
   {
     id: "polaris-logout",
@@ -359,4 +481,33 @@ export const SCENES: Scene[] = [
     ready: "[data-polaris-logout]",
     primary: "[data-polaris-logout]",
   },
+];
+
+/** "system" with the OS dark on a host page that paints nothing and opts in to no dark
+ *  scheme: the white canvas decides, so the kit is light. */
+export const SYSTEM_ON_LIGHT_HOST: Scene = {
+  id: "system-on-light-host",
+  render: () =>
+    provider(
+      adapterFor(okBridgeState({ capabilities: ALL })),
+      "system",
+      host(
+        <>
+          <PolarisLogout />
+          <div style={{ height: "1rem" }} />
+          <DeviceManager />
+        </>,
+      ),
+    ),
+  ready: "[data-polaris-device-rename]",
+  primary: "[data-polaris-logout]",
+};
+
+/** The scenes the preset axis runs (the brand and a host's own font and accent). */
+export const PRESET_SCENE_IDS = [
+  "license-gate.login",
+  "license-gate.device-limit",
+  "license-gate.expired",
+  "update-prompt.dialog",
+  "device-manager",
 ];

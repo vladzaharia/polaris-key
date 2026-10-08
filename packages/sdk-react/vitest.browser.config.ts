@@ -3,16 +3,19 @@ import { dirname } from "node:path";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
-/** The slice of Playwright's `Page` the screenshot command uses. */
+/** The slice of Playwright's `Page` the commands use. */
 interface PlaywrightPage {
   locator(selector: string): {
     screenshot(options: { path: string }): Promise<unknown>;
   };
+  emulateMedia(options: {
+    colorScheme: "dark" | "light" | null;
+  }): Promise<void>;
 }
 
 // The drop-in kit in real Chromium (test/browser/responsive.browser.test.tsx): every screen at
-// phone, tablet, desktop and monitor widths, a phone on its side, 200 % zoom and a 24 px root
-// font, in dark and light. `pnpm --filter @polaris-key/react test:browser`; it needs Chromium
+// phone, tablet, desktop and monitor sizes, short landscape windows, 200 % zoom and a 24 px root
+// font, in dark and light, plus the brand and host presets and the "system" scheme. `pnpm --filter @polaris-key/react test:browser`; it needs Chromium
 // (`pnpm --filter @polaris-key/react exec playwright install chromium`). The jsdom suite
 // (vitest.config.ts) leaves test/browser/ out.
 //
@@ -24,6 +27,8 @@ export default defineConfig({
   test: {
     include: ["test/browser/**/*.browser.test.tsx"],
     testTimeout: 60_000,
+    // One file, many renders: report each test, keep the run in one browser page.
+    fileParallelism: false,
     browser: {
       enabled: true,
       provider: playwright({
@@ -42,6 +47,11 @@ export default defineConfig({
           await page
             .locator('iframe[data-vitest="true"]')
             .screenshot({ path: file });
+        },
+        // The OS colour scheme (`prefers-color-scheme`), for colorScheme "system"; null resets.
+        async emulateScheme(ctx, scheme: "dark" | "light" | null) {
+          const page = (ctx as unknown as { page: PlaywrightPage }).page;
+          await page.emulateMedia({ colorScheme: scheme });
         },
       },
     },
