@@ -40,6 +40,7 @@ import { PageTabs } from "../../components/PageTabs.js";
 import {
   canHalt,
   HaltEverywhereDialog,
+  storeHalt,
   type HaltRow,
 } from "../../areas/distribution/RolloutDialogs.js";
 import { actorLabel } from "../../areas/distribution/format.js";
@@ -983,6 +984,8 @@ export function ReleaseRecord({
     ? rolloutRowsOf(matrix.data, release.releaseId)
     : null;
   const haltable = (rows ?? []).filter((x) => canHalt(x.rollout));
+  // A live store mirror can't be halted here, but the dialog says where to stop it (P0-47).
+  const inStores = (rows ?? []).filter((x) => storeHalt(x.rollout) !== null);
   const v = release.version;
   const haltBlocked = matrix.isPending
     ? "Loading this release's rollouts."
@@ -992,7 +995,7 @@ export function ReleaseRecord({
         ? `${v} is older than the releases Distribution tracks.`
         : !rows.length
           ? `${v} has no rollout to halt.`
-          : !haltable.length
+          : !haltable.length && !inStores.length
             ? `No rollout of ${v} can be halted here.`
             : undefined;
   const yanked = release.yank

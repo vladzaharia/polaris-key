@@ -46,7 +46,13 @@ describe("the sources", () => {
     expect(labels).toContain("Home");
     expect(labels).toContain("Products");
     expect(labels).toContain("Licenses");
-    expect(labels).toContain("Matrix");
+    // P0-47: the matrix is Rollouts' view, so the palette offers Rollouts, not Matrix.
+    expect(labels).toContain("Rollouts");
+    expect(labels).not.toContain("Matrix");
+    // Typing "matrix" still finds it: Rollouts carries the word.
+    expect(filterItems(items, "matrix").map((i) => i.label)[0]).toBe(
+      "Rollouts",
+    );
     expect(labels).not.toContain("Releases");
     // Sign-in is built (chunk 10); not-built pages are not offered: they would only redirect.
     expect(labels).toContain("Sign-in");
@@ -80,7 +86,6 @@ describe("the sources", () => {
       "Operations",
       "Store connections",
       "Package feeds",
-      "Override migration",
     ]);
   });
 
@@ -249,6 +254,8 @@ describe("the palette in the console", () => {
       ).toBeNull(),
     );
     const dialog = await openPalette();
-    expect(optionNames(dialog).some((n) => n.startsWith("Matrix"))).toBe(false);
+    expect(optionNames(dialog).some((n) => n.startsWith("Rollouts"))).toBe(
+      false,
+    );
   });
 });

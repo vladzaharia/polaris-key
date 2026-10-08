@@ -197,6 +197,8 @@ export interface NavPage {
    * Kept in the keywords, so typing the sidebar label still finds it.
    */
   paletteLabel?: string;
+  /** More words the palette matches the page on ("matrix" finds Rollouts, which shows it). */
+  keywords?: string;
   /**
    * The path after the scope prefix: `#/p/<slug>/<path>` for a product page (`""` is the product
    * root), `#/<path>` for a global page (`""` is Home).
@@ -214,6 +216,8 @@ export interface NavPage {
   record?: NavRecord;
   /** The `g <key>` shortcut (ADMIN.md §5.5), product pages only. */
   shortcut?: string;
+  /** Where the shortcut lands, when not this page's label: the sheet's "Go to <it>". */
+  shortcutLabel?: string;
   /** A global page drawn inside a sidebar group rather than as a top-level link. */
   group?: "platform";
   /** Shown only while the product has this on (the page still answers a deep link). */
@@ -545,18 +549,23 @@ export const SECTIONS: NavSection[] = [
     docs: "/docs/services/distribution/",
     items: [
       {
+        // UX-31 made the matrix Rollouts' Matrix and Readiness views; the old URL (and `g m`)
+        // redirects there, so it is no longer a sidebar or palette item of its own (P0-47).
         page: "matrix",
         label: "Matrix",
         path: "distribution/matrix",
         icon: LayoutGrid,
         docs: "/docs/admin/distribution-matrix/",
-        inNav: true,
+        inNav: false,
         ready: true,
         shortcut: "m",
+        shortcutLabel: "Rollouts (matrix)",
       },
       {
         page: "rollouts",
         label: "Rollouts",
+        // The matrix and readiness are its views (UX-31), so their names find it (P0-47).
+        keywords: "matrix readiness",
         path: "distribution/rollouts",
         icon: TrendingUp,
         docs: "/docs/services/distribution/rollouts/",
@@ -813,13 +822,15 @@ const PLATFORM_PAGES: NavPage[] = [
   },
   {
     // U-03: the one-time move of licence config and secret overrides onto account overrides,
-    // and its report for the 90 days after the run.
+    // and its report for the 90 days after the run. The run is cancelled (owner decision 1), so
+    // the page leaves the sidebar and the palette (P0-47); it still answers its URL and the
+    // licence notice's link until U-27 removes it.
     page: "platform-override-migration",
     label: "Override migration",
     path: "platform/override-migration",
     icon: ArrowRightLeft,
     docs: "/docs/services/config/",
-    inNav: true,
+    inNav: false,
     ready: true,
     group: "platform",
   },

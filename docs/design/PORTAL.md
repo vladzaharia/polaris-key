@@ -46,9 +46,9 @@
 > overflow menu ("Remove from my library"), a confirmation dialog that also says its devices keep
 > working and, with Cloud Sync, that the devices this person signed in on stop syncing it. The
 > owner moved the licence's origin out of the meta line into the License card's facts as
-> **License source**, beside Activated, and dropped the repeated term ("Updates included" says
-> it). The Worker reports the origin (`origin`: `key`, `store-key`, `store`, `developer`,
-> `signin`).
+> **License source**, beside Activated, and dropped the repeated term (the **Access** fact says
+> it; it read "Updates included" until P0-47). The Worker reports the origin (`origin`: `key`,
+> `store-key`, `store`, `developer`, `signin`).
 
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It is the single source of
 > truth for every sign-in step: the login card's steps, license choice and **Replace a device**, the
@@ -921,7 +921,7 @@ Steam · Expires 24 Dec 2026" for a store-bound licence with no key, "Key ending
 with a key". Activation still enforces a seat limit on sign-in licences, so the page never calls
 them unlimited. Only
 an issue status (Expired, Suspended, Device limit reached, Expires in …) sits on that line, as a
-right-aligned pill. "Updates included" reads **Lifetime** for a licence with no end. With several
+right-aligned pill. **Access** reads **Lifetime** for a licence with no end (P0-47). With several
 licences the picker names each by tier and its short origin ("Standard · Sign-in", "Standard · Key
 …3WPLDA", "Standard · Steam key …3WPLDA"), adding the status only when it wants attention. When the
 account holds a key licence and a sign-in licence for the same product, the key licence shows no
@@ -942,6 +942,12 @@ device counter (on the License card or in Devices); the sign-in licence keeps it
   pill. The "N of M devices" line is gone: the Devices card says it. A licence granted through
   OIDC at sign-in (auto-issue or a group grant) reads **Automatic Grant** as its License source;
   the status and the picker keep "From signing in" and "Sign-in".
+- **Access, not "Updates included" (P0-47).** The Worker ends a licence at its end date, so the
+  term fact is **Access**: "Lifetime", "Until 3 Mar 2027" or "Ended 3 Mar 2027". An expired
+  licence's callout reads "Ended 3 Mar 2027. Renew with <developer> to use it again." The card
+  promises no updates or newer versions until LX-41's "keeps the last version" ships, and neither
+  does the Library's attention shelf: "Your Studio license ends on 3 Mar. Renew with <developer>
+  to keep using it."
 - **What's new.** The notes are Markdown, drawn formatted (headings under the card's `h2`, bold,
   italic, lists, quotes, code, `https:` and `mailto:` links only; raw HTML shows as text; never an
   HTML string). A summary shows at once (the first paragraph or list, cut to three lines or

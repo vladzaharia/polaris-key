@@ -153,6 +153,27 @@ describe("sections by enablement (D-15)", () => {
     expect(within(nav()).getByRole("link", { name: "Home" })).toBeTruthy();
     expect(within(nav()).getByRole("link", { name: "Products" })).toBeTruthy();
   });
+
+  it("lists neither Matrix nor Override migration; their URLs still answer (P0-47)", async () => {
+    boot("#/p/djdl", { services: ALL_ON });
+    await ready();
+    await expandAll();
+    // The matrix is Rollouts' view (UX-31); the override migration run is cancelled (U-03).
+    expect(within(nav()).getByRole("link", { name: "Rollouts" })).toBeTruthy();
+    expect(within(nav()).queryByRole("link", { name: "Matrix" })).toBeNull();
+    cleanup();
+    boot("#/products");
+    await screen.findByRole("navigation", { name: "Console" });
+    await userEvent.click(
+      within(nav()).getByRole("button", { name: "Platform" }),
+    );
+    expect(
+      await within(nav()).findByRole("link", { name: "Store connections" }),
+    ).toBeTruthy();
+    expect(
+      within(nav()).queryByRole("link", { name: "Override migration" }),
+    ).toBeNull();
+  });
 });
 
 describe("items and headers (owner, 2026-10-03)", () => {
@@ -178,7 +199,7 @@ describe("items and headers (owner, 2026-10-03)", () => {
       ).not.toBeNull();
     }
     // Including the two that had none before the redesign (SH-4).
-    for (const name of ["Deliverables", "Compatibility", "Matrix", "Health"]) {
+    for (const name of ["Deliverables", "Compatibility", "Health"]) {
       expect(
         within(nav()).getByRole("link", { name }).querySelector("svg"),
       ).not.toBeNull();
@@ -902,6 +923,9 @@ describe("the top bar", () => {
       name: "Keyboard shortcuts",
     });
     expect(within(sheet).getByText("Go to Licenses")).toBeTruthy();
+    // P0-47: g m lands on Rollouts' matrix view, and the sheet says so.
+    expect(within(sheet).getByText("Go to Rollouts (matrix)")).toBeTruthy();
+    expect(within(sheet).queryByText("Go to Matrix")).toBeNull();
   });
 });
 

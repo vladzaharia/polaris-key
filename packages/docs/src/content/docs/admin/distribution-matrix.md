@@ -5,8 +5,10 @@ sidebar:
   order: 12
 ---
 
-**Distribution → Matrix** shows a deliverable's most recent releases (twenty by default, fifty at
-most) against every outlet the product declares in `.pkey/distribution`. Each cell answers one
+**Distribution → Rollouts**, in its **Matrix** view, shows a deliverable's most recent releases
+(twenty by default, fifty at most) against every outlet the product declares in
+`.pkey/distribution`. The matrix is not a sidebar item of its own: its old address and the `g m`
+shortcut open that view. Each cell answers one
 question about one release on one outlet, and opens a drawer with everything else.
 
 ## The toolbar

@@ -145,6 +145,21 @@ describe("pkey sdk --lang", () => {
     },
   );
 
+  it("React's provider facts carry the trust pins, in TS and JS (P0-47)", async () => {
+    // Bearer mode (a page on its own origin, or Tauri) reports `invalid-options` without them.
+    for (const out of ["polaris.config.ts", "polaris.config.js"]) {
+      const rendered = renderSdkConfig("react", await facts(), { out });
+      const config = rendered.slice(
+        rendered.indexOf("export const polarisConfig"),
+      );
+      expect(config, out).toContain("  trust: { pinnedKeys },");
+      expect(rendered.indexOf("export const pinnedKeys"), out).toBeLessThan(
+        rendered.indexOf("export const polarisConfig"),
+      );
+      expect(rendered, out).toContain(`"${TRUST_KID}": "${TRUST_KEY}"`);
+    }
+  });
+
   it("refuses a release key discovery does not advertise", async () => {
     await expect(
       facts(DISCOVERY, [

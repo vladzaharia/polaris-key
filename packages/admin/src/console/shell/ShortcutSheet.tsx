@@ -8,7 +8,7 @@ import { Kbd } from "./bits.js";
 export function productShortcuts(): ShortcutDef[] {
   return PRODUCT_PAGES.filter((p) => p.shortcut && p.ready).map((p) => ({
     keys: `g ${p.shortcut}`,
-    label: `Go to ${p.label}`,
+    label: `Go to ${p.shortcutLabel ?? p.label}`,
     scope: "product" as const,
   }));
 }

@@ -4,7 +4,9 @@
  *
  * - General and License defaults are one resource (`PATCH /products/:slug`), so one form and one
  *   `SaveBar` whose summary counts both sections' changes. Validation matches the server: a blank
- *   display name is refused, a cleared admin group is sent as `null` (A-3, PRD-6), never dropped.
+ *   display name is refused (A-3, PRD-6).
+ * - The admin group (`core.adminGroup`) grants nothing, so it has no input (P0-47): a product
+ *   that has one shows it read-only, marked Not enforced, until ST-25 removes it.
  * - Signing moved to Keys & secrets and the compatibility window to Update → Feed; this page
  *   links to each instead of describing where they went (SET-3).
  * - Resync from repo is the console's one resync flow (`components/ResyncDialog.tsx`, UX-78):
@@ -14,8 +16,7 @@
  * - ST-01b (S-18 model C): on a repo-linked product the display name and the licence defaults
  *   carry a SourceBadge. Saving one claims it for the console (an L1 confirm says so) and every
  *   resync leaves it alone until Revert to manifest, which restores the last applied manifest's
- *   value at once (or at the next resync when there is no snapshot yet). The admin group is
- *   manifest-only there and shown read-only.
+ *   value at once (or at the next resync when there is no snapshot yet).
  * - ST-20 (S-18 §4.5 items 7–8): a manifest-authoritative product (the switch in Repository; on
  *   and locked for the system product) takes a save of a manifest-declared value only as a
  *   break-glass claim: an L2 confirm with a reason, and the claim ends after 7 days or at the
@@ -105,7 +106,6 @@ function listOf(items: string[]): string {
 
 interface Draft extends Record<string, unknown> {
   name: string;
-  adminGroup: string;
   defaultMaxOfflineDays: number | null;
   defaultDeviceLimit: number | null;
 }
@@ -113,7 +113,6 @@ interface Draft extends Record<string, unknown> {
 function draftOf(p: ProductDetail): Draft {
   return {
     name: p.name,
-    adminGroup: p.adminGroup ?? "",
     defaultMaxOfflineDays: p.defaultMaxOfflineDays,
     defaultDeviceLimit: p.defaultDeviceLimit,
   };
@@ -200,10 +199,10 @@ function SettingsBody({
   const values = React.useMemo(() => draftOf(product), [product]);
   const form = useAdminForm<Draft>({
     values,
-    resetOn: [product.modifiedAt, product.name, product.adminGroup],
+    resetOn: [product.modifiedAt, product.name],
     validate: validateSettings,
     onSubmit: async (draft, { server }) => {
-      const body = diffValues(server, draft, { nullable: ["adminGroup"] });
+      const body = diffValues(server, draft);
       const claimed = claimable
         ? (Object.keys(CLAIM_OF_FIELD) as (keyof Draft)[])
             .filter((f) => body[f] !== undefined)
@@ -228,12 +227,6 @@ function SettingsBody({
       await mutate("updateProduct", slug, {
         ...(breakGlass ? { breakGlass } : {}),
         ...(body.name !== undefined ? { name: draft.name.trim() } : {}),
-        ...(!linked && body.adminGroup !== undefined
-          ? {
-              adminGroup:
-                body.adminGroup === null ? null : draft.adminGroup.trim(),
-            }
-          : {}),
         ...(body.defaultMaxOfflineDays !== undefined
           ? { defaultMaxOfflineDays: draft.defaultMaxOfflineDays! }
           : {}),
@@ -309,32 +302,24 @@ function SettingsBody({
               {(f) => <Input {...f} autoComplete="off" />}
             </FormField>
           </SettingsRow>
-          {linked ? (
+          {/* P0-47: `core.adminGroup` is stored but never read by an authorization check, so
+              there is no input; a product that has one sees it marked Not enforced. */}
+          {product.adminGroup ? (
             <SettingsRow
               label="Admin group"
-              help="Set by adminGroup in .pkey/product. It grants nothing: console access is platform-wide."
+              source={
+                <StatusPill tone="neutral" icon={false} size="sm">
+                  Not enforced
+                </StatusPill>
+              }
+              help={`${linked ? "Set by adminGroup in .pkey/product. " : ""}Not enforced: console access is platform-wide.`}
             >
-              {product.adminGroup ? (
-                <span className="font-mono text-sm">{product.adminGroup}</span>
-              ) : (
-                <span className="text-fg-muted">None</span>
-              )}
+              {/* A long group (an LDAP DN) wraps under the label on a phone: read it from the left. */}
+              <span className="min-w-0 font-mono text-sm [overflow-wrap:anywhere] max-sm:text-left">
+                {product.adminGroup}
+              </span>
             </SettingsRow>
-          ) : (
-            <SettingsRow
-              label="Admin group"
-              help="Metadata only. It grants nothing: console access is platform-wide. Clear it to remove the group."
-            >
-              <FormField
-                className="w-full sm:w-80"
-                hideLabel
-                name="adminGroup"
-                label="Admin group"
-              >
-                {(f) => <Input {...f} mono clearable autoComplete="off" />}
-              </FormField>
-            </SettingsRow>
-          )}
+          ) : null}
         </SettingsSection>
 
         {licenseOn ? (

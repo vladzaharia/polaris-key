@@ -619,6 +619,21 @@ describe("Identity → Sign-in", () => {
     ).toBeTruthy();
   });
 
+  it("names where auto-issue is set, never a dead link to Enrollment (P0-47)", async () => {
+    renderSignIn();
+    const line = (await screen.findByText(/is refused \(not entitled\)/))
+      .parentElement as HTMLElement;
+    expect(line.textContent).toContain(
+      "Auto-issue is set by the autoIssue block (opens a new tab) in .pkey/product.",
+    );
+    expect(screen.queryByRole("link", { name: /Enrollment/ })).toBeNull();
+    // The phrase itself is the link, to the policy page's Auto-issue section.
+    const docs = within(line).getByRole("link", { name: /^autoIssue block/ });
+    expect(docs.getAttribute("href")).toMatch(
+      /\/docs\/services\/license\/policy\/#auto-issue$/,
+    );
+  });
+
   it("flags a group map that does not parse", async () => {
     edgeMintRecipes.mockResolvedValue(
       mintResponse({ ...CUSTOM, groupRoleMapJson: "{not json" }),

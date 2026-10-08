@@ -715,14 +715,18 @@ describe("global pages", () => {
     expect(groupOf("home")).toBeNull();
     expect(groupOf("tiers")).toBe("license");
     expect(platformLinks().map((p) => p.page)).toEqual(["home", "products"]);
+    // P0-47: Override migration (U-03, cancelled) is out of the sidebar and the palette; its
+    // URL still answers until U-27 removes the page.
     expect(platformItems().map((p) => p.page)).toEqual([
       "platform-settings",
       "platform-deployment",
       "platform-operations",
       "platform-stores",
       "platform-feeds",
-      "platform-override-migration",
     ]);
+    expect(
+      parseLocation("#/platform/override-migration").redirect,
+    ).toBeUndefined();
   });
 
   it("#/platform redirects to Settings; every Platform page is built", () => {

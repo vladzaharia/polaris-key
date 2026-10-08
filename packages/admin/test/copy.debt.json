@@ -105,32 +105,8 @@
     },
     {
       "rule": "grant",
-      "file": "console/pages/core/Settings.tsx",
-      "text": "Metadata only. It grants nothing: console access is platform-wide. Clear it to remove the group.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
-      "file": "console/pages/core/Settings.tsx",
-      "text": "Set by adminGroup in .pkey/product. It grants nothing: console access is platform-wide.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
-      "file": "console/pages/license/LicenseSettingsPage.tsx",
-      "text": "A device sees the entitlements of every licence and grant its holder has, combined, not just its own licence's.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
       "file": "console/pages/license/LicenseSettingsPage.tsx",
       "text": "A refund or chargeback still revokes the grant; this only delays it.",
-      "count": 1
-    },
-    {
-      "rule": "grant",
-      "file": "console/pages/license/LicenseSettingsPage.tsx",
-      "text": "How licences, grants and entitlements combine for this product. Declared in",
       "count": 1
     },
     {
