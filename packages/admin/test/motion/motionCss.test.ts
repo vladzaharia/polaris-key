@@ -168,6 +168,8 @@ describe("reduced motion is an instant swap (S-23 D3)", () => {
     for (const needle of [
       ".animate-pk-in",
       ".animate-pk-overlay-in",
+      ".animate-pk-refetch",
+      ".animate-pk-spin",
       ".pk-skeleton::after",
       ".pk-burst",
       "::view-transition-group(*)",
@@ -228,6 +230,16 @@ describe("sonner runs on the tokens", () => {
         overridden.has(norm(r.selector)),
         `sonner rule ${r.selector}`,
       ).toBe(true);
+  });
+
+  it("stops sonner's spinner under the in-app preference too (sonner's own rule covers the OS)", () => {
+    expect(
+      motionRules.some(
+        (r) =>
+          r.selector === ':root[data-motion="reduce"] .sonner-loading-bar' &&
+          /animation: none/.test(r.body),
+      ),
+    ).toBe(true);
   });
 
   it("keeps sonner's own reduced-motion rule", () => {

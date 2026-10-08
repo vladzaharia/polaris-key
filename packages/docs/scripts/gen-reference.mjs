@@ -18,7 +18,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse as parseYaml } from "yaml";
+import { CORE_SCHEMA, load as loadYaml } from "js-yaml";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const docsRoot = join(here, "..");
@@ -26,6 +26,22 @@ const repo = join(docsRoot, "..", "..");
 const outDir = join(docsRoot, "src", "content", "docs", "reference");
 
 const read = (...segments) => readFileSync(join(repo, ...segments), "utf8");
+
+// test/generated.test.ts runs every emitter in one process under a 5 s per-test budget that a
+// loaded CI runner shrinks about 25-fold, so the emitters share their parses:
+//   - each corpus file is parsed once per process (cases.json alone is 3.8 MB, and the parity
+//     matrix asks about it once per proof). Callers only read the parsed documents;
+//   - the 960 KB OpenAPI spec is read with js-yaml's core schema, which yields the same document
+//     as the `yaml` package (YAML 1.2 core: no timestamps, no merge keys) about ten times faster.
+const corpusDocs = new Map();
+const corpusJson = (file) => {
+  if (!corpusDocs.has(file))
+    corpusDocs.set(
+      file,
+      JSON.parse(read("conformance", "corpus", "v2", ...file.split("/"))),
+    );
+  return corpusDocs.get(file);
+};
 
 function page(title, description, intro, body) {
   return `---
@@ -279,8 +295,9 @@ conformance failure.`,
 
 // ── 5. Route & alias table ─────────────────────────────────────────────────────
 function routeTable() {
-  const spec = parseYaml(
+  const spec = loadYaml(
     read("packages", "worker", "openapi", "polaris-key.v3.yaml"),
+    { schema: CORE_SCHEMA },
   );
   const rows = [];
   for (const [path, entry] of Object.entries(spec.paths)) {
@@ -604,46 +621,22 @@ this page or fails the freshness gate.`,
 
 // ── 7. Conformance corpus inventory ────────────────────────────────────────────
 function corpusInventory() {
-  const cases = JSON.parse(read("conformance", "corpus", "v2", "cases.json"));
-  const gate = JSON.parse(
-    read("conformance", "corpus", "v2", "gate-matrix.json"),
-  );
-  const fp = JSON.parse(
-    read("conformance", "corpus", "v2", "fingerprint.json"),
-  );
-  const stages = JSON.parse(
-    read("conformance", "corpus", "v2", "stage-matrix.json"),
-  );
+  const cases = corpusJson("cases.json");
+  const gate = corpusJson("gate-matrix.json");
+  const fp = corpusJson("fingerprint.json");
+  const stages = corpusJson("stage-matrix.json");
   const families = Object.entries(cases)
     .filter(([, v]) => Array.isArray(v))
     .map(([k, v]) => [`\`${k}\``, String(v.length)]);
-  const headers = JSON.parse(
-    read("conformance", "corpus", "v2", "headers.json"),
-  );
-  const configMatrix = JSON.parse(
-    read("conformance", "corpus", "v2", "config-matrix.json"),
-  );
-  const updateMatrix = JSON.parse(
-    read("conformance", "corpus", "v2", "update-matrix.json"),
-  );
-  const outletMatrix = JSON.parse(
-    read("conformance", "corpus", "v2", "outlet-matrix.json"),
-  );
-  const planMatrix = JSON.parse(
-    read("conformance", "corpus", "v2", "plan-matrix.json"),
-  );
-  const syncScenarios = JSON.parse(
-    read("conformance", "corpus", "v2", "sync-scenarios.json"),
-  );
-  const deviceLabel = JSON.parse(
-    read("conformance", "corpus", "v2", "device-label.json"),
-  );
-  const presentationMatrix = JSON.parse(
-    read("conformance", "corpus", "v2", "presentation-matrix.json"),
-  );
-  const content = JSON.parse(
-    read("conformance", "corpus", "v2", "content", "cases.json"),
-  );
+  const headers = corpusJson("headers.json");
+  const configMatrix = corpusJson("config-matrix.json");
+  const updateMatrix = corpusJson("update-matrix.json");
+  const outletMatrix = corpusJson("outlet-matrix.json");
+  const planMatrix = corpusJson("plan-matrix.json");
+  const syncScenarios = corpusJson("sync-scenarios.json");
+  const deviceLabel = corpusJson("device-label.json");
+  const presentationMatrix = corpusJson("presentation-matrix.json");
+  const content = corpusJson("content/cases.json");
   const contentSections = Object.entries(content)
     .filter(([, v]) => Array.isArray(v))
     .map(([k, v]) => [`\`${k}\``, String(v.length)]);
@@ -784,7 +777,7 @@ function parityMatrix() {
     if (!existsSync(file)) return false;
     if (!p.family) return true;
     try {
-      return p.family in JSON.parse(readFileSync(file, "utf8"));
+      return p.family in corpusJson(p.file);
     } catch {
       return false;
     }

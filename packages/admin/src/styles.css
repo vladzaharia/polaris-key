@@ -85,7 +85,8 @@
 }
 
 /* Motion through the brand's duration and easing tokens, which collapse to 0 ms under
-   prefers-reduced-motion. The spinner is a loading indicator, not decoration, and keeps turning. */
+   prefers-reduced-motion. The spinner turns on a literal period, outside the token set, so
+   motion.css stops it under reduced motion instead. */
 @theme {
   /* The customer site's breakpoints (PORTAL.md §8): phones end at 760 px, the three-column
      product page starts at 1180 px. */
