@@ -34,8 +34,8 @@ def _add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--product", required=True, help="Product slug (the doc audience).")
     p.add_argument(
         "--version",
-        default=core.DEFAULT_VERSION,
-        help=f"This client's version (default: {core.DEFAULT_VERSION}).",
+        default=None,
+        help="This client's version (default: the installed polaris-key version).",
     )
     p.add_argument("--base-url", default=None, help="Override the control-plane base URL.")
     p.add_argument("--config-dir", default=None, help="Override the config dir.")
@@ -66,7 +66,7 @@ def _options(args: argparse.Namespace) -> core.ClientOptions:
         raise SystemExit(str(e))
     return core.ClientOptions(
         product=args.product,
-        version=args.version,
+        version=args.version or core.DEFAULT_VERSION,
         trust=trust,
         base_url=args.base_url,
         config_dir=args.config_dir,
