@@ -11983,10 +11983,12 @@ function shrinkToFit(spans, width, ellipsis) {
   const trail = /\s*$/.exec(span.text)[0];
   const inner = span.text.slice(lead.length, span.text.length - trail.length);
   const room = Math.max(SHRINK_FLOOR, cellWidth(inner) - (total - width));
+  const cut = truncateEnd(inner, room, ellipsis);
+  const name = cut.endsWith(ellipsis) ? `${cut.slice(0, -ellipsis.length).trimEnd()}${ellipsis}` : cut;
   const out = [...spans];
   out[i] = {
     ...span,
-    text: `${lead}${truncateEnd(inner, room, ellipsis)}${trail}`
+    text: `${lead}${name}${trail}`
   };
   return out;
 }
@@ -12038,6 +12040,7 @@ function eraseRows(n) {
   return s;
 }
 var widthsOf = (lines3) => lines3.map((l) => cellWidth(l));
+var BLANK_RAIL = /^\s*[│|]?\s*$/;
 var linesOf = (f) => typeof f === "function" ? f() : f;
 function guardCursor(out) {
   if (!out.isTTY || typeof process === "undefined")
@@ -12087,8 +12090,15 @@ var LiveRegion = class {
     this.drawn = [];
     return s;
   }
-  /** The frame's lines from `head` on, printing any that do not fit above the region. */
-  place(lines3) {
+  /**
+   * The frame's lines from `head` on, fitted to the screen: when they are taller than it, the
+   * blank rail rows go first, then the top lines that still do not fit are printed above the
+   * region (they scroll away; the header first).
+   */
+  place(frame) {
+    let lines3 = frame;
+    if (physicalRows(widthsOf(lines3.slice(this.head)), this.columns) > this.rows)
+      lines3 = lines3.filter((l) => !BLANK_RAIL.test(stripAnsi(l)));
     const widths = widthsOf(lines3);
     let start = Math.min(this.head, lines3.length);
     while (start < lines3.length - 1 && physicalRows(widths.slice(start), this.columns) > this.rows)
