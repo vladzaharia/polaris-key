@@ -290,8 +290,12 @@ public fun PolarisUpdatePrompt(
 
 /** The prompt's title and body for [ui]: the kit-copy "ready" pair once it can restart. */
 internal fun PolarisCopy.updatePromptText(ui: PolarisUpdateUi): Pair<String, String?> = when {
-    ui.kind == PolarisUpdateUi.Kind.Restart ->
-        format(updateReadyTitle, productName, ui.version ?: "").replace("  ", " ").trim() to format(updateReadyBody, productName)
+    // With no product name there is no "{product}" to fill: the banner's wording stands in.
+    ui.kind == PolarisUpdateUi.Kind.Restart && productName(this) != null && ui.version != null ->
+        format(updateReadyTitle, productName, ui.version) to format(updateReadyBody, productName)
+    ui.kind == PolarisUpdateUi.Kind.Restart -> updateRestart to ui.version?.let { format(updateRestartBody, it) }
+    ui.mandatory && productName(this) != null ->
+        format(updateMandatoryTitle, productName) to format(updateMandatoryBody, productName)
     ui.mandatory -> updateRequiredTitle to format(updateRequiredBody, ui.version ?: "")
     // An offer says what it is, not that it is downloaded: "{product} {version}" and Update now.
     ui.version == null -> updateAvailableGeneric to null

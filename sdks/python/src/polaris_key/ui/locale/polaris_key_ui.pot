@@ -647,7 +647,7 @@ msgstr ""
 msgid "signInHandoff.scan"
 msgstr ""
 
-#. Scan the code with your phone, or enter this code at the address below.
+#. Scan the QR code with your phone, or enter this code at the address below.
 #. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
 msgid "signInHandoff.scanTv"
 msgstr ""

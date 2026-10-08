@@ -420,6 +420,12 @@ private fun PolarisCodeView(
     var noBrowser by rememberSaveable(link) { mutableStateOf(false) }
     // The link comes from the server: only a plain https link is opened, shown as a QR or copied.
     val linkOk = isSafeSignInLink(link)
+    val clipboard = LocalClipboard.current
+    val clipScope = rememberCoroutineScope()
+    val copyLink: () -> Unit = {
+        if (onCopyLink != null) onCopyLink(link)
+        else clipScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, link))) }
+    }
     val open: () -> Unit = {
         val opened = linkOk && runCatching { (onOpenBrowser ?: uriHandler::openUri)(link) }.isSuccess
         noBrowser = !opened
@@ -497,9 +503,14 @@ private fun PolarisCodeView(
                 }
                 PolarisTextButton(copy.cancel, onCancel, initialFocus = onUseKey == null)
             } else {
-                // After a failed open the code and Copy link lead: the opener steps down to tonal.
-                if (noBrowser) PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
-                else PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
+                // After a failed open, Copy link leads (and takes focus) and the opener steps down to tonal.
+                if (noBrowser) {
+                    PolarisPrimaryButton(copy.signInCopyLink, onClick = copyLink, initialFocus = true)
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open)
+                } else {
+                    PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
+                }
                 Spacer(Modifier.height(PolarisSpace.controls))
                 PolarisTextButton(copy.cancel, onCancel)
             }

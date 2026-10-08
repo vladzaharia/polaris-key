@@ -40112,49 +40112,49 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scan the code with your phone, or enter this code at the address below."
+            "value": "Scan the QR code with your phone, or enter this code at the address below."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scannen Sie den Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein."
+            "value": "Scannen Sie den QR-Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Scannez le code avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous."
+            "value": "Scannez le code QR avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escanea el código con tu teléfono o introduce este código en la dirección de abajo."
+            "value": "Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Escaneie o código com o celular ou digite este código no endereço abaixo."
+            "value": "Escaneie o QR code com o celular ou digite este código no endereço abaixo."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Inquadra il codice con il telefono, oppure inserisci questo codice all'indirizzo qui sotto."
+            "value": "Inquadra il codice QR con il telefono, oppure inserisci questo codice all'indirizzo qui sotto."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "スマートフォンでコードを読み取るか、下のアドレスでこのコードを入力してください。"
+            "value": "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "휴대전화로 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요."
+            "value": "휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요."
           }
         },
         "zh-Hans": {

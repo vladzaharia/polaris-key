@@ -90,7 +90,7 @@
   "signIn.methodError": "La connexion avec {method} n’a pas abouti. Essayez un autre moyen.",
   "signInHandoff.starting": "Obtention d’un code de connexion…",
   "signInHandoff.scan": "Scannez le code avec votre téléphone, ou rendez-vous sur {url} et saisissez ce code.",
-  "signInHandoff.scanTv": "Scannez le code avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous.",
+  "signInHandoff.scanTv": "Scannez le code QR avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous.",
   "signInHandoff.linkCopied": "Lien copié",
   "signInHandoff.confirm": "Choisissez Continuer vers {product} sur la page de connexion pour terminer.",
   "signInHandoff.ok": "Connecté",

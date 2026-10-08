@@ -133,7 +133,7 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "Scan the code with your phone, or go to {url} and enter this code.",
     "signInHandoff.scanTv":
-      "Scan the code with your phone, or enter this code at the address below.",
+      "Scan the QR code with your phone, or enter this code at the address below.",
     "signInHandoff.linkCopied": "Link copied",
     "signInHandoff.confirm":
       "Choose Continue to {product} on the sign-in page to finish.",
@@ -1307,7 +1307,7 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "Scannen Sie den Code mit Ihrem Telefon oder öffnen Sie {url} und geben Sie diesen Code ein.",
     "signInHandoff.scanTv":
-      "Scannen Sie den Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.",
+      "Scannen Sie den QR-Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.",
     "signInHandoff.linkCopied": "Link kopiert",
     "signInHandoff.confirm":
       "Wählen Sie auf der Anmeldeseite „Weiter zu {product}“, um den Vorgang abzuschließen.",
@@ -2554,7 +2554,7 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "Scannez le code avec votre téléphone, ou rendez-vous sur {url} et saisissez ce code.",
     "signInHandoff.scanTv":
-      "Scannez le code avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous.",
+      "Scannez le code QR avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous.",
     "signInHandoff.linkCopied": "Lien copié",
     "signInHandoff.confirm":
       "Choisissez Continuer vers {product} sur la page de connexion pour terminer.",
@@ -3767,7 +3767,7 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "Escanea el código con tu teléfono, o ve a {url} y escribe este código.",
     "signInHandoff.scanTv":
-      "Escanea el código con tu teléfono o introduce este código en la dirección de abajo.",
+      "Escanea el código QR con tu teléfono o introduce este código en la dirección de abajo.",
     "signInHandoff.linkCopied": "Enlace copiado",
     "signInHandoff.confirm":
       "Elige Continuar a {product} en la página de inicio de sesión para terminar.",
@@ -4995,7 +4995,7 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "Escaneie o código com o celular ou acesse {url} e digite este código.",
     "signInHandoff.scanTv":
-      "Escaneie o código com o celular ou digite este código no endereço abaixo.",
+      "Escaneie o QR code com o celular ou digite este código no endereço abaixo.",
     "signInHandoff.linkCopied": "Link copiado",
     "signInHandoff.confirm":
       "Escolha Continuar para {product} na página de acesso para concluir.",
@@ -6207,7 +6207,7 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "Scansiona il codice con il telefono oppure vai su {url} e inserisci questo codice.",
     "signInHandoff.scanTv":
-      "Inquadra il codice con il telefono, oppure inserisci questo codice all'indirizzo qui sotto.",
+      "Inquadra il codice QR con il telefono, oppure inserisci questo codice all'indirizzo qui sotto.",
     "signInHandoff.linkCopied": "Link copiato",
     "signInHandoff.confirm":
       "Per finire, scegli Continua su {product} nella pagina di accesso.",
@@ -7426,7 +7426,7 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "スマートフォンでコードをスキャンするか、{url}にアクセスしてこのコードを入力してください。",
     "signInHandoff.scanTv":
-      "スマートフォンでコードを読み取るか、下のアドレスでこのコードを入力してください。",
+      "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。",
     "signInHandoff.linkCopied": "リンクをコピーしました",
     "signInHandoff.confirm":
       "完了するには、サインインページで「{product}に進む」を選択してください。",
@@ -8656,7 +8656,7 @@ export const KIT_COPY: Readonly<
     "signInHandoff.scan":
       "휴대폰으로 코드를 스캔하거나 {url}에 접속해 이 코드를 입력하세요.",
     "signInHandoff.scanTv":
-      "휴대전화로 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.",
+      "휴대전화로 QR 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.",
     "signInHandoff.linkCopied": "링크 복사됨",
     "signInHandoff.confirm":
       "로그인 페이지에서 “{product}에서 계속”을 선택해 완료하세요.",

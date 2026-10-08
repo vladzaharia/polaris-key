@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -225,6 +226,9 @@ class FlowTest {
         }
     }
 
+    private fun scenarioVm(a: androidx.activity.ComponentActivity) =
+        androidx.lifecycle.ViewModelProvider(a)["polaris-key-sign-in", PolarisSignInViewModel::class.java]
+
     private fun idle() = org.robolectric.shadows.ShadowLooper.idleMainLooper()
 
     private fun androidx.test.core.app.ActivityScenario<androidx.activity.ComponentActivity>.vm() =
@@ -280,8 +284,16 @@ class FlowTest {
         actions.done.complete(SignInResult.Ready); idle()
         assertEquals(1, fired)
         // Disposing the composition releases the callback: nothing composition-bound stays held.
-        scenario.recreate(); idle()
-        assertEquals(null, scenario.vm().onSignedIn)
+        assertTrue("attached while shown", scenario.vm().onSignedIn != null)
+        // The composition leaves: its ComposeView is disposed, which runs every onDispose at once
+        // (checked before the view can attach a new composition).
+        var released = false
+        scenario.onActivity { a ->
+            val root = a.findViewById<android.view.ViewGroup>(android.R.id.content)
+            (root.getChildAt(0) as androidx.compose.ui.platform.ComposeView).disposeComposition()
+            released = scenarioVm(a).onSignedIn == null
+        }
+        assertTrue("the callback is released on dispose", released)
         scenario.close()
     }
 
@@ -313,5 +325,54 @@ class FlowTest {
         // Static regular for 400 and 500, static bold for 600: nothing renders at the variable default (300).
         assertEquals(3, (legacy as androidx.compose.ui.text.font.FontListFontFamily).fonts.size)
         assertTrue((legacy as androidx.compose.ui.text.font.FontListFontFamily).fonts.none { it is androidx.compose.ui.text.font.ResourceFont && it.variationSettings.settings.isNotEmpty() })
+    }
+
+    private fun focusedText(): String? = rule.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Focused, true))
+        .fetchSemanticsNodes().firstOrNull()?.let { n ->
+            (n.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }.orEmpty() +
+                n.config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ").orEmpty()).trim()
+        }
+
+    @Test
+    fun afterAFailedOpenFocusGoesToCopyLinkOnSignIn() {
+        shadowOf(ApplicationProvider.getApplicationContext<Application>()).checkActivities(true)
+        rule.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalInputModeManager provides FixedInputMode(androidx.compose.ui.input.InputMode.Keyboard),
+            ) {
+                StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW)) } }
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText(sampleCopy.signInOpenBrowser).performClick()
+        rule.waitForIdle()
+        assertEquals(sampleCopy.signInCopyLink, focusedText())
+    }
+
+    @Test
+    fun afterAFailedOpenFocusGoesToCopyLinkOnTheGate() {
+        shadowOf(ApplicationProvider.getApplicationContext<Application>()).checkActivities(true)
+        rule.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.ui.platform.LocalInputModeManager provides FixedInputMode(androidx.compose.ui.input.InputMode.Keyboard),
+            ) {
+                StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { kitScreen("gate-device-limit-manage")() } }
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText(sampleCopy.freeDevice).performClick()
+        rule.waitForIdle()
+        assertEquals(sampleCopy.signInCopyLink, focusedText())
+    }
+
+    @Test
+    fun theUpdatePromptWithoutAProductName() {
+        val anon = PolarisCopy()
+        val ready = anon.updatePromptText(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart))
+        assertEquals("Restart to update" to "Version 2.5.0 is ready. Restart to finish updating.", ready)
+        assertEquals("Update required", anon.updatePromptText(PolarisUpdateUi("2.5.0", mandatory = true)).first)
+        val named = PolarisCopy(productName = "Diceroll")
+        assertEquals("Diceroll 2.5.0 is ready" to "Restart Diceroll to finish updating.", named.updatePromptText(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart)))
+        assertEquals("Update to keep using Diceroll", named.updatePromptText(PolarisUpdateUi("2.5.0", mandatory = true)).first)
     }
 }

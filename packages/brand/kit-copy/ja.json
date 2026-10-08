@@ -97,7 +97,7 @@
     "signIn.methodError": "{method}でのサインインが完了しませんでした。別の方法をお試しください。",
     "signInHandoff.starting": "サインインコードを取得しています…",
     "signInHandoff.scan": "スマートフォンでコードをスキャンするか、{url}にアクセスしてこのコードを入力してください。",
-    "signInHandoff.scanTv": "スマートフォンでコードを読み取るか、下のアドレスでこのコードを入力してください。",
+    "signInHandoff.scanTv": "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。",
     "signInHandoff.linkCopied": "リンクをコピーしました",
     "signInHandoff.confirm": "完了するには、サインインページで「{product}に進む」を選択してください。",
     "signInHandoff.ok": "サインインしました",

@@ -116,7 +116,7 @@ public data class PolarisCopy(
     val signInTitle: String = "Sign in with a code",
     val signInStarting: String = "Getting a sign-in code…",
     /** On Android TV, beside the QR code; the address follows on its own line. */
-    val signInInstructions: String = "Scan the code with your phone, or enter this code at the address below.",
+    val signInInstructions: String = "Scan the QR code with your phone, or enter this code at the address below.",
     /** Everywhere else; %1$s is the address, set inline. */
     val signInCodeBody: String = "On any phone or computer, go to %1\$s and enter this code.",
     val signInCopyLink: String = "Copy link",
@@ -189,6 +189,9 @@ public data class PolarisCopy(
     val updateDismiss: String = "Dismiss",
     /** The offer's title: %1$s the product, %2$s the version (update.title). */
     val updatePromptTitle: String = "%1\$s %2\$s",
+    /** A mandatory update of a named product: %1$s the product (update.mandatoryTitle, mandatoryBody). */
+    val updateMandatoryTitle: String = "Update to keep using %1\$s",
+    val updateMandatoryBody: String = "This version is below the minimum supported version. Update to keep using %1\$s.",
     val updateRequiredTitle: String = "Update required",
     val updateRequiredBody: String = "Version %1\$s is required to keep using this app.",
     val updateNow: String = "Update now",

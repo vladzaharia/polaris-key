@@ -90,7 +90,7 @@
   "signIn.methodError": "{method} sign-in didn't finish. Try another way.",
   "signInHandoff.starting": "Getting a sign-in code…",
   "signInHandoff.scan": "Scan the code with your phone, or go to {url} and enter this code.",
-  "signInHandoff.scanTv": "Scan the code with your phone, or enter this code at the address below.",
+  "signInHandoff.scanTv": "Scan the QR code with your phone, or enter this code at the address below.",
   "signInHandoff.linkCopied": "Link copied",
   "signInHandoff.confirm": "Choose Continue to {product} on the sign-in page to finish.",
   "signInHandoff.ok": "Signed in",

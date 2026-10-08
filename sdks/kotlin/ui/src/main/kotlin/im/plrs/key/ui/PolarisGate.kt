@@ -457,8 +457,8 @@ public fun PolarisActivationScreen(
         listOfNotNull(reason, seats)
     }
     val keyField: @Composable () -> Unit = {
-        // In two panes the reason leads the start pane; the field keeps only its own text.
-        val aside = polarisWindow.twoPane && limit != null
+        // The reason leads the content as its lede; the field keeps only its own text.
+        val aside = limit != null
         PolarisTextField(
             value = ui.key,
             onValueChange = onKeyChange,
@@ -486,12 +486,10 @@ public fun PolarisActivationScreen(
                 // A focused step: the product header, then the stop's own title.
                 PolarisProductHeader()
                 PolarisTitle(Copy.activationTitle(im.plrs.key.core.ErrorCode.deviceLimit, coreLocale()))
-                if (polarisWindow.twoPane) {
-                    // Reason and seat caption as the lede, at body size, beside the field and actions.
-                    for (line in supporting) {
-                        Spacer(Modifier.height(PolarisSpace.tight))
-                        PolarisBody(line)
-                    }
+                // Reason and seat caption as the lede, at body size, in one column and in two panes.
+                for (line in supporting) {
+                    Spacer(Modifier.height(PolarisSpace.tight))
+                    PolarisBody(line)
                 }
                 if (manageAsQr && manage != null) {
                     Spacer(Modifier.height(polarisWindow.section))
@@ -551,6 +549,7 @@ public fun PolarisActivationScreen(
                 if (noBrowser) {
                     PolarisPrimaryButton(
                         text = copy.signInCopyLink,
+                        initialFocus = true,
                         onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, manage))) } },
                     )
                     Spacer(Modifier.height(PolarisSpace.controls))

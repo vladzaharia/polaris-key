@@ -646,7 +646,7 @@ msgstr "正在获取登录码…"
 msgid "signInHandoff.scan"
 msgstr "用手机扫描二维码，或前往{url}并输入此代码。"
 
-#. Scan the code with your phone, or enter this code at the address below.
+#. Scan the QR code with your phone, or enter this code at the address below.
 #. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
 msgid "signInHandoff.scanTv"
 msgstr "用手机扫描二维码，或在下方地址输入此代码。"

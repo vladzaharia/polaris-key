@@ -90,7 +90,7 @@
   "signIn.methodError": "Die Anmeldung mit {method} wurde nicht abgeschlossen. Versuchen Sie es auf andere Weise.",
   "signInHandoff.starting": "Anmeldecode wird abgerufen…",
   "signInHandoff.scan": "Scannen Sie den Code mit Ihrem Telefon oder öffnen Sie {url} und geben Sie diesen Code ein.",
-  "signInHandoff.scanTv": "Scannen Sie den Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.",
+  "signInHandoff.scanTv": "Scannen Sie den QR-Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.",
   "signInHandoff.linkCopied": "Link kopiert",
   "signInHandoff.confirm": "Wählen Sie auf der Anmeldeseite „Weiter zu {product}“, um den Vorgang abzuschließen.",
   "signInHandoff.ok": "Angemeldet",
