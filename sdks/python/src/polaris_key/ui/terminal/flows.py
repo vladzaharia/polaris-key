@@ -74,6 +74,8 @@ class Terminal:
         self.kit = kit
         self.device = device
         self.verb = verb
+        #: Ctrl-C ended an interactive step (exit 130, as Node's INTERRUPT); Esc is a plain cancel.
+        self.interrupted = False
         # A resize (SIGWINCH, read by a live region) lays the kit's screens out at the new width.
         device.on_resize(self._resized)
 
@@ -231,34 +233,39 @@ def _busy(t: Terminal, fn: Callable[[], Any], draw: Callable[[int], List[Line]])
 
 def read_key(t: Terminal) -> Optional[str]:
     """Masked key entry (UI-KITS §4.3): the prefix stays clear, the body is bullets, the last six
-    characters show; the verdict updates as you type, a cut-short key is caught on Enter, and the
-    key never touches argv or shell history. ``None`` when the person cancels."""
+    characters show; the verdict updates as you type, a cut-short key is caught on Enter, a key for
+    another product is a warning that does not submit, and the key never touches argv or shell
+    history. ``None`` when the person cancels (Esc, or Ctrl-C with ``t.interrupted`` set)."""
     k = t.kit
     raw = ""
     show_empty = False
     final = False
-    with t.device.keys() as keys, t.device.live() as live:
-        while True:
-            verdict = parse_key(raw, final=final)
-            live.update(lambda r=raw, v=verdict, e=show_empty: screens.key_entry(k, r, v, show_empty=e))
-            key = keys.read(None)
-            if key is None:
-                continue
-            if key == "esc":
-                return None
-            if key == "enter":
-                v = parse_key(raw, final=True)
-                if v.state == "parsed":
-                    return v.key
-                show_empty, final = v.state == "empty", True
-                continue
-            final, show_empty = False, False
-            if key == "backspace":
-                raw = raw[:-1]
-            elif key == "ctrl-u":
-                raw = ""
-            elif key not in ("up", "down", ""):
-                raw += "".join(ch for ch in key if not ch.isspace())
+    try:
+        with t.device.keys() as keys, t.device.live() as live:
+            while True:
+                verdict = parse_key(raw, final=final)
+                live.update(lambda r=raw, v=verdict, e=show_empty: screens.key_entry(k, r, v, show_empty=e))
+                key = keys.read(None)
+                if not key:
+                    continue  # a wake (a resize) or nothing: draw again
+                if key == "esc":
+                    return None
+                if key == "enter":
+                    v = parse_key(raw, final=True)
+                    if v.state == "parsed" and not screens.other_product(k, v):
+                        return v.key
+                    show_empty, final = v.state == "empty", True
+                    continue
+                final, show_empty = False, False
+                if key == "backspace":
+                    raw = raw[:-1]
+                elif key == "ctrl-u":
+                    raw = ""
+                elif key not in ("up", "down"):
+                    raw += "".join(ch for ch in key if not ch.isspace())
+    except KeyboardInterrupt:
+        t.interrupted = True
+        return None
 
 
 def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
@@ -271,7 +278,9 @@ def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
             return usage(t, "activate --key-stdin | --key-file <path>")
         key = read_key(t)
         if key is None:
-            return Outcome(1, [], {"kind": "cancelled"})
+            # Nothing changed: the header, the step and the line saying so (never a blank screen).
+            lines = screens._frame(k, verb, k.step("done", [k.t("part.keyField.label")]), [k.t("cli.nothingChanged", "muted")])
+            return Outcome(130 if t.interrupted else 1, lines, {"kind": "cancelled"})
     verdict = parse_key(key, final=True)
     while True:
         result = _busy(t, lambda: client.license.activate_with_key(key), lambda f: screens.key_entry(k, key, verdict, busy=True, frame=f))
@@ -285,27 +294,33 @@ def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
             return Outcome(0, screens.activate(k, view, verb), data)
         if view.component == "DeviceLimit" and view.manage_url and t.env.interactive:
             if not _replace_in_browser(t, view, verb):
-                return Outcome(1, screens.activate(k, view, verb), data)
+                # The hints give way to the line that says what to run: nothing live-looking is
+                # left above the shell prompt.
+                return Outcome(130 if t.interrupted else 1, screens.device_limit(k, view, verb, ended=True), data)
             continue
         return Outcome(1, screens.activate(k, view, verb), data)
 
 
 def _replace_in_browser(t: Terminal, view: Any, verb: str) -> bool:
     """Replace a device: Enter opens ``manageUrl``; once opened, Enter tries again. ``False``
-    when the person leaves (Esc)."""
+    when the person leaves (Esc, or Ctrl-C with ``t.interrupted`` set)."""
     k = t.kit
     opened = False
-    with t.device.keys() as keys, t.device.live() as live:
-        while True:
-            live.update(lambda o=opened: screens.device_limit(k, view, verb, opened=o))
-            key = keys.read(None)
-            if key == "esc":
-                return False
-            if key == "enter":
-                if opened:
-                    return True
-                t.device.open_url(view.manage_url)
-                opened = True
+    try:
+        with t.device.keys() as keys, t.device.live() as live:
+            while True:
+                live.update(lambda o=opened: screens.device_limit(k, view, verb, opened=o))
+                key = keys.read(None)
+                if key == "esc":
+                    return False
+                if key == "enter":
+                    if opened:
+                        return True
+                    t.device.open_url(view.manage_url)
+                    opened = True
+    except KeyboardInterrupt:
+        t.interrupted = True
+        return False
 
 
 def enroll(client: Any, t: Terminal) -> Outcome:
@@ -381,23 +396,36 @@ def sign_in(
     cancelled = False
     if t.env.interactive:
         frame = 0
-        with t.device.keys() as keys, t.device.live() as live:
-            while worker.is_alive():
-                model.tick(prompt.expiresAt - _now())
-                live.update(lambda v=model.view, f=frame: screens.sign_in(k, v, verb, frame=f))
-                frame += 1
-                key = keys.read(0.08)
-                if key == "esc":
-                    cancel.set()
-                    cancelled = True
-                    break
-                if key == "c":
-                    if model.view.state in ("code",) and t.device.copy(prompt.userCode):
-                        model.copied()
-                    else:
-                        model.use_code()
-                elif key in ("enter", "o") and model.view.state in ("handoff", "code", "no-browser"):
-                    opener(prompt.verificationUriComplete)
+        copied_at = 0.0
+        try:
+            with t.device.keys() as keys, t.device.live() as live:
+                while worker.is_alive():
+                    model.tick(prompt.expiresAt - _now())
+                    if model.view.copied and time.monotonic() - copied_at > 2:
+                        model.uncopy()  # "Copied" is on the hints row for about two seconds
+                    live.update(lambda v=model.view, f=frame: screens.sign_in(k, v, verb, frame=f))
+                    frame += 1
+                    key = keys.read(0.08)
+                    if key == "esc":
+                        cancel.set()
+                        cancelled = True
+                        break
+                    code_view = model.view.state in ("code", "no-browser")
+                    if key == "c":
+                        if code_view:
+                            if t.device.copy(prompt.userCode):
+                                model.copied()
+                                copied_at = time.monotonic()
+                        else:
+                            model.use_code()
+                    elif key == "enter" and model.view.state == "handoff":
+                        opener(prompt.verificationUriComplete)
+                    elif key == "o" and code_view and not model.view.headless and not model.view.no_browser:
+                        opener(prompt.verificationUriComplete)
+        except KeyboardInterrupt:
+            cancel.set()
+            cancelled = True
+            t.interrupted = True
         worker.join(5)
     else:
         if not t.env.json:
@@ -405,7 +433,7 @@ def sign_in(
         worker.join()
     if cancelled or (isinstance(worker.error, PolarisError) and worker.error.code == "cancelled"):
         model.cancelled()
-        return Outcome(1, screens.sign_in(k, model.view, verb), {"state": "cancelled"})
+        return Outcome(130 if t.interrupted else 1, screens.sign_in(k, model.view, verb), {"state": "cancelled"})
     if worker.error is not None:
         code = getattr(worker.error, "code", "sign-in-failed")
         model.failed(code if isinstance(code, str) else "sign-in-failed")

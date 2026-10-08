@@ -24,6 +24,7 @@ from .. import ansi
 
 __all__ = [
     "BREAKS",
+    "DROP",
     "break_pieces",
     "clean",
     "safe_link",
@@ -81,9 +82,18 @@ class Span:
 @dataclass
 class Line:
     spans: List[Span] = field(default_factory=list)
+    #: Compaction tier for a live screen taller than the terminal (see ``fit_screen``): the line is
+    #: dropped at this tier, lowest first. ``None``: never dropped (the URL line, the code, the hints).
+    drop: Optional[int] = None
+    #: ``"spinner"`` is the waiting line the key hints merge onto first; ``"hints"`` the hints line
+    #: that merges (``hint_spans`` are its spans without the rail prefix); ``"header"`` the flow's
+    #: header lines, which a live region leaves out once a resize pushed them into the terminal's
+    #: scrollback (they cannot be erased, and are never printed a second time).
+    role: Optional[str] = None
+    hint_spans: Optional[List[Span]] = None
 
     def __add__(self, other: "Line") -> "Line":
-        return Line(self.spans + other.spans)
+        return Line(self.spans + other.spans, self.drop, self.role, self.hint_spans)
 
     @property
     def text(self) -> str:
@@ -142,6 +152,9 @@ def plain(lines: Iterable[Line]) -> str:
 #   before ``?`` and ``&`` (then after ``-`` or before ``.``, then anywhere), hanging under the
 #   content column; every piece keeps the link;
 # * a **user code** (``src="data:code"``): never cut; wider than a line, it wraps after a ``-``.
+
+#: The compaction tiers a live screen drops, in order, when it is taller than the terminal.
+DROP = {"blank_prose": 2, "check": 3, "blank_code": 4, "countdown": 5}
 
 #: Span sources whose text wraps at its own break points and is never cut.
 BREAKS = {"data:url": "url", "data:code": "code"}

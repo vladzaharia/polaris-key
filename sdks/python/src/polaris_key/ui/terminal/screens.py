@@ -8,6 +8,7 @@ Nothing is printed here; :mod:`.device` writes the lines, and :mod:`.flows` driv
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, List, Optional, Sequence, Tuple
 
 from ..core.models import (
@@ -26,7 +27,7 @@ from ..core.models import (
 )
 from . import fmt
 from .parts import STACK_COLUMNS, Kit
-from .text import Line, Span
+from .text import DROP, Line, Span
 
 __all__ = [
     "activate",
@@ -52,18 +53,32 @@ DEVICE_CODE_URL = "https://key.plrs.im/device"
 Lines = List[Line]
 
 
-def _frame(k: Kit, verb: str, body: Lines, end: Sequence[Span] = ()) -> Lines:
+def _close(k: Kit, lines: Lines) -> Lines:
+    """End the rail on the last content row: a bare ``└`` row under a ``│`` row becomes that row's
+    own ``└``, so no empty closing row hangs below the content."""
+    if not k.decor or len(lines) < 2:
+        return lines
+    last, prev = lines[-1], lines[-2]
+    rail, end = k.env.symbol["rail"], k.env.symbol["railEnd"]
+    bare = len(last.spans) <= 2 and last.spans and last.spans[0].text == end and not "".join(s.text for s in last.spans[1:]).strip()
+    if bare and len(prev.spans) > 1 and prev.spans[0].text == rail and "".join(s.text for s in prev.spans[1:]).strip():
+        first = Span(end, prev.spans[0].roles, None, "symbol")
+        return lines[:-2] + [Line([first] + prev.spans[1:], prev.drop, prev.role, prev.hint_spans)]
+    return lines
+
+
+def _frame(k: Kit, verb: str, body: Lines, end: Sequence[Span] = (), hints: bool = False) -> Lines:
     out = [k.header(verb)]
     if k.decor:
-        out += k.gap()
+        out += [replace(ln, role="header") for ln in k.gap()]
     out += body
-    out += k.end(end)
-    return out
+    out += k.end(end, hints)
+    return _close(k, out)
 
 
-def _gap(k: Kit) -> Lines:
-    """One blank rail row between blocks (none on a short terminal): one rhythm, never two."""
-    return k.gap()
+def _gap(k: Kit, tier: int = DROP["blank_prose"]) -> Lines:
+    """One blank rail row between blocks (dropped only when the screen does not fit)."""
+    return k.gap(tier)
 
 
 def _fixes(k: Kit, fixes: Sequence[Tuple[str, str]]) -> Lines:
@@ -197,6 +212,11 @@ def _masked(k: Kit, raw: str, verdict: KeyVerdict) -> List[Span]:
     return out
 
 
+def other_product(k: Kit, verdict: KeyVerdict) -> bool:
+    """A parsed key that belongs to another product than this command's."""
+    return verdict.state == "parsed" and bool(verdict.slug) and verdict.slug != _slug_of(k)
+
+
 def key_entry(
     k: Kit,
     raw: str,
@@ -219,17 +239,18 @@ def key_entry(
     if busy:
         spin = k.env.symbol["ellipsis"] if not k.env.motion else _spinner(k, frame)
         body += k.body([Span(spin, ("muted",), None, "symbol"), Span(" "), k.t("activate.busy")])
+    elif other_product(k, verdict):
+        body += k.body([*k.icon("warn", "warning"), k.t("cli.activate.otherProduct", app=verdict.slug, product=k.product)])
     elif verdict.state == "parsed":
-        name = k.product if verdict.slug in (None, _slug_of(k)) else verdict.slug
-        body += k.body([*k.icon("ok", "success"), k.t("part.keyField.forProduct", "muted", product=name)])
+        body += k.body([*k.icon("ok", "success"), k.t("part.keyField.forProduct", "muted", product=k.product)])
     elif verdict.state == "cut-short":
         body += k.body([*k.icon("fail", "danger"), k.t("part.keyField.cutShort", prefix=verdict.prefix, used=verdict.used, limit=verdict.limit)])
     elif verdict.state == "malformed":
         body += k.body([*k.icon("fail", "danger"), k.t("part.keyField.malformed")])
     elif verdict.state == "empty" and show_empty:
         body += k.body([*k.icon("fail", "danger"), k.t("part.keyField.empty")])
-    hints = [] if busy else k.hints([("Enter", "activate.submit"), ("Esc", "common.cancel")])
-    return _frame(k, verb, body, hints)
+    hints = [] if busy else k.hint_string("cli.keys.activate")
+    return _frame(k, verb, body, hints, bool(hints))
 
 
 def _slug_of(k: Kit) -> Optional[str]:
@@ -271,31 +292,32 @@ def activate(k: Kit, v: ActivateView, verb: str = "activate") -> Lines:
     return _frame(k, verb, body, end)
 
 
-def device_limit(k: Kit, v: ActivateView, verb: str = "activate", *, opened: bool = False) -> Lines:
+def device_limit(k: Kit, v: ActivateView, verb: str = "activate", *, opened: bool = False, ended: bool = False) -> Lines:
     """DeviceLimit in browser mode (UI-KITS §4.3: layer 1 has no device list for a key, so
-    **Replace a device** opens ``manageUrl``), then **Try again**."""
+    **Replace a device** opens ``manageUrl``), then **Try again**. The board: the answered key row,
+    the title, the meter as dots only, one sentence, the page that frees a seat, the hints (or, once
+    the person left with Esc, the line that says what to run)."""
     body: Lines = _key_done(k, v.key)
-    if body:
-        body += _gap(k)
     if v.used is not None and v.limit is not None:
         body += k.step("warn", [k.t("deviceLimit.heading", "strong", used=v.used, limit=v.limit)])
         body += k.body(k.seat_meter(v.used, v.limit))
-        body += k.body([k.t("deviceLimit.lede", formFactor="computer")])
     else:
         body += k.step("warn", [k.t("core.activation.device-limit.title", "strong")])
-        body += k.body([k.t("core.activation.device-limit.message")])
     end: List[Span] = []
+    hints = False
     if v.manage_url:
-        body += _gap(k)
-        body += k.step("active", [k.t("deviceLimit.title", "strong")])
-        body += k.body([k.t("deviceLimit.browser", product=k.inline_product)])
+        # The terminal does not poll: it never promises the product continues by itself.
+        body += k.body([k.t("cli.deviceLimit.body")])
         body += k.body([k.link(v.manage_url, None, "muted")])
-        if k.env.interactive:
-            end = k.hints([("Enter", "common.tryAgain" if opened else "deviceLimit.openBrowser"), ("Esc", "common.cancel")])
+        if ended:
+            end = [k.t("cli.deviceLimit.again", command=f"{k.prog} {verb}")]
+        elif k.env.interactive:
+            end, hints = k.hint_string("cli.keys.retry" if opened else "cli.keys.deviceLimit"), True
     else:
+        body += k.body([k.t("core.activation.device-limit.message")])
         body += _gap(k)
-        body += _fixes(k, [("activate", "common.tryAgain")])
-    return _frame(k, verb, body, end)
+        body += _fixes(k, [(verb, "common.tryAgain")])
+    return _frame(k, verb, body, end, hints)
 
 
 # ── Sign-in (SIGN-IN.md §4.15 frame 32) ──────────────────────────────────────────────────────
@@ -314,14 +336,23 @@ def _wait_line(k: Kit, key: str, frame: int, **args: Any) -> Lines:
     glyph = _spinner(k, frame) if k.env.motion else k.env.symbol["ellipsis"]
     if not k.decor:
         return [Line([k.t(key, **args)])]
-    return [Line([Span(glyph, ("muted",), None, "symbol"), Span("  "), k.t(key, **args)])]
+    return [Line([Span(glyph, ("muted",), None, "symbol"), Span("  "), k.t(key, **args)], role="spinner")]
+
+
+def _again(k: Kit, verb: str) -> Lines:
+    """The command that starts the flow over, for the verb the person ran (never another's)."""
+    return _gap(k) + _fixes(k, [(verb, "signin.again")])
 
 
 def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> Lines:
-    """``login`` / ``sign-in``: the browser presentation (no QR on any terminal, D-67)."""
+    """``login`` / ``sign-in``: the browser presentation (no QR on any terminal, D-67). The whole
+    screen is one frame: it compacts by fit while it waits (``screen.fit_screen``) and its ending is
+    one result block, never the code view above it."""
     body: Lines = []
     end: List[Span] = []
+    hints = False
     url = v.url or DEVICE_CODE_URL
+    wait = "signin.handoff.finishing" if v.state == "finishing" else "cli.signin.waitingCode"
     if v.state == "starting":
         body += _wait_line(k, "signInHandoff.starting", frame)
     elif v.state in ("handoff", "finishing") and v.component == "SignIn":
@@ -331,51 +362,65 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
         body += _gap(k)
         body += _wait_line(k, "signin.handoff.finishing" if v.state == "finishing" else "signin.handoff.waiting", frame)
         if k.env.interactive and v.state != "finishing":
-            end = k.hint_string("signin.cli.keys")
-    elif v.state == "no-browser":
-        body += k.step("warn", [k.t("signin.handoff.noBrowser", "strong")])
-        body += k.body([k.t("signin.handoff.noBrowserBody")])
-        if v.url_complete:
-            body += k.body([k.link(v.url_complete)])
-        if k.env.interactive:
-            end = k.hints([("c", "signin.handoff.useCode"), ("Esc", "common.cancel")])
-    elif v.state in ("code", "link-copied") or (v.state == "finishing" and v.component == "SignInHandoff"):
+            end, hints = k.hint_string("signin.cli.keys"), True
+    elif v.state in ("code", "link-copied", "no-browser") or (v.state == "finishing" and v.component == "SignInHandoff"):
         if v.headless and not k.env.device_code:
             # No browser here: say so. Someone who asked for a code (--device-code) needs no note.
             body += k.step("done", [k.t("signin.cli.headless")])
+        elif v.no_browser:
+            body += k.step("warn", [k.t("signin.handoff.noBrowser", "strong")])
         elif not v.headless:
             body += k.step("active", [k.t("signin.handoff.codeTitle", "strong")])
         body += _with_link(k, "signin.handoff.codeBody", url)
-        body += _gap(k)
-        body += _code_row(k, v.user_code or "")
-        body += _gap(k)
-        body += k.body([k.t("signin.handoff.check")])
+        body += _code_rows(k, v.user_code or "")
+        body += [replace(ln, drop=DROP["check"]) for ln in k.body([k.t("signin.handoff.check")])]
         if v.seconds_left is not None:
-            body += k.body([k.t("signin.handoff.expires", "muted", time=fmt.countdown(v.seconds_left))])
-        if v.copied:
-            body += k.body([*k.icon("ok", "success"), k.t("common.copied", "muted")])
+            body += [
+                replace(ln, drop=DROP["countdown"])
+                for ln in k.body([k.t("signin.handoff.expires", "muted", time=fmt.countdown(v.seconds_left))])
+            ]
         body += _gap(k)
-        body += _wait_line(k, "signin.handoff.finishing" if v.state == "finishing" else "cli.signin.waitingCode", frame)
+        body += _wait_line(k, wait, frame)
         if k.env.interactive and v.state != "finishing":
-            pairs = [("c", "a11y.copyCode")] if k.env.clipboard else []
-            if not v.headless:
-                pairs.append(("o", "signin.handoff.openBrowser"))
-            end = k.hints(pairs + [("Esc", "common.cancel")])
+            browser = not v.headless and not v.no_browser
+            end, hints = _code_hints(k, browser, v.copied), True
     elif v.state == "done":
         who = [k.t("signin.cli.signedIn", name=v.name, email=v.email)] if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
         body += k.step("ok", who)
         end = [k.t("signin.cli.closeTab", "muted")] if not v.headless else []
     else:
-        group = "codes"
+        # One result block: the title and the command that starts over, nothing that restates it.
         code = v.code or ("cancelled" if v.state == "cancelled" else "sign-in-failed")
-        title, message = _code_title_message(k, code, group=group)
+        title, _ = _code_title_message(k, code, group="codes")
         body += k.step("fail", [title])
-        body += k.body([message])
-        again = {"expired": "signin.again", "denied": "signInHandoff.newCode"}.get(v.state)
-        if again:
-            body += _gap(k)
-            body += _fixes(k, [("sign-in", again)])
-    return _frame(k, verb, body, end)
+        if v.state in ("expired", "denied", "cancelled"):
+            body += _again(k, verb)
+    return _frame(k, verb, body, end, hints)
+
+
+def _code_hints(k: Kit, browser: bool, copied: bool) -> List[Span]:
+    """The code view's key hints, in the catalog's words (the Node kit's too): ``c copy the code``
+    gives way to ``Copied`` on the same row, and ``o`` appears only where a browser can open."""
+    key = "cli.keys.codeBrowser" if browser else "cli.keys.code"
+    spans = k.hint_string(key)
+    if not copied:
+        return spans
+    # Drop the first hint (the copy key and its label) and put "✓ Copied" in its place.
+    rest: List[Span] = []
+    seen_sep = False
+    for sp in spans:
+        if seen_sep:
+            rest.append(sp)
+        elif sp.src == "symbol" and sp.text.strip() == k.env.symbol["separator"]:
+            seen_sep = True
+            rest.append(sp)
+    mark = [*k.icon("ok", "success"), k.t("common.copied", "success")]
+    return mark + rest
+
+
+def _code_rows(k: Kit, code: str) -> Lines:
+    """The user code with a blank rail row on each side (dropped only when the screen is tall)."""
+    return _gap(k, DROP["blank_code"]) + _code_row(k, code) + _gap(k, DROP["blank_code"])
 
 
 def _with_link(k: Kit, key: str, url: str) -> Lines:

@@ -222,6 +222,8 @@ class SignInView:
     email: Optional[str] = None
     code: Optional[str] = None
     copied: bool = False
+    #: The browser could not be opened: the code view says so and offers no ``o`` key.
+    no_browser: bool = False
 
 
 class SignInModel:
@@ -252,7 +254,7 @@ class SignInModel:
         )
 
     def browser_failed(self) -> SignInView:
-        return self._set(component="SignInHandoff", state="no-browser")
+        return self._set(component="SignInHandoff", state="no-browser", no_browser=True)
 
     def use_code(self) -> SignInView:
         return self._set(component="SignInHandoff", state="code")
@@ -262,6 +264,9 @@ class SignInModel:
 
     def copied(self) -> SignInView:
         return self._set(copied=True)
+
+    def uncopy(self) -> SignInView:
+        return self._set(copied=False)
 
     def finished(self, result: Any) -> SignInView:
         status = getattr(result, "status", "error")

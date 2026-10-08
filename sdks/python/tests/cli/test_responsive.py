@@ -131,19 +131,25 @@ class _Prompt:
 
 
 class _Identity:
-    def __init__(self, v: dict) -> None:
+    def __init__(self, v: dict, result: Any = None, delay: float = 0.4) -> None:
         self.v = v
+        self.result = result
+        self.delay = delay
 
     def begin_sign_in(self, name: Any = None, confirm_identity: bool = False) -> _Prompt:
         return _Prompt(self.v)
 
     def wait_for_sign_in(self, prompt: Any, *, cancel: threading.Event, on_confirm: Any = None) -> Any:
+        if self.result is not None:
+            if cancel.wait(self.delay):
+                raise PolarisError("cancelled", "cancelled")
+            return self.result
         cancel.wait(10)
         raise PolarisError("cancelled", "cancelled")
 
 
-def _client(v: dict, **extra: Any) -> Any:
-    return SimpleNamespace(product=PRODUCT, identity=_Identity(v), status=lambda: SimpleNamespace(status="ok"), **extra)
+def _client(v: dict, result: Any = None, **extra: Any) -> Any:
+    return SimpleNamespace(product=PRODUCT, identity=_Identity(v, result), status=lambda: SimpleNamespace(status="ok"), **extra)
 
 
 def _snap(term: Term, into: List[List[str]], then: Any = "esc") -> Callable[[], Any]:
@@ -206,20 +212,39 @@ def test_the_long_values_fixture_is_the_one_the_owner_asked_for() -> None:
     assert [len(LONG[k]) for k in ("name", "code", "url", "device")] == [60, 19, 110, 60]
 
 
-def test_a_live_region_taller_than_the_screen_drops_blank_rows_then_scrolls_the_top() -> None:
-    from polaris_key.ui.terminal.text import Line
+def test_a_live_screen_taller_than_the_terminal_compacts_in_tier_order() -> None:
+    from polaris_key.ui.terminal.screen import fit_screen, inline_hints
+    from polaris_key.ui.terminal.text import DROP, Line
 
-    term = Term(40, 5)
-    e = env("none", "unicode", 40, "dark").but(columns=40, height=5)
-    d = Device(e, Kit.create(e, product=PRODUCT).palette(), stdout=term, use_rich=False)  # type: ignore[arg-type]
-    rows = lambda *texts: [Line([Span(t)]) for t in texts]  # noqa: E731
-    with d.live() as live:
-        live.update(rows("┌  Header", "│", "│  one", "│", "│  two", "└  Esc cancel"))
-        assert term.viewport() == ["┌  Header", "│  one", "│  two", "└  Esc cancel", ""]
-        live.update(rows("┌  Header", "│", "│  one", "│  two", "│  three", "│  four", "└  Esc cancel"))
-        texts = [t for t, _ in term.all()]
-        assert texts[-5:] == ["│  one", "│  two", "│  three", "│  four", "└  Esc cancel"]
-        assert texts.count("┌  Header") == 1
+    def row(text: str, drop=None, role=None, hint_spans=None) -> Line:
+        return Line([Span(text)], drop, role, hint_spans)
+
+    lines = [
+        row("header", role="header"),
+        row("", DROP["blank_prose"]),
+        row("go to url"),
+        row("", DROP["blank_code"]),
+        row("CODE"),
+        row("", DROP["blank_code"]),
+        row("check", DROP["check"]),
+        row("expires", DROP["countdown"]),
+        row("hints"),
+    ]
+
+    def fit(n: int):
+        return [ln.text for ln in fit_screen(lines, n, 40, "·").lines]
+
+    assert len(fit(9)) == 9
+    assert fit(8) == ["header", "go to url", "", "CODE", "", "check", "expires", "hints"]
+    assert "check" not in fit(6) and "expires" in fit(6)
+    assert fit(5) == ["header", "go to url", "CODE", "expires", "hints"]
+    # Never the URL line, the code or the hints; the top lines leave the view last.
+    assert fit(3) == ["go to url", "CODE", "hints"]
+    spinner = Line([Span("Waiting")], role="spinner")
+    hints = Line([Span("Esc cancel")], role="hints", hint_spans=[Span("Esc cancel")])
+    merged = inline_hints([row("a"), spinner, hints], 80, "·")
+    assert [ln.text for ln in merged] == ["a", "Waiting · Esc cancel"]
+    assert len(inline_hints([row("a"), spinner, hints], 12, "·")) == 3
 
 
 # ── The matrix ───────────────────────────────────────────────────────────────────────────────
@@ -243,8 +268,12 @@ def test_login_device_code_keeps_the_code_the_url_and_the_keys_in_view(cols: int
     text = "\n".join(snaps[0])
     assert "No browser" not in text, "a person who asked for a code is not told there is no browser"
     assert "Waiting for you to sign in" in text
-    if rows <= 16:
-        assert [r for r in snaps[0] if r == "│"] == [], "a short terminal has no blank rows"
+    # The screen is laid out spaced when it fits; it compacts only when it does not.
+    assert len([r for r in snaps[0] if r.strip()]) <= rows
+    if rows >= 24 and cols >= 60 and values == "short":
+        assert [r for r in snaps[0] if r == "│"], "a screen that fits keeps its air"
+    if rows == 12 and cols >= 80 and values == "short":
+        assert [r for r in snaps[0] if r == "│"], "80x12 with short values keeps the air around the code"
 
 
 @pytest.mark.parametrize("cols,rows,values", MATRIX)
@@ -396,3 +425,85 @@ def test_help_never_runs_past_the_terminal_and_stacks_below_50_columns(cols: int
     assert [t for t, w in term.all() if w] == [], f"help {cols}: a line wider than the terminal"
     if cols < 50:
         assert "\n  activate\n    Add a license key" in text
+
+
+# ── A window dragged through several sizes, and the end states ───────────────────────────────
+
+DRAGS = [
+    ((80, 24), [(40, 12)]),
+    ((120, 40), [(40, 12)]),
+    ((60, 24), [(60, 10)]),
+    ((80, 24), [(80, 12)]),
+    ((40, 12), [(120, 40)]),
+    ((80, 24), [(32, 10), (110, 30)]),
+]
+
+
+@needs_sigwinch
+@pytest.mark.parametrize("start,steps", DRAGS, ids=lambda x: "x".join(map(str, x)) if isinstance(x, tuple) else "-".join("x".join(map(str, s)) for s in x))
+@pytest.mark.parametrize("values", ["short", "long"])
+def test_a_dragged_window_keeps_one_screen_the_url_and_the_code(start: Any, steps: Any, values: str) -> None:
+    v = _values(values)
+    term = Term(*start)
+    snaps: List[List[str]] = []
+    keys: List[Any] = []
+    for c, r in steps:
+        keys += [lambda c=c, r=r: _resize(term, c, r), lambda: None]
+    keys.append(_snap(term, snaps, then=None))
+    t = terminal(term, v, verb="login", keys=keys, device_code=True)
+    out = flows.sign_in(_client(v, SimpleNamespace(status="expired")), t)
+    t.finish(out)
+    last = steps[-1]
+    assert len(snaps[0]) <= last[1]
+    # What is on the screen: nothing wider than the window, the URL and the code whole.
+    body = joined(snaps[0])
+    assert v["code"] in body and shown(v["url"]) in body, snaps[0]
+    assert any("Esc" in r for r in snaps[0])
+    assert len([r for r in snaps[0] if r.startswith("┌")]) <= 1
+    # After the outcome: one header in all, nothing of the code view left on the screen.
+    end = [t_ for t_, _ in term.all()]
+    assert len([r for r in end if r.startswith("┌")]) == 1, "\n".join(end)
+    assert "Waiting for you to sign in" not in "\n".join(term.viewport())
+
+
+@pytest.mark.parametrize("cols,rows", [(40, 12), (32, 12), (40, 8), (80, 24)])
+@pytest.mark.parametrize(
+    "label,result,title",
+    [
+        ("expired", SimpleNamespace(status="expired"), "Code expired"),
+        ("declined", SimpleNamespace(status="error", message="access_denied"), "Sign-in declined"),
+        ("signed in", SimpleNamespace(status="ready", identity=SimpleNamespace(name="Mara Fennick", email="mara@fennick.studio"), attached=None), "Signed in as Mara Fennick"),
+    ],
+)
+def test_an_end_state_leaves_one_result_block_under_one_header(cols: int, rows: int, label: str, result: Any, title: str) -> None:
+    term = Term(cols, rows)
+    t = terminal(term, LONG, verb="login", keys=[], device_code=True)
+    out = flows.sign_in(_client(LONG, result), t)
+    t.finish(out)
+    text = "\n".join(r for r, _ in term.all())
+    assert [r for r, w in term.all() if w] == []
+    assert len([r for r, _ in term.all() if r.startswith("┌")]) <= 1
+    assert title.split(" ")[0] in text.replace("\n", " ")
+    assert "Check the code there" not in text and "On any phone or computer" not in text
+
+
+def test_escape_cancels_with_the_result_and_the_verb_that_was_run() -> None:
+    term = Term(40, 12)
+    t = terminal(term, SHORT, verb="login", keys=["esc"], device_code=True)
+    out = flows.sign_in(_client(SHORT), t)
+    t.finish(out)
+    text = "\n".join(r for r, _ in term.all())
+    assert out.code == 1 and "Sign-in cancelled" in text
+    assert "tidewater login" in text and "Sign in again" in text and "WDJB-MJHT" not in text
+
+
+def test_ctrl_c_cancels_with_a_result_and_exit_130_never_a_blank_screen() -> None:
+    def boom() -> None:
+        raise KeyboardInterrupt
+
+    term = Term(60, 24)
+    t = terminal(term, SHORT, verb="login", keys=[boom], device_code=True)
+    out = flows.sign_in(_client(SHORT), t)
+    t.finish(out)
+    text = "\n".join(r for r, _ in term.all())
+    assert out.code == 130 and "Sign-in cancelled" in text and "┌" in text

@@ -112,7 +112,7 @@ def test_device_limit_opens_the_browser_then_tries_again() -> None:
     assert opened == ["https://key.plrs.im/portal/tidewater/devices"]
     assert out.code == 0 and client.license.keys == [KEY, KEY]
     screen = t.device.out.getvalue()
-    assert C("deviceLimit.openBrowser") in screen and C("common.tryAgain") in screen
+    assert "open in browser" in screen and "try again" in screen
 
 
 def test_device_limit_without_a_terminal_reports_and_stops() -> None:

@@ -1273,6 +1273,26 @@
     <string name="cli_doctor_installedFrom">Installed from</string>
     <!-- Terminal diagnostics: the heading over features this device cannot use, each with its reason. -->
     <string name="cli_doctor_unsupported">Not supported here</string>
+    <!-- Terminal key hints while waiting for a code sign-in on a computer that has a browser: c copies the code, o opens the sign-in page with the code filled in. Keep each key first and the ' · ' separators. -->
+    <string name="cli_keys_codeBrowser">c copy the code · o open in browser · Esc cancel</string>
+    <!-- Terminal key prompt: the key belongs to a different product. {app} is that product's slug, {product} the product this command is for. Arguments: 1=app, 2=product. -->
+    <string name="cli_activate_otherProduct">This key is for another product (%1$s). Use your %2$s key.</string>
+    <!-- Terminal update progress: how much of the download is done. {size} is a bare number and {total} carries the unit, so 'of' joins '38' and '61 MB'. Arguments: 1=size, 2=total. -->
+    <string name="cli_update_figures">%1$s of %2$s</string>
+    <!-- Terminal update progress on a narrow line: the short form of the sizes. {size} is a bare number and {total} carries the unit. Arguments: 1=size, 2=total. -->
+    <string name="cli_update_figuresShort">%1$s/%2$s</string>
+    <!-- Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'. Arguments: 1=time. -->
+    <string name="cli_update_timeLeft">%1$s left</string>
+    <!-- Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product. Arguments: 1=version, 2=size. -->
+    <string name="cli_update_ready">%1$s is ready · %2$s</string>
+    <!-- Terminal: the update is ready and its size is not known. {version} is the new version. Arguments: 1=version. -->
+    <string name="cli_update_readyNoSize">%1$s is ready</string>
+    <!-- Terminal: after an update downloaded, what the person does next. -->
+    <string name="cli_update_restart">Restart to finish updating.</string>
+    <!-- Terminal: an update download failed; nothing was changed on this device. -->
+    <string name="cli_update_nothingInstalled">Nothing was installed.</string>
+    <!-- Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here. -->
+    <string name="cli_deviceLimit_body">Replace a device in your browser, then try again here.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

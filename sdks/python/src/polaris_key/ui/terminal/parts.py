@@ -28,7 +28,7 @@ from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, resolve_identity
 from ..core.theme import Theme
 from .env import TermEnv
-from .text import Line, Palette, Span, cell_len, middle, wrap
+from .text import DROP, Line, Palette, Span, cell_len, middle, wrap
 
 __all__ = ["Kit", "STEP_GLYPHS"]
 
@@ -172,16 +172,13 @@ class Kit:
     def body_width(self) -> int:
         return self.env.width - (3 if self.decor else 0)
 
-    @property
-    def short(self) -> bool:
-        """A short terminal (16 rows or fewer): no blank rows, key hints inline."""
-        return self.decor and self.env.short
-
-    def gap(self) -> List[Line]:
-        """A blank rail row between blocks; none on a short terminal or under ``density="compact"``."""
-        if self.decor and (self.short or self.theme.density == "compact"):
+    def gap(self, tier: int = DROP["blank_prose"]) -> List[Line]:
+        """A blank rail row between blocks (none under ``density="compact"``). On a live screen it
+        carries a compaction ``tier``: it is dropped only when the screen is taller than the
+        terminal (``screen.fit_screen``)."""
+        if self.decor and self.theme.density == "compact":
             return []
-        return [self.rail()] if self.decor else [Line([])]
+        return [Line([Span(self.env.symbol["rail"], ("muted",), None, "symbol")], drop=tier)] if self.decor else [Line([])]
 
     def fits(self, spans: Sequence[Span]) -> bool:
         """``spans`` fit one line of the body."""
@@ -196,12 +193,12 @@ class Kit:
         """``┌  [ Product ] · verb``: the product chip opens every flow. A name too long for the
         line ends in an ellipsis inside the chip (never a hard crop)."""
         if not self.product:
-            return Line(self._prefix("railStart") + [self.d(verb, "command", *(("muted",) if self.decor else ()))])
+            return Line(self._prefix("railStart") + [self.d(verb, "command", *(("muted",) if self.decor else ()))], role="header")
         if not self.decor:
-            return Line([Span(self.product, (), None, "data:product"), self.sep(), self.d(verb, "command")])
+            return Line([Span(self.product, (), None, "data:product"), self.sep(), self.d(verb, "command")], role="header")
         room = max(8, self.body_width - 2 - 3 - cell_len(verb))
         chip = Span(" " + _end_cut(self.product, room, self.env.symbol["ellipsis"]) + " ", ("chip",), None, "data:product")
-        return Line(self._prefix("railStart") + [chip, self.sep(), self.d(verb, "command", "muted")])
+        return Line(self._prefix("railStart") + [chip, self.sep(), self.d(verb, "command", "muted")], role="header")
 
     def rail(self) -> Line:
         return Line([Span(self.env.symbol["rail"], ("muted",), None, "symbol")] if self.decor else [])
@@ -222,14 +219,17 @@ class Kit:
         rows = wrap(spans, self.body_width - indent)
         return [Line(self._prefix("rail") + pad + r) for r in rows] or [Line(self._prefix("rail"))]
 
-    def end(self, spans: Sequence[Span] = ()) -> List[Line]:
-        """``└  …``: the last line of a flow, usually its key hints."""
+    def end(self, spans: Sequence[Span] = (), hints: bool = False) -> List[Line]:
+        """``└  …``: the last line of a flow, usually its key hints (``hints=True``: they may join
+        the waiting line on a screen that does not fit). A closing line that wraps keeps ``│`` on
+        every row but the last, which takes the ``└``."""
         if not self.decor:
             return [Line(list(r)) for r in wrap(spans, self.body_width)] if spans else []
         rows = wrap(spans, self.body_width) if spans else [[]]
-        out = [Line(self._prefix("railEnd") + rows[0])]
-        for r in rows[1:]:
-            out.append(Line([Span("   ")] + r))
+        out = [Line(self._prefix("rail") + r) for r in rows]
+        out[-1] = Line(self._prefix("railEnd") + rows[-1])
+        if hints and spans:
+            out[-1] = Line(out[-1].spans, role="hints", hint_spans=list(spans))
         return out
 
     # ── Parts ─────────────────────────────────────────────────────────────────────────────
@@ -270,18 +270,21 @@ class Kit:
         mark = self.sym("radioOn", "accent") if on else self.sym("radioOff", "muted")
         return [mark, Span(" ")] + list(spans)
 
-    def seat_meter(self, used: int, limit: int) -> List[Span]:
-        """The neutral seat meter: filled marks for seats in use, then its caption (§1.5 rule 9:
-        a full license is a limit, not an error)."""
+    def seat_meter(self, used: int, limit: int, caption: bool = False) -> List[Span]:
+        """The neutral seat meter: filled marks for seats in use, the rest muted (§1.5 rule 9: a
+        full license is a limit, not an error). Dots only on a terminal, since the title beside it
+        already says "3 of 3"; ``caption=True`` adds the numbers, and piped output (no dots) keeps
+        them as words."""
         n = max(0, min(int(limit), 12))
         filled = max(0, min(int(used), n))
-        marks = self.env.symbol["radioOn"] * filled + self.env.symbol["radioOff"] * (n - filled)
+        on, off = (self.env.symbol["radioOn"], self.env.symbol["radioOff"])
         if self.env.symbols == "ascii":
-            marks = "#" * filled + "-" * (n - filled)
-        caption = self.t("part.seatMeter.caption", "muted", used=used, limit=limit)
+            on, off = "#", "-"
+        text = self.t("part.seatMeter.caption", "muted", used=used, limit=limit)
         if not self.decor:
-            return [caption]
-        return [Span(marks, ("muted",), None, "symbol"), Span(" "), caption]
+            return [text]
+        out = [Span(on * filled, ("strong",), None, "symbol"), Span(off * (n - filled), ("muted",), None, "symbol")]
+        return out + ([Span(" "), text] if caption else [])
 
     def bar(self, fraction: float) -> List[Span]:
         """The progress bar: the done part in the accent, the rest in mute, scaled to the width."""

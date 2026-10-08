@@ -1263,6 +1263,26 @@
     <string name="cli_doctor_installedFrom">설치 출처</string>
     <!-- Terminal diagnostics: the heading over features this device cannot use, each with its reason. -->
     <string name="cli_doctor_unsupported">여기에서 지원되지 않음</string>
+    <!-- Terminal key hints while waiting for a code sign-in on a computer that has a browser: c copies the code, o opens the sign-in page with the code filled in. Keep each key first and the ' · ' separators. -->
+    <string name="cli_keys_codeBrowser">c 코드 복사 · o 브라우저에서 열기 · Esc 취소</string>
+    <!-- Terminal key prompt: the key belongs to a different product. {app} is that product's slug, {product} the product this command is for. Arguments: 1=app, 2=product. -->
+    <string name="cli_activate_otherProduct">이 키는 다른 제품(%1$s)용이에요. %2$s 키를 사용하세요.</string>
+    <!-- Terminal update progress: how much of the download is done. {size} is a bare number and {total} carries the unit, so 'of' joins '38' and '61 MB'. Arguments: 1=size, 2=total. -->
+    <string name="cli_update_figures">%2$s 중 %1$s</string>
+    <!-- Terminal update progress on a narrow line: the short form of the sizes. {size} is a bare number and {total} carries the unit. Arguments: 1=size, 2=total. -->
+    <string name="cli_update_figuresShort">%1$s/%2$s</string>
+    <!-- Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'. Arguments: 1=time. -->
+    <string name="cli_update_timeLeft">%1$s 남음</string>
+    <!-- Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product. Arguments: 1=version, 2=size. -->
+    <string name="cli_update_ready">%1$s 준비 완료 · %2$s</string>
+    <!-- Terminal: the update is ready and its size is not known. {version} is the new version. Arguments: 1=version. -->
+    <string name="cli_update_readyNoSize">%1$s 준비 완료</string>
+    <!-- Terminal: after an update downloaded, what the person does next. -->
+    <string name="cli_update_restart">업데이트를 완료하려면 재시작하세요.</string>
+    <!-- Terminal: an update download failed; nothing was changed on this device. -->
+    <string name="cli_update_nothingInstalled">설치된 항목이 없어요.</string>
+    <!-- Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here. -->
+    <string name="cli_deviceLimit_body">브라우저에서 기기를 교체한 다음 여기서 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">문제가 발생했어요</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

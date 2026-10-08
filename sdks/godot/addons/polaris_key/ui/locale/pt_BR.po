@@ -3417,6 +3417,56 @@ msgstr "Instalado de"
 msgid "cli.doctor.unsupported"
 msgstr "Sem suporte aqui"
 
+#. c copy the code · o open in browser · Esc cancel
+#. Terminal key hints while waiting for a code sign-in on a computer that has a browser: c copies the code, o opens the sign-in page with the code filled in. Keep each key first and the ' · ' separators.
+msgid "cli.keys.codeBrowser"
+msgstr "c copia o código · o abre no navegador · Esc cancela"
+
+#. This key is for another product ({app}). Use your {product} key.
+#. Terminal key prompt: the key belongs to a different product. {app} is that product's slug, {product} the product this command is for.
+msgid "cli.activate.otherProduct"
+msgstr "Esta chave é de outro produto ({app}). Use a sua chave de {product}."
+
+#. {size} of {total}
+#. Terminal update progress: how much of the download is done. {size} is a bare number and {total} carries the unit, so 'of' joins '38' and '61 MB'.
+msgid "cli.update.figures"
+msgstr "{size} de {total}"
+
+#. {size}/{total}
+#. Terminal update progress on a narrow line: the short form of the sizes. {size} is a bare number and {total} carries the unit.
+msgid "cli.update.figuresShort"
+msgstr "{size}/{total}"
+
+#. {time} left
+#. Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'.
+msgid "cli.update.timeLeft"
+msgstr "{time} restantes"
+
+#. {version} is ready · {size}
+#. Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.ready"
+msgstr "{version} está pronta · {size}"
+
+#. {version} is ready
+#. Terminal: the update is ready and its size is not known. {version} is the new version.
+msgid "cli.update.readyNoSize"
+msgstr "{version} está pronta"
+
+#. Restart to finish updating.
+#. Terminal: after an update downloaded, what the person does next.
+msgid "cli.update.restart"
+msgstr "Reinicie para concluir a atualização."
+
+#. Nothing was installed.
+#. Terminal: an update download failed; nothing was changed on this device.
+msgid "cli.update.nothingInstalled"
+msgstr "Nada foi instalado."
+
+#. Replace a device in your browser, then try again here.
+#. Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here.
+msgid "cli.deviceLimit.body"
+msgstr "Substitua um dispositivo no navegador e tente novamente aqui."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"
