@@ -486,7 +486,7 @@ read of `override_migration` (including `payload.ts:125`) and U-27b drops the ta
 later. If the owner keeps the U-03 run, U-27 shrinks to deleting the machinery after the 90-day
 report, and U-28 materialises profile stacks into account overrides for licences that have an
 owner. U-28 (listed in Track E) builds on ST-42's reserved Default profile. U-01b (plan) gates
-U-05, U-09 and U-10; its appended `sync-scenarios.json` rows and U-05's `sync-*` transcripts take
+U-05, U-09 and U-10; its `sync-scenarios.json` v2 and U-05's `cloudsync-*` transcripts take
 the corpus lane's W-SYNC slot. U-05 is born on P0-25's route tables and needs I-08 (Track K).
 U-06/07/20/21 need SP-35's names (Track J). U-32 plugs its card into ST-41.
 
@@ -539,7 +539,7 @@ Purchase model across storefronts; subscriptions and refunds that keep licences 
 | 22  | CM-25  | new     | App purchase as a licence source                                              | CM-20, LX-11, LX-10, CM-22        | 1–1.5   | plan, sec                |
 | 23  | CM-27  | new     | Spike: store purchase parity (Microsoft Store, itch.io, consumables)          | —                                 | 0.3–0.5 |                          |
 | 24  | CM-28  | new     | Consumables and quantity grants from store purchases                          | CM-27, CM-22, LX-42               | 0.8–1.2 | plan, sec                |
-| 25  | CM-29  | new     | Commerce service: the `commerce` slug, requires License                       | ST-38, CM-20                      | 1.5–2.5 | plan, corpus lane, W-LX  |
+| 25  | CM-29  | new     | Commerce service: the `commerce` slug, requires License                       | ST-38, CM-20, P0-27a              | 1.5–2.5 | plan, corpus lane, W-LX  |
 | 26  | PS-12  | new     | Discover visibility: one setting                                              | LX-36, P0-49                      | 0.3–0.5 |                          |
 | 27  | P0-27  | CQW-13  | One adapter per store (delivery and commerce facets)                          | A-19, P0-17                       | 1.2–1.8 |                          |
 | 28  | P0-28  | CQW-14  | One sealed credential store and resolver                                      | P0-18, P0-27, P0-49               | 1.5–2   | plan, sec, mig           |
@@ -567,8 +567,8 @@ LX-35. P0-27 needs A-19; P0-28 lands before CM-02 and P0-28b drops the old store
 later; A-27b drops `dist_listing` a release after A-27. CM-01..CM-19 (Polaris Key checkout) stay
 deferred until owner decision 5; on a "go", the reduced v1 (CM-01, 02, 04, 05, 08, 11, 12, 14,
 15, 17) re-plans on CM-20. CM-29 (plan, corpus lane, W-LX; owner, 2026-10-07) makes Commerce a
-service that requires Licensing, after ST-38's requirement rule and CM-20's plan; LX-18 waits for
-it.
+service that requires Licensing, after ST-38's requirement rule, CM-20's plan and P0-27a (the
+store clients and events moved to `core/stores/`, split from P0-27); LX-18 waits for it.
 
 **Exit criteria:**
 
@@ -728,7 +728,7 @@ on SP-35's names.
    I-10a and I-10b (absorb PX-W9b and UK-44). No signed shape changes; `redirect-web-*`
    transcripts re-recorded. Tail: **LX-39** (Track E) changes WIRE-CONTRACT-V4 §12.2's text and
    the `keyentry-refusals-off` transcript once I-10a/b exist.
-3. **W-SYNC:** U-01b's appended `sync-scenarios.json` rows, then U-05's `sync-*` transcripts
+3. **W-SYNC:** U-01b's `sync-scenarios.json` v2, then U-05's `cloudsync-*` transcripts
    (Track G).
 4. **W-LX:** its prerequisites (LX-41, LX-35, CM-20, CM-29) go ahead of everything else queued;
    then LX-18 with required members: the duration member `term` (onExpiry stop, keepVersion or a
@@ -830,122 +830,122 @@ reviving it.
 
 ## Crosswalk: integration.md ids to registered ids
 
-| integration.md | Registered id | Title                                                                                   |
-| -------------- | ------------- | --------------------------------------------------------------------------------------- |
-| CQW-01         | P0-15         | Platform primitives and duplicate-helper sweep                                          |
-| CQW-02         | P0-16         | First-party respond and body module for console and portal                              |
-| CQW-03         | P0-17         | Layering move (lead codemod at the batch-6 boundary)                                    |
-| CQW-04         | P0-18         | Table ownership, owner stores and one audit writer (absorbs ST-24)                      |
-| CQW-05         | P0-19         | Descriptor contributions and services/<slug>/api.ts facades                             |
-| CQW-06         | P0-20         | Split identity/oidc.ts; extract the issuance engine to core/licensing                   |
-| CQW-07         | P0-21         | Notification substrate (core/notify)                                                    |
-| CQW-08         | P0-22         | Request-scoped product context, lazy signer, one hosts table                            |
-| CQW-09         | P0-23         | Portal off Release's tables                                                             |
-| CQW-10         | P0-24         | Migration ledger and one-time machinery sunset                                          |
-| CQW-17         | P0-49         | Data-migration runner (dry run, report, apply)                                          |
-| CQW-11         | P0-25         | Service, portal and public route tables                                                 |
-| CQW-12         | P0-26         | Core manifest ingest pipeline                                                           |
-| CQW-13         | P0-27         | One adapter per store (delivery and commerce facets)                                    |
-| CQW-14         | P0-28         | One sealed credential store and resolver                                                |
-| CQW-14b        | P0-28b        | Drop the old credential stores (release N+1)                                            |
-| CQW-15         | P0-29         | Licence list paging and set queries                                                     |
-| CQW-16         | P0-30         | Guardrails, test harness and test layout                                                |
-| CQF-01         | P0-31         | Console shared-layer cleanup (lead window)                                              |
-| CQF-02         | P0-32         | One data layer for console and portal                                                   |
-| CQF-03         | P0-33         | Worker-owned DTO types for the admin and portal APIs                                    |
-| CQF-04         | P0-34         | Shared hash-router core                                                                 |
-| CQF-05         | P0-35         | Vocabularies as data (platforms, ecosystems, licence)                                   |
-| CQF-06         | P0-36         | Portal on the copy catalog                                                              |
-| CQF-07         | P0-37         | Complete the shared component inventory                                                 |
-| CQF-08         | P0-38         | AuthCard in ui/auth (UX-40)                                                             |
-| CQF-10         | P0-39         | Console sections move and page budget (lead window)                                     |
-| CQF-11         | P0-40         | Console and portal tests and oxlint                                                     |
-| CQF-13         | P0-41         | Living ADMIN.md and PORTAL.md; UX rows registered                                       |
-| CQT-01         | P0-42         | Generator registry and pnpm gen                                                         |
-| CQT-02         | P0-43         | CI consolidation                                                                        |
-| CQT-03         | P0-44         | Corpus generator split (corpus lane, right after HA-12)                                 |
-| CQT-04         | P0-45         | pkey command registry, context and doctor                                               |
-| CQT-05         | P0-46         | Lint baselines with debt ledgers                                                        |
-| ST-05 (split)  | ST-05a        | One settings read and write path                                                        |
-| ST-05 (split)  | ST-05b        | Generic settings routes with bespoke routes as adapters                                 |
-| AC-01          | ST-28         | Plan: console RBAC and console identity on accounts                                     |
-| AC-02          | ST-29         | Admin route table, can(), useCan and NoAccessPage (absorbs ST-21)                       |
-| AC-03          | ST-30         | Console sign-in on Polaris Key accounts                                                 |
-| AC-04          | ST-31         | Roles, bindings, invites and the Members pages (absorbs ST-22)                          |
-| AC-05          | ST-32         | SSO rules and the adminGroup conversion                                                 |
-| AC-07          | ST-34         | Admin-scope personal tokens and pkey login                                              |
-| AC-08          | ST-35         | RBAC docs, lockout recovery, docs-gate split and adminGroup contract                    |
-| OB-00          | ST-36         | Owner polish: portal fixes and the simple product card (fix/ux-polish-1007)             |
-| OB-01          | ST-37         | Vocabulary: one word per concept (rule 4)                                               |
-| OB-02          | ST-38         | Service table: five features; one service-off state (absorbs DC-12)                     |
-| OB-03          | ST-39         | Wizard kit                                                                              |
-| OB-04          | ST-40         | Integration facts and SDK sightings                                                     |
-| OB-05          | ST-41         | Integration page and Overview card                                                      |
-| OB-06          | ST-42         | Create with defaults                                                                    |
-| OB-07          | ST-43         | New Product wizard                                                                      |
-| OB-08          | ST-44         | One Home; delete GET /manage/api/summary; slim product list                             |
-| OB-09          | ST-45         | Platform and Product sidebar contexts                                                   |
-| OB-10          | ST-46         | Interactive pkey init                                                                   |
-| OB-11          | ST-47         | Legacy setup retirement                                                                 |
-| IX-00          | I-27          | Plan the identity consolidation                                                         |
-| IX-01          | I-28          | Accounts contract phase                                                                 |
-| IX-01b         | I-28b         | Accounts contract drops (release N+1)                                                   |
-| IX-02          | I-29          | Retire per-product account toggles; one App sign-in page                                |
-| IX-03          | I-30          | Connections: one OIDC relying-party client, verified domains, identifier routing        |
-| IX-04          | I-31          | Platform -> Connections and setup wizards                                               |
-| IX-05          | I-32          | Product connections (absorbs I-22)                                                      |
-| IX-08          | I-33          | Profile v2: screen name, birth date, platform terms                                     |
-| IX-09          | I-34          | Granular consent and Connected apps                                                     |
-| IX-10          | I-35          | One identity: manifest block (joint with LX-36)                                         |
-| IX-11          | I-36          | Sign-in Integration card                                                                |
-| CFG-01         | U-27          | Keep the licence config layer; delete the override-migration machinery                  |
-| CFG-01b        | U-27b         | Drop the override-migration tables (release N+1)                                        |
-| CFG-02         | U-28          | One config chain: Default profile, one profile per tier, no device layer                |
-| CFG-03         | U-29          | Effective config with provenance                                                        |
-| CFG-04         | U-30          | Config types and in-app visibility in one vocabulary                                    |
-| CFG-05         | U-31          | Minted tokens carry their recipe                                                        |
-| CFG-07         | U-32          | Catalog templates, Cloud Sync page, minted-token wizard and the Integration config card |
-| FX-01          | F-33          | Personal tokens (pkeyp\_, packages:read) and portal Packages                            |
-| FX-02          | F-34          | Feeds that provision themselves, Customers by default                                   |
-| FX-03          | F-35          | Publish to public registries (absorbs DC-13)                                            |
-| FX-04          | F-36          | Feed cleanup on by default (dev and main prereleases)                                   |
-| FX-05          | F-37          | pkey feeds setup --write and CLI naming                                                 |
-| UC-01          | P2-08         | Built-in dev release track and default store track maps                                 |
-| UC-02          | P2-09         | Demote a release down a release track                                                   |
-| UC-03          | P2-10         | Product Access page: who gets what (absorbs LX-37)                                      |
-| UC-04          | P2-11         | Updates page: updaters for shipped platforms with Wired status                          |
-| UC-05          | P2-12         | One update resolver: retire the GitHub-resolved appcast and version path                |
-| UC-07          | P2-13         | Portal channel picker and SHA-256                                                       |
-| UC-08          | P2-14         | Optional: split the dev channel from the dev-build bypass                               |
-| CP-01          | P4-33         | Pack transports auto                                                                    |
-| CP-02          | P4-34         | One-click pack gate and the packs-without-Update warning                                |
-| DC-02          | A-19          | One channel catalogue (tools/channels.json)                                             |
-| DC-03          | A-20          | Product facts and the channel read model                                                |
-| DC-04          | A-21          | Console IA: Distribution and Commerce groups                                            |
-| DC-05          | A-22          | The channel page (Status, Releases, Listing, Sales, Setup)                              |
-| DC-06          | A-23          | Channel setup: wizards and the setup runner                                             |
-| DC-06b         | A-33          | Channels enable in one confirmation; a storefront activates with its channel            |
-| DC-07          | A-24          | Publish everywhere and the verb facade                                                  |
-| DC-08          | A-25          | Action v2: channels auto and thin inputs (absorbs CQS-10)                               |
-| DC-09          | A-26          | Customer channel actions                                                                |
-| DC-10          | A-27          | One listing truth (absorbs ST-13)                                                       |
-| DC-10b         | A-27b         | Drop the dist_listing table (release N+1)                                               |
-| DC-11          | A-28          | One store-app binding with derived identity                                             |
-| DC-14          | A-29          | Homebrew formula for CLI archives                                                       |
-| DC-15          | A-30          | Generated SHA256SUMS                                                                    |
-| DC-16          | A-31          | Derived identities and a short .pkey/distribution                                       |
-| DC-17          | A-32          | GitHub write path and Publish from CI                                                   |
-| SDX-01         | SP-32a        | polaris-key.json: plan, schema, fromConfig() and doctor() in Node, React and Python     |
-| SDX-01b        | SP-32b        | polaris-key.json, fromConfig() and doctor() in Swift, Kotlin and Godot                  |
-| SDX-02         | SP-33a        | One integration content generator on today's names, and pkey sdk add --expect           |
-| SDX-02b        | SP-33b        | Integration content on polaris-key.json in every SDK, the docs and the Godot dock       |
-| SDX-03         | SP-34         | client-core takes the neutral TypeScript                                                |
-| SDX-04         | SP-35         | SDK API registry (api.json) and 0.9 normalisation                                       |
-| SDX-05         | SP-36         | Examples in one tree, built in CI                                                       |
-| SDX-06         | SP-37         | Developer docs reshape                                                                  |
-| SDX-07         | SP-38         | Conditional: token provisioning for SDK installs                                        |
-| SDX-08         | SP-39         | One copy pipeline                                                                       |
-| SDX-09         | SP-40         | Retire React cookie-mode browser sessions                                               |
+| integration.md | Registered id | Title                                                                                            |
+| -------------- | ------------- | ------------------------------------------------------------------------------------------------ |
+| CQW-01         | P0-15         | Platform primitives and duplicate-helper sweep                                                   |
+| CQW-02         | P0-16         | First-party respond and body module for console and portal                                       |
+| CQW-03         | P0-17         | Layering move (lead codemod at the batch-6 boundary)                                             |
+| CQW-04         | P0-18         | Table ownership, owner stores and one audit writer (absorbs ST-24)                               |
+| CQW-05         | P0-19         | Descriptor contributions and services/<slug>/api.ts facades                                      |
+| CQW-06         | P0-20         | Split identity/oidc.ts; extract the issuance engine to core/licensing                            |
+| CQW-07         | P0-21         | Notification substrate (core/notify)                                                             |
+| CQW-08         | P0-22         | Request-scoped product context, lazy signer, one hosts table                                     |
+| CQW-09         | P0-23         | Portal off Release's tables                                                                      |
+| CQW-10         | P0-24         | Migration ledger and one-time machinery sunset                                                   |
+| CQW-17         | P0-49         | Data-migration runner (dry run, report, apply)                                                   |
+| CQW-11         | P0-25         | Service, portal and public route tables                                                          |
+| CQW-12         | P0-26         | Core manifest ingest pipeline                                                                    |
+| CQW-13         | P0-27         | One adapter per store (delivery and commerce facets)                                             |
+| CQW-14         | P0-28         | One sealed credential store and resolver                                                         |
+| CQW-14b        | P0-28b        | Drop the old credential stores (release N+1)                                                     |
+| CQW-15         | P0-29         | Licence list paging and set queries                                                              |
+| CQW-16         | P0-30         | Guardrails, test harness and test layout                                                         |
+| CQF-01         | P0-31         | Console shared-layer cleanup (lead window)                                                       |
+| CQF-02         | P0-32         | One data layer for console and portal                                                            |
+| CQF-03         | P0-33         | Worker-owned DTO types for the admin and portal APIs                                             |
+| CQF-04         | P0-34         | Shared hash-router core                                                                          |
+| CQF-05         | P0-35         | Vocabularies as data (platforms, ecosystems, licence)                                            |
+| CQF-06         | P0-36         | Portal on the copy catalog                                                                       |
+| CQF-07         | P0-37         | Complete the shared component inventory                                                          |
+| CQF-08         | P0-38         | AuthCard in ui/auth (UX-40)                                                                      |
+| CQF-10         | P0-39         | Console sections move and page budget (lead window)                                              |
+| CQF-11         | P0-40         | Console and portal tests and oxlint                                                              |
+| CQF-13         | P0-41         | Living ADMIN.md and PORTAL.md; UX rows registered                                                |
+| CQT-01         | P0-42         | Generator registry and pnpm gen                                                                  |
+| CQT-02         | P0-43         | CI consolidation                                                                                 |
+| CQT-03         | P0-44         | Corpus generator split (corpus lane, right after HA-12)                                          |
+| CQT-04         | P0-45         | pkey command registry, context and doctor                                                        |
+| CQT-05         | P0-46         | Lint baselines with debt ledgers                                                                 |
+| ST-05 (split)  | ST-05a        | One settings read and write path                                                                 |
+| ST-05 (split)  | ST-05b        | Generic settings routes with bespoke routes as adapters                                          |
+| AC-01          | ST-28         | Plan: console RBAC and console identity on accounts                                              |
+| AC-02          | ST-29         | Admin route table, can(), useCan and NoAccessPage (absorbs ST-21)                                |
+| AC-03          | ST-30         | Console sign-in on Polaris Key accounts                                                          |
+| AC-04          | ST-31         | Roles, bindings, invites and the Members pages (absorbs ST-22)                                   |
+| AC-05          | ST-32         | SSO rules and the adminGroup conversion                                                          |
+| AC-07          | ST-34         | Admin-scope personal tokens and pkey login                                                       |
+| AC-08          | ST-35         | RBAC docs, lockout recovery, docs-gate split and adminGroup contract                             |
+| OB-00          | ST-36         | Owner polish: portal fixes and the simple product card (fix/ux-polish-1007)                      |
+| OB-01          | ST-37         | Vocabulary: one word per concept (rule 4)                                                        |
+| OB-02          | ST-38         | Service table: six features, the generic requirement rule, one service-off state (absorbs DC-12) |
+| OB-03          | ST-39         | Wizard kit                                                                                       |
+| OB-04          | ST-40         | Integration facts and SDK sightings                                                              |
+| OB-05          | ST-41         | Integration page and Overview card                                                               |
+| OB-06          | ST-42         | Create with defaults                                                                             |
+| OB-07          | ST-43         | New Product wizard                                                                               |
+| OB-08          | ST-44         | One Home; delete GET /manage/api/summary; slim product list                                      |
+| OB-09          | ST-45         | Platform and Product sidebar contexts                                                            |
+| OB-10          | ST-46         | Interactive pkey init                                                                            |
+| OB-11          | ST-47         | Legacy setup retirement                                                                          |
+| IX-00          | I-27          | Plan the identity consolidation                                                                  |
+| IX-01          | I-28          | Accounts contract phase                                                                          |
+| IX-01b         | I-28b         | Accounts contract drops (release N+1)                                                            |
+| IX-02          | I-29          | Retire per-product account toggles; one App sign-in page                                         |
+| IX-03          | I-30          | Connections: one OIDC relying-party client, verified domains, identifier routing                 |
+| IX-04          | I-31          | Platform -> Connections and setup wizards                                                        |
+| IX-05          | I-32          | Product connections (absorbs I-22)                                                               |
+| IX-08          | I-33          | Profile v2: screen name, birth date, platform terms                                              |
+| IX-09          | I-34          | Granular consent and Connected apps                                                              |
+| IX-10          | I-35          | One identity: manifest block (joint with LX-36)                                                  |
+| IX-11          | I-36          | Sign-in Integration card                                                                         |
+| CFG-01         | U-27          | Keep the licence config layer; delete the override-migration machinery                           |
+| CFG-01b        | U-27b         | Drop the override-migration tables (release N+1)                                                 |
+| CFG-02         | U-28          | One config chain: Default profile, one profile per tier, no device layer                         |
+| CFG-03         | U-29          | Effective config with provenance                                                                 |
+| CFG-04         | U-30          | Config types and in-app visibility in one vocabulary                                             |
+| CFG-05         | U-31          | Minted tokens carry their recipe                                                                 |
+| CFG-07         | U-32          | Catalog templates, Cloud Sync page, minted-token wizard and the Integration config card          |
+| FX-01          | F-33          | Personal tokens (pkeyp\_, packages:read) and portal Packages                                     |
+| FX-02          | F-34          | Feeds that provision themselves, Customers by default                                            |
+| FX-03          | F-35          | Publish to public registries (absorbs DC-13)                                                     |
+| FX-04          | F-36          | Feed cleanup on by default (dev and main prereleases)                                            |
+| FX-05          | F-37          | pkey feeds setup --write and CLI naming                                                          |
+| UC-01          | P2-08         | Built-in dev release track and default store track maps                                          |
+| UC-02          | P2-09         | Demote a release down a release track                                                            |
+| UC-03          | P2-10         | Product Access page: who gets what (absorbs LX-37)                                               |
+| UC-04          | P2-11         | Updates page: updaters for shipped platforms with Wired status                                   |
+| UC-05          | P2-12         | One update resolver: retire the GitHub-resolved appcast and version path                         |
+| UC-07          | P2-13         | Portal channel picker and SHA-256                                                                |
+| UC-08          | P2-14         | Optional: split the dev channel from the dev-build bypass                                        |
+| CP-01          | P4-33         | Pack transports auto                                                                             |
+| CP-02          | P4-34         | One-click pack gate and the packs-without-Update warning                                         |
+| DC-02          | A-19          | One channel catalogue (tools/channels.json)                                                      |
+| DC-03          | A-20          | Product facts and the channel read model                                                         |
+| DC-04          | A-21          | Console IA: Distribution and Commerce groups                                                     |
+| DC-05          | A-22          | The channel page (Status, Releases, Listing, Sales, Setup)                                       |
+| DC-06          | A-23          | Channel setup: wizards and the setup runner                                                      |
+| DC-06b         | A-33          | Channels enable in one confirmation; a storefront activates with its channel                     |
+| DC-07          | A-24          | Publish everywhere and the verb facade                                                           |
+| DC-08          | A-25          | Action v2: channels auto and thin inputs (absorbs CQS-10)                                        |
+| DC-09          | A-26          | Customer channel actions                                                                         |
+| DC-10          | A-27          | One listing truth (absorbs ST-13)                                                                |
+| DC-10b         | A-27b         | Drop the dist_listing table (release N+1)                                                        |
+| DC-11          | A-28          | One store-app binding with derived identity                                                      |
+| DC-14          | A-29          | Homebrew formula for CLI archives                                                                |
+| DC-15          | A-30          | Generated SHA256SUMS                                                                             |
+| DC-16          | A-31          | Derived identities and a short .pkey/distribution                                                |
+| DC-17          | A-32          | GitHub write path and Publish from CI                                                            |
+| SDX-01         | SP-32a        | polaris-key.json: plan, schema, fromConfig() and doctor() in Node, React and Python              |
+| SDX-01b        | SP-32b        | polaris-key.json, fromConfig() and doctor() in Swift, Kotlin and Godot                           |
+| SDX-02         | SP-33a        | One integration content generator on today's names, and pkey sdk add --expect                    |
+| SDX-02b        | SP-33b        | Integration content on polaris-key.json in every SDK, the docs and the Godot dock                |
+| SDX-03         | SP-34         | client-core takes the neutral TypeScript                                                         |
+| SDX-04         | SP-35         | SDK API registry (api.json) and 0.9 normalisation                                                |
+| SDX-05         | SP-36         | Examples in one tree, built in CI                                                                |
+| SDX-06         | SP-37         | Developer docs reshape                                                                           |
+| SDX-07         | SP-38         | Conditional: token provisioning for SDK installs                                                 |
+| SDX-08         | SP-39         | One copy pipeline                                                                                |
+| SDX-09         | SP-40         | Retire React cookie-mode browser sessions                                                        |
 
 The quick-win bundles P0-47 and P0-48 have no integration id; they hold Track A's quick wins.
 Not built: AC-06 (ST-33, requests; NoAccessPage lists the admins instead). Folded: LX-37 (License
