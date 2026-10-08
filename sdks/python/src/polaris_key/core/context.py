@@ -62,6 +62,7 @@ from .headers import canonical_arch, canonical_platform
 from ..discovery import (
     DEFAULT_SERVICES,
     ServicesMap,
+    check_service_slugs,
     copy_services,
     services_from_list,
 )
@@ -208,6 +209,15 @@ class CoreContext:
         device_name: Optional[str] = None,
     ) -> None:
         self.product = product_slug
+        # `is not None`, not truthiness: an EMPTY list means "this build expects no
+        # services" and turns every sub-client off, which is deliberately distinct from
+        # saying nothing and inheriting the suite default. (JS's `[]` is truthy, so this
+        # is what keeps the two SDKs answering the same way.) Checked FIRST: a misspelt slug
+        # raises `invalid-options` here instead of turning its service off (a typo in
+        # "license" would otherwise make an unactivated device licensed).
+        self._expected_services = (
+            check_service_slugs(expected_services) if expected_services is not None else None
+        )
         #: This device's label (WIRE-CONTRACT-V4 §12.7.1). ``None``: the platform default;
         #: ``""``: send none.
         self._device_name = device_name
@@ -247,13 +257,6 @@ class CoreContext:
 
         self._client = client
         self._owns_client = client is None
-        # `is not None`, not truthiness: an EMPTY list means "this build expects no
-        # services" and turns every sub-client off, which is deliberately distinct from
-        # saying nothing and inheriting the suite default. (JS's `[]` is truthy, so this
-        # is what keeps the two SDKs answering the same way.)
-        self._expected_services = (
-            list(expected_services) if expected_services is not None else None
-        )
         self._discovered: Optional[ServicesMap] = None
         self._device_id = ""
         # §4.2 monotonic time floor: `max(issuedAt)` over EVERY artifact this client has

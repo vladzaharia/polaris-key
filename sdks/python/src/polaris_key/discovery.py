@@ -29,7 +29,8 @@ fail-open one.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional
+from difflib import get_close_matches
+from typing import Any, Dict, Iterable, List, Optional
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 from ._services import DEFAULT_ENABLED_SERVICES, SERVICE_SLUGS
@@ -43,6 +44,7 @@ __all__ = [
     "NO_SERVICES",
     "ServicesMap",
     "copy_services",
+    "check_service_slugs",
     "services_from_list",
     "DiscoveryResult",
     "DiscoveryOk",
@@ -94,12 +96,43 @@ def copy_services(services: ServicesMap) -> ServicesMap:
     }
 
 
+def check_service_slugs(slugs: Iterable[str]) -> List[str]:
+    """``slugs`` as a list, or ``PolarisError("invalid-options")`` when one names no service.
+
+    A misspelt slug must never be dropped quietly. ``expected_services=["licence"]`` used to
+    read as "this product runs no License", and a product without License is ``not-applicable``
+    and usable, so ``is_licensed()`` answered ``True`` on a device that was never activated.
+    A bare string is refused too: iterating ``"license"`` would yield letters."""
+    # Imported here: `polaris_key.core` imports this module, so a top-level import would be a
+    # cycle when discovery is the first module loaded.
+    from .constants_generated import ErrorCode
+    from .core.errors import PolarisError
+
+    if isinstance(slugs, (str, bytes)):
+        raise PolarisError(
+            ErrorCode.INVALID_OPTIONS,
+            f"expected_services takes a list of service slugs, not the string {slugs!r}.",
+        )
+    out = list(slugs)
+    for slug in out:
+        if slug not in SERVICE_SLUGS:
+            close = get_close_matches(str(slug), SERVICE_SLUGS, n=1)
+            hint = f' Did you mean "{close[0]}"?' if close else ""
+            raise PolarisError(
+                ErrorCode.INVALID_OPTIONS,
+                f"expected_services names an unknown service {slug!r}.{hint} "
+                f"The services are: {', '.join(SERVICE_SLUGS)}.",
+            )
+    return out
+
+
 def services_from_list(slugs: Iterable[str]) -> ServicesMap:
-    """Turn a host's ``expected_services`` list into a full map — everything unlisted off."""
+    """Turn a host's ``expected_services`` list into a full map, everything unlisted off.
+    Raises ``PolarisError("invalid-options")`` for a slug that names no service
+    (:func:`check_service_slugs`)."""
     out = _map()
-    for slug in slugs:
-        if slug in out:
-            out[slug] = {"enabled": True}
+    for slug in check_service_slugs(slugs):
+        out[slug] = {"enabled": True}
     return out
 
 

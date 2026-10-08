@@ -61,6 +61,7 @@ def _add_common(p: argparse.ArgumentParser) -> None:
 def _options(args: argparse.Namespace) -> core.ClientOptions:
     try:
         trust = core.parse_trust(args.trust)
+        services = core.parse_services(getattr(args, "service", None))
     except ValueError as e:
         raise SystemExit(str(e))
     return core.ClientOptions(
@@ -69,7 +70,7 @@ def _options(args: argparse.Namespace) -> core.ClientOptions:
         trust=trust,
         base_url=args.base_url,
         config_dir=args.config_dir,
-        expected_services=core.parse_services(getattr(args, "service", None)),
+        expected_services=services,
     )
 
 

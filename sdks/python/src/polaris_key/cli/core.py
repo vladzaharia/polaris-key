@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, IO, Iterable, List, Mapping, Optional
 
 from .._version import __version__ as PACKAGE_VERSION
+from .._services import SERVICE_SLUGS
 from ..client import PolarisKeyClient
 from ..core.store import StoreStatus
 __all__ = [
@@ -151,10 +152,16 @@ def parse_services(values: Optional[Iterable[str]]) -> Optional[List[str]]:
     sub-client off, and a CLI has no way to distinguish "I passed no flags" from "I meant
     none", so the safe reading is silence. A host that genuinely wants the empty
     expectation passes ``expected_services=[]`` to the client directly.
+
+    Raises :class:`ValueError` for a slug that names no service (``--service licence``), so
+    each adapter reports it as a usage error instead of the client turning License off.
     """
     if values is None:
         return None
     out = [v for v in values]
+    for v in out:
+        if v not in SERVICE_SLUGS:
+            raise ValueError(f"--service {v!r} names no service; the services are: {', '.join(SERVICE_SLUGS)}")
     return out if out else None
 
 
