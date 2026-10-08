@@ -40,7 +40,14 @@ export function verbUsage(v: CliVerb): string {
   return [...v.path, ...v.args].join(" ");
 }
 
-/** Two-column rows: the term in `strong` (or plain), the description wrapped under its column. */
+/** Below this many columns a help row stacks: the term, then its description under it. */
+const STACK_COLUMNS = 50;
+
+/**
+ * Two-column rows: the term in `strong` (or plain), the description wrapped under its column, never
+ * past the terminal's width. Below 50 columns, or when the description column would be narrower
+ * than 16 cells, each term stacks above its description (indented two cells under the term).
+ */
 function twoColumns(
   ctx: KitContext,
   rows: ReadonlyArray<{ term: string; text: string }>,
@@ -50,14 +57,17 @@ function twoColumns(
 ): string[] {
   const termWidth =
     column ?? Math.min(24, Math.max(0, ...rows.map((r) => cellWidth(r.term))));
-  const descCol = indent + termWidth + 2;
-  const width = Math.max(20, ctx.caps.columns - descCol);
+  const columns = ctx.caps.columns;
+  const stacked =
+    columns < STACK_COLUMNS || columns - (indent + termWidth + 2) < 16;
+  const descCol = stacked ? indent + 2 : indent + termWidth + 2;
+  const width = Math.max(1, columns - descCol);
   const out: string[] = [];
   for (const r of rows) {
     const lines = wrapSpans([{ text: r.text }], width);
     const term = ctx.painter.style(r.term, ["strong"]);
     const pad =
-      cellWidth(r.term) > termWidth
+      stacked || cellWidth(r.term) > termWidth
         ? null
         : " ".repeat(termWidth - cellWidth(r.term) + 2);
     if (pad === null) {

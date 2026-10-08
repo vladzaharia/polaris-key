@@ -10,7 +10,7 @@
 import type { TerminalCaps, TerminalOutput } from "./caps.js";
 import { isCancel, isInterrupt, type Key, type KeyReader } from "./keys.js";
 import { railLines, type RailRow, type Symbols } from "./layout.js";
-import { LiveRegion } from "./live.js";
+import { LiveRegion, type LiveHost } from "./live.js";
 import type { Painter } from "./paint.js";
 import type { Line } from "./width.js";
 
@@ -32,6 +32,8 @@ export interface PromptContext {
   out: TerminalOutput;
   keys: KeyReader;
   signal?: AbortSignal;
+  /** The flow's context, so a resize lays the prompt (and what is above it) out again. */
+  host?: LiveHost;
 }
 
 /** The longest secret a prompt takes (a pasted key is 42 characters). */
@@ -45,8 +47,23 @@ function printable(k: Key): string {
   return /^[^\x00-\x1f\x7f]+$/.test(s) ? s : "";
 }
 
-function frame(ctx: PromptContext, rows: RailRow[]): string[] {
-  return railLines(rows, ctx.painter, ctx.symbols, ctx.caps.columns);
+/** The rows at the terminal's current width (called again after a resize). */
+function frame(ctx: PromptContext, rows: RailRow[]): () => string[] {
+  return () => railLines(rows, ctx.painter, ctx.symbols, ctx.caps.columns);
+}
+
+/** A prompt's region: it always redraws (typing needs it), at the terminal's current height. */
+function region(ctx: PromptContext): LiveRegion {
+  return new LiveRegion(
+    ctx.out,
+    {
+      animate: true,
+      get rows() {
+        return ctx.caps.rows;
+      },
+    },
+    ctx.host,
+  );
 }
 
 export interface SecretPrompt {
@@ -71,7 +88,7 @@ export async function promptSecret(
   ctx: PromptContext,
   p: SecretPrompt,
 ): Promise<string | Cancel> {
-  const live = new LiveRegion(ctx.out, { animate: true });
+  const live = region(ctx);
   let value = "";
   let problem: RailRow | null = null;
   const caret = ctx.symbols.rail === "|" ? "_" : "▌";
@@ -135,7 +152,7 @@ export async function promptConfirm(
   ctx: PromptContext,
   p: ConfirmPrompt,
 ): Promise<boolean | Cancel> {
-  const live = new LiveRegion(ctx.out, { animate: true });
+  const live = region(ctx);
   try {
     live.draw(frame(ctx, [{ mark: "active", spans: p.title }]));
     for (;;) {
@@ -180,7 +197,7 @@ export async function promptSelect<T>(
   ctx: PromptContext,
   p: SelectPrompt<T>,
 ): Promise<T | Cancel> {
-  const live = new LiveRegion(ctx.out, { animate: true });
+  const live = region(ctx);
   let at = Math.min(Math.max(p.initial ?? 0, 0), p.options.length - 1);
   const render = () => {
     const rows: RailRow[] = [{ mark: "active", spans: p.title }];

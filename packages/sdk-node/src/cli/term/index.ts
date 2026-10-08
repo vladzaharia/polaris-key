@@ -7,6 +7,9 @@
 export {
   detectTerminal,
   isCi,
+  layoutColumns,
+  MIN_LAYOUT_COLUMNS,
+  SHORT_ROWS,
   isHeadless,
   queryBackground,
   schemeFromColorFgBg,
@@ -40,6 +43,7 @@ export {
   type Symbols,
 } from "./layout.js";
 export {
+  breakPieces,
   cellWidth,
   charWidth,
   padEnd,
@@ -54,8 +58,12 @@ export {
 export {
   animate,
   LiveRegion,
+  physicalRows,
   realTicker,
   spinnerFrames,
+  type Frame,
+  type LiveHost,
+  type PrintedBlock,
   type Ticker,
 } from "./live.js";
 export { isCancel, isInterrupt, KeyReader, type Key } from "./keys.js";
@@ -77,8 +85,8 @@ export {
 export {
   percent,
   progressSpans,
-  QR_MIN_COLUMNS,
-  QR_MIN_ROWS,
+  QR_INDENT,
+  qrFits,
   qrLines,
 } from "./progress.js";
 export { displayUrl, osc52, osc8 } from "./osc.js";

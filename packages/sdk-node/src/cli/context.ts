@@ -6,6 +6,7 @@ import { openInBrowser } from "../identity/client.js";
 import { KitCopy, localeFromEnv } from "./copy.js";
 import {
   detectTerminal,
+  layoutColumns,
   queryBackground,
   schemeIsGuessed,
   type DetectOptions,
@@ -21,8 +22,14 @@ import {
   type RailRow,
   type Symbols,
 } from "./term/layout.js";
-import { realTicker, type Ticker } from "./term/live.js";
+import {
+  LiveRegion,
+  realTicker,
+  type PrintedBlock,
+  type Ticker,
+} from "./term/live.js";
 import { safeLink } from "./term/sanitize.js";
+import { cellWidth } from "./term/width.js";
 import { Painter } from "./term/paint.js";
 import {
   bundleIdentity,
@@ -77,6 +84,15 @@ export interface KitContext {
   rows(rows: readonly RailRow[]): void;
   /** Lines for rail rows, without printing. */
   render(rows: readonly RailRow[]): string[];
+  /**
+   * What this flow printed so far (its rail rows and its committed live regions), so a resize
+   * can lay it out again while it is all still on the screen.
+   */
+  printed: PrintedBlock[];
+  /** Re-read the terminal's size into `caps` (a live region calls it on SIGWINCH). */
+  refreshSize(): void;
+  /** A live region on stdout that follows the terminal's size. */
+  live(): LiveRegion;
   /** Release the keyboard (raw mode off). Call when the flow ends. */
   close(): void;
 }
@@ -164,10 +180,12 @@ function buildContext(
     slug: o.slug,
     scheme: caps.scheme,
   });
+  // `colors` are hex per role, drawn only in truecolor; the native preset keeps the terminal's
+  // own palette, so it takes none of them.
   const painter = new Painter(
     caps,
     product.chip,
-    theme.colors?.[caps.scheme] ?? {},
+    theme.preset === "native" ? {} : (theme.colors?.[caps.scheme] ?? {}),
     product.accentSource === "ink",
   );
   const symbols = symbolsFor(caps);
@@ -183,7 +201,8 @@ function buildContext(
       : null;
   const render = (rows: readonly RailRow[]) =>
     railLines(rows, painter, symbols, caps.columns);
-  return {
+  const printed: PrintedBlock[] = [];
+  const ctx: KitContext = {
     caps,
     painter,
     symbols,
@@ -206,13 +225,27 @@ function buildContext(
     keys,
     plainKeys,
     render,
+    printed,
     rows: (rows) => {
       const lines = render(rows);
-      if (lines.length) stdout.write(`${lines.join("\n")}\n`);
+      if (!lines.length) return;
+      stdout.write(`${lines.join("\n")}\n`);
+      printed.push({
+        lines,
+        widths: lines.map((l) => cellWidth(l)),
+        redraw: () => render(rows),
+      });
     },
+    refreshSize: () => {
+      if (!caps.tty) return;
+      if (stdout.columns) caps.columns = layoutColumns(stdout.columns);
+      if (stdout.rows) caps.rows = stdout.rows;
+    },
+    live: () => new LiveRegion(stdout, caps, ctx),
     close: () => {
       keys?.close();
       plainKeys?.close();
     },
   };
+  return ctx;
 }

@@ -4,8 +4,15 @@
 // none. The launch locales include ja, ko and zh-Hans, so every width here is in cells, never in
 // UTF-16 units. Escape sequences (SGR colour, OSC 8 links) take no cells.
 //
-// Keys and user codes never break and never truncate at the end: a token that will not fit is
-// cut in the middle (`pkey_tidewater_7Q2M…3WPLDA`).
+// Three kinds of token never break at a space like prose does:
+//
+//   keys       a license key or an id: kept on one line, cut in the middle when it cannot fit
+//              (`pkey_tidewater_7Q2M…3WPLDA`); the person compares its ends, never types it.
+//   URLs       a page the person may have to type: never cut and never given an ellipsis. One that
+//              does not fit the rest of the line starts a line of its own and, when it is wider
+//              than a line, wraps after a `/` or before a `?` or `&` (then after a `-` or before a
+//              `.`, then anywhere), hanging under the content column. Each piece keeps the link.
+//   codes      a user code: never cut; wider than a line, it wraps after a `-`.
 
 /** CSI (colour) and OSC (links, clipboard) sequences. */
 const ESCAPES = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
@@ -98,15 +105,26 @@ export function truncateEnd(s: string, max: number, ellipsis = "…"): string {
   return out + ellipsis;
 }
 
-/** A run of text with one style. `keep` marks a key, code or URL that never breaks. */
+/** A run of text with one style. */
 export interface Span {
   text: string;
   /** Roles applied in order (see paint.ts). */
   style?: readonly string[];
   /** An OSC 8 target for this run. */
   link?: string;
-  /** Never break inside, and cut in the middle when longer than a line. */
+  /** A key or an id: never break inside, and cut in the middle when longer than a line. */
   keep?: boolean;
+  /**
+   * A URL or a user code: never cut and never given an ellipsis; it wraps at its own break points
+   * when it is wider than a line (see above).
+   */
+  break?: "url" | "code";
+  /**
+   * A name that gives way (the product chip): when the spans do not fit one line, this one is cut
+   * at its end with an ellipsis, inside its pad, so the line fits. At the width it is laid out at,
+   * so a resize lays it out again.
+   */
+  shrink?: boolean;
 }
 
 export type Line = Span[];
@@ -134,13 +152,76 @@ function pieces(span: Span): Span[] {
   return out;
 }
 
+/** Split `text` after each character `after` matches and before each one `before` matches. */
+function splitAt(text: string, after: RegExp, before?: RegExp): string[] {
+  const out: string[] = [];
+  let cur = "";
+  for (const ch of text) {
+    if (before?.test(ch) && cur !== "") {
+      out.push(cur);
+      cur = "";
+    }
+    cur += ch;
+    if (after.test(ch)) {
+      out.push(cur);
+      cur = "";
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/** Cut `text` into runs of at most `width` cells (the last resort: no break point fits). */
+function hardSplit(text: string, width: number): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let w = 0;
+  for (const ch of text) {
+    const cw = charWidth(ch);
+    if (w + cw > width && cur !== "") {
+      out.push(cur);
+      cur = "";
+      w = 0;
+    }
+    cur += ch;
+    w += cw;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/**
+ * The pieces a URL or a user code may wrap between, none wider than `width`: a URL after `/` and
+ * before `?` and `&`, a piece still too wide after `-` and before `.`; a code after `-`; anything
+ * still too wide is cut into runs of `width` cells. Joined, the pieces are the text unchanged.
+ */
+export function breakPieces(
+  text: string,
+  kind: "url" | "code",
+  width: number,
+): string[] {
+  const w = Math.max(1, width);
+  const first =
+    kind === "url" ? splitAt(text, /\//, /[?&]/) : splitAt(text, /-/);
+  const second =
+    kind === "url"
+      ? first.flatMap((p) => (cellWidth(p) > w ? splitAt(p, /-/, /\./) : [p]))
+      : first;
+  return second.flatMap((p) => (cellWidth(p) > w ? hardSplit(p, w) : [p]));
+}
+
 /**
  * Wrap styled spans to `width` cells. Lines break at spaces (and between CJK characters); a `keep`
- * span that does not fit on a line of its own is cut in the middle; a last line of one lone word
- * takes the word before it along (UI-KITS §1.5 rule 11). Trailing spaces are dropped.
+ * span that does not fit on a line of its own is cut in the middle; a URL or a code wraps at its
+ * own break points and is never cut; a last line of one lone word takes the word before it along
+ * (UI-KITS §1.5 rule 11). Trailing spaces are dropped.
  */
 export function wrapSpans(spans: Line, width: number, ellipsis = "…"): Line[] {
-  const lines = wrapPieces(spans, width, ellipsis);
+  const lines = wrapPieces(
+    shrinkToFit(spans, width, ellipsis),
+    width,
+    ellipsis,
+  );
   balanceLast(lines, width);
   return lines.map(merge);
 }
@@ -154,7 +235,7 @@ const words = (pieces: readonly Span[]) =>
 /** A last line of one Latin word (CJK lines and kept tokens such as a URL are never orphans). */
 function isOrphan(pieces: readonly Span[]): boolean {
   const ws = words(pieces);
-  if (ws.length !== 1 || ws[0]!.keep) return false;
+  if (ws.length !== 1 || ws[0]!.keep || ws[0]!.break) return false;
   return ![...ws[0]!.text].some((c) => charWidth(c) === 2);
 }
 
@@ -166,6 +247,8 @@ function balanceLast(lines: Span[][], width: number): void {
   const last = lines[n - 1]!;
   // Pieces keep their trailing space; the previous line's last word needs one again.
   for (let k = prev.length - 1; k >= 1; k--) {
+    // A piece of a URL or a code stays where it is: moving it would put a space inside it.
+    if (prev.slice(k).some((p) => p.break)) return;
     const head = prev.slice(0, k);
     const moved = prev
       .slice(k)
@@ -191,12 +274,28 @@ function balanceLast(lines: Span[][], width: number): void {
 function wrapPieces(spans: Line, width: number, ellipsis: string): Span[][] {
   const lines: Span[][] = [[]];
   let w = 0;
+  const newLine = () => {
+    lines.push([]);
+    w = 0;
+  };
   for (const span of spans) {
+    if (span.break) {
+      // A URL or a code that does not fit the rest of this line starts a line of its own, then
+      // wraps at its own break points; it is never cut.
+      const tw = cellWidth(span.text);
+      if (w > 0 && w + tw > width) newLine();
+      for (const text of breakPieces(span.text, span.break, width)) {
+        const pw = cellWidth(text);
+        if (w > 0 && w + pw > width) newLine();
+        lines[lines.length - 1]!.push({ ...span, text });
+        w += pw;
+      }
+      continue;
+    }
     for (let p of pieces(span)) {
       const pw = cellWidth(p.text.trimEnd());
       if (w > 0 && w + pw > width) {
-        lines.push([]);
-        w = 0;
+        newLine();
         if (/^\s+$/.test(p.text)) continue;
       }
       if (pw > width && p.keep)
@@ -208,6 +307,32 @@ function wrapPieces(spans: Line, width: number, ellipsis: string): Span[][] {
   return lines;
 }
 
+/** The fewest cells a `shrink` span is cut to; narrower than this, the line wraps instead. */
+const SHRINK_FLOOR = 8;
+
+/** Cut the `shrink` span at its end so the spans fit one line of `width` cells, when they can. */
+function shrinkToFit(spans: Line, width: number, ellipsis: string): Line {
+  const total = cellWidth(
+    spans
+      .map((s) => s.text)
+      .join("")
+      .trimEnd(),
+  );
+  const i = spans.findIndex((s) => s.shrink);
+  if (i < 0 || total <= width) return spans;
+  const span = spans[i]!;
+  const lead = /^\s*/.exec(span.text)![0];
+  const trail = /\s*$/.exec(span.text)![0];
+  const inner = span.text.slice(lead.length, span.text.length - trail.length);
+  const room = Math.max(SHRINK_FLOOR, cellWidth(inner) - (total - width));
+  const out = [...spans];
+  out[i] = {
+    ...span,
+    text: `${lead}${truncateEnd(inner, room, ellipsis)}${trail}`,
+  };
+  return out;
+}
+
 /** Join neighbouring pieces of one style, and drop the line's trailing space. */
 function merge(pieces: Span[]): Line {
   const out: Span[] = [];
@@ -217,13 +342,14 @@ function merge(pieces: Span[]): Line {
       last &&
       last.link === p.link &&
       last.keep === p.keep &&
+      last.break === p.break &&
       (last.style ?? []).join() === (p.style ?? []).join()
     )
       last.text += p.text;
     else out.push({ ...p });
   }
   const last = out[out.length - 1];
-  if (last && !last.keep) last.text = last.text.trimEnd();
+  if (last && !last.keep && !last.break) last.text = last.text.trimEnd();
   return out.filter((s) => s.text !== "");
 }
 

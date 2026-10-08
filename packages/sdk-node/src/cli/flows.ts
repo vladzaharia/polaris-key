@@ -35,6 +35,7 @@ import {
   fixRows,
   gap,
   hintsRow,
+  isShort,
   keyMask,
   linkSpan,
   problemRows,
@@ -54,12 +55,18 @@ import {
   promptSecret,
 } from "./term/prompt.js";
 import { isCancel, isInterrupt } from "./term/keys.js";
-import type { RailRow } from "./term/layout.js";
+import { contentWidth, type RailRow } from "./term/layout.js";
 import { animate, LiveRegion, spinnerFrames } from "./term/live.js";
 import { osc52 } from "./term/osc.js";
 import { clean } from "./term/sanitize.js";
-import { percent, progressSpans, qrLines } from "./term/progress.js";
-import type { Line } from "./term/width.js";
+import {
+  percent,
+  progressSpans,
+  QR_INDENT,
+  qrFits,
+  qrLines,
+} from "./term/progress.js";
+import { cellWidth, type Line } from "./term/width.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────────────────
 
@@ -127,12 +134,12 @@ async function busy<T>(
 ): Promise<T> {
   // A short wait is not worth a line in a log: without animation nothing is drawn (D-77).
   if (quiet(ctx) || !ctx.caps.animate) return work();
-  const live = new LiveRegion(ctx.stdout, ctx.caps);
+  const live = ctx.live();
   const frames = spinnerFrames(ctx.caps.unicode);
   const stop = animate(
     ctx.caps,
     (f) =>
-      live.draw(
+      live.draw(() =>
         ctx.render([
           {
             mark: { glyph: frames[f % frames.length]! },
@@ -186,6 +193,14 @@ function emitProgress(
   seen.set(key, p);
   ctx.stdout.write(
     `${eventLine(command, "progress", { ...fields, done, total, percent: p })}\n`,
+  );
+}
+
+/** Spans that fit one rail line at the current width. */
+function fitsLine(ctx: KitContext, spans: Line): boolean {
+  return (
+    cellWidth(spans.map((s) => s.text).join("")) <=
+    contentWidth(ctx.caps.columns)
   );
 }
 
@@ -528,6 +543,7 @@ async function obtainKey(
         symbols: ctx.symbols,
         out: ctx.stdout,
         keys: ctx.keys,
+        host: ctx,
       },
       {
         title: [
@@ -703,20 +719,23 @@ export async function activateFlow(
       return result;
     }
     // Enter opens the portal page; then Enter tries again (one more key entry), Esc stops.
-    const live = new LiveRegion(ctx.stdout, { animate: true });
+    const live = new LiveRegion(
+      ctx.stdout,
+      {
+        animate: true,
+        get rows() {
+          return ctx.caps.rows;
+        },
+      },
+      ctx,
+    );
     let opened = false;
     let again = false;
     let interrupt = false;
     try {
       for (;;) {
-        live.draw(
-          ctx.render([
-            hintsRow(
-              ctx,
-              t(opened ? "cli.keys.retry" : "cli.keys.deviceLimit"),
-            ),
-          ]),
-        );
+        const keys = t(opened ? "cli.keys.retry" : "cli.keys.deviceLimit");
+        live.draw(() => ctx.render([hintsRow(ctx, keys)]));
         const k = await ctx.keys.next();
         if (k !== null && isInterrupt(k)) interrupt = true;
         if (k === null || isCancel(k)) break;
@@ -864,13 +883,13 @@ export async function loginFlow(
   };
   if (useCode) codeView();
 
-  // The live part: the countdown (code view), the spinner line and the keys.
-  const live = quiet(ctx) ? null : new LiveRegion(ctx.stdout, ctx.caps);
+  // The live part: the countdown (code view), the spinner line and the keys. On a short terminal
+  // the keys sit on the spinner's line, so the code, the URL and the keys all stay in view.
+  const live = quiet(ctx) ? null : ctx.live();
   const frames = spinnerFrames(ctx.caps.unicode);
   let copied = false;
   let frame = 0;
-  const draw = () => {
-    if (!live) return;
+  const liveRows = (): RailRow[] => {
     const left = prompt.expiresAt - ctx.now() / 1000;
     const rows: RailRow[] = [];
     if (useCode)
@@ -878,7 +897,7 @@ export async function loginFlow(
         textRow(t("signin.handoff.expires", { time: clock(left) }), ["muted"]),
         ...gap(ctx),
       );
-    rows.push({
+    const waiting: RailRow = {
       mark: ctx.caps.animate
         ? { glyph: frames[frame % frames.length]! }
         : "active",
@@ -889,7 +908,8 @@ export async function loginFlow(
             : t("signin.handoff.waiting"),
         },
       ],
-    });
+    };
+    rows.push(waiting);
     if (ctx.keys) {
       const hints = hintsRow(
         ctx,
@@ -901,10 +921,17 @@ export async function loginFlow(
           text: `  ${ctx.symbols.ok} ${t("common.copied")}`,
           style: ["success"],
         });
-      rows.push(hints);
+      const inline: Line = [
+        ...waiting.spans,
+        { text: ` ${ctx.symbols.separator} `, style: ["muted"] },
+        ...hints.spans,
+      ];
+      if (isShort(ctx) && fitsLine(ctx, inline)) waiting.spans = inline;
+      else rows.push(hints);
     }
-    live.draw(ctx.render(rows));
+    return rows;
   };
+  const draw = () => live?.draw(() => ctx.render(liveRows()));
   const stopSpin = animate(
     ctx.caps,
     (f) => {
@@ -1045,6 +1072,7 @@ async function confirmSignOut(
       symbols: ctx.symbols,
       out: ctx.stdout,
       keys: ctx.keys,
+      host: ctx,
     },
     {
       title: [{ text: question, style: ["strong"] }],
@@ -1450,7 +1478,9 @@ function progressRow(
         })
       : v.state === "queued"
         ? t("updateProgress.queued")
-        : t("updateProgress.done");
+        : // A finished download shows what it fetched, not "Up to date": the step below says
+          // the update is ready and needs a restart.
+          formatBytes(ctx, total);
   return {
     mark: "rail",
     spans: [
@@ -1512,14 +1542,14 @@ export async function updateApplyFlow(
       t("update.title", { product, version: d.release.version }),
     ),
   ]);
-  const live = quiet(ctx) ? null : new LiveRegion(ctx.stdout, ctx.caps);
+  const live = quiet(ctx) ? null : ctx.live();
   const abort = new AbortController();
   const started = ctx.now();
   let last = 0;
   let lastDone = 0;
   let lastTotal = 0;
   const redraw = () =>
-    live?.draw(
+    live?.draw(() =>
       ctx.render([
         progressRow(ctx, lastDone, lastTotal, started),
         ...(ctx.keys ? [hintsRow(ctx, t("cli.keys.download"))] : []),
@@ -1578,7 +1608,7 @@ export async function updateApplyFlow(
   await keyLoop;
   live?.commit(
     lastTotal > 0
-      ? ctx.render([progressRow(ctx, lastTotal, lastTotal, started)])
+      ? () => ctx.render([progressRow(ctx, lastTotal, lastTotal, started)])
       : [],
   );
   const view = installView(out);
@@ -1785,7 +1815,7 @@ export async function packsEnsureFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "packs ensure"));
-  const live = quiet(ctx) ? null : new LiveRegion(ctx.stdout, ctx.caps);
+  const live = quiet(ctx) ? null : ctx.live();
   const started = ctx.now();
   let last = 0;
   const off = client.update.packs.on((e) => {
@@ -1797,7 +1827,7 @@ export async function packsEnsureFlow(
     const now = ctx.now();
     if (!ctx.caps.animate || now - last < 100) return;
     last = now;
-    live?.draw(
+    live?.draw(() =>
       ctx.render([
         {
           mark: "active",
@@ -2078,21 +2108,32 @@ export function offlineRequestFlow(
     ]),
     ...codeRows(ctx, deviceId),
   ];
-  const qr = qrLines(deviceId, {
-    ...ctx.caps,
-    terminalColumns: ctx.stdout.columns ?? ctx.caps.columns,
-  });
-  ctx.rows(rows);
-  if (qr)
-    ctx.stdout.write(
-      `${qr.map((l) => `${ctx.painter.style(ctx.symbols.rail, ["muted"])}${" ".repeat(5)}${l}`).join("\n")}\n`,
-    );
-  ctx.rows([
-    ...(qr ? gap(ctx) : []),
+  const end = [
     endRow(
       t("cli.offline.import", { command: cmd(ctx, "import-bundle <file>") }),
     ),
-  ]);
+  ];
+  // The QR shows only where the whole screen fits with it: one blank row on each side (the code's
+  // own, then one before the end row), never two.
+  const qr = qrLines(deviceId, ctx.caps);
+  const screen =
+    ctx.render(rows).length + ctx.render([...gap(ctx), ...end]).length;
+  const withQr =
+    qr !== null &&
+    qrFits(
+      qr,
+      {
+        ...ctx.caps,
+        terminalColumns: ctx.stdout.columns ?? ctx.caps.columns,
+      },
+      screen,
+    );
+  ctx.rows(rows);
+  if (withQr)
+    ctx.stdout.write(
+      `${qr.map((l) => `${ctx.painter.style(ctx.symbols.rail, ["muted"])}${" ".repeat(QR_INDENT - 1)}${l}`).join("\n")}\n`,
+    );
+  ctx.rows([...(withQr ? gap(ctx) : []), ...end]);
   return { exitCode: EXIT.ok, state: "default", result };
 }
 
