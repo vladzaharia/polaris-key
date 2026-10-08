@@ -10,17 +10,18 @@ Let's have a bunch of subagents go through everything we provide and come up wit
 # General Concepts
 
 Below, you will find instructions for specific services and features we provide. In addition to these specific instructions, we should have some basic concepts and instructions that should be kept in mind across the project.
+
 - Similar features and services should be consolidated
 - Developers/Administrators should have flexibility in configuration, to an extent
 - Too many configuration choices and matrices cause friction; reduce the configuration surface area when possible
 - Ensure we provide excellent onboarding to our developers and administrators when something isn't configured
-    - Step by step wizards and instructions
-    - Example code
-    - Automatic configuration where possible
+  - Step by step wizards and instructions
+  - Example code
+  - Automatic configuration where possible
 - If something can be automated without the user's intervention, do it. If we have credentials available at the platform or product level that allow us to enable a storefront for the user, it should just be done instead of the user having to go through multiple steps.
 - Shared technology/concepts should be gracefully degraded based on service availability. Examples include:
-    - Subscription licenses should be available even if Commerce is not active
-    - Distribution/Commerce pages for, for instance, App Store, will contain as much data as it can get from whichever sources are enabled
+  - Subscription licenses should be available even if Commerce is not active
+  - Distribution/Commerce pages for, for instance, App Store, will contain as much data as it can get from whichever sources are enabled
 
 # Products
 
@@ -83,6 +84,7 @@ That allows us to still override things for each license, but realistically we w
 ## Subscriptions
 
 We should be able to support subscriptions, both within Polaris Key and in third party stores, where available. This allows us to manage and renew licenses automatically. A license can therefore be:
+
 - Lifetime
 - With a defined expiry
 - For a specific version
@@ -101,11 +103,13 @@ We might also choose to provide a license for all 1.x updates forever, then a su
 Configuration is mostly good as is, just with a few changes needed. Apart from splitting out entitlements, this is mostly a verification layer.
 
 We should be able to have three config types:
+
 - Regular config
 - Secret (write-only management, read-only runtime)
 - Edge-minted (no management, read-only runtime)
 
 Each config type can be set to one of several visibility levels:
+
 - Visible in app, changeable
 - Visible in app, read-only
 - Invisible in app
@@ -117,6 +121,7 @@ This allows us to have secrets delivered securely to users such as API keys. All
 Cloud Sync allows us to synchronize various parts of the app to ensure we can restore the session at any time from any instance.
 
 This means:
+
 - All config entries, managed and unmanaged
 - Any assets, session state, etc needed to rehydrate a session
 - Conflict handling when local and remote disagree
@@ -127,6 +132,7 @@ A lot of synchronization will be developer-driven, so ensure our SDKs allow easy
 # Release
 
 An application can deliver multiple types of content, such as:
+
 - Application (dmg, exe, msi, zip, etc)
 - Content and content packs
 - Packages (npm, pypi, etc)
@@ -137,6 +143,7 @@ Content might be compiled against/restricted to a specific OS (ie. macOS), to a 
 ## Distribution Channels
 
 Applications can be distributed on one of several distribution channels, including but not limited to:
+
 - Polaris Key (direct download)
 - Steam (macOS, Windows, etc)
 - Apple App Store (macOS, iOS, etc)
@@ -146,8 +153,8 @@ Applications can be distributed on one of several distribution channels, includi
 - NuGet/WinGet (Windows)
 - Homebrew (macOS, Linux)
 - Package feeds (ie. npm, pypi, etc)
-    - Polaris Key has built-in package feeds
-    - We should also have the ability to push to a centralized feed if desired
+  - Polaris Key has built-in package feeds
+  - We should also have the ability to push to a centralized feed if desired
 - etc etc etc
 
 Distribution channels can be, but are not always, associated with a Commerce Storefront (ie. Apple App Store), but the two concepts should be separated. Releases and distribution channels deals with the actual artifacts being released and distributed to the right storefronts, while Commerce deals with the storefronts themselves (prices, regional availability, etc).
@@ -197,6 +204,7 @@ All distribution channels should try and be configured as much as possible to en
 Commerce specifically deals with storefronts, that is, the aspect of managing payments, transactions, license/entitlement grants, etc etc
 
 Similar rules apply as to the Distribution Channels:
+
 - Simple step-by-step instructions for unconfigured storefronts.
 - Easy to use, well-laid out information for configured storefronts.
 - Easy to use, well-laid out settings, both global and per-storefront to manage the connectors and data
@@ -211,6 +219,7 @@ Subscriptions will generally come from storefronts, but the licensing system beh
 # Identity
 
 We want to make sure our identity system is solid:
+
 - We should support multiple SSO providers, with an email domain(s -- yes, multiple) linking to specific OIDC providers
 - Applications can also set their own custom SSO provider to use (ie. if they have their own account system)
 - Users can sign in using one of the above OIDC providers, magic email link, or via another device (or any other authentication methods, passkeys etc)
@@ -226,6 +235,7 @@ We want to make sure our identity system is solid:
 - User accounts are NOT required -- a free floating license that the user doesn't want to tie to their account is completely valid, it just doesn't get any account-based services
 
 Users should be able to sign in across experiences:
+
 - Customer portal
 - Web apps and sites
 - Games, on phones, desktops, etc
@@ -235,6 +245,7 @@ Users should be able to sign in across experiences:
 - etc
 
 On OIDC sign in, if an account doesn't exist, we should pull information from OIDC to try and fill out a profile.
+
 - All fields including photo should be overwritable for the user
 - Provide suggestions from OIDC accounts linked, but allow the user to choose their own values
 - Screen Name should be a concept we have, and should be pulled from the various providers with the user able to switch between them or set their own.
@@ -256,6 +267,7 @@ The Console needs its Platform settings expanded to include the things that are 
 ## RBAC
 
 The Console should get proper RBAC support. This means:
+
 - User access to the console itself
 - Access to individual apps
 - Access to platform settings
@@ -263,11 +275,12 @@ The Console should get proper RBAC support. This means:
 Ideally, we should be able to restrict features per-product or platform-wide as part of this, as well. OIDC support should be included, including mappings to set various states (ie. a group gives access to the console, another group gives access to an app's storefront settings, a OIDC claim gives access to the entire project, etc).
 
 Administrators should also be subject to RBAC.
+
 - We should have a "Superadmin" role which provides access to everything, current and new.
 - We should have an "Platform Admin" role which provides access to the console and Platform settings, and
 - We should have "{Product} Admin" roles for each product we have
 - "Console Access" should be a role that gives _only_ console access and is intended to be used with other roles.
-    - A user that has only console access should see a page asking them to contact an administrator for permission (same as if you manually went to a page you aren't supposed to).
+  - A user that has only console access should see a page asking them to contact an administrator for permission (same as if you manually went to a page you aren't supposed to).
 - A user may have multiple roles, and should get the sum of all of their access.
 
 Basically, create a solid RBAC system that rivals big platforms like Github, etc.
@@ -275,6 +288,7 @@ Basically, create a solid RBAC system that rivals big platforms like Github, etc
 # Minor Changes / Fixes
 
 ## Customer Portal
+
 - What's New should be formatted, and potentially summarized (with full notes available on expansion)
 - The number of devices in the product sidebar should be a pill
 - Product sidebar doesn't quite match layout as you scroll down; maybe a slight reorganization here? Some consolidation, some cleanup. But generally looks great
@@ -283,6 +297,7 @@ Basically, create a solid RBAC system that rivals big platforms like Github, etc
 - "0 out of 5 devices" in the License Details card should be removed; it's already well encapsulated in the next card down
 
 ## Administration Console
+
 - Let's revert back to a more simplified product card. I like the name/slug header section. The main section should be a row with the icons for enabled services. No additional details.
 - On mobile, we should simply have the product name and a colored pip/dot for each enabled service
 
