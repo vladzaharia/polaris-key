@@ -577,49 +577,51 @@ function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
           : "Point an app at discovery; it finds the rest."
       }
     >
-      {store.isError ? (
-        <p className="px-5 pt-4 text-sm text-fg-muted">
-          Your releases didn&apos;t load, so every updater feed is listed for
-          the stable channel only.{" "}
-          <Button variant="link" size="sm" onClick={() => void store.refetch()}>
-            Try again
-          </Button>
-        </p>
-      ) : null}
-      <ul
-        className="space-y-2 px-5 py-4"
-        aria-label="Feed endpoints"
-        aria-busy={store.isPending || undefined}
-      >
-        {rows.map((row) => {
-          const url = publicUrl(slug, row.path);
-          return (
-            <li
-              key={row.path}
-              className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
-            >
-              <span className="w-full shrink-0 text-xs font-bold text-fg-muted sm:w-44">
-                {row.label}
-              </span>
-              <code className="min-w-0 flex-1 truncate rounded-sm bg-surface-sunken px-2 py-1 font-mono text-xs">
-                {url}
-              </code>
-              <CopyButton value={url} label={`Copy the ${row.label} URL`} />
-            </li>
-          );
-        })}
-        {store.isPending
-          ? [0, 1, 2].map((i) => (
+      <div className="space-y-3 px-5 py-4">
+        {store.isError ? (
+          <p className="text-sm text-fg-muted">
+            Your releases didn&apos;t load, so every updater feed is listed for
+            the stable channel only.{" "}
+            <Button variant="link" onClick={() => void store.refetch()}>
+              Try again
+            </Button>
+          </p>
+        ) : null}
+        <ul
+          className="space-y-2"
+          aria-label="Feed endpoints"
+          aria-busy={store.isPending || undefined}
+        >
+          {rows.map((row) => {
+            const url = publicUrl(slug, row.path);
+            return (
               <li
-                key={`loading-${i}`}
+                key={row.path}
                 className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
               >
-                <Skeleton className="h-4 w-32 shrink-0 sm:w-44" />
-                <Skeleton className="h-6 min-w-0 flex-1" />
+                <span className="w-full shrink-0 text-xs font-bold text-fg-muted sm:w-44">
+                  {row.label}
+                </span>
+                <code className="min-w-0 flex-1 truncate rounded-sm bg-surface-sunken px-2 py-1 font-mono text-xs">
+                  {url}
+                </code>
+                <CopyButton value={url} label={`Copy the ${row.label} URL`} />
               </li>
-            ))
-          : null}
-      </ul>
+            );
+          })}
+          {store.isPending
+            ? [0, 1, 2].map((i) => (
+                <li
+                  key={`loading-${i}`}
+                  className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
+                >
+                  <Skeleton className="h-4 w-32 shrink-0 sm:w-44" />
+                  <Skeleton className="h-6 min-w-0 flex-1" />
+                </li>
+              ))
+            : null}
+        </ul>
+      </div>
     </SettingsSection>
   );
 }
