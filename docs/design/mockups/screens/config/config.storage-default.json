@@ -17,9 +17,31 @@
     "It says when it applies (each person's next sync) and the per-product alternative (give the tiers their own value).",
     "The passkey step-up is announced before the button; the button says what happens and to how many: \"Change the default for 2 products\".",
     "Only platform admins reach this dialog; a product role sees Change… disabled (config.cloud-sync-product-role).",
-    "The screen is one viewport behind the dialog. Phone: the dialog fills the width under the top bar and the buttons fill it too."
+    "The screen is one viewport behind the dialog. Phone: the dialog fills the width under the top bar and the buttons fill it too.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The dialog repeated itself and the footer pattern differed on phone.",
+        "resolution": "Title names the scope (\"in every product\"); intro and footer merged into one sentence; removed the passkey line and added a fingerprint icon to the button; one phone footer pattern.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Neutral primary on dialog commit buttons (UX4)",
+        "resolution": "declined: Contradicts the kit's accent system. Gold for approve, red for destructive and the service accent for service actions are deliberate.",
+        "round": "multi-review"
+      }
+    ]
+  },
   "order": 15
 }

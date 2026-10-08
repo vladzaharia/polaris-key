@@ -1,99 +1,7 @@
 <style>
-  /* config.cloud-sync-usage: Diceroll's Cloud Sync page, Usage tab: players with data, storage by tier, what's stored and where players sync from (U-32). */
-
-  [data-screen="config.cloud-sync-usage"] .two {
-    display: grid;
-    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
-    gap: 20px;
-    align-items: stretch;
-  }
-  [data-screen="config.cloud-sync-usage"] .stats {
-    margin-bottom: 20px;
-  }
-  [data-screen="config.cloud-sync-usage"] .stat-value small {
-    margin-left: 4px;
-    font-size: 14px;
-    font-weight: 400;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.cloud-sync-usage"] .use-table td,
-  [data-screen="config.cloud-sync-usage"] .use-table th {
-    white-space: nowrap;
-  }
-  [data-screen="config.cloud-sync-usage"] .use-table .cell-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  [data-screen="config.cloud-sync-usage"] .use-table .cell-title .ic {
-    width: 14px;
-    height: 14px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.cloud-sync-usage"] .over {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  [data-screen="config.cloud-sync-usage"] .over .ic {
-    width: 14px;
-    height: 14px;
-  }
-  /* What's stored: one stacked bar, then a legend with sizes. */
-  [data-screen="config.cloud-sync-usage"] .stack-bar {
-    display: flex;
-    height: 12px;
-    margin: 4px 0 14px;
-    border-radius: 999px;
-    overflow: hidden;
-    background: var(--mk-fill);
-  }
-  [data-screen="config.cloud-sync-usage"] .stack-bar > i {
-    display: block;
-    height: 100%;
-  }
-  [data-screen="config.cloud-sync-usage"] .stack-bar > i + i {
-    border-left: 2px solid var(--pk-surface-raised);
-  }
-  [data-screen="config.cloud-sync-usage"] .sw-saves { background: var(--pk-accent); }
-  [data-screen="config.cloud-sync-usage"] .sw-old { background: color-mix(in oklab, var(--pk-accent) 45%, var(--pk-surface-raised)); }
-  [data-screen="config.cloud-sync-usage"] .sw-set { background: var(--pk-text-subtle); }
-  [data-screen="config.cloud-sync-usage"] .legend {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  [data-screen="config.cloud-sync-usage"] .legend > div {
-    display: grid;
-    grid-template-columns: 12px minmax(0, 1fr) auto;
-    align-items: start;
-    column-gap: 10px;
-    font-size: 13px;
-    line-height: 18px;
-  }
-  [data-screen="config.cloud-sync-usage"] .legend .sw {
-    width: 12px;
-    height: 12px;
-    margin-top: 3px;
-    border-radius: 3px;
-  }
-  [data-screen="config.cloud-sync-usage"] .legend .sub {
-    display: block;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.cloud-sync-usage"] .legend .size {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-    white-space: nowrap;
-  }
-  [data-screen="config.cloud-sync-usage"] .plat .card-row {
-    font-size: 13px;
-  }
-  [data-screen="config.cloud-sync-usage"] .plat .card-row > .ic {
-    width: 16px;
-    height: 16px;
-    flex: none;
-    color: var(--pk-text-muted);
+  /* config.cloud-sync-usage: Diceroll's Cloud Sync page, Usage tab: players, storage, syncs and conflicts, by tier, kind and platform. */
+  [data-screen="config.cloud-sync-usage"] .callout.warning {
+    border-left: 4px solid var(--pk-warning);
   }
   [data-screen="config.cloud-sync-usage"] .nlink {
     color: var(--pk-text-strong);
@@ -102,58 +10,69 @@
     text-underline-offset: 3px;
     white-space: nowrap;
   }
-  [data-screen="config.cloud-sync-usage"] .use-table td .lbl {
-    display: none;
+  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
+     text colour, as commerce's are (the arrow says "link"). */
+  [data-screen="config.cloud-sync-usage"] [data-service="config"] :is(.link, .btn.link) {
+    color: var(--pk-text-strong);
   }
-  @container screen (max-width: 1023px) {
-    [data-screen="config.cloud-sync-usage"] .two {
-      grid-template-columns: minmax(0, 1fr);
-    }
+  [data-screen="config.cloud-sync-usage"] .choice-title > .ic {
+    color: var(--pk-text-muted);
   }
-  @container screen (max-width: 639px) {
-    [data-screen="config.cloud-sync-usage"] .use-table thead {
-      display: none;
-    }
-    [data-screen="config.cloud-sync-usage"] .use-table,
-    [data-screen="config.cloud-sync-usage"] .use-table tbody {
-      display: block;
-    }
-    [data-screen="config.cloud-sync-usage"] .use-table tr {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 2px 12px;
-      padding: 12px 16px;
-      border-top: 1px solid var(--mk-line);
-    }
-    [data-screen="config.cloud-sync-usage"] .use-table tbody tr:first-child {
-      border-top: 0;
-    }
-    [data-screen="config.cloud-sync-usage"] .use-table td {
-      display: block;
-      padding: 0;
-      border: 0;
-    }
-    [data-screen="config.cloud-sync-usage"] .use-table td.c-used {
-      grid-column: 2;
-      grid-row: 1;
-      text-align: right;
-      font-weight: 700;
-    }
-    [data-screen="config.cloud-sync-usage"] .use-table td.c-players,
-    [data-screen="config.cloud-sync-usage"] .use-table td.c-median,
-    [data-screen="config.cloud-sync-usage"] .use-table td.c-over {
-      grid-column: 1 / -1;
-      text-align: left;
-      font-size: 13px;
-      color: var(--pk-text-muted);
-    }
-    [data-screen="config.cloud-sync-usage"] .use-table td .lbl {
-      display: inline;
-    }
+  [data-screen="config.cloud-sync-usage"] .choice.on {
+    border-color: var(--pk-text-strong);
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="config.cloud-sync-usage"] .choice.on .choice-title > .ic {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.cloud-sync-usage"] .card-split .eyebrow .pill {
+    letter-spacing: 0;
+  }
+  [data-screen="config.cloud-sync-usage"] .slot-thumb {
+    flex: none;
+    width: 48px;
+    height: 32px;
+    border-radius: 6px;
+    background:
+      radial-gradient(circle at 70% 40%, #d0492f 0 8px, transparent 9px),
+      linear-gradient(135deg, #3b2a1e, #1c1712 70%);
+  }
+  [data-screen="config.cloud-sync-usage"] .table td.amount-cell .cell-title {
+    font-variant-numeric: tabular-nums;
+  }
+  [data-screen="config.cloud-sync-usage"] .stack-bar {
+    max-width: 640px;
+    overflow: hidden;
+    display: flex;
+    height: 12px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--mk-fill);
+  }
+  [data-screen="config.cloud-sync-usage"] .stack-bar > i + i {
+    margin-left: 2px;
+  }
+  [data-screen="config.cloud-sync-usage"] .stack-bar > i:last-child {
+    min-width: 4px;
+  }
+  [data-screen="config.cloud-sync-usage"] .sw-saves {
+    background: var(--pk-accent);
+  }
+  [data-screen="config.cloud-sync-usage"] .sw-old {
+    background: color-mix(in oklab, var(--pk-accent) 45%, var(--pk-surface-raised));
+  }
+  [data-screen="config.cloud-sync-usage"] .sw-set {
+    background: var(--pk-text-subtle);
+  }
+  [data-screen="config.cloud-sync-usage"] .swatch {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
   }
 </style>
 
-<div class="console" data-service="sync">
+<div class="console kit-cfg" data-service="sync">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -175,15 +94,15 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group" data-service="sync" style="padding-top: 4px">
-      <div class="nav-label">Cloud Sync<i class="ic ic-chevron-down sm"></i></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="sync">
+      <button class="nav-label" aria-expanded="true">Cloud Sync<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-cloud"></i><span class="nav-text">Cloud Sync</span></a>
     </div>
-    <div class="nav-group closed" data-service="commerce" style="padding-top: 4px"><div class="nav-label">Commerce<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -191,13 +110,12 @@
   </nav>
 
   <main class="main">
-    <div class="page">
+    <div class="page columns">
       <header class="page-head">
         <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Cloud Sync</nav>
         <div class="page-heading"><h1>Cloud Sync</h1></div>
-        <p class="page-sub"><span>Players’ settings and saves follow them to every device they sign in on.</span><span class="status"><i class="ic ic-circle-check"></i>Verified on iOS, Android and Steam</span><span class="status muted"><i class="ic ic-circle-dashed"></i>itch.io not seen yet</span></p>
+        <p class="page-sub"><span class="status"><i class="ic ic-circle-check"></i>Verified on iOS, Android and Steam</span><span class="status muted"><i class="ic ic-circle-dashed"></i>itch.io not seen yet</span></p>
         <div class="page-actions">
-          <span class="freshness hide-phone">Updated 2&nbsp;min ago</span>
           <button class="btn ghost"><i class="ic ic-book-open"></i>Guide</button>
         </div>
       </header>
@@ -207,87 +125,90 @@
         <a class="tab active" href="#">Usage</a>
       </nav>
 
-      <div class="stats">
-        <div class="stat"><span class="stat-label"><i class="ic ic-users-round sm"></i>Players with data</span>
+      <div class="stats full">
+        <div class="stat"><span class="stat-label"><i class="ic ic-users-round"></i>Players with data</span>
           <span class="stat-value">4,812</span><span class="stat-foot"><span class="delta-up">+126</span> this week</span></div>
-        <div class="stat"><span class="stat-label"><i class="ic ic-database sm"></i>Storage used</span>
-          <span class="stat-value">18.4&nbsp;GiB<small>of 50&nbsp;GiB</small></span><span class="stat-foot">37% of Diceroll’s total</span></div>
-        <div class="stat"><span class="stat-label"><i class="ic ic-refresh-cw sm"></i>Syncs today</span>
-          <span class="stat-value">61,240</span><span class="stat-foot">Settings and saves, since 00:00 UTC</span></div>
-        <div class="stat"><span class="stat-label"><i class="ic ic-git-merge sm"></i>Players asked to pick a save</span>
-          <span class="stat-value">37</span><span class="stat-foot">This week, when two devices disagreed</span></div>
+        <div class="stat"><span class="stat-label"><i class="ic ic-database"></i>Storage used</span>
+          <span class="stat-value">18.4&nbsp;GiB</span><span class="stat-foot">Of Diceroll’s 50&nbsp;GiB</span></div>
+        <div class="stat"><span class="stat-label"><i class="ic ic-refresh-cw"></i>Syncs today</span>
+          <span class="stat-value">61,240</span><span class="stat-foot">Since 00:00 UTC</span></div>
+        <div class="stat"><span class="stat-label"><i class="ic ic-git-merge"></i>Save conflicts</span>
+          <span class="stat-value">37 <small>players</small></span><span class="stat-foot">This week</span></div>
       </div>
 
       <section class="card" aria-labelledby="tier-title">
         <div class="card-head">
-          <span class="icon-tile"><i class="svc"></i></span>
-          <div class="title"><h2 id="tier-title">Storage by tier</h2><p>How much each tier’s players keep, against what their tier allows.</p></div>
-          <a class="link hide-phone" href="#">Change on Setup<i class="ic ic-arrow-right"></i></a>
+          <div class="title"><h2 id="tier-title">Storage by tier</h2></div>
+          <a class="btn link" href="#">Change on Setup<i class="ic ic-arrow-right"></i></a>
         </div>
-        <div style="overflow-x: auto">
-          <table class="table use-table">
-            <thead><tr><th>Tier</th><th class="num">Players with data</th><th class="num">Storage used</th><th class="num">Median per player</th><th>Over 80% of their limit</th></tr></thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-title"><i class="ic ic-award"></i>Free</div><div class="cell-sub">64&nbsp;MiB each, also players without a license</div></td>
-                <td class="num c-players"><span class="lbl">Players with data: </span>3,120</td>
-                <td class="num c-used">9.5&nbsp;GiB</td>
-                <td class="num c-median"><span class="lbl">Median per player: </span>2.6&nbsp;MiB</td>
-                <td class="c-over"><span class="lbl">Over 80%: </span><span class="over text-warning"><i class="ic ic-triangle-alert"></i>41 players · 6 have a save waiting for room</span></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><i class="ic ic-award"></i>Standard</div><div class="cell-sub">256&nbsp;MiB each, the default</div></td>
-                <td class="num c-players"><span class="lbl">Players with data: </span>1,402</td>
-                <td class="num c-used">5.5&nbsp;GiB</td>
-                <td class="num c-median"><span class="lbl">Median per player: </span>3.4&nbsp;MiB</td>
-                <td class="c-over"><span class="lbl">Over 80%: </span><span class="over muted">3 players</span></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><i class="ic ic-award"></i>Deluxe</div><div class="cell-sub">1&nbsp;GiB each</div></td>
-                <td class="num c-players"><span class="lbl">Players with data: </span>290</td>
-                <td class="num c-used">3.4&nbsp;GiB</td>
-                <td class="num c-median"><span class="lbl">Median per player: </span>9.8&nbsp;MiB</td>
-                <td class="c-over"><span class="lbl">Over 80%: </span><span class="over muted">None</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <table class="table fixed stack-phone" aria-label="Storage by tier">
+          <colgroup><col style="width: 28%"><col style="width: 13%"><col style="width: 13%"><col style="width: 14%"><col style="width: 32%"></colgroup>
+          <thead><tr><th>Tier</th><th class="num">Players with data</th><th class="num">Storage used</th><th class="num">Median per player</th><th>Near limit</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div><div class="cell-title">Free</div><div class="cell-sub">Also unlicensed players</div></div></div></td>
+              <td class="num"><span class="cell-label">Players</span>3,120</td>
+              <td class="num"><span class="cell-label">Used</span>9.5&nbsp;GiB</td>
+              <td class="num"><span class="cell-label">Median</span>2.6&nbsp;MiB</td>
+              <td><span class="cell-label">Over 80%</span><span class="icon-line text-warning"><i class="ic ic-triangle-alert"></i><span>41 players · 6 waiting for room</span></span></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div><div class="cell-title">Standard</div></div></div></td>
+              <td class="num"><span class="cell-label">Players</span>1,402</td>
+              <td class="num"><span class="cell-label">Used</span>5.5&nbsp;GiB</td>
+              <td class="num"><span class="cell-label">Median</span>3.4&nbsp;MiB</td>
+              <td><span class="cell-label">Over 80%</span><span class="muted">3 players</span></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div><div class="cell-title">Deluxe</div></div></div></td>
+              <td class="num"><span class="cell-label">Players</span>290</td>
+              <td class="num"><span class="cell-label">Used</span>3.4&nbsp;GiB</td>
+              <td class="num"><span class="cell-label">Median</span>9.8&nbsp;MiB</td>
+              <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
+            </tr>
+          </tbody>
+        </table>
         <div class="card-foot start">
-          <span class="muted small">A player’s own data is on Users: open a player, then Data. <a class="nlink" href="#">Show the 6 players waiting for room</a></span>
+          <span class="type-small muted">A player’s own data is on Users › the player › Data.</span>
         </div>
       </section>
 
-      <div class="two mt-4">
+      <div class="mk-pair loose top">
         <section class="card" aria-labelledby="stored-title">
           <div class="card-head">
-            <span class="icon-tile muted"><i class="ic ic-database"></i></span>
-            <div class="title"><h2 id="stored-title">What’s stored</h2><p>18.4&nbsp;GiB across all players.</p></div>
+            <div class="title"><h2 id="stored-title">What’s stored</h2></div>
           </div>
-          <div class="card-body">
+          <div class="card-body tight">
             <div class="stack-bar" role="img" aria-label="Saves 11.6 GiB, older versions 6.6 GiB, settings 0.2 GiB">
               <i class="sw-saves" style="width: 63%"></i><i class="sw-old" style="width: 36%"></i><i class="sw-set" style="width: 1%"></i>
             </div>
-            <div class="legend">
-              <div><i class="sw sw-saves"></i><span>Saves<span class="sub">11,904 slots, with thumbnails</span></span><span class="size">11.6&nbsp;GiB</span></div>
-              <div><i class="sw sw-old"></i><span>Older versions of saves<span class="sub">Up to 5 per slot; they count toward each player’s storage</span></span><span class="size">6.6&nbsp;GiB</span></div>
-              <div><i class="sw sw-set"></i><span>Settings<span class="sub">13 synced settings, plus 212 keys the game added itself</span></span><span class="size">0.2&nbsp;GiB</span></div>
-            </div>
           </div>
+          <table class="table" aria-label="What's stored">
+            <thead><tr><th>Kind</th><th class="num">Size</th></tr></thead>
+            <tbody>
+              <tr><td><div class="cell-with-logo"><i class="swatch sw-saves" aria-hidden="true"></i><div><div class="cell-title">Saves</div><div class="cell-sub">11,904 slots, with thumbnails</div></div></div></td><td class="num">11.6&nbsp;GiB</td></tr>
+              <tr><td><div class="cell-with-logo"><i class="swatch sw-old" aria-hidden="true"></i><div><div class="cell-title">Older versions of saves</div><div class="cell-sub">Up to 5 per slot</div></div></div></td><td class="num">6.6&nbsp;GiB</td></tr>
+              <tr><td><div class="cell-with-logo"><i class="swatch sw-set" aria-hidden="true"></i><div><div class="cell-title">Settings</div><div class="cell-sub">13 settings and 212 game keys</div></div></div></td><td class="num">0.2&nbsp;GiB</td></tr>
+            </tbody>
+          </table>
         </section>
 
-        <section class="card plat" aria-labelledby="plat-title">
+        <!-- At wide, the aside. -->
+        <section class="card aside span-2" aria-labelledby="plat-title">
           <div class="card-head">
-            <span class="icon-tile muted"><i class="ic ic-monitor-smartphone"></i></span>
-            <div class="title"><h2 id="plat-title">Where players sync from</h2><p>This week. A player on two platforms counts on both.</p></div>
+            <div class="title"><h2 id="plat-title">Where players sync from</h2><p>This week</p></div>
           </div>
-          <div class="card-rows">
-            <div class="card-row"><i class="ic ic-apple"></i><span class="grow">iOS</span><span class="tnum">2,214 players</span><span class="muted tnum">Last sync 1&nbsp;min ago</span></div>
-            <div class="card-row"><i class="ic ic-android"></i><span class="grow">Android</span><span class="tnum">1,689 players</span><span class="muted tnum">Last sync 1&nbsp;min ago</span></div>
-            <div class="card-row"><i class="ic ic-steam"></i><span class="grow">Steam</span><span class="tnum">931 players</span><span class="muted tnum">Last sync 4&nbsp;min ago</span></div>
-            <div class="card-row"><i class="ic ic-itch"></i><span class="grow">itch.io</span><span class="muted">Not seen yet</span></div>
-          </div>
+          <table class="table" aria-label="Players per platform">
+            <thead><tr><th>Platform</th><th class="num">Players</th><th class="num">Last sync</th></tr></thead>
+            <tbody>
+              <tr><td><span class="platform-name"><i class="ic ic-apple"></i>iOS</span></td><td class="num">2,214</td><td class="num muted">1&nbsp;min ago</td></tr>
+              <tr><td><span class="platform-name"><i class="ic ic-android"></i>Android</span></td><td class="num">1,689</td><td class="num muted">1&nbsp;min ago</td></tr>
+              <tr><td><span class="platform-name"><i class="ic ic-steam"></i>Steam</span></td><td class="num">931</td><td class="num muted">4&nbsp;min ago</td></tr>
+              <tr><td><span class="platform-name"><i class="ic ic-itch"></i>itch.io</span></td><td class="num subtle">None yet</td><td class="num subtle">Never</td></tr>
+            </tbody>
+          </table>
           <div class="card-foot start">
-            <span class="muted small">itch.io builds sync once they call Cloud Sync with a signed-in player. <a class="nlink" href="#">Open Integration</a></span>
+            <span class="type-small muted">itch.io syncs once its build signs a player in. <a class="nlink" href="#">Open Integration</a></span>
           </div>
         </section>
       </div>

@@ -13,11 +13,12 @@
   "compare": [
     "The dialog opens over the Cloud Sync page with the page dimmed behind; it is the only way to turn the switch on. The paused state that follows is config.cloud-sync-paused.",
     "The title asks with its scope: \"Pause Cloud Sync writes everywhere?\", because writesPaused is a platform setting even when opened from one product.",
-    "Every product with Cloud Sync on is listed by logo and name with what stops, what its people see and how many have data, in one tense: DJDL \"Settings changes wait on each Mac and PC; the app shows Waiting to sync. No one has synced yet.\"; Diceroll \"Saves and settings wait on each device; the load screen shows Saved on this device. 4,812 players have data.\" Products with Cloud Sync off aren't listed.",
+    "Every product with Cloud Sync on is listed by logo and name with what stops, what its people see and how many have data: DJDL \"Settings wait on each Mac and PC, which shows “Waiting to sync”. No one has synced yet.\"; Diceroll \"Saves and settings wait on each device, which shows “Saved on this device”. 4,812 players have data.\" Products with Cloud Sync off aren't listed.",
     "The body says what keeps working (reading), that nothing is deleted, and what happens on resume (devices send what they queued).",
     "Reason is required and says where it shows (the banner and Activity); the passkey step-up is announced before the button.",
     "The confirm button says exactly what happens and to how many: \"Pause writes for 2 products\", in the danger tone; Cancel is neutral.",
-    "The screen is one viewport behind the dialog. Phone: the dialog fills the width under the top bar, product rows keep logo and text side by side, and the buttons fill the width."
+    "The screen is one viewport behind the dialog. Phone: the dialog fills the width under the top bar, product rows keep logo and text side by side, and the buttons fill the width.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
   ],
   "status": "mockup",
   "designReview": {
@@ -40,6 +41,23 @@
         "severity": "minor",
         "issue": "Rows didn't say what players see, the tense differed, and Reason was optional.",
         "resolution": "DJDL: \"Settings changes wait on each Mac and PC; the app shows Waiting to sync. No one has synced yet.\" Diceroll: \"Saves and settings wait on each device; the load screen shows Saved on this device. 4,812 players have data.\" Reason is required and says it appears in the banner and Activity. The page behind is the fixed config.cloud-sync, clipped to one viewport."
+      },
+      {
+        "severity": "minor",
+        "issue": "The dialog repeated itself and the footer pattern differed on phone.",
+        "resolution": "Scope stated once in the title; one intro sentence; one closing line \"Reading keeps working; nothing is deleted.\"; removed \"Next, you confirm with your passkey\" and put a fingerprint icon on the confirm button; footer is Cancel left, primary right, 44px side by side on phone (.kit-cfg).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Neutral primary on dialog commit buttons (UX4)",
+        "resolution": "declined: Contradicts the kit's accent system. Red for destructive and the service accent for service actions are deliberate.",
+        "round": "multi-review"
       }
     ]
   },

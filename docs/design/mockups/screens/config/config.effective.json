@@ -13,15 +13,16 @@
   "summary": "Mara Fennick's Studio license for DJDL, Config tab: every value her devices get with the step it came from along the five-step chain, an override the Studio profile's lock keeps from applying, a required secret no step sets, and what each device does with the list.",
   "compare": [
     "Every value, state and source on this tab comes from the one effective-config read (GET …/config/effective?license=…); the console never re-merges, and the lock case matches the server: run.concurrency shows 6 (Read-only, from the Studio profile), not the license's 3.",
-    "The chain card shows the five steps in merge order (Catalog defaults with the catalog version, Default profile, the tier's profile, This license, the holder's account) with how many values each sets (16, 5, 5, 2, 2); the current page's step is highlighted, and selecting a step filters the table.",
-    "Counts agree: 22 values (16 settings and 6 secrets) in the search, the All filter and the foot; the minted token isn't listed and the foot says why.",
-    "Each row: key with its label, the value devices get, In the app (Editable, Read-only, Hidden; secrets say Never listed) and From: five 10px pips with 3px gaps (filled where a step sets it, accent where the value comes from, dashed amber where set but not applied) plus the step's name and a lock where it locks.",
+    "The chain card shows the five steps in merge order as a strip of cells (Catalog defaults with the catalog version, Default profile, the tier's profile, This license, the holder's account) with how many values each sets (16, 5, 5, 2, 2); the current page's step is highlighted, and selecting a step filters the table. Its line says the rule once: a later step wins unless an earlier one locks the setting.",
+    "22 values show once, in the All filter (with This license 2, Locked 3, Secrets 6); the search doesn't repeat the count, and the foot only says why the minted token isn't listed.",
+    "Each row: key with its label, the value devices get, In the app (Editable, Read-only, Hidden; secrets say Never listed) and From: five 8px pips 4px apart (filled where a step sets it, accent where the value comes from, dashed amber where set but not applied) plus the step's name and a lock where it locks.",
     "A required secret no step sets (identity.acoustidKey) shows \"Not set\" in warning with \"Required secret\" and Set secret, matching products.home's Needs attention row; other secrets show only Configured or Not set, never a value.",
-    "A blocked override is called out at the top with what devices get instead and the fix; its row opens a trail of all five steps with the skipped one struck through, Remove override, and Open Studio profile (config.profile).",
+    "A blocked override is called out at the top (what devices get instead, and Remove override); its row opens a trail of all five steps with the skipped one struck through, the other fix in one line and Open Studio profile (config.profile).",
     "Rows set on this license carry an accent edge and an edit button; other rows offer Override on hover; the actions column keeps 16px inside the card and the table never scrolls sideways at 1440.",
-    "Then, on each device lists the client order without numbers (dots joined by arrows), so it can't be read as part of the server chain: a lock wins, then the person's own choice (synced with Cloud Sync), then the computer's environment, then this list (outlined), then the app's fallback, with one worked example.",
+    "Then, on each device lists the client order as rows with a glyph each and no numbers, so it can't be read as part of the server chain: a lock wins, then the person's own choice (synced with Cloud Sync), then the computer's environment, then this list (outlined), then the app's fallback, with one worked example.",
     "Last picked up names Mara's three devices with when each last fetched config.",
-    "Tablet: the rail drops under the table in two columns and the chain wraps. Phone: the … menu sits on the title row, the license key is its own meta line, the chain is a compact list (one line per step with its count), Add override is a full-width button under the filters, and each table row becomes a two-line block."
+    "Tablet: the rail drops under the table, its two cards side by side; the chain keeps one row. Phone: the … menu sits on the title row, the license key is its own meta line, the chain is a list (one line per step with its count), and each table row is two lines (key and value, then where it's from and In the app); the action shows only where it's needed (Set secret).",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
   ],
   "status": "mockup",
   "designReview": {
@@ -59,6 +60,65 @@
         "severity": "minor",
         "issue": "On phone the … menu was orphaned, the key chip hidden, and the chain took about 550px before any value.",
         "resolution": "The menu sits at the right of the title row, the key is its own meta line, and the chain is a compact list, one line per step with its count."
+      },
+      {
+        "severity": "major",
+        "issue": "The five-step order was stated three times (strip, rail list, expanded ladder) and the rail ended far above the table.",
+        "resolution": "Deleted the \"Then, on each device\" rail card and the example; the strip is the one statement of order; subtitle is \"Later steps win unless an earlier one locks the value.\" Last picked up stays, sticky.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The Studio lock on run.concurrency was told four times.",
+        "resolution": "Kept the banner and the expanded row; tile sub-line is \"Locks 1\"; tiles show the number only; dropped the \"Set, not applied\" legend entry, the ladder footer sentence (Open Studio profile link kept) and the lock beside Studio profile.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Mono keys truncated at 1440 and the main column stretched at wide.",
+        "resolution": "Key column 29% with no ellipsis (long keys wrap), 48px rows (.row-48), page capped at 1600px with a sticky rail. The stray white patch on phone came from a hover-simulating row class and is gone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone a value took 4 to 5 lines and sat far from its key.",
+        "resolution": "Phone rows: key, value in mono directly under it, then source and mode on one muted line; ladder steps are two-line rows with the value right. The tab strip already scrolls with an edge fade (kit .tabs::after).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Six secret rows repeated \"Never listed\" and were scattered across groups.",
+        "resolution": "Moved into one \"Secrets, never listed\" group; per-row label replaced with an em dash; pips kept.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX2"
+        ]
+      },
+      {
+        "issue": "Remove the pips or the From label (UX2)",
+        "resolution": "declined: UX1 calls the pip ladder a strong encoding and it carries the step. Keep both; the duplication is minor and already tight.",
+        "round": "multi-review"
       }
     ]
   },

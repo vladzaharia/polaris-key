@@ -11,16 +11,42 @@
   "compare": [
     "The drawer opens from Review and approve… on the minted-token entry with the editor dimmed behind; there is no separate Edge mint page.",
     "The screen is one viewport: the page behind doesn't scroll and the drawer fills the height, with its body scrolling and its foot always visible.",
-    "What changed compares every security-relevant field against the last approval, headed \"Approved Sep 14 by Ana Lima\": changed fields first, with the old value struck in a danger tint with −, the new value bold in a success tint with +; then an Unchanged sub-head over one value per field. The eyebrow counts \"1 field changed\".",
+    "What changed compares every security-relevant field against the last approval, headed \"Approved\": changed fields first, with the old value struck in a danger tint with −, the new value bold in a success tint with +; then an Unchanged sub-head over one value per field. The eyebrow ends with who approved it last and when (\"Ana Lima approved Sep 14\"); the one changed row needs no count.",
     "A widening change gets a plain warning of what it allows (a leaked token works for 12 hours instead of 1); a narrowing change has none.",
     "The signing key is never shown, only its state (Sealed Oct 2).",
     "The only confirm is the passkey (step-up); P0-12 holds: nothing mints until the approval is recorded.",
     "Phone: the drawer fills the screen, the comparison stays a three-column table inside its card with values on one line, and the buttons fill the width.",
-    "An info callout at the top of the body: \"The recipe changed while you were reviewing\", who pushed which commit and when, and that the comparison below is the new one and nothing was approved.",
+    "An info callout at the top of the body replaces the opening line: \"The recipe changed while you were reviewing\", who pushed which commit and when (with its link), that this is the new comparison, and that nothing was approved.",
     "The comparison, the widening warning (24 hours) and the commit link all show the new recipe; the drawer never approves a recipe the person didn't see.",
-    "An approval sent for a recipe that has since changed is refused, and this is what the console shows then; Approve with passkey stays the action, for the new recipe."
+    "An approval sent for a recipe that has since changed is refused, and this is what the console shows then; Approve with passkey stays the action, for the new recipe.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Five unchanged rows carried no decision and the change was repeated four times.",
+        "resolution": "\"5 fields unchanged\" is a closed disclosure; authorship is one line (Jonah Ortiz · Oct 6 · commit 4f2c9a1); callout \"Tokens will last 12 hours\"; Who-can-get-one is one sentence; editor footer sentence removed; editor banner \"Lifetime changed from 1 to 12 hours in .pkey/schema. Minting is stopped until you approve.\"",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "A live Approve button on changed content was a flow risk; the stale banner was a one-off colour.",
+        "resolution": "The button names the value (\"Approve 24 hours\"); the Lifetime row carries a struck \"was 12 hours\"; the banner uses the warning tier. Not done: a disabled Approve until acknowledged, a scroll area ending 16px above the footer.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3"
+        ]
+      }
+    ]
+  },
   "order": 8
 }

@@ -10,15 +10,37 @@
   "uxRows": [],
   "summary": "Add entry → Minted token in one drawer over the catalog editor: Template, then the signing key sealed as it's added, then claims, then Save and approve under a passkey; drawn on the claims step for a generic ES256 token DJDL presents to its metadata server.",
   "compare": [
-    "One drawer with three steps (Template, Signing key, Claims); finished steps collapse to one line each with Change or Replace. It replaces today's four steps across three pages.",
+    "One drawer with three steps (Template, Signing key, Claims); finished steps collapse to one line each with Change or Replace, so the stepper shows names only.",
     "The key is pasted or uploaded on step 2 and sealed straight into the product's secrets with usage edge-mint; afterwards it shows only \"Signing key sealed\" and its type, never the key.",
     "Claims: Catalog key (can't change after publish), Recipe id (what the app asks for), iss, aud, kid and Lifetime with \"Short is safer\", plus whether the device id goes in as sub; the decoded preview follows every field and uses real times (iat + 15 minutes = exp).",
     "Templates: Apple MusicKit developer token (fields fixed by the template: ES256, Team ID, Key ID) and Generic JWT (ES256, RS256 or EdDSA).",
     "The last button is Save and approve with the passkey glyph: a recipe made in the console is approved on save under step-up. The foot says where it goes (draft v10) and when DJDL can mint it (once v10 is published).",
     "The screen is one viewport: the page behind doesn't scroll and only the drawer body does.",
-    "Phone: the drawer fills the screen, step labels shorten to marks plus the current step's name, field pairs stack and the buttons fill the width."
+    "Phone: the drawer fills the screen, step labels shorten to marks plus the current step's name, field pairs stack and the buttons fill the width.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Phone lost the step names, rows misaligned, the footer was 120px tall and the preview was cut.",
+        "resolution": "\"Step 3 of 3 · Claims\" as text on phone with aria-labels on every step; Claims and drawer subtitles removed; one \"Can't change after publish\" hint and a reserved hint line under the other fields; footer note \"Added to draft v10, approved. Publish to let DJDL mint it.\" on one line; the decoded preview scrolls sideways with a fade. Not done: at 900px high the preview is below the fold of the static desktop render.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Reword players/people/devices across the area; sentence-case eyebrows (UX2)",
+        "resolution": "declined: The house copy rules already distinguish these; uppercase eyebrows are a kit pattern. Only stray places fixed; no global rewrite.",
+        "round": "multi-review"
+      }
+    ]
+  },
   "order": 12
 }

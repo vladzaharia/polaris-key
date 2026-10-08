@@ -1,211 +1,7 @@
 <style>
-  /* config.mint-wizard: the minted-token wizard: Template, then the key sealed as it's added, then claims, then Save and approve under a passkey, in one drawer (U-32). */
-  [data-screen="config.mint-wizard"] .editor {
-    display: grid;
-    grid-template-columns: 236px minmax(0, 1fr) 280px;
-    gap: 20px;
-    align-items: start;
-  }
-  [data-screen="config.mint-wizard"] .rail {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
-  }
-
-  /* The entry list: one row per catalog entry, grouped by category. */
-  [data-screen="config.mint-wizard"] .entries {
-    padding: 12px 8px 8px;
-  }
-  [data-screen="config.mint-wizard"] .entries .search-field {
-    flex: none;
-    min-width: 0;
-    margin: 0 4px 8px;
-    height: 32px;
-    font-size: 13px;
-  }
-  [data-screen="config.mint-wizard"] .entries .eyebrow {
-    margin: 12px 8px 4px;
-  }
-  [data-screen="config.mint-wizard"] .entry {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 30px;
-    padding: 0 8px;
-    border-radius: var(--pk-radius-md);
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-muted);
-    white-space: nowrap;
-  }
-  [data-screen="config.mint-wizard"] .entry > .ic {
-    width: 14px;
-    height: 14px;
-    flex: none;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.mint-wizard"] .entry > span {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  [data-screen="config.mint-wizard"] .entry.active {
-    background: var(--pk-accent-subtle);
-    color: var(--pk-text-strong);
-    box-shadow: inset 2px 0 0 var(--pk-accent);
-  }
-  [data-screen="config.mint-wizard"] .entry.active > .ic {
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="config.mint-wizard"] .entry .changed {
-    flex: none;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--pk-accent);
-  }
-  [data-screen="config.mint-wizard"] .entries-key {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 12px;
-    margin: 12px 4px 0;
-    padding: 10px 6px 2px;
-    border-top: 1px solid var(--mk-line);
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.mint-wizard"] .entries-key > span {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
-  [data-screen="config.mint-wizard"] .entries-key .ic {
-    width: 12px;
-    height: 12px;
-  }
-
-  /* The form. */
-  [data-screen="config.mint-wizard"] .pair {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-  }
-  [data-screen="config.mint-wizard"] .choices.three {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
-  }
-  [data-screen="config.mint-wizard"] .choices.three .choice {
-    padding: 12px 14px;
-  }
-  [data-screen="config.mint-wizard"] .choices.three .choice::after {
-    top: 12px;
-    right: 12px;
-  }
-  [data-screen="config.mint-wizard"] .choices.three .choice.on::before {
-    top: 15px;
-    right: 15px;
-  }
-  [data-screen="config.mint-wizard"] .choices.three .choice-title {
-    padding-right: 18px;
-  }
-  [data-screen="config.mint-wizard"] .choice-title .ic {
-    width: 16px;
-    height: 16px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.mint-wizard"] .choice.on .choice-title .ic {
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="config.mint-wizard"] .chips {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    min-height: 36px;
-  }
-  [data-screen="config.mint-wizard"] .chips .chip {
-    height: 28px;
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-  }
-  [data-screen="config.mint-wizard"] .chips .chip > .ic {
-    width: 12px;
-    height: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.mint-wizard"] .chips .chip.add {
-    border-style: dashed;
-    font-family: var(--pk-font-sans);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.mint-wizard"] .chips .chip.new {
-    border-color: var(--pk-accent);
-    background: var(--pk-accent-subtle);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="config.mint-wizard"] .was-new {
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="config.mint-wizard"] .sync-box {
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    background: var(--pk-surface-sunken);
-  }
-  [data-screen="config.mint-wizard"] .sync-box .setting-row {
-    padding: 14px 16px;
-  }
-  [data-screen="config.mint-wizard"] .sync-box .setting-title .svc {
-    width: 16px;
-    height: 16px;
-  }
-  [data-screen="config.mint-wizard"] .sync-box .pair {
-    padding: 0 16px 16px;
-  }
-  [data-screen="config.mint-wizard"] .sync-box .field-label {
-    font-size: 13px;
-  }
-
-  /* The rail: where the key is set (U-29). */
-  [data-screen="config.mint-wizard"] .where .card-row {
-    padding: 9px 16px;
-    font-size: 13px;
-  }
-  [data-screen="config.mint-wizard"] .where .card-row > .ic {
-    width: 14px;
-    height: 14px;
-    flex: none;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.mint-wizard"] .where .card-row > .grow {
-    color: var(--pk-text-default);
-  }
-  [data-screen="config.mint-wizard"] .where code {
-    font-size: 12px;
-  }
-  [data-screen="config.mint-wizard"] .entry-switch {
-    display: none;
-  }
-
-  /* Round 1 review. The config accent is the same hue as warning, so on config pages a
-     selection is a strong neutral border plus the tick, a fact is a neutral link, and gold is
-     left for the tick and the draft dot. */
-  [data-screen="config.mint-wizard"] .choices.three .choice.on {
-    border-color: var(--pk-text-strong);
-    background: var(--pk-surface-raised);
-  }
-  [data-screen="config.mint-wizard"] .choice.on .choice-title .ic {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="config.mint-wizard"] .entry.active {
-    background: var(--mk-fill);
-    box-shadow: inset 2px 0 0 var(--pk-text-strong);
-  }
-  [data-screen="config.mint-wizard"] .entry.active > .ic {
-    color: var(--pk-text-strong);
+  /* config.mint-wizard: Add entry → Minted token in one drawer over the editor, on the claims step. */
+  [data-screen="config.mint-wizard"] .callout.warning {
+    border-left: 4px solid var(--pk-warning);
   }
   [data-screen="config.mint-wizard"] .nlink {
     color: var(--pk-text-strong);
@@ -214,206 +10,143 @@
     text-underline-offset: 3px;
     white-space: nowrap;
   }
-  /* A published key is a fact, not a field: plain mono text with a lock. */
-  [data-screen="config.mint-wizard"] .static {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 36px;
-    font-family: var(--pk-font-mono);
-    font-size: 13px;
+  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
+     text colour, as commerce's are (the arrow says "link"). */
+  [data-screen="config.mint-wizard"] [data-service="config"] :is(.link, .btn.link) {
     color: var(--pk-text-strong);
   }
-  [data-screen="config.mint-wizard"] .static > .ic {
+  [data-screen="config.mint-wizard"] .choice-title > .ic {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.mint-wizard"] .choice.on {
+    border-color: var(--pk-text-strong);
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="config.mint-wizard"] .choice.on .choice-title > .ic {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.mint-wizard"] .list-nav-item > .dot.changed {
+    width: 7px;
+    height: 7px;
+    background: var(--pk-warning);
+  }
+  [data-screen="config.mint-wizard"] .list-nav-item > .attn {
     width: 14px;
     height: 14px;
-    flex: none;
-    color: var(--pk-text-subtle);
+    color: var(--pk-warning);
   }
-  [data-screen="config.mint-wizard"] .static > .note {
-    margin-left: 4px;
-    font-family: var(--pk-font-sans);
-    font-size: 12px;
-    color: var(--pk-text-subtle);
+  [data-screen="config.mint-wizard"] .card-head h2.mono {
+    font-family: var(--pk-font-mono);
+    font-weight: 700;
+    letter-spacing: 0;
   }
   [data-screen="config.mint-wizard"] .textarea.two {
-    min-height: 60px;
+    min-height: 64px;
   }
-  [data-screen="config.mint-wizard"] .label-help {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-  }
-  [data-screen="config.mint-wizard"] .label-help .btn {
-    width: 22px;
-    min-width: 22px;
-    height: 22px;
-    padding: 0;
+  [data-screen="config.mint-wizard"] .field-label > .btn.icon.xs {
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
     color: var(--pk-text-subtle);
   }
-  /* Who uses each allowed value, on the chip itself. */
-  [data-screen="config.mint-wizard"] .chips .chip .use {
-    margin-left: 2px;
-    padding-left: 8px;
-    border-left: 1px solid var(--mk-line);
-    font-family: var(--pk-font-sans);
+  [data-screen="config.mint-wizard"] .chip {
+    font-family: var(--pk-font-mono);
     font-size: 12px;
-    color: var(--pk-text-muted);
   }
-  [data-screen="config.mint-wizard"] .rule {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 36px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="config.mint-wizard"] .rule > .ic {
-    width: 14px;
-    height: 14px;
+  [data-screen="config.mint-wizard"] .chip > .ic {
+    width: 12px;
+    height: 12px;
     color: var(--pk-text-subtle);
   }
-  [data-screen="config.mint-wizard"] .card-foot .foot-note {
-    font-size: 13px;
-    line-height: 18px;
+  [data-screen="config.mint-wizard"] .chip.new {
+    border-color: var(--pk-warning-border);
+    background: var(--pk-warning-subtle);
+  }
+  [data-screen="config.mint-wizard"] .chip.add {
+    border-style: dashed;
+    font-family: var(--pk-font-sans);
     color: var(--pk-text-muted);
   }
-
-  @container screen (max-width: 1023px) {
-    [data-screen="config.mint-wizard"] .editor {
-      grid-template-columns: 220px minmax(0, 1fr);
-    }
-    [data-screen="config.mint-wizard"] .rail {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-items: start;
-    }
+  [data-screen="config.mint-wizard"] .chip.removed {
+    border-style: dashed;
+    color: var(--pk-text-subtle);
   }
-  @container screen (max-width: 639px) {
-    [data-screen="config.mint-wizard"] .editor {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="config.mint-wizard"] .entries {
-      display: none;
-    }
-    [data-screen="config.mint-wizard"] .entry-switch {
-      display: flex;
-    }
-    [data-screen="config.mint-wizard"] .rail {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="config.mint-wizard"] .pair,
-    [data-screen="config.mint-wizard"] .choices.three {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="config.mint-wizard"] .sync-box .setting-row {
-      padding: 12px 14px;
-    }
-    [data-screen="config.mint-wizard"] .sync-box .pair {
-      padding: 0 14px 14px;
-    }
-    [data-screen="config.mint-wizard"] .card-foot {
-      flex-wrap: wrap;
-    }
-    [data-screen="config.mint-wizard"] .card-foot .foot-note {
-      flex: 1 1 100%;
-    }
+  [data-screen="config.mint-wizard"] .chip.removed > .v {
+    text-decoration: line-through;
   }
-
+  [data-screen="config.mint-wizard"] .chip.removed > a.chip-note {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  [data-screen="config.mint-wizard"] .select.changed-field {
+    border-color: var(--pk-warning);
+  }
+  [data-screen="config.mint-wizard"] .select.changed-field + .hint {
+    color: var(--pk-warning);
+  }
+  [data-screen="config.mint-wizard"] .callout.code-only {
+    border-style: dashed;
+    border-color: var(--pk-border-strong);
+    background: transparent;
+  }
+  [data-screen="config.mint-wizard"] .card.nokey {
+    border-style: dashed;
+    border-color: var(--pk-border-strong);
+  }
+  [data-screen="config.mint-wizard"] .card-row > .ic {
+    color: var(--pk-text-subtle);
+  }
+  /* A drawer is open, so the page behind it doesn't scroll: the screen is the first viewport. */
   [data-screen="config.mint-wizard"] .console {
     height: 100vh;
     overflow: hidden;
   }
   [data-screen="config.mint-wizard"] .overlay.end > .drawer {
-    width: 600px;
     height: 100%;
     min-height: 0;
-  }
-  [data-screen="config.mint-wizard"] .drawer-head .icon-tile {
-    flex: none;
-  }
-  [data-screen="config.mint-wizard"] .drawer-head p {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.mint-wizard"] .drawer .wiz-steps {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--mk-line);
   }
   [data-screen="config.mint-wizard"] .drawer-body {
     min-height: 0;
     overflow-y: auto;
-    gap: 16px;
   }
-  [data-screen="config.mint-wizard"] .drawer-body h3 {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="config.mint-wizard"] .drawer-body .lede {
-    margin-top: -10px;
-    font-size: 13px;
-    line-height: 18px;
+  [data-screen="config.mint-wizard"] .drawer-head p {
+    font-size: var(--fs-small);
+    line-height: var(--lh-small);
     color: var(--pk-text-muted);
   }
-  [data-screen="config.mint-wizard"] .done-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border: 1px solid var(--mk-line);
-    border-radius: 10px;
-    font-size: 13px;
-    color: var(--pk-text-default);
+  /* A note in the foot takes its own line; the buttons keep their size, right-aligned under it. */
+  [data-screen="config.mint-wizard"] .drawer-foot:has(> .grow) {
+    flex-wrap: wrap;
   }
-  [data-screen="config.mint-wizard"] .done-row > .ic {
-    width: 16px;
-    height: 16px;
-    flex: none;
-    color: var(--pk-success);
+  [data-screen="config.mint-wizard"] .drawer-foot > .grow {
+    flex: 1 1 100%;
   }
-  [data-screen="config.mint-wizard"] .done-row .btn {
-    margin-left: auto;
-    flex: none;
-  }
-  [data-screen="config.mint-wizard"] .wpair {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-  }
-  [data-screen="config.mint-wizard"] .wiz-foot-note {
-    margin-right: auto;
-    align-self: center;
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.mint-wizard"] .drawer .code pre {
-    font-size: 12px;
-  }
-  [data-screen="config.mint-wizard"] .drawer-foot .btn {
+  [data-screen="config.mint-wizard"] .drawer-foot > .btn {
     flex: none;
   }
   @container screen (max-width: 639px) {
-    [data-screen="config.mint-wizard"] .wpair {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="config.mint-wizard"] .drawer .wiz-steps .step-label small {
-      display: none;
-    }
-    [data-screen="config.mint-wizard"] .drawer-foot {
-      flex-wrap: wrap;
-    }
-    [data-screen="config.mint-wizard"] .wiz-foot-note {
-      flex: 1 1 100%;
-    }
-    [data-screen="config.mint-wizard"] .drawer-foot .btn {
+    [data-screen="config.mint-wizard"] .drawer-foot > .btn {
       flex: 1 1 auto;
     }
   }
+  [data-screen="config.mint-wizard"] .drawer > .wizard-head {
+    border-bottom: 1px solid var(--mk-line);
+  }
+  [data-screen="config.mint-wizard"] .card-row > .status > .ic {
+    width: 16px;
+    height: 16px;
+  }
+  [data-screen="config.mint-wizard"] .drawer-foot {
+    flex-wrap: wrap;
+  }
+  [data-screen="config.mint-wizard"] .drawer-foot > .foot-note {
+    flex: 1 0 100%;
+    white-space: nowrap;
+  }
 </style>
 
-<div class="console" data-service="config">
+<div class="console kit-cfg" data-service="config">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -435,15 +168,15 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group" data-service="config" style="padding-top: 4px">
-      <div class="nav-label">Managed config<i class="ic ic-chevron-down sm"></i></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="config">
+      <button class="nav-label" aria-expanded="true">Managed config<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-list-tree"></i><span class="nav-text">Catalog</span><span class="count">23</span></a>
       <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Profiles</span><span class="count">2</span></a>
     </div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -455,7 +188,7 @@
       <header class="page-head">
         <nav class="crumbs"><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a><i class="ic ic-chevron-right"></i>Edit</nav>
         <div class="page-heading"><h1>Edit catalog</h1><span class="pill"><i class="dot"></i>Draft v10</span></div>
-        <p class="page-sub"><span>v9 was published Oct 6 from <code>.pkey/schema</code> in example-org/djdl. Commit your edits there too, or the next resync from the repo replaces them.</span></p>
+        <p class="page-sub"><span>v9 came from <code>.pkey/schema</code> in example-org/djdl on Oct 6. Commit your edits there too, or the next resync replaces them.</span></p>
         <div class="page-actions">
           <div class="segmented sm hide-phone" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
           <button class="btn ghost">Discard draft</button>
@@ -464,67 +197,60 @@
         </div>
       </header>
 
-      <div class="editor">
+      <div class="mk-editor">
         <!-- Every entry, grouped by category. Entitlements are Licensing's now, so none are listed. -->
-        <aside class="card entries" aria-label="Catalog entries">
-          <div class="search-field"><i class="ic ic-search"></i><span>Search 23 entries</span></div>
-          <p class="eyebrow">Quality<span class="end">4</span></p>
-          <a class="entry active" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.floor</span><i class="changed" title="Changed in this draft"></i></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.losslessOnly</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.bestQuality</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.upgrade.enabled</span></a>
-          <p class="eyebrow">Run<span class="end">5</span></p>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.concurrency</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.searchCount</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.toleranceSec</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.searchTimeoutSec</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.cooloffHours</span></a>
-          <p class="eyebrow">Interface and output<span class="end">2</span></p>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>ui.theme</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>outputDir</span></a>
-          <p class="eyebrow">Identity<span class="end">3</span></p>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>identity.enabled</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>identity.strict</span></a>
-          <a class="entry" href="#"><i class="ic ic-lock"></i><span>identity.acoustidKey</span></a>
-          <p class="eyebrow">VPN<span class="end">4</span></p>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.enabled</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.select</span></a>
-          <a class="entry" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.refreshHours</span></a>
-          <a class="entry" href="#"><i class="ic ic-lock"></i><span>proxy.subscriptionUrl</span></a>
-          <p class="eyebrow">Accounts<span class="end">4</span></p>
-          <a class="entry" href="#"><i class="ic ic-lock"></i><span>serviceA.oauth</span></a>
-          <a class="entry" href="#"><i class="ic ic-lock"></i><span>serviceB.clientId</span></a>
-          <a class="entry" href="#"><i class="ic ic-lock"></i><span>serviceB.refreshToken</span></a>
-          <a class="entry" href="#"><i class="ic ic-lock"></i><span>serviceC.userToken</span></a>
-          <p class="eyebrow">Integrations<span class="end">1</span></p>
-          <a class="entry" href="#"><i class="ic ic-stamp"></i><span>applemusic.token</span></a>
-          <div class="entries-key">
-            <span><i class="ic ic-sliders-horizontal"></i>Setting</span>
-            <span><i class="ic ic-lock"></i>Secret</span>
-            <span><i class="ic ic-stamp"></i>Minted token</span>
+        <nav class="card list-nav mk-editor-list" aria-label="Catalog entries">
+          <div class="search-field"><i class="ic ic-search"></i><span>Search entries</span></div>
+          <p class="list-nav-label">Quality<span class="end">4</span></p>
+          <a class="list-nav-item mono active" href="#" aria-current="page"><i class="ic ic-sliders-horizontal"></i><span>quality.floor</span><i class="dot changed" title="Changed in this draft"></i></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.losslessOnly</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.bestQuality</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.upgrade.enabled</span></a>
+          <p class="list-nav-label">Run<span class="end">5</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.concurrency</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.searchCount</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.toleranceSec</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.searchTimeoutSec</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.cooloffHours</span></a>
+          <p class="list-nav-label">Interface and output<span class="end">2</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>ui.theme</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>outputDir</span></a>
+          <p class="list-nav-label">Identity<span class="end">3</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>identity.enabled</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>identity.strict</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>identity.acoustidKey</span></a>
+          <p class="list-nav-label">VPN<span class="end">4</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.enabled</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.select</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.refreshHours</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>proxy.subscriptionUrl</span></a>
+          <p class="list-nav-label">Accounts<span class="end">4</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>serviceA.oauth</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>serviceB.clientId</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>serviceB.refreshToken</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>serviceC.userToken</span></a>
+          <p class="list-nav-label">Integrations<span class="end">1</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-stamp"></i><span>applemusic.token</span></a>
+          <div class="list-nav-foot">
+            <div class="mk-cluster-3 type-meta"><span class="mk-cluster-1"><i class="ic ic-sliders-horizontal xs"></i>Setting</span><span class="mk-cluster-1"><i class="ic ic-lock xs"></i>Secret</span><span class="mk-cluster-1"><i class="ic ic-stamp xs"></i>Minted token</span></div>
+            <button class="btn outline sm block"><i class="ic ic-plus"></i>Add entry</button>
           </div>
-          <div class="mt-3" style="padding: 0 4px 4px"><button class="btn outline sm block"><i class="ic ic-plus"></i>Add entry</button></div>
-        </aside>
+        </nav>
 
         <!-- Phone: the list folds into one switcher. -->
-        <div class="select entry-switch"><i class="ic ic-list-tree"></i><span class="grow">Entry <span class="mono">quality.floor</span></span><span class="muted small">1 of 23</span><i class="ic ic-chevrons-up-down"></i></div>
+        <div class="select mk-editor-switch"><i class="ic ic-list-tree"></i><span class="grow">Entry <span class="mono">quality.floor</span></span><span class="type-small muted">1 of 23</span><i class="ic ic-chevrons-up-down"></i></div>
 
         <!-- The open entry. -->
         <section class="card" aria-labelledby="entry-title">
           <div class="card-head">
-            <span class="icon-tile"><i class="ic ic-sliders-horizontal"></i></span>
             <div class="title">
-              <h2 id="entry-title" class="mono">quality.floor</h2>
-              <p>Minimum quality · Quality · changed in this draft</p>
+              <div class="mk-cluster baseline"><h2 id="entry-title" class="mono">quality.floor</h2><span class="pill sm"><i class="dot"></i>Changed in draft</span></div>
+              <p>The key can’t change after publish</p>
             </div>
             <button class="btn ghost icon sm hide-phone" aria-label="More"><i class="ic ic-ellipsis"></i></button>
           </div>
           <div class="card-body form">
-            <div class="field">
-              <label class="field-label">Key</label>
-              <div class="static"><i class="ic ic-lock"></i>quality.floor<span class="note">Can’t change after publish</span></div>
-            </div>
-            <div class="pair">
+            <div class="mk-grid-2">
               <div class="field">
                 <label class="field-label">Label</label>
                 <div class="input"><span class="grow">Minimum quality</span></div>
@@ -538,10 +264,9 @@
               <label class="field-label">Description <span class="optional">Optional</span></label>
               <div class="textarea two">Skip a track when no source has it at this quality. People see this under the setting in DJDL’s settings.</div>
             </div>
-
             <div class="field">
-              <label class="field-label label-help">Type<button class="btn ghost icon xs" aria-label="How types and in-app visibility combine"><i class="ic ic-circle-help"></i></button></label>
-              <div class="choices three" role="radiogroup" aria-label="Type">
+              <label class="field-label">Type<button class="btn ghost icon xs" aria-label="How types and in-app visibility combine"><i class="ic ic-circle-help"></i></button></label>
+              <div class="choices cols-3" role="radiogroup" aria-label="Type">
                 <div class="choice on" role="radio" aria-checked="true">
                   <div class="choice-title"><i class="ic ic-sliders-horizontal"></i>Setting</div>
                   <div class="choice-desc">A value DJDL reads. You decide whether people can change it.</div>
@@ -556,29 +281,27 @@
                 </div>
               </div>
             </div>
-
             <div class="field">
               <label class="field-label">Allowed values</label>
-              <div class="chips">
-                <span class="chip">flac<span class="use">10 set it</span><i class="ic ic-x"></i></span>
-                <span class="chip new" title="Added in this draft">aiff<span class="use">New</span><i class="ic ic-x"></i></span>
-                <span class="chip">mp3-320<span class="use">Studio profile and 5 more</span><i class="ic ic-x"></i></span>
-                <span class="chip">any<span class="use">Default</span><i class="ic ic-x"></i></span>
+              <div class="mk-cluster">
+                <span class="chip">flac<span class="chip-note">10 set it</span><i class="ic ic-x"></i></span>
+                <span class="chip new" title="Added in this draft">aiff<span class="chip-note">New</span><i class="ic ic-x"></i></span>
+                <span class="chip">mp3-320<span class="chip-note">Studio profile and 5 more</span><i class="ic ic-x"></i></span>
+                <span class="chip">any<span class="chip-note">Default</span><i class="ic ic-x"></i></span>
                 <span class="chip add"><i class="ic ic-plus"></i>Add</span>
               </div>
-              <span class="hint">Type: text, one of these values. <span class="was-new">aiff</span> is new in this draft. Removing a value that’s in use asks where its people move. <a class="nlink" href="#">Edit as JSON schema</a></span>
+              <span class="hint">Text, one of these values. Removing one in use asks where its people move. <a class="nlink" href="#">Edit as JSON schema</a></span>
             </div>
-            <div class="pair">
+            <div class="mk-grid-2">
               <div class="field">
                 <label class="field-label">Default</label>
                 <div class="select mono"><span class="grow">any</span><i class="ic ic-chevrons-up-down"></i></div>
-                <span class="hint">What devices get when nothing else sets it.</span>
+                <span class="hint">What devices get when nothing else sets it</span>
               </div>
             </div>
-
             <div class="field">
               <label class="field-label">In the app</label>
-              <div class="choices three" role="radiogroup" aria-label="In the app">
+              <div class="choices cols-3" role="radiogroup" aria-label="In the app">
                 <div class="choice on" role="radio" aria-checked="true">
                   <div class="choice-title"><i class="ic ic-pencil"></i>Editable</div>
                   <div class="choice-desc">Listed in DJDL’s settings. People can change it, and their choice syncs.</div>
@@ -592,45 +315,47 @@
                   <div class="choice-desc">Not listed in DJDL. The app still reads the value.</div>
                 </div>
               </div>
-              <span class="hint">This is where it starts. A profile, a license or an account can still make it Read-only or Hidden for the devices it covers.</span>
+              <span class="hint">A profile, license or account can still lock it for the devices it covers.</span>
             </div>
-
-            <div class="sync-box" data-service="sync">
-              <div class="setting-row">
-                <div>
-                  <div class="setting-title"><i class="svc"></i>Syncs with Cloud Sync</div>
-                  <div class="setting-desc">Editable settings sync by default: a person’s choice follows them to every Mac and PC they sign in on. Read-only and Hidden settings don’t sync, because their value comes from you.</div>
+            <!-- Only for an Editable setting, and only while Cloud Sync is on for DJDL. -->
+            <div class="card compact sunken" data-service="sync">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title"><i class="svc"></i>Syncs with Cloud Sync</div>
+                    <div class="setting-desc">A person’s choice follows them to every Mac and PC they sign in on. Read-only and Hidden settings don’t sync.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true" aria-label="Syncs with Cloud Sync"></span>
                 </div>
-                <span class="switch on" role="switch" aria-checked="true" aria-label="Syncs with Cloud Sync"></span>
-              </div>
-              <div class="pair">
-                <div class="field">
-                  <label class="field-label">Where it syncs</label>
-                  <div class="select"><span class="grow">Every device they use</span><i class="ic ic-chevrons-up-down"></i></div>
-                </div>
-                <div class="field">
-                  <label class="field-label">When two devices disagree</label>
-                  <div class="rule"><i class="ic ic-clock"></i>The latest change wins</div>
-                  <span class="hint">The only rule for one value from a list. A number can also keep the higher or lower; a list can combine both.</span>
+                <div class="card-body">
+                  <div class="mk-grid-2">
+                    <div class="field">
+                      <label class="field-label">Where it syncs</label>
+                      <div class="select"><span class="grow">Every device they use</span><i class="ic ic-chevrons-up-down"></i></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label">When two devices disagree</label>
+                      <div class="fixed-value"><i class="ic ic-clock"></i><span>The latest change wins</span></div>
+                      <span class="hint">The only rule for a value from a list</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="card-foot">
-            <button class="btn danger-outline sm" style="flex: none"><i class="ic ic-trash-2"></i>Remove from catalog</button>
-            <span class="grow"></span>
-            <span class="foot-note">Changes go into draft v10. Nothing reaches devices until you publish.</span>
+          <div class="card-foot between">
+            <button class="btn danger-outline sm"><i class="ic ic-trash-2"></i>Remove from catalog</button>
+            <span class="type-small muted">Nothing reaches devices until you publish v10.</span>
           </div>
         </section>
 
-        <div class="rail">
-          <!-- U-29: the same effective read, for one key. -->
-          <section class="card where" aria-labelledby="where-title">
+        <div class="mk-rail">
+          <!-- U-29: the same effective read, for one key, past the catalog default. -->
+          <section class="card" aria-labelledby="where-title">
             <div class="card-head">
-              <div class="title"><h3 id="where-title">Where it’s set</h3><p>Every value for <span class="mono">quality.floor</span> in DJDL. Use Preview as… to see what one license, tier or person gets.</p></div>
+              <div class="title"><h2 id="where-title">Where it’s set</h2></div>
             </div>
             <div class="card-rows">
-              <div class="card-row"><i class="ic ic-file-json"></i><span class="grow">Catalog default</span><code>any</code></div>
               <div class="card-row"><i class="ic ic-layers"></i><span class="grow">Default profile</span><span class="subtle">Not set</span></div>
               <div class="card-row"><i class="ic ic-award"></i><span class="grow">Studio profile</span><code>mp3-320</code></div>
               <div class="card-row"><i class="ic ic-key-round"></i><span class="grow">Licenses</span><a class="nlink" href="#">3 set their own</a></div>
@@ -640,7 +365,6 @@
               <button class="btn outline sm"><i class="ic ic-eye"></i>Preview as…</button>
             </div>
           </section>
-
         </div>
       </div>
     </div>
@@ -653,66 +377,71 @@
         <span class="icon-tile sm"><i class="ic ic-stamp"></i></span>
         <div class="grow">
           <h2 id="wiz-title">New minted token</h2>
-          <p>DJDL asks for it in code; Polaris Key signs a fresh one each time.</p>
         </div>
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
-      <div class="wiz-steps">
+      <div class="wizard-head">
         <ol class="stepper">
-          <li class="step done"><span class="step-mark"></span><span class="step-label">Template<small>Generic JWT</small></span></li>
-          <li class="step done"><span class="step-mark"></span><span class="step-label">Signing key<small>Sealed</small></span></li>
-          <li class="step current"><span class="step-mark"></span><span class="step-label">Claims<small>What’s in the token</small></span></li>
+          <li class="step done" aria-label="Step 1, Template, done"><span class="step-mark"></span><span class="step-label">Template</span></li>
+          <li class="step done" aria-label="Step 2, Signing key, done"><span class="step-mark"></span><span class="step-label">Signing key</span></li>
+          <li class="step current" aria-current="step" aria-label="Step 3, Claims"><span class="step-mark"></span><span class="step-label">Claims</span></li>
         </ol>
+        <p class="step-compact">Step 3 of 3 · Claims</p>
       </div>
       <div class="drawer-body">
-        <div class="done-row"><i class="ic ic-circle-check"></i><span><strong>Generic JWT</strong> · ES256</span><button class="btn ghost xs">Change</button></div>
-        <div class="done-row"><i class="ic ic-circle-check"></i><span><strong>Signing key sealed</strong> · P-256 private key, added just now</span><button class="btn ghost xs">Replace</button></div>
-
-        <h3>Claims</h3>
-        <p class="lede">What DJDL’s metadata server checks before it answers.</p>
-        <div class="wpair">
-          <div class="field">
-            <label class="field-label">Catalog key</label>
-            <div class="input mono"><span class="grow">metadata.token</span></div>
-            <span class="hint">Can’t change after publish.</span>
-          </div>
-          <div class="field">
-            <label class="field-label">Recipe id <span class="optional">What the app asks for</span></label>
-            <div class="input mono"><span class="grow">metadata</span></div>
+        <div class="card compact">
+          <div class="card-rows">
+            <div class="card-row"><span class="status"><i class="ic ic-circle-check"></i></span><span class="grow"><strong class="strong">Generic JWT</strong> · ES256</span><button class="btn ghost xs">Change</button></div>
+            <div class="card-row"><span class="status"><i class="ic ic-circle-check"></i></span><span class="grow"><strong class="strong">P-256 signing key</strong> · Sealed</span><button class="btn ghost xs">Replace</button></div>
           </div>
         </div>
-        <div class="wpair">
-          <div class="field">
-            <label class="field-label">Issuer <span class="optional mono">iss</span></label>
-            <div class="input mono"><span class="grow">djdl</span></div>
+        <div class="form">
+          <div class="mk-stack-1">
+            <h3 class="type-card">Claims</h3>
           </div>
-          <div class="field">
-            <label class="field-label">Audience <span class="optional mono">aud</span></label>
-            <div class="input mono"><span class="grow">https://meta.example.com</span></div>
+          <div class="mk-grid-2">
+            <div class="field">
+              <label class="field-label">Catalog key</label>
+              <div class="input mono"><span class="grow">metadata.token</span></div>
+              <span class="hint">Can’t change after publish</span>
+            </div>
+            <div class="field">
+              <label class="field-label">Recipe id <span class="optional">What the app asks for</span></label>
+              <div class="input mono"><span class="grow">metadata</span></div>
+              <span class="hint hint-slot"></span>
+            </div>
+            <div class="field">
+              <label class="field-label">Issuer <span class="optional mono">iss</span></label>
+              <div class="input mono"><span class="grow">djdl</span></div>
+              <span class="hint hint-slot"></span>
+            </div>
+            <div class="field">
+              <label class="field-label">Audience <span class="optional mono">aud</span></label>
+              <div class="input mono"><span class="grow">https://meta.example.com</span></div>
+              <span class="hint hint-slot"></span>
+            </div>
+            <div class="field">
+              <label class="field-label">Key ID <span class="optional mono">kid</span></label>
+              <div class="input mono"><span class="grow">djdl-meta-2026-10</span></div>
+              <span class="hint hint-slot"></span>
+            </div>
+            <div class="field">
+              <label class="field-label">Lifetime</label>
+              <div class="select"><span class="grow">15 minutes</span><i class="ic ic-chevrons-up-down"></i></div>
+              <span class="hint">Short is safer: a leaked token stops working sooner</span>
+            </div>
           </div>
-        </div>
-        <div class="wpair">
-          <div class="field">
-            <label class="field-label">Key ID <span class="optional mono">kid</span></label>
-            <div class="input mono"><span class="grow">djdl-meta-2026-10</span></div>
-          </div>
-          <div class="field">
-            <label class="field-label">Lifetime</label>
-            <div class="select"><span class="grow">15 minutes</span><i class="ic ic-chevrons-up-down"></i></div>
-            <span class="hint">Short is safer: a leaked token stops working sooner.</span>
-          </div>
-        </div>
-        <span class="check on"><span class="box"></span>Put the device id in the token as sub, so the server can rate-limit each Mac and PC</span>
-
-        <div class="code">
-          <div class="code-head"><span class="code-file">metadata.token · decoded preview</span></div>
+          <span class="check on"><span class="box"></span>Put the device id in the token as sub, so the server can rate-limit each Mac and PC</span>
+          <div class="code">
+            <div class="code-head"><span class="code-file">metadata.token · decoded preview</span></div>
 <pre><span class="t-o">{</span> <span class="t-p">"alg"</span><span class="t-o">:</span> <span class="t-s">"ES256"</span><span class="t-o">,</span> <span class="t-p">"kid"</span><span class="t-o">:</span> <span class="t-s">"djdl-meta-2026-10"</span><span class="t-o">,</span> <span class="t-p">"typ"</span><span class="t-o">:</span> <span class="t-s">"JWT"</span> <span class="t-o">}</span>
 <span class="t-o">{</span> <span class="t-p">"iss"</span><span class="t-o">:</span> <span class="t-s">"djdl"</span><span class="t-o">,</span> <span class="t-p">"aud"</span><span class="t-o">:</span> <span class="t-s">"https://meta.example.com"</span><span class="t-o">,</span>
   <span class="t-p">"sub"</span><span class="t-o">:</span> <span class="t-s">"dev_9F2KQ7"</span><span class="t-o">,</span> <span class="t-p">"iat"</span><span class="t-o">:</span> <span class="t-n">1791392400</span><span class="t-o">,</span> <span class="t-p">"exp"</span><span class="t-o">:</span> <span class="t-n">1791393300</span> <span class="t-o">}</span></pre>
+          </div>
         </div>
       </div>
       <div class="drawer-foot">
-        <span class="wiz-foot-note">Adds <span class="mono">metadata.token</span> to draft v10 with its recipe approved. DJDL can mint it once you publish v10.</span>
+        <span class="grow type-small muted foot-note">Added to draft v10, approved. Publish to let DJDL mint it.</span>
         <button class="btn ghost">Back</button>
         <button class="btn primary"><i class="ic ic-fingerprint"></i>Save and approve</button>
       </div>

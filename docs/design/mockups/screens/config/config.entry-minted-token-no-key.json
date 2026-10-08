@@ -9,14 +9,35 @@
   "uxRows": [],
   "summary": "applemusic.token when its recipe arrived from .pkey/schema and was approved but no signing key exists yet: the Signing key row is an empty state with Add the .p8 key…, and minting hasn't started.",
   "compare": [
-    "The pill reads Needs a signing key; the callout says why a repository never holds the key and what fails until it's added (DJDL's mintToken(\"applemusic\") calls), with Add the .p8 key… as the one primary.",
-    "Signing key is an empty state: dashed, no key yet, where to download it (the .p8 for Key ID 3HWR8C2N6T from the Apple Developer account), that it's sealed as it's added and can't be read back, and Add the .p8 key….",
-    "The Approval card: Last approved Oct 7, 10:20 by Ana Lima; Minting Not started: no signing key; Signing key Not added (warning); its button is Add the .p8 key….",
+    "The pill reads Needs a signing key; the callout says why a repository never holds the key and what fails until it's added (DJDL's mintToken(\"applemusic\") calls), with Add the .p8 key… as its action.",
+    "Signing key is an empty state: dashed, no key yet, where to download it (the .p8 for Key ID 3HWR8C2N6T from the Apple Developer account), and that it's sealed as it's added and can't be read back. The add button is the callout's, not repeated here.",
+    "There's no Approval card: Last approved Oct 7, 10:20 by Ana Lima is the head's line, minting not started is the callout, and Signing key shows No key yet.",
     "Adding the key creates the product secret with usage edge-mint itself; the operator never names or sees a secret.",
     "The preview reads \"a token minted once the key is added\".",
-    "Config's gold accent is never the only cue: a selected Type card is a strong neutral border plus the tick, the open entry is a neutral fill with a neutral edge, and every warning callout has a solid warning rail and a triangle, so selected, changed and needs-approval read differently in both themes."
+    "Config's gold accent is never the only cue: a selected Type card is a strong neutral border plus the tick, the open entry is a neutral fill with a neutral edge, and every warning callout has a solid warning rail and a triangle, so selected, changed and needs-approval read differently in both themes.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Duplicate banner and card for the missing key.",
+        "resolution": "Deleted the banner; the dashed \"No key yet\" card keeps \"Until it's added, mintToken calls fail\" and holds the Add the .p8 key button beside it; same three-column editor and rail as the minted-token page; recipe subtitle shortened.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "issue": "Hide \"Where it's set\" behind the overflow menu on narrower sizes (UX1)",
+        "resolution": "declined: Conflicts with the rail-on-every-editor decision. The card stays visible and sits in the rail at wide, below the form otherwise.",
+        "round": "multi-review"
+      }
+    ]
+  },
   "order": 11
 }

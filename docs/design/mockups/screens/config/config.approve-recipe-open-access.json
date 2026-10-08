@@ -11,16 +11,41 @@
   "compare": [
     "The drawer opens from Review and approve… on the minted-token entry with the editor dimmed behind; there is no separate Edge mint page.",
     "The screen is one viewport: the page behind doesn't scroll and the drawer fills the height, with its body scrolling and its foot always visible.",
-    "What changed compares every security-relevant field against the last approval, headed \"Approved Sep 14 by Ana Lima\": changed fields first, with the old value struck in a danger tint with −, the new value bold in a success tint with +; then an Unchanged sub-head over one value per field. The eyebrow counts \"1 field changed\".",
+    "What changed compares every security-relevant field against the last approval, headed \"Approved\": changed fields first, with the old value struck in a danger tint with −, the new value bold in a success tint with +; then an Unchanged sub-head over one value per field. The eyebrow ends with who approved it last and when (\"Ana Lima approved Sep 14\"); the one changed row needs no count.",
     "A widening change gets a plain warning of what it allows (a leaked token works for 12 hours instead of 1); a narrowing change has none.",
     "The signing key is never shown, only its state (Sealed Oct 2).",
     "The only confirm is the passkey (step-up); P0-12 holds: nothing mints until the approval is recorded.",
     "Phone: the drawer fills the screen, the comparison stays a three-column table inside its card with values on one line, and the buttons fill the width.",
-    "Who can get one is a warning row with a solid rail: \"Anyone who installs DJDL can get one, with no license\", why (DJDL's Access page lets devices without a license mint tokens) and Change in Access.",
+    "Who can get one is a warning callout with a solid rail: \"Anyone who installs DJDL can get one, with no license\", why (DJDL's Access lets devices without a license mint tokens) and Change in Access.",
     "Under it, one checkbox in the person's words: \"I understand that anyone with DJDL installed can get a token, and a leaked one works for 12 hours.\" The lifetime in it follows the recipe.",
-    "Approve with passkey is disabled until the box is ticked, and the foot says why (\"Tick the box above to approve.\"); ticking enables it with no other change."
+    "Approve with passkey is disabled until the box is ticked, and the foot says why on its own line (\"Tick the box to approve.\"); ticking enables it with no other change.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
   ],
   "status": "mockup",
-  "designReview": null,
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Five unchanged rows carried no decision and the change was repeated four times.",
+        "resolution": "\"5 fields unchanged\" is a closed disclosure; authorship is one line (Jonah Ortiz · Oct 6 · commit 4f2c9a1); callout \"Tokens will last 12 hours\"; Who-can-get-one is one sentence; editor footer sentence removed; editor banner \"Lifetime changed from 1 to 12 hours in .pkey/schema. Minting is stopped until you approve.\"",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the required acknowledgment checkbox was cut off by the sticky footer.",
+        "resolution": "The checkbox lives inside the open-access warning card; \"Tick the box to approve.\" removed (the primary stays disabled until ticked).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1"
+        ]
+      }
+    ]
+  },
   "order": 7
 }

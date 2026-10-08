@@ -1,562 +1,239 @@
 <style>
-  /* config.effective: a license's Config tab over the one effective-config read (U-29).
-     Only what the kit does not already say. */
-  [data-screen="config.effective"] .eff-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
-    gap: 20px;
-    align-items: start;
+  /* config.effective: Mara Fennick's Studio license, Config tab: every value her devices get, with the step it came from. */
+  [data-screen="config.effective"] .callout.warning {
+    border-left: 4px solid var(--pk-warning);
   }
-  [data-screen="config.effective"] .rail {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
-  }
-
-  /* The chain: five steps, left to right. */
-  [data-screen="config.effective"] .chain {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0;
-    padding: 16px 20px 6px;
-  }
-  [data-screen="config.effective"] .step-card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-    margin-right: 22px;
-    padding: 12px 14px;
-    border: 1px solid var(--mk-line);
-    border-radius: 12px;
-    background: var(--pk-surface-sunken);
-  }
-  [data-screen="config.effective"] .step-card:last-child {
-    margin-right: 0;
-  }
-  [data-screen="config.effective"] .step-card + .step-card::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: -18px;
-    width: 14px;
-    height: 14px;
-    margin-top: -7px;
-    background: var(--pk-text-subtle);
-    -webkit-mask: var(--ic-chevron-right) center / contain no-repeat;
-    mask: var(--ic-chevron-right) center / contain no-repeat;
-  }
-  [data-screen="config.effective"] .step-card.here {
-    border-color: var(--pk-accent);
-    background: var(--pk-accent-subtle);
-  }
-  [data-screen="config.effective"] .step-top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.effective"] .step-top .ic {
-    width: 14px;
-    height: 14px;
-  }
-  [data-screen="config.effective"] .step-top .n {
-    margin-left: auto;
-    font-variant-numeric: tabular-nums;
-  }
-  [data-screen="config.effective"] .step-name {
-    font-weight: 700;
+  [data-screen="config.effective"] .nlink {
     color: var(--pk-text-strong);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  [data-screen="config.effective"] .step-meta {
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.effective"] .step-card.here .step-top {
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="config.effective"] .chain-foot {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 18px;
-    padding: 10px 20px 14px;
-    font-size: 12px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.effective"] .chain-foot > p {
-    flex: 1 1 360px;
-    font-size: 13px;
-    line-height: 18px;
-  }
-  [data-screen="config.effective"] .chain-foot .key {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    text-decoration: underline;
+    text-decoration-color: var(--pk-border-strong);
+    text-underline-offset: 3px;
     white-space: nowrap;
   }
-
-  /* Provenance pips: one per step; filled where a step sets the key. */
-  [data-screen="config.effective"] .pips5 {
-    display: inline-flex;
-    gap: 3px;
-    flex: none;
-  }
-  [data-screen="config.effective"] .pips5 > i {
-    width: 10px;
-    height: 10px;
-    border-radius: 3px;
-    border: 1px solid var(--pk-border-strong);
-  }
-  [data-screen="config.effective"] .pips5 > i.s {
-    border-color: transparent;
-    background: var(--pk-text-subtle);
-  }
-  [data-screen="config.effective"] .pips5 > i.w {
-    border-color: transparent;
-    background: var(--pk-accent);
-  }
-  [data-screen="config.effective"] .pips5 > i.x {
-    border: 1.5px dashed var(--pk-warning);
-    background: transparent;
-  }
-
-  /* The table. */
-  [data-screen="config.effective"] .eff td {
-    padding-top: 7px;
-    padding-bottom: 7px;
-  }
-  [data-screen="config.effective"] .eff td.c-act,
-  [data-screen="config.effective"] .eff th.end {
-    padding-right: 16px;
-  }
-  [data-screen="config.effective"] .eff .req {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--pk-warning);
-    white-space: nowrap;
-  }
-  [data-screen="config.effective"] .eff .req .ic {
-    width: 14px;
-    height: 14px;
-  }
-  [data-screen="config.effective"] .eff .req-sub {
-    display: block;
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.effective"] .eff .k {
-    font-family: var(--pk-font-mono);
-    font-size: 12.5px;
+  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
+     text colour, as commerce's are (the arrow says "link"). */
+  [data-screen="config.effective"] [data-service="config"] :is(.link, .btn.link) {
     color: var(--pk-text-strong);
-    white-space: nowrap;
   }
-  [data-screen="config.effective"] .eff .k small {
-    display: block;
-    font-family: var(--pk-font-sans);
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="config.effective"] .eff code {
-    font-size: 12px;
-  }
-  [data-screen="config.effective"] .eff .secret {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
+  [data-screen="config.effective"] .choice-title > .ic {
     color: var(--pk-text-muted);
   }
-  [data-screen="config.effective"] .eff .secret .ic,
-  [data-screen="config.effective"] .eff .vis .ic {
-    width: 14px;
-    height: 14px;
-    color: var(--pk-text-subtle);
+  [data-screen="config.effective"] .choice.on {
+    border-color: var(--pk-text-strong);
+    background: var(--pk-surface-raised);
   }
-  [data-screen="config.effective"] .eff .vis {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    white-space: nowrap;
+  [data-screen="config.effective"] .choice.on .choice-title > .ic {
+    color: var(--pk-text-strong);
   }
-  [data-screen="config.effective"] .eff .from {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 16px;
+  [data-screen="config.effective"] .eff .cell-title.mono {
+    font-size: var(--fs-mono);
+    overflow-wrap: anywhere;
   }
-  [data-screen="config.effective"] .eff .from .ic {
-    width: 13px;
-    height: 13px;
-    color: var(--pk-text-subtle);
+  [data-screen="config.effective"] .page {
+    max-width: 1600px;
+    margin-inline: 0;
   }
   [data-screen="config.effective"] .eff tr.grp td {
-    padding: 14px 16px 6px;
-    background: transparent;
-    font-size: 12px;
+    height: var(--row-h-head);
+    font-size: var(--fs-meta);
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--pk-text-subtle);
+    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
   }
   [data-screen="config.effective"] .eff tr.here-row td:first-child {
     box-shadow: inset 2px 0 0 var(--pk-accent);
   }
-  [data-screen="config.effective"] .eff tr.open td {
+  [data-screen="config.effective"] .eff tr.open td,
+  [data-screen="config.effective"] .eff tr.detail > td {
     background: var(--pk-warning-subtle);
   }
-  [data-screen="config.effective"] .eff tr.open td:first-child {
+  [data-screen="config.effective"] .eff tr.detail > td {
+    border-top: 0;
+  }
+  [data-screen="config.effective"] .eff tr.open td:first-child,
+  [data-screen="config.effective"] .eff tr.detail > td {
     box-shadow: inset 2px 0 0 var(--pk-warning);
   }
-  [data-screen="config.effective"] .eff tr.detail td {
-    border-top: 0;
-    padding: 0 16px 14px;
-    background: var(--pk-warning-subtle);
+  [data-screen="config.effective"] .vis,
+  [data-screen="config.effective"] .from {
+    white-space: nowrap;
+    font-size: var(--fs-small);
+    color: var(--pk-text-default);
   }
-  [data-screen="config.effective"] .trail {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--mk-line);
-    border-radius: 12px;
-    background: var(--pk-surface-raised);
-    overflow: hidden;
+  [data-screen="config.effective"] .vis > .ic,
+  [data-screen="config.effective"] .from > .ic {
+    color: var(--pk-text-subtle);
   }
-  [data-screen="config.effective"] .trail-row {
-    display: grid;
-    grid-template-columns: 24px 150px 72px 110px minmax(0, 1fr);
-    align-items: center;
-    gap: 10px;
-    padding: 8px 14px;
-    font-size: 13px;
+  [data-screen="config.effective"] .vis.subtle,
+  [data-screen="config.effective"] .from.subtle {
+    color: var(--pk-text-subtle);
   }
-  [data-screen="config.effective"] .trail-row > code {
-    justify-self: start;
+  [data-screen="config.effective"] .pips .pip {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: transparent;
+    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
   }
-  [data-screen="config.effective"] .trail-row + .trail-row {
-    border-top: 1px solid var(--mk-line);
+  [data-screen="config.effective"] .pips .pip.s {
+    background: var(--pk-text-muted);
+    box-shadow: none;
   }
-  [data-screen="config.effective"] .trail-row .num {
+  [data-screen="config.effective"] .pips .pip.w {
+    background: var(--pk-accent);
+    box-shadow: none;
+  }
+  [data-screen="config.effective"] .pips .pip.x {
+    box-shadow: none;
+    outline: 1px dashed var(--pk-warning);
+    outline-offset: -1px;
+  }
+  [data-screen="config.effective"] .chain .stat.here {
+    background: var(--pk-accent-subtle);
+  }
+  [data-screen="config.effective"] .chain .stat.here .stat-label {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.effective"] .trail td:first-child {
+    white-space: nowrap;
+  }
+  [data-screen="config.effective"] .trail .num {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 1px solid var(--pk-border-strong);
-    font-size: 11px;
+    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
+    font-size: var(--fs-meta);
     color: var(--pk-text-muted);
   }
-  [data-screen="config.effective"] .trail-row.won .num {
-    border-color: var(--pk-accent);
+  [data-screen="config.effective"] .trail tr.won .num {
     background: var(--pk-accent);
+    box-shadow: none;
     color: var(--pk-accent-on);
   }
-  [data-screen="config.effective"] .trail-row.skip {
+  [data-screen="config.effective"] .trail tr.skip td {
     color: var(--pk-text-subtle);
   }
-  [data-screen="config.effective"] .trail-row.skip .num {
-    border-style: dashed;
-    border-color: var(--pk-warning);
-    color: var(--pk-warning);
-  }
-  [data-screen="config.effective"] .trail-row.skip code {
+  [data-screen="config.effective"] .trail .struck {
     text-decoration: line-through;
   }
-  [data-screen="config.effective"] .trail-row .note {
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.effective"] .trail-row.skip .note {
-    color: var(--pk-warning);
-  }
-  [data-screen="config.effective"] .trail-foot {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 12px;
-    padding: 10px 14px;
-    border-top: 1px solid var(--mk-line);
-    background: var(--pk-surface-sunken);
-    font-size: 13px;
-  }
-
-  /* The device side. */
-  [data-screen="config.effective"] .order {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding: 16px 20px;
-  }
-  [data-screen="config.effective"] .order > li {
-    position: relative;
-    padding-left: 22px;
-  }
-  [data-screen="config.effective"] .order > li::before {
-    content: "";
-    position: absolute;
-    left: 2px;
-    top: 6px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--pk-border-strong);
-  }
-  [data-screen="config.effective"] .order > li + li::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: -16px;
-    width: 12px;
-    height: 12px;
-    background: var(--pk-text-subtle);
-    -webkit-mask: var(--ic-arrow-down) center / contain no-repeat;
-    mask: var(--ic-arrow-down) center / contain no-repeat;
-  }
-  [data-screen="config.effective"] .order > li.this {
-    margin: 0 -10px;
-    padding: 8px 10px 8px 32px;
-    border: 1px solid var(--pk-accent);
-    border-radius: 10px;
-  }
-  [data-screen="config.effective"] .order > li.this::before {
-    left: 12px;
-    top: 14px;
-    background: var(--pk-accent);
-  }
-  [data-screen="config.effective"] .order > li.this::after {
-    left: 10px;
-  }
-  [data-screen="config.effective"] .page-heading .menu-phone {
-    display: none;
-    margin-left: auto;
-  }
-  [data-screen="config.effective"] .order .t {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="config.effective"] .order .d {
-    margin-top: 1px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.effective"] .example {
-    margin: 0 20px 18px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--pk-surface-sunken);
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="config.effective"] .devices .card-row {
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-  [data-screen="config.effective"] .devices .card-row > .ic {
-    width: 16px;
-    height: 16px;
-    flex: none;
-    color: var(--pk-text-muted);
-  }
-
-  @container screen (max-width: 1023px) {
-    [data-screen="config.effective"] .eff-layout {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="config.effective"] .rail {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-items: start;
-    }
-    [data-screen="config.effective"] .chain {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      row-gap: 12px;
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="config.effective"] .rail {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="config.effective"] .chain {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="config.effective"] .step-card {
-      margin-right: 0;
-    }
-    [data-screen="config.effective"] .chain-foot {
-      padding: 10px 16px 14px;
-    }
-    /* The table becomes one block per value. */
+  /* A card under 560px: each value is two lines, the key and its value, then where it comes
+     from and what the app shows; the action only where it's needed (a missing secret). */
+  @container (max-width: 559px) {
     [data-screen="config.effective"] .eff thead {
       display: none;
     }
     [data-screen="config.effective"] .eff,
-    [data-screen="config.effective"] .eff tbody {
+    [data-screen="config.effective"] .eff tbody,
+    [data-screen="config.effective"] .eff tr.grp,
+    [data-screen="config.effective"] .eff tr.detail,
+    [data-screen="config.effective"] .eff tr.grp > td,
+    [data-screen="config.effective"] .eff tr.detail > td {
       display: block;
     }
-    [data-screen="config.effective"] .eff tr {
+    [data-screen="config.effective"] .eff tr:not(.grp, .detail) {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
-      gap: 4px 12px;
-      padding: 10px 16px;
+      align-items: center;
+    }
+    [data-screen="config.effective"] .eff tr + tr {
       border-top: 1px solid var(--mk-line);
     }
-    [data-screen="config.effective"] .eff tr.grp {
-      display: block;
-      padding: 14px 16px 6px;
-    }
-    [data-screen="config.effective"] .eff tr.grp td {
-      padding: 0;
-    }
     [data-screen="config.effective"] .eff td {
-      display: block;
-      padding: 0 !important;
-      border: 0;
-      background: transparent !important;
-      box-shadow: none !important;
+      height: auto;
+      border-top: 0;
     }
-    [data-screen="config.effective"] .eff td.c-key {
-      grid-column: 1;
-    }
-    [data-screen="config.effective"] .eff td.c-val {
-      grid-column: 2;
+    [data-screen="config.effective"] .eff tr > td:nth-child(1) {
+      grid-column: 1 / -1;
       grid-row: 1;
-      text-align: right;
+      padding-bottom: 0;
     }
-    [data-screen="config.effective"] .eff td.c-vis {
-      grid-column: 1;
-    }
-    [data-screen="config.effective"] .eff td.c-from {
-      grid-column: 2;
+    [data-screen="config.effective"] .eff tr > td:nth-child(2) {
+      grid-column: 1 / -1;
       grid-row: 2;
-      text-align: right;
+      padding-block: var(--sp-1) 0;
     }
-    [data-screen="config.effective"] .eff td.c-act {
+    [data-screen="config.effective"] .eff tr > td:nth-child(4) {
+      grid-column: 1;
+      grid-row: 3;
+      padding-top: var(--sp-1);
+    }
+    [data-screen="config.effective"] .eff tr > td:nth-child(3) {
+      grid-column: 2;
+      grid-row: 3;
+      padding-top: var(--sp-1);
+    }
+    [data-screen="config.effective"] .eff tr > td.end {
+      grid-column: 1 / -1;
+    }
+    [data-screen="config.effective"] .eff tr:not(.missing) > td.end {
       display: none;
     }
-    [data-screen="config.effective"] .eff tr.open {
+    [data-screen="config.effective"] .eff tr.open,
+    [data-screen="config.effective"] .eff tr.detail {
       background: var(--pk-warning-subtle);
       box-shadow: inset 2px 0 0 var(--pk-warning);
     }
     [data-screen="config.effective"] .eff tr.here-row {
       box-shadow: inset 2px 0 0 var(--pk-accent);
     }
-    [data-screen="config.effective"] .eff tr.detail {
-      display: block;
-      border-top: 0;
-      padding: 0 12px 14px;
-      background: var(--pk-warning-subtle);
-    }
-    [data-screen="config.effective"] .trail-row {
-      grid-template-columns: 24px minmax(0, 1fr) auto;
-      row-gap: 2px;
-    }
-    [data-screen="config.effective"] .trail-row > .vis-col {
-      display: none;
-    }
-    [data-screen="config.effective"] .trail-row > .note {
-      grid-column: 2 / -1;
-    }
-    [data-screen="config.effective"] .tabs {
-      gap: 16px;
-    }
-    [data-screen="config.effective"] .tabs .count {
-      display: none;
-    }
-    [data-screen="config.effective"] .toolbar .segmented {
-      width: 100%;
-      overflow-x: auto;
-    }
-    [data-screen="config.effective"] .toolbar > .end {
-      width: 100%;
-      margin-left: 0;
-    }
-    [data-screen="config.effective"] .toolbar > .end .btn {
-      flex: 1;
-    }
-    /* The page menu sits on the title row; the key gets its own meta line. */
-    [data-screen="config.effective"] .page-heading .menu-phone {
-      display: inline-flex;
-    }
-    [data-screen="config.effective"] .page-head .page-actions {
-      display: none;
-    }
-    [data-screen="config.effective"] .page-sub .id {
-      flex-basis: 100%;
-    }
-    /* The chain is a compact list: one line per step with its count. */
-    [data-screen="config.effective"] .chain {
-      gap: 0;
-      row-gap: 0;
-      padding: 8px 12px;
-    }
-    [data-screen="config.effective"] .step-card {
-      display: grid;
-      grid-template-columns: 16px 46px minmax(0, 1fr) auto;
-      align-items: center;
-      column-gap: 8px;
-      padding: 8px 10px;
-      border-color: transparent;
+    [data-screen="config.effective"] .eff tr.open td,
+    [data-screen="config.effective"] .eff tr.detail > td,
+    [data-screen="config.effective"] .eff tr.here-row td {
       background: transparent;
+      box-shadow: none;
     }
-    [data-screen="config.effective"] .step-card + .step-card {
-      border-top-color: var(--mk-line);
-      border-radius: 0;
+    [data-screen="config.effective"] .eff tr.detail {
+      border-top: 0;
     }
-    [data-screen="config.effective"] .step-card + .step-card::before {
+    [data-screen="config.effective"] .trail td:nth-child(3) {
       display: none;
     }
-    [data-screen="config.effective"] .step-card.here {
-      border-radius: 10px;
+    [data-screen="config.effective"] .trail tbody,
+    [data-screen="config.effective"] .trail tr {
+      display: grid;
     }
-    [data-screen="config.effective"] .step-card.here + .step-card {
-      border-top-color: transparent;
+    [data-screen="config.effective"] .trail tr {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
     }
-    [data-screen="config.effective"] .step-top {
-      display: contents;
+    [data-screen="config.effective"] .trail td {
+      display: block;
+      height: auto;
+      border: 0;
+      padding-block: var(--sp-1);
     }
-    [data-screen="config.effective"] .step-top .ic {
+    [data-screen="config.effective"] .eff .trail tr > td:nth-child(1) {
       grid-column: 1;
       grid-row: 1;
+      padding-block: var(--sp-1);
     }
-    [data-screen="config.effective"] .step-top .sn {
+    [data-screen="config.effective"] .eff .trail tr > td:nth-child(2) {
       grid-column: 2;
       grid-row: 1;
-      font-size: 12px;
+      padding-block: var(--sp-1);
     }
-    [data-screen="config.effective"] .step-name {
-      grid-column: 3;
-      grid-row: 1;
+    [data-screen="config.effective"] .eff .trail tr > td:nth-child(4) {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      padding-top: 0;
+      padding-left: 36px;
+      font-size: var(--fs-small);
     }
-    [data-screen="config.effective"] .step-top .n {
-      grid-column: 4;
-      grid-row: 1;
-      font-size: 13px;
-    }
-    [data-screen="config.effective"] .step-meta {
+    [data-screen="config.effective"] .trail td:nth-child(4):empty {
       display: none;
     }
-    [data-screen="config.effective"] .eff tr.missing td.c-act {
-      display: block;
-      grid-column: 1 / -1;
-    }
+  }
+  [data-screen="config.effective"] .order .list-row.this .icon-tile {
+    box-shadow: inset 0 0 0 1px var(--pk-accent);
   }
 </style>
 
-<div class="console" data-service="license">
+<div class="console kit-cfg" data-service="license">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -579,16 +256,16 @@
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
     <div class="nav-group" data-service="license">
-      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">240</span></a>
       <a class="nav-item" href="#"><i class="ic ic-award"></i><span class="nav-text">Tiers</span><span class="count">2</span></a>
       <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span></a>
       <a class="nav-item" href="#"><i class="ic ic-badge-check"></i><span class="nav-text">Entitlements</span></a>
     </div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -599,8 +276,8 @@
     <div class="page">
       <header class="page-head">
         <nav class="crumbs"><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Mara Fennick</nav>
-        <div class="page-heading"><h1>Mara Fennick</h1><span class="pill"><i class="ic ic-award"></i>Studio</span><button class="btn ghost icon menu-phone" aria-label="More"><i class="ic ic-ellipsis"></i></button></div>
-        <p class="page-sub"><span>mara@example.com</span><span>In an account</span><span>3 of 10 devices</span><span class="id"><i class="ic ic-key-round"></i>lic_4MQ7…J2KD<i class="ic ic-copy"></i></span></p>
+        <div class="page-heading"><h1>Mara Fennick</h1><span class="pill"><i class="ic ic-award"></i>Studio</span></div>
+        <p class="page-sub"><span>mara@example.com</span><span>In an account</span><span class="id"><i class="ic ic-key-round"></i>lic_4MQ7…J2KD<i class="ic ic-copy"></i></span></p>
         <div class="page-actions">
           <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
         </div>
@@ -614,281 +291,263 @@
         <a class="tab active" href="#">Config</a>
       </nav>
 
-      <div class="callout warning">
+      <div class="callout warning" data-service="config">
         <i class="ic ic-triangle-alert"></i>
         <div class="grow">
           <div class="callout-title">1 override on this license isn’t applied</div>
-          <div class="callout-text"><code>run.concurrency</code> is 3 here, but the Studio profile makes it Read-only at 6, so Mara’s devices get 6. Remove the override, or change the Studio profile.</div>
+          <div class="callout-text">The Studio profile locks <code>run.concurrency</code> at 6, so Mara’s devices get 6, not 3.</div>
         </div>
         <button class="btn outline sm">Remove override</button>
       </div>
 
       <!-- The server chain, in the order it merges (config and secrets only). -->
-      <section class="card" aria-labelledby="chain-title">
+      <section class="card" aria-labelledby="chain-title" data-service="config">
         <div class="card-head">
-          <span class="icon-tile" data-service="config"><i class="svc"></i></span>
-          <div class="title"><h2 id="chain-title">How DJDL picks each value for this license</h2><p>Five steps, from DJDL’s catalog to Mara’s own account. Select a step to see only the values it sets.</p></div>
+          <div class="title"><h2 id="chain-title">How DJDL picks each value</h2><p>Later steps win unless an earlier one locks the value.</p></div>
         </div>
-        <div class="chain">
-          <div class="step-card">
-            <div class="step-top"><i class="ic ic-file-json"></i><span class="sn">Step 1</span><span class="n">16</span></div>
-            <div class="step-name">Catalog defaults</div>
-            <div class="step-meta">Catalog v9, every device</div>
+        <div class="stats strip chain">
+          <div class="stat">
+            <span class="stat-label"><i class="ic ic-file-json"></i><a href="#">Catalog defaults</a></span>
+            <span class="stat-value">16</span>
+            <span class="stat-foot">Catalog v9, every device</span>
           </div>
-          <div class="step-card">
-            <div class="step-top"><i class="ic ic-layers"></i><span class="sn">Step 2</span><span class="n">5</span></div>
-            <div class="step-name">Default profile</div>
-            <div class="step-meta">Every device</div>
+          <div class="stat">
+            <span class="stat-label"><i class="ic ic-layers"></i><a href="#">Default profile</a></span>
+            <span class="stat-value">5</span>
+            <span class="stat-foot">Every device</span>
           </div>
-          <div class="step-card">
-            <div class="step-top"><i class="ic ic-award"></i><span class="sn">Step 3</span><span class="n">5</span></div>
-            <div class="step-name">Studio profile</div>
-            <div class="step-meta">Studio tier · 3 locked</div>
+          <div class="stat">
+            <span class="stat-label"><i class="ic ic-award"></i><a href="#">Studio profile</a></span>
+            <span class="stat-value">5</span>
+            <span class="stat-foot">Studio tier · 3 locked</span>
           </div>
-          <div class="step-card here">
-            <div class="step-top"><i class="ic ic-key-round"></i><span class="sn">Step 4</span><span class="n">2</span></div>
-            <div class="step-name">This license</div>
-            <div class="step-meta">2 overrides · 1 not applied</div>
+          <div class="stat here">
+            <span class="stat-label"><i class="ic ic-key-round"></i><a href="#" aria-current="page">This license</a></span>
+            <span class="stat-value">2</span>
+            <span class="stat-foot text-warning">Locks 1</span>
           </div>
-          <div class="step-card">
-            <div class="step-top"><i class="ic ic-user-round"></i><span class="sn">Step 5</span><span class="n">2</span></div>
-            <div class="step-name">Mara’s account</div>
-            <div class="step-meta">Set on Users, or at sign-in</div>
+          <div class="stat">
+            <span class="stat-label"><i class="ic ic-user-round"></i><a href="#">Mara’s account</a></span>
+            <span class="stat-value">2</span>
+            <span class="stat-foot">On Users, or at sign-in</span>
           </div>
         </div>
-        <div class="chain-foot">
-          <p>A later step wins, except over a lock: once a step makes a setting Read-only or Hidden, later steps can’t change its value.</p>
-          <span class="key"><span class="pips5"><i class="s"></i></span>Sets it</span>
-          <span class="key"><span class="pips5"><i class="w"></i></span>What devices get</span>
-          <span class="key"><span class="pips5"><i class="x"></i></span>Set, not applied</span>
+        <div class="card-foot start">
+          <span class="mk-cluster-4 type-meta">
+            <span class="mk-cluster"><span class="pips" aria-hidden="true"><i class="pip s"></i></span>Sets it</span>
+            <span class="mk-cluster"><span class="pips" aria-hidden="true"><i class="pip w"></i></span>What devices get</span>
+          </span>
         </div>
       </section>
 
-      <div class="eff-layout">
-        <div class="stack gap-3" style="min-width: 0">
+      <div class="mk-with-rail" data-service="config">
+        <section class="section" aria-label="Values">
           <div class="toolbar">
-            <div class="search-field"><i class="ic ic-search"></i><span>Search 22 values</span></div>
+            <div class="search-field"><i class="ic ic-search"></i><span>Search values</span></div>
             <div class="segmented sm" role="tablist" aria-label="Show">
-              <span class="on">All 22</span><span>On this license 2</span><span>Locked 3</span><span>Secrets 6</span>
+              <span class="on">All 22</span><span>This license 2</span><span>Locked 3</span><span>Secrets 6</span>
             </div>
             <div class="end"><button class="btn outline sm"><i class="ic ic-plus"></i>Add override</button></div>
           </div>
-
           <div class="table-card">
-            <table class="table eff">
+            <table class="table fixed eff row-48">
+              <colgroup><col style="width: 29%"><col style="width: 17%"><col style="width: 15%"><col style="width: 26%"><col style="width: 13%"></colgroup>
               <thead><tr><th>Key</th><th>Value on devices</th><th>In the app</th><th>From</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
               <tbody>
                 <tr class="grp"><td colspan="5">Quality</td></tr>
                 <tr class="here-row">
-                  <td class="c-key"><span class="k">quality.floor<small>Minimum quality</small></span></td>
-                  <td class="c-val"><code>flac</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="s"></i><i></i><i class="s"></i><i class="w"></i><i></i></span>This license</span></td>
-                  <td class="end c-act"><button class="btn ghost icon xs" aria-label="Edit override"><i class="ic ic-pencil"></i></button></td>
+                  <td><div class="cell-title mono">quality.floor</div><div class="cell-sub">Minimum quality</div></td>
+                  <td><code>flac</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip s"></i><i class="pip w"></i><i class="pip"></i></span><span>This license</span></span></td>
+                  <td class="end"><button class="btn ghost icon sm" aria-label="Edit override"><i class="ic ic-pencil"></i></button></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">quality.losslessOnly<small>Lossless only</small></span></td>
-                  <td class="c-val"><code>false</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="w"></i><i></i><i></i><i></i><i></i></span>Catalog default</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">quality.losslessOnly</div><div class="cell-sub">Lossless only</div></td>
+                  <td><code>false</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">quality.bestQuality<small>Try for best quality</small></span></td>
-                  <td class="c-val"><code>true</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="w"></i><i></i><i></i><i></i><i></i></span>Catalog default</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">quality.bestQuality</div><div class="cell-sub">Try for best quality</div></td>
+                  <td><code>true</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">quality.upgrade.enabled<small>Upgrade existing files</small></span></td>
-                  <td class="c-val"><code>false</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="w"></i><i></i><i></i><i></i><i></i></span>Catalog default</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">quality.upgrade.enabled</div><div class="cell-sub">Upgrade existing files</div></td>
+                  <td><code>false</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                  <td class="end"></td>
                 </tr>
-
                 <tr class="grp"><td colspan="5">Run</td></tr>
                 <tr class="open">
-                  <td class="c-key"><span class="k">run.concurrency<small>Parallel downloads</small></span></td>
-                  <td class="c-val"><code>6</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-lock-keyhole"></i>Read-only</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="s"></i><i></i><i class="w"></i><i class="x"></i><i></i></span>Studio profile<i class="ic ic-lock-keyhole"></i></span></td>
-                  <td class="end c-act"><button class="btn ghost icon xs" aria-label="Hide where it comes from"><i class="ic ic-chevron-up"></i></button></td>
+                  <td><div class="cell-title mono">run.concurrency</div><div class="cell-sub">Parallel downloads</div></td>
+                  <td><code>6</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip x"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
+                  <td class="end"><button class="btn ghost icon sm" aria-label="Hide where it comes from" aria-expanded="true"><i class="ic ic-chevron-up"></i></button></td>
                 </tr>
                 <tr class="detail">
                   <td colspan="5">
-                    <div class="trail" aria-label="Where run.concurrency comes from">
-                      <div class="trail-row"><span class="num">1</span><span>Catalog default</span><code>3</code><span class="vis vis-col"><i class="ic ic-pencil"></i>Editable</span><span class="note">Replaced by step 3.</span></div>
-                      <div class="trail-row"><span class="num">2</span><span>Default profile</span><span class="subtle">Not set</span><span class="vis-col"></span><span class="note"></span></div>
-                      <div class="trail-row won"><span class="num">3</span><span class="strong">Studio profile</span><code>6</code><span class="vis vis-col"><i class="ic ic-lock-keyhole"></i>Read-only</span><span class="note">Locks it. Devices get 6.</span></div>
-                      <div class="trail-row skip"><span class="num">4</span><span>This license</span><code>3</code><span class="vis vis-col"><i class="ic ic-pencil"></i>Editable</span><span class="note">Not applied: step 3 locks this setting.</span></div>
-                      <div class="trail-row"><span class="num">5</span><span>Mara’s account</span><span class="subtle">Not set</span><span class="vis-col"></span><span class="note"></span></div>
-                      <div class="trail-foot">
-                        <span class="grow">To give this license 3, unlock the setting in the Studio profile, or give Mara a different tier.</span>
-                        <button class="btn outline xs">Remove override</button>
-                        <a class="link" href="#">Open Studio profile<i class="ic ic-arrow-right"></i></a>
+                    <div class="card compact sunken">
+                      <table class="table compact trail" aria-label="Where run.concurrency comes from">
+                        <tbody>
+                          <tr><td><span class="mk-cluster no-wrap"><span class="num">1</span><span>Catalog default</span></span></td><td><code>3</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td><td class="muted">Replaced by step 3</td></tr>
+                          <tr><td><span class="mk-cluster no-wrap"><span class="num">2</span><span>Default profile</span></span></td><td class="subtle">Not set</td><td></td><td></td></tr>
+                          <tr class="won"><td><span class="mk-cluster no-wrap"><span class="num">3</span><span><strong class="strong">Studio profile</strong></span></span></td><td><code>6</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td><td class="strong">Locks it; devices get 6</td></tr>
+                          <tr class="skip"><td><span class="mk-cluster no-wrap"><span class="num">4</span><span>This license</span></span></td><td><code class="struck">3</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td><td class="text-warning">Not applied</td></tr>
+                          <tr><td><span class="mk-cluster no-wrap"><span class="num">5</span><span>Mara’s account</span></span></td><td class="subtle">Not set</td><td></td><td></td></tr>
+                        </tbody>
+                      </table>
+                      <div class="card-foot between">
+                        <span></span>
+                        <a class="btn link" href="#">Open Studio profile<i class="ic ic-arrow-right"></i></a>
                       </div>
                     </div>
                   </td>
                 </tr>
-                <tr class="hover">
-                  <td class="c-key"><span class="k">run.searchCount<small>Results per source</small></span></td>
-                  <td class="c-val"><code>8</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="s"></i><i class="w"></i><i></i><i></i><i></i></span>Default profile</span></td>
-                  <td class="end c-act"><button class="btn outline xs">Override</button></td>
+                <tr>
+                  <td><div class="cell-title mono">run.searchCount</div><div class="cell-sub">Results per source</div></td>
+                  <td><code>8</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                  <td class="end"><button class="btn outline xs">Override</button></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">run.toleranceSec<small>Duration tolerance (s)</small></span></td>
-                  <td class="c-val"><code>10</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-eye-off"></i>Hidden</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="s"></i><i></i><i class="w"></i><i></i><i></i></span>Studio profile<i class="ic ic-lock-keyhole"></i></span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">run.toleranceSec</div><div class="cell-sub">Duration tolerance (s)</div></td>
+                  <td><code>10</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-eye-off sm"></i>Hidden</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">run.searchTimeoutSec<small>Per-source timeout (s)</small></span></td>
-                  <td class="c-val"><code>30</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="w"></i><i></i><i></i><i></i><i></i></span>Catalog default</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">run.searchTimeoutSec</div><div class="cell-sub">Per-source timeout (s)</div></td>
+                  <td><code>30</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">run.cooloffHours<small>Failed-track cool-off (h)</small></span></td>
-                  <td class="c-val"><code>24</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="w"></i><i></i><i></i><i></i><i></i></span>Catalog default</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">run.cooloffHours</div><div class="cell-sub">Failed-track cool-off (h)</div></td>
+                  <td><code>24</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                  <td class="end"></td>
                 </tr>
-
                 <tr class="grp"><td colspan="5">Interface and output</td></tr>
                 <tr>
-                  <td class="c-key"><span class="k">ui.theme<small>Theme</small></span></td>
-                  <td class="c-val"><code>dark</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="w"></i><i></i><i></i><i></i><i></i></span>Catalog default</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">ui.theme</div><div class="cell-sub">Theme</div></td>
+                  <td><code>dark</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">outputDir<small>Download folder</small></span></td>
-                  <td class="c-val"><code>~/Music/DJDL</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i></i><i class="w"></i><i></i><i></i><i></i></span>Default profile</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">outputDir</div><div class="cell-sub">Download folder</div></td>
+                  <td><code>~/Music/DJDL</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                  <td class="end"></td>
                 </tr>
-
                 <tr class="grp"><td colspan="5">Identity</td></tr>
                 <tr>
-                  <td class="c-key"><span class="k">identity.enabled<small>Identity enrichment</small></span></td>
-                  <td class="c-val"><code>true</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="s"></i><i class="w"></i><i></i><i></i><i></i></span>Default profile</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">identity.enabled</div><div class="cell-sub">Identity enrichment</div></td>
+                  <td><code>true</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">identity.strict<small>Strict identity</small></span></td>
-                  <td class="c-val"><code>false</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="w"></i><i></i><i></i><i></i><i></i></span>Catalog default</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">identity.strict</div><div class="cell-sub">Strict identity</div></td>
+                  <td><code>false</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                  <td class="end"></td>
                 </tr>
-                <tr class="missing">
-                  <td class="c-key"><span class="k">identity.acoustidKey<small>AcoustID API key</small></span></td>
-                  <td class="c-val"><span class="req"><i class="ic ic-triangle-alert"></i>Not set</span><small class="req-sub">Required secret</small></td>
-                  <td class="c-vis"><span class="vis muted"><i class="ic ic-eye-off"></i>Never listed</span></td>
-                  <td class="c-from"><span class="from subtle"><span class="pips5"><i></i><i></i><i></i><i></i><i></i></span>No step sets it</span></td>
-                  <td class="end c-act"><a class="link" href="#">Set secret<i class="ic ic-arrow-right"></i></a></td>
-                </tr>
-
                 <tr class="grp"><td colspan="5">VPN</td></tr>
                 <tr>
-                  <td class="c-key"><span class="k">proxy.enabled<small>Route through VPN</small></span></td>
-                  <td class="c-val"><code>true</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-lock-keyhole"></i>Read-only</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="s"></i><i></i><i class="w"></i><i></i><i></i></span>Studio profile<i class="ic ic-lock-keyhole"></i></span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">proxy.enabled</div><div class="cell-sub">Route through VPN</div></td>
+                  <td><code>true</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">proxy.select<small>Exit node</small></span></td>
-                  <td class="c-val"><code>ams-2</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="s"></i><i></i><i></i><i></i><i class="w"></i></span>Mara’s account</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">proxy.select</div><div class="cell-sub">Exit node</div></td>
+                  <td><code>ams-2</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip w"></i></span><span>Mara’s account</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">proxy.refreshHours<small>Subscription refresh (h)</small></span></td>
-                  <td class="c-val"><code>12</code></td>
-                  <td class="c-vis"><span class="vis"><i class="ic ic-pencil"></i>Editable</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i class="s"></i><i class="w"></i><i></i><i></i><i></i></span>Default profile</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">proxy.refreshHours</div><div class="cell-sub">Subscription refresh (h)</div></td>
+                  <td><code>12</code></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                  <td class="end"></td>
+                </tr>
+                <tr class="grp"><td colspan="5">Secrets, never listed</td></tr>
+                <tr class="missing">
+                  <td><div class="cell-title mono">identity.acoustidKey</div><div class="cell-sub">AcoustID API key</div></td>
+                  <td><div class="status-stack"><span class="status warning"><i class="ic ic-triangle-alert"></i>Not set</span><span class="meta">Required secret</span></div></td>
+                  <td><span class="dash" aria-label="Not listed"></span></td>
+                  <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
+                  <td class="end"><a class="btn link" href="#">Set secret<i class="ic ic-arrow-right"></i></a></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">proxy.subscriptionUrl<small>VPN subscription URL</small></span></td>
-                  <td class="c-val"><span class="secret"><i class="ic ic-lock"></i>Configured</span></td>
-                  <td class="c-vis"><span class="vis muted"><i class="ic ic-eye-off"></i>Never listed</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i></i><i></i><i class="w"></i><i></i><i></i></span>Studio profile</span></td>
-                  <td class="end c-act"></td>
-                </tr>
-
-                <tr class="grp"><td colspan="5">Accounts</td></tr>
-                <tr>
-                  <td class="c-key"><span class="k">serviceA.oauth<small>Service A OAuth token</small></span></td>
-                  <td class="c-val"><span class="subtle small">Not set</span></td>
-                  <td class="c-vis"><span class="vis muted"><i class="ic ic-eye-off"></i>Never listed</span></td>
-                  <td class="c-from"><span class="from subtle"><span class="pips5"><i></i><i></i><i></i><i></i><i></i></span>No step sets it</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">proxy.subscriptionUrl</div><div class="cell-sub">VPN subscription URL</div></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
+                  <td><span class="dash" aria-label="Not listed"></span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">serviceB.clientId<small>Service B client ID</small></span></td>
-                  <td class="c-val"><span class="secret"><i class="ic ic-lock"></i>Configured</span></td>
-                  <td class="c-vis"><span class="vis muted"><i class="ic ic-eye-off"></i>Never listed</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i></i><i class="w"></i><i></i><i></i><i></i></span>Default profile</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">serviceA.oauth</div><div class="cell-sub">Service A OAuth token</div></td>
+                  <td><span class="subtle">Not set</span></td>
+                  <td><span class="dash" aria-label="Not listed"></span></td>
+                  <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">serviceB.refreshToken<small>Service B refresh token</small></span></td>
-                  <td class="c-val"><span class="secret"><i class="ic ic-lock"></i>Configured</span></td>
-                  <td class="c-vis"><span class="vis muted"><i class="ic ic-eye-off"></i>Never listed</span></td>
-                  <td class="c-from"><span class="from"><span class="pips5"><i></i><i></i><i></i><i></i><i class="w"></i></span>Mara’s account, at sign-in</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">serviceB.clientId</div><div class="cell-sub">Service B client ID</div></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
+                  <td><span class="dash" aria-label="Not listed"></span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                  <td class="end"></td>
                 </tr>
                 <tr>
-                  <td class="c-key"><span class="k">serviceC.userToken<small>Service C user token</small></span></td>
-                  <td class="c-val"><span class="subtle small">Not set</span></td>
-                  <td class="c-vis"><span class="vis muted"><i class="ic ic-eye-off"></i>Never listed</span></td>
-                  <td class="c-from"><span class="from subtle"><span class="pips5"><i></i><i></i><i></i><i></i><i></i></span>No step sets it</span></td>
-                  <td class="end c-act"></td>
+                  <td><div class="cell-title mono">serviceB.refreshToken</div><div class="cell-sub">Service B refresh token</div></td>
+                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
+                  <td><span class="dash" aria-label="Not listed"></span></td>
+                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip w"></i></span><span>Mara’s account, at sign-in</span></span></td>
+                  <td class="end"></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title mono">serviceC.userToken</div><div class="cell-sub">Service C user token</div></td>
+                  <td><span class="subtle">Not set</span></td>
+                  <td><span class="dash" aria-label="Not listed"></span></td>
+                  <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
+                  <td class="end"></td>
                 </tr>
               </tbody>
             </table>
-            <div class="table-foot"><span>16 settings and 6 secrets. A minted token isn’t stored, so <span class="mono">applemusic.token</span> isn’t listed.</span></div>
+            <div class="table-foot"><span>A minted token isn’t stored, so <span class="mono">applemusic.token</span> isn’t listed.</span></div>
           </div>
-        </div>
+        </section>
 
-        <div class="rail">
-          <section class="card" aria-labelledby="device-title">
+        <div class="mk-rail rail-sticky">
+          <section class="card" aria-labelledby="delivered-title">
             <div class="card-head">
-              <span class="icon-tile muted"><i class="ic ic-monitor-smartphone"></i></span>
-              <div class="title"><h2 id="device-title">Then, on each device</h2><p>What DJDL does with this list on each Mac and PC, in this order.</p></div>
-            </div>
-            <ol class="order">
-              <li><div class="t">A lock wins</div><div class="d">Read-only and Hidden values are final: <span class="mono">run.concurrency</span> is 6 on every device.</div></li>
-              <li><div class="t">Then the person’s own choice</div><div class="d">What Mara picks in DJDL’s settings, kept the same on her other devices by Cloud Sync.</div></li>
-              <li><div class="t">Then the computer’s environment</div><div class="d">Values set on the computer itself, such as by an IT admin.</div></li>
-              <li class="this"><div class="t">Then this list</div><div class="d">The values on this page.</div></li>
-              <li><div class="t">Then DJDL’s fallback</div><div class="d">The default written in DJDL’s code.</div></li>
-            </ol>
-            <div class="example"><strong class="strong">For example,</strong> <span class="mono">quality.floor</span> is Editable at <span class="mono">flac</span>. If Mara picks mp3-320 in DJDL, her choice wins on all three of her devices.</div>
-          </section>
-
-          <section class="card devices" aria-labelledby="delivered-title">
-            <div class="card-head">
-              <div class="title"><h3 id="delivered-title">Last picked up</h3><p>Devices fetch this on start and every 6 hours.</p></div>
+              <div class="title"><h2 id="delivered-title">Last picked up</h2><p>Devices fetch this on start and every 6 hours</p></div>
             </div>
             <div class="card-rows">
-              <div class="card-row"><i class="ic ic-apple"></i><span class="grow">MacBook Pro</span><span class="muted tnum">Oct 7, 09:12</span></div>
-              <div class="card-row"><i class="ic ic-windows"></i><span class="grow">Studio PC</span><span class="muted tnum">Oct 6, 22:40</span></div>
-              <div class="card-row"><i class="ic ic-apple"></i><span class="grow">Mac mini</span><span class="muted tnum">Oct 3, 18:05</span></div>
+              <div class="list-row"><span class="icon-tile sm muted"><i class="ic ic-apple"></i></span><span class="list-row-text">MacBook Pro</span><span class="list-row-meta">Oct 7, 09:12</span></div>
+              <div class="list-row"><span class="icon-tile sm muted"><i class="ic ic-windows"></i></span><span class="list-row-text">Studio PC</span><span class="list-row-meta">Oct 6, 22:40</span></div>
+              <div class="list-row"><span class="icon-tile sm muted"><i class="ic ic-apple"></i></span><span class="list-row-text">Mac mini</span><span class="list-row-meta">Oct 3, 18:05</span></div>
             </div>
           </section>
         </div>
