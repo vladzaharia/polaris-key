@@ -1414,7 +1414,8 @@ again." with the reference id. Never render the HTTP status or an internal code 
   (a long label truncates; the accessible name keeps it), so the actions in a row line up; the card
   shows its thumbnail only when it has 22rem for it beside the title and reason.
 - **Short screens** (at most 512 px tall: a phone on its side, 200 % zoom): the header scrolls away
-  instead of sticking, and what stuck under it (the section pills) sticks to the top. Art steps
+  instead of sticking, and what stuck under it (the section pills) sticks to the top; a section
+  jump lands 0.75rem under whatever still sticks, and Tab never leaves focus under it. Art steps
   aside for the task and the icon carries the product's identity: no banner on the product page
   (the icon beside the name, so the primary action shows on load) or on Activate's confirm step
   (the facts and the key start on the first screen). The empty library's star and the one-product

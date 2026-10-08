@@ -412,7 +412,11 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
             document
               .querySelector("nav[aria-label=Sections]")
               ?.checkVisibility() ?? false,
-          clipped: [...document.querySelectorAll("[data-device-name]")]
+          clipped: [
+            ...document.querySelectorAll(
+              "[data-device-name], [data-platform-name]",
+            ),
+          ]
             .filter((e) => e.scrollWidth > e.clientWidth)
             .map((e) => e.textContent),
         }));
@@ -426,7 +430,10 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       for (const width of [820, 1024, 1180]) {
         await o.page.setViewportSize({ width, height: 900 });
         expect
-          .soft((await layout()).clipped, `device names at ${width}`)
+          .soft(
+            (await layout()).clipped,
+            `device and platform names at ${width}`,
+          )
           .toEqual([]);
       }
       // Main · side from 1024 px, the pills until 1180 px.
@@ -609,6 +616,137 @@ describe("the tablet and short-screen rules (PORTAL.md §8)", () => {
       await expect.poll(focused).toBe("Glyphsmith");
     } finally {
       await o.close();
+    }
+  });
+
+  /**
+   * How much of the focused element the sticky and fixed chrome covers (0 to 1): the header, the
+   * section pills, the phone bar. Sampled on a 5 × 5 grid of points with `elementsFromPoint`, so
+   * only chrome painted over it counts (the skip link draws above the header), and chrome that
+   * holds the focus itself does not.
+   */
+  const coveredFocus = (page: Page) =>
+    page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el || el === document.body) return null;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) return null;
+      const bars = [...document.querySelectorAll("header, nav")].filter(
+        (b) =>
+          ["fixed", "sticky"].includes(getComputedStyle(b).position) &&
+          !b.contains(el),
+      );
+      let covered = 0;
+      let total = 0;
+      for (let i = 0; i < 5; i++)
+        for (let j = 0; j < 5; j++) {
+          const x = r.left + 1 + ((r.width - 2) * i) / 4;
+          const y = r.top + 1 + ((r.height - 2) * j) / 4;
+          if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) continue;
+          total++;
+          const top = document.elementFromPoint(x, y);
+          if (top && !el.contains(top) && bars.some((b) => b.contains(top)))
+            covered++;
+        }
+      return {
+        covered: total ? covered / total : 0,
+        what: `${el.tagName.toLowerCase()} "${(el.getAttribute("aria-label") ?? el.textContent ?? "").trim().slice(0, 40)}"`,
+      };
+    });
+
+  it("Tab never leaves focus more than half under the sticky or fixed chrome", async ({
+    expect,
+  }) => {
+    const pages = [
+      { path: "/", heading: "Your library" },
+      { path: "/#/p/nightfall", heading: "Nightfall" },
+      { path: "/#/account", heading: "Account" },
+    ];
+    const sizes = [
+      { width: 640, height: 400, dpr: 2 },
+      { width: 667, height: 375 },
+      { width: 390, height: 844 },
+    ];
+    for (const s of sizes)
+      for (const pg of pages) {
+        const o = await portal.open("three", pg.path, {
+          width: s.width,
+          height: s.height,
+          deviceScaleFactor: s.dpr,
+        });
+        try {
+          await h1(o.page, pg.heading);
+          const seen = new Set<string>();
+          for (let i = 0; i < 80; i++) {
+            await o.page.keyboard.press("Tab");
+            const f = await coveredFocus(o.page);
+            if (!f) continue;
+            if (seen.has(f.what) && i > 10) break;
+            seen.add(f.what);
+            expect
+              .soft(
+                f.covered,
+                `${f.what} on ${pg.path} at ${s.width}×${s.height}`,
+              )
+              .toBeLessThanOrEqual(0.5);
+          }
+        } finally {
+          await o.close();
+        }
+      }
+  });
+
+  it("a section jump on a short screen lands just under the sticky stack", async ({
+    expect,
+  }) => {
+    for (const s of [
+      { width: 740, height: 360, nav: "Sections" },
+      { width: 1280, height: 480, nav: "On this page" },
+    ]) {
+      const o = await portal.open("three", "/#/p/nightfall", {
+        width: s.width,
+        height: s.height,
+      });
+      try {
+        await h1(o.page, "Nightfall");
+        await o.page
+          .locator(`nav[aria-label="${s.nav}"] a[data-nav-section=license]`)
+          .click();
+        // Reduced motion: the jump is instant; give layout a frame.
+        await o.page.evaluate(
+          () => new Promise((r) => requestAnimationFrame(() => r(null))),
+        );
+        const { top, stack } = await o.page.evaluate(() => {
+          const section = document.getElementById("section-license")!;
+          const box = section.getBoundingClientRect();
+          // The sticky stack: chrome stuck at the top that spans the section's column.
+          let stack = 0;
+          for (const bar of document.querySelectorAll("header, nav")) {
+            const pos = getComputedStyle(bar).position;
+            if (pos !== "fixed" && pos !== "sticky") continue;
+            if (!bar.checkVisibility()) continue;
+            const b = bar.getBoundingClientRect();
+            if (b.top > 1 || b.right <= box.left || b.left >= box.right)
+              continue;
+            stack = Math.max(stack, b.bottom);
+          }
+          return { top: box.top, stack };
+        });
+        expect
+          .soft(
+            top - stack,
+            `License's top under the stack at ${s.width}×${s.height}`,
+          )
+          .toBeGreaterThanOrEqual(0);
+        expect
+          .soft(
+            top - stack,
+            `License's top under the stack at ${s.width}×${s.height}`,
+          )
+          .toBeLessThanOrEqual(16);
+      } finally {
+        await o.close();
+      }
     }
   });
 });
