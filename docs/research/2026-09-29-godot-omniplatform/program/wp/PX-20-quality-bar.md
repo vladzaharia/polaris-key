@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                                           |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                               |
 | Depends on  | [PX-01](PX-01-portal-shell.md)                                                                                                                                                                       |
-| Unblocks    | none                                                                                                                                                                                                 |
+| Unblocks    | [PX-26](PX-26-wide-zoomed-layouts.md)                                                                                                                                                                |
 | Role        | `pkey-implementer`                                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                                   |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components; runs in CI |
@@ -28,11 +28,6 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 > Merged (d12e46cd2). Treat the e2e suite as a standing gate; its fixtures move into P0-40's shared builders.
 
 - Status: stamped `done` (was `in-review`).
-
-## Owner direction (2026-10-08)
-
-- **Content max widths.** Wide windows use the width with side-by-side panels and cap the line length; content never stretches edge to edge.
-- **Wide and zoomed checks.** The e2e and visual checks add 1920 px and 200% zoom to 1440 and 390 px, in both themes.
 
 ## Goal
 

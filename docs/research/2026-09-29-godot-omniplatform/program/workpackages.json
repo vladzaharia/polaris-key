@@ -1554,7 +1554,8 @@
         "P2-12b",
         "P0-27a",
         "CM-29b",
-        "I-27a"
+        "I-27a",
+        "PX-26"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -14784,6 +14785,28 @@
       ],
       "brief": "wp/PX-25-account-v2-gaps-ui.md",
       "status": "dropped"
+    },
+    {
+      "id": "PX-26",
+      "title": "Wide and zoomed layouts: content max widths, 1920 px and 200% zoom in the console and portal quality bar",
+      "phase": "PX",
+      "stage": "phase B: new API, S-16, S-17",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["PX-20"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "owner direction 2026-10-08 (wide windows, 200% zoom, content max widths)",
+        "docs/design/UI-KITS.md §7.1",
+        "design/PORTAL §8"
+      ],
+      "brief": "wp/PX-26-wide-zoomed-layouts.md",
+      "status": "todo"
     }
   ]
 }
