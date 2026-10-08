@@ -5,8 +5,8 @@
  * The client is provider-scoped: `ConsoleQueryProvider` creates one per mounted tree, so the app,
  * each test render and the kit gallery start from an empty cache, and every read reaches it through
  * the ordinary hooks (`useQuery`, `useQueryClient`). Writes stay plain calls (`mutate` in
- * `mutations.ts`); the provider binds its client to that write path while it is mounted, so a
- * confirmed write invalidates what it declared in the tree that made it.
+ * `mutations.ts`), which know no tree: the provider binds its client to that write path while it
+ * is mounted, so a confirmed write invalidates what it declared in every mounted tree's cache.
  */
 
 import * as React from "react";
@@ -43,6 +43,8 @@ export function ConsoleQueryProvider({
   children: React.ReactNode;
 }): React.ReactElement {
   const [own] = React.useState(() => client ?? createQueryClient());
-  React.useEffect(() => bindWriteInvalidation(own), [own]);
+  // A layout effect, so the client is bound before any passive effect of the commit that mounts
+  // it runs: a write from a child's mount effect invalidates this cache too.
+  React.useLayoutEffect(() => bindWriteInvalidation(own), [own]);
   return <QueryClientProvider client={own}>{children}</QueryClientProvider>;
 }
