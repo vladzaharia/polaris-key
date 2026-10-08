@@ -12,6 +12,12 @@
 | Human input | none                                                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                                                     |
 
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- The page-header mockup includes the **Copy page** control (AX-06 builds it).
+
 ## Goal
 
 The pages and parts below ship and meet the docs plan's common definition of done (§6.3) and this package's own checks.

@@ -32,6 +32,14 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- The SDK READMEs (`packages/sdk-node`, `packages/sdk-react`, `sdks/python`, `sdks/swift`, `sdks/kotlin`, `sdks/kotlin/ui`, `sdks/godot`) follow the plan's §3.1 published-package template, which is this package's "reference-only (install, golden start, link)": history out, absolute `https://key.plrs.im/docs/…/` links, a For agents section, under 400 lines. `sdks/kotlin/ui` is added to the list.
+- They keep rendering as the SDK pages. `check:links` resolves their absolute docs links against the slug manifest, and `AGENTS.md`'s link rule names this one exception (published READMEs).
+- The plan moved these rows here from AX-01 (review B7).
+
 ## Goal
 
 Developer docs reshape, as scoped below. Done when every acceptance criterion holds and the green gate passes.

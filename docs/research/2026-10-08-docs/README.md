@@ -527,6 +527,11 @@ Rules:
 - `llms.txt` for Help and the developer door (both public, D2). AGENTS.md rule 11 stands for the
   gated Operate pages, and agents read the repo.
 
+**Taken over (2026-10-08):** the [LLM audit plan](../2026-10-08-llm-audit/README.md) §9 owns this
+section. AX-06 builds the `.md` twins, the `llms` files (its own generator) and the **Copy page**
+button; AX-08 writes `start/ai-agents`. DOC-03a adds the `toMarkdown` hook; DOC-03b's switches are
+split by door.
+
 ---
 
 ## 4. Code sample conventions

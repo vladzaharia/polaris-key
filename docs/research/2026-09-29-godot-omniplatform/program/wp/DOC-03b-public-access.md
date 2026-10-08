@@ -1,16 +1,16 @@
 # DOC-03b Public access
 
-| Field       | Value                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | DOC: Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/) (skeleton and access)                                 |
-| Size        | 0.4–0.6 engineer-weeks                                                                                                                                     |
-| Depends on  | [DOC-03a](DOC-03a-skeleton-and-contracts.md)                                                                                                               |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [DOC-02c](DOC-02c-search.md), [DOC-06a](DOC-06a-portal-entry-points.md), [DOC-06b](DOC-06b-worker-entry-points.md) |
-| Role        | `pkey-implementer`                                                                                                                                         |
-| Plan mode   | no                                                                                                                                                         |
-| Gates       | `rule-9`, `rule-10`, `threat-model`, `docs-generated`, `docs-links`                                                                                        |
-| Human input | D4: the Polaris Key support and privacy addresses in docs/legal/help.md, before the public switch (owner step; docs plan §0)                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | DOC: Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/) (skeleton and access)                                                                                                    |
+| Size        | 0.4–0.6 engineer-weeks                                                                                                                                                                                                        |
+| Depends on  | [DOC-03a](DOC-03a-skeleton-and-contracts.md)                                                                                                                                                                                  |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [DOC-02c](DOC-02c-search.md), [DOC-06a](DOC-06a-portal-entry-points.md), [DOC-06b](DOC-06b-worker-entry-points.md), [AX-06](AX-06-markdown-twins-llms-files-agent-kit-and-schemas.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                            |
+| Plan mode   | no                                                                                                                                                                                                                            |
+| Gates       | `rule-9`, `rule-10`, `threat-model`, `docs-generated`, `docs-links`                                                                                                                                                           |
+| Human input | D4: the Polaris Key support and privacy addresses in docs/legal/help.md, before the public switch (owner step; docs plan §0)                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                     |
 
 ## Owner decision (2026-10-08): public developer docs
 
@@ -21,6 +21,14 @@ The developer sections (`start/`, `build/`, `features/`, `reference/`) are publi
 - The tier rule: Help and Developers pages link only to public pages; the chrome exception covers only the landing's Operate card, labelled "For console members".
 - Developer pages are indexable and in the sitemap; gated pages keep `noindex`.
 - `llms.txt` for Help and the developer door is now possible (§3.9, P3); it is not in this package.
+
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- Two switches: the developer door (`/docs/start/`, `/build/`, `/features/`, `/reference/`) is public when DOC-03b merges, with no wait on D4; Help goes public at D4 under its no-stub condition.
+- `/docs/schemas/` is a public asset tier. `/docs/agents/` (the agent kit's `marketplace.json` and zip, added by AX-06) is served with the developer door; the plan's §4.1 table lists it so, its amendment row names only the schemas (flagged at registration).
+- Rule 11's new text leaves room for the `llms.txt` line (AX-03b adds it once AX-06 ships). `robots.txt` lets AI crawlers index the public docs (plan decision 11).
 
 ## Goal
 

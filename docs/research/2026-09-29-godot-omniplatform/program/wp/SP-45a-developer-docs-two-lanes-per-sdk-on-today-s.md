@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                            |
 
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- The snippet lane also compiles SDK-tagged fences under `packages/agent-kit/skills/` (AX-07 and the skill packages).
+
 ## Goal
 
 Developer docs, two lanes per SDK on today's API: Node, React, Python, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.

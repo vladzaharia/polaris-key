@@ -22,6 +22,13 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/CM-29.md`](../plans/CM-29.md) §10: six features; Commerce is a service.
 
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- Interactive `pkey init` offers `pkey agents --write` (AX-08).
+- Every prompt has a flag and a non-TTY default (AX-16's rule: a prompt with no TTY fails with a code naming its flag).
+
 ## Goal
 
 Interactive pkey init, as scoped below. Done when every acceptance criterion holds and the green gate passes.

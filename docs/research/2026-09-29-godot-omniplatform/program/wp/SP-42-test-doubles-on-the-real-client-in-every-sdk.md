@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK usability review (2026-10-08))                              |
 | Size        | 1.2–1.8 engineer-weeks                                                                                          |
 | Depends on  | [SP-41](SP-41-pkey-dev-a-local-polaris-key-for-integrators.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [AX-10](AX-10-sdk-skills-should-tier.md)                                |
 | Role        | `pkey-sdk-porter`                                                                                               |
 | Plan mode   | no                                                                                                              |
 | Gates       | `all-sdks`                                                                                                      |

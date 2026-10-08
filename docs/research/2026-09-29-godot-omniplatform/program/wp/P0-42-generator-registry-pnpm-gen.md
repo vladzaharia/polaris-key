@@ -1,16 +1,16 @@
 # P0-42 Generator registry and pnpm gen
 
-| Field       | Value                                                                                                                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                                                                      |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                       |
-| Depends on  | [HA-12](HA-12-presentation-discovery.md), [UK-14](UK-14-node-terminal.md)                                                                                                                                                  |
-| Unblocks    | [P0-43](P0-43-ci-consolidation.md), [P0-51](P0-51-1-0-readiness-review.md), [SP-33a](SP-33a-one-integration-content-generator-on.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-39](SP-39-one-copy-pipeline.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                                         |
-| Plan mode   | no                                                                                                                                                                                                                         |
-| Gates       | none beyond the green gate                                                                                                                                                                                                 |
-| Human input | none                                                                                                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                                                                                                                                                                                                                                                                 |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Depends on  | [HA-12](HA-12-presentation-discovery.md), [UK-14](UK-14-node-terminal.md)                                                                                                                                                                                                                                                                                                                                             |
+| Unblocks    | [P0-43](P0-43-ci-consolidation.md), [P0-51](P0-51-1-0-readiness-review.md), [SP-33a](SP-33a-one-integration-content-generator-on.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-39](SP-39-one-copy-pipeline.md), [AX-02](AX-02-readmes-for-every-directory-without-one.md), [AX-03b](AX-03b-agents-md-router-repo-map-nested-files.md), [AX-07](AX-07-the-agent-kit-layout-release-zip-references-lint.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Gates       | none beyond the green gate                                                                                                                                                                                                                                                                                                                                                                                            |
+| Human input | none                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## Consolidation 2026-10-07
 
@@ -21,6 +21,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 These approved plans change this package. Where they differ from the text below, they win.
 
 - [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 8: it registers the docs generators: help messages, install steps, CLI, Action, console tour, integration docs, changelog and the upgrade table.
+
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- Registers the `skills` generator family (AX-07 writes its generators; `pnpm gen --check` covers it).
 
 ## Goal
 

@@ -973,6 +973,12 @@ skill's rename table.
 
 Decided under the lead's delegated authority; only 9 and 11 need the owner.
 
+**Recorded at registration (program graph, `program/dx-plans-w1`).** Decisions 1 to 8, 10, 12 and 13,
+and the AI-crawler and `robots.txt` half of 11, stand as decided (lead authority, 2026-10-08). Two
+stay owner steps and are not decided: decision 9's API key with a spending cap for CI eval runs
+(human input on AX-05 and AX-20), and decision 11's submission of `llms.txt` to Context7 once the
+developer docs are public (human input on AX-06).
+
 1. **A new phase `AX`.** One prefix per plan, as DOC has.
 2. **One public agent kit for SDK and product skills.** Integrators and product maintainers usually
    work in the same repo; platform skills stay here.

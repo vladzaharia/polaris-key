@@ -1,22 +1,29 @@
 # P0-45 pkey command registry, context and doctor
 
-| Field       | Value                                                                                                                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                                          |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                           |
-| Depends on  | [UK-14](UK-14-node-terminal.md)                                                                                                                                                                |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [A-25](A-25-action-v2-channels-auto-thin-inputs.md), [ST-34](ST-34-admin-scope-personal-tokens-pkey-login.md), [ST-46](ST-46-interactive-pkey-init.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                             |
-| Plan mode   | no                                                                                                                                                                                             |
-| Gates       | `rule-9`                                                                                                                                                                                       |
-| Human input | none                                                                                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                      |
+| Field       | Value                                                                                                                                                                                                                                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                                                                                                                                                                       |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                                                        |
+| Depends on  | [UK-14](UK-14-node-terminal.md)                                                                                                                                                                                                                                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [A-25](A-25-action-v2-channels-auto-thin-inputs.md), [ST-34](ST-34-admin-scope-personal-tokens-pkey-login.md), [ST-46](ST-46-interactive-pkey-init.md), [AX-08](AX-08-pkey-agents-product-repo-block-console-card.md), [AX-16](AX-16-the-cli-for-agents-json-codes-pkey-explain.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                          |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                          |
+| Gates       | `rule-9`                                                                                                                                                                                                                                                                                                                    |
+| Human input | none                                                                                                                                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                   |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CQT-04** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
 
 - Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break.
+
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- Registry entries for `agents` (AX-08), `explain` (AX-16) and `mcp` (AX-17), each as it lands.
+- Every command declares whether it has `--json`.
 
 ## Goal
 
