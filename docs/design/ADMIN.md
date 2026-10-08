@@ -27,6 +27,19 @@
 > sign-in parts where they differ: §2.7's Sign in row, T8's Session expired row (the console now
 > renders "Your session ended" in place on the shared card, not a dialog) and §6.10.1.
 
+> **Vocabulary follows the concepts page (2026-10-07).** UI words come from
+> [UI words and the identifiers they keep](../../packages/docs/src/content/docs/start/concepts.md#ui-words-and-the-identifiers-they-keep)
+> (AGENTS.md rule 4, ST-37), which wins where this document uses an older word: outlet, and
+> storefront for a place builds are delivered, become **Channel**; storefront feed becomes
+> **Install source**; update channel and the Channels page become **Release track**; grant becomes
+> **Add-on**; flag becomes **Entitlement**; policy and terms become **Limits** and **Duration**;
+> default, enforced and hidden become **Editable**, **Read-only** and **Hidden**; auto-issue
+> becomes **Access policy**; **Features** group services. The console copy rules there ("outlet",
+> "storefront feed", "grant" and "capability" leave the UI) are checked by
+> `packages/admin/test/copyLint.test.ts`; the portal's **Automatic grant** label is the one kept use
+> of "grant". Identifiers keep their names. P0-41 folds this into the current-state rewrite of
+> this document.
+
 **Status:** draft for lead approval · **Scope:** `packages/admin` (operator console at `/manage`,
 customer portal at `/`) · **Builds on:** `@polaris-key/brand` and
 [BRAND.md](BRAND.md) (in progress on
@@ -52,8 +65,8 @@ Two companion files hold the detail that would otherwise bury the argument:
 
 Terminology follows the glossary (`packages/docs/src/content/docs/start/concepts.md`, AGENTS.md
 rule 4): **license** (US spelling), **device**, **product**, **tier**, **profile** (payload
-baseline only), **yank** for releases, **revoke** for keys and licenses, **outlet**, **kind**,
-**customer portal**.
+baseline only), **yank** for releases, **revoke** for keys and licenses, **channel** (a
+distribution channel; `outlet` in code), **kind**, **customer portal**.
 
 ---
 
