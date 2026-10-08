@@ -713,8 +713,9 @@ def _fetch(
 
 def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[str] = None, to: Optional[str] = None) -> Outcome:
     k = t.kit
-    verb = t.verb or "update"
     action = words[0] if words else "check"
+    # The header names the sub-verb, as the Node kit's does (`update check`, `update apply`, …).
+    verb = f"{t.verb or 'update'} {action}" if action in ("check", "download", "apply") else (t.verb or "update")
     current = getattr(getattr(client, "core", None), "version", None)
     try:
         if client.update._configured is None:
