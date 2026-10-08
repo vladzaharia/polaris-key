@@ -1435,6 +1435,13 @@ export async function claimDeviceSeat(
   now: number,
   opts: {
     /**
+     * SEC-LIC-1: the licence id the caller OBSERVED on the row it was authorised to take over
+     * (ownership proven, or a dead row). The upsert below moves a row off another licence only
+     * when it still names exactly this licence, so a row that changed hands between the check and
+     * the claim is left alone rather than stolen.
+     */
+    adoptFrom?: string;
+    /**
      * PX-W9 (WIRE-CONTRACT-V4 §12.2 step 5): a statement written in the SAME batch as the seat
      * INSERT, and before it, so it commits exactly when the claim does: a lost ordinal race rolls
      * both back. Built afresh for each attempt. The key-entry counter passes
@@ -1486,15 +1493,35 @@ export async function claimDeviceSeat(
            status = 'authorized',
            seat_no = excluded.seat_no,
            last_seen = excluded.last_seen
-         WHERE devices.seat_no IS NULL OR devices.status <> 'authorized'`,
-      params: [product, deviceId, licenseId, free.n, now, now],
+         WHERE (devices.license_id = excluded.license_id
+                AND (devices.seat_no IS NULL OR devices.status <> 'authorized'))
+            OR devices.license_id = ?`,
+      params: [
+        product,
+        deviceId,
+        licenseId,
+        free.n,
+        now,
+        now,
+        opts.adoptFrom ?? null,
+      ],
     };
     try {
       // Applied, or a no-op because the row already holds a seat: either way nothing is left to
       // claim. Only a UNIQUE loss on `idx_devices_seat` (below) tries again.
       if (opts.withClaim) await db.batch([opts.withClaim(), seat]);
       else await db.runChanges(seat.sql, ...seat.params);
-      return true;
+      // A no-op upsert is success only when the row is ours: a row held by another licence is
+      // never reported as claimed (the caller turns this into a refusal, not a seat).
+      const mine = await db.first<{ one: number }>(
+        `SELECT 1 AS one FROM devices
+          WHERE product = ? AND device_id = ? AND license_id = ?
+            AND status = 'authorized' AND seat_no IS NOT NULL`,
+        product,
+        deviceId,
+        licenseId,
+      );
+      return mine !== null;
     } catch (e) {
       // UNIQUE constraint on idx_devices_seat: another isolate took this ordinal first, so try
       // again. Anything else (a failed `withClaim` write, a database error) is not a full licence
@@ -1522,6 +1549,30 @@ export async function releaseDeviceSeat(
     product,
     deviceId,
   );
+}
+
+/**
+ * SEC-LIC-2: drop what a device row carried for its previous licence — the operator overrides, the
+ * label, the reported data, the commerce customer and the software snapshot. `upsertDevice` never
+ * rewrites `overrides_json` / `reported_json` and keeps an existing label, so a row changing
+ * licence must be cleared explicitly or the new licence's document inherits them.
+ */
+export async function clearDeviceInheritance(
+  db: Db,
+  product: string,
+  deviceId: string,
+): Promise<void> {
+  await db.batch([
+    {
+      sql: `UPDATE devices SET label = NULL, overrides_json = NULL, reported_json = NULL,
+              customer_id = NULL WHERE product = ? AND device_id = ?`,
+      params: [product, deviceId],
+    },
+    {
+      sql: "DELETE FROM device_facts WHERE product = ? AND device_id = ?",
+      params: [product, deviceId],
+    },
+  ]);
 }
 
 export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {

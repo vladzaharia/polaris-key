@@ -102,7 +102,11 @@ import {
   tierFingerprintMode,
   tierExpiresAt,
 } from "../../core/authz.js";
-import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
+import {
+  isValidClientDeviceId,
+  licenseUsable,
+  validateDeviceToken,
+} from "../../core/devices.js";
 import { applyProvisionedAccountSecrets } from "../../core/accountOverrides.js";
 import { licenseConfigOverridesFrozen } from "../../core/overrideMigration.js";
 import {
@@ -1436,6 +1440,7 @@ export async function authorizeAndMint(
   // (plans/I-04.md §8 Q6), so no pairwise subject is set here; passthrough sign-in (I-08) does.
   const result = await authorizeDevice(env, db, product, row, deviceId, now, {
     boundBy: "signin",
+    adoptAnonymousEnrolled: true,
   });
   if ("error" in result) throw new Error(result.error);
   return result.token;
@@ -1466,6 +1471,10 @@ async function beginAuthFlow(
     }
   | Response
 > {
+  // SEC-LIC-9 / SEC-IDN-5: the id the sign-in will bind is client-claimed; refuse a malformed one
+  // (and every server-minted `browser:<licence>` id) before it enters the flow record.
+  if (deviceId !== undefined && !isValidClientDeviceId(deviceId))
+    return errorResponse(400, "bad_request", "malformed device id");
   const oidc = await resolveOidcConfig(env, db, product);
   if (oidc instanceof Response) return oidc;
   // I-17: past the sunset nobody is sent to the platform IdP only to be refused on the way back.

@@ -7884,6 +7884,25 @@ would have silently placed a real, reportable weakness outside the disclosure po
 over a cache the user owns. A patched binary, an edited `managed.json`, or a rolled-back clock all
 defeat it.
 
+**A device id is a claim, not a credential (SEC-WP-01).** `devices` is keyed (product, device*id)
+and the id is client-chosen: SDKs derive it from the machine with no server secret, so anyone who
+learns an id could name it. Until SEC-WP-01 an activation or enrolment naming an id another licence
+held live rebound that row to the caller (the victim's token died, its seat was freed, its overrides,
+label and reported data came along, and `changed[]` told the caller which components differed). Now a
+row held live by another licence is touched only on proof of the machine: the stored fingerprint
+matches exactly on the anchor and every component, or the two licences belong to one account or
+subject. The answer to anyone else is the `401` a refused key gets, with no component detail, an
+audit row on the caller's licence (`device.claim.refused`), and the seat claim itself moves a row
+only off the licence it observed (`claimDeviceSeat` `adoptFrom`), so a row that changed hands
+between the check and the claim stays put. A dead (deauthorized) row is adopted with its overrides,
+label, reported data, customer and software snapshot cleared. A client-claimed id must be 1-128
+characters of `[A-Za-z0-9*-]`, which keeps a key holder from naming the server-minted
+`browser:<licenceId>` row. Residuals: the device-code sign-in flow may take over the device's own
+anonymous free licence (it carries no fingerprint; its starter names the id unauthenticated, so this
+is part of SEC-IDN-4); a machine whose fingerprint drifted, or that never sent one, moves between
+unrelated licences by deauthorizing first; and a refusal still says "an id is held", which only
+someone who already knows the id can use.
+
 **Bounding the damage** is the achievable goal, and it rests on three properties — one of which
 currently holds:
 

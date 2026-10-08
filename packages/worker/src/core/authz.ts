@@ -50,6 +50,7 @@ import type { Product } from "./products.js";
 import {
   claimDeviceSeat,
   countActiveDevices,
+  getDevice,
   getTier,
   seatActiveSince,
   type DeviceBoundBy,
@@ -85,6 +86,8 @@ import { stmtRecordDeviceKeyEntry } from "./keyEntries.js";
 
 export type AuthzError =
   | { error: "unauthorized" }
+  /** SEC-LIC-1: the device id is held live by a licence the caller has not proven it controls. */
+  | { error: "device_conflict" }
   | { error: "device_limit"; limit: number; deviceCount: number }
   | { error: "fingerprint_required" }
   | {
@@ -352,6 +355,8 @@ export async function authorizeDevice(
      * and store binding never pass it.
      */
     keyEntry?: { surface: "app" | "browser" };
+    /** SEC-LIC-1: set only by the account sign-in (device-code) flow; see `provesOwnership`. */
+    adoptAnonymousEnrolled?: boolean;
   } = {},
 ): Promise<{ token: string; device: DeviceRow } | AuthzError> {
   // UX-15: every refusal below is logged (`core/refusals.ts`) for the console's licence Status
@@ -401,10 +406,22 @@ export async function authorizeDevice(
     license,
     deviceId,
     now,
-    { mode, presented },
+    {
+      mode,
+      presented,
+      adoptAnonymousEnrolled: opts.adoptAnonymousEnrolled === true,
+    },
   );
+  // The conflict is not logged as a refusal of THIS licence: the row and the attempt are another
+  // licence's business, and `reconcileDeviceHardware` has already audited it.
+  if ("error" in reconciled && reconciled.error === "device_conflict")
+    return reconciled;
   if ("error" in reconciled) return refuse("hardware_mismatch", reconciled);
   const { isNewAuthorization } = reconciled;
+  const adoptFrom =
+    reconciled.existing && reconciled.existing.license_id !== license.id
+      ? reconciled.existing.license_id
+      : undefined;
   if (isNewAuthorization) {
     // The seat limit is an ENTITLEMENT, resolved through the same pipeline the license
     // document is built from — so the number enforced here and the `deviceLimit` the client
@@ -448,20 +465,32 @@ export async function authorizeDevice(
         deviceId,
         limit,
         now,
-        keyEntry
-          ? {
-              withClaim: () =>
-                stmtRecordDeviceKeyEntry(
-                  product.slug,
-                  license.id,
-                  deviceId,
-                  keyEntry.surface,
-                  now,
-                ),
-            }
-          : {},
+        {
+          ...(adoptFrom !== undefined ? { adoptFrom } : {}),
+          ...(keyEntry
+            ? {
+                withClaim: () =>
+                  stmtRecordDeviceKeyEntry(
+                    product.slug,
+                    license.id,
+                    deviceId,
+                    keyEntry.surface,
+                    now,
+                  ),
+              }
+            : {}),
+        },
       ))
     ) {
+      // The claim declined. If the row now belongs to someone else live, that is a conflict (a
+      // race lost to another licence), not a full licence.
+      const current = await getDevice(db, product.slug, deviceId);
+      if (
+        current &&
+        current.license_id !== license.id &&
+        current.status === "authorized"
+      )
+        return { error: "device_conflict" };
       return refuse("device_limit", {
         error: "device_limit",
         limit,

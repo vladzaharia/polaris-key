@@ -1,7 +1,15 @@
-/** RFC 4180 CSV: every field quoted when it holds a comma, quote or line break; CRLF rows. */
+/**
+ * RFC 4180 CSV: every field quoted when it holds a comma, quote or line break; CRLF rows.
+ *
+ * SEC-LIC-9: a cell that opens with `=`, `+`, `-`, `@`, tab or CR is a formula to a spreadsheet,
+ * and the values here (device ids, labels, names) are written by other parties. Such a cell gets a
+ * leading apostrophe, which spreadsheets render as text and drop from the display.
+ */
 export function toCsv(header: string[], rows: string[][]): string {
-  const field = (v: string): string =>
-    /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const field = (raw: string): string => {
+    const v = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
+    return /[",\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  };
   return [header, ...rows].map((r) => r.map(field).join(",")).join("\r\n");
 }
 

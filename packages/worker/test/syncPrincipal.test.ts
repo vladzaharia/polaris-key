@@ -328,10 +328,28 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     expect(again.subject ?? null).toBeNull();
     expect(await resolveSyncPrincipal(w.db, again)).toBeNull();
 
-    // Moving to another licence by key drops it as well.
+    // Moving to another licence by key drops it as well. SEC-LIC-1: a LIVE device is not another
+    // licence's to take, so the move goes through the device being released first.
     await setDeviceSubject(w.env, w.db, SLUG, "dev-1", ada.subject);
     const other = await seedLicenseWithKey(w.db, SLUG, { id: "lic_other" });
     expect(other.licenseId).not.toBe(licenseId);
+    const refused = await handleActivate(
+      mkReq("POST", {
+        authorization: `Bearer ${other.key}`,
+        "x-pkey-device": "dev-1",
+      }),
+      w.env,
+      w.db,
+      w.product,
+      NOW,
+    );
+    expect(refused.status).toBe(401);
+    expect((await getDevice(w.db, SLUG, "dev-1"))?.license_id).toBe(licenseId);
+    await w.db.run(
+      "UPDATE devices SET status = 'deauthorized' WHERE product = ? AND device_id = ?",
+      SLUG,
+      "dev-1",
+    );
     const moved = await activateByKey(w, other.key, "dev-1");
     expect(moved.license_id).toBe("lic_other");
     expect(moved.subject ?? null).toBeNull();

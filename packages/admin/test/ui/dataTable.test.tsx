@@ -416,6 +416,21 @@ describe("DataTable", () => {
 });
 
 describe("CSV", () => {
+  it("neutralises spreadsheet formula prefixes (SEC-LIC-9)", () => {
+    const csv = toCsv(
+      ["id"],
+      [["=cmd|' /C calc'!A0"], ["+1"], ["-2"], ["@SUM(A1)"], ["ok"]],
+    );
+    expect(csv.split("\r\n")).toEqual([
+      "id",
+      "'=cmd|' /C calc'!A0",
+      "'+1",
+      "'-2",
+      "'@SUM(A1)",
+      "ok",
+    ]);
+  });
+
   it("quotes fields and exports the filtered rows over the given columns", () => {
     expect(toCsv(["a", "b"], [["x,y", 'say "hi"']])).toBe(
       'a,b\r\n"x,y","say ""hi"""',
