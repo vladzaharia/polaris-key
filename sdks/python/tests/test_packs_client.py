@@ -76,6 +76,8 @@ class FakeServer:
         self.drop_on: Optional[int] = None
         self.drop_at = 0
         self.blob_status: Optional[int] = None
+        #: When set, the record route answers this status instead of the record.
+        self.record_status: Optional[int] = None
         #: The signed channel feed ``update/{channel}/feed.jws`` answers, and extra records.
         self.feed: Optional[str] = None
         self.records: Dict[str, str] = {}
@@ -117,6 +119,8 @@ class FakeServer:
                 return httpx.Response(404)
             return httpx.Response(200, content=self.feed.encode(), headers={"content-type": "application/jose"})
         m = re.fullmatch(r"/djdl/release/records/([0-9a-f]{64})", path)
+        if m and self.record_status is not None:
+            return httpx.Response(self.record_status, json={"error": {"code": "internal_error"}})
         if m and m.group(1) in self.records:
             return httpx.Response(
                 200, content=self.records[m.group(1)].encode(), headers={"content-type": "application/jose"}
@@ -361,6 +365,21 @@ def test_record_body_is_capped_at_the_bound(srv: FakeServer, tmp_path: Any) -> N
     with pytest.raises(PackError) as ex:
         c.update.packs.ensure(["djdl.l10n"])
     assert (ex.value.code, ex.value.detail) == ("record-rejected", "hash")
+    c.close()
+
+
+@pytest.mark.parametrize("status, code", [(503, "server-error"), (404, "network-error")])
+def test_a_failed_record_fetch_names_server_error_for_a_5xx_and_network_error_otherwise(
+    srv: FakeServer, tmp_path: Any, status: int, code: str
+) -> None:
+    v1 = tree_pack("djdl.l10n", "1.0.0", 1, V1_FILES)
+    srv.packs = [v1]
+    srv.record_status = status
+    c = client(srv, tmp_path, [v1])
+    assert c.update.packs._fetch_record(v1.record_sha256) == {"ok": False, "code": code}
+    with pytest.raises(PackError) as ex:
+        c.update.packs.ensure(["djdl.l10n"])
+    assert ex.value.code == code
     c.close()
 
 
