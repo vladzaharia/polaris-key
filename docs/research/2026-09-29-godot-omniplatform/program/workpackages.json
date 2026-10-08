@@ -413,7 +413,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-15-platform-primitives-duplicate-helper.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-16",
@@ -1145,7 +1145,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-sdks-tools.md"
       ],
       "brief": "wp/P0-44-corpus-generator-split-corpus-lane-right.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-45",
@@ -1239,7 +1239,7 @@
         "consolidation alias TrackA-QW2"
       ],
       "brief": "wp/P0-48-quick-wins-worker-cli-ci-docs-week-0.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-49",
@@ -9421,7 +9421,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/release-distribution.md"
       ],
       "brief": "wp/ST-37-vocabulary-one-word-concept-rule-4.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-38",
