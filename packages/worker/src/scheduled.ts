@@ -31,6 +31,7 @@
 //    a table that is never pruned again. Failures are collected and re-thrown as one aggregate
 //    at the very end, so the invocation is still recorded as failed.
 
+import { reconcilePackageFileRefs } from "./services/release/packages/refReconcile.js";
 import { purgeRegistryTokens } from "./core/registryTokens.js";
 import { pruneCiCredentials } from "./core/publisher.js";
 import { loadProductPublic } from "./core/products.js";
@@ -671,6 +672,8 @@ export async function handleScheduled(
     : await runScheduledMaintenance(db, now, env);
   const registry: MaintenanceReport = { counts: {}, failures: {} };
   await runRegistryRenders(env, db, now, registry);
+  // SEC-DST-1: heal package refs the deploy window's old Worker wrote as `artifact`, every tick.
+  await step(registry, "packageFileRefs", () => reconcilePackageFileRefs(db));
   Object.assign(report.counts, registry.counts);
   Object.assign((report.timings ??= {}), registry.timings);
   // A render failure stays queued and is retried every tick, so it is not the connector poll's

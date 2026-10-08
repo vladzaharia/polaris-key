@@ -29,6 +29,7 @@ import {
   recordRef,
   stmtDropRefs,
 } from "../src/core/blobs.js";
+import { reconcilePackageFileRefs } from "../src/services/release/packages/refReconcile.js";
 import { publicKeyIsPublic } from "../src/services/distribution/blobAccess.js";
 import { releaseCatalog } from "../src/services/release/catalog.js";
 import { loadProductPublic } from "../src/core/products.js";
@@ -232,5 +233,54 @@ describe("the blob route and package files (SEC-DST-1)", () => {
       blobKey(appSha),
     );
     expect(kinds).toEqual([{ ref_kind: "artifact" }]);
+  });
+
+  it("the deploy window heals: old-Worker writes after the migration are re-kinded or dropped, app artifacts untouched", async () => {
+    const appBefore = await w.db.all(
+      "SELECT ref_kind, ref_id FROM blob_refs WHERE storage_key = ?",
+      blobKey(appSha),
+    );
+    // The old Worker publishes a second package version after the migration: `artifact` ref.
+    const v2 = await addPackageRelease(w.db, w.env, SLUG, NOW, "99.9.8");
+    await w.db.run(
+      "UPDATE blob_refs SET ref_kind = 'artifact' WHERE storage_key = ?",
+      blobKey(v2.sha256),
+    );
+    // The old prune of the first version: its rows go, the (re-kinded) ref is not matched.
+    await w.db.run(
+      "UPDATE blob_refs SET ref_kind = 'artifact' WHERE storage_key = ?",
+      blobKey(pkg.sha256),
+    );
+    await w.db.run(
+      "DELETE FROM release_artifacts WHERE product = ? AND release_id = ?",
+      SLUG,
+      pkg.releaseId,
+    );
+    // A stale twin: both kinds exist for one ref id.
+    await recordRef(
+      w.db,
+      {
+        product: SLUG,
+        storageKey: blobKey(v2.sha256),
+        refKind: PACKAGE_FILE_REF,
+        refId: `${v2.releaseId}/file:pkgtest-sdk-99.9.8.tgz`,
+      },
+      NOW,
+    );
+    expect((await blob(v2.sha256)).status).toBe(200); // the window's exposure
+    expect((await blob(pkg.sha256)).status).toBe(200);
+
+    expect(await reconcilePackageFileRefs(w.db)).toBe(2);
+    expect((await blob(v2.sha256)).status).toBe(404);
+    expect((await blob(pkg.sha256)).status).toBe(404);
+    expect(
+      await w.db.all(
+        "SELECT ref_kind, ref_id FROM blob_refs WHERE storage_key = ?",
+        blobKey(appSha),
+      ),
+    ).toEqual(appBefore);
+    expect((await blob(appSha)).status).toBe(200);
+    // Idempotent.
+    expect(await reconcilePackageFileRefs(w.db)).toBe(0);
   });
 });

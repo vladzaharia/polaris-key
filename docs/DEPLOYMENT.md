@@ -638,6 +638,17 @@ files once their back-off elapses. An operator can queue a product's owed files 
 migration `release_mirrors` must be applied before the deploy (the job table; nothing older reads
 it).
 
+### Package-file blob refs (SEC-DST-1): migration order
+
+Migration `0107_package_file_ref_kind` re-kinds package files' blob refs from `artifact` to
+`package-file`. `deploy.yml` applies migrations before the Worker, so the previous Worker runs over
+the new schema for a short window and may write `artifact` refs for a package published then (and
+its prune can leave refs with no release row). Nothing needs doing by hand: `reconcilePackageFileRefs`
+(`services/release/packages/refReconcile.ts`) re-kinds or deletes those refs. It runs in the deploy
+hook once the new Worker is live and on every cron tick, so the exposure ends at the deploy and is
+healed by the next tick at the latest. To check: no `blob_refs` row has `ref_kind = 'artifact'` and a
+`release_artifacts.kind = 'package'` row.
+
 ### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
 
 Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues

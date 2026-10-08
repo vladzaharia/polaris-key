@@ -196,8 +196,10 @@ flag moves who may download at once. Neither the manifest's assertion nor a reco
 `entitlement` (a publish-time snapshot) decides it, and the app's version window never applies
 to a pack. Refusals are `401 unauthorized` without a usable licence and `403 not_entitled`
 without the flag. Only an object whose every holder is `public` is cached publicly
-(`public, max-age=31536000, immutable`); anything else, and everything under `gated/`, is
-`private, no-store`.
+(a pack object `public, max-age=31536000, immutable`, an app artifact
+`public, max-age=3600`); anything else, and everything under `gated/`, is `private, no-store`.
+A package version's file is never served here (its feed serves it), and an app artifact outside
+the `entitled` window answers the same `404` as an unknown hash; the `403`s are the pack's.
 
 Objects never move between prefixes. A pack gated after a release keeps that release's `blobs/`
 objects on the public path under its mode (their earlier responses were cacheable and cannot be

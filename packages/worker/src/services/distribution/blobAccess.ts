@@ -447,6 +447,10 @@ async function uniformRefusal(res: Response): Promise<Response> {
  * requires nothing (the blob route's rule above, at its loosest). The F-Droid relay serves its
  * registered files to anyone, so it asks this at registration and on every relay request; a key
  * no holder holds yet (a file being registered) is judged by the app side's rule.
+ *
+ * INTENTIONAL (SEC-DST-2): a key any package file holds is never public here, whatever the app's
+ * mode, so an operator who registers the same bytes in an F-Droid feed is refused (registration
+ * and relay alike): the relay would otherwise publish a package's file to anyone.
  */
 export async function publicKeyIsPublic(
   db: Db,

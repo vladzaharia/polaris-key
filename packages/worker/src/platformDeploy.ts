@@ -86,6 +86,7 @@ import {
 import { MANIFEST_FILE_NAMES } from "./services/release/manifestFiles.js";
 import { reservedNamesMode } from "./core/reservedNames.js";
 import { reservedDisplayNamesMode } from "./core/reservedDisplayNames.js";
+import { reconcilePackageFileRefs } from "./services/release/packages/refReconcile.js";
 import { runLicensingCatchUp } from "./core/licensingCatchUp.js";
 
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
@@ -406,6 +407,16 @@ export async function handleDeployHook(
       breakGlassEnded: linked.breakGlassEnded,
     }),
   });
+
+  // SEC-DST-1: the new Worker is live; heal any package ref the previous Worker wrote as
+  // `artifact` between the migration and this deploy. Never a failed deploy.
+  try {
+    const healed = await reconcilePackageFileRefs(db);
+    if (healed > 0)
+      console.log(`deploy: reconciled ${healed} package-file blob ref(s)`);
+  } catch (e) {
+    console.error("deploy: package-file ref reconcile failed", e);
+  }
 
   // LX-08 (plans/LX-01.md §6.2 steps 2–4): the deploy-hook job `licensing.migrateProvisioned`
   // and the store-grant re-projection, one bounded pass right after the deploy that starts the
