@@ -34,7 +34,7 @@ export function SectionNav({
         "pk-vt-chrome",
         variant === "toc"
           ? "sticky top-24 hidden w-[9.25rem] shrink-0 self-start wide:block"
-          : "sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 desk:hidden",
+          : "sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 desk:hidden",
       )}
     >
       <ul

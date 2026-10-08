@@ -110,7 +110,7 @@ export function AccountPage({
       </div>
       <nav
         aria-label="Account sections"
-        className="sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 desk:hidden"
+        className="sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 desk:hidden"
       >
         <ul className="flex gap-2">
           {sections.map((s) => (

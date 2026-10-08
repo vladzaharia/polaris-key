@@ -15,6 +15,11 @@ import { Lockup } from "./Lockup.js";
  * - **Header** (64 px; 56 on phones): the compact lockup (the link home), the Library nav with
  *   its count, a slot for the ⌘K trigger, the right-aligned **Activate license** action and the
  *   account menu.
+ * - **Tablet header** (761–1179 px, PORTAL.md §8): the same row, compacted so the account menu
+ *   never leaves the screen: the account chip is its avatar, the ⌘K trigger an icon, and below
+ *   900 px the lockup drops to its phone size, the gaps to 24 px and the action reads
+ *   **Activate** (its accessible name stays "Activate license"). From 1180 px the chip's name
+ *   truncates rather than pushing the row wider.
  * - **Phone bar** (≤ 760 px): Library, the Activate pill in the middle, and Discover.
  * - **Footer**, a skip link, one `banner`, `nav` ("Main"), `main` and `contentinfo`.
  *
@@ -68,19 +73,19 @@ export function PortalShell({
         Skip to content
       </a>
       {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
-      <header className="pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page">
-        <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-8 desk:px-8">
+      <header className="pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page short:static">
+        <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-6 desk:px-8 mid:gap-8">
           <a
             href={href.library()}
             aria-label="Polaris Key: your library"
             className="flex shrink-0 items-center rounded-md"
           >
-            <Lockup height={64} className="hidden desk:block" />
-            <Lockup height={52} className="desk:hidden" />
+            <Lockup height={64} className="hidden mid:block" />
+            <Lockup height={52} className="mid:hidden" />
           </a>
           <nav
             aria-label="Main"
-            className="hidden h-full items-stretch gap-8 desk:flex"
+            className="hidden h-full shrink-0 items-stretch gap-6 desk:flex mid:gap-8"
           >
             <NavLink
               href={href.library()}
@@ -98,20 +103,23 @@ export function PortalShell({
               />
             ) : null}
           </nav>
-          <div className="ml-auto flex items-center gap-3">
+          {/* min-w-0: the account chip's name is what gives way when the row is tight. */}
+          <div className="ml-auto flex min-w-0 items-center gap-3">
             {headerExtra ? (
-              <div className="hidden desk:block">{headerExtra}</div>
+              <div className="hidden shrink-0 desk:block">{headerExtra}</div>
             ) : null}
             {phoneHeaderExtra ? (
-              <div className="desk:hidden">{phoneHeaderExtra}</div>
+              <div className="shrink-0 desk:hidden">{phoneHeaderExtra}</div>
             ) : null}
             <Button
               variant="action"
-              className="hidden h-10 desk:inline-flex"
+              className="hidden h-10 shrink-0 px-3 desk:inline-flex mid:px-4"
               iconStart={<KeyRound aria-hidden />}
+              aria-label="Activate license"
               onClick={() => activate.open()}
             >
-              Activate license
+              <span className="mid:hidden">Activate</span>
+              <span className="hidden mid:inline">Activate license</span>
             </Button>
             <AccountMenu account={account} />
           </div>

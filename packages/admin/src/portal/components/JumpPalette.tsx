@@ -228,7 +228,11 @@ export function JumpPalette({
   );
 }
 
-/** The header trigger: "Jump to a product ⌘K" (an icon below 900 px). */
+/**
+ * The header trigger: "Jump to a product ⌘K", a 40 px icon button below 1180 px (PORTAL.md §8:
+ * the full 256 px field does not fit the tablet header beside Activate license and the account
+ * menu).
+ */
 export function JumpTrigger({
   onOpen,
 }: {
@@ -243,13 +247,13 @@ export function JumpTrigger({
       onClick={onOpen}
       aria-label="Jump to a product"
       aria-keyshortcuts={mac ? "Meta+K" : "Control+K"}
-      className="inline-flex h-10 items-center gap-3 rounded-md border border-border bg-surface-raised px-3 text-sm text-fg-muted hover:text-fg-strong min-[900px]:w-64"
+      className="inline-flex size-10 items-center justify-center gap-3 rounded-md border border-border bg-surface-raised text-sm text-fg-muted hover:text-fg-strong wide:w-64 wide:justify-start wide:px-3"
     >
       <Search aria-hidden className="size-4 shrink-0" />
-      <span className="hidden flex-1 text-left min-[900px]:inline">
+      <span className="hidden flex-1 text-left wide:inline">
         Jump to a product
       </span>
-      <Kbd keys={mac ? "⌘K" : "Ctrl K"} className="hidden min-[900px]:flex" />
+      <Kbd keys={mac ? "⌘K" : "Ctrl K"} className="hidden wide:flex" />
     </button>
   );
 }

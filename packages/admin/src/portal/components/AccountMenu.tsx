@@ -37,17 +37,19 @@ export function AccountMenu({
           <button
             type="button"
             aria-label={`Account: ${label}`}
-            className="inline-flex h-11 max-w-[18rem] items-center gap-2 rounded-full border border-border bg-surface-raised p-1 text-sm text-fg-strong hover:bg-hover desk:pr-3"
+            // The avatar alone on phones and tablets (PORTAL.md §8); from 1180 px the name and the
+            // chevron, the name truncating (min-w-0) when the header row is tight.
+            className="inline-flex h-11 min-w-0 max-w-[18rem] shrink-0 items-center gap-2 rounded-full border border-border bg-surface-raised p-1 text-sm text-fg-strong hover:bg-hover wide:shrink wide:pr-3"
           >
             <Avatar
               name={account.name}
               email={account.email}
               picture={account.avatarUrl}
             />
-            <span className="hidden truncate desk:inline">{label}</span>
+            <span className="hidden min-w-0 truncate wide:inline">{label}</span>
             <ChevronDown
               aria-hidden
-              className="hidden size-4 shrink-0 text-fg-muted desk:inline"
+              className="hidden size-4 shrink-0 text-fg-muted wide:inline"
             />
           </button>
         </DropdownMenuTrigger>

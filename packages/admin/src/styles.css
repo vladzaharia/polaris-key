@@ -38,6 +38,12 @@
     @slot;
   }
 }
+/*
+ * A short viewport (PORTAL.md §8): a phone on its side, or a laptop at 200 % zoom. The customer
+ * site's header scrolls away there instead of sticking, so it never covers a sixth of the screen
+ * or the targets passing under it; what stuck below it sticks to the top instead.
+ */
+@custom-variant short (@media (max-height: 32rem));
 @custom-variant motion-safe {
   @media (prefers-reduced-motion: no-preference) {
     &:where(
@@ -125,6 +131,10 @@
   /* The customer site's breakpoints (PORTAL.md §8): phones end at 760 px, the three-column
      product page starts at 1180 px. */
   --breakpoint-desk: 47.5625rem;
+  /* From 900 px the signed-in header has room for the full lockup and "Activate license" (§8).
+     Named, not min-[900px]: an arbitrary px breakpoint sorts before the rem ones, so it would
+     lose to a desk: utility on the same property. */
+  --breakpoint-mid: 56.25rem;
   --breakpoint-wide: 73.75rem;
   /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
