@@ -70,8 +70,8 @@ import { entitlementView } from "./entitlements.js";
 import { mediaUrlFor } from "./media.js";
 import { purchasesFor } from "./purchase.js";
 import {
+  accountHoldsProduct,
   getPortalProductSettings,
-  holdsProduct,
   listHeldProducts,
   listLibraryEntries,
   listPortalLicenses,
@@ -481,7 +481,7 @@ export async function handleLibraryEntryRemove(
 ): Promise<Response> {
   if (req.method !== "DELETE") return err(405, "method_not_allowed");
   const removed = await removeLibraryEntry(db, accountId, slug);
-  const inLibrary = await holdsProduct(db, accountId, slug);
+  const inLibrary = await accountHoldsProduct(db, accountId, slug);
   if (!removed && !inLibrary) return notFound();
   if (removed)
     await portalAudit(db, {
