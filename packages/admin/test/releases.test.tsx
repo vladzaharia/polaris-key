@@ -1002,8 +1002,15 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
     expect(within(direct).queryByRole("checkbox")).toBeNull();
     const store = rows.find((x) => x.textContent?.includes("App Store"))!;
     expect(store.getAttribute("aria-disabled")).toBe("true");
+    // P0-47: the store row says what to do in App Store Connect, and the dialog says store
+    // rollouts keep going (A-24 halts them from here).
     expect(
-      within(store).getByText("Halt it in App Store Connect"),
+      within(store).getByText("Pause the phased release in App Store Connect"),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        "Store rollouts keep going until you stop them in the store, as each store row says.",
+      ),
     ).toBeTruthy();
     const play = within(dialog).getByRole("checkbox", {
       name: "Google Play · stable",
@@ -1050,6 +1057,29 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
       await within(dialog).findByText("Google Play · stable was not halted"),
     ).toBeTruthy();
     expect(rolloutAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("names each store's own halt for a mirrored rollout (P0-47)", async () => {
+    const { haltBlocker, storeHalt } =
+      await import("../src/console/areas/distribution/RolloutDialogs.js");
+    const mirror = (source: string, over: Record<string, unknown> = {}) =>
+      rollout(source, {
+        mirrored: true,
+        source,
+        controls: [],
+        ...over,
+      }) as unknown as Parameters<typeof haltBlocker>[0];
+    expect(haltBlocker(mirror("play"))).toBe(
+      "Halt the staged rollout in Google Play",
+    );
+    expect(haltBlocker(mirror("asc"))).toBe(
+      "Pause the phased release in App Store Connect",
+    );
+    expect(haltBlocker(mirror("ms-store"))).toBe("Halt it in Microsoft Store");
+    // A store rollout already halted or complete needs nothing in the store.
+    expect(storeHalt(mirror("play", { state: "halted" }))).toBeNull();
+    expect(haltBlocker(mirror("play", { state: "complete" }))).toBe("Complete");
+    expect(storeHalt(rollout("direct") as never)).toBeNull();
   });
 
   it("disables Halt everywhere with the reason when nothing can be halted", async () => {
