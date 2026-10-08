@@ -50,6 +50,12 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/UK-02b.md`](../plans/UK-02b.md) §8: runs all ten families of `ui-matrix.json`. `hidden` rows assert that nothing renders. Baselines cover every `components.json` state, not `hidden`.
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Its framework pages replace SP-45b's interim pages in place.
+
 ## Owner direction (2026-10-08)
 
 - **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.

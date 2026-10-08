@@ -35,6 +35,12 @@ These approved plans change this package. Where they differ from the text below,
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: `setting(key).sync` and the `cloudSync` kind as recorded in `api.json`.
 - [`plans/UK-02b.md`](../plans/UK-02b.md) §8: appends its rows to `ui-matrix.json` (§4.8).
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- `config.set` validates against the cached catalog (Python).
+
 ## Goal
 
 Node and Python persist user settings locally and, with Cloud Sync on and a signed-in account, sync them: journal, `setConfig`, `clearConfig`, `settingState`, `onChange` with origin, member diffs, flush hooks (`beforeExit`, `atexit`), sign-out rules, first-sign-in upload of the local partition, `account_required` handling that never touches licence state, and a scenario runner.

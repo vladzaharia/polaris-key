@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break.
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Kit adapters accept the config object; Swift's gate owns boot; Kotlin's JVM start is `PolarisKeyDesktop`; `PolarisKeyAndroid.client` always returns a started client.
+
 ## Goal
 
 polaris-key.json, fromConfig() and doctor() in Swift, Kotlin and Godot, as scoped below. Done when every acceptance criterion holds and the green gate passes.

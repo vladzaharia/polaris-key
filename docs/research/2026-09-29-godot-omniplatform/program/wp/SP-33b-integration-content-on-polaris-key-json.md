@@ -1,16 +1,16 @@
 # SP-33b Integration content on polaris-key.json in every SDK, the docs and the Godot dock
 
-| Field       | Value                                                                                                                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration)                                                                                                                    |
-| Size        | 1–1.2 engineer-weeks                                                                                                                                                                                                         |
-| Depends on  | [SP-33a](SP-33a-one-integration-content-generator-on.md), [SP-32b](SP-32b-polaris-key-json-fromconfig-doctor-in.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-36](SP-36-examples-in-one-tree-built-in-ci.md), [SP-37](SP-37-developer-docs-reshape.md), [SP-38](SP-38-conditional-token-provisioning-sdk.md)                                   |
-| Role        | `pkey-implementer`                                                                                                                                                                                                           |
-| Plan mode   | no                                                                                                                                                                                                                           |
-| Gates       | `all-sdks`                                                                                                                                                                                                                   |
-| Human input | none                                                                                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration)                                                                                                                                                                                     |
+| Size        | 1–1.2 engineer-weeks                                                                                                                                                                                                                                                                          |
+| Depends on  | [SP-33a](SP-33a-one-integration-content-generator-on.md), [SP-32b](SP-32b-polaris-key-json-fromconfig-doctor-in.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md), [SP-45a](SP-45a-developer-docs-two-lanes-per-sdk-on-today-s.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-36](SP-36-examples-in-one-tree-built-in-ci.md), [SP-37](SP-37-developer-docs-reshape.md), [SP-38](SP-38-conditional-token-provisioning-sdk.md)                                                                                                    |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                            |
+| Plan mode   | no                                                                                                                                                                                                                                                                                            |
+| Gates       | `all-sdks`                                                                                                                                                                                                                                                                                    |
+| Human input | none                                                                                                                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                     |
 
 ## Consolidation 2026-10-07
 
@@ -22,6 +22,12 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: canonical names; the goldens are in the removed-name scan.
 - [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 3: `renderUsage(feature, lang, lane)`, with `lane` = `kit` or `library`, and goldens for both lanes.
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Writes both lanes' snippets into SP-45a's page skeleton.
 
 ## Owner direction (2026-10-08)
 

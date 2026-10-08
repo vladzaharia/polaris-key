@@ -52,6 +52,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - No runner is added; every SDK suite keeps its verdicts (§5).
 - Node's `ui.*` owner is UK-06 (§8).
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Terminal-kit state fixtures (rows, fix lines, copy keys) and the kit-verb contract.
+
 ## Owner direction (2026-10-08)
 
 - **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.

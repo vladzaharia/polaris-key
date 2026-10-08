@@ -43,6 +43,12 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/UK-02b.md`](../plans/UK-02b.md) §8: owns Node's ten `ui.*` rows. The family run is UK-03's ui-core runner under Node's `testRoots`; the render is a test under `packages/sdk-node/test/` that drives the main-process half of `@polaris-key/node/electron` and snapshots the view each family sends over the bridge (D9).
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Its framework pages replace SP-45a's interim pages in place.
+
 ## Owner direction (2026-10-08)
 
 - **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.

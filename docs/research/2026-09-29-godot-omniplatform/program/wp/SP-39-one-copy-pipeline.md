@@ -22,6 +22,12 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/UK-02b.md`](../plans/UK-02b.md) §8: after a copy edit, regenerate `ui-matrix.json` with `pnpm gen:corpus` without holding the corpus lane (D13).
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Swift core copy in a `PolarisKeyCore` bundle; vendor-neutral network copy; an update-not-configured key; activation copy routed by result kind.
+
 ## Goal
 
 One copy pipeline, as scoped below. Done when every acceptance criterion holds and the green gate passes.

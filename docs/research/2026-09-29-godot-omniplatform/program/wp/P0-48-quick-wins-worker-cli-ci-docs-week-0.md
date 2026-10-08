@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **TrackA-QW2** in [Track A, Ground truth, decisions and quick wins](../../../2026-10-07-dx-consolidation/tracks.md#a-ground-truth-decisions-and-quick-wins).
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Docs safety fixes (following the docs does harm today): the Node kit factory (writes to production), the Electron `whenReady` snippet, strict-index Python installs, the Swift quickstart's `print(result)`, the Kotlin quickstart and version, React's stale bearer note (audit quick win 2), the Swift `init(options:)` comment (quick win 4); the `pkey` CLI install line, the missing-`--product` message, `--version`, smol-toml; example version stamping; a `theme.product` note until HA-13.
+
 ## Goal
 
 Quick wins: Worker, CLI, CI and docs (week 0), as scoped below. Done when every acceptance criterion holds and the green gate passes.

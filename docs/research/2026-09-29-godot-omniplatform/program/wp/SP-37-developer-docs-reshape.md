@@ -22,6 +22,12 @@ These approved plans change this package. Where they differ from the text below,
 
 - [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 5: it depends on ST-41 and ST-43 as well as SP-33b, because "Your first product" mirrors the wizard. Its final path gets the fresh-reader run (§6.2). The developer changelog generator is DOC-12a's.
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- The one start path forks into two lanes; the `your-own-ui` pages survive the reference trim.
+
 ## Owner direction (2026-10-08)
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.

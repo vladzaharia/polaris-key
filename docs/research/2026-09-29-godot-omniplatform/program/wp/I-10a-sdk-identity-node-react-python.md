@@ -107,6 +107,12 @@ These approved plans change this package. Where they differ from the text below,
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: the `identity.signIn` and `subject` rows from I-27's plan; `beginSignIn`, `pollSignIn`, `waitForSignIn` and `signInWithBrowser` are removed, not aliased.
 - [`plans/UK-02b.md`](../plans/UK-02b.md) §8: the D3 mapping into the sign-in session vocabulary, and the `account` family appended to `ui-matrix.json`.
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- `identity.subject()` survives a restart and is null for key-only devices; confirm-and-attach in every kit; typed sign-in errors; an `identity` event kind.
+
 ## Goal
 
 Node, React and Python handle layer 1 identity end to end: `activate(key)` surfaces `key_entry_limit` (deep link and QR) and `license_owned` (offer sign-in) without wiping state; device-code passthrough lands on the card; React web apps sign in by the web redirect and exchange the code; `attach`, `subject`, `signOut` and `openAccount` exist; and React's activation component shows the refusals and the "add to your Library" prompt.

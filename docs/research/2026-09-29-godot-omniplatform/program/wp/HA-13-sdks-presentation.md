@@ -1,16 +1,16 @@
 # HA-13 SDKs and UI kits read presentation: client-core, React, Node, Python, Swift, Kotlin (icon verified by SHA-256, accent default, integrator override wins)
 
-| Field       | Value                                                                                                                         |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs)                              |
-| Size        | 1–1.5 engineer-weeks                                                                                                          |
-| Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md)                                       |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [UK-41](UK-41-must-tier-closeout.md) |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                          |
-| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                                              |
-| Gates       | plan mode; all SDKs; corpus and transcript runners; UI snapshots                                                              |
-| Human input | none                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                     |
+| Field       | Value                                                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs)                                                                                |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                            |
+| Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md)                                                                                         |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-41](ST-41-integration-page-overview-card.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [UK-41](UK-41-must-tier-closeout.md) |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                            |
+| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                                                                                                |
+| Gates       | plan mode; all SDKs; corpus and transcript runners; UI snapshots                                                                                                                |
+| Human input | none                                                                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                       |
 
 ## Consolidation 2026-10-07
 

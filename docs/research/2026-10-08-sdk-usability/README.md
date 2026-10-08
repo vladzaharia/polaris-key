@@ -1032,18 +1032,16 @@ triggers; the hosted device-code page's branding (I-08); time-unit normalisation
 
 ## 12. Owner decisions and steps
 
-1. **Developer docs reachable by integrators.** Recommendation: make the developer sections
-   (`start/`, `build/`, `services/`, `reference/`) public and keep operator sections (`admin/`,
-   `contribute/`, the runbook) behind the platform-admin gate. The source of every page is already
-   public in `vladzaharia/polaris-key` (MIT), so the gate hides nothing from a reader; it only stops
-   integrators following the console's links. Today every console user is a platform admin, so the
-   links work; after ST-28/ST-30, Product admins exist and ST-29 as written locks them out. This
-   amends docs plan N7 and ST-29. The minimum alternative is audit §5.8's "any console role".
-2. **Approve the repair of the 9 broken npm versions** (P0-52; the `package-registry`
-   environment): publish `jws@0.8.28` and `protocol@0.8.29` from their tags, or deprecate the nine
-   dependents.
-3. **Re-ask on unclaimed public names.** Owner decision 3 rules out placeholders. P0-48 removes
-   every bare command from the docs, so the residual risk is a developer typing `npx pkey` or
-   `pip install polaris-key` from memory, which reaches a squattable name. Recommendation: claim
-   `pkey` on npmjs and `polaris-key` on PyPI as inert names that install nothing and point to the
-   feed. If yes, add both to `~/Downloads/polaris-key-owner-steps.md`.
+All three were decided by the owner on 2026-10-08.
+
+1. **Developer docs reachable by integrators. Decided: public.** The developer sections
+   (`start/`, `build/`, `services/` (the docs plan's `features/`), `reference/`) are public;
+   operator, admin and contribute sections and the runbook stay behind the gate. The source of every
+   page is already public in `vladzaharia/polaris-key` (MIT), so the gate hid nothing; it only
+   stopped integrators following the console's links. Applied as the docs plan's D2 and to ST-29.
+2. **Repair of the 9 broken npm versions. Decided: publish.** A repair run that P0-52 adds
+   publishes `jws@0.8.28` and `protocol@0.8.29` from their tags; the owner approves that
+   `package-registry` run. The dependents are not deprecated.
+3. **Unclaimed public names. Decided: no placeholders.** Owner decision 3 stands: `pkey` on npmjs
+   and `polaris-key` on PyPI stay unclaimed. P0-48 removes every bare command from the docs, which
+   leaves only a developer typing `npx pkey` or `pip install polaris-key` from memory.

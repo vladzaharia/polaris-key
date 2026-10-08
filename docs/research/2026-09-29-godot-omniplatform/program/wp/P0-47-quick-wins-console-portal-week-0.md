@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **TrackA-QW1** in [Track A, Ground truth, decisions and quick wins](../../../2026-10-07-dx-consolidation/tracks.md#a-ground-truth-decisions-and-quick-wins).
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- React's snippet also shows `<LicenseGate>` and declares the version; the Kotlin snippet uses `PolarisKeyAndroid.client`; the two docs links per SDK in today's quick start go through `DOCS_LINKS`.
+
 ## Goal
 
 Quick wins: console and portal (week 0), as scoped below. Done when every acceptance criterion holds and the green gate passes.

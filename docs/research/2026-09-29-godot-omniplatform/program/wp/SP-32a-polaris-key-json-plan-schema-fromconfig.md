@@ -24,6 +24,12 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: its schema properties, except `$schema` and `configVersion`, equal the `configFile` rows of `api.json` (test).
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Kit adapters accept the config object; `doctor()` runs on a document verify failure and reports an origin mismatch; the outlet and release pins in `polaris-key.json`; Python's version from `importlib.metadata`.
+
 ## Goal
 
 polaris-key.json: plan, schema, fromConfig() and doctor() in Node, React and Python, as scoped below. Done when every acceptance criterion holds and the green gate passes.

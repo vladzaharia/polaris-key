@@ -87,6 +87,7 @@ SDKs cannot tell expired from revoked or refunded, and `isEntitled` ignores stat
 
 - [ ] `gen:corpus`, `gen:constants` and `gen:transcripts` `--check` pass.
 - [ ] Browser runners pass.
+- [ ] `activate-refusals` step 3 carries the expired reason; sync 401s carry it for authenticated tokens ([SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

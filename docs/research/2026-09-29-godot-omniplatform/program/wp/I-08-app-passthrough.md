@@ -83,6 +83,7 @@ Sources: [`plans/I-27.md`](../plans/I-27.md) (§2.1, §2.2, §4, the hints from 
 - [ ] With the product's Identity toggle off, every passthrough route is refused and discovery lists none (test).
 - [ ] Transcripts and mirrors recorded; `errors.json`, parity rows, OpenAPI and `routeCoverage` updated; THREAT-MODEL rows for R1-07, the choice grant and Replace; `PROTOCOL_VERSION` unchanged.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`, `operate/platform/connections`, `help/work-account`, `help/account` and `help/connected-apps`.
+- [ ] The device-code approval page shows the product's name, icon and accent, never the slug ([SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

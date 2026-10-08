@@ -60,6 +60,12 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/UK-02b.md`](../plans/UK-02b.md) §8: adds the JS runner of §5 and `packages/ui-core/test` to the React and Node manifests' `testRoots`; runs the `signIn` family through `SignInModel`; moves UK-14's `models.ts` onto ui-core with byte-identical goldens; the `test/cli/scenarios.ts` stand-ins the matrix covers retire.
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Also serves a Node main process with a plain renderer (snapshot, subscribe, `{key, args}` views).
+
 ## Owner direction (2026-10-08)
 
 - **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.

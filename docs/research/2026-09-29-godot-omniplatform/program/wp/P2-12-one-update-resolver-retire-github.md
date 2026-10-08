@@ -1,16 +1,16 @@
 # P2-12 One update resolver: retire the GitHub-resolved appcast and version path
 
-| Field       | Value                                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P2: Release truth, publishing and release tracks (DX consolidation K: Corpus lane (wire trains, serial))                                         |
-| Size        | 1–1.5 engineer-weeks                                                                                                                             |
-| Depends on  | [P0-26](P0-26-core-manifest-ingest-pipeline.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md)                                          |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [P2-09](P2-09-demote-release-down-release-track.md), [P2-12b](P2-12b-retire-github-resolver.md)          |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                            |
-| Plan mode   | yes: executes the approved [`plans/P2-12.md`](../plans/P2-12.md) (2026-10-08), PR 1 and PR 2; P2-12b deletes the old path                        |
-| Gates       | `plan-mode`, `rule-9`                                                                                                                            |
-| Human input | djdl's channel workflow changes before PR 2, and djdl drops the two settings right after PR 2 deploys ([`plans/P2-12.md`](../plans/P2-12.md) Q2) |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                        |
+| Field       | Value                                                                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth, publishing and release tracks (DX consolidation K: Corpus lane (wire trains, serial))                                                                                        |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                            |
+| Depends on  | [P0-26](P0-26-core-manifest-ingest-pipeline.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md)                                                                                         |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [P2-09](P2-09-demote-release-down-release-track.md), [P2-12b](P2-12b-retire-github-resolver.md), [SP-44](SP-44-updates-for-package-manager-installs.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                           |
+| Plan mode   | yes: executes the approved [`plans/P2-12.md`](../plans/P2-12.md) (2026-10-08), PR 1 and PR 2; P2-12b deletes the old path                                                                       |
+| Gates       | `plan-mode`, `rule-9`                                                                                                                                                                           |
+| Human input | djdl's channel workflow changes before PR 2, and djdl drops the two settings right after PR 2 deploys ([`plans/P2-12.md`](../plans/P2-12.md) Q2)                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                       |
 
 ## Consolidation 2026-10-07
 
@@ -24,6 +24,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - `release.channelWorkflow` and `release.betaBranch` are removed at the switch, not deprecated: PR 2 makes them a validator error naming the replacement and migrates `products/djdl/product.json` (D7).
 - PR 2 merges only under the switch rule (§6.5). Deleting the GitHub-resolved resolver is [P2-12b](P2-12b-retire-github-resolver.md)'s.
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- It unblocks Python's `update.check()` against the real Worker, and SP-44.
 
 ## Goal
 

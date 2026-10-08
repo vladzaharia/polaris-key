@@ -25,6 +25,12 @@ These approved plans change this package. Where they differ from the text below,
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: canonical names; the goldens are in the removed-name scan.
 - [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 3: `renderUsage(feature, lang, lane)`, with `lane` = `kit` or `library`, and goldens for both lanes. SP-33a also writes the docs' generated blocks.
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- `sdkFit` host types; the console start is the drop-in only; the headless and direct blocks render as docs goldens with link targets; a strict-index `renderFeedSetup` with an Xcode tab; warnings for Update without release keys; `pkey sdk add` names missing flags.
+
 ## Owner direction (2026-10-08)
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.

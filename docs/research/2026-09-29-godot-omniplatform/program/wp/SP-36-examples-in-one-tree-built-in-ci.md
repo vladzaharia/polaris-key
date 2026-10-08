@@ -1,20 +1,26 @@
 # SP-36 Examples in one tree, built in CI
 
-| Field       | Value                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration)                                                  |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                       |
-| Depends on  | [SP-32b](SP-32b-polaris-key-json-fromconfig-doctor-in.md), [SP-33b](SP-33b-integration-content-on-polaris-key-json.md), [P0-43](P0-43-ci-consolidation.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                     |
-| Role        | `pkey-implementer`                                                                                                                                         |
-| Plan mode   | no                                                                                                                                                         |
-| Gates       | none beyond the green gate                                                                                                                                 |
-| Human input | none                                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration)                                                                                                                  |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                       |
+| Depends on  | [SP-32b](SP-32b-polaris-key-json-fromconfig-doctor-in.md), [SP-33b](SP-33b-integration-content-on-polaris-key-json.md), [P0-43](P0-43-ci-consolidation.md), [SP-41](SP-41-pkey-dev-a-local-polaris-key-for-integrators.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                     |
+| Role        | `pkey-implementer`                                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                                         |
+| Gates       | none beyond the green gate                                                                                                                                                                                                 |
+| Human input | none                                                                                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                  |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **SDX-05** in [Track C, Products, onboarding and Integration](../../../2026-10-07-dx-consolidation/tracks.md#c-products-onboarding-and-integration).
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- CI examples run against `pkey dev` (SP-41), with no separate replay server; each sample runs its advertised commands; the Electron example launches; Compose Android and Desktop examples.
 
 ## Goal
 

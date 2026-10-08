@@ -105,6 +105,12 @@ These approved plans change this package. Where they differ from the text below,
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: the `identity.signIn` and `subject` rows from I-27's plan; `beginSignIn`, `pollSignIn`, `waitForSignIn` and `signInWithBrowser` are removed, not aliased. It implements Kotlin `signOut`.
 - [`plans/UK-02b.md`](../plans/UK-02b.md) §8: the D3 mapping into the sign-in session vocabulary, and the `account` family appended to `ui-matrix.json`.
 
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- `identity.subject()` survives a restart and is null for key-only devices; confirm-and-attach in every kit; `Ready` carries the identity (Kotlin); typed sign-in errors (Swift); an `identity` event kind; `KIND_KEY_ENTRY_LIMIT` (Godot).
+
 ## Goal
 
 Swift, Kotlin and Godot (Godot first) handle layer 1 identity with the same calls and refusals as I-10a, using device-code passthrough with a QR code; `PolarisKeyUI`, the Kotlin activation component and Godot's `addons/polaris_key/ui` show the refusals and the "add to your Library" prompt.

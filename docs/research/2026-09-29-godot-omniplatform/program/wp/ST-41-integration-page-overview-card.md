@@ -4,7 +4,7 @@
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | ST: Settings, access control and console shell (DX consolidation C: Products, onboarding and Integration)                                                                                                                                                                                                                    |
 | Size        | 1.2–1.6 engineer-weeks                                                                                                                                                                                                                                                                                                       |
-| Depends on  | [ST-40](ST-40-integration-facts-sdk-sightings.md), [SP-33a](SP-33a-one-integration-content-generator-on.md), [ST-39](ST-39-wizard-kit.md)                                                                                                                                                                                    |
+| Depends on  | [ST-40](ST-40-integration-facts-sdk-sightings.md), [SP-33a](SP-33a-one-integration-content-generator-on.md), [ST-39](ST-39-wizard-kit.md), [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md)                                                                                                         |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-36](I-36-sign-in-integration-card.md), [U-32](U-32-catalog-templates-cloud-sync-page-minted.md), [D-02](D-02-diceroll-after-p1.md), [ST-47](ST-47-legacy-setup-retirement.md), [SP-37](SP-37-developer-docs-reshape.md), [LX-43](LX-43-licensing-presets-1-x-helper-new-major.md) |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                           |
 | Plan mode   | no                                                                                                                                                                                                                                                                                                                           |
@@ -23,6 +23,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 These approved plans change this package. Where they differ from the text below, they win.
 
 - [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 4: per-SDK, per-feature links to the library lane through `integrationDocs()` in `docsLinks.ts`, checked against anchors and frontmatter (§3.7). A feature's "Not seen yet" state links `build/troubleshooting`.
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Renders the review's §4.1–4.2: one drop-in per host, two links, the preconditions. HA-13 and HA-14 land before it shows kit snippets.
 
 ## Owner direction (2026-10-08)
 

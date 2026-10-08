@@ -69,6 +69,7 @@ Decision 14 makes `isEntitled` false whenever the gate is not usable, in all six
 - [ ] Every conformance runner passes.
 - [ ] `parity.json` updated in every SDK.
 - [ ] Migration guide published.
+- [ ] Every kit renders renew copy for an expired licence, from the reason LX-18 carries ([SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
