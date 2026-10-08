@@ -106,8 +106,9 @@ export function LibraryTile({
               className="relative"
               tileClassName="border-[3px] border-surface-raised"
             />
-            {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. */}
-            <div className="min-w-0 pt-9">
+            {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. The
+                rest of the row is the name's, so its link spans it (PS-05 review v2). */}
+            <div className="min-w-0 flex-1 pt-9">
               <h3
                 id={`tile-${product.slug}`}
                 className={cn(
@@ -118,7 +119,8 @@ export function LibraryTile({
                 <a
                   href={href.product(product.slug)}
                   // block: the name's full line is the link (24 px or taller), so a short name
-                  // still meets the target size (WCAG 2.5.8; PS-05).
+                  // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
+                  // card's, which it stretches over (styles.css, .pk-press-link).
                   className="pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
                 >
                   {product.name}
