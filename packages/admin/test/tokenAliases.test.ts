@@ -2,6 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { cn } from "../src/lib/cn.js";
 
 /**
  * The token smoke test (docs/design/ADMIN.md §7.2, chunks 1 and 11).
@@ -154,6 +155,22 @@ describe("the admin's tokens on the brand", () => {
         arbitrary.push(`${m[0]} (${file.slice(pkg.length + 1)})`);
     }
     expect(arbitrary).toEqual([]);
+  });
+
+  it("cn() merges every admin type step as a font size, as it did the arbitrary sizes", () => {
+    const steps = [...themeDecls(styles, "text").keys()].filter(
+      (k) => !k.includes("--"),
+    );
+    expect(steps.length).toBeGreaterThan(5);
+    for (const step of steps) {
+      // Not a colour: a text colour beside it survives…
+      expect(cn(`text-${step}`, "text-fg").split(" "), step).toEqual([
+        `text-${step}`,
+        "text-fg",
+      ]);
+      // …and it replaces another size, like any font size.
+      expect(cn("text-sm", `text-${step}`), step).toBe(`text-${step}`);
+    }
   });
 
   it("every colour utility used in src resolves to a defined token", () => {
