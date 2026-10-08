@@ -36,7 +36,7 @@ bit more help."
 > update channel and the Channels page become **Release track**; grant becomes **Add-on**; flag
 > becomes **Entitlement**; policy and terms become **Limits** and **Duration**; default, enforced
 > and hidden become **Editable**, **Read-only** and **Hidden**; auto-issue becomes **Access
-> policy**; services become **Features**. §2's copy rules gain one: "outlet", "storefront feed",
+> policy**; **Features** group services. §2's copy rules gain one: "outlet", "storefront feed",
 > "grant" and "capability" leave every console string (the portal's **Automatic grant** label is
 > the one kept use), checked by `packages/admin/test/copyLint.test.ts`. SETUP.md's D1 is amended
 > to match.

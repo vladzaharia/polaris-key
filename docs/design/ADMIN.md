@@ -34,10 +34,11 @@
 > **Install source**; update channel and the Channels page become **Release track**; grant becomes
 > **Add-on**; flag becomes **Entitlement**; policy and terms become **Limits** and **Duration**;
 > default, enforced and hidden become **Editable**, **Read-only** and **Hidden**; auto-issue
-> becomes **Access policy**; services become **Features**. The console copy rules there ("outlet",
+> becomes **Access policy**; **Features** group services. The console copy rules there ("outlet",
 > "storefront feed", "grant" and "capability" leave the UI) are checked by
-> `packages/admin/test/copyLint.test.ts`. Identifiers keep their names. P0-41 folds this into the
-> current-state rewrite of this document.
+> `packages/admin/test/copyLint.test.ts`; the portal's **Automatic grant** label is the one kept use
+> of "grant". Identifiers keep their names. P0-41 folds this into the current-state rewrite of
+> this document.
 
 **Status:** draft for lead approval · **Scope:** `packages/admin` (operator console at `/manage`,
 customer portal at `/`) · **Builds on:** `@polaris-key/brand` and

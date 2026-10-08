@@ -37,7 +37,8 @@ import { describe, expect, it } from "vitest";
  *
  *   PKEY_RECORD_COPY_DEBT=1 mise exec node@22 -- pnpm --filter @polaris-key/admin exec vitest run test/copyLint.test.ts
  *
- * which only removes entries or lowers counts (it never adds one), then run prettier on the file.
+ * which only removes entries or lowers counts: it never adds one, and with no ledger it fails
+ * rather than writing one. Then run prettier on the file.
  * The repo has no ESLint (AGENTS.md rule 6), so, like the motion lint, this is a test.
  */
 
@@ -178,12 +179,48 @@ const COMPARISONS = new Set([
 
 const collapse = (s: string): string => s.replace(/\s+/g, " ").trim();
 
-/** A literal reads as copy: words with spaces, or one capitalised word ("Outlets"). */
-function readsAsCopy(text: string): boolean {
+/**
+ * A literal reads as copy: words with spaces, or one capitalised word ("Outlets"). A JSX child's
+ * value is rendered as it stands, so there any word is copy (`{n === 1 ? "outlet" : "outlets"}`).
+ */
+function readsAsCopy(text: string, jsxChild = false): boolean {
   const t = text.replace(/\{…\}/g, "X").trim();
   if (!/[A-Za-z]/.test(t)) return false;
   if (/\s/.test(t)) return true;
+  if (jsxChild) return /^[A-Za-z][a-z]*(?:[-'’][a-z]+)*[.:!?…]?$/.test(t);
   return /^[A-Z][a-z]+(?:[-'’][a-z]+)*[.:!?…]?$/.test(t);
+}
+
+/**
+ * Whether a literal is the value a JSX child expression renders: `{"…"}` itself, or a branch of a
+ * conditional (`a ? "…" : "…"`), the right side of `&&`, `||` or `??`, or a parenthesised one.
+ */
+function isJsxChildValue(node: ts.Node): boolean {
+  let cur: ts.Node = node;
+  for (;;) {
+    const parent: ts.Node = cur.parent;
+    if (ts.isParenthesizedExpression(parent)) cur = parent;
+    else if (
+      ts.isConditionalExpression(parent) &&
+      (parent.whenTrue === cur || parent.whenFalse === cur)
+    )
+      cur = parent;
+    else if (
+      ts.isBinaryExpression(parent) &&
+      parent.right === cur &&
+      [
+        ts.SyntaxKind.AmpersandAmpersandToken,
+        ts.SyntaxKind.BarBarToken,
+        ts.SyntaxKind.QuestionQuestionToken,
+      ].includes(parent.operatorToken.kind)
+    )
+      cur = parent;
+    else
+      return (
+        ts.isJsxExpression(parent) &&
+        (ts.isJsxElement(parent.parent) || ts.isJsxFragment(parent.parent))
+      );
+  }
 }
 
 /**
@@ -283,7 +320,7 @@ export function copyStrings(source: string, fileName = "x.tsx"): CopyString[] {
       ts.isNoSubstitutionTemplateLiteral(node)
     ) {
       const text = collapse(node.text);
-      if (!isNotCopyPosition(node) && readsAsCopy(text))
+      if (!isNotCopyPosition(node) && readsAsCopy(text, isJsxChildValue(node)))
         out.push({ text, line: lineOf(node) });
     } else if (ts.isTemplateExpression(node)) {
       const text = collapse(
@@ -372,23 +409,24 @@ function countFindings(
   return counts;
 }
 
+const MISSING_LEDGER =
+  "test/copy.debt.json is missing: restore it from git. Record mode only shrinks it and never writes a new one.";
+
 function readLedger(): DebtEntry[] {
   if (!existsSync(LEDGER)) return [];
   return (JSON.parse(readFileSync(LEDGER, "utf8")) as { debt: DebtEntry[] })
     .debt;
 }
 
-/** PKEY_RECORD_COPY_DEBT=1: seed a missing ledger, or shrink an existing one; never add. */
+/** PKEY_RECORD_COPY_DEBT=1: shrink the ledger to today's counts. It never adds an entry. */
 function recordLedger(current: Map<string, DebtEntry>): void {
-  const seeding = !existsSync(LEDGER);
-  const debt = seeding
-    ? [...current.values()]
-    : readLedger()
-        .map((d) => ({
-          ...d,
-          count: Math.min(d.count, current.get(debtKey(d))?.count ?? 0),
-        }))
-        .filter((d) => d.count > 0);
+  if (!existsSync(LEDGER)) throw new Error(MISSING_LEDGER);
+  const debt = readLedger()
+    .map((d) => ({
+      ...d,
+      count: Math.min(d.count, current.get(debtKey(d))?.count ?? 0),
+    }))
+    .filter((d) => d.count > 0);
   debt.sort((a, b) => debtKey(a).localeCompare(debtKey(b)));
   writeFileSync(
     LEDGER,
@@ -402,6 +440,10 @@ describe("the console copy lint", () => {
   if (process.env.PKEY_RECORD_COPY_DEBT === "1") recordLedger(current);
   const ledger = readLedger();
   const allowed = new Map(ledger.map((d) => [debtKey(d), d.count]));
+
+  it("has its debt ledger", () => {
+    expect(existsSync(LEDGER), MISSING_LEDGER).toBe(true);
+  });
 
   it("scans the console's source and not the portal's", () => {
     expect(files.length).toBeGreaterThan(100);
@@ -490,6 +532,33 @@ describe("the console copy lint's fixture", () => {
     expect(byLine(8)).toEqual(["capability"]);
     expect(byLine(9)).toEqual(["grant"]);
     expect(byLine(10)).toEqual(["storefront-feed"]);
+  });
+
+  it("reads a lowercase word a JSX child renders as copy, directly or through a branch", () => {
+    const children = [
+      `const A = <p>{n} {n === 1 ? "outlet" : "outlets"}</p>;`,
+      `const B = <p>{ready && "grants"}</p>;`,
+      `const C = <>{label ?? ("capability")}</>;`,
+      `const D = <p>{"outlet"}</p>;`,
+    ].join("\n");
+    const found = lintCopy(children).map(
+      (f) => `${f.line} ${f.rule} ${f.text}`,
+    );
+    expect(found).toEqual([
+      "1 outlet outlet",
+      "1 outlet outlets",
+      "2 grant grants",
+      "3 capability capability",
+      "4 outlet outlet",
+    ]);
+    const notChildren = [
+      `const E = <p>{kind === "outlet" ? a : b}</p>;`,
+      `const F = <p className={wide ? "outlet" : "grant"} />;`,
+      `const G = <Row id={x ?? "outlet"} />;`,
+      `const H = <p>{label(kind ?? "outlet")}</p>;`,
+      `const I = n === 1 ? "outlet" : "outlets";`,
+    ].join("\n");
+    expect(lintCopy(notChildren)).toEqual([]);
   });
 
   it("passes identifiers, paths, types, keys, comparisons, class names and comments", () => {
