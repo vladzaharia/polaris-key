@@ -1,32 +1,31 @@
 import * as React from "react";
 import { cn } from "../../../lib/cn.js";
+import { StatusPill } from "../../../ui/StatusPill.js";
 import type { ProductSection } from "../../router.js";
-import { PHONE_ORDER, SECTION_LABEL } from "../../model/product.js";
+import { SECTION_LABEL } from "../../model/product.js";
 
 /**
- * The in-page section nav (§4.20): a sticky TOC at ≥ 1180 px, sticky pill tabs in the phone's
- * task order on phones, hidden between. It lists only the sections present and marks the one on
- * screen. `labels` adds counts ("Devices 2").
+ * The in-page section nav (§4.20): a sticky TOC at ≥ 1180 px, sticky pill tabs on phones, hidden
+ * between. Both list only the sections present, in the page's order (`sections`, from
+ * `presentSections`: the order the page reads in as it scrolls, owner polish 2026-10-07), and
+ * mark the one being read. `counts` adds a count after the label as a small neutral pill, the
+ * pill the page uses for its other facts ("Devices 2").
  */
 export function SectionNav({
   sections,
   current,
-  labels,
+  counts,
   onPick,
   hrefFor,
   variant,
 }: {
   sections: readonly ProductSection[];
   current: ProductSection | null;
-  labels?: Partial<Record<ProductSection, string>>;
+  counts?: Partial<Record<ProductSection, number>>;
   onPick: (s: ProductSection) => void;
   hrefFor: (s: ProductSection) => string;
   variant: "toc" | "pills";
 }): React.ReactElement {
-  const order =
-    variant === "pills"
-      ? PHONE_ORDER.filter((s) => sections.includes(s))
-      : sections;
   return (
     <nav
       aria-label={variant === "toc" ? "On this page" : "Sections"}
@@ -41,14 +40,15 @@ export function SectionNav({
       <ul
         className={variant === "toc" ? "border-l border-border" : "flex gap-2"}
       >
-        {order.map((s) => {
+        {sections.map((s) => {
           const on = s === current;
-          const text = labels?.[s] ?? SECTION_LABEL[s];
+          const count = counts?.[s];
           return (
             <li key={s}>
               <a
                 href={hrefFor(s)}
                 aria-current={on ? "location" : undefined}
+                data-nav-section={s}
                 onClick={(e) => {
                   e.preventDefault();
                   onPick(s);
@@ -66,7 +66,24 @@ export function SectionNav({
                       : "border-border-strong text-fg-strong",
                 )}
               >
-                {text}
+                {/* One run of inline text, so the space is rendered and the link's name reads
+                    "Devices 2". */}
+                <span>
+                  {SECTION_LABEL[s]}
+                  {count !== undefined ? (
+                    <>
+                      {" "}
+                      <StatusPill
+                        tone="neutral"
+                        icon={false}
+                        size="sm"
+                        className="ml-0.5 align-middle font-normal tabular-nums"
+                      >
+                        {count}
+                      </StatusPill>
+                    </>
+                  ) : null}
+                </span>
               </a>
             </li>
           );

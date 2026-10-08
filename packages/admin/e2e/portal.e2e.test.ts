@@ -889,7 +889,7 @@ describe("main flows", () => {
   it("a sign-in licence lists its devices and removes one remotely", async () => {
     const o = await open("signIn", "/#/p/quill/devices");
     await h1(o.page, "Quill");
-    await licenseSourceIs(o.page, "From signing in");
+    await licenseSourceIs(o.page, "Automatic Grant");
     expect(await o.page.getByText(/Account-wide/).count()).toBe(0);
     await o.page
       .getByRole("button", { name: "Remove Living room PC" })
@@ -928,8 +928,12 @@ describe("main flows", () => {
     await devices.getByText("Mara's MacBook Pro").waitFor();
     expect(await devices.getByText(/in use/).count()).toBe(0);
     await picker.selectOption({ label: "Standard · Sign-in" });
-    await licenseSourceIs(o.page, "From signing in");
-    await card.getByText(/^1 of \d+ devices?$/).waitFor();
+    await licenseSourceIs(o.page, "Automatic Grant");
+    // The count is the Devices card's alone (owner polish 2026-10-07).
+    await devices
+      .getByRole("img", { name: /^1 of \d+ devices? in use$/ })
+      .waitFor();
+    expect(await card.getByText(/\d+ (of \d+ )?devices?$/).count()).toBe(0);
     await devices.getByText("Mara's Steam Deck").waitFor();
     expect(await o.violations()).toEqual([]);
     await o.close();
@@ -991,7 +995,7 @@ describe("main flows", () => {
   it("no Remove for a licence its key can't bring back: a sign-in licence (PX-23 review)", async () => {
     const o = await open("signIn", "/#/p/quill");
     await h1(o.page, "Quill");
-    await licenseSourceIs(o.page, "From signing in");
+    await licenseSourceIs(o.page, "Automatic Grant");
     await o.page.getByRole("button", { name: "More for Quill" }).click();
     const items = o.page.getByRole("menuitem");
     await items.first().waitFor();
@@ -1144,4 +1148,114 @@ describe("main flows", () => {
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
+});
+
+describe("product page, owner polish 2026-10-07", () => {
+  /** The nav entry the page marks as being read. */
+  const marked = (page: Page, nav: string): Promise<string | null> =>
+    page.evaluate(
+      (label) =>
+        document.querySelector(
+          `nav[aria-label="${label}"] a[aria-current="location"]`,
+        )?.textContent ?? null,
+      nav,
+    );
+
+  for (const reducedMotion of ["reduce", "no-preference"] as const) {
+    it(`What's new: Markdown formatted, a summary, the full notes in place, focus kept (${reducedMotion})`, async () => {
+      const o = await open("three", "/#/p/nightfall", { reducedMotion });
+      await h1(o.page, "Nightfall");
+      const news = o.page.getByRole("region", { name: "What's new in 1.4.2" });
+      await news
+        .getByRole("heading", { level: 3, name: "Highlights" })
+        .waitFor();
+      expect(await news.locator("strong").first().textContent()).toBe(
+        "Photo Mode",
+      );
+      // The summary's three items; the fourth waits behind Show full notes.
+      expect(await news.locator("[data-notes] > div > ul > li").count()).toBe(
+        3,
+      );
+      expect(await news.getByText("Subtitles keep their size").count()).toBe(0);
+      const more = news.getByRole("button", { name: "Show full notes" });
+      await more.focus();
+      await o.page.keyboard.press("Enter");
+      const rest = news.getByText(/Subtitles keep their size/);
+      await rest.waitFor();
+      // The same end state with or without motion: open, laid out, visible.
+      await expect
+        .poll(() =>
+          news.locator("[data-notes-rest]").evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return r.height > 40 && getComputedStyle(el).opacity === "1";
+          }),
+        )
+        .toBe(true);
+      const blog = news.getByRole("link", { name: "the Nightfall blog" });
+      expect(await blog.getAttribute("href")).toBe(
+        "https://nightfall.example.com/blog/1-4-2",
+      );
+      expect(await blog.getAttribute("target")).toBe("_blank");
+      expect(await blog.getAttribute("rel")).toBe("noreferrer");
+      // Focus never left the button, which now closes the notes.
+      expect(
+        await o.page.evaluate(() => document.activeElement?.textContent),
+      ).toBe("Show less");
+      await o.page.keyboard.press("Enter");
+      await expect.poll(() => rest.count()).toBe(0);
+      expect(
+        await o.page.evaluate(() => document.activeElement?.textContent),
+      ).toBe("Show full notes");
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+  }
+
+  for (const [width, nav] of [
+    [1440, "On this page"],
+    [390, "Sections"],
+  ] as const) {
+    it(`the section nav (${nav}, ${width} px) follows the page down in its own order, and a picked section holds`, async () => {
+      const o = await open("three", "/#/p/nightfall", {
+        width,
+        height: width === 390 ? 844 : 800,
+      });
+      await h1(o.page, "Nightfall");
+      const links = o.page.getByRole("navigation", { name: nav });
+      const order = ["Get it", "License", "Devices 2", "What's new", "Help"];
+      expect(await links.getByRole("link").allTextContents()).toEqual(order);
+      // The device count is a pill.
+      expect(
+        await links
+          .getByRole("link", { name: "Devices 2" })
+          .locator("[data-status=pill]")
+          .textContent(),
+      ).toBe("2");
+      const seen: string[] = [];
+      await o.page.mouse.move(width / 2, 400);
+      for (let i = 0; i < 80; i++) {
+        const m = await marked(o.page, nav);
+        if (m && seen.at(-1) !== m) seen.push(m);
+        const atEnd = await o.page.evaluate(
+          () =>
+            window.innerHeight + window.scrollY >=
+            document.documentElement.scrollHeight - 2,
+        );
+        if (atEnd) break;
+        await o.page.mouse.wheel(0, 120);
+        await o.page.waitForTimeout(60);
+      }
+      // Every section, once each, in the nav's order: the mark never skips or jumps back.
+      expect(seen, JSON.stringify(seen)).toEqual(order);
+
+      // A picked section holds once the scroll lands, though a card may share its top.
+      for (const pick of ["License", "Get it"]) {
+        await links.getByRole("link", { name: pick }).click();
+        await o.page.waitForTimeout(300);
+        expect(await marked(o.page, nav)).toBe(pick);
+      }
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+  }
 });

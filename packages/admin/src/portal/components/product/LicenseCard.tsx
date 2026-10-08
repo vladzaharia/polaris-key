@@ -10,7 +10,6 @@ import {
 } from "../../model/library.js";
 import {
   coversVersions,
-  licenseCountLine,
   licenseOptionLabel,
   tierName,
 } from "../../model/product.js";
@@ -21,19 +20,20 @@ import { ErrorPanel } from "../States.js";
 import { SectionCard } from "./Card.js";
 
 /**
- * The License card (§4.20): the tier as a neutral pill with the device count beside it, the
- * facts as text (updates, versions, activation, offline days), the masked key and what the license includes as a plain list. The status shows once,
- * in the header (EXPERIENCE §0.6 P4): this card adds an issue pill only when the license it
- * describes has a different issue from the one the header shows. With
- * several licenses for the product, a switcher ("2 licenses · Pro, Edu") picks the one this
- * card, Devices and Package access describe; each option names the tier and its short origin
- * ("Pro · Key …3WPLDA", "Standard · Sign-in", "Free · From Acme"). The tier is a neutral pill
- * with the device count beside it ("1 of 5 devices") for every licence. How the licence reached
- * the person is the **License source** fact beside "Activated", in plain words the Worker's
- * `origin` decides (PX-23, S-24 D21): "Key ending 3WPLDA" or "Added with a key", "Steam key",
- * "From Steam", "From <Developer>", "From signing in". The term is not repeated as a meta line:
- * "Updates included" already says it (owner, 2026-10-06). Every licence is account-bound, so
- * none is labelled by type (owner decision, 2026-10-05). Get a new key waits for G7.
+ * The License card (§4.20): the tier as a neutral pill at the top right of the card's header, the
+ * facts as text (updates, versions, activation, offline days), the masked key and what the
+ * license includes as a plain list. The status shows once, in the page header (EXPERIENCE §0.6
+ * P4): this card adds an issue pill, after the tier, only when the license it describes has a
+ * different issue from the one the page header shows. The device count is the Devices card's
+ * alone (owner polish 2026-10-07). With several licenses for the product, a switcher ("2
+ * licenses · Pro, Edu") picks the one this card, Devices and Package access describe; each option
+ * names the tier and its short origin ("Pro · Key …3WPLDA", "Standard · Sign-in", "Free · From
+ * Acme"). How the licence reached the person is the **License source** fact beside "Activated",
+ * in plain words the Worker's `origin` decides (PX-23, S-24 D21): "Key ending 3WPLDA" or "Added
+ * with a key", "Steam key", "From Steam", "From <Developer>", and "Automatic Grant" for one
+ * granted through OIDC at sign-in (owner polish 2026-10-07). The term is not repeated as a meta
+ * line: "Updates included" already says it (owner, 2026-10-06). Every licence is account-bound,
+ * so none is labelled by type (owner decision, 2026-10-05). Get a new key waits for G7.
  */
 export function LicenseCard({
   product,
@@ -43,8 +43,6 @@ export function LicenseCard({
   onRetry,
   selectedId,
   onSelect,
-  seatLimit = null,
-  showDeviceCount = true,
   storeOf = () => null,
 }: {
   product: LibraryProduct;
@@ -54,10 +52,6 @@ export function LicenseCard({
   onRetry: () => void;
   selectedId: string;
   onSelect: (id: string) => void;
-  /** The selected licence's seat limit as activation enforces it; null when unknown. */
-  seatLimit?: number | null;
-  /** False on a key licence when a sign-in licence covers the product's devices. */
-  showDeviceCount?: boolean;
   /** The store of an active purchase on a licence (PX-W6), or null. */
   storeOf?: (id: string) => string | null;
 }): React.ReactElement {
@@ -72,11 +66,30 @@ export function LicenseCard({
       status.label !== product.status.label)
       ? status
       : null;
+  // The tier comes from the licence list, so it is in place before the detail loads.
+  const selected =
+    product.licenses.find((l) => l.id === selectedId) ?? detail ?? null;
   return (
     <SectionCard
       id="license"
       title={`${product.name} license`}
-      aside={ownIssue ? <ProductStatusPill status={ownIssue} /> : undefined}
+      aside={
+        selected || ownIssue ? (
+          <div
+            data-license-pills=""
+            className="flex flex-wrap items-center justify-end gap-1.5"
+          >
+            {/* The tier is an identity label, not a status: a quiet neutral pill (owner,
+                2026-10-05), at the header's top right, before any issue pill (2026-10-07). */}
+            {selected ? (
+              <StatusPill tone="neutral" icon={false}>
+                {tierName(selected)}
+              </StatusPill>
+            ) : null}
+            {ownIssue ? <ProductStatusPill status={ownIssue} /> : null}
+          </div>
+        ) : undefined
+      }
       subtitle={detail?.email ? `Licensed to ${detail.email}` : undefined}
     >
       {multiple ? (
@@ -119,8 +132,6 @@ export function LicenseCard({
           product={product}
           detail={detail}
           now={now}
-          seatLimit={seatLimit}
-          showDeviceCount={showDeviceCount}
           store={storeOf(detail.id)}
         />
       )}
@@ -132,20 +143,14 @@ function LicenseFacts({
   product,
   detail,
   now,
-  seatLimit,
-  showDeviceCount,
   store,
 }: {
   product: LibraryProduct;
   detail: PortalLicenseDetail;
   now: number;
-  seatLimit: number | null;
-  showDeviceCount: boolean;
   store: string | null;
 }): React.ReactElement {
   const status = licenseStatus(detail, now);
-  const inUse = detail.devices.filter((d) => d.status === "authorized").length;
-  const countLine = licenseCountLine(inUse, seatLimit, showDeviceCount);
   const origin = licenseOrigin(detail, {
     keys: detail.keys,
     store,
@@ -163,15 +168,6 @@ function LicenseFacts({
   const includedId = React.useId();
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        {/* The tier is an identity label, not a status: a quiet neutral pill (owner, 2026-10-05). */}
-        <StatusPill tone="neutral" icon={false}>
-          {tierName(detail)}
-        </StatusPill>
-        {countLine ? (
-          <span className="text-sm text-fg-strong">{countLine}</span>
-        ) : null}
-      </div>
       {status.kind === "expired" || status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
           {status.kind === "expired"

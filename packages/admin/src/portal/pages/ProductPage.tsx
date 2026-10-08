@@ -32,7 +32,6 @@ import {
   readUaHints,
   resolveDevice,
   seatLimitFor,
-  SECTION_LABEL,
   seatsFor,
   showsDeviceCount,
   storeFor,
@@ -145,6 +144,13 @@ function ProductBody({
   const [current, setCurrent] = React.useState<ProductSection | null>(
     section && sections.includes(section) ? section : (sections[0] ?? null),
   );
+  // A section picked in the nav, or opened by a deep link, keeps the mark until the person
+  // scrolls by themselves (see the reading effect below).
+  const held = React.useRef<ProductSection | null>(
+    section && sections.includes(section) && section !== sections[0]
+      ? section
+      : null,
+  );
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   // PX-23: the header menu's Remove from my library, for the licence the page shows.
   const [removing, setRemoving] = React.useState(false);
@@ -177,41 +183,73 @@ function ProductBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The nav marks the section on screen: the topmost section inside the band (nav order breaks
-  // a tie, as between the two columns' first cards on desktop). An observer callback carries
-  // only the sections whose intersection changed, so the set in the band is kept across
-  // callbacks; picking from the changed entries alone left the nav on a section that had passed
-  // through the band and out again (a layout shift above a deep link, then a scroll back),
-  // whatever was on screen once the page settled.
+  // The nav marks the section being read (owner polish 2026-10-07): the one whose top most
+  // recently passed the reading line, which sits where a jump to a section puts it (its scroll
+  // margin), so the mark walks down the nav in the page's order as the page scrolls, whichever
+  // column a card is in; two cards that share a top go to the later one in that order. Over the
+  // page's last screen of scrolling the line slides down to the screen's bottom, so the last
+  // cards, which can never reach the top, are still each marked in turn before the page runs
+  // out. A section picked in the nav (or a deep link) holds the mark until the person scrolls
+  // themselves (wheel, touch, a scroll key or the scrollbar), so a card beside it never takes it.
+  // One read per frame, after a scroll.
   React.useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const els = sections
-      .map((s) => document.getElementById(`section-${s}`))
-      .filter((e): e is HTMLElement => e !== null);
-    const inBand = new Set<Element>();
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) inBand.add(e.target);
-          else inBand.delete(e.target);
-        }
-        let top: Element | undefined;
-        let topY = Infinity;
-        for (const el of els) {
-          if (!inBand.has(el)) continue;
-          const y = el.getBoundingClientRect().top;
-          if (y < topY) [top, topY] = [el, y];
-        }
-        const s = top?.getAttribute("data-section") as ProductSection | null;
-        if (s) setCurrent(s);
-      },
-      { rootMargin: "-120px 0px -60% 0px" },
-    );
-    els.forEach((e) => io.observe(e));
-    return () => io.disconnect();
+    let frame = 0;
+    const read = (): void => {
+      frame = 0;
+      if (held.current) return;
+      const view = window.innerHeight;
+      const end = document.documentElement.scrollHeight - view;
+      const slide = Math.min(view, end);
+      const left = Math.max(0, end - window.scrollY);
+      const t = slide > 0 ? Math.min(1, Math.max(0, 1 - left / slide)) : 0;
+      let pick: ProductSection | null = null;
+      let pickTop = -Infinity;
+      for (const s of sections) {
+        const el = document.getElementById(`section-${s}`);
+        if (!el) continue;
+        const box = el.getBoundingClientRect();
+        if (box.height === 0) continue; // not laid out
+        const base =
+          (parseFloat(getComputedStyle(el).scrollMarginTop) || 0) + 8;
+        const line = base + Math.max(0, view - base) * t;
+        if (box.top <= line && box.top >= pickTop)
+          [pick, pickTop] = [s, box.top];
+      }
+      setCurrent(pick ?? sections[0] ?? null);
+    };
+    const schedule = (): void => {
+      if (!frame) frame = requestAnimationFrame(read);
+    };
+    const release = (): void => {
+      held.current = null;
+    };
+    const releaseOnKey = (e: KeyboardEvent): void => {
+      if (SCROLL_KEYS.has(e.key)) release();
+    };
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.addEventListener("wheel", release, { passive: true });
+    window.addEventListener("touchstart", release, { passive: true });
+    window.addEventListener("keydown", releaseOnKey);
+    // The scrollbar: a press on the document's edge, outside the page's content.
+    const releaseOnBar = (e: PointerEvent): void => {
+      if (e.target === document.documentElement) release();
+    };
+    window.addEventListener("pointerdown", releaseOnBar);
+    schedule();
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("wheel", release);
+      window.removeEventListener("touchstart", release);
+      window.removeEventListener("keydown", releaseOnKey);
+      window.removeEventListener("pointerdown", releaseOnBar);
+    };
   }, [sections.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pick = (s: ProductSection): void => {
+    held.current = s;
     setCurrent(s);
     // Smooth only when motion is allowed: instant under reduced motion (notes/S-23 §6.6).
     document
@@ -234,14 +272,20 @@ function ProductBody({
     seats?.inUse ??
     devicesDetail?.devices.filter((d) => d.status === "authorized").length ??
     product.deviceCount;
-  const labels: Partial<Record<ProductSection, string>> = {
-    devices: `${SECTION_LABEL.devices} ${activeDevices}`,
+  const counts: Partial<Record<ProductSection, number>> = {
+    devices: activeDevices,
   };
   const has = (s: ProductSection) => sections.includes(s);
+  // Two columns when the main column has a card from the start (Get it and What's new come
+  // with the releases, Help with the developer's links); Package access alone arrives later.
+  const twoColumns = has("get") || has("new") || has("help");
+  const column = twoColumns
+    ? "pk-vt-scope contents desk:flex desk:flex-col desk:gap-6"
+    : "pk-vt-scope contents";
   const navProps = {
     sections,
     current,
-    labels,
+    counts,
     onPick: pick,
     hrefFor: (s: ProductSection) => href.product(product.slug, s),
   };
@@ -277,9 +321,20 @@ function ProductBody({
       <div className="flex gap-8">
         <SectionNav {...navProps} variant="toc" />
         {/* pk-vt-scope on both columns: when the Devices card's list changes (MO-06), every card
-            moves to its new place with it instead of jumping under it (src/motion.css). */}
-        <div className="flex min-w-0 flex-1 flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="pk-vt-scope contents desk:flex desk:flex-col desk:gap-6">
+            moves to its new place with it instead of jumping under it (src/motion.css). With no
+            main-column card known up front (no releases, no help), the licence's cards are the
+            page: one readable column beside the nav, never a column of air before them (owner
+            polish 2026-10-07). Package access, which arrives later, then
+            follows them in that column rather than moving them. */}
+        <div
+          data-columns={twoColumns ? "two" : "one"}
+          className={
+            twoColumns
+              ? "flex min-w-0 flex-1 flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]"
+              : "flex min-w-0 max-w-2xl flex-1 flex-col gap-6"
+          }
+        >
+          <div className={column}>
             {has("get") ? (
               <div className="order-1">
                 <GetItPanel product={product} device={here} />
@@ -305,8 +360,16 @@ function ProductBody({
                 />
               </div>
             ) : null}
+            {/* Help closes the page in every layout (owner polish 2026-10-07): the side column
+                is the licence's (License, product sign-in, Devices), so the nav's one order is
+                the page's order on desktop as on phones. */}
+            {has("help") ? (
+              <div className="order-6">
+                <HelpCard product={product} />
+              </div>
+            ) : null}
           </div>
-          <div className="pk-vt-scope contents desk:flex desk:flex-col desk:gap-6">
+          <div className={column}>
             <div className="order-2">
               <LicenseCard
                 product={product}
@@ -318,8 +381,6 @@ function ProductBody({
                 onSelect={(id) =>
                   setParams({ license: id === product.best.id ? null : id })
                 }
-                seatLimit={seatLimit}
-                showDeviceCount={showCount}
                 storeOf={storeOf}
               />
             </div>
@@ -344,14 +405,20 @@ function ProductBody({
                 <ProductIdentityCard productName={product.name} />
               </div>
             ) : null}
-            {has("help") ? (
-              <div className="order-6">
-                <HelpCard product={product} />
-              </div>
-            ) : null}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+/** Keys that scroll the page: pressing one hands the section mark back to the reading line. */
+const SCROLL_KEYS = new Set([
+  "ArrowDown",
+  "ArrowUp",
+  "PageDown",
+  "PageUp",
+  "Home",
+  "End",
+  " ",
+]);

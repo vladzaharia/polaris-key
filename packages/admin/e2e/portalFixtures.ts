@@ -128,7 +128,7 @@ const MORE = [
   lic("saltwind", "Saltwind", { activatedAt: NOW - 15 * DAY }),
 ];
 
-/** A sign-in licence (no key) with a device: the License card's "1 of 5 devices", "From signing in". */
+/** A sign-in licence (no key) with a device: Devices' "1 of 5 devices in use", "Automatic Grant". */
 const QUILL_SIGNIN = lic("quill", "Quill", {
   identityProvider: "oidc",
   keyCount: 0,
@@ -198,8 +198,10 @@ const RELEASES = [
     releaseId: "rel_142",
     version: "1.4.2",
     title: "Stable",
+    // Markdown, as developers write it (owner polish 2026-10-07): a heading, bold, a link and
+    // more than the summary's three items, so the product page shows Show full notes.
     notes:
-      "- New Photo Mode with free camera and depth of field.\n- Steam Deck: steadier 40 fps in the Lantern Caves.\n- Fixed controller rumble cutting out after a reload.",
+      "## Highlights\n- **Photo Mode** with a free camera and depth of field.\n- Steam Deck: steadier 40 fps in the Lantern Caves.\n- Fixed controller rumble cutting out after a reload.\n- Subtitles keep their size after a resolution change.\n\n## Thanks\nTo everyone who sent a save file. More on [the Nightfall blog](https://nightfall.example.com/blog/1-4-2).",
     publishedAt: NOW - 13 * DAY,
     sourceUrl: null,
     artifacts: [

@@ -1,13 +1,21 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
+import { Expand } from "../../../ui/motion/index.js";
 import type { LibraryProduct } from "../../model/library.js";
 import { formatDay } from "../../model/library.js";
-import { noteBlocks } from "../../model/product.js";
+import { releaseNotes } from "../../model/markdown.js";
+import { Markdown } from "../Markdown.js";
 import { SectionCard } from "./Card.js";
 
 /**
- * What's new (§4.20): the newest release's notes as plain text (never HTML), then earlier
- * versions, three at first with "Show all N".
+ * What's new (§4.20): the newest release's notes, then earlier versions, three at first with
+ * "Show all N".
+ *
+ * The notes are Markdown (owner polish 2026-10-07): drawn formatted from a parsed tree, never as
+ * HTML (`model/markdown.ts`, `Markdown.tsx`), with only safe links. A short summary shows at once,
+ * the first paragraph or list cut to three lines or items, and **Show full notes** opens the rest
+ * in place below it with the expand pattern (`Expand`; at once under reduced motion, to the same
+ * end state). The button stays where focus is, so opening or closing never loses it.
  */
 export function WhatsNew({
   product,
@@ -15,9 +23,14 @@ export function WhatsNew({
   product: LibraryProduct;
 }): React.ReactElement | null {
   const [all, setAll] = React.useState(false);
+  const [full, setFull] = React.useState(false);
+  const restId = React.useId();
   const [latest, ...earlier] = product.releases;
+  const notes = React.useMemo(
+    () => (latest?.notes ? releaseNotes(latest.notes) : null),
+    [latest?.notes],
+  );
   if (!latest) return null;
-  const blocks = latest.notes ? noteBlocks(latest.notes) : [];
   const shown = all ? earlier : earlier.slice(0, 3);
   return (
     <SectionCard
@@ -30,19 +43,34 @@ export function WhatsNew({
         .filter(Boolean)
         .join(" · ")}
     >
-      {blocks.length ? (
-        <div className="space-y-3 text-[0.9375rem] text-fg">
-          {blocks.map((b, i) =>
-            b.kind === "ul" ? (
-              <ul key={i} className="list-disc space-y-1.5 pl-5">
-                {b.lines.map((l, j) => (
-                  <li key={j}>{l}</li>
-                ))}
-              </ul>
-            ) : (
-              <p key={i}>{b.lines[0]}</p>
-            ),
-          )}
+      {notes && notes.summary.length ? (
+        <div data-notes="" className="text-[0.9375rem] text-fg">
+          <div className="space-y-3">
+            <Markdown blocks={notes.summary} />
+          </div>
+          {notes.rest.length ? (
+            <>
+              {/* -mx-1/px-1: room for a link's focus ring inside the region's clip. */}
+              <Expand open={full} id={restId} className="-mx-1">
+                <div data-notes-rest="" className="space-y-3 px-1 pt-3">
+                  <Markdown blocks={notes.rest} />
+                </div>
+              </Expand>
+              <button
+                type="button"
+                aria-expanded={full}
+                aria-controls={restId}
+                onClick={() => setFull((v) => !v)}
+                className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-accent-fg hover:underline"
+              >
+                {full ? "Show less" : "Show full notes"}
+                <ChevronDown
+                  aria-hidden
+                  className={full ? "size-4 rotate-180" : "size-4"}
+                />
+              </button>
+            </>
+          ) : null}
         </div>
       ) : (
         <p className="text-sm text-fg-muted">

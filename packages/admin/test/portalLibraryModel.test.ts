@@ -160,7 +160,8 @@ describe("status model (§5.3), first match wins", () => {
     });
     const keyless = license({ product: "a", keyCount: 0, activeKeyCount: 0 });
     const last = [{ last4: "3WPLDA" }];
-    expect(licenseOrigin(signIn)).toBe("From signing in");
+    // Granted through OIDC at sign-in (auto-issue or a group grant): owner polish 2026-10-07.
+    expect(licenseOrigin(signIn)).toBe("Automatic Grant");
     expect(licenseOrigin(key)).toBe("Added with a key");
     expect(licenseOrigin(key, { keys: last })).toBe("Key ending 3WPLDA");
     expect(licenseOrigin(key, { store: "steam" })).toBe("Steam key");
@@ -219,7 +220,9 @@ describe("status model (§5.3), first match wins", () => {
     });
     expect(licenseOrigin(appStore)).toBe("From the App Store");
     const signIn = license({ product: "a", keyCount: 0, origin: "signin" });
-    expect(licenseOrigin(signIn, dev)).toBe("From signing in");
+    expect(licenseOrigin(signIn, dev)).toBe("Automatic Grant");
+    // The picker keeps its word: only the License source fact changed.
+    expect(shortOrigin(signIn)).toBe("Sign-in");
     // A store origin with no store named reads by its other facts, never " key" or "From ".
     expect(
       licenseOrigin(license({ product: "a", origin: "store-key" }), {

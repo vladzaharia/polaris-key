@@ -296,6 +296,14 @@ export function devicesText(n: number, limit?: number | null): string {
 export const FROM_SIGNING_IN = "From signing in";
 
 /**
+ * The **License source** of a licence granted automatically through OIDC, by the product's
+ * auto-issue or a group grant when the person signed in (the Worker's `signin` origin): "Automatic
+ * Grant" (owner polish 2026-10-07). The status line and the picker keep "From signing in" and
+ * "Sign-in".
+ */
+export const AUTOMATIC_GRANT = "Automatic Grant";
+
+/**
  * A licence issued by signing in (`identityProvider` "oidc") with no key. Activation counts its
  * seats like any other licence's.
  */
@@ -370,7 +378,8 @@ function originOf(
  * "Added with a key" while the key's last characters aren't kept, G7) for a key the person
  * added, "Steam key ending 3WPLDA" (or "Steam key") for a store key, "From Steam" for a
  * store-bound licence with no key, "From Tidewater Labs" for a licence the developer assigned
- * (even though it has a key; "From the developer" without a name), "From signing in".
+ * (even though it has a key; "From the developer" without a name), "Automatic Grant" for one
+ * granted through OIDC at sign-in (owner polish 2026-10-07).
  */
 export function licenseOrigin(
   l: OriginSummary,
@@ -389,7 +398,7 @@ export function licenseOrigin(
     case "key":
       return last ? `Key ending ${last}` : "Added with a key";
     case "signin":
-      return FROM_SIGNING_IN;
+      return AUTOMATIC_GRANT;
     case "developer":
       return `From ${facts.developer?.trim() || "the developer"}`;
   }
