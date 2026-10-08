@@ -333,10 +333,15 @@ function shrinkToFit(spans: Line, width: number, ellipsis: string): Line {
   const trail = /\s*$/.exec(span.text)![0];
   const inner = span.text.slice(lead.length, span.text.length - trail.length);
   const room = Math.max(SHRINK_FLOOR, cellWidth(inner) - (total - width));
+  const cut = truncateEnd(inner, room, ellipsis);
+  // No space before the ellipsis ("Mastering Suite…", not "Mastering Suite …").
+  const name = cut.endsWith(ellipsis)
+    ? `${cut.slice(0, -ellipsis.length).trimEnd()}${ellipsis}`
+    : cut;
   const out = [...spans];
   out[i] = {
     ...span,
-    text: `${lead}${truncateEnd(inner, room, ellipsis)}${trail}`,
+    text: `${lead}${name}${trail}`,
   };
   return out;
 }

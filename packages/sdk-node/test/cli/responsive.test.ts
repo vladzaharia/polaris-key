@@ -24,6 +24,7 @@ import {
 } from "../../src/cli/flows.js";
 import { renderHelp } from "../../src/cli/help.js";
 import { CLI_VERBS } from "../../src/cli/kit.js";
+import { LiveRegion } from "../../src/cli/term/live.js";
 import { breakPieces, wrapSpans } from "../../src/cli/term/width.js";
 import {
   deferred,
@@ -253,6 +254,42 @@ describe("URLs and codes wrap and are never cut", () => {
     expect([...LONG.code]).toHaveLength(19);
     expect([...LONG.url]).toHaveLength(110);
     expect([...LONG.device]).toHaveLength(60);
+  });
+});
+
+describe("a live region taller than the screen", () => {
+  it("drops its blank rows first, then lets the top lines scroll away", async () => {
+    const screen = new XtermScreen(40, 5);
+    const live = new LiveRegion(screen, { animate: true, rows: 5 });
+    live.draw(["┌  Header", "│", "│  one", "│", "│  two", "└  Esc cancel"]);
+    await screen.flush();
+    expect(screen.viewport().map((r) => r.text)).toEqual([
+      "┌  Header",
+      "│  one",
+      "│  two",
+      "└  Esc cancel",
+      "",
+    ]);
+    live.draw([
+      "┌  Header",
+      "│",
+      "│  one",
+      "│  two",
+      "│  three",
+      "│  four",
+      "└  Esc cancel",
+    ]);
+    await screen.flush();
+    const rows = screen.all().map((r) => r.text);
+    expect(rows.slice(-5)).toEqual([
+      "│  one",
+      "│  two",
+      "│  three",
+      "│  four",
+      "└  Esc cancel",
+    ]);
+    expect(rows.filter((r) => r === "┌  Header")).toHaveLength(1);
+    live.close();
   });
 });
 

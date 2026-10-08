@@ -7,7 +7,7 @@
 
 import { TERMINAL_SPINNER } from "../tokens.generated.js";
 import type { TerminalCaps, TerminalOutput } from "./caps.js";
-import { cellWidth } from "./width.js";
+import { cellWidth, stripAnsi } from "./width.js";
 
 /** The timer seam (tests pass a manual one). */
 export interface Ticker {
@@ -70,6 +70,9 @@ function eraseRows(n: number): string {
 }
 
 const widthsOf = (lines: readonly string[]) => lines.map((l) => cellWidth(l));
+
+/** A blank rail row (the rail glyph alone, or nothing): the first thing a short screen drops. */
+const BLANK_RAIL = /^\s*[│|]?\s*$/;
 const linesOf = (f: Frame) => (typeof f === "function" ? f() : f);
 
 /**
@@ -140,8 +143,17 @@ export class LiveRegion {
     return s;
   }
 
-  /** The frame's lines from `head` on, printing any that do not fit above the region. */
-  private place(lines: readonly string[]): string {
+  /**
+   * The frame's lines from `head` on, fitted to the screen: when they are taller than it, the
+   * blank rail rows go first, then the top lines that still do not fit are printed above the
+   * region (they scroll away; the header first).
+   */
+  private place(frame: readonly string[]): string {
+    let lines = frame;
+    if (
+      physicalRows(widthsOf(lines.slice(this.head)), this.columns) > this.rows
+    )
+      lines = lines.filter((l) => !BLANK_RAIL.test(stripAnsi(l)));
     const widths = widthsOf(lines);
     let start = Math.min(this.head, lines.length);
     while (
