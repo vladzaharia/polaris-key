@@ -106,7 +106,7 @@ async function openActivate(page: Page): Promise<void> {
   await dialog.getByText("Key format is valid").waitFor();
 }
 
-async function toConfirm(page: Page): Promise<void> {
+export async function toConfirm(page: Page): Promise<void> {
   await openActivate(page);
   await page
     .getByRole("dialog", { name: "Activate a license" })
