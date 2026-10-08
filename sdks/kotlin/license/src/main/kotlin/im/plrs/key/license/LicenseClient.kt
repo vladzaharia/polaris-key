@@ -74,6 +74,9 @@ public fun isUsable(state: LicenseState): Boolean = isUsable(state.status)
 public class LicenseClient(
     private val core: CoreContext,
     options: LicenseClientOptions = LicenseClientOptions(),
+    /** Raised after [deactivate] wiped the credentials, so the facade can publish the new state (SP-51). */
+    private val onDeactivated: (suspend () -> Unit)? = null,
+    // Last, so `LicenseClient(core, options) { ... }` keeps binding its trailing lambda here.
     private val onAcquired: LicenseAcquiredListener? = null,
 ) {
     private val fingerprintEnabled = options.fingerprint
@@ -171,6 +174,8 @@ public class LicenseClient(
      * decides coverage).
      */
     public suspend fun entitledChannels(): List<String> {
+        // SP-51: a revoked, expired or never-activated install lists no grants beyond stable.
+        if (!isUsable(status())) return listOf(CHANNEL_STABLE)
         val array = doc()?.entitlements?.get("channels")?.value.arrayValue ?: return listOf(CHANNEL_STABLE)
         return array.mapNotNull { it.stringValue }
     }
@@ -210,5 +215,6 @@ public class LicenseClient(
     public suspend fun deactivate() {
         core.token()?.let { LicenseEndpoints.deauthorize(core, it) }
         core.clearAll()
+        onDeactivated?.invoke()
     }
 }

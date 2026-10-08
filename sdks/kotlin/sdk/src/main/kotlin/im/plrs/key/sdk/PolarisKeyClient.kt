@@ -206,7 +206,15 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /** The §5 re-acquire every authenticated path shares (documents and edge-mint alike). */
     private val reacquire: ReacquireFn = { current, source -> reacquireToken(current, source) }
 
-    public val license: LicenseClient = LicenseClient(core, options.license) { syncAfterAcquisition() }
+    public val license: LicenseClient = LicenseClient(
+        core, options.license,
+        onAcquired = { syncAfterAcquisition() },
+        onDeactivated = {
+            tokenRejection.clear()
+            config.publish()
+            publishLicense(force = true)
+        },
+    )
     private val attestationProvider: AttestationProvider? = options.attestation
 
     /** The provider attest() uses now (the option, the process's installed one, or none). */
@@ -398,16 +406,20 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * server that sends no usable ETag), differs from the last emission. [force] emits regardless.
      */
     private suspend fun publishLicense(force: Boolean = false) {
-        val state = license.status()
-        val hash = core.cache().license?.jws?.let { sha256Hex(it) }
+        // Read INSIDE the lock: overlapping passes would otherwise publish an older read last and
+        // leave the state stale (a revoked device shown as licensed).
+        var state: LicenseState? = null
         val emit = publishLock.withLock {
-            val key = state to hash
+            val read = license.status()
+            state = read
+            val hash = core.cache().license?.jws?.let { sha256Hex(it) }
+            val key = read to hash
             val changed = force || lastKey != key
             lastKey = key
-            stateFlow.value = state
+            stateFlow.value = read
             changed
         }
-        if (emit) changes.tryEmit(state)
+        if (emit) changes.tryEmit(state!!)
     }
 
     private fun sha256Hex(text: String): String =
@@ -657,7 +669,12 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     // ── Offline bundles (§7) ─────────────────────────────────────────────────────────────────
     /** Verify and install an offline activation bundle. All-or-nothing; no token is created. */
-    public suspend fun importBundle(jws: String): VerifiedBundle = core.importBundle(jws)
+    public suspend fun importBundle(jws: String): VerifiedBundle {
+        val bundle = core.importBundle(jws)
+        config.publish()
+        publishLicense(force = true)
+        return bundle
+    }
 
     // ── Convenience passthroughs (the suite's shape is `client.<service>.<verb>`) ────────────
     public suspend fun status(now: Long? = null): LicenseState = license.status(now)
@@ -681,9 +698,6 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     public suspend fun deactivate() {
         license.deactivate()
-        tokenRejection.clear()
-        config.publish()
-        publishLicense(force = true)
     }
 
     public suspend fun currentDevice(): DeviceInfo {

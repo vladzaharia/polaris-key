@@ -162,6 +162,47 @@ class LiveStateTest {
     }
 
     @Test
+    fun overlappingPassesNeverLeaveTheStateStaleAtLicensed() = runBlocking {
+        repeat(20) {
+            val server = Server(signer, now)
+            val c = client(server)
+            c.activate("pkey_djdl_x")
+            server.revoked = true
+            val passes = (0 until 12).map { i ->
+                async(kotlinx.coroutines.Dispatchers.Default) { if (i % 3 == 0) c.sync(force = true) else c.sync() }
+            }
+            passes.forEach { it.await() }
+            assertEquals(LicenseStatus.revoked, c.status().status)
+            assertEquals(LicenseStatus.revoked, c.licenseState.value?.status)
+        }
+    }
+
+    @Test
+    fun deactivatingThroughTheLicenseClientIsPublishedToo() = runBlocking {
+        val server = Server(signer, now)
+        val c = client(server)
+        val seen = java.util.concurrent.CopyOnWriteArrayList<LicenseState>()
+        val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.licenseChanges.collect { seen += it } }
+        c.activate("pkey_djdl_x")
+        assertEquals(LicenseStatus.ok, c.licenseState.value?.status)
+        c.license.deactivate()
+        withTimeout(1_000) { while (seen.last().status == LicenseStatus.ok) delay(5) }
+        assertEquals(LicenseStatus.needsActivation, seen.last().status)
+        assertEquals(LicenseStatus.needsActivation, c.licenseState.value?.status)
+        collector.cancel()
+    }
+
+    @Test
+    fun aRevokedInstallListsNoChannelsBeyondStable() = runBlocking {
+        val server = Server(signer, now)
+        val c = client(server)
+        c.activate("pkey_djdl_x")
+        server.revoked = true
+        c.sync(force = true)
+        assertEquals(listOf("stable"), c.license.entitledChannels())
+    }
+
+    @Test
     fun listDevicesSaysWhenItIsOffline() = runBlocking {
         val server = Server(signer, now)
         val c = client(server)

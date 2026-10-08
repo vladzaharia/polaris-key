@@ -90,15 +90,23 @@ public object NoNetworkTransport : PolarisTransport {
 }
 
 /** The production transport, over OkHttp. Main-safe: every byte is read on `Dispatchers.IO`. */
-public class OkHttpTransport(client: OkHttpClient = OkHttpClient()) : PolarisTransport, AutoCloseable {
+public class OkHttpTransport private constructor(client: OkHttpClient, private val owned: Boolean) : PolarisTransport, AutoCloseable {
+    /** A transport over an OkHttp client the SDK builds itself; [close] shuts that client down. */
+    public constructor() : this(OkHttpClient(), true)
+
+    /** A transport over the host's [client], which it shares: [close] leaves the host's client alone. */
+    public constructor(client: OkHttpClient) : this(client, false)
+
     private val base: OkHttpClient = client.newBuilder().followRedirects(false).followSslRedirects(false).build()
 
     /**
      * Cancel in-flight calls and shut OkHttp's dispatcher and connection pool down (SP-51), so a JVM
-     * `main` exits. A client the host passed in shares both: close it yourself if it is not otherwise
-     * needed.
+     * `main` exits. Only when the SDK built the client itself: a host-supplied client shares its
+     * dispatcher and pool with the host's other calls, so closing here would break them (close it
+     * yourself if it is not otherwise needed).
      */
     override fun close() {
+        if (!owned) return
         base.dispatcher.cancelAll()
         base.dispatcher.executorService.shutdown()
         base.connectionPool.evictAll()

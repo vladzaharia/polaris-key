@@ -54,3 +54,16 @@ class MainSafeTransportTest {
         }
     }
 }
+
+class TransportCloseTest {
+    @org.junit.Test
+    fun closeLeavesAHostSuppliedClientAlone() {
+        val host = okhttp3.OkHttpClient()
+        OkHttpTransport(host).close()
+        org.junit.Assert.assertFalse(host.dispatcher.executorService.isShutdown)
+        // Its own client is shut down.
+        val own = OkHttpTransport()
+        own.close()
+        own.close()
+    }
+}
