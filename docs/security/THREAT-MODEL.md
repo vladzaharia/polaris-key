@@ -7501,6 +7501,18 @@ attachments in place, with no record and no retry, while the person had been tol
   nightly tick fails the `erasures` step, shown on the Operations page, while an erasure has
   failed five attempts. The response to the user carries `erasing: true` while the retry is
   pending.
+- **Credentials stop with the close, not the commit.** The first batch also revokes the
+  account's registry tokens (`account_deleted`); the lookup never reads the account, so without
+  that an owner-bound token would authenticate through the whole retry window. This isolate's
+  30-second resolution cache is dropped at once; another isolate can honour a cached token for up
+  to 30 seconds. Checked and safe without a write: portal sessions are deleted; browser sessions,
+  the device login and the card gates re-read `accounts.status` and refuse anything but `active`;
+  passkeys only work through `signIn`, which refuses; OCI pull tokens re-resolve their registry
+  token; CI tokens (`pkeyci_`) and licence tokens belong to a product or licence, not the
+  account. `subjectFor` refuses to mint a subject for an erasing account (developer-API licence
+  reads use `subjectForOrNull`), and a last read-and-hook pass precedes the commit. A new
+  account on the same email exists only after the erasure completes, because until then the
+  email's link still belongs to the erasing account and sign-in is refused.
 - **Residual.** Until the retry completes the person's data still exists server-side, but no API
   or session reaches it; the time to completion is bounded by the store recovering plus the
   back-off. SEC-PRV-6 (buyer email left in `audit.summary` and `license_relinks.holder_json`) is

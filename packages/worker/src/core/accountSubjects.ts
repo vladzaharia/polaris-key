@@ -79,6 +79,29 @@ export async function existingSubjectsFor(
   return out;
 }
 
+/** Thrown by {@link subjectFor} for an account whose erasure is under way. */
+export class AccountErasingError extends Error {
+  constructor() {
+    super("account is being erased");
+    this.name = "AccountErasingError";
+  }
+}
+
+/** {@link subjectFor} for read paths: `null` while the account is being erased. */
+export async function subjectForOrNull(
+  db: Db,
+  accountId: string,
+  product: string,
+  now: number,
+): Promise<string | null> {
+  try {
+    return await subjectFor(db, accountId, product, now);
+  } catch (e) {
+    if (e instanceof AccountErasingError) return null;
+    throw e;
+  }
+}
+
 /**
  * The pairwise subject for (account, product), created on first contact: a licence of the
  * product attached, a sign-in through the product, or account × product data. Idempotent and
@@ -93,6 +116,15 @@ export async function subjectFor(
 ): Promise<string> {
   const existing = await existingSubjectFor(db, accountId, product);
   if (existing) return existing;
+  // SEC-WP-04: an account being erased (`status = 'deleted'`) mints nothing new; a subject minted
+  // after the erasure read its list would escape the store hooks and the `subject.deleted` event.
+  if (
+    await db.first(
+      "SELECT 1 AS x FROM accounts WHERE id = ? AND status = 'deleted'",
+      accountId,
+    )
+  )
+    throw new AccountErasingError();
   // A collision on UNIQUE (product, subject) is 2^-128; the retry is for completeness only.
   for (let attempt = 0; attempt < 3; attempt++) {
     await db.run(

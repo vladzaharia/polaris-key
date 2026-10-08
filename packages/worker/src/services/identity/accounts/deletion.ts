@@ -20,7 +20,10 @@ import {
 } from "../../../core/accountSubjects.js";
 import { stmtDeleteAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
 import { randomId, type Db, type DbStatement } from "../../../core/platform.js";
-import { stmtRevokeAccountRegistryTokens } from "../../../core/registryTokens.js";
+import {
+  forgetRegistryTokens,
+  stmtRevokeAccountRegistryTokens,
+} from "../../../core/registryTokens.js";
 import {
   clearDeviceSubjects,
   onLicenseOwnershipEnded,
@@ -209,12 +212,17 @@ export async function deleteAccount(
       sql: "DELETE FROM account_sessions WHERE account_id = ?",
       params: [accountId],
     },
+    // The account's package-registry tokens stop authenticating now, not at the commit: the
+    // lookup never reads the account. Idempotent; the commit batch repeats it.
+    stmtRevokeAccountRegistryTokens(accountId, now),
     {
       sql: `INSERT OR IGNORE INTO account_erasures (account_id, requested_at, next_attempt_at)
             VALUES (?, ?, ?)`,
       params: [accountId, now, now],
     },
   ]);
+  // This isolate's 30-second resolution cache; other isolates' entries expire within 30 s.
+  forgetRegistryTokens();
   return runErasure(ctx, accountId);
 }
 
@@ -313,6 +321,20 @@ async function runErasure(
   await attempt("avatars", async () => {
     await deleteAccountAvatars(env, db, accountId);
   });
+  if (failures.length === 0) {
+    // One last read-and-hook pass (`subjectFor` now refuses to mint for an erasing account, so a
+    // subject can only appear from a request that raced the closing batch).
+    subjects = await readSubjects();
+    for (const s of subjects) {
+      if (done.has(`${s.product}\0${s.subject}`)) continue;
+      const out = await runSubjectDeleteIsolated(
+        { db, env, now },
+        { product: s.product, subject: s.subject },
+      );
+      for (const f of out) failures.push(failure(`store:${f.store}`, f.error));
+      if (out.length === 0) done.add(`${s.product}\0${s.subject}`);
+    }
+  }
   if (failures.length === 0) {
     try {
       await db.batch(commitStatements(accountId, subjects, licenses, now));

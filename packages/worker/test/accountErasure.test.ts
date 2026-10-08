@@ -13,7 +13,12 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { insertLicense } from "../src/repo.js";
-import { subjectFor } from "../src/core/accountSubjects.js";
+import { subjectFor, subjectForOrNull } from "../src/core/accountSubjects.js";
+import {
+  forgetRegistryTokens,
+  lookupRegistryCredential,
+  mintRegistryToken,
+} from "../src/core/registryTokens.js";
 import {
   registerSubjectStore,
   unregisterSubjectStore,
@@ -323,6 +328,60 @@ describe("SEC-PRV-1: erasure survives a failing store hook", () => {
   });
 });
 
+describe("closing the account closes its credentials", () => {
+  it("an owner registry token stops authenticating at once, while erasing", async () => {
+    const w = await world();
+    const res = await mintRegistryToken(
+      w.env,
+      w.db,
+      {
+        product: "acme",
+        label: "laptop",
+        binding: "owner",
+        createdBy: `portal:${w.id}`,
+        portalAccountId: w.id,
+      },
+      NOW,
+    );
+    if (!res.ok) throw new Error(JSON.stringify(res));
+    forgetRegistryTokens();
+    const live = await lookupRegistryCredential(w.env, w.db, res.token, {
+      nowMs: NOW * 1000,
+    });
+    expect(live.resolved).not.toBeNull();
+    registerSubjectStore("flaky", {
+      merge: async () => {},
+      delete: async () => {
+        throw new Error("down");
+      },
+    });
+    expect(await deletion.deleteAccount(w.ctx(), w.id)).toEqual({
+      ok: true,
+      erasing: true,
+    });
+    const after = await lookupRegistryCredential(w.env, w.db, res.token, {
+      nowMs: NOW * 1000 + 1000,
+    });
+    expect(after.resolved).toBeNull();
+  });
+
+  it("subjectFor mints nothing for an account being erased", async () => {
+    const w = await world();
+    await seedProduct(w.db, "other");
+    registerSubjectStore("flaky", {
+      merge: async () => {},
+      delete: async () => {
+        throw new Error("down");
+      },
+    });
+    await deletion.deleteAccount(w.ctx(), w.id);
+    await expect(subjectFor(w.db, w.id, "other", NOW)).rejects.toThrow(
+      /being erased/,
+    );
+    expect(await subjectForOrNull(w.db, w.id, "other", NOW)).toBeNull();
+  });
+});
+
 describe("SEC-PRV-19: a subject minted during erasure is not orphaned", () => {
   it("its store data is deleted, it is announced, and no subject or alias row survives", async () => {
     const w = await world();
@@ -334,7 +393,15 @@ describe("SEC-PRV-19: a subject minted during erasure is not orphaned", () => {
       delete: async ({ db }, { product }) => {
         seen.push(product);
         if (!minted) {
-          minted = await subjectFor(db, w.id, "other", NOW);
+          minted = "sub_late_minted";
+          // A request racing the closing batch (subjectFor itself refuses while erasing).
+          await db.run(
+            `INSERT INTO account_product_subjects (account_id, product, subject, created_at)
+             VALUES (?, 'other', ?, ?)`,
+            w.id,
+            minted,
+            NOW,
+          );
           // A merge alias for the late subject (no foreign key holds it).
           await db.run(
             `INSERT INTO account_product_subject_aliases (product, alias, subject, merged_at)
