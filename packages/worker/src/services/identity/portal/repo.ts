@@ -1542,6 +1542,21 @@ export async function removeLibraryEntry(
   );
 }
 
+/** Whether the account holds a licence for `product`, linked by any route (`listHeldProducts`). */
+export async function holdsProduct(
+  db: Db,
+  accountId: string,
+  product: string,
+): Promise<boolean> {
+  return (
+    (await db.first<{ one: number }>(
+      "SELECT 1 AS one FROM licenses WHERE account_id = ? AND product = ? LIMIT 1",
+      accountId,
+      product,
+    )) !== null
+  );
+}
+
 /**
  * Every product the account holds a licence for, linked by any route (a key claim, a store
  * purchase, a sign-in, a Discover add, an operator grant): the products its library lists, before

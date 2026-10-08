@@ -148,7 +148,9 @@ export function DiscoverTile({
               <h3 id={id} className="truncate text-lg font-bold text-fg-strong">
                 <a
                   href={page}
-                  className="pk-press-link rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                  // block: the name's full line is the link (24 px or taller), so a short name
+                  // still meets the target size (WCAG 2.5.8; PS-05).
+                  className="pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
                 >
                   {offer.name}
                 </a>

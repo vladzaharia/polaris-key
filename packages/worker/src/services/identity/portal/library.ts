@@ -71,6 +71,7 @@ import { mediaUrlFor } from "./media.js";
 import { purchasesFor } from "./purchase.js";
 import {
   getPortalProductSettings,
+  holdsProduct,
   listHeldProducts,
   listLibraryEntries,
   listPortalLicenses,
@@ -463,8 +464,13 @@ export async function libraryView(
 /**
  * `DELETE /api/library/<p>`: remove the account's library ENTRY for the product (PS-04). Entries
  * only: a licence-backed library item is never touched here (a licence leaves the library only by
- * the existing detach, `detachLicense`, which also writes its auto-attach block), so a product
- * with no entry answers the plain `404`, whatever licences the account holds for it.
+ * the existing detach, `detachLicense`, which also writes its auto-attach block).
+ *
+ * The answer says whether the product is still in the library (`inLibrary`). An entry a licence
+ * replaced meanwhile (the entry hides behind any licence the account holds, PS-05) is removed and
+ * answers `inLibrary: true`: the licence keeps the product, so the portal does not say it left.
+ * Asked again, or for a product only a licence holds, it answers the same, idempotently, and
+ * writes nothing. `404` only when the account holds neither an entry nor a licence for it.
  */
 export async function handleLibraryEntryRemove(
   req: Request,
@@ -474,18 +480,22 @@ export async function handleLibraryEntryRemove(
   now: number,
 ): Promise<Response> {
   if (req.method !== "DELETE") return err(405, "method_not_allowed");
-  if (!(await removeLibraryEntry(db, accountId, slug))) return notFound();
-  await portalAudit(db, {
-    accountId,
-    action: "portal.library.remove",
-    product: slug,
-    targetKind: "product",
-    targetId: slug,
-    summary:
-      "Removed a product from the library (source: discover; path: open)",
-    now,
-  });
-  return portalJson({ ok: true, product: slug });
+  const removed = await removeLibraryEntry(db, accountId, slug);
+  const inLibrary = await holdsProduct(db, accountId, slug);
+  if (!removed && !inLibrary) return notFound();
+  if (removed)
+    await portalAudit(db, {
+      accountId,
+      action: "portal.library.remove",
+      product: slug,
+      targetKind: "product",
+      targetId: slug,
+      summary: inLibrary
+        ? "Removed a product's library entry; its license keeps it in the library (source: discover; path: open)"
+        : "Removed a product from the library (source: discover; path: open)",
+      now,
+    });
+  return portalJson({ ok: true, product: slug, inLibrary });
 }
 
 /** `GET /api/products/<p>`, or `null` when the account holds nothing here (a 404). */

@@ -60,8 +60,13 @@ export function RemoveEntryConfirm({
     // never on the page's body.
     group.current?.focus();
     remove.mutate(slug, {
-      onSuccess: () => {
-        toast.success(`${name} was removed from your library`);
+      onSuccess: (res) => {
+        // A licence arrived meanwhile (PS-05): the entry is gone, but the product stays.
+        toast.success(
+          res.inLibrary
+            ? `${name} stays in your library: you have a license for it now`
+            : `${name} was removed from your library`,
+        );
         if (onRemoved) onRemoved();
         else focusPageHeading();
       },

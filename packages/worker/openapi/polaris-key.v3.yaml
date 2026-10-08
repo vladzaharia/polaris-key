@@ -11309,20 +11309,28 @@ paths:
         PS-04 (notes/S-21 §6.4). Removes the account's library ENTRY for the product (an open
         product added from the storefront), audited in the account's history; the product is
         offered again. Entries only: a licence leaves the library only by the existing detach,
-        so a product with no entry answers `404`, whatever licences the account holds for it.
-        Needs the `X-PKey-Portal-CSRF` header.
+        and is never touched here. `inLibrary` says whether the product is still in the library:
+        `true` when the account holds a licence for it, so an entry a licence replaced meanwhile
+        is removed and the product stays (PS-05). Idempotent: with no entry left but a licence
+        held it answers the same `200` and writes nothing; `404` only when the account holds
+        neither an entry nor a licence for the product. Needs the `X-PKey-Portal-CSRF` header.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
         "200":
-          description: Removed.
+          description: The entry is gone; `inLibrary` says whether a licence keeps the product.
           content:
             application/json:
               schema:
                 type: object
-                required: [ok, product]
+                required: [ok, product, inLibrary]
                 properties:
                   ok: { type: boolean, enum: [true] }
                   product: { type: string }
+                  inLibrary:
+                    type: boolean
+                    description: >
+                      The account holds a licence for the product, so it is still in the
+                      library.
         "401":
           description: No portal session.
           content:

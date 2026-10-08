@@ -296,6 +296,19 @@
     height: 100%;
   }
 
+  /* The customer site's sticky header (PortalShell: 3.5rem, 4rem from the desk breakpoint, plus
+     its 1px rule). A control or section scrolled into view stops below it, never under it, so a
+     focused tile link is not obscured (WCAG 2.4.11, 2.5.8; PS-05). Cards that already allow for
+     the header in their own scroll-margin take it off again (product/Card.tsx). */
+  html:has(.pk-portal-shell) {
+    scroll-padding-top: calc(3.5rem + 1px);
+  }
+  @media (width >= 47.5625rem) {
+    html:has(.pk-portal-shell) {
+      scroll-padding-top: calc(4rem + 1px);
+    }
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     margin: 0;

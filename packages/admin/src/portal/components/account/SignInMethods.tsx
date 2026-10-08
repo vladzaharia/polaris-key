@@ -192,8 +192,9 @@ function callbackNotice(
   return { tone: "danger", text: `${name} wasn't connected. Try again.` };
 }
 
+// 9rem (6rem on desk) below the top: the shell's scroll padding is the header (product/Card.tsx).
 const GROUP_HEADING =
-  "text-xs font-bold text-fg-muted outline-none scroll-mt-36 desk:scroll-mt-24";
+  "text-xs font-bold text-fg-muted outline-none scroll-mt-[calc(5.5rem_-_1px)] desk:scroll-mt-[calc(2rem_-_1px)]";
 
 function MethodGroups({
   account,

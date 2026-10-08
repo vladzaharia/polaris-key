@@ -23,7 +23,8 @@ export function SectionCard({
       aria-labelledby={`section-${id}-h`}
       data-section={id}
       className={cn(
-        "scroll-mt-36 rounded-xl border border-border bg-surface-raised p-5 shadow-elevation-1 desk:scroll-mt-24 desk:p-6",
+        // 9rem (6rem on desk) below the top, as before: the shell's scroll padding is the header.
+        "scroll-mt-[calc(5.5rem_-_1px)] rounded-xl border border-border bg-surface-raised p-5 shadow-elevation-1 desk:scroll-mt-[calc(2rem_-_1px)] desk:p-6",
         className,
       )}
     >
