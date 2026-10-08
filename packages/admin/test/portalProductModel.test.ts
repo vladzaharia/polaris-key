@@ -12,11 +12,13 @@ import {
   withSeats,
 } from "../src/portal/model/product.js";
 import { resolveHash } from "../src/portal/router.js";
+import { breakPoints } from "../src/portal/components/product/InstallSources.js";
 import {
   detail,
   device,
   dlFile,
   downloadsView,
+  installSource,
   license,
   NOW_S,
   DAY,
@@ -169,7 +171,7 @@ describe("not_hosted reads where to get it (§0.6 P3, §11.2)", () => {
     expect(newer.notIncluded).toBe("Your license doesn't include this version");
   });
 
-  it("lists the install sources after the stores, and never as 'where else' (P0-48)", () => {
+  it("puts each install source under its platform after its files, the device's OS first; stores alone are 'Also yours on' (P0-48)", () => {
     const d = {
       ...downloadsView(
         "x",
@@ -181,37 +183,111 @@ describe("not_hosted reads where to get it (§0.6 P3, §11.2)", () => {
             reason: "not_hosted",
           }),
           dlFile({ artifactId: "m", platform: "macos" }),
+          dlFile({ artifactId: "w", platform: "windows", arch: "x86_64" }),
         ],
-        { stores: [storeLink({ kind: "steam", label: "Steam" })] },
+        {
+          stores: [
+            storeLink({
+              kind: "steam",
+              label: "Steam",
+              platforms: ["windows", "macos"],
+            }),
+            // A store with a command and no page is installed like a source.
+            storeLink({
+              kind: "winget",
+              label: "winget",
+              url: null,
+              command: "winget install --id X.X --exact",
+              platforms: ["windows"],
+            }),
+          ],
+        },
       ),
       installSources: [
-        storeLink({
+        installSource({
           kind: "homebrew",
           label: "Homebrew",
-          url: null,
           command: "brew install --cask x",
           platforms: ["macos"],
         }),
-        storeLink({ kind: "fdroid", label: "Add to F-Droid" }),
+        installSource({
+          kind: "scoop",
+          label: "Scoop",
+          command: "scoop install https://k.example/x/scoop/stable.json",
+          platforms: ["windows"],
+        }),
+        installSource({
+          kind: "altstore",
+          label: "Add to AltStore",
+          url: "https://k.example/x/altstore/stable/source.json",
+          deepLink: "altstore://source?url=x",
+          platforms: ["ios"],
+        }),
       ],
     };
-    const m = getItFromDownloads(d, MAC)!;
-    expect(m.stores.map((s) => s.label)).toEqual([
-      "Steam",
-      "Homebrew",
-      "Add to F-Droid",
+    const shape = (m: ReturnType<typeof getItFromDownloads>) =>
+      m!.groups.map((g) => [
+        g.platform,
+        g.rows.map((r) => r.artifact.artifactId),
+        g.sources.map((s) => s.kind),
+      ]);
+    const WIN = { os: "windows", phone: false } as const;
+    expect(shape(getItFromDownloads(d, WIN))).toEqual([
+      ["windows", ["w"], ["scoop", "winget"]],
+      ["macos", ["m"], ["homebrew"]],
+      // A platform with sources and no files gets a group of its own.
+      ["ios", [], ["altstore"]],
+      [null, ["pack"], []],
     ]);
-    const pack = m.groups
-      .flatMap((g) => g.rows)
-      .find((r) => r.artifact.artifactId === "pack")!;
-    expect(pack.elsewhere!.label).toBe("Get it from Steam");
-    // Without a store, the developer answers, not an install source.
-    const bare = getItFromDownloads({ ...d, stores: [] }, MAC)!;
-    expect(
-      bare.groups
+    const m = getItFromDownloads(d, MAC)!;
+    expect(shape(m).map((g) => g[0])).toEqual([
+      "macos",
+      "windows",
+      "ios",
+      null,
+    ]);
+    expect(m.stores.map((s) => s.label)).toEqual(["Steam"]);
+    expect(m.here).toBeNull();
+    // Only a store answers "where else"; without one, the developer does.
+    const pack = (x: ReturnType<typeof getItFromDownloads>) =>
+      x!.groups
         .flatMap((g) => g.rows)
-        .find((r) => r.artifact.artifactId === "pack")!.elsewhere!.label,
-    ).toBe("Get it from the developer");
+        .find((r) => r.artifact.artifactId === "pack")!.elsewhere!.label;
+    expect(pack(m)).toBe("Get it from Steam");
+    expect(pack(getItFromDownloads({ ...d, stores: [] }, MAC))).toBe(
+      "Get it from the developer",
+    );
+  });
+
+  it("on a phone, leads with what installs on it; otherwise there is nothing to lead with (P0-48)", () => {
+    const appStore = storeLink({
+      kind: "app-store",
+      label: "App Store",
+      platforms: ["ios"],
+    });
+    const alt = installSource({
+      kind: "altstore",
+      label: "Add to AltStore",
+      url: "https://k.example/x/altstore/stable/source.json",
+      deepLink: "altstore://source?url=x",
+      platforms: ["ios"],
+    });
+    const d = {
+      ...downloadsView("x", [dlFile({ artifactId: "m", platform: "macos" })], {
+        stores: [appStore],
+      }),
+      installSources: [alt],
+    };
+    const IPHONE = { os: "ios", phone: true } as const;
+    const m = getItFromDownloads(d, IPHONE)!;
+    expect(m.here).toEqual({ os: "ios", stores: [appStore], sources: [alt] });
+    expect(m.groups[0]!.platform).toBe("ios");
+    // An Android phone gets nothing here: the page says to open it on a computer.
+    expect(
+      getItFromDownloads(d, { os: "android", phone: true } as const)!.here,
+    ).toBeNull();
+    // On a computer there is no lead of this kind.
+    expect(getItFromDownloads(d, MAC)!.here).toBeNull();
   });
 });
 
@@ -361,5 +437,36 @@ describe("one device source (§0.6 P4)", () => {
     expect(seatsFor(product, "other")).toBeNull();
     // Without the product view, the detail is unchanged.
     expect(withSeats(d, null)).toBe(d);
+  });
+});
+
+describe("a long URL or command wraps at its seams (P0-48)", () => {
+  it("breaks after a slash (never inside //), before ? and &, after =", () => {
+    expect(
+      breakPoints(
+        "scoop install https://k.example/x/scoop/stable.json?outlet=a&b=c",
+      ),
+    ).toEqual([
+      "scoop install https://",
+      "k.example/",
+      "x/",
+      "scoop/",
+      "stable.json",
+      "?outlet=",
+      "a",
+      "&b=",
+      "c",
+    ]);
+    // A fingerprint wraps every 8 characters; a short hex word does not.
+    expect(breakPoints("ab".repeat(32))).toEqual(Array(8).fill("abababab"));
+    expect(breakPoints("repo?fingerprint=" + "c0ffee12".repeat(2))).toEqual([
+      "repo",
+      "?fingerprint=",
+      "c0ffee12",
+      "c0ffee12",
+    ]);
+    expect(breakPoints("brew install --cask deadbeef")).toEqual([
+      "brew install --cask deadbeef",
+    ]);
   });
 });

@@ -6,6 +6,7 @@ import {
   axeViolations,
   dlFile,
   downloadsView,
+  installSource,
   storeLink,
   CAPS_ALL,
   DAY,
@@ -1275,7 +1276,7 @@ describe("product page correctness (UX-04)", () => {
     await page();
     const get = await screen.findByRole("region", { name: "Get Nightfall" });
     const steam = await within(get).findByRole("link", {
-      name: "Get it from Steam",
+      name: "Get it from Steam (opens in a new tab)",
     });
     expect(steam.getAttribute("href")).toBe(
       "https://store.steampowered.com/app/1/",
@@ -1691,5 +1692,164 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
           .map((a) => a.textContent)
           .at(-1),
       ).toBe("Help");
+  });
+});
+
+describe("Get it: other ways to install (P0-48)", () => {
+  const SOURCE =
+    "https://k.example/nightfall/distribution/altstore/stable/source.json";
+  const REPO = `https://k.example/nightfall/distribution/fdroid/stable/repo?fingerprint=${"ab".repeat(32)}`;
+  const QR = "data:image/svg+xml;base64,PHN2Zy8+";
+  const sources = [
+    installSource({
+      kind: "homebrew",
+      label: "Homebrew",
+      command: "brew install --cask nightfall",
+      platforms: ["macos"],
+    }),
+    installSource({
+      kind: "altstore",
+      label: "Add to AltStore",
+      url: SOURCE,
+      deepLink: `altstore://source?url=${encodeURIComponent(SOURCE)}`,
+      qr: QR,
+      platforms: ["ios"],
+    }),
+    installSource({
+      kind: "fdroid",
+      label: "Add to F-Droid",
+      url: REPO,
+      deepLink: `fdroidrepos://${REPO.slice("https://".length)}`,
+      fingerprint: "ab".repeat(32),
+      qr: QR,
+      platforms: ["android"],
+    }),
+  ];
+  const view = (recommend: string) => ({
+    ...downloadsView(
+      "nightfall",
+      [
+        dlFile({ artifactId: "m", platform: "macos" }),
+        dlFile({ artifactId: "i", platform: "ios", arch: "arm64" }),
+      ],
+      {
+        recommend,
+        stores: [
+          storeLink({
+            kind: "app-store",
+            label: "App Store",
+            platforms: ["ios"],
+          }),
+        ],
+      },
+    ),
+    installSources: sources,
+  });
+
+  it("on a computer: deep links, copyable URLs and commands, QR codes, each under its platform", async () => {
+    mockFetch(routes({ "/api/products/nightfall/downloads": view("macos") }));
+    renderPortal();
+    await page();
+    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    const mac = await within(get).findByRole("list", {
+      name: "Other ways to install on macOS",
+    });
+    expect(within(mac).getByText("Homebrew")).toBeTruthy();
+    expect(within(mac).getByText("brew install --cask nightfall")).toBeTruthy();
+    const copy = within(mac).getByRole("button", {
+      name: "Copy Homebrew command",
+    });
+    const writeText = vi.fn(async () => {});
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    await userEvent.click(copy);
+    expect(writeText).toHaveBeenCalledWith("brew install --cask nightfall");
+    await within(mac).findByText("Copied");
+
+    // AltStore opens the app, never the raw source.json; the URL is copyable text.
+    const ios = within(get).getByRole("list", {
+      name: "Other ways to install on iPhone and iPad",
+    });
+    expect(
+      within(ios)
+        .getByRole("link", { name: "Add to AltStore" })
+        .getAttribute("href"),
+    ).toBe(`altstore://source?url=${encodeURIComponent(SOURCE)}`);
+    expect(get.querySelector(`a[href="${SOURCE}"]`)).toBeNull();
+    expect(
+      within(ios).getByRole("button", { name: "Copy source URL" }),
+    ).toBeTruthy();
+    expect(
+      within(ios)
+        .getByRole("img", { name: "QR code: Add to AltStore" })
+        .getAttribute("src"),
+    ).toBe(QR);
+
+    // F-Droid opens fdroidrepos://, with the repository URL and its fingerprint to copy.
+    const android = within(get).getByRole("list", {
+      name: "Other ways to install on Android",
+    });
+    expect(
+      within(android)
+        .getByRole("link", { name: "Add to F-Droid" })
+        .getAttribute("href"),
+    ).toMatch(/^fdroidrepos:\/\/k\.example\//);
+    expect(
+      within(android).getByText("Repository fingerprint (SHA-256)"),
+    ).toBeTruthy();
+    expect(
+      within(android).getByRole("button", {
+        name: "Copy repository fingerprint",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(android).getByRole("button", { name: "Copy repository URL" }),
+    ).toBeTruthy();
+
+    // "Also yours on" is the stores alone, opening in a new tab.
+    const also = within(get).getByRole("list", { name: "Also yours on" });
+    expect(
+      within(also)
+        .getAllByRole("link")
+        .map((a) => a.textContent),
+    ).toEqual(["App Store(opens in a new tab)"]);
+    expect(get.textContent).not.toContain("Open this page on your computer");
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("on an iPhone: leads with what installs on it, and shows no QR code", async () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15",
+    );
+    mockFetch(routes({ "/api/products/nightfall/downloads": view("ios") }));
+    renderPortal();
+    await page();
+    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    const lead = await within(get).findByRole("list", {
+      name: "Install on this iPhone",
+    });
+    expect(
+      within(lead)
+        .getByRole("link", { name: "Add to AltStore" })
+        .getAttribute("href"),
+    ).toMatch(/^altstore:\/\/source\?url=/);
+    expect(
+      within(lead)
+        .getByRole("link", { name: /App Store/ })
+        .getAttribute("href"),
+    ).toBe("https://store.example/app-store");
+    expect(get.textContent).not.toContain(
+      "Open this page on your computer to download",
+    );
+    expect(
+      within(get).getByText(
+        "To download the files, open this page on your computer.",
+      ),
+    ).toBeTruthy();
+    expect(within(get).queryByRole("img", { name: /QR code/ })).toBeNull();
+    // The phone's own OS comes first under All platforms.
+    const headings = within(get)
+      .getAllByRole("heading", { level: 4 })
+      .map((h) => h.textContent);
+    expect(headings[0]).toBe("iPhone and iPad");
   });
 });

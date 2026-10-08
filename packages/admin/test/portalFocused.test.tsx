@@ -8,6 +8,7 @@ import {
   dlFile,
   downloadsView,
   fetchedRequests,
+  installSource,
   license,
   mockFetch,
   NOW_S,
@@ -323,6 +324,66 @@ describe("one download, focused flow (PX-10)", () => {
     ).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Main" })).toBeNull();
     expect(await axeViolations()).toEqual([]);
+  });
+
+  it("lists the asked platform's other ways to install, and points to them when it has no file (P0-48)", async () => {
+    const withSources = {
+      ...view,
+      installSources: [
+        installSource({
+          kind: "homebrew",
+          label: "Homebrew",
+          command: "brew install --cask orbit-survey",
+          platforms: ["macos"],
+        }),
+        installSource({
+          kind: "fdroid",
+          label: "Add to F-Droid",
+          url: "https://k.example/orbit-survey/distribution/fdroid/stable/repo",
+          deepLink:
+            "fdroidrepos://k.example/orbit-survey/distribution/fdroid/stable/repo",
+          platforms: ["android"],
+        }),
+      ],
+    };
+    mockFetch(
+      signedIn([orbit], {
+        "/api/products/orbit-survey": product({ status: "active" }),
+        "/api/products/orbit-survey/downloads": withSources,
+      }),
+    );
+    go("#/p/orbit-survey/download?platform=macos");
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Download Orbit Survey for macOS",
+    });
+    const mac = screen.getByRole("list", {
+      name: "Other ways to install on macOS",
+    });
+    expect(
+      within(mac).getByRole("button", { name: "Copy Homebrew command" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("F-Droid")).toBeNull();
+    expect(await axeViolations()).toEqual([]);
+    cleanup();
+
+    go("#/p/orbit-survey/download?platform=android");
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Download Orbit Survey for Android",
+    });
+    expect(
+      screen.getByText(
+        /has no download for Android here\. Other ways to install it are below\./,
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Add to F-Droid" }).getAttribute("href"),
+    ).toBe(
+      "fdroidrepos://k.example/orbit-survey/distribution/fdroid/stable/repo",
+    );
   });
 
   it("says why when the platform has nothing covered", async () => {
