@@ -190,6 +190,22 @@ def test_the_long_values_fixture_is_the_one_the_owner_asked_for() -> None:
     assert [len(LONG[k]) for k in ("name", "code", "url", "device")] == [60, 19, 110, 60]
 
 
+def test_a_live_region_taller_than_the_screen_drops_blank_rows_then_scrolls_the_top() -> None:
+    from polaris_key.ui.terminal.text import Line
+
+    term = Term(40, 5)
+    e = env("none", "unicode", 40, "dark").but(columns=40, height=5)
+    d = Device(e, Kit.create(e, product=PRODUCT).palette(), stdout=term, use_rich=False)  # type: ignore[arg-type]
+    rows = lambda *texts: [Line([Span(t)]) for t in texts]  # noqa: E731
+    with d.live() as live:
+        live.update(rows("┌  Header", "│", "│  one", "│", "│  two", "└  Esc cancel"))
+        assert term.viewport() == ["┌  Header", "│  one", "│  two", "└  Esc cancel", ""]
+        live.update(rows("┌  Header", "│", "│  one", "│  two", "│  three", "│  four", "└  Esc cancel"))
+        texts = [t for t, _ in term.all()]
+        assert texts[-5:] == ["│  one", "│  two", "│  three", "│  four", "└  Esc cancel"]
+        assert texts.count("┌  Header") == 1
+
+
 # ── The matrix ───────────────────────────────────────────────────────────────────────────────
 
 MATRIX = [(c, r, v) for c in COLUMNS for r in ROWS for v in ("long", "short")]

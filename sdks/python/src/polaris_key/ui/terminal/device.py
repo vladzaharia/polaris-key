@@ -441,9 +441,13 @@ class LiveRegion:
         self.resize()
 
     def _place(self, lines: Sequence[Line]) -> str:
-        """The frame's lines from the head on, printing any that do not fit above the region."""
-        widths = self._widths(lines)
+        """The frame's lines from the head on, fitted to the screen: when they are taller than it,
+        the blank rail rows go first, then the top lines that still do not fit are printed above
+        the region (they scroll away; the header first)."""
         cols, rows = self.d.env.columns, self.d.env.height
+        if physical_rows(self._widths(lines[self._head :]), cols) > rows:
+            lines = [ln for ln in lines if clean(ln.text).strip() not in ("", "│", "|")]
+        widths = self._widths(lines)
         start = min(self._head, len(lines))
         while start < len(lines) - 1 and physical_rows(widths[start:], cols) > rows:
             start += 1
