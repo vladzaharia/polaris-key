@@ -186,7 +186,7 @@ details.review summary .muted { font-weight: 400; }
         <button type="button" data-k="theme" data-v="dark" aria-pressed="true">Dark</button><button type="button" data-k="theme" data-v="light" aria-pressed="false">Light</button>
       </div>
       <div class="seg" role="group" aria-label="Device">
-        <button type="button" data-k="device" data-v="desktop" aria-pressed="true">Desktop</button><button type="button" data-k="device" data-v="phone" aria-pressed="false">Phone</button>
+        <button type="button" data-k="device" data-v="wide" aria-pressed="false">Wide</button><button type="button" data-k="device" data-v="desktop" aria-pressed="true">Desktop</button><button type="button" data-k="device" data-v="tablet" aria-pressed="false">Tablet</button><button type="button" data-k="device" data-v="phone" aria-pressed="false">Phone</button>
       </div>
       <div class="filters" id="status-filters" role="group" aria-label="Filter by status"></div>
     </div>
@@ -207,7 +207,7 @@ details.review summary .muted { font-weight: 400; }
   ];
   const STATUS_LABEL = Object.fromEntries(STATUS);
   const ACCENT = { core: "--svc-core", license: "--svc-license", config: "--svc-config", release: "--svc-release", distribution: "--svc-distribution", update: "--svc-update", identity: "--svc-identity", sync: "--svc-sync" };
-  const SIZE = { desktop: { w: 1440, h: 900, max: 2600 }, phone: { w: 390, h: 844, max: 2400 } };
+  const SIZE = { wide: { w: 1920, h: 1080, max: 2800 }, desktop: { w: 1440, h: 900, max: 2600 }, tablet: { w: 1024, h: 768, max: 2600 }, phone: { w: 390, h: 844, max: 2400 } };
 
   // Live state from the artifact's database (may never arrive).
   const live = { screens: {}, notes: [] };
@@ -323,7 +323,7 @@ details.review summary .muted { font-weight: 400; }
     card.toolbar.replaceChildren(
       seg("View", "view", [["mockup", "Mockup"], ["built", "Built"], ["both", "Side by side"]], card),
       seg("Theme", "theme", [["dark", "Dark"], ["light", "Light"]], card),
-      seg("Device", "device", [["desktop", "Desktop"], ["phone", "Phone"]], card),
+      seg("Device", "device", [["wide", "Wide"], ["desktop", "Desktop"], ["tablet", "Tablet"], ["phone", "Phone"]], card),
     );
     if (!built) for (const b of card.toolbar.querySelectorAll('[data-k="view"]:not([data-v="mockup"])')) b.disabled = true;
     if (!card.screen.html) for (const b of card.toolbar.querySelectorAll('[data-k="view"]:not([data-v="built"])')) b.disabled = true;

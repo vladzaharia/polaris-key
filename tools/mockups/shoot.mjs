@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Renders mockup screens to PNG: docs/design/mockups/screens/<area>/<id>.html, wrapped in a
-// document with the kit stylesheet, at desktop (1440×900) and phone (390×844), dark and light,
+// document with the kit stylesheet, at desktop (1440×900), wide (1920×1080), tablet (1024×768) and
+// phone (390×844), dark and light (the owner, 2026-10-08: test every screen at several resolutions),
 // full page.
 //
 //   mise exec node@22 -- node tools/mockups/shoot.mjs --area products --out /Users/vlad/Repos/pk-wt/_mockups/shots/products
@@ -14,16 +15,17 @@
 //   --screen <id>       only these screen ids (repeatable, or comma-separated)
 //   --gallery           the kit's component gallery (docs/design/mockups/kit/gallery.html), as kit.gallery
 //   --out <dir>         output directory (default /Users/vlad/Repos/pk-wt/_mockups/shots[/<area>])
-//   --sizes desktop,phone   --themes dark,light   --scale 1 (device pixel ratio)
+//   --sizes wide,desktop,tablet,phone (default: all four)   --themes dark,light   --scale 1 (device pixel ratio)
 //   --html <dir>        also write each composed page (<id>.<theme>.html) for opening in a browser
 //   --check             validate the screen contract only; render nothing
 //
-// Writes <id>.desktop-light.png, <id>.desktop-dark.png, <id>.phone-light.png and
-// <id>.phone-dark.png. Deterministic: the fonts are embedded and awaited, animations and
+// Writes <id>.{wide,desktop,tablet,phone}-{light,dark}.png: eight shots per screen, every one to
+// be opened and judged (kit/README.md "Four sizes"). Deterministic: the fonts are embedded and awaited, animations and
 // transitions are off, the caret is hidden, and every network request is refused (a mockup
 // makes none). It exits non-zero on a contract error, a console error, a failed font, a blocked
-// request, or a page wider than its viewport (sideways scroll). Phone shots draw the portal's
-// fixed bottom bar and toasts at the end of the page, so they cover nothing mid-page.
+// request, or a page wider than its viewport (sideways scroll). Phone shots, and any shot of a page
+// taller than its viewport, draw the portal's fixed bottom bar and toasts at the end of the page,
+// so they cover nothing mid-page.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
@@ -38,6 +40,8 @@ const DEFAULT_OUT = "/Users/vlad/Repos/pk-wt/_mockups/shots";
 
 const SIZES = {
   desktop: { width: 1440, height: 900 },
+  wide: { width: 1920, height: 1080 },
+  tablet: { width: 1024, height: 768 },
   phone: { width: 390, height: 844 },
 };
 const SURFACES = ["console", "portal", "terminal", "code", "kit", "dialog"];
@@ -164,11 +168,13 @@ if (checkOnly || problems.length) {
 const kitCss = readFileSync(KIT, "utf8");
 /** Mockups never move: no animation, no transition, no caret. */
 const FREEZE = `*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}`;
-/** Phone shots: the portal's fixed bottom bar and toasts sit at the page's end, not mid-page. */
-const PHONE_FULL_PAGE = `.portal>.portal-tabbar,.portal>.toasts{position:absolute!important}`;
+/** Phone shots (and long pages at any size): the portal's fixed bottom bar and the toasts (portal or console) sit at the page's end, not mid-page. */
+const PHONE_FULL_PAGE = `.portal>.portal-tabbar,.portal>.toasts,.console>.toasts{position:absolute!important}`;
+/** A pinned save bar (.save-bar.pinned, sticky to the window's bottom) is drawn where it rests, at the end of its record, so a full-page shot covers nothing. */
+const REST_PINNED = `.save-bar.pinned,.mk-action-bar,.drawer-foot.sticky-foot{position:static!important}`;
 
 const page = (s, theme) =>
-  `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${s.meta?.title ?? s.id}</title><style>${kitCss}</style><style>${FREEZE}</style></head><body data-screen="${s.id}">${s.html}</body></html>`;
+  `<!doctype html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${s.meta?.title ?? s.id}</title><style>${kitCss}</style><style>${FREEZE}${REST_PINNED}</style></head><body data-screen="${s.id}">${s.html}</body></html>`;
 
 const require = createRequire(join(repo, "packages/admin/package.json"));
 const { chromium } = require("playwright");
@@ -207,8 +213,8 @@ for (const s of screens) {
       p.on("pageerror", (e) => errors.push(`page error: ${e.message}`));
       await p.setContent(doc, { waitUntil: "load" });
       // A full-page shot paints fixed elements at the viewport's bottom line, in the middle of a
-      // long phone page, over the content under them. Draw the portal's bottom bar and its toasts
-      // at the end of the page instead (.portal is their positioned box), as when scrolled down.
+      // long phone page, over the content under them. Draw the portal's bottom bar and any toasts
+      // at the end of the page instead (.portal or .console is their positioned box), as when scrolled down.
       if (size === "phone") await p.addStyleTag({ content: PHONE_FULL_PAGE });
       const fonts = await p.evaluate(async () => {
         await Promise.all([
@@ -224,6 +230,10 @@ for (const s of screens) {
         };
       });
       if (fonts.failed.length || !fonts.ok) errors.push(`fonts failed: ${fonts.failed.join(", ") || "not loaded"}`);
+      // The same at any size whose page is taller than its viewport: a toast fixed to the first
+      // viewport's bottom would otherwise sit over the page's content (a tablet Discover's tiles).
+      if (size !== "phone" && (await p.evaluate(() => document.documentElement.scrollHeight > innerHeight + 1)))
+        await p.addStyleTag({ content: PHONE_FULL_PAGE });
       const overflow = await p.evaluate(() => {
         const w = document.documentElement.clientWidth;
         const sw = document.documentElement.scrollWidth;

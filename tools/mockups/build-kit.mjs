@@ -101,7 +101,7 @@ palette app-window workflow webhook map-pin languages truck hammer wrench scroll
 layout-dashboard blocks monitor-smartphone users-round lock-keyhole list-tree file-pen file-stack
 stamp waypoints grid-3x3 flask-conical trending-up square-pen heart-pulse rss log-in
 server-cog gauge plug-zap arrow-right-left circle-dashed git-merge user-check clipboard-check
-square wifi signal battery-full
+square wifi signal battery-full star
 `
   .trim()
   .split(/\s+/);
