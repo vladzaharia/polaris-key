@@ -674,6 +674,15 @@ theming, localisation, the `--json` contract and the fallbacks (`NO_COLOR`, `TER
 `kit: false` keeps the plain output, and each verb is also a plain function (`status(client)`,
 `devicesList(client)`, …) returning `{ ok, message, data }`.
 
+**Changed in the terminal kit (UK-14).** The adapters' human output is new: the rail, catalog
+copy in the active locale (nine languages), colour on a terminal, and new verb names `login` and
+`logout` (`sign-in` and `sign-out` still work). Human output is for people and may change between
+releases; a script reads `--json`, whose envelope is versioned (`"v": 1`). The exit codes a script
+saw before are unchanged: 0 success and 1 failure, with 2 for a usage error and 130 for Ctrl-C.
+A key given as an argument to `activate` still works and now warns that it lands in the shell's
+history; the prompt or a pipe is the way to pass it. A host that relied on the old plain messages
+passes `kit: false`.
+
 ## Samples and recipes
 
 Runnable samples live in the repository's `examples/` directory:

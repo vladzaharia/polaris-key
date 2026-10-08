@@ -1,22 +1,20 @@
-// `--json` on every verb (docs/design/UI-KITS.md §1.4; SIGN-IN.md D-68), the same envelope as
-// the Python terminal kit (UK-13): NDJSON on stdout, never a prompt and never an escape. Every
-// line is an object with `"v": 1` and `"command"`; progress lines carry an `"event"` (`pending`
-// for a sign-in code, `progress` for a download), and the LAST line of every run, including an
-// unexpected exception or an argument error, is the result:
+// `--json` on every verb (docs/design/UI-KITS.md §1.4 "Terminal": the one envelope both terminal
+// kits print; the Python kit's, UK-13, is the reference). NDJSON on stdout, never a prompt and
+// never an escape, ASCII only. Every line is an object with `"v": 1` and `"command"`; progress
+// lines carry an `"event"` (`pending` for a sign-in code, `progress` for a download), and the LAST
+// line of every run, including an unexpected exception and an argument error, is the result:
 //
-//   {"v":1,"command":"status","event":"result","ok":true,"exit":0,
-//    "state":"signed-in","result":{…}}
-//   {"v":1,"command":"activate","event":"result","ok":false,"exit":3,
-//    "state":"device-limit","result":{…},"error":"device_limit","message":"…"}
+//   {"v":1,"command":"status","event":"result","ok":true,"exit":0,"status":"ok","usable":true,…}
+//   {"v":1,"command":"activate","event":"result","ok":false,"exit":1,"kind":"device-limit",…}
 //
-// `state` is the kit's view state (components.json); `result` is the verb's data; `error` is the
-// registry code (stable; `usage` for an argument error, `failed` for a local failure) and
-// `message` the sentence people read, in the active locale (it may change; scripts read `error`).
-// Every non-ASCII character is written as a \u escape, so no byte of server text can reach a
-// terminal raw.
+// The verb's fields sit at the top level beside `v`, `command`, `event`, `ok` and `exit`.
+// `error` is present on a failure that has a code: a registry code (`device_limit`, `network`),
+// `usage` for an argument error (exit 2, with a `message`), `internal` for an unexpected
+// exception, `interrupted` for Ctrl-C (exit 130). `message` appears only where the Python kit
+// prints one: a usage error and an import-bundle failure.
 //
-// Exit codes: 0 done (and a usable license for `status`), 1 failed, 2 usage, 3 the license is
-// not usable or a device limit was hit, 4 the service could not be reached, 130 cancelled.
+// Exit codes: 0 success; 1 a refusal, an unusable license, a cancelled or declined step, any
+// failure; 2 usage; 130 interrupted (Ctrl-C).
 
 /** The `--json` schema version. Bumped only for a breaking change to the envelope. */
 export const CLI_JSON_VERSION = 1;
@@ -25,17 +23,21 @@ export const EXIT = {
   ok: 0,
   failed: 1,
   usage: 2,
-  blocked: 3,
-  network: 4,
-  cancelled: 130,
+  interrupted: 130,
 } as const;
 
+/** A failure, for the screen (title and message) and the result line (code). */
 export interface CliJsonError {
-  /** The registry code (`device_limit`, `network`), or null for a local failure. */
+  /** The registry code (`device_limit`, `network`), `usage`, `internal`, `interrupted`… */
   code: string | null;
   title: string;
   message: string;
+  /** Put `message` on the result line (usage errors and import-bundle, as the Python kit). */
+  showMessage?: boolean;
 }
+
+/** The fields every line carries, and the result line's own; a verb's fields never replace them. */
+const RESERVED = new Set(["v", "command", "event", "ok", "exit"]);
 
 export interface CliJson {
   v: typeof CLI_JSON_VERSION;
@@ -43,24 +45,26 @@ export interface CliJson {
   event: "result";
   ok: boolean;
   exit: number;
-  state?: string;
-  result?: unknown;
-  /** The registry code, `usage` or `failed`; present only when `ok` is false. */
   error?: string;
-  /** The localised sentence for people; present only when `ok` is false. */
   message?: string;
+  [field: string]: unknown;
 }
 
-/** What a flow hands back: the exit code and the result line's fields. */
+/** What a flow hands back: the exit code, the verb's fields, and a failure when there is one. */
 export interface FlowResult {
   exitCode: number;
+  /** The view's state (components.json); on the result line only when `result` names it. */
   state?: string;
-  result?: unknown;
+  /** The verb's fields, flattened onto the result line. */
+  result?: Record<string, unknown>;
   error?: CliJsonError;
 }
 
 /** The result line for a run. */
 export function envelope(command: string, r: FlowResult): CliJson {
+  const fields = Object.fromEntries(
+    Object.entries(r.result ?? {}).filter(([k]) => !RESERVED.has(k)),
+  );
   const ok = r.exitCode === EXIT.ok;
   return {
     v: CLI_JSON_VERSION,
@@ -68,20 +72,9 @@ export function envelope(command: string, r: FlowResult): CliJson {
     event: "result",
     ok,
     exit: r.exitCode,
-    ...(r.state !== undefined ? { state: r.state } : {}),
-    ...(r.result !== undefined ? { result: r.result } : {}),
-    ...(!ok
-      ? {
-          error:
-            r.error?.code ??
-            (r.exitCode === EXIT.usage
-              ? "usage"
-              : r.exitCode === EXIT.cancelled
-                ? "cancelled"
-                : "failed"),
-          ...(r.error ? { message: r.error.message } : {}),
-        }
-      : {}),
+    ...fields,
+    ...(!ok && r.error?.code ? { error: r.error.code } : {}),
+    ...(!ok && r.error?.showMessage ? { message: r.error.message } : {}),
   };
 }
 

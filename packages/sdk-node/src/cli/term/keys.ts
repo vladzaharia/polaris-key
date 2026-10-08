@@ -24,6 +24,11 @@ function toKey(str: string | undefined, key: Partial<Key> | undefined): Key {
   };
 }
 
+/** Ctrl-C: an interrupt (exit 130), as opposed to Esc or Ctrl-D, which cancel a step. */
+export function isInterrupt(k: Key): boolean {
+  return k.ctrl && k.name === "c";
+}
+
 /** Ctrl-C, Esc or Ctrl-D: the user wants out. */
 export function isCancel(k: Key): boolean {
   return (

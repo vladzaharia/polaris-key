@@ -22,6 +22,7 @@ import {
   type Symbols,
 } from "./term/layout.js";
 import { realTicker, type Ticker } from "./term/live.js";
+import { safeLink } from "./term/sanitize.js";
 import { Painter } from "./term/paint.js";
 import {
   bundleIdentity,
@@ -196,7 +197,12 @@ function buildContext(
     stdin,
     ticker: io.ticker ?? realTicker,
     now: io.now ?? Date.now,
-    openUrl: io.openUrl ?? openInBrowser,
+    // Only a safe link reaches the opener (an https URL, or loopback http, with no whitespace,
+    // control character or userinfo); anything else is not opened and the flow falls back.
+    openUrl: (url: string) => {
+      const safe = safeLink(url);
+      return safe ? (io.openUrl ?? openInBrowser)(safe) : false;
+    },
     keys,
     plainKeys,
     render,

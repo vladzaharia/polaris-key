@@ -292,13 +292,13 @@ describe("--json: the last line of every run is the result", () => {
         Promise.reject(Object.assign(new Error("boom"), { code: "network" })),
       { slug: "tidewater", io: io(screen) },
     );
-    expect(code).toBe(4);
+    expect(code).toBe(1);
     expect(last(screen)).toMatchObject({
       v: 1,
       command: "status",
       event: "result",
       ok: false,
-      exit: 4,
+      exit: 1,
       error: "network",
     });
   });
@@ -397,5 +397,59 @@ describe("--json: the last line of every run is the result", () => {
       "result",
     ]);
     expect(lines.map((l) => l.percent).slice(0, 2)).toEqual([30, 100]);
+  });
+});
+
+describe("opening the browser", () => {
+  it("uses rundll32 on Windows, the URL as one argument (a & never reaches cmd.exe)", async () => {
+    const { openInBrowser } = await import("../../src/identity/client.js");
+    const calls: Array<{ cmd: string; args: string[] }> = [];
+    const fake = (cmd: string, args: string[]) => {
+      calls.push({ cmd, args });
+      return {
+        once: (event: string, fn: () => void) => {
+          if (event === "spawn") queueMicrotask(fn);
+        },
+        unref: () => undefined,
+      };
+    };
+    const url = "https://key.plrs.im/device?code=WDJB-MJHT&next=a|b^c";
+    expect(await openInBrowser(url, "win32", fake)).toBe(true);
+    expect(calls).toEqual([
+      { cmd: "rundll32", args: ["url.dll,FileProtocolHandler", url] },
+    ]);
+    calls.length = 0;
+    await openInBrowser(url, "darwin", fake);
+    await openInBrowser(url, "linux", fake);
+    expect(calls.map((c) => c.cmd)).toEqual(["open", "xdg-open"]);
+    calls.length = 0;
+    for (const bad of [
+      "file:///etc/passwd",
+      "https://key.plrs.im/a b",
+      "https://key.plrs.im/\x1b]52;c;x\x07",
+    ])
+      expect(await openInBrowser(bad, "win32", fake)).toBe(false);
+    expect(calls).toEqual([]);
+  });
+
+  it("hands the opener only a safe link", async () => {
+    const opened: string[] = [];
+    const { createKitContext } = await import("../../src/cli/context.js");
+    const ctx = await createKitContext({
+      slug: "tidewater",
+      io: {
+        stdout: new Screen({ tty: false }),
+        env: {},
+        openUrl: (u) => {
+          opened.push(u);
+          return true;
+        },
+      },
+      bundle: {},
+    });
+    expect(await ctx.openUrl("https://key.plrs.im/device?code=X")).toBe(true);
+    expect(await ctx.openUrl("http://evil.example/")).toBe(false);
+    expect(await ctx.openUrl("https://key.plrs.im/\x07")).toBe(false);
+    expect(opened).toEqual(["https://key.plrs.im/device?code=X"]);
   });
 });

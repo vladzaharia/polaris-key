@@ -10,13 +10,10 @@
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { PolarisKeyClient } from "../client.js";
 import type { SignInPrompt, SignInResult } from "../identity/client.js";
+import type { ActivationResult } from "../license/endpoints.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import { Feature } from "../constants.generated.js";
-import {
-  getConfig,
-  importBundle as importBundleCore,
-  register as registerCore,
-} from "./commands.js";
+import { getConfig } from "./commands.js";
 import type { KitContext } from "./context.js";
 import { eventLine, EXIT, type CliJsonError, type FlowResult } from "./json.js";
 import {
@@ -50,12 +47,13 @@ import {
 } from "./parts.js";
 import {
   CANCEL,
+  INTERRUPT,
   plainConfirm,
   plainSecret,
   promptConfirm,
   promptSecret,
 } from "./term/prompt.js";
-import { isCancel } from "./term/keys.js";
+import { isCancel, isInterrupt } from "./term/keys.js";
 import type { RailRow } from "./term/layout.js";
 import { animate, LiveRegion, spinnerFrames } from "./term/live.js";
 import { osc52 } from "./term/osc.js";
@@ -92,9 +90,15 @@ function errorCode(e: unknown): string | null {
 
 const NETWORK = new Set(["network", "network-error", "transport", "timeout"]);
 
-/** Exit 4 for an unreachable service, else 1. */
-const failureExit = (code: string | null) =>
-  code && NETWORK.has(code) ? EXIT.network : EXIT.failed;
+/** Ctrl-C: exit 130 with `"error": "interrupted"` (the Python kit's). */
+function interrupted(fields: Record<string, unknown> = {}): FlowResult {
+  return {
+    exitCode: EXIT.interrupted,
+    state: "interrupted",
+    result: fields,
+    error: { code: "interrupted", title: "", message: "" },
+  };
+}
 
 /** Draw a thrown error and return its result. */
 function failed(ctx: KitContext, e: unknown): FlowResult {
@@ -105,7 +109,11 @@ function failed(ctx: KitContext, e: unknown): FlowResult {
     ...problemRows(network ? "warn" : "fail", error.title, error.message),
     endRow(),
   ]);
-  return { exitCode: failureExit(code), state: "error", error };
+  return {
+    exitCode: EXIT.failed,
+    state: "error",
+    error: code ? error : { ...error, code: "internal" },
+  };
 }
 
 /**
@@ -246,23 +254,26 @@ export async function statusFlow(
     },
   });
   const exitCode = statusExit(st.status);
-  const result = { status: st, license: info, store };
-  if (quiet(ctx)) {
-    return {
-      exitCode,
-      state: view.state,
-      result,
-      ...(exitCode === EXIT.ok
-        ? {}
-        : {
-            error: {
-              code: st.status,
-              title: ctx.copy.t(`core.gate.${st.status}.title`),
-              message: ctx.copy.t(`core.gate.${st.status}.message`),
-            },
-          }),
-    };
-  }
+  // The Python kit's status fields (UI-KITS §1.4 "Terminal"), plus the tier.
+  const profile = info?.profile ?? client.license.getProfile?.() ?? null;
+  const result = {
+    status: st.status,
+    usable: exitCode === EXIT.ok,
+    component: view.component,
+    state: view.state,
+    graceUntil: st.graceUntil ?? null,
+    allowedRange: st.allowedRange
+      ? { min: st.allowedRange.min ?? null, max: st.allowedRange.max ?? null }
+      : null,
+    profile: profile
+      ? { name: profile.name ?? null, email: profile.email ?? null }
+      : null,
+    version: client.core.version,
+    channel: client.core.channel,
+    tier: info?.tierLabel ?? info?.tier ?? null,
+    tokenStore: store?.backend ?? null,
+  };
+  if (quiet(ctx)) return { exitCode, state: view.state, result };
   const t = ctx.copy.t.bind(ctx.copy);
   const rows: RailRow[] = productHeader(ctx, "status");
   switch (view.component) {
@@ -384,7 +395,11 @@ export async function checkFlow(
       `${ctx.symbols.separator} ${ctx.copy.t("boot.ready")}`,
     ),
   ]);
-  return { exitCode: EXIT.ok, state: "licensed", result: { status: st } };
+  return {
+    exitCode: EXIT.ok,
+    state: "licensed",
+    result: { status: st.status, usable: true },
+  };
 }
 
 // ── activate, enroll, DeviceLimit ──────────────────────────────────────────────────────────
@@ -448,46 +463,30 @@ function outcomeRows(
 }
 
 function outcomeExit(o: ActivateOutcome): number {
-  if (o.state === "done") return EXIT.ok;
-  if (o.state === "device-limit") return EXIT.blocked;
-  return failureExit(o.code);
+  return o.state === "done" ? EXIT.ok : EXIT.failed;
 }
 
-function outcomeError(
-  ctx: KitContext,
-  o: ActivateOutcome,
-): CliJsonError | undefined {
-  if (o.state === "done") return undefined;
-  if (o.state === "device-limit")
-    return {
-      code: "device_limit",
-      title: ctx.copy.t("core.activation.device-limit.title"),
-      message: ctx.copy.t("core.activation.device-limit.message"),
-    };
-  return o.kind
-    ? {
-        code: o.code,
-        title: ctx.copy.t(`core.activation.${o.kind}.title`),
-        message: ctx.copy.t(`core.activation.${o.kind}.message`),
-      }
-    : codeError(ctx, o.code);
-}
-
-/** The JSON result for an outcome: never the key, never the device token. */
+/**
+ * The result line's fields for an activation (the Python kit's: `kind`, `code`, `deviceCount`,
+ * `limit`, `manageUrl`, and `status` once activated): never the key, never the device token.
+ * A refusal's code is `code`, not `error`, as in the Python kit.
+ */
 function outcomeResult(
   client: PolarisKeyClient,
+  r: ActivationResult,
   o: ActivateOutcome,
 ): Record<string, unknown> {
-  if (o.state === "done")
-    return { result: "ok", status: client.status(), tier: o.tier };
-  if (o.state === "device-limit")
-    return {
-      result: "device-limit",
-      deviceCount: o.deviceLimit.used,
-      limit: o.deviceLimit.limit,
-      manageUrl: o.deviceLimit.manageUrl,
-    };
-  return { result: "refused", code: o.code };
+  const dl = r.kind === "device-limit" ? r : null;
+  return {
+    kind: r.kind,
+    code: r.kind === "ok" ? null : r.code,
+    deviceCount: dl?.deviceCount ?? null,
+    limit: dl?.limit ?? null,
+    manageUrl: dl?.manageUrl ?? null,
+    ...(o.state === "done"
+      ? { status: client.status().status, tier: o.tier }
+      : {}),
+  };
 }
 
 export interface ActivateArgs {
@@ -499,7 +498,7 @@ export interface ActivateArgs {
 async function obtainKey(
   ctx: KitContext,
   args: ActivateArgs,
-): Promise<string | typeof CANCEL | null> {
+): Promise<string | typeof CANCEL | typeof INTERRUPT | null> {
   const t = ctx.copy.t.bind(ctx.copy);
   if (args.key) {
     // The positional key still works, and says why it should not be used (UI-KITS §0, GA).
@@ -601,14 +600,26 @@ export async function activateFlow(
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "activate"));
   const key = await obtainKey(ctx, args);
-  if (key === CANCEL) return { exitCode: EXIT.cancelled, state: "cancelled" };
+  if (key === CANCEL)
+    return {
+      exitCode: EXIT.failed,
+      state: "cancelled",
+      result: { kind: "cancelled" },
+    };
+  if (key === INTERRUPT) return interrupted();
   if (key === null) {
     const message = t("cli.activate.noKey", { command: cmd(ctx, "activate") });
     show(ctx, [stepRow("fail", [{ text: message }]), endRow()]);
     return {
       exitCode: EXIT.usage,
       state: "rejected",
-      error: { code: null, title: t("part.keyField.empty"), message },
+      result: { usage: `${ctx.bin} activate` },
+      error: {
+        code: "usage",
+        title: t("part.keyField.empty"),
+        message,
+        showMessage: true,
+      },
     };
   }
   if (!ctx.keys)
@@ -638,10 +649,14 @@ export async function activateFlow(
       ]),
       endRow(),
     ]);
+    // Refused here, before any request: like a server refusal, exit 1 with the kind.
     return {
-      exitCode: EXIT.usage,
+      exitCode: EXIT.failed,
       state: verdict.state,
-      error: { code: null, title: t("part.keyField.label"), message },
+      result: {
+        kind: verdict.state === "cut-short" ? "cut-short" : "malformed",
+        code: null,
+      },
     };
   }
   for (let attempt = 0; ; attempt++) {
@@ -659,16 +674,14 @@ export async function activateFlow(
       return {
         exitCode: outcomeExit(o),
         state: o.state,
-        result: outcomeResult(client, o),
-        ...(outcomeError(ctx, o) ? { error: outcomeError(ctx, o)! } : {}),
+        result: outcomeResult(client, r, o),
       };
     }
     const dl = o.deviceLimit;
-    const result = {
-      exitCode: EXIT.blocked,
+    const result: FlowResult = {
+      exitCode: EXIT.failed,
       state: "device-limit",
-      result: outcomeResult(client, o),
-      error: outcomeError(ctx, o)!,
+      result: outcomeResult(client, r, o),
     };
     if (quiet(ctx)) return result;
     ctx.rows(deviceLimitRows(ctx, dl));
@@ -682,6 +695,7 @@ export async function activateFlow(
     const live = new LiveRegion(ctx.stdout, { animate: true });
     let opened = false;
     let again = false;
+    let interrupt = false;
     try {
       for (;;) {
         live.draw(
@@ -693,6 +707,7 @@ export async function activateFlow(
           ]),
         );
         const k = await ctx.keys.next();
+        if (k !== null && isInterrupt(k)) interrupt = true;
         if (k === null || isCancel(k)) break;
         if (k.name !== "return" && k.name !== "enter") continue;
         if (!opened) {
@@ -706,6 +721,7 @@ export async function activateFlow(
     } finally {
       live.commit([]);
     }
+    if (interrupt) return interrupted(result.result);
     if (!again) {
       ctx.rows([
         endRow(t("cli.deviceLimit.again", { command: cmd(ctx, "activate") })),
@@ -734,12 +750,10 @@ export async function enrollFlow(
   if (o.state === "device-limit")
     show(ctx, [...deviceLimitRows(ctx, o.deviceLimit), endRow()]);
   else show(ctx, [...outcomeRows(ctx, o), endRow()]);
-  const error = outcomeError(ctx, o);
   return {
     exitCode: outcomeExit(o),
     state: o.state,
-    result: outcomeResult(client, o),
-    ...(error ? { error } : {}),
+    result: outcomeResult(client, r, o),
   };
 }
 
@@ -774,6 +788,7 @@ export async function loginFlow(
     return {
       exitCode: EXIT.failed,
       state: "error",
+      result: { state: "error" },
       error: {
         code: "identity_disabled",
         title: ctx.copy.code("identity_disabled", "title"),
@@ -788,7 +803,7 @@ export async function loginFlow(
       client.identity.beginSignIn(),
     );
   } catch (e) {
-    return failed(ctx, e);
+    return { ...failed(ctx, e), result: { state: "error" } };
   }
   const codeUrl = ctx.product.deviceCodeUrl ?? prompt.verificationUri;
   if (quiet(ctx)) {
@@ -888,12 +903,14 @@ export async function loginFlow(
     ctx.ticker,
   );
   // Keys run beside the wait; Esc cancels it.
+  let interrupt = false;
   const keyLoop = (async () => {
     if (!ctx.keys) return;
     for (;;) {
       const k = await ctx.keys.next(abort.signal);
       if (k === null) return;
       if (isCancel(k)) {
+        interrupt = isInterrupt(k);
         abort.abort(new Error("cancelled"));
         return;
       }
@@ -925,7 +942,7 @@ export async function loginFlow(
       live?.commit([]);
       abort.abort();
       await keyLoop;
-      return failed(ctx, e);
+      return { ...failed(ctx, e), result: { state: "error" } };
     }
   } finally {
     stopSpin();
@@ -940,7 +957,13 @@ export async function loginFlow(
       stepRow("fail", error.title),
       endRow(t("signin.cli.signInAgain", { command: cmd(ctx, "login") })),
     ]);
-    return { exitCode: EXIT.cancelled, state: "cancelled", error };
+    if (interrupt) return interrupted({ state: "cancelled" });
+    // Esc: cancelled, exit 1 (the Python kit's `{"state": "cancelled"}`).
+    return {
+      exitCode: EXIT.failed,
+      state: "cancelled",
+      result: { state: "cancelled" },
+    };
   }
   if (r.status === "ready") {
     const who = r.identity ?? {};
@@ -950,7 +973,13 @@ export async function loginFlow(
         : who.email
           ? t("cli.signin.signedInEmail", { email: who.email })
           : t("signInHandoff.ok");
-    const result = { identity: who, status: client.status() };
+    const result = {
+      state: "signedIn",
+      name: who.name ?? null,
+      email: who.email ?? null,
+      attached: r.attached ?? null,
+      status: client.status().status,
+    };
     show(ctx, [
       stepRow("ok", line),
       useCode ? endRow() : endRow(t("signin.cli.closeTab")),
@@ -977,6 +1006,7 @@ export async function loginFlow(
   return {
     exitCode: EXIT.failed,
     state: expired ? "expired" : "denied",
+    result: { state: expired ? "expired" : "denied" },
     error,
   };
 }
@@ -990,7 +1020,7 @@ export interface ConfirmArgs {
 async function confirmSignOut(
   ctx: KitContext,
   args: ConfirmArgs,
-): Promise<boolean | typeof CANCEL> {
+): Promise<boolean | typeof CANCEL | typeof INTERRUPT> {
   if (args.yes) return true;
   const question = ctx.copy.t("signin.cli.logoutConfirm", {
     product: ctx.product.name,
@@ -1024,10 +1054,12 @@ export async function logoutFlow(
   const yes = await confirmSignOut(ctx, args);
   if (yes !== true) {
     show(ctx, [endRow(t("cli.nothingChanged"))]);
+    if (yes === INTERRUPT) return interrupted({ signedOut: false });
+    // Declined or cancelled: exit 1, as the Python kit.
     return {
-      exitCode: yes === CANCEL ? EXIT.cancelled : EXIT.ok,
-      state: "kept",
-      result: { signedOut: false },
+      exitCode: EXIT.failed,
+      state: "cancelled",
+      result: { signedOut: false, state: "cancelled" },
     };
   }
   try {
@@ -1053,10 +1085,12 @@ export async function deactivateFlow(
   const yes = await confirmSignOut(ctx, args);
   if (yes !== true) {
     show(ctx, [endRow(t("cli.nothingChanged"))]);
+    if (yes === INTERRUPT) return interrupted({ signedOut: false });
+    // Declined or cancelled: exit 1, as the Python kit.
     return {
-      exitCode: yes === CANCEL ? EXIT.cancelled : EXIT.ok,
-      state: "kept",
-      result: { deactivated: false },
+      exitCode: EXIT.failed,
+      state: "cancelled",
+      result: { signedOut: false, state: "cancelled" },
     };
   }
   await busy(ctx, t("common.working"), () => client.license.deactivate());
@@ -1064,7 +1098,7 @@ export async function deactivateFlow(
     stepRow("ok", t("cli.deactivate.done", { product: ctx.product.name })),
     endRow(),
   ]);
-  return { exitCode: EXIT.ok, state: "done", result: { deactivated: true } };
+  return { exitCode: EXIT.ok, state: "done", result: { signedOut: true } };
 }
 
 // ── devices ────────────────────────────────────────────────────────────────────────────────
@@ -1102,7 +1136,7 @@ export async function devicesListFlow(
   );
   if (view.state === "empty") {
     show(ctx, [stepRow("active", t("devices.empty")), endRow()]);
-    return { exitCode: EXIT.ok, state: "empty", result: list };
+    return { exitCode: EXIT.ok, state: "empty", result: { devices: [] } };
   }
   const rows: RailRow[] = [
     stepRow(
@@ -1143,7 +1177,18 @@ export async function devicesListFlow(
   }
   rows.push(endRow());
   show(ctx, rows);
-  return { exitCode: EXIT.ok, state: "list", result: list };
+  return {
+    exitCode: EXIT.ok,
+    state: "list",
+    result: {
+      devices: list.map((d) => ({
+        id: d.id,
+        label: d.label ?? null,
+        platform: d.platform ?? null,
+        current: d.current,
+      })),
+    },
+  };
 }
 
 /** `devices rename`. */
@@ -1171,7 +1216,11 @@ export async function devicesRenameFlow(
     ),
     endRow(),
   ]);
-  return { exitCode: EXIT.ok, state: "list", result: { deviceId, label } };
+  return {
+    exitCode: EXIT.ok,
+    state: "list",
+    result: { renamed: deviceId, label },
+  };
 }
 
 /** `devices deauthorize`: remove a device and free its seat. */
@@ -1199,7 +1248,11 @@ export async function devicesRemoveFlow(
     ),
     endRow(),
   ]);
-  return { exitCode: EXIT.ok, state: "list", result: { deviceId, self } };
+  return {
+    exitCode: EXIT.ok,
+    state: "list",
+    result: { deauthorized: deviceId, self },
+  };
 }
 
 /** `register`: the keyless device mint. */
@@ -1220,7 +1273,7 @@ export async function registerFlow(
     return {
       exitCode: EXIT.ok,
       state: "done",
-      result: { deviceId: r.deviceId, status: client.status() },
+      result: { deviceId: r.deviceId, status: client.status().status },
     };
   }
   const code =
@@ -1233,7 +1286,12 @@ export async function registerFlow(
           : "unknown";
   const error = codeError(ctx, code);
   show(ctx, [...problemRows("fail", error.title, error.message), endRow()]);
-  return { exitCode: EXIT.failed, state: "error", error, result: r };
+  return {
+    exitCode: EXIT.failed,
+    state: "error",
+    error,
+    result: { kind: r.kind },
+  };
 }
 
 // ── update, changelog, packs ───────────────────────────────────────────────────────────────
@@ -1274,7 +1332,11 @@ export async function updateCheckFlow(
       return {
         exitCode: EXIT.ok,
         state: v.updateAvailable ? "available" : "up-to-date",
-        result: v,
+        result: {
+          state: v.updateAvailable ? "available" : "up-to-date",
+          version: v.version,
+          updateAvailable: v.updateAvailable,
+        },
       };
     }
     const r = await busy(ctx, t("boot.deciding"), () => client.update.decide());
@@ -1346,7 +1408,11 @@ export async function updateCheckFlow(
     }
     if (rows.at(-1)?.mark !== "end") rows.push(endRow());
     show(ctx, rows);
-    return { exitCode: EXIT.ok, state: view.state, result: r };
+    return {
+      exitCode: EXIT.ok,
+      state: view.state,
+      result: { state: view.state, decision: r.decision, channel: r.channel },
+    };
   } catch (e) {
     return failed(ctx, e);
   }
@@ -1423,7 +1489,11 @@ export async function updateApplyFlow(
             ]),
       endRow(),
     ]);
-    return { exitCode: EXIT.ok, state: view.state, result: r };
+    return {
+      exitCode: EXIT.ok,
+      state: view.state,
+      result: { state: view.state, decision: r.decision, channel: r.channel },
+    };
   }
   show(ctx, [
     stepRow(
@@ -1444,17 +1514,23 @@ export async function updateApplyFlow(
         ...(ctx.keys ? [hintsRow(ctx, t("cli.keys.download"))] : []),
       ]),
     );
+  let interrupt = false;
   const keyLoop = (async () => {
     if (!ctx.keys) return;
     for (;;) {
       const k = await ctx.keys.next(abort.signal);
       if (k === null) return;
       if (isCancel(k)) {
+        interrupt = isInterrupt(k);
         abort.abort(new Error("cancelled"));
         return;
       }
     }
   })();
+  const fields = {
+    decision: d,
+    channel: r.channel,
+  };
   let out;
   try {
     out = await client.update.install(d, {
@@ -1478,14 +1554,11 @@ export async function updateApplyFlow(
     live?.commit([]);
     if (cancelled) {
       show(ctx, [stepRow("fail", t("cli.update.cancelled")), endRow()]);
+      if (interrupt) return interrupted({ state: "cancelled", ...fields });
       return {
-        exitCode: EXIT.cancelled,
+        exitCode: EXIT.failed,
         state: "cancelled",
-        error: {
-          code: "cancelled",
-          title: t("cli.update.cancelled"),
-          message: t("cli.update.cancelled"),
-        },
+        result: { state: "cancelled", ...fields },
       };
     }
     return failed(ctx, e);
@@ -1526,10 +1599,19 @@ export async function updateApplyFlow(
     case "blocked": {
       const error = codeError(ctx, "unsupported");
       show(ctx, [...problemRows("fail", error.title, error.message), endRow()]);
-      return { exitCode: EXIT.failed, state: "blocked", result: out, error };
+      return {
+        exitCode: EXIT.failed,
+        state: "blocked",
+        result: { state: view.state, ...fields, installed: out.kind },
+        error,
+      };
     }
   }
-  return { exitCode: EXIT.ok, state: view.state, result: out };
+  return {
+    exitCode: EXIT.ok,
+    state: view.state,
+    result: { state: view.state, ...fields, installed: out.kind },
+  };
 }
 
 /** `changelog`: the published releases, newest first. */
@@ -1552,11 +1634,15 @@ export async function changelogFlow(
       message: t("releaseNotes.error"),
     };
     show(ctx, [stepRow("fail", error.title), endRow()]);
-    return { exitCode: failureExit(error.code), state: "error", error };
+    return {
+      exitCode: EXIT.failed,
+      state: "error",
+      error: { ...error, code: error.code ?? "internal" },
+    };
   }
   if (rows.length === 0) {
     show(ctx, [stepRow("active", t("releaseNotes.empty")), endRow()]);
-    return { exitCode: EXIT.ok, state: "empty", result: rows };
+    return { exitCode: EXIT.ok, state: "empty", result: { entries: [] } };
   }
   const out: RailRow[] = [
     stepRow("active", t("releaseNotes.title", { product: ctx.product.name })),
@@ -1583,7 +1669,18 @@ export async function changelogFlow(
   }
   out.push(endRow());
   show(ctx, out);
-  return { exitCode: EXIT.ok, state: "list", result: rows };
+  return {
+    exitCode: EXIT.ok,
+    state: "list",
+    result: {
+      entries: rows.slice(0, limit).map((e) => ({
+        version: e.version,
+        date: e.date,
+        summary: e.summary,
+        url: e.url,
+      })),
+    },
+  };
 }
 
 /** `packs status`: installed packs and any download in flight. */
@@ -1632,15 +1729,41 @@ export async function packsStatusFlow(
     };
     rows.push(...problemRows("fail", error.title, error.message), endRow());
     show(ctx, rows);
-    return { exitCode: EXIT.failed, state: "failed", result: s, error };
+    return {
+      exitCode: EXIT.failed,
+      state: "failed",
+      result: { packs: packRows(s) },
+      error,
+    };
   }
   rows.push(endRow());
   show(ctx, rows);
   return {
     exitCode: EXIT.ok,
     state: active.length ? "done" : "queued",
-    result: s,
+    result: { packs: packRows(s) },
   };
+}
+
+/** The packs as the result line lists them (the Python kit's `packs`). */
+function packRows(s: {
+  active: Record<string, { packId: string; version: string; type: string }>;
+  running: Record<string, unknown>;
+  inflight: Record<string, { done: number; total: number }>;
+}): Array<Record<string, unknown>> {
+  return [
+    ...Object.values(s.active).map((p) => ({
+      pack: p.packId,
+      version: p.version,
+      type: p.type,
+      running: Boolean(s.running[p.packId]),
+    })),
+    ...Object.entries(s.inflight).map(([id, f]) => ({
+      pack: id,
+      done: f.done,
+      total: f.total,
+    })),
+  ];
 }
 
 /** `packs ensure`: install or update packs with a redrawn bar per pack. */
@@ -1704,7 +1827,9 @@ export async function packsEnsureFlow(
     return {
       exitCode: EXIT.ok,
       state: "done",
-      result: installs.map((i) => ({ packId: i.packId, version: i.version })),
+      result: {
+        packs: installs.map((i) => ({ pack: i.packId, version: i.version })),
+      },
     };
   } catch (e) {
     live?.commit([]);
@@ -1749,7 +1874,7 @@ export function configGetFlow(
     return {
       exitCode: EXIT.failed,
       state: "list",
-      error: { code: null, title: message, message },
+      result: { key, value: null, source: null },
     };
   }
   const d = r.data as { key: string; value: unknown; source: string };
@@ -1769,7 +1894,11 @@ export function configGetFlow(
     ])[0]!,
     endRow(),
   ]);
-  return { exitCode: EXIT.ok, state: "list", result: d };
+  return {
+    exitCode: EXIT.ok,
+    state: "list",
+    result: { key: d.key, value: d.value, source: d.source },
+  };
 }
 
 /** `config list`: the Settings list, locked rows marked. */
@@ -1784,7 +1913,7 @@ export function configListFlow(
   show(ctx, productHeader(ctx, "config list"));
   if (rows.length === 0) {
     show(ctx, [stepRow("active", t("settings.empty")), endRow()]);
-    return { exitCode: EXIT.ok, state: "list", result: rows };
+    return { exitCode: EXIT.ok, state: "list", result: { settings: [] } };
   }
   show(ctx, [
     stepRow("active", t("settings.title")),
@@ -1805,7 +1934,13 @@ export function configListFlow(
   return {
     exitCode: EXIT.ok,
     state: rows.some((r) => r.enforced) ? "locked" : "list",
-    result: rows,
+    result: {
+      settings: rows.map((r) => ({
+        key: r.key,
+        value: r.value,
+        source: r.enforced ? "enforced" : r.source,
+      })),
+    },
   };
 }
 
@@ -1850,7 +1985,9 @@ export async function configWriteFlow(
   return {
     exitCode: EXIT.ok,
     state: "saving",
-    result: d ?? { key, value: null },
+    result: d
+      ? { key: d.key, value: d.value, source: d.source }
+      : { key, value: null, source: null },
   };
 }
 
@@ -1870,12 +2007,13 @@ export function secretFlow(
     return {
       exitCode: EXIT.failed,
       state: "error",
-      error: { code: null, title: message, message },
+      result: { key, present: false },
     };
   }
-  // A script gets the value as stored; a terminal never gets a control character from it.
+  // A script gets the value as stored; a terminal never gets a control character from it. The
+  // `--json` line never carries the value (the Python kit's `key` and `present`).
   if (!quiet(ctx)) ctx.stdout.write(`${ctx.caps.tty ? clean(value) : value}\n`);
-  return { exitCode: EXIT.ok, result: { key, value } };
+  return { exitCode: EXIT.ok, result: { key, present: true } };
 }
 
 /** `mint`: the token alone on stdout. */
@@ -1888,9 +2026,11 @@ export async function mintFlow(
     const tk = await client.config.mintToken(recipeId);
     if (!quiet(ctx))
       ctx.stdout.write(`${ctx.caps.tty ? clean(tk.token) : tk.token}\n`);
+    // The token goes to stdout for a script; the `--json` line never carries it (the Python
+    // kit's `recipe` and `expiresAt`).
     return {
       exitCode: EXIT.ok,
-      result: { recipeId, token: tk.token, expiresAt: tk.expiresAt },
+      result: { recipe: recipeId, expiresAt: tk.expiresAt },
     };
   } catch (e) {
     const code = errorCode(e);
@@ -1899,7 +2039,11 @@ export async function mintFlow(
       ctx.stderr.write(
         `${ctx.render(problemRows("fail", error.title, error.message)).join("\n")}\n`,
       );
-    return { exitCode: failureExit(code), state: "error", error };
+    return {
+      exitCode: EXIT.failed,
+      state: "error",
+      error: { ...error, code: code ?? "internal" },
+    };
   }
 }
 
@@ -1912,7 +2056,7 @@ export function offlineRequestFlow(
 ): FlowResult {
   const t = ctx.copy.t.bind(ctx.copy);
   const deviceId = client.core.deviceId;
-  const result = { product: client.product, deviceId };
+  const result = { product: client.product, requestCode: deviceId };
   if (quiet(ctx)) return { exitCode: EXIT.ok, state: "default", result };
   const rows: RailRow[] = [
     ...productHeader(ctx, "offline-request"),
@@ -1949,18 +2093,34 @@ export async function importBundleFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "import-bundle"));
-  const r = await importBundleCore(client, jws);
-  if (r.ok) {
-    show(ctx, [stepRow("ok", t("offlineActivation.done")), endRow()]);
-    return { exitCode: EXIT.ok, state: "done", result: r.data };
+  let r;
+  try {
+    r = await client.importBundle(jws);
+  } catch (e) {
+    const code = errorCode(e) ?? "bundle";
+    const shown = codeError(ctx, "bundle");
+    show(ctx, [...problemRows("fail", shown.title, shown.message), endRow()]);
+    // The Python kit's import-bundle failure: the code, and the SDK's message for it.
+    return {
+      exitCode: EXIT.failed,
+      state: "rejected-signature",
+      error: {
+        code,
+        title: shown.title,
+        message: clean(String((e as { message?: unknown })?.message ?? "")),
+        showMessage: true,
+      },
+    };
   }
-  const error = codeError(ctx, "bundle");
-  show(ctx, [...problemRows("fail", error.title, error.message), endRow()]);
+  show(ctx, [stepRow("ok", t("offlineActivation.done")), endRow()]);
   return {
-    exitCode: EXIT.failed,
-    state: "rejected-signature",
-    result: r.data,
-    error,
+    exitCode: EXIT.ok,
+    state: "done",
+    result: {
+      bundleId: r.bundleId,
+      imported: [...r.imported],
+      status: client.status().status,
+    },
   };
 }
 

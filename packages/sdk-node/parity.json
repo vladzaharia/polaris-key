@@ -132,7 +132,7 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass \u00a73.12)."
+      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12)."
     },
     "identity.devicecode": {
       "status": "implemented"
@@ -335,7 +335,7 @@
     },
     "commerce.receipt": {
       "status": "implemented",
-      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass \u00a73.9, SP-N04)."
+      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04)."
     }
   }
 }

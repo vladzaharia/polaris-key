@@ -490,11 +490,11 @@ export function statusView(i: StatusInput): StatusView {
   }
 }
 
-/** The exit code the status maps to (docs: 0 usable, 3 blocked or not activated). */
+/** The exit code the status maps to: 0 usable, 1 not (blocked or not activated). */
 export function statusExit(status: string): number {
   return status === "ok" || status === "grace" || status === "not-applicable"
     ? 0
-    : 3;
+    : 1;
 }
 
 // ── UpdatePrompt and UpdateProgress ────────────────────────────────────────────────────────

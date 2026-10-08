@@ -138,13 +138,16 @@ export async function runKitVerb(
   try {
     if (o.usage) {
       const usage = `${ctx.bin} ${verbUsage(verb)}`;
+      // The Python kit's usage result: exit 2, "error": "usage", the usage line as "message".
       r = {
         exitCode: EXIT.usage,
         state: "error",
+        result: { usage },
         error: {
           code: "usage",
           title: ctx.copy.t("cli.help.usage"),
           message: usage,
+          showMessage: true,
         },
       };
       if (!ctx.caps.json)
@@ -166,13 +169,15 @@ export async function runKitVerb(
       r = await verb.flow(ctx, client, args, verbFlags);
     }
   } catch (e) {
+    // A typed failure keeps its registry code; anything else is "internal" (exit 1).
     const code = (e as { code?: unknown })?.code;
-    const c = typeof code === "string" ? code : "unknown";
+    const typed = typeof code === "string";
+    const c = typed ? code : "unknown";
     r = {
-      exitCode: c === "network" ? EXIT.network : EXIT.failed,
+      exitCode: EXIT.failed,
       state: "error",
       error: {
-        code: typeof code === "string" ? code : null,
+        code: typed ? code : "internal",
         title: ctx.copy.code(c, "title"),
         message: ctx.copy.code(c, "message"),
       },

@@ -58,9 +58,10 @@ export {
   spinnerFrames,
   type Ticker,
 } from "./live.js";
-export { isCancel, KeyReader, type Key } from "./keys.js";
+export { isCancel, isInterrupt, KeyReader, type Key } from "./keys.js";
 export {
   CANCEL,
+  INTERRUPT,
   plainConfirm,
   plainSecret,
   promptConfirm,

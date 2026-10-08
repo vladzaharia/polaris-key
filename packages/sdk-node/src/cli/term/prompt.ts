@@ -8,15 +8,22 @@
 // kit shows bullets), keeps the value in memory only, and leaves raw mode on every exit path.
 
 import type { TerminalCaps, TerminalOutput } from "./caps.js";
-import { isCancel, type Key, type KeyReader } from "./keys.js";
+import { isCancel, isInterrupt, type Key, type KeyReader } from "./keys.js";
 import { railLines, type RailRow, type Symbols } from "./layout.js";
 import { LiveRegion } from "./live.js";
 import type { Painter } from "./paint.js";
 import type { Line } from "./width.js";
 
-/** A prompt the user cancelled (Esc, Ctrl-C, Ctrl-D). */
+/** A prompt the user cancelled (Esc, Ctrl-D). */
 export const CANCEL: unique symbol = Symbol("pkey.cancel");
-export type Cancel = typeof CANCEL;
+/** A prompt the user interrupted (Ctrl-C): the flow ends with exit 130. */
+export const INTERRUPT: unique symbol = Symbol("pkey.interrupt");
+export type Cancel = typeof CANCEL | typeof INTERRUPT;
+
+/** CANCEL or INTERRUPT for the key that ended a prompt (null: the reader closed). */
+function cancelled(k: Key | null): Cancel {
+  return k !== null && isInterrupt(k) ? INTERRUPT : CANCEL;
+}
 
 export interface PromptContext {
   caps: TerminalCaps;
@@ -85,7 +92,7 @@ export async function promptSecret(
       const k = await ctx.keys.next(ctx.signal);
       if (k === null || isCancel(k)) {
         live.commit(frame(ctx, p.cancelled()));
-        return CANCEL;
+        return cancelled(k);
       }
       if (k.name === "return" || k.name === "enter") {
         problem = p.check?.(value) ?? null;
@@ -135,7 +142,7 @@ export async function promptConfirm(
       const k = await ctx.keys.next(ctx.signal);
       if (k === null || isCancel(k)) {
         live.commit(frame(ctx, p.cancelled()));
-        return CANCEL;
+        return cancelled(k);
       }
       const yes = k.name === "y" ? true : k.name === "n" ? false : null;
       const answer =
@@ -209,7 +216,7 @@ export async function promptSelect<T>(
       const k = await ctx.keys.next(ctx.signal);
       if (k === null || isCancel(k)) {
         live.commit(frame(ctx, p.cancelled()));
-        return CANCEL;
+        return cancelled(k);
       }
       if (k.name === "up" || k.name === "k")
         at = (at - 1 + p.options.length) % p.options.length;
@@ -243,7 +250,7 @@ export async function plainSecret(
   try {
     for (;;) {
       const k = await keys.next(signal);
-      if (k === null || isCancel(k)) return CANCEL;
+      if (k === null || isCancel(k)) return cancelled(k);
       if (k.name === "return" || k.name === "enter") return value;
       if (k.name === "backspace") value = [...value].slice(0, -1).join("");
       else value = (value + printable(k)).slice(0, MAX_SECRET);
@@ -265,7 +272,7 @@ export async function plainConfirm(
   try {
     for (;;) {
       const k = await keys.next(signal);
-      if (k === null || isCancel(k)) return CANCEL;
+      if (k === null || isCancel(k)) return cancelled(k);
       if (k.name === "y") return true;
       if (k.name === "n") return false;
       if (k.name === "return" || k.name === "enter") return initial;
