@@ -5163,8 +5163,8 @@ group-assignment mistake on that client crossed from customer to operator (notes
   shows `console_oidc_shared`, naming the admin variables still unset. Until the owner sets them
   the pre-I-03 exposure stands: the residual this package closes only once the secrets are set
   and `/manage/callback` is removed from the platform client (DEPLOYMENT §2).
-- **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` (or a product
-  admin group) in the ID token's `groups` (§5). A separate client narrows who can obtain a token
+- **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` in the ID
+  token's `groups` (§5); there is no per-product admin group. A separate client narrows who can obtain a token
   for the console's audience; it does not change what the token grants. Where Pocket ID can
   restrict a client to user groups, allowing only the admin group on the console client adds a
   second check at the IdP.
