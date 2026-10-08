@@ -77,6 +77,9 @@ struct PolarisKitStyle {
     /// The monospaced face at a fixed size: JetBrains Mono under `.brand`, SF Mono under `.system`,
     /// the product's own mono under `.custom`. Used for the user code, the license key and the
     /// offline request code.
+    /// The mono face scaling with Dynamic Type from `.body` (key and request code text).
+    var monoBody: Font { typography.monoBodyFont() }
+
     func monoFont(size: CGFloat) -> Font {
         typography.monoFont(size: size)
     }
@@ -194,15 +197,14 @@ struct PolarisPageHeading: View {
     }
 }
 
-/// Cap the type at accessibility1 on a compressed page, so the heading cannot push the act off.
+/// Cap the type at accessibility1 on a compressed page, so the heading cannot push the act off. One
+/// modifier either way (never a conditional wrapper), so the view structure below it is identical
+/// whether the page is compressed or not.
 struct PolarisCompressedType: ViewModifier {
     let compressed: Bool
     func body(content: Content) -> some View {
-        if compressed {
-            content.dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        } else {
-            content
-        }
+        content.dynamicTypeSize(
+            ...(compressed ? DynamicTypeSize.accessibility1 : DynamicTypeSize.accessibility5))
     }
 }
 
@@ -275,7 +277,7 @@ struct PolarisPageActions: View {
             label(primaryBusy ?? primaryTitle, busy: primaryBusy != nil, fullWidth: fullWidth)
         }
         .polarisPrimaryButton()
-        .modifier(PolarisAccentFill(color: style.setsTint ? style.palette.accent : nil))
+        .modifier(PolarisButtonSkin(style: style, prominent: true))
         .keyboardShortcut(.defaultAction)
         .disabled(primaryDisabled)
         .polarisLayoutProbe(.primaryAction)
@@ -288,6 +290,7 @@ struct PolarisPageActions: View {
             }
             .polarisSecondaryButton()
             .modifier(KitTint(color: style.textTint))
+            .modifier(PolarisButtonSkin(style: style, prominent: false))
             .modifier(CancelShortcut(active: secondaryCancels))
         }
     }
@@ -299,6 +302,7 @@ struct PolarisPageActions: View {
             }
             .polarisSecondaryButton()
             .modifier(KitTint(color: style.textTint))
+            .modifier(PolarisButtonSkin(style: style, prominent: false))
         }
     }
 
@@ -325,21 +329,60 @@ struct PolarisButtonFont: ViewModifier {
     }
 }
 
-/// On macOS a tinted `.borderedProminent` renders lighter than its tint, so white text can fall
-/// under 4.5:1. Drawing the fill explicitly with the resolved accent restores the contrast. Off
-/// macOS, and natively, nothing changes.
-struct PolarisAccentFill: ViewModifier {
-    let color: Color?
+/// Draws a kit button with the resolved accent when the kit sets a tint (the Polaris preset or an
+/// integrator accent), because the system's tinted styles do not reach 4.5:1 everywhere (a tinted
+/// prominent button on macOS renders lighter than its tint; a bordered one's text sits on a
+/// tinted fill). Prominent: a capsule filled with `accent` and labelled `onAccent`. Secondary: a
+/// capsule outline and label in `accentText`, which clears 4.5:1 on the page. Natively nothing
+/// changes: the system styles carry the host's tint.
+struct PolarisButtonSkin: ViewModifier {
+    let style: PolarisKitStyle
+    let prominent: Bool
+
     func body(content: Content) -> some View {
-        #if os(macOS)
-            if let color {
-                content.tint(color)
-            } else {
-                content
-            }
-        #else
+        if style.setsTint {
+            content.buttonStyle(
+                PolarisSkinStyle(
+                    prominent: prominent, fill: style.palette.accent, on: style.palette.onAccent,
+                    text: style.palette.accentText))
+        } else {
             content
-        #endif
+        }
+    }
+}
+
+struct PolarisSkinStyle: ButtonStyle {
+    let prominent: Bool
+    let fill: Color
+    let on: Color
+    let text: Color
+
+    @Environment(\.controlSize) private var controlSize
+    @Environment(\.isEnabled) private var isEnabled
+
+    private var vertical: CGFloat {
+        switch controlSize {
+        case .extraLarge: return 18
+        case .large: return 14
+        case .regular: return 10
+        default: return 6
+        }
+    }
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(prominent ? on : text)
+            .padding(.vertical, vertical)
+            .padding(.horizontal, 16)
+            .background {
+                if prominent {
+                    Capsule().fill(fill)
+                } else {
+                    Capsule().strokeBorder(text, lineWidth: 1.5)
+                }
+            }
+            .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+            .contentShape(Capsule())
     }
 }
 

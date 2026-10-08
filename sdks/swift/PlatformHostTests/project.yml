@@ -53,6 +53,10 @@ targets:
       - target: PKPlatformHost
       - package: PolarisKey
         product: PolarisKeyPlatform
+      - package: PolarisKey
+        product: PolarisKeyUI
+      - package: PolarisKey
+        product: PolarisKey
       - sdk: StoreKitTest.framework
     settings:
       base:

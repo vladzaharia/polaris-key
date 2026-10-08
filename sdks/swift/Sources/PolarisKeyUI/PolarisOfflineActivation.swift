@@ -126,6 +126,10 @@ struct PolarisOfflineSurface: View {
 
     private var copy: PolarisKitCopy { theme.copy.kit }
 
+    /// The request code: the device id alone. The card shows it, Copy copies it and the QR encodes
+    /// it, all from this one value.
+    static func requestCode(deviceId: String) -> String { deviceId }
+
     /// Drag and drop is offered on macOS and iPad (regular width), not on iPhone.
     private var offersDrop: Bool {
         #if os(macOS)
@@ -202,7 +206,7 @@ struct PolarisOfflineSurface: View {
     {
         let card = HStack(spacing: PolarisSpace.s) {
             Text(shownCode)
-                .font(style.monoFont(size: 15))
+                .font(style.monoBody)
                 .foregroundStyle(style.palette.textStrong)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
@@ -210,7 +214,7 @@ struct PolarisOfflineSurface: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             if !deviceId.isEmpty {
                 PolarisCopyButton(
-                    value: deviceId, title: copy.copyCodeLabel, copiedTitle: copy.copiedLabel,
+                    value: Self.requestCode(deviceId: deviceId), title: copy.copyCodeLabel, copiedTitle: copy.copiedLabel,
                     style: style)
             }
         }
@@ -225,14 +229,20 @@ struct PolarisOfflineSurface: View {
         } else if layout == .split {
             HStack(alignment: .center, spacing: PolarisSpace.m) {
                 card
-                PolarisQRCode(deviceId, accessibilityLabel: copy.requestCodeLabel)
+                PolarisQRCode(Self.requestCode(deviceId: deviceId), accessibilityLabel: copy.requestCodeLabel)
                     .frame(width: 96, height: 96)
             }
         } else if layout == .column {
             VStack(spacing: PolarisSpace.s) {
                 card
-                PolarisQRCode(deviceId, accessibilityLabel: copy.requestCodeLabel)
+                // The QR is decoration: it gives way on a compressed page so the actions fit.
+                PolarisPageDecoration {
+                    PolarisQRCode(
+                        Self.requestCode(deviceId: deviceId),
+                        accessibilityLabel: copy.requestCodeLabel
+                    )
                     .frame(width: 128, height: 128)
+                }
             }
         } else {
             card

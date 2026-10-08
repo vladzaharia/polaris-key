@@ -120,6 +120,43 @@ final class KitModelTests: XCTestCase {
         XCTAssertFalse(off.identityEnabled)
     }
 
+    /// A device_limit refusal surfaces the manage URL (with the key as a fragment on an /activate
+    /// link) for the gate to offer; any other result clears it and forgets the key.
+    func testADeviceLimitRefusalSurfacesTheManageURLAndForgetsTheKeyOtherwise() async throws {
+        await server.reply(
+            "/djdl/license/activate", status: 403,
+            body: #"{"error":"device_limit","limit":1,"deviceCount":1,"manageUrl":"https://key.plrs.im/activate?product=djdl&next=free-device"}"#
+        )
+        let model = PolarisKeyModel(client: try await client())
+        await model.activate(key: "PKEY-1")
+        let url = try XCTUnwrap(model.offeredManageURL)
+        XCTAssertTrue(url.hasPrefix("https://key.plrs.im/activate?product=djdl"), url)
+        XCTAssertTrue(url.hasSuffix("#key=PKEY-1"), url)
+        XCTAssertEqual(model.lastKey, "PKEY-1")
+
+        await server.reply(
+            "/djdl/license/activate", status: 403, body: #"{"error":"license_owned"}"#)
+        await model.activate(key: "PKEY-1")
+        XCTAssertNil(model.offeredManageURL)
+        XCTAssertNil(model.lastKey, "the key is forgotten after any other result")
+    }
+
+    /// Through PolarisGate itself (not the surface): the refusal reaches Replace a device.
+    func testPolarisGateOffersReplaceADeviceAfterARefusal() async throws {
+        await server.reply(
+            "/djdl/license/activate", status: 403,
+            body: #"{"error":"device_limit","limit":1,"deviceCount":1,"manageUrl":"https://key.plrs.im/activate?product=djdl&next=free-device"}"#
+        )
+        let model = PolarisKeyModel(client: try await client(services: [.license]))
+        await model.activate(key: "PKEY-1")
+        let gate = PolarisGate(model: model, theme: PolarisTheme()) { Text("App") }
+        let result = KitHost.render(
+            gate.polarisKeyBranding(.polarisKey), at: KitSizes.iPhoneMax, scheme: .dark,
+            type: .large, snapshot: false)
+        let replace = try XCTUnwrap(result.frames[.primaryAction], "Replace a device is offered")
+        XCTAssertTrue(result.safe.contains(replace), "and on screen")
+    }
+
     func testQRCodeEncodes() {
         let image = PolarisQRCode.cgImage(for: "https://key.example/d?user_code=ABCD-EFGH")
         XCTAssertNotNil(image)

@@ -278,6 +278,7 @@ struct PolarisSignInSurface: View {
                 Button(copy.cancelButton, action: onCancel)
                     .polarisSecondaryButton()
                     .modifier(KitTint(color: style.textTint))
+                    .modifier(PolarisButtonSkin(style: style, prominent: false))
                     .modifier(PolarisButtonFont(style: style))
                     .keyboardShortcut(.cancelAction)
                     .frame(maxWidth: layout == .column ? .infinity : nil)
@@ -398,87 +399,40 @@ struct PolarisSignInSurface: View {
     }
 }
 
-/// The device-code lede. The verification page is rendered strong and never breaks or hyphenates:
-/// a word joiner glues every character of the page token, so it moves to its own line whole rather
-/// than split. When even one line of the token does not fit the column, the catalog sentence is
-/// split at its `%@` — the prose, then the page alone on one line (shrinking, never cut), then the
-/// rest — so it is still the catalog string verbatim.
+/// The device-code lede. The verification page is rendered strong and is never truncated: it may
+/// wrap only after a "/" or a "." (a zero-width space is the break opportunity) and never at a
+/// hyphen of the product's own domain (word joiners hold it), so a long domain wraps cleanly onto
+/// the next line instead of ending in an ellipsis.
 struct PolarisPageLede: View {
     let template: String
     let page: String
     let style: PolarisKitStyle
     let layout: PolarisKitLayout
 
-    @State private var tokenWidth: CGFloat = 0
-    @State private var available: CGFloat = 0
-
     private var parts: [String] { template.components(separatedBy: "%@") }
 
-    /// The page with a word joiner between every character, so it never breaks internally.
-    private var glued: String {
-        page.map(String.init).joined(separator: "\u{2060}")
+    /// The page with break opportunities only after "/" and ".".
+    static func breakable(_ page: String) -> String {
+        var out = ""
+        for ch in page {
+            switch ch {
+            case "/", ".": out.append(ch); out.append("\u{200B}")
+            case "-": out.append("\u{2060}-\u{2060}")
+            default: out.append(ch)
+            }
+        }
+        return out
     }
 
     var body: some View {
-        let fitsInline = tokenWidth <= 0 || available <= 0 || tokenWidth <= available
-        Group {
-            if parts.count == 2, !fitsInline {
-                split
-            } else {
-                PolarisPageText(text: inline, style: style, layout: layout)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
-        .background(widthProbe)
-        .background(tokenProbe)
+        PolarisPageText(text: inline, style: style, layout: layout)
     }
 
     private var inline: Text {
         guard parts.count == 2 else { return Text(template) }
-        var url = AttributedString(glued)
+        var url = AttributedString(Self.breakable(page))
         url.inlinePresentationIntent = .stronglyEmphasized
         url.foregroundColor = style.palette.textStrong
         return Text(AttributedString(parts[0]) + url + AttributedString(parts[1]))
-    }
-
-    @ViewBuilder private var split: some View {
-        VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.xxs) {
-            if let before = parts.first, !before.trimmingCharacters(in: .whitespaces).isEmpty {
-                PolarisPageText(text: Text(before.trimmingCharacters(in: .whitespaces)), style: style, layout: layout)
-            }
-            Text(page)
-                .font(style.font(.subtitle).weight(.semibold))
-                .foregroundStyle(style.palette.textStrong)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .textSelection(.enabled)
-            if parts.count == 2, !parts[1].trimmingCharacters(in: .whitespaces).isEmpty {
-                PolarisPageText(text: Text(parts[1].trimmingCharacters(in: .whitespaces)), style: style, layout: layout)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
-    }
-
-    private var widthProbe: some View {
-        GeometryReader { g in
-            Color.clear
-                .onAppear { available = g.size.width }
-                .onChange(of: g.size.width) { _, w in available = w }
-        }
-    }
-
-    private var tokenProbe: some View {
-        Text(page)
-            .font(style.font(.subtitle).weight(.semibold))
-            .fixedSize()
-            .hidden()
-            .background(
-                GeometryReader { g in
-                    Color.clear
-                        .onAppear { tokenWidth = g.size.width }
-                        .onChange(of: g.size.width) { _, w in tokenWidth = w }
-                }
-            )
-            .accessibilityHidden(true)
     }
 }

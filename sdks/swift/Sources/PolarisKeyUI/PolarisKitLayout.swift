@@ -98,6 +98,9 @@ struct PolarisPageFit: Equatable {
     var tall = false
     /// The spare height of a tall page, so the heading can sit a third of the way down.
     var slack: CGFloat = 0
+    /// How far the middle gap may stretch: unbounded on a phone (the act pins to the bottom), capped
+    /// at regular width so a big window does not strand the act far from its instruction.
+    var maxGap: CGFloat = .infinity
 }
 
 // ── Environment: the page's fit, read by headings and decoration ───────────────────────────────
@@ -174,6 +177,9 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
     @State private var size: CGSize = .zero
     /// The natural height of the full (uncompressed) column, from a hidden measurer.
     @State private var naturalColumnHeight: CGFloat = 0
+    /// The natural heights of the side-by-side arrangement's two columns, measured separately.
+    @State private var naturalSideLeading: CGFloat = 0
+    @State private var naturalSideAct: CGFloat = 0
     @State private var scrollToken = 0
 
     var body: some View {
@@ -181,7 +187,7 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
         ScrollViewReader { proxy in
             ScrollView(.vertical) {
                 arranged(arrangement)
-                    .frame(minHeight: size.height > 0 ? size.height : nil, alignment: .top)
+                    .frame(minHeight: size.height > 0 ? size.height : nil, alignment: .center)
                     .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -199,6 +205,7 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
         .background(style.palette.page.ignoresSafeArea())
         .background(sizeProbe)
         .background(columnMeasurer)
+        .background(sideMeasurer)
     }
 
     // ── the three arrangements, from one set of closures ──
@@ -220,7 +227,10 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
         guard naturalColumnHeight > 0, available > 0 else { return PolarisPageFit() }
         if naturalColumnHeight > available { return PolarisPageFit(compressed: true, tall: false) }
         let slack = available - naturalColumnHeight
-        return PolarisPageFit(compressed: false, tall: slack >= PolarisKitLayout.tallSlack, slack: slack)
+        let regular = size.width >= PolarisKitLayout.twoColumnMinWidth
+        return PolarisPageFit(
+            compressed: false, tall: slack >= PolarisKitLayout.tallSlack, slack: slack,
+            maxGap: regular ? 200 : .infinity)
     }
 
     private func column() -> some View {
@@ -236,7 +246,8 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
 
     private func sideBySide() -> some View {
         // Beside each other the content is shorter, so it is compressed only when it still overruns.
-        let f = PolarisPageFit(compressed: naturalColumnHeight > size.height, tall: false)
+        let natural = max(naturalSideLeading, naturalSideAct) + PolarisSpace.l * 2
+        let f = PolarisPageFit(compressed: natural > size.height, tall: false)
         return HStack(alignment: .center, spacing: PolarisSpace.xl) {
             VStack(alignment: .leading, spacing: PolarisSpace.s) {
                 heading(.sideBySide)
@@ -269,19 +280,20 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
         }
     }
 
-    /// Heading, detail and act in one stack whose order never changes. The tall form lifts the
-    /// heading to a third of the height and pins the act to the bottom; otherwise it is centred.
+    /// Heading, detail and act in one stack whose order and STRUCTURE never change: the tall form,
+    /// the compressed form and the plain form differ only in the values below, so a text field in
+    /// the act keeps its identity (and its keyboard) when typing changes the page's fit. A tall page
+    /// lifts the heading a third of the way down and pins the act to the bottom (the gap capped at
+    /// regular width, the whole group centred); otherwise the group is centred.
     @ViewBuilder private func stack(_ layout: PolarisKitLayout, fit f: PolarisPageFit) -> some View {
+        let gap: CGFloat = f.compressed ? PolarisSpace.s : PolarisSpace.l
         VStack(alignment: layout.horizontalAlignment, spacing: 0) {
-            if f.tall { Color.clear.frame(height: f.slack / 3) }
+            Color.clear.frame(height: f.tall ? min(f.slack / 3, 160) : 0)
             heading(layout)
             detail(layout).padding(.top, f.compressed ? PolarisSpace.xxs : PolarisSpace.s)
-            if f.tall {
-                Spacer(minLength: PolarisSpace.l)
-                actWithAnchor(layout).padding(.bottom, PolarisSpace.l)
-            } else {
-                actWithAnchor(layout).padding(.top, f.compressed ? PolarisSpace.s : PolarisSpace.l)
-            }
+            Spacer(minLength: gap)
+                .frame(maxHeight: f.tall ? f.maxGap : gap)
+            actWithAnchor(layout).padding(.bottom, f.tall ? PolarisSpace.l : 0)
         }
         .environment(\.polarisPageFit, f)
     }
@@ -326,6 +338,52 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
         .allowsHitTesting(false)
         .disabled(true)
     }
+
+    /// Measure the side-by-side arrangement's two columns separately (only while that arrangement
+    /// is shown), so its compression is decided from them and not from the stacked column.
+    @ViewBuilder private var sideMeasurer: some View {
+        if PolarisKitLayout.arrangement(for: size) == .sideBySide {
+            let total = min(880, size.width) - PolarisSpace.xl * 2
+            let actWidth = min(PolarisKitLayout.actMaxWidth, total / 2)
+            let leadingWidth = max(total - actWidth - PolarisSpace.xl, 120)
+            HStack(alignment: .top, spacing: 0) {
+                VStack(alignment: .leading, spacing: PolarisSpace.s) {
+                    heading(.sideBySide)
+                    detail(.sideBySide)
+                }
+                .frame(width: leadingWidth)
+                .fixedSize(horizontal: false, vertical: true)
+                .background(
+                    GeometryReader { g in
+                        Color.clear.preference(key: PolarisSideLeadingKey.self, value: g.size.height)
+                    })
+                act(.sideBySide)
+                    .frame(width: actWidth)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .background(
+                        GeometryReader { g in
+                            Color.clear.preference(key: PolarisSideActKey.self, value: g.size.height)
+                        })
+            }
+            .environment(\.polarisPageFit, PolarisPageFit())
+            .onPreferenceChange(PolarisSideLeadingKey.self) { h in if h > 0 { naturalSideLeading = h } }
+            .onPreferenceChange(PolarisSideActKey.self) { h in if h > 0 { naturalSideAct = h } }
+            .hidden()
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+            .disabled(true)
+        }
+    }
+}
+
+private struct PolarisSideLeadingKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+private struct PolarisSideActKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 /// The split's icon pane: the product's icon at hero size over a quiet ground, no text (the form

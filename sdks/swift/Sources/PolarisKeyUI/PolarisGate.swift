@@ -24,7 +24,7 @@ public struct PolarisGate<Content: View>: View {
 
     @State private var licenseKey = ""
     @State private var sheet: GateSheet?
-    @State private var openedManage = false
+    @State private var manageOpened = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
 
@@ -51,6 +51,7 @@ public struct PolarisGate<Content: View>: View {
             isWorking: model.isWorking,
             lastError: model.lastError,
             manageURL: model.offeredManageURL,
+            onOpenManage: { manageOpened = true },
             licenseKey: $licenseKey,
             theme: theme,
             onSignIn: model.identityEnabled ? { sheet = .signIn } : nil,
@@ -61,17 +62,18 @@ public struct PolarisGate<Content: View>: View {
             showsKeyEntry: showsKeyEntry,
             content: content
         )
-        .onChange(of: model.offeredManageURL) { _, url in
-            if url != nil { openedManage = false }
+        .onChange(of: model.lastActivation) { _, _ in
+            // A new result closes the round: a second refusal needs a second Replace tap.
+            manageOpened = false
         }
         .onChange(of: scenePhase) { _, phase in
-            // After Replace a device, retry the same key once when the person comes back; a second
-            // refusal shows the callout again.
-            guard phase == .active, !openedManage, model.offeredManageURL != nil,
-                let key = model.lastKey
+            // Only after the person opened Replace a device (never on a lock/unlock), and only
+            // while the field still holds the refused key, retry it once, quietly.
+            guard phase == .active, manageOpened, model.offeredManageURL != nil,
+                let key = model.lastKey, key == licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
             else { return }
-            openedManage = true
-            Task { await model.activate(key: key) }
+            manageOpened = false
+            Task { await model.activate(key: key, showsWork: false) }
         }
         .sheet(item: $sheet) { which in
             Group {

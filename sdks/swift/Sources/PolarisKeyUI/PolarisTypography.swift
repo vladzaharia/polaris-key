@@ -130,6 +130,23 @@ public struct PolarisTypography: Sendable, Equatable {
         }
     }
 
+    /// The monospaced face scaling with Dynamic Type from `.body`, for text people read and edit
+    /// (the license key, the offline request code): JetBrains Mono under `.brand`, SF Mono under
+    /// `.system`, the product's own face under `.custom`.
+    func monoBodyFont() -> Font {
+        switch family {
+        case .system:
+            return .system(.body, design: .monospaced)
+        case .brand:
+            if BrandFonts.monoAvailable {
+                return .custom(BrandFonts.monoName, size: Self.pointSize(.body), relativeTo: .body)
+            }
+            return .system(.body, design: .monospaced)
+        case .custom(let regular, _):
+            return .custom(regular, size: Self.pointSize(.body), relativeTo: .body)
+        }
+    }
+
     /// The family at a fixed size (a glyph drawn inside a fixed tile, such as the monogram).
     func fixedFont(size: CGFloat, bold: Bool) -> Font {
         switch resolvedFamily {

@@ -455,7 +455,10 @@
         func testTheDeviceLimitKeepsActivateOnScreen() {
             check(
                 screen: "gate-limit", roles: [.primaryAction, .activate],
-                sizes: [KitSizes.iPhoneSE, KitSizes.iPhoneMaxLandscape, KitSizes.macSmall],
+                sizes: [
+                    KitSizes.iPhoneSE, KitSizes.iPhoneSELandscape, KitSizes.iPhoneMaxLandscape,
+                    KitSizes.macSmall,
+                ],
                 types: [.large]
             ) {
                 PolarisGateSurface(
@@ -510,7 +513,8 @@
                 expiresIn: 600, interval: 5, expiresAt: Int(Date().timeIntervalSince1970) + 252)
             check(
                 screen: "signin-long", roles: [.code, .primaryAction],
-                sizes: [KitSizes.iPhoneSE, KitSizes.iPhoneSELandscape, KitSizes.macSmall],
+                // Mac windows at AX1 are not a real combination (macOS ignores Dynamic Type).
+                sizes: KitSizes.snapshotted + [KitSizes.iPhoneSELandscape],
                 types: [.large, .accessibility1]
             ) {
                 PolarisSignInSurface(
@@ -617,6 +621,19 @@
             XCTAssertEqual(
                 String(format: PolarisKitCopy().offlineProductLabel, "Tidewater Studio"),
                 "Product: Tidewater Studio")
+            // The card shows the id, Copy copies it and the QR encodes it: one value.
+            XCTAssertEqual(
+                PolarisOfflineSurface.requestCode(deviceId: Self.realDeviceId), Self.realDeviceId)
+            XCTAssertNotNil(PolarisQRCode.cgImage(for: Self.realDeviceId))
+        }
+
+        func testTheLedeBreaksOnlyAfterSlashAndDot() {
+            let page = "licensing.tidewater-studio-games.example.com/device"
+            let out = PolarisPageLede.breakable(page)
+            XCTAssertEqual(out.replacingOccurrences(of: "\u{200B}", with: "")
+                .replacingOccurrences(of: "\u{2060}", with: ""), page)
+            XCTAssertTrue(out.contains(".\u{200B}") && out.contains("/\u{200B}"))
+            XCTAssertTrue(out.contains("\u{2060}-\u{2060}"), "hyphens never break")
         }
 
         // ── The rules behind the layouts ──

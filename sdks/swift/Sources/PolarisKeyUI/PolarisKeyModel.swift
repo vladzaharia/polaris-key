@@ -38,8 +38,10 @@ public final class PolarisKeyModel {
     public var lastError: String?
     /// The last activation or enrolment, typed, so a view can branch on its kind.
     public private(set) var lastActivation: ActivationResult?
-    /// The key of the last activation attempt, kept to retry once after Replace a device.
-    public private(set) var lastKey: String?
+    /// The key of the last activation attempt, kept only while it was refused with `device_limit`
+    /// so the gate can retry once after Replace a device; nil after any other result. Internal: it
+    /// is a secret and never part of the public surface.
+    private(set) var lastKey: String?
     /// Set by `updateAvailable` events.
     public private(set) var availableUpdate: String?
     /// Epoch seconds of the last sync this model ran.
@@ -104,12 +106,18 @@ public final class PolarisKeyModel {
     }
 
     public func activate(key: String) async {
+        await activate(key: key, showsWork: true)
+    }
+
+    /// `showsWork: false` runs the activation without raising `isWorking` (the gate's one retry
+    /// after Replace a device must not disable a field the person is typing in).
+    func activate(key: String, showsWork: Bool) async {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        isWorking = true
-        defer { isWorking = false }
+        if showsWork { isWorking = true }
+        defer { if showsWork { isWorking = false } }
         let result = await client.activate(key: trimmed)
-        lastKey = trimmed
+        if case .deviceLimit = result { lastKey = trimmed } else { lastKey = nil }
         lastActivation = result
         lastError = copy.activationMessage(result)
         await reload()
@@ -120,6 +128,7 @@ public final class PolarisKeyModel {
         isWorking = true
         defer { isWorking = false }
         let result = await client.enroll()
+        lastKey = nil
         lastActivation = result
         if case .enrollDisabled = result { offersFreeTier = false }
         lastError = copy.activationMessage(result)
