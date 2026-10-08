@@ -13,20 +13,21 @@
   ],
   "uxRows": [],
   "order": 6,
-  "summary": "Diceroll's public download page at dl.plrs.im/diceroll as it reads on Oct 10, after 1.9.0's Oct 7 Publish and its 3-day stable rollout: a recommendation for the visitor's device, then every way to get Diceroll per platform, the visitor's own platform first, from one customer-action model: downloads with their SHA-256 (one shown failing to prepare, with Try again), store links with QR codes, Obtainium as an install source, Scoop as package-manager steps, and the SHA256SUMS link.",
+  "summary": "Diceroll's public download page at dl.plrs.im/diceroll as it reads on Oct 10, after 1.9.0's Oct 7 Publish and its 3-day stable rollout: the hero carries the download for the visitor's device, then every way to get Diceroll per platform (the visitor's own platform first on phone, two columns at wide) from one customer-action model: files with their SHA-256 (one shown failing to prepare, with Try again), store links with QR codes in one action column, Obtainium as an install source, Scoop as package-manager steps, and the SHA256SUMS link.",
   "compare": [
     "One model (A-26) drives this page, the portal's Get it panel (PX-09) and the React SDK's download surface: the same rows in the same order for the same platform.",
-    "The recommendation matches the visitor's device and names the architecture: 'Windows · x64' with the file name and size on a PC; 'On this Android phone' with Google Play on a phone.",
+    "The recommendation matches the visitor's device and names the architecture. From 640px it sits in the hero, on its right: 'Recommended for your PC' and 'Windows x64 · 148 MB' over a large primary Download (the portal product hero's action pattern); the matching row in the list (Windows, Zip file) is tinted, with no extra words. Under 640px there is no separate card and no hero action: the visitor's section comes first and its best row (Google Play) is tinted, with a 'Recommended for this phone' meta line and a filled full-width button. A Mac visitor's hero slot says 'Diceroll isn't made for macOS', with no button.",
     "The visitor's own platform is listed first (Android on an Android phone, iPhone and iPad on iOS, Windows on a PC), then the rest in the fixed order Windows, Android, iPhone and iPad, Linux.",
-    "Every live channel appears under each platform it serves, with what the customer does there: Download (file name, size, a copyable middle-truncated SHA-256), a store link (Google Play, App Store, itch.io), an install source (Obtainium: Add to Obtainium plus a QR code), and package-manager steps (Scoop: numbered steps, each command with a copy button, and how to update).",
+    "Every live channel appears under each platform it serves, with what the customer does there: a file (titled by its format, 'Zip file', 'APK', 'AppImage', with the file name in mono, its size and a middle-truncated SHA-256 whose copy control is a real 28px button named for the file; on phone the whole hash chip is the button, at least 32px tall), a store link (Google Play, App Store, itch.io), an install source (Obtainium: Add to Obtainium plus a QR code), and package-manager steps (Scoop, 'Command line': numbered steps, each command with a copy button, and how to update).",
     "Architecture is said in plain words where it matters; 'For 64-bit Arm phones and tablets, which is almost all of them' is the pattern. The APK also warns 'Installed from Google Play? Keep updating there; this APK can't replace it.'",
     "Channels that are not live (Steam, winget, the Microsoft Store) do not appear; a platform or CPU that isn't built (macOS, Windows on Arm) never shows a download, only one honest line at the foot.",
     "SHA256SUMS is linked once above the platforms ('Check a download with SHA256SUMS'); every file shows its own SHA-256; MD5 appears nowhere.",
-    "Download links are made fresh on click, and the page says so. When one can't be made, that row says 'Couldn't prepare this download. Try again, or get Diceroll from itch.io.' (itch.io links to the same platform's itch.io row) and its button becomes Try again; the Linux row shows this state. A file withdrawn by a demote is never offered: the row shows the current file instead.",
-    "Store buttons use the store's own words ('Get it on Google Play', 'Download on the App Store'); QR codes say what to scan them with.",
+    "Download links are made fresh on click. On click the button shows a spinner and 'Preparing…' until the file starts, then the error row if it fails. When one can't be made, that row says 'Couldn't prepare this download. Try again, or get Diceroll from itch.io.' (itch.io links to the same platform's itch.io row) and its button becomes Try again; the Linux row shows this state. A file withdrawn by a demote is never offered: the row shows the current file instead. The page's foot keeps only the scope line.",
+    "Store buttons use the store's own words ('Get it on Google Play', 'Download on the App Store'). Every row action has one width (wide enough for 'Download on the App Store'), so button edges line up; QR codes are 64px in a fixed column before the button, captioned once in the platform's head ('Scan with your phone', 'Scan with your iPhone'); a QR row is at most 88px tall.",
     "The page uses the portal's frame (Polaris Key brand, Sign in for customers who own it) and Diceroll's cover art and icon; no store prices are shown. Sign in stays in the top bar at phone width too, as icon and text, because this public page has no tab bar.",
-    "The hero says '1.9.0 · released Oct 7, 2026' (the Publish date). The footer gives the developer's contact: 'Questions about Diceroll? Contact Twelve Pips Studio at support@example.com'.",
-    "Phone: the recommendation becomes the phone's own (Google Play), Android's section comes first, QR codes hide (the visitor is already on the phone), each way's action drops under its text, and commands wrap only after a slash with the $ prompt and Copy on the first line."
+    "The hero says '1.9.0 · released Oct 7, 2026' (the Publish date; 'released Oct 7, 2026' never breaks). The footer reads 'Polaris Key · Questions about Diceroll? Contact Twelve Pips Studio at support@example.com', the address a mailto link; the page doesn't link to itself.",
+    "Phone: the recommendation is the phone's own row, tinted in Android's section, which comes first; QR codes hide (the visitor is already on the phone); each way's action drops under its text and fills the text column, for even tap targets; commands wrap only after a slash with the $ prompt and Copy on the first line.",
+    "Sizes: at 1600px and up the platform sections sit in two columns, computers (Windows, Linux) and phones and tablets (Android, iPhone and iPad), the visitor's group first, and this page's content caps at 1440px (its own --portal-max; the portal's other screens stay 1248, a decision for the lead). Desktop and tablet are one column at the full portal width, in the fixed order."
   ],
   "status": "mockup",
   "designReview": {
@@ -64,6 +65,177 @@
         "severity": "minor",
         "issue": "[data and copy] The hero's Oct 8 date contradicts the console's Oct 7; the footer says Twelve Pips Studio handles downloads and gives no contact.",
         "resolution": "The hero says 'released Oct 7, 2026', and the summary says the page is shown on Oct 10, after the Publish's 3-day rollout (which is also when itch.io gets 1.9.0, so 'The same build' holds). Footer: 'Questions about Diceroll? Contact Twelve Pips Studio at support@example.com'."
+      },
+      {
+        "severity": "major",
+        "issue": "At desktop the aside held a 170px card beside about 1,300px of empty column and repeated the first row; on phone the same Google Play action appeared twice within 200px.",
+        "resolution": "From 640px the recommendation sits in the hero (the kit's new .portal-hero-action, on the hero's right, centred on the name and pitch): 'Recommended for your PC', 'Windows x64 · 148 MB' over a large primary Download. .columns and the aside are gone; the list tints the matching Zip file row (.item-row.recommended, new) with no extra words. Under 640px there is no card and no hero action: Android comes first and its Google Play row is tinted, with 'Recommended for this phone' and a filled full-width button. Compare items 2 and 12 updated.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Wide was pixel-identical to desktop with 336px of empty margin on each side.",
+        "resolution": "From 1600px the platforms sit in two columns (computers: Windows, Linux; phones and tablets: Android, iPhone and iPad; the visitor's group first, using .mk-stack-4.wide-2) and the page caps at 1440px through a screen-scoped --portal-max (and the page's max width, no spacing). Desktop and tablet stay one column at the full portal width, in the fixed order. Re-shot: wide now differs from desktop.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Buttons started at five x positions, the App Store QR sat 35px off the Android ones, QR rows were twice the height of the others, and 'Scan with your phone' was said twice in Android.",
+        "resolution": "Every list is .card-rows.fixed-actions (new): one 236px action width, so button edges align. QR codes are 64px (.qr.xs, new) in a fixed column before the button, captioned once in the platform's head ('Scan with your phone', 'Scan with your iPhone'); QR rows are 88px. On phone the actions fill the text column.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "'Download links are made fresh when you click, so they never go stale.' is a sentence EXPERIENCE §2 names for removal.",
+        "resolution": "Deleted; compare item 8 loses 'and the page says so' and gains the click state (a spinner and 'Preparing…' until the file starts, then the existing error row). The foot keeps only the scope line. PORTAL.md §4 still asks for the sentence; the lead should drop it there (the mockups can't edit it).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The SHA-256 copy control was a 13px glyph in a span, with no name and no target.",
+        "resolution": "It is a real <button class=\"btn ghost icon xs\"> named 'Copy the SHA-256 of Diceroll-1.9.0-windows-x64.zip' (and per file); the kit's new .id rule grows the chip to 28px, and on a narrow card the whole hash chip is the button's target, 32px tall.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Row titles repeated their buttons ('Download' beside Download), Scoop's subtitle restated its steps, the phone meta broke after a dot, and the footer linked to the page itself without linking the email.",
+        "resolution": "File rows are titled 'Zip file', 'APK' and 'AppImage' with the file name as mono meta; Scoop reads 'Command line'; 'released Oct 7, 2026' is .nowrap; the footer reads 'Polaris Key · Questions about Diceroll? Contact Twelve Pips Studio at support@example.com' with a mailto .link and no self-link. Compare line added: a Mac visitor's hero slot says 'Diceroll isn't made for macOS' with no button.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Use the tablet band (a full-width recommendation under the hero) at every width.",
+        "resolution": "declined: A band is the 'second panel repeating it' that the kit's portal rule forbids. The hero action matches the portal product hero and puts the primary above the fold.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "On phone, remove Android's Google Play row while the recommendation shows it.",
+        "resolution": "declined: That breaks A-26's one model ('the same rows in the same order', compare item 1). The recommendation becomes a mark on the row instead.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "From 1024 to 1599px, cap the list at 880px and centre it.",
+        "resolution": "declined: The list's edges would no longer line up with the 1248px hero; the fixed action column keeps full-width rows readable.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Two platform columns from 1280px.",
+        "resolution": "declined: At 1248/2 the fixed action column leaves too little text width; two columns start at 1600 with the 1440 cap.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Put each QR's caption beside the code, or put the QR behind a popover button.",
+        "resolution": "declined: A caption beside every code costs about 80px per row, which the two-column wide layout can't spare. One caption per section head says it once. A popover hides the code from desktop visitors, who are exactly the ones who scan it.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Specify the Releases & downloads off state, the nothing-live state and the signed-in variant; replace the links note with 'Share dl.plrs.im/diceroll, not a download link'.",
+        "resolution": "declined: New states for a states pass, not this spacing pass. The replacement note adds a sentence where EXPERIENCE §2 says to remove one.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Mark the recommended list row with 'Recommended' text, or remove its button.",
+        "resolution": "declined: The kit's .recommended tint marks it without repeating the hero's words. The row keeps its button, so the list stays complete for anyone scrolling.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "At 1440 the Download button sat 900px from its row title; at wide Windows and Linux read before Android.",
+        "resolution": "Portal content capped at 960px with 32px gutters at desktop and tablet; the top bar and foot share the edges. At wide the platforms are two columns in the fixed order (Windows | Android, iPhone and iPad | Linux) with equal-height cards. Not applied: the 168px action column; the store labels ('Download on the App Store') need the kit's 236px, so the width is unchanged.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Rows ran to 100px at wide and QR rows were 89px against 73px; phone code wrapped mid-URL.",
+        "resolution": "Rows are at least 72px with the mark and the button on the title's line; QR codes are 56px; the Scoop commands are one-line commands that scroll sideways at 40px with Copy pinned (.cmd.one-line, no <wbr>).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The hero took about 320px and phone lost its primary action.",
+        "resolution": "Art band 120px (96 on phone); the pitch starts on the title's left edge; the phone hero keeps a full-width 'Get it on Google Play' for an Android visitor and the row stays tinted with an outline button.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The itch.io line repeated; the error repeated the row; the APK helper was two lines.",
+        "resolution": "'Same build, with itch.io updates'; 'Couldn't prepare this download. Try again, or use itch.io.'; 'For 64-bit Arm phones and tablets. Won't update a Google Play install.'",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Scan labels repeated what the QR shows; copy-hash targets were small.",
+        "resolution": "Removed both 'Scan with…' labels; the SHA copy button's chip is 32px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Move SHA-256 into an overflow menu; hide the macOS note; collapse platforms on phone.",
+        "resolution": "declined: the per-file checksum is visible on purpose; the macOS note is a short honest footnote; collapsing hides every way to get it.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Replace the Scoop steps with a note; remove the highlighted row or the hero button.",
+        "resolution": "declined: the steps match the compare list; the highlighted row and hero button are the recommendation in place and the shortcut.",
+        "round": "multi-review"
       }
     ]
   }

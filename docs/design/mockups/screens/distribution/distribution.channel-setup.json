@@ -15,19 +15,19 @@
     "UX-68"
   ],
   "order": 3,
-  "summary": "Steam's setup for Diceroll, page-hosted, on step 2 of 4 for you: the stepper numbers only the person's steps (Connect Steamworks, In Steamworks, Merge, Go live) after an unnumbered Polaris Key marker that spins until its work is done; the setup runner lists everything automated since one Set up consent, live, including one action that failed with its fix, Retry and the human way; the current step is a checklist of deep links with copy cards and a verifier that ticks itself and moves the wizard on.",
+  "summary": "Steam's setup for Diceroll, page-hosted, on step 2 of 4 for you. The wizard leads with the person's step: the stepper numbers only the person's steps (Connect Steamworks, In Steamworks, Merge, Go live) after an unnumbered Polaris Key marker that spins until its work is done; the current step is a checklist of deep links with copy fields and one live verifier line that moves the wizard on. Below it, the setup runner (its own card) lists everything automated since one Set up consent: one action that failed with its fix, Try again and the human way, one pending, and the five done behind 'Show 5 done'.",
   "compare": [
-    "The stepper has only human steps, numbered 1 to 4, after one unnumbered marker for Polaris Key's work that reads 'Polaris Key · 5 of 8 done' with a spinner until the runner finishes; the current step reads 'Step 2 of 4 for you'. No automated action is ever a step or counted.",
-    "Polaris Key does this names who consented and when ('Since Ana Lima chose Set up Steam · Oct 7, 10:14'), counts '5 of 8 done · 1 failed', and lists each automated action with its state (done, failed, running, then) and its source on the right (Steamworks Web API, GitHub App, From your builds, Default, Release workflow, Hosted assets). Each row's detail is a second line that wraps; nothing is truncated, and a link never is.",
-    "A failed action has a danger mark, one sentence on what went wrong and how to fix it, Retry, and the human step it replaces: 'Steam's library hero needs 3840 × 1240, and Diceroll's key art in Presentation is 1920 × 620. Upload a larger key art in Presentation, then retry.' with 'Upload the hero in Steamworks yourself'. The same pattern covers the other likely failures, in these words: 'The publisher key can't see Twelve Pips Studio's apps. Give it the Edit App Metadata permission in Steamworks, then retry.'; 'The GitHub App can't write secrets on example-org/diceroll. Allow Secrets: write for the app, then retry.'; and, after 30 minutes, 'Polaris Key hasn't found an app named Diceroll in Twelve Pips Studio's apps. Check the name, then retry.' Each falls back to the human step with the same copy cards.",
+    "The stepper has only human steps, numbered 1 to 4, after one unnumbered marker for Polaris Key's work that reads 'Polaris Key · 5 of 7 done' with a spinner until the runner finishes; the current step reads 'Step 2 of 4 for you'. No automated action is ever a step or counted.",
+    "Polaris Key does this is its own card below the wizard (a page-level card, so light theme shows one surface), titled at the block step (h2, 18/24). It names who consented and when ('Since Ana Lima chose Set up Steam · Oct 7, 10:14'), counts '5 of 7 done', and lists the failed and pending actions with their state and their source on the right (Hosted assets, GitHub App). The 5 done actions sit behind one 'Show 5 done' row at every size (the kit's done list); expanded, each shows its source (Steamworks Web API, GitHub App, From your builds, Default, Release workflow). Finding Diceroll in Steamworks is not a runner row: it is the person's step's verifier, said once in the step. Each row's detail wraps; nothing is truncated, and a link never is. The card's foot holds the reassurance line.",
+    "A failed action has a danger mark, the problem as its title, one sentence on how to fix it, Try again, and the human step it replaces: 'Key art too small for Steam's library hero' / 'Steam needs 3840 × 1240; Diceroll's is 1920 × 620. Upload larger key art in Presentation, then try again.' ('Presentation' links to the key-art slot) with Try again and 'Upload it in Steamworks ↗'. The row re-runs by itself once new key art is uploaded. The same pattern covers the other likely failures, in these words: 'The publisher key can't see Twelve Pips Studio's apps. Give it the Edit App Metadata permission in Steamworks, then try again.'; 'The GitHub App can't write secrets on example-org/diceroll. Allow Secrets: write for the app, then try again.'; and, after 30 minutes, 'Polaris Key hasn't found an app named Diceroll in Twelve Pips Studio's apps. Check the name, then try again.' Each falls back to the human step with the same copy fields.",
     "Derived facts are rows, not fields: depots per built platform (no macOS depot, with the reason), the lane map 'beta → Steam's beta branch, dev → dev' with Change that opens the lane map inline, the app id to be pinned from Steamworks ('never typed'). The builder login goes to GitHub and is never kept. A row says what happens ('Each release uploads to Steam from your release workflow'), with the command only as detail in mono a size below the row text.",
-    "The step has one title ('In Steamworks') and one sentence of why. Items carry status circles (done: filled tick; current: accent ring; to do: empty), never numbers, so only the stepper counts. The done item has who and when and Undo; the current item has Open Steamworks (the step's only primary), four copy cards (App name, Type, Developer, Publisher) and a live verifier row. Valve's store page and review belong to Go live, not this step.",
-    "The footer: Do this later (left), the waiting line 'Moves on by itself when Polaris Key finds the app', and Back. There is no Continue: when the verifier finds the app the wizard opens step 3 with one notice ('Moved on: Polaris Key found Diceroll in Steamworks'). Nothing asks the person to confirm what Polaris Key can check.",
+    "The person's step comes first, inside the wizard under the stepper: one title ('In Steamworks', h2) and one sentence of why, then its two items as flush rows with a hairline between them (no card inside the wizard). Items carry status circles (done: filled tick; current: accent ring; to do: empty) with screen-reader words (Done, Now), never numbers, so only the stepper counts. The done item reads 'Marked done by Ana Lima · Oct 7, 10:21' with Undo; the current item has Open Steamworks on its title line (the step's only primary, above about y=520 at 1440×900 and inside the first 844px on phone), four copy fields (four across from 1280px, two up below, one column on phone) and one live line, role=status: 'Moves on when Polaris Key finds Diceroll in Steamworks · checked 6 s ago'. Valve's store page and review belong to Go live, not this step.",
+    "The wizard's footer: Do this later (left, its label on the content edge) and Back (right). There is no waiting line there (the wait is said once, in the step) and no Continue: when the verifier finds the app the wizard opens step 3 with one notice ('Moved on: Polaris Key found Diceroll in Steamworks'). Nothing asks the person to confirm what Polaris Key can check.",
     "The aside says why this needs a person, what comes next (Merge: pull request #57 adds the Steam upload; Go live: a Coming soon page at least two weeks before release and Valve's review of the page and a build, usually 3 to 5 business days), that the runner re-runs when facts change (a new platform adds a depot, a replaced key is checked), what uses this setup, and one docs link.",
-    "The reassurance line says what Polaris Key never does in Steamworks (prices, discounts, users).",
+    "The reassurance line, in the runner's foot, says what Polaris Key never does in Steamworks (prices, discounts, users).",
     "Store rows run only after A-18k's live verification of Steam; before that, each automated row renders as the human step it replaces with the same copy cards.",
     "The header family reads 'Store · Steamworks API and CI · Windows x64 and Linux x86_64', and the breadcrumb 'Diceroll › Ship builds › Channels › Steam'. The sidebar shows Steam active with '2 of 4'.",
-    "Phone: the stepper becomes 'Prepared by Polaris Key · 5 of 8 done' over 'Step 2 of 4 for you · In Steamworks' and a four-segment bar, with nothing clipped; the runner list collapses to 'Polaris Key did 5 things' with the failed, running and pending rows still visible; copy cards stack; the aside follows the wizard; the footer keeps the waiting line and Back; Do this later and Not using Diceroll on Steam live in the header's overflow."
+    "Phone: the stepper becomes 'Polaris Key is working' with a spinner over 'Step 2 of 4 for you · In Steamworks' and a four-segment meter (role=img, 'Step 2 of 4'; the current segment outlined), with nothing clipped and nothing hidden from screen readers; the step's text column is about 286px; the runner is the same as at every size (failed and pending rows, then 'Show 5 done'); copy fields stack; the aside follows the runner; the footer is Back only; Do this later and Not using Diceroll on Steam live in the header's overflow. At 360px nothing scrolls sideways (the failed row's link wraps, its arrow glued to 'Steamworks')."
   ],
   "status": "mockup",
   "designReview": {
@@ -70,6 +70,211 @@
         "severity": "minor",
         "issue": "[copy] The Prepared marker looks complete at 5 of 8; 'Steam added to pkey storefronts sync' names a command; its mono renders large; 'Change it on Setup' links to this page.",
         "resolution": "The marker reads 'Polaris Key · 5 of 8 done' with a spinner. The row says 'Each release uploads to Steam from your release workflow', with the command as detail. Mono in runner details is 12 px inside 13 px text rather than the suggested 13 px, because JetBrains Mono at 13 px still reads larger than Rubik at 13 px. 'Change' opens the lane map inline."
+      },
+      {
+        "severity": "major",
+        "issue": "Open Steamworks, the step's only primary, sat at y=1208 under a 694px log of finished automation, below the fold at every landscape size; three levels of borders squeezed the phone text column to 250px and stacked three fills in light theme.",
+        "resolution": "The wizard now holds the stepper, the In Steamworks step (its two items as flush rows with a hairline, no card inside the wizard) and the foot (Do this later left, Back right). The runner is its own page-level card below the wizard, titled at h2 (18/24), collapsed to 'Show 5 done' at every size with the failed and pending rows visible, and the reassurance line in its foot. 'What this sets up' stays the 400px aside from 1600px (span-2) and follows below otherwise. Open Steamworks is at y≈477 at 1440×900 and y≈580 on phone; the phone text column is about 284px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The wait was said three times in three phrasings (runner row, step line, footer line).",
+        "resolution": "The runner row 'Find Diceroll in Steamworks' is gone (the count is '5 of 7 done'), the footer's waiting line is gone, and one live line under the copy fields says it once, role=status, as a single text run: 'Moves on when Polaris Key finds Diceroll in Steamworks · checked 6 s ago'. Compare items 1, 2, 5, 6 and 11 updated.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "blocking",
+        "issue": "At 390px the failed row's link ran 10px past the card; at 360px the page scrolled sideways by 7px.",
+        "resolution": "The link reads 'Upload it in Steamworks ↗' with the arrow glued to 'Steamworks' (.nowrap), and the kit's new .link.wrap lets it wrap. Re-rendered at 360px: scrollWidth is 360.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The phone stepper summary was aria-hidden, the meter had no name, state marks had no words, and the heading order ran h1 → h3 → h2.",
+        "resolution": "The phone summary is no longer hidden; the four-segment meter is role=img aria-label 'Step 2 of 4'; every .step-mark and .task-mark carries sr-only Done, Failed, Running, Waiting or Now; headings run h1 Steam, h2 In Steamworks, h2 Polaris Key does this, h2 What this sets up.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4",
+          "ux1"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The failed row named the mechanism, said 'Retry', and sent the person elsewhere with no route there.",
+        "resolution": "Title 'Key art too small for Steam's library hero'; 'Steam needs 3840 × 1240; Diceroll's is 1920 × 620. Upload larger key art in Presentation, then try again.' with 'Presentation' an inline link to the key-art slot; Try again, then 'Upload it in Steamworks ↗'. Compare item 3 says the row re-runs by itself and uses 'try again' throughout.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Padding words: 'Use these values.', '; nothing to edit', and the paid fee's price and payback.",
+        "resolution": "All three cut. The done fee reads 'Marked done by Ana Lima · Oct 7, 10:21'. The macOS-depot reason and 'never typed' stay (compare item 4).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Four 490px copy fields of 4–18 characters wasted a row at desktop and wide.",
+        "resolution": "Copy fields are .mk-grid-4 from 1280px, two up from 640 to 1279px through a screen-scoped @container screen grid-template-columns rule (no spacing), one column on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Pull the failed automated row out first as a one-row .card.alert above the step.",
+        "resolution": "declined: The failure doesn't block the person's step. As an alert plus the runner's '1 failed' it would be said twice, and it would push the step back down. It stays in the runner, which now sits right below the step with its failed row always visible.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "At 1600px and up, move the runner into the 400px aside.",
+        "resolution": "declined: The runner holds a failure with actions, and the kit says the aside never takes the page's most urgent block. One order at every size is simpler. 'What this sets up' stays the aside.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Show .task-meta only on failed, running and waiting rows.",
+        "resolution": "declined: Moot once done rows are collapsed by default. When expanded, compare item 2 asks for each source as provenance.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Delete 'No macOS depot: Diceroll has no macOS build.' and 'The app id comes from Steamworks, never typed.'",
+        "resolution": "declined: Compare item 4 requires both: the depot reason and 'never typed' (plan §2.5: identities derived, never typed twice). These lines carry information, not padding.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Rename the aside 'What happens next' and trim it to the PR number and Valve's days.",
+        "resolution": "declined: Compare item 7 specifies its contents (Then, Runs again by itself, Used by, docs). That is content, which this pass keeps.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Draw copy values in the body font.",
+        "resolution": "declined: The kit's .copy-field uses mono to mark an exact value to paste, the same across every copy field. A per-screen exception would split the kit.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Under 560px, let .task-body span the full card and keep copy fields two up on phone.",
+        "resolution": "declined: The kit keeps a task's content on the text column, and .mk-grid-N is one column on phone. Removing the nesting already restores about 36px of text width.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Drop the runner's progress bar on phone.",
+        "resolution": "declined: Moot after the reorder: the runner no longer sits under the stepper, so the two meters aren't adjacent. The kit's head pattern is a count with its bar.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Add an 'Open Presentation' button to the failed row, and draw a pre-A-18k manual variant screen.",
+        "resolution": "declined: An inline link on 'Presentation' gives the route without a third action. The manual variant is a new screen; compare item 9 already specifies it for the states pass.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "At wide the rail ended 500px above the main column; the three-column band held 2, 1 and 1 paragraphs; the heading 'Then' said nothing.",
+        "resolution": "The rail is sticky at wide (.aside.sticky, top 88px, one column there). Desktop and tablet use a balanced two-column block headed 'Next steps'; 'Steam in the docs' moved to the card header; the page is capped at 1280.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Position was stated 3 to 4 times; the hollow Polaris Key node read as step 0.",
+        "resolution": "The node no longer says 'Step 2 of 4 for you'; below 1100px the segmented bar plus 'Step 2 of 4' replaces the stepper (.hide-compact/.show-compact); connectors capped at 160px (.stepper.fill.capped); the Polaris Key node reads 'Polaris Key · 5 of 7' with a spinner on compact.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "'Do this later' looked like plain text and was missing on phone; 'Back' was almost invisible; 'Not set up' was plain grey text.",
+        "resolution": "Back is a 32px outline with a strong border at the start; Do this later is a 32px accent ghost button (.btn.ghost.accent-text) at the end on every size; Not set up is a 24px status pill.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The failed row's last word was orphaned and its tags sat far right.",
+        "resolution": "Removed the 600px text cap (.fail-row); tags sit beside the title at 12px muted (.tag-inline); the copy fields are 2x2 on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Provenance and intro lines repeated facts.",
+        "resolution": "Removed 'Since Ana Lima chose Set up Steam' and the 'Valve lets only you pay…' intro; kept 'Marked done by Ana Lima' and Undo.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The failed row named Presentation in its sentence but linked to Steamworks.",
+        "resolution": "One sentence 'Key art is 1920×620; Steam needs 3840×1240.' and the actions Try again and Upload in Presentation.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Cut the 'What this sets up' content, drop 'Used by' or the footer line.",
+        "resolution": "declined: this is the consent and mechanism disclosure the wizard needs; the words stay.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Show Done provenance only on expand; drop the 'Moves on when…' wait line.",
+        "resolution": "declined: the wait line says when the step moves on and the audit line is a real fact.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Tooltips and a Channels popover for the tablet icon rail.",
+        "resolution": "declined: shared kit behaviour, not part of this area.",
+        "round": "multi-review"
       }
     ]
   }

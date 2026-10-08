@@ -19,23 +19,23 @@
   "summary": "Diceroll's Channels page in the Ship builds accent: only the channels that fit what Diceroll builds (iOS, Android, Windows x64, Linux x86_64), each in use with its delivery and sales state from one four-state vocabulary (Not set up, Ready, Live, Attention), the Not set up ones as cards that count only the person's steps and carry a Not using choice, One click when every credential is already held, a fit problem whose fix is the card's action, and the unavailable channels absent.",
   "compare": [
     "The page, its Channels nav entries and every channel page are drawn in the Ship builds accent (release cyan), like Release tracks; green means Live, and Commerce only on Sales cards.",
-    "The header shows the product's platforms as chips with their CPU architecture where it matters (Windows x64, Linux x86_64) and their source ('from Diceroll's builds'); Publish 1.9.0 is the only filled button on the page, shown because 1.9.0 is not yet on every live channel. Turn on, Continue, Set up and Add an MSIX build are outline buttons.",
+    "The header shows the product's platforms as chips with their CPU architecture where it matters (Windows x64, Linux x86_64) and their source ('from Diceroll's builds'); Publish 1.9.0 is the only filled button on the page, beside 'From CI 22 min ago' (the version is on the button, so the freshness doesn't repeat it), shown because 1.9.0 is not yet on every live channel. Turn on, Continue, Set up and Add an MSIX build are outline buttons.",
     "The breadcrumb is 'Diceroll › Ship builds › Channels', the same path every channel page extends.",
-    "In use lists every Live, Ready or Attention channel, Polaris Key first: name, the version per track in words, what customers do, then Delivery and Sales as separate cells using exactly the words Live, Ready, Attention and Not set up, with an em dash for a channel that cannot sell.",
-    "Healthy states are status text: Live in green with a tick; Ready in default text with the info dot (never violet text that reads as a link), and Polaris Key's Sales Ready says why ('No offers yet'). Only Attention is a pill. Google Play's Attention row names the problem in one sentence (the key expires Oct 16, uploads and purchase checks stop then) with Replace key, and the same credential puts both sides in Attention.",
-    "What customers do is a quiet outline chip for every row (Obtainium included: 'Add to Obtainium · QR code'), lighter than the state cells. Long values truncate in the middle so the end survives ('play.google.c…com.example.diceroll', 'scoop install https://key.pl…scoop/stable.json'); Copy copies the whole value.",
+    "In use is a section: its title and count sit outside the card, on the same x as Not set up. It lists every Live, Ready or Attention channel, Polaris Key first: name, the version per track in words, what customers do, then Delivery and Sales as separate cells using exactly the words Live, Ready, Attention and Not set up, with an em dash for a channel that cannot sell (read as 'Doesn't sell'). Delivery and Sales have fixed widths (about 160px at desktop and wide, about 112px at tablet), so What customers do takes the rest and stays at tablet. The whole row opens the channel (a stretched link on the name; the chips' copy buttons sit above it).",
+    "Healthy states are status text: Live in green with a tick; Ready in default text with the info dot (never violet text that reads as a link), and Polaris Key's Sales Ready says why ('No offers yet'). Only Attention is a pill. Google Play's problem is said once, in the attention banner above the table: warning glyph, the Google Play mark and name, 'Service account key expires Oct 16; uploads and purchase checks stop then.' and Replace key, with no 'Warning' pill (EXPERIENCE §11.3). Its row shows only Attention, in both Delivery and Sales (the same credential), and the sidebar keeps its dot.",
+    "What customers do is a quiet outline chip for every row (Obtainium included: 'Add to Obtainium · QR code'), lighter than the state cells, and every chip ends in the same copy button (a 28px ghost icon button whose name says what it copies) that copies the whole value. At wide the values show in full; below 1600px a chip is at most 240px and long values truncate in the middle so the end survives ('apps.ap…id6478123905', 'play.go…example.diceroll', 'scoop …scoop/stable.json').",
     "itch.io follows stable only (1.8.2 for Windows x64 and Linux x86_64, from the release workflow), so it never has a release before Publish. Platforms are written as people know them (Windows x64, Linux x86_64); butler channel ids appear only on the itch.io page's Setup tab.",
     "Ready means set up and waiting for the next release (winget: the first winget-pkgs pull request opens when 1.9.0's stable rollout reaches 100%). 'Setting up' never appears as a fifth state: Steam is a Not set up card with its progress, and its sidebar entry shows '2 of 4'.",
-    "Not set up cards count only human steps and name what gets merged ('2 steps for you · submit to Flathub, then merge the pull request that adds the Flathub build'); Steam shows 'Step 2 of 4 for you' with Continue.",
+    "Not set up cards count only human steps and say each thing once: one body line, then the foot. Steam: 'Step 2 of 4 for you · Next: create the app in Steamworks' with Continue (no progress bar); Flathub: '2 steps for you: submit, then merge its pull request' with Set up.",
     "A fit problem makes the fix the card's action: Microsoft Store says it needs an installer (the build is a .zip; the Store takes .msix, .msi or .exe), offers Add an MSIX build (opens the docs on adding an installer to the build), and shows no Set up and no step count until a build fits.",
     "One click appears only when every credential is already held (AltStore and SideStore: the GitHub App can write to example-org/diceroll); the card has the One click pill, no ring and no filled button, says there are no steps for you, and its outline Turn on opens one confirmation.",
     "Every Not set up card, and every item once '3 more' is shown, has an overflow (⋯) whose item is 'Not using Diceroll on <channel>'; each channel page's header overflow has the same item. A recorded choice shows at the foot with who and when, and Undo ('Not using: Snap Store, chosen by Ana Lima on Sep 30').",
     "No macOS, Mac App Store or Homebrew channel appears anywhere (page, nav entries, counts); the only trace is the scope line at the foot with Add it.",
-    "The remaining in-scope channels fold into one '3 more for your platforms' row with Show; no catalogue of every store is shown.",
+    "The remaining in-scope channels fold into one '3 more channels' row (AltStore PAL, F-Droid repository, App Installer); the whole row is the disclosure button, its chevron in the media column. No catalogue of every store is shown.",
     "States to build that are not drawn: first run (only Polaris Key in use; the Not set up cards come first under one line saying what Polaris Key does for each); a row whose store can't be read keeps its last state words, dimmed, with one line ('Couldn't read Google Play at 09:12 · Retry'); loading draws skeleton rows in the same columns.",
-    "Sidebar (A-21): the Ship builds group is open with Releases, Release tracks, Rollouts, Channels (active, count 7), one entry per channel in use or being set up (Google Play with a warning dot, Steam with '2 of 4'), then Packages, Updates, Health. No Matrix, Outlets & feeds, Storefronts grid, Listing, App Store, Commerce or Outlet credentials item.",
+    "Sidebar (A-21): the Ship builds group is open with Releases, Release tracks, Rollouts, Channels (active, with no count: the nested entries already list the channels), one entry per channel in use or being set up (Google Play with a warning dot, Steam with '2 of 4'), then Packages, Updates, Health. No Matrix, Outlets & feeds, Storefronts grid, Listing, App Store, Commerce or Outlet credentials item.",
     "Words: 'channel' throughout, never 'outlet' or 'storefront feed'; a store's family is 'Store' (Steam, Flathub, the Microsoft Store), never 'App store'; store names exactly as the stores write them (App Store, Google Play, itch.io, winget).",
-    "Phone: the sidebar folds into the menu button, Publish takes a full-width row, the column headings go, each channel row stacks its name and meta with 'Delivery Live · Sales Ready' on one line under them (Attention there is warning status text with its icon), version and date tokens never break across lines, the customer hint hides, and the cards stack one per row."
+    "Phone: the sidebar folds into the menu button, Publish takes a full-width row, the column headings go, each channel row stacks its name and meta with one state line under them, 'Delivery Live · Sales Ready' (the Sales half left out where the channel can't sell; Attention is warning status text with its icon), a 16px chevron ends the title line and the whole row opens the channel; version and date tokens never break across lines ('Sep 30. Undo' stays together), the customer hint hides, and the cards stack one per row."
   ],
   "status": "mockup",
   "designReview": {
@@ -88,6 +88,253 @@
         "severity": "minor",
         "issue": "[visual and states] Ready in --pk-info reads like a link; Sales Ready doesn't say what for; no first-run, loading or read-failure state.",
         "resolution": "Ready is default text with the info dot; Polaris Key's Sales Ready adds 'No offers yet'. First run, a per-row read failure ('Couldn't read Google Play at 09:12 · Retry', state words kept) and a loading skeleton are compare items, as asked."
+      },
+      {
+        "severity": "major",
+        "issue": "At 1920 the table stretched to 1614px with each state column about 230px for one word; tablet hid What customers do, the only place the page says what customers do.",
+        "resolution": "Delivery and Sales take fixed widths in a <colgroup> (160px at desktop and wide, 112px at tablet), the chevron 56px; What customers do takes the rest: full values at wide, chips of at most 240px truncated in the middle below 1600px. Tablet keeps the column; phone still hides it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Phone rows spent two labelled lines on Delivery and Sales, three of them on 'Sales —', so In use ran about 830–880px tall.",
+        "resolution": "Each phone row has one state line, 'Delivery ✓ Live · Sales ⊙ Ready' in a .mk-cluster under the meta line (a show-narrow cell that hangs on the text column); the Sales half is left out where the channel can't sell; Attention is warning status text with its icon. On desktop the em dash reads 'Doesn't sell' to screen readers.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the only target was the 17px-high name, with no cue that the row opens anything.",
+        "resolution": "The table is .row-links: the .cell-title link stretches over the row, the chips' copy buttons sit above it (nothing nests in a link), and phone keeps a 16px chevron at the end of the title line.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The attention banner led with a 'Warning' pill, a second word for the page's own Attention state.",
+        "resolution": "The row is the kit's new .attn-row.bare: warning glyph, the Google Play mark and name, the sentence, Replace key. The row keeps Attention in Delivery and Sales and the sidebar its dot. Compare items 5 and 6 updated. The products.home reference is not changed in this pass: its list mixes danger rows (which keep their pill) with warning rows, which needs a mixed-row layout the lead should pick.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux4",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Steam's progress was shown three ways (a 25% bar that read as step 1, the next step, the step count); Flathub said its steps twice; equal heights left 44–50px of dead body.",
+        "resolution": "Steam's bar is gone; its foot reads 'Step 2 of 4 for you · Next: create the app in Steamworks' with Continue. Flathub's second line is gone; its foot reads '2 steps for you: submit, then merge its pull request'. Every card is one body line and its foot; the foot's note wraps beside its action, so each button keeps the right edge.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The '3 more channels' row's + tile read as Add beside 'Show ▾': two controls in one row.",
+        "resolution": "The whole row is one disclosure button (the kit's new .card.fold-row): a chevron in the media column, '3 more channels' and the names on the text column.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "winget's 'its' was unclear and '· x64' repeated the header chips; the header meta repeated 1.9.0 from the button beside it; on phone 'Undo' orphaned onto its own line.",
+        "resolution": "winget reads 'Gets 1.9.0 when stable reaches 100%'; the header meta reads 'From CI 22 min ago'; 'Sep 30. Undo' is one .nowrap run.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'In use' (in a card head) and 'Not set up' (a section head) started 25px apart horizontally.",
+        "resolution": "In use is a .section: its h2 and count sit in a .section-head outside the card, and the table is in a head-less .table-card, so both titles start at x=272 at desktop.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'Channels 7' in the sidebar repeated 'In use 7'.",
+        "resolution": "The count is gone from the Channels nav entry on all four console screens in the area (Channels, App Store, Steam setup, Publish and its result). Compare item 16 updated.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Copy was inconsistent: App Store, Google Play and itch.io chips had none, and Google Play's middle-truncated value couldn't be copied.",
+        "resolution": "Every chip ends in the same real copy button (btn ghost icon xs, aria-label naming the value) that copies the whole value.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Add a 'Live' version column after Channel, and cut each sub-line to one distinctive fact (dropping '1.8.2 on stable').",
+        "resolution": "declined: Compare item 4 keeps the version per track in words in the row; that is the comparison the page exists for, so it stays. A new column is a structure change in a spacing pass. On tablet it would push out What customers do, which ux3 wants kept. Only winget's line is rewritten.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "At 1600px and up, use mk-with-rail: In use in the main column, Not set up, '3 more' and Not using in a 380px side column.",
+        "resolution": "declined: Four stacked to-do cards would make the rail far longer than In use, against the kit rule that the aside stays the shorter column. The cards are the page's to-dos, not secondary blocks. At wide they already sit four across in one row. The fixed state columns fix the stretch instead.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Delete the attention banner and put Google Play's sentence in the row as a third cell-sub line, per the compare.",
+        "resolution": "declined: ux1 and ux3 judged the banner better than the compare. It states the problem once, at the top, in the kit's documented one-item .card.alert (products.overview-a). A third sub-line would break the 56px row. The compare is updated to the render instead.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Show one Attention mark per row: colspan across Delivery and Sales, or warning text in Sales.",
+        "resolution": "declined: Plan §2.5 gives each side its own state, and the phone line 'Delivery … · Sales …' needs both. A colspan breaks the columns and the stacked layout.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Use products.overview's titled 'Needs attention' card for the banner.",
+        "resolution": "declined: The kit already documents the headerless .card.alert with aria-label 'Needs attention' (Dashboard with a rail). With one item, a head and count would add a line and repeat the dot. Both areas use kit patterns.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Put a muted 'Not ready' in Microsoft Store's empty foot slot.",
+        "resolution": "declined: It would add a fifth state word next to the four-state vocabulary (Ready means set up). With no steps, an empty slot is the truth; the fit problem is in the body.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Replace AltStore's 'One click' accent pill with muted text, and drop Flathub's first body line.",
+        "resolution": "declined: The kit allows a pill for a neutral fact with an icon, and compare item 11 makes it the card's cue (decided in round 1). Every card keeps one value line, so the cards read alike.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Change chips' leading icons, and have only the name be the link.",
+        "resolution": "declined: The leading icons already name the kind (globe for our page, external link for a store URL, terminal for a command, QR for Obtainium). The nesting problem is solved by the stretched-link change, with chip buttons above it.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Specify the viewer, Releases & downloads off and nothing-to-publish states, plus One click confirmation copy.",
+        "resolution": "declined: New states, out of scope for this spacing pass: the owner said keep content and structure. Viewer and off are cross-area states for a states pass. Nothing-to-publish is covered by compare item 2 ('shown because 1.9.0 is not yet on every live channel').",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Light theme: darken the release accent to #006473 and use white text on cyan primaries.",
+        "resolution": "declined: That is a brand-token change in packages/brand, generated by build-kit.mjs, outside the mockups and this pass. Every value measured passes AA (5.25:1 and 4.53–4.59:1). Pass it to the brand owner.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "Wide stretched rows: 300 to 600px between a channel name and its Delivery and Sales cells.",
+        "resolution": "Page content capped at 1280px, centred (.page.cap, new kit token --page-cap). The Not set up cards are two lanes at wide, not four, because four lanes at the capped width wrapped every title.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "At tablet the copy URLs were cut in the middle and no use as copy targets.",
+        "resolution": "At 1100px and below the copy chip sits under the versions line in the Channel cell (.table.reflow, .row-chip, up to 360px) and the third column goes away; Delivery and Sales stay 112px. Obtainium's label shortens to 'QR code'; the copy button stays.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Phone had no way to copy the store link, Scoop command or Obtainium link.",
+        "resolution": "Phone shows a full-width 32px copy chip under each row's versions line, the same element as the tablet one. 'Sales' is dropped when the value is Not set up or an em dash.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'Not set up' cards had footer dividers at different heights and three footer forms.",
+        "resolution": "Cards stretch to equal height (.pinned); each foot is one 56px row (.card-foot.fixed) with a one-line muted status clamped with a title tooltip and one right-aligned button; the body holds two lines (.two-line). On a phone the status may take two lines.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Google Play 'Attention' appeared four times.",
+        "resolution": "One Attention pill in Delivery; the Sales cell says 'Key expires Oct 16'. The banner and sidebar dot stay.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'From CI 22 min ago' was ambiguous; Step 2 of 4 repeated the sidebar.",
+        "resolution": "Header meta is 'Build from CI, 22 min ago'; the Steam card says 'Step 2 of 4: create the app in Steamworks' once.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "issue": "Collapse the Not set up cards into rows on phone; merge '3 more channels' with 'Not using'.",
+        "resolution": "declined: changes structure; the Undo link must stay visible and the cards are separate facts with different actions.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Show the version only when it differs from stable.",
+        "resolution": "declined: the row sub-lines are the data the page exists to show; an absent version reads as unknown.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "minor",
+        "issue": "Section levels drifted across 16, 18 and 20px; small muted text had low contrast.",
+        "resolution": "The kit's 18/16 section and card scale and the 13/12 secondary sizes already hold on all six screens; the new work uses only those tokens. The muted token was not changed (an existing value).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
       }
     ]
   }

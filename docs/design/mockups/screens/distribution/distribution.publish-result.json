@@ -3,20 +3,127 @@
   "title": "Publish dialog, after the click",
   "area": "distribution",
   "surface": "dialog",
-  "packages": ["A-24", "P2-08"],
-  "uxRows": ["UX-58"],
+  "packages": [
+    "A-24",
+    "P2-08"
+  ],
+  "uxRows": [
+    "UX-58"
+  ],
   "order": 5,
-  "summary": "The Publish 1.9.0 dialog right after the click, over the dimmed Channels page: each channel's row turns into its own progress (Polaris Key done, Google Play sending, the App Store failed with what went wrong, how to fix it and a Retry for that channel only), because partial success is the realistic outcome of one click to three stores.",
+  "summary": "The Publish 1.9.0 dialog right after the click, over the dimmed Channels page: each channel's row turns into its own progress (Polaris Key done, Google Play sending, the App Store failed with what went wrong, how to fix it and Try again for that channel only), because partial success is the realistic outcome of one click to three stores.",
   "compare": [
-    "After Publish the dialog stays open and its title says what is happening ('Publishing 1.9.0'); the meta line names the promotion and who started it.",
-    "Each channel from the click is one row with its own state in words: Done (status text with a tick), Sending (spinner, muted text) or Failed (danger mark and status). The eyebrow counts them ('1 done · 1 sending · 1 failed').",
-    "A failed row says in one sentence what went wrong and how to fix it, in the store's terms ('Apple didn't accept the submission: build 214 has no export compliance answers. Answer them in App Store Connect, then retry.'), with Retry for that channel only and a link to the store's own page. Nothing that already succeeded is sent again.",
+    "After Publish the dialog stays open and its title says what is happening ('Publishing 1.9.0'); the meta line is the SignedBadge (gold glyph, muted 'Signed by diceroll-rk-2026') and who started it ('Started by Ana Lima just now'). When nothing is still sending, the title settles to 'Published 1.9.0 to 2 of 3 channels'.",
+    "Each channel from the click is one row with its own state in words on its title's line: Done (status text with a tick), Sending (spinner, muted text) or Failed (danger mark and status). There is no eyebrow and no count: the rows carry their states. On phone the state joins the title ('App Store iOS · ⊗ Failed') before the sentence.",
+    "A failed row says in one sentence what went wrong and how to fix it, in the store's terms ('Apple didn't accept the submission: build 214 has no export compliance answers. Answer them in App Store Connect, then try again.'), with 'Try App Store again' for that channel only and 'Open in App Store Connect ↗'. Nothing that already succeeded is sent again. Inside this dialog session, Try App Store again resends with the confirmation already typed for 1.9.0: the same release, build and store, which the batch phrase listed. From Channels or the App Store page later, Try again opens Publish scoped to the App Store, with the typed field. (The first rule is flagged for A-24's security review of the batch typed phrase, audits DC-07.)",
     "A done row says what happened and what follows (Polaris Key: 10% now, everyone by Oct 10; Scoop and Obtainium follow it).",
     "No click needed stays one line with Show, as before the click.",
-    "The footer says closing doesn't stop anything and Close is the only button; there is no primary while a channel is still sending or has failed.",
-    "When every channel succeeds the dialog closes by itself to one success toast in the past tense ('Published 1.9.0 to 3 channels'); when any failed it stays open like this, and closing it leaves the failed channel's row on Channels in Attention with the same sentence and Retry.",
-    "The header and footer stay in view and the body scrolls (capped to the viewport); on phone the dialog is a full-height sheet with the footer at the bottom and each row's state under its text."
+    "The footer note says closing doesn't stop anything ('Closing doesn't stop anything; Channels shows the result.') and Close is the only button; there is no primary while a channel is still sending or has failed. On phone the note comes first, then Close.",
+    "When every channel succeeds the dialog closes by itself to one success toast in the past tense ('Published 1.9.0 to 3 channels'); when any failed it stays open like this, and closing it leaves the failed channel's row on Channels in Attention with the same sentence and Try again.",
+    "The header and footer stay in view and the body scrolls (capped to the viewport); on phone the dialog is a bottom sheet with the footer pinned at the bottom and each row's state on its title's line."
   ],
   "status": "mockup",
-  "designReview": null
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "Four UX designers (layout and spacing; content; interaction and flow; accessibility and responsiveness), triaged by the lead product designer",
+    "date": "2026-10-08",
+    "verdict": "Fixed: statuses on the title line, the phone order (state with the title, the closing note before Close), the SignedBadge, 'Try again', and compare lines for the retry confirmation and the settled title.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The state column sat at three heights; on phone the reader met the error before 'Failed', and the footer note read as an afterthought under Close.",
+        "resolution": "All three rows are .item-row.top, so Done, Sending and Failed sit on their title lines. On phone the state joins the title cluster ('App Store iOS · ⊗ Failed') before the sentence in the DOM (the end's copy hides under 560px), and the foot note is .foot-note.first (new), so the sheet reads the sentence, then Close.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The 'Your 3 channels' eyebrow repeated the click's count; 'Retry' broke the house voice.",
+        "resolution": "Eyebrow gone (compare item 2: no eyebrow, the rows carry their states); 'Try App Store again' and '…then try again.'",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Resending a production store submission had no defined confirmation rule, and the settled end state people return to had a wrong title.",
+        "resolution": "Compare lines added: inside this dialog session Try App Store again resends with the confirmation already typed for 1.9.0 (same release, build and store, which the batch phrase listed); from Channels or the App Store page later, Try again opens Publish scoped to the App Store with the typed field; with nothing still sending the title settles to 'Published 1.9.0 to 2 of 3 channels'. The first rule is flagged for A-24's security review of the batch typed phrase (DC-07).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The plated Signed pill (removed by EXPERIENCE §6 and §11.3) read as a second warning.",
+        "resolution": "The meta line leads with the kit's new .signed-badge (gold glyph, muted words), as in distribution.publish.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Keep an 18px leading column with a tick, spinner or × where the checkbox was.",
+        "resolution": "declined: The status word already carries its glyph, so each state would show twice. The after-click dialog is a different state, not a jitter.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Keep the 'Your 3 channels' eyebrow.",
+        "resolution": "declined: It repeats the click's count and the rows; ux1 and ux2 call it filler, and Publish loses its eyebrow too.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Drop 'Signed by…' from the meta after the click.",
+        "resolution": "declined: It is the same dialog after the click; a stable first meta fact keeps the head from shifting. It is redrawn as the quiet SignedBadge.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Make the phone sheet full height (top 0).",
+        "resolution": "declined: The kit's .sheet caps the sheet at 90% of the screen so the page stays visible behind it. Moving the status and footer note fixes the reading problem.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the status moved inline after the name and an orphan bullet led the meta line.",
+        "resolution": "The state is right-aligned on the title row, the platform moves to the sub-line (.plat-sub); the meta line stacks without a dot on a narrow card (.meta-seps.stack-narrow); Show is right-aligned.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The failed row differed from the setup runner's.",
+        "resolution": "Same treatment: red tint, 3px start bar, 12px padding (.item-row.fail-row); state words 13px/600; footer 'Publishing continues if you close this.'; the dialog is centred like Publish.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Add a summary line, a 'View on Channels' link and a tooltip on Try again.",
+        "resolution": "declined: new content and controls; the footer already points to Channels.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Inline 'Open in App Store Connect' beside Try at 390px.",
+        "resolution": "declined: it does not fit one line without shortening the button label, which is copy; it wraps under the button.",
+        "round": "multi-review"
+      }
+    ]
+  }
 }

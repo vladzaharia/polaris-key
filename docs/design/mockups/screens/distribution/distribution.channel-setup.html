@@ -1,563 +1,51 @@
 <style>
-  /* distribution.channel-setup: the setup runner's list, the human checklist with copy cards, the aside. */
-  [data-screen="distribution.channel-setup"] .sidebar-foot {
-    position: static;
-  }
-  [data-screen="distribution.channel-setup"] .nav-sub {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    margin: 0 0 4px 21px;
-    padding-left: 7px;
-    border-left: 1px solid var(--mk-line);
-  }
-  [data-screen="distribution.channel-setup"] .nav-sub > .nav-item {
-    height: 30px;
-    gap: 8px;
-    padding: 0 8px;
-    font-size: 13px;
-  }
-  [data-screen="distribution.channel-setup"] .nav-sub > .nav-item > .ic {
-    width: 14px;
-    height: 14px;
-  }
-  [data-screen="distribution.channel-setup"] .nav-sub .nav-note {
-    margin-left: auto;
-    font-size: 11px;
-    font-weight: 400;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="distribution.channel-setup"] .nav-sub .nav-warn {
-    flex: none;
-    margin-left: auto;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--pk-warning);
-  }
-  [data-screen="distribution.channel-setup"] .ch {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-    box-shadow: inset 0 0 0 1px var(--mk-line);
-  }
-  [data-screen="distribution.channel-setup"] .ch > .ic {
-    width: 20px;
-    height: 20px;
-    vertical-align: 0;
-  }
-  [data-screen="distribution.channel-setup"] .ch.sm {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-  }
-  [data-screen="distribution.channel-setup"] .ch.sm > .ic {
-    width: 16px;
-    height: 16px;
-  }
-  [data-screen="distribution.channel-setup"] .ch.lg {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-  }
-  [data-screen="distribution.channel-setup"] .ch.lg > .ic {
-    width: 26px;
-    height: 26px;
-  }
-  [data-screen="distribution.channel-setup"] .ch.pk {
-    background: var(--pk-service-core-subtle);
-    color: var(--pk-service-core-fg);
-    box-shadow: none;
-  }
-  [data-screen="distribution.channel-setup"] .qr {
-    display: inline-flex;
-    flex: none;
-    padding: 4px;
-    border-radius: 10px;
-    background: var(--pk-brand-page);
-    color: var(--pk-brand-text);
-    box-shadow: inset 0 0 0 1px var(--mk-line);
-  }
-  [data-theme="dark"] [data-screen="distribution.channel-setup"] .qr {
-    background: var(--pk-brand-text);
-    color: var(--pk-brand-page);
-  }
-  [data-screen="distribution.channel-setup"] .qr-svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-
-  [data-screen="distribution.channel-setup"] .ch-heading {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 14px;
-    min-width: 0;
-  }
-  [data-screen="distribution.channel-setup"] .ch-heading > div {
-    min-width: 0;
-  }
-  [data-screen="distribution.channel-setup"] .ch-heading .title-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 12px;
-  }
-  [data-screen="distribution.channel-setup"] .setup-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 300px;
-    gap: 20px;
-    align-items: start;
-  }
-  [data-screen="distribution.channel-setup"] .stepper .step {
-    flex: none;
-  }
-  [data-screen="distribution.channel-setup"] .stepper .step + .step::before {
-    width: 24px;
-  }
-  /* Polaris Key's work: one unnumbered marker, a spinner while the runner still works. */
+  /* distribution.channel-setup: Polaris Key's unnumbered stepper marker, the failed runner row's
+     tint, the notes' tile width, and the copy fields two up below 1280. */
   [data-screen="distribution.channel-setup"] .step.auto {
     counter-increment: none;
   }
   [data-screen="distribution.channel-setup"] .step.auto .step-mark {
-    border: 2px solid var(--pk-accent-subtle);
+    border: 2px solid var(--pk-border-strong);
     border-top-color: var(--pk-accent);
   }
   [data-screen="distribution.channel-setup"] .step.auto .step-mark::after {
     content: "";
   }
-  [data-screen="distribution.channel-setup"] .step.auto + .step::before {
-    background: var(--pk-border-strong);
+  [data-screen="distribution.channel-setup"] .task.blocked {
+    background: color-mix(in oklab, var(--pk-danger-subtle) 55%, var(--pk-surface-raised));
   }
-  /* Phone: the current step in words over four segments, never the clipped row of circles. */
-  [data-screen="distribution.channel-setup"] .phone-steps {
-    display: none;
-  }
-  [data-screen="distribution.channel-setup"] .phone-steps .by {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .phone-steps .by .spinner {
-    width: 12px;
-    height: 12px;
-  }
-  [data-screen="distribution.channel-setup"] .phone-steps .now {
-    font-size: 14px;
-    line-height: 20px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="distribution.channel-setup"] .meter > i.cur {
-    background: color-mix(in oklab, var(--pk-accent) 40%, var(--mk-fill));
-  }
-  [data-screen="distribution.channel-setup"] .autolist {
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    background: var(--pk-surface-sunken);
-    overflow: hidden;
-  }
-  [data-screen="distribution.channel-setup"] .auto-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 10px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--mk-line);
-    background: color-mix(in oklab, var(--pk-accent-subtle) 60%, var(--pk-surface-sunken));
-  }
-  [data-screen="distribution.channel-setup"] .auto-head > .ic {
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="distribution.channel-setup"] .auto-head .who {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .auto-head .done-count {
-    margin-left: auto;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .auto-head .done-count .fail {
-    color: var(--pk-danger);
-  }
-  [data-screen="distribution.channel-setup"] .auto-row {
-    display: grid;
-    grid-template-columns: 20px minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 2px 12px;
-    padding: 10px 16px;
-  }
-  [data-screen="distribution.channel-setup"] .auto-row + .auto-row {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="distribution.channel-setup"] .auto-mark {
-    position: relative;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.done .auto-mark {
-    background: var(--pk-success-subtle);
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.done .auto-mark::after {
-    content: "";
-    position: absolute;
-    inset: 4px;
-    background: var(--pk-success);
-    -webkit-mask: var(--ic-check) center / contain no-repeat;
-    mask: var(--ic-check) center / contain no-repeat;
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.doing .auto-mark {
-    border: 2px solid var(--pk-accent-subtle);
-    border-top-color: var(--pk-accent);
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.next .auto-mark::after {
-    content: "";
-    position: absolute;
-    inset: 2px;
-    background: var(--pk-text-subtle);
-    -webkit-mask: var(--ic-clock) center / contain no-repeat;
-    mask: var(--ic-clock) center / contain no-repeat;
-  }
-  /* A failed action: a danger mark, what went wrong and how to fix it, Retry, and the human way. */
-  [data-screen="distribution.channel-setup"] .auto-row.failed {
-    background: color-mix(in oklab, var(--pk-danger-subtle) 55%, var(--pk-surface-sunken));
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.failed .auto-mark {
-    background: var(--pk-danger-subtle);
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.failed .auto-mark::after {
-    content: "";
-    position: absolute;
-    inset: 3px;
-    background: var(--pk-danger);
-    -webkit-mask: var(--ic-x) center / contain no-repeat;
-    mask: var(--ic-x) center / contain no-repeat;
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.failed .auto-desc {
+  [data-screen="distribution.channel-setup"] .task.blocked .task-desc {
     color: var(--pk-text-default);
   }
-  [data-screen="distribution.channel-setup"] .auto-acts {
-    grid-column: 2 / -1;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 14px;
-    margin-top: 6px;
-  }
-  [data-screen="distribution.channel-setup"] .auto-title {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.done .auto-title,
-  [data-screen="distribution.channel-setup"] .auto-row.next .auto-title {
-    font-weight: 400;
-    color: var(--pk-text-default);
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.done .auto-title {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="distribution.channel-setup"] .auto-desc {
-    grid-column: 2;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .auto-desc .mono {
-    font-size: 12px;
-  }
-  [data-screen="distribution.channel-setup"] .auto-desc .btn.link {
-    display: inline-flex;
-    font-size: 13px;
-  }
-  [data-screen="distribution.channel-setup"] .auto-src {
-    grid-column: 3;
-    grid-row: 1;
-    font-size: 12px;
-    line-height: 20px;
-    color: var(--pk-text-subtle);
-    white-space: nowrap;
-  }
-  [data-screen="distribution.channel-setup"] .auto-row.done {
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
-  [data-screen="distribution.channel-setup"] .auto-summary {
-    display: none;
-  }
-  [data-screen="distribution.channel-setup"] .verifier .waiting-dot,
-  [data-screen="distribution.channel-setup"] .foot-wait {
-    white-space: normal;
-  }
-  [data-screen="distribution.channel-setup"] .step-intro {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  [data-screen="distribution.channel-setup"] .step-intro p {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .checklist {
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-  }
-  [data-screen="distribution.channel-setup"] .item {
-    display: grid;
-    grid-template-columns: 24px minmax(0, 1fr) auto;
-    align-items: start;
-    gap: 4px 14px;
-    padding: 14px 16px;
-  }
-  [data-screen="distribution.channel-setup"] .item + .item {
-    border-top: 1px solid var(--mk-line);
-  }
-  /* Items carry a status circle, never a number: only the stepper counts. */
-  [data-screen="distribution.channel-setup"] .item-mark {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 1px solid var(--pk-border-strong);
-  }
-  [data-screen="distribution.channel-setup"] .item.done .item-mark {
-    border-color: var(--pk-success);
-    background: var(--pk-success);
-  }
-  [data-screen="distribution.channel-setup"] .item.done .item-mark::after {
-    content: "";
-    width: 14px;
-    height: 14px;
-    background: var(--pk-success-on);
-    -webkit-mask: var(--ic-check) center / contain no-repeat;
-    mask: var(--ic-check) center / contain no-repeat;
-  }
-  [data-screen="distribution.channel-setup"] .item.current .item-mark {
-    border: 2px solid var(--pk-accent);
-  }
-  [data-screen="distribution.channel-setup"] .item.current .item-mark::after {
-    content: "";
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--pk-accent);
-  }
-  [data-screen="distribution.channel-setup"] .item-title {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="distribution.channel-setup"] .item.done .item-title {
-    font-weight: 400;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .item-desc {
-    grid-column: 2;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .item-action {
-    grid-column: 3;
-    grid-row: 1 / span 2;
-    align-self: start;
-  }
-  [data-screen="distribution.channel-setup"] .copies {
-    grid-column: 2 / -1;
-    display: grid;
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.6fr) minmax(0, 1.3fr) minmax(0, 1.3fr);
-    gap: 8px;
-    margin-top: 8px;
-  }
-  [data-screen="distribution.channel-setup"] .copy-card {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    min-width: 0;
-    padding: 8px 8px 8px 10px;
-    border: 1px solid var(--mk-line);
-    border-radius: 10px;
-    background: var(--pk-surface-sunken);
-  }
-  [data-screen="distribution.channel-setup"] .copy-card > div {
-    flex: 1;
-    min-width: 0;
-  }
-  [data-screen="distribution.channel-setup"] .copy-card .lbl {
-    display: block;
-    font-size: 11px;
-    line-height: 14px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="distribution.channel-setup"] .copy-card .val {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--pk-font-mono);
-    font-size: 12px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="distribution.channel-setup"] .copy-card > .ic {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="distribution.channel-setup"] .verifier {
-    grid-column: 2 / -1;
-    margin-top: 8px;
-  }
-  [data-screen="distribution.channel-setup"] .assert {
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="distribution.channel-setup"] .never {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .never > .ic {
-    margin-top: 1px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="distribution.channel-setup"] .foot-wait {
-    margin-left: auto;
-  }
-  [data-screen="distribution.channel-setup"] .aside {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 18px 20px;
-  }
-  [data-screen="distribution.channel-setup"] .aside h3 {
-    font-size: 13px;
-    line-height: 18px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="distribution.channel-setup"] .aside p,
-  [data-screen="distribution.channel-setup"] .aside li {
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="distribution.channel-setup"] .aside li strong {
-    color: var(--pk-text-strong);
-    font-weight: 400;
-  }
-  [data-screen="distribution.channel-setup"] .aside ul {
-    list-style: disc;
-    padding-left: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="distribution.channel-setup"] .setup-grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="distribution.channel-setup"] .copies {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  [data-screen="distribution.channel-setup"] .setup-notes {
+    --tile-min: 240px;
   }
   @container screen (max-width: 639px) {
-    [data-screen="distribution.channel-setup"] .page-head > .page-actions {
-      grid-area: tools;
-      padding-top: 0;
+    [data-screen="distribution.channel-setup"] .copy-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    [data-screen="distribution.channel-setup"] .ch-heading .ch.lg {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
+    [data-screen="distribution.channel-setup"] .copy-grid .copy-value {
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
-    [data-screen="distribution.channel-setup"] .wizard-head {
-      display: block;
-      padding: 14px 16px;
-    }
-    [data-screen="distribution.channel-setup"] .stepper {
-      display: none;
-    }
-    [data-screen="distribution.channel-setup"] .phone-steps {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    [data-screen="distribution.channel-setup"] .wizard-body {
-      padding: 20px 16px;
-    }
-    [data-screen="distribution.channel-setup"] .auto-row.done {
-      display: none;
-    }
-    [data-screen="distribution.channel-setup"] .auto-summary {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--mk-line);
-      font-size: 13px;
-      color: var(--pk-text-default);
-    }
-    [data-screen="distribution.channel-setup"] .auto-summary > .ic {
-      color: var(--pk-success);
-    }
-    [data-screen="distribution.channel-setup"] .auto-summary > .ic:last-child {
-      margin-left: auto;
-      color: var(--pk-text-subtle);
-    }
-    [data-screen="distribution.channel-setup"] .auto-head .done-count {
-      margin-left: 0;
-      flex-basis: 100%;
-    }
-    [data-screen="distribution.channel-setup"] .auto-row {
-      grid-template-columns: 20px minmax(0, 1fr);
-      padding: 10px 14px;
-    }
-    [data-screen="distribution.channel-setup"] .auto-src {
-      grid-column: 2;
-      grid-row: auto;
-      line-height: 16px;
-    }
-    [data-screen="distribution.channel-setup"] .auto-acts {
-      grid-column: 2;
-    }
-    [data-screen="distribution.channel-setup"] .item {
-      grid-template-columns: 24px minmax(0, 1fr);
-      padding: 14px;
-    }
-    [data-screen="distribution.channel-setup"] .item-action {
-      grid-column: 2;
-      grid-row: auto;
-      margin-top: 6px;
-    }
-    [data-screen="distribution.channel-setup"] .copies {
-      grid-column: 2;
+  }
+  @container screen (min-width: 1600px) {
+    [data-screen="distribution.channel-setup"] .setup-notes {
       grid-template-columns: minmax(0, 1fr);
     }
-    [data-screen="distribution.channel-setup"] .verifier {
-      grid-column: 2;
-    }
-    [data-screen="distribution.channel-setup"] .wizard-foot {
-      flex-wrap: wrap;
-      padding: 12px 16px;
-    }
-    [data-screen="distribution.channel-setup"] .foot-wait {
-      flex: 1 1 0;
-      margin: 0;
-    }
-    [data-screen="distribution.channel-setup"] .wizard-foot > .later {
-      display: none;
+  }
+  /* The Not set up status is a pill beside the title. */
+  [data-screen="distribution.channel-setup"] .status-pill {
+    margin-left: var(--sp-1);
+  }
+  /* Back is the secondary outline: its border reaches 3:1 in both themes. */
+  [data-screen="distribution.channel-setup"] .wizard-foot .btn.outline {
+    border-color: var(--pk-border-strong);
+  }
+  /* Four copy fields a row from 1280px; two from 640 (a mono "Twelve Pips Studio" needs the room). */
+  @container screen (min-width: 640px) and (max-width: 1279px) {
+    [data-screen="distribution.channel-setup"] .copy-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 </style>
@@ -584,30 +72,30 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group" data-service="release" style="padding-top: 4px">
-      <div class="nav-label">Ship builds<i class="ic ic-chevron-down sm"></i></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="release">
+      <button class="nav-label" aria-expanded="true">Ship builds<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-package"></i><span class="nav-text">Releases</span></a>
       <a class="nav-item" href="#"><i class="ic ic-git-branch"></i><span class="nav-text">Release tracks</span></a>
       <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
-      <a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span><span class="count">7</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a>
       <div class="nav-sub">
         <a class="nav-item" href="#"><i class="ic ic-polaris"></i><span class="nav-text">Polaris Key</span></a>
         <a class="nav-item" href="#"><i class="ic ic-app-store"></i><span class="nav-text">App Store</span></a>
-        <a class="nav-item" href="#"><i class="ic ic-google-play"></i><span class="nav-text">Google Play</span><span class="nav-warn" title="Attention"></span></a>
+        <a class="nav-item" href="#"><i class="ic ic-google-play"></i><span class="nav-text">Google Play</span><span class="nav-dot" title="Attention"></span></a>
         <a class="nav-item" href="#"><i class="ic ic-itch"></i><span class="nav-text">itch.io</span></a>
         <a class="nav-item" href="#"><i class="ic ic-package-open"></i><span class="nav-text">Obtainium</span></a>
         <a class="nav-item" href="#"><i class="ic ic-square-terminal"></i><span class="nav-text">Scoop</span></a>
         <a class="nav-item" href="#"><i class="ic ic-terminal"></i><span class="nav-text">winget</span></a>
-        <a class="nav-item active" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
+        <a class="nav-item active" aria-current="page" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
       </div>
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="commerce" style="padding-top: 4px"><div class="nav-label">Commerce<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -615,123 +103,120 @@
   </nav>
 
   <main class="main">
-    <div class="page">
+    <div class="page columns cap">
       <header class="page-head">
         <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Channels</a><i class="ic ic-chevron-right"></i>Steam</nav>
-        <div class="page-heading ch-heading">
-          <span class="ch lg"><i class="ic ic-steam"></i></span>
-          <div>
-            <div class="title-line"><h1>Steam</h1><span class="status muted">Not set up</span></div>
-            <p class="small muted">Store · Steamworks API and CI · Windows x64 and Linux x86_64</p>
-          </div>
-        </div>
+        <div class="page-icon"><span class="icon-tile xl neutral"><i class="ic ic-steam"></i></span></div>
+        <div class="page-heading"><h1>Steam</h1><span class="pill status-pill">Not set up</span></div>
+        <p class="page-sub">Store · Windows x64 and Linux x86_64</p>
         <div class="page-actions">
           <button class="btn ghost icon" aria-label="More for Steam: Do this later, Not using Diceroll on Steam, Start over"><i class="ic ic-ellipsis"></i></button>
         </div>
       </header>
 
-      <div class="setup-grid">
-        <div class="wizard">
-          <!-- Only the person's steps are numbered; Polaris Key's work is the unnumbered first marker. -->
-          <div class="wizard-head">
-            <ol class="stepper" aria-label="Set up Steam">
-              <li class="step auto"><span class="step-mark" aria-hidden="true"></span><span class="step-label">Polaris Key<small>5 of 8 done</small></span></li>
-              <li class="step done"><span class="step-mark"></span><span class="step-label">Connect Steamworks</span></li>
-              <li class="step current" aria-current="step"><span class="step-mark"></span><span class="step-label">In Steamworks<small>Step 2 of 4 for you</small></span></li>
-              <li class="step"><span class="step-mark"></span><span class="step-label">Merge</span></li>
-              <li class="step"><span class="step-mark"></span><span class="step-label">Go live</span></li>
-            </ol>
-            <div class="phone-steps" aria-hidden="true">
-              <span class="by"><span class="spinner"></span>Prepared by Polaris Key · 5 of 8 done</span>
-              <span class="now"><span class="bold">Step 2 of 4 for you</span> · In Steamworks</span>
-              <div class="meter"><i class="on"></i><i class="cur"></i><i></i><i></i></div>
+      <div class="wizard">
+        <!-- Only the person's steps are numbered; Polaris Key's work is the unnumbered first marker. -->
+        <div class="wizard-head">
+          <ol class="stepper fill capped hide-compact" aria-label="Set up Steam">
+            <li class="step auto"><span class="step-mark"><span class="sr-only">Running</span></span><span class="step-label">Polaris Key · 5 of 7</span></li>
+            <li class="step done"><span class="step-mark"><span class="sr-only">Done</span></span><span class="step-label">Connect Steamworks</span></li>
+            <li class="step current" aria-current="step"><span class="step-mark"><span class="sr-only">Now</span></span><span class="step-label">In Steamworks</span></li>
+            <li class="step"><span class="step-mark"></span><span class="step-label">Merge</span></li>
+            <li class="step"><span class="step-mark"></span><span class="step-label">Go live</span></li>
+          </ol>
+          <!-- Phone: the current step in words over four segments, never a clipped row of circles. -->
+          <div class="show-compact">
+            <div class="mk-stack-2">
+              <span class="mk-cluster type-meta"><span class="spinner" aria-hidden="true"></span>Polaris Key · 5 of 7</span>
+              <span><strong>Step 2 of 4</strong> · In Steamworks</span>
+              <div class="meter" role="img" aria-label="Step 2 of 4"><i class="on"></i><i class="cur"></i><i></i><i></i></div>
             </div>
-          </div>
-
-          <div class="wizard-body">
-            <!-- The setup runner: everything automatable, after one consent (Set up Steam). Never a step, never counted. -->
-            <section class="autolist" aria-labelledby="auto-title">
-              <div class="auto-head">
-                <i class="ic ic-wand-sparkles"></i>
-                <span class="bold strong" id="auto-title">Polaris Key does this</span>
-                <span class="who">Since Ana Lima chose Set up Steam · Oct 7, 10:14</span>
-                <span class="done-count">5 of 8 done · <span class="fail">1 failed</span></span>
-              </div>
-              <div class="auto-summary" role="button"><i class="ic ic-circle-check"></i><span>Polaris Key did 5 things</span><i class="ic ic-chevron-down"></i></div>
-              <div class="auto-row done"><span class="auto-mark"></span><span class="auto-title">Publisher key works</span><span class="auto-src">Steamworks Web API</span><span class="auto-desc">Twelve Pips Studio’s key, checked when it was pasted at 10:16</span></div>
-              <div class="auto-row done"><span class="auto-mark"></span><span class="auto-title">Builder login stored in GitHub</span><span class="auto-src">GitHub App</span><span class="auto-desc">Saved as <span class="mono">STEAM_BUILDER_LOGIN</span> on <span class="mono">example-org/diceroll</span> after a test sign-in. Polaris Key never keeps it.</span></div>
-              <div class="auto-row done"><span class="auto-mark"></span><span class="auto-title">Depots for Windows x64 and Linux x86_64</span><span class="auto-src">From your builds</span><span class="auto-desc">One depot per platform Diceroll builds. There is no macOS depot because there is no macOS build.</span></div>
-              <div class="auto-row done"><span class="auto-mark"></span><span class="auto-title">Lane map: beta → Steam’s beta branch, dev → dev</span><span class="auto-src">Default</span><span class="auto-desc">Every beta and dev release goes to its branch from CI. <button class="btn link" aria-expanded="false">Change<i class="ic ic-chevron-down"></i></button></span></div>
-              <div class="auto-row done"><span class="auto-mark"></span><span class="auto-title">Each release uploads to Steam from your release workflow</span><span class="auto-src">Release workflow</span><span class="auto-desc">The workflow already runs <span class="mono">pkey storefronts sync</span>, so there is nothing to edit.</span></div>
-              <div class="auto-row failed" role="alert">
-                <span class="auto-mark"></span><span class="auto-title">Couldn’t size the store-page art</span><span class="auto-src">Hosted assets</span>
-                <span class="auto-desc">Steam’s library hero needs 3840 × 1240, and Diceroll’s key art in Presentation is 1920 × 620. Upload a larger key art in Presentation, then retry.</span>
-                <div class="auto-acts"><button class="btn outline xs"><i class="ic ic-refresh-cw"></i>Retry</button><a class="link small" href="#">Upload the hero in Steamworks yourself<i class="ic ic-arrow-up-right"></i></a></div>
-              </div>
-              <div class="auto-row doing"><span class="auto-mark"></span><span class="auto-title">Find Diceroll in Steamworks</span><span class="auto-src">Steamworks Web API</span><span class="auto-desc">Checking every 10 s for an app named Diceroll in Twelve Pips Studio’s apps</span></div>
-              <div class="auto-row next"><span class="auto-mark"></span><span class="auto-title">Then: pin its app id and add Steam to pull request #57</span><span class="auto-src">GitHub App</span><span class="auto-desc">The app id comes from Steamworks and is never typed.</span></div>
-            </section>
-
-            <div class="step-intro">
-              <h2>In Steamworks</h2>
-              <p>Valve lets only you pay the app fee and create the app. Each item opens the right page in Steamworks.</p>
-            </div>
-
-            <div class="checklist">
-              <div class="item done">
-                <span class="item-mark" aria-label="Done"></span>
-                <span class="item-title">Pay the Steam Direct fee</span>
-                <span class="item-desc">US$100 for this app, paid back after US$1,000 in sales. <span class="assert">Marked done by Ana Lima · Oct 7, 10:21 · <a class="link" href="#">Undo</a></span></span>
-              </div>
-              <div class="item current">
-                <span class="item-mark" aria-label="Now"></span>
-                <span class="item-title">Create the app</span>
-                <span class="item-desc">Use these values. This ticks itself when Polaris Key finds the app.</span>
-                <span class="item-action"><button class="btn primary sm"><i class="ic ic-external-link"></i>Open Steamworks</button></span>
-                <div class="copies">
-                  <div class="copy-card"><div><span class="lbl">App name</span><span class="val">Diceroll</span></div><i class="ic ic-copy sm"></i></div>
-                  <div class="copy-card"><div><span class="lbl">Type</span><span class="val">Game</span></div><i class="ic ic-copy sm"></i></div>
-                  <div class="copy-card"><div><span class="lbl">Developer</span><span class="val">Twelve Pips Studio</span></div><i class="ic ic-copy sm"></i></div>
-                  <div class="copy-card"><div><span class="lbl">Publisher</span><span class="val">Twelve Pips Studio</span></div><i class="ic ic-copy sm"></i></div>
-                </div>
-                <div class="verifier" role="status"><span class="waiting-dot">Waiting for Diceroll to appear in Steamworks · checked 6 s ago</span></div>
-              </div>
-            </div>
-
-            <div class="never"><i class="ic ic-lock sm"></i><span>Polaris Key never changes prices, discounts or users in Steamworks.</span></div>
-          </div>
-
-          <!-- No Continue: the step moves on by itself when the verifier finds the app. -->
-          <div class="wizard-foot">
-            <button class="btn ghost later">Do this later</button>
-            <span class="foot-wait waiting-dot">Moves on by itself when Polaris Key finds the app</span>
-            <button class="btn">Back</button>
           </div>
         </div>
 
-        <aside class="card aside" aria-label="What this sets up">
-          <div class="stack gap-1">
-            <h3>Why you</h3>
-            <p>Valve has no API to pay the app fee or create an app, and the store page and build review are Valve’s.</p>
+        <!-- The person's step first: its title, then its two items as flush rows. Items carry status circles, never numbers: only the stepper counts. -->
+        <div class="wizard-body">
+          <h2>In Steamworks</h2>
+          <div class="tasks">
+            <div class="task done">
+              <span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Pay the Steam Direct fee</div>
+              <div class="task-desc">Marked done by Ana Lima · <span class="nowrap">Oct 7, 10:21</span></div>
+              <div class="task-action"><button class="btn link">Undo</button></div>
+            </div>
+            <div class="task current">
+              <span class="task-mark"><span class="sr-only">Now</span></span><div class="task-title">Create the app</div>
+              <div class="task-action on-title"><button class="btn primary sm"><i class="ic ic-external-link"></i>Open Steamworks</button></div>
+              <div class="task-body">
+                <div class="mk-grid-4 copy-grid">
+                  <div class="copy-field"><span class="copy-label">App name</span><span class="copy-value">Diceroll</span><button class="btn ghost icon xs" aria-label="Copy the app name"><i class="ic ic-copy"></i></button></div>
+                  <div class="copy-field"><span class="copy-label">Type</span><span class="copy-value">Game</span><button class="btn ghost icon xs" aria-label="Copy the type"><i class="ic ic-copy"></i></button></div>
+                  <div class="copy-field"><span class="copy-label">Developer</span><span class="copy-value">Twelve Pips Studio</span><button class="btn ghost icon xs" aria-label="Copy the developer"><i class="ic ic-copy"></i></button></div>
+                  <div class="copy-field"><span class="copy-label">Publisher</span><span class="copy-value">Twelve Pips Studio</span><button class="btn ghost icon xs" aria-label="Copy the publisher"><i class="ic ic-copy"></i></button></div>
+                </div>
+                <!-- The wait, said once: the verifier's live line. -->
+                <span class="waiting-dot hang" role="status">Moves on when Polaris Key finds Diceroll in Steamworks · checked&nbsp;6&nbsp;s&nbsp;ago</span>
+              </div>
+            </div>
           </div>
-          <div class="stack gap-1">
-            <h3>Then</h3>
-            <ul>
-              <li><strong>Merge:</strong> pull request #57 adds the Steam upload to your release workflow.</li>
-              <li><strong>Go live:</strong> a Coming soon page at least two weeks before release, and Valve’s review of the page and a build, usually 3 to 5 business days. Polaris Key uploads the review build from CI.</li>
-            </ul>
-          </div>
-          <div class="stack gap-1">
-            <h3>Runs again by itself</h3>
-            <p>A new platform in a build adds its depot. A replaced key is checked before it is used.</p>
-          </div>
-          <div class="stack gap-1">
-            <h3>Used by</h3>
-            <ul><li>Publish, for Steam’s default branch</li><li>The beta and dev branches, on every release on those tracks</li><li>Sales: Steam keys and ownership checks</li></ul>
-          </div>
-          <a class="link small" href="#">Steam in the docs<i class="ic ic-arrow-up-right"></i></a>
-        </aside>
+        </div>
+
+        <!-- No Continue: the step moves on by itself when the verifier finds the app. -->
+        <div class="wizard-foot">
+          <button class="btn outline sm">Back</button>
+          <button class="btn ghost sm accent-text ml-auto">Do this later</button>
+        </div>
       </div>
+
+      <!-- The setup runner: everything automatable, after one consent (Set up Steam). Never a step, never counted. -->
+      <section class="card" aria-labelledby="auto-title">
+        <div class="card-head">
+          <div class="title"><h2 id="auto-title">Polaris Key does this</h2></div>
+          <div class="progress-inline"><span>5 of 7 done</span><div class="progress success" style="--v: 71.4%"></div></div>
+        </div>
+        <div class="tasks padded">
+          <div class="task blocked fail-row" role="alert">
+            <span class="task-mark"><span class="sr-only">Failed</span></span><div class="task-title">Key art too small for Steam’s library hero<span class="tag-inline">Hosted assets</span></div>
+            <div class="task-desc">Key art is 1920×620; Steam needs 3840×1240.</div>
+            <div class="task-body"><div class="mk-cluster-4"><button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Try again</button><a class="link wrap" href="#">Upload in <span class="nowrap">Presentation<i class="ic ic-arrow-up-right"></i></span></a></div></div>
+          </div>
+          <div class="task waiting"><span class="task-mark"><span class="sr-only">Waiting</span></span><div class="task-title">Pin the app id and add Steam to pull request #57<span class="tag-inline">GitHub App</span></div><div class="task-desc">The app id comes from Steamworks, never typed.</div></div>
+        </div>
+        <!-- Done rows: one disclosure row at every size (kit "done steps"); expanded, the same rows with their sources. -->
+        <div class="done-list">
+          <button class="btn link disclosure" aria-expanded="false" aria-controls="auto-done"><i class="ic ic-chevron-right"></i>Show 5 done</button>
+        </div>
+        <div class="tasks padded" id="auto-done" hidden>
+          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Publisher key works<span class="tag-inline">Steamworks Web API</span></div><div class="task-desc">Twelve Pips Studio’s key, checked at 10:16</div></div>
+          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Builder login stored in GitHub<span class="tag-inline">GitHub App</span></div><div class="task-desc"><span class="mono">STEAM_BUILDER_LOGIN</span> on <span class="mono">example-org/diceroll</span>; Polaris Key never keeps it.</div></div>
+          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Depots for Windows x64 and Linux x86_64<span class="tag-inline">From your builds</span></div><div class="task-desc">No macOS depot: Diceroll has no macOS build.</div></div>
+          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Lane map: beta → Steam’s beta branch, dev → dev<span class="tag-inline">Default</span></div><div class="task-desc"><button class="btn link" aria-expanded="false">Change<i class="ic ic-chevron-down"></i></button></div></div>
+          <div class="task done"><span class="task-mark"><span class="sr-only">Done</span></span><div class="task-title">Each release uploads to Steam<span class="tag-inline">Release workflow</span></div><div class="task-desc">It already runs <span class="mono">pkey storefronts sync</span></div></div>
+        </div>
+        <div class="card-foot start"><p class="icon-line type-small muted"><i class="ic ic-lock"></i><span>Polaris Key never changes prices, discounts or users in Steamworks.</span></p></div>
+      </section>
+
+      <section class="card aside span-2 sticky" aria-labelledby="sets-title">
+        <div class="card-head"><div class="title"><h2 id="sets-title">What this sets up</h2></div><a class="btn link" href="#">Steam in the docs<i class="ic ic-arrow-up-right"></i></a></div>
+        <div class="card-body">
+          <div class="mk-grid-2 top setup-notes">
+            <div class="mk-stack-2">
+              <h3 class="type-body bold strong">Next steps</h3>
+              <p class="type-small muted"><strong>Merge:</strong> pull request #57 adds the Steam upload to your release workflow.</p>
+              <p class="type-small muted"><strong>Go live:</strong> a Coming soon page two weeks before release, then Valve’s review, usually 3 to 5 business days.</p>
+            </div>
+            <div class="mk-stack-4">
+              <div class="mk-stack-2">
+                <h3 class="type-body bold strong">Runs again by itself</h3>
+                <p class="type-small muted">A new platform in a build adds its depot. A replaced key is checked before it’s used.</p>
+              </div>
+              <div class="mk-stack-2">
+                <h3 class="type-body bold strong">Used by</h3>
+                <p class="type-small muted">Publish, beta and dev releases, and Sales (Steam keys and ownership checks).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 </div>
