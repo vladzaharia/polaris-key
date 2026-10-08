@@ -254,10 +254,10 @@ so the snippet works as pasted for a product hosted there. Pass `--base-url` for
 deployment.
 
 With `--lang`, it writes a typed configuration module for one SDK from the product's live
-discovery document (`<base>/<product>/.well-known/polaris.json`; `--base-url` defaults to
-`https://key.plrs.im` here, since the facts are fetched, not pasted). The module carries the
-product slug, the base URL, the trust pins, the pinned release keys and the services the product
-runs, in that SDK's own option names, so the app adds only its version:
+discovery document (`<base>/<product>/.well-known/polaris.json`, with the same `--base-url`
+default). The module carries the product slug, the base URL, the trust pins, the pinned release
+keys and the services the product runs, in that SDK's own option names, so the app adds only its
+version:
 
 | `--lang` | Default `--out`         | Use it as                                                                |
 | -------- | ----------------------- | ------------------------------------------------------------------------ |
