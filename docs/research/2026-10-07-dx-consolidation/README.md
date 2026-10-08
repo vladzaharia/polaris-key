@@ -726,8 +726,10 @@ recommendation. Each stays open to the owner's veto; a veto takes the "If the an
 - **3: SDKs installable anonymously by exact name, unlisted for customers; feeds-only.** This
   matches the standing rule that nothing is published to public registries. Claiming the npm org
   stays an optional owner step.
-- **5: build store commerce now; reduced checkout v1 after CM-23.** Connecting a payment provider
-  and anything that moves money stay owner steps.
+- **5: build store commerce now (CM-20..CM-28).** Polaris Key's own checkout keeps the owner's
+  existing gate: it stays deferred until the owner says "commerce: go" (owner steps §8, G1–G6).
+  When that happens, the reduced v1 (CM-01, 02, 04, 05, 08, 11, 12, 14, 15, 17, with 4 settings) is
+  re-planned on CM-20 and built after CM-23.
 - **6: framework kits become recipes.** This partly reverses the owner's 2026-10-04 "all major
   frameworks", so it is the one to look at first. Nothing is deleted: recipes stay documented and
   a framework package returns when an adopter ships on it.
