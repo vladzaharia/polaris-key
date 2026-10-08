@@ -923,6 +923,9 @@ describe("the top bar", () => {
       name: "Keyboard shortcuts",
     });
     expect(within(sheet).getByText("Go to Licenses")).toBeTruthy();
+    // P0-47: g m lands on Rollouts' matrix view, and the sheet says so.
+    expect(within(sheet).getByText("Go to Rollouts (matrix)")).toBeTruthy();
+    expect(within(sheet).queryByText("Go to Matrix")).toBeNull();
   });
 });
 

@@ -197,6 +197,8 @@ export interface NavPage {
    * Kept in the keywords, so typing the sidebar label still finds it.
    */
   paletteLabel?: string;
+  /** More words the palette matches the page on ("matrix" finds Rollouts, which shows it). */
+  keywords?: string;
   /**
    * The path after the scope prefix: `#/p/<slug>/<path>` for a product page (`""` is the product
    * root), `#/<path>` for a global page (`""` is Home).
@@ -214,6 +216,8 @@ export interface NavPage {
   record?: NavRecord;
   /** The `g <key>` shortcut (ADMIN.md §5.5), product pages only. */
   shortcut?: string;
+  /** Where the shortcut lands, when not this page's label: the sheet's "Go to <it>". */
+  shortcutLabel?: string;
   /** A global page drawn inside a sidebar group rather than as a top-level link. */
   group?: "platform";
   /** Shown only while the product has this on (the page still answers a deep link). */
@@ -555,10 +559,13 @@ export const SECTIONS: NavSection[] = [
         inNav: false,
         ready: true,
         shortcut: "m",
+        shortcutLabel: "Rollouts (matrix)",
       },
       {
         page: "rollouts",
         label: "Rollouts",
+        // The matrix and readiness are its views (UX-31), so their names find it (P0-47).
+        keywords: "matrix readiness",
         path: "distribution/rollouts",
         icon: TrendingUp,
         docs: "/docs/services/distribution/rollouts/",

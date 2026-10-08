@@ -49,6 +49,10 @@ describe("the sources", () => {
     // P0-47: the matrix is Rollouts' view, so the palette offers Rollouts, not Matrix.
     expect(labels).toContain("Rollouts");
     expect(labels).not.toContain("Matrix");
+    // Typing "matrix" still finds it: Rollouts carries the word.
+    expect(filterItems(items, "matrix").map((i) => i.label)[0]).toBe(
+      "Rollouts",
+    );
     expect(labels).not.toContain("Releases");
     // Sign-in is built (chunk 10); not-built pages are not offered: they would only redirect.
     expect(labels).toContain("Sign-in");

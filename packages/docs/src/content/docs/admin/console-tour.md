@@ -191,14 +191,14 @@ The console never quietly shows a different page than the one you asked for.
 
 Shortcuts never fire while you type in a field. Press `?` for the full sheet.
 
-| Keys                                      | Action                                                                                         |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `⌘K` / `Ctrl+K`, `/`                      | Command palette                                                                                |
-| `?`                                       | Keyboard shortcut sheet                                                                        |
-| `g h`, `g p`                              | Home; change product                                                                           |
-| `g o` `g l` `g c` `g r` `g m` `g a` `g s` | Overview, Licenses, Catalog, Releases, Matrix, Activity, Settings, when the section is enabled |
-| `⌘\` / `Ctrl+\`                           | Collapse or expand the sidebar                                                                 |
-| `Esc`                                     | Close the topmost overlay                                                                      |
+| Keys                                      | Action                                                                                                    |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `⌘K` / `Ctrl+K`, `/`                      | Command palette                                                                                           |
+| `?`                                       | Keyboard shortcut sheet                                                                                   |
+| `g h`, `g p`                              | Home; change product                                                                                      |
+| `g o` `g l` `g c` `g r` `g m` `g a` `g s` | Overview, Licenses, Catalog, Releases, Rollouts (matrix), Activity, Settings, when the section is enabled |
+| `⌘\` / `Ctrl+\`                           | Collapse or expand the sidebar                                                                            |
+| `Esc`                                     | Close the topmost overlay                                                                                 |
 
 ## Where the model lives
 
