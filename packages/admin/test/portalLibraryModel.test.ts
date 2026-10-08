@@ -498,6 +498,29 @@ describe("Needs attention", () => {
       /^Your Studio license ends on \d+\u00a0\w{3}\. Renew with [^.]+ to keep using it\.$/,
     );
   });
+
+  it("an ended licence names the developer in its reason, since a long name truncates on the action", () => {
+    const lib = build(
+      [
+        license({
+          product: "ember",
+          expiresAt: NOW_S - DAY,
+          usable: false,
+          productBranding: {
+            developerName: "Kiln Games",
+            supportUrl: "https://kiln.example/renew",
+          },
+        }),
+      ],
+      [],
+      NOW_S,
+    );
+    const [item] = attentionItems(lib);
+    expect(item!.text).toMatch(
+      /^Your license ended on \d+\u00a0\w{3}\u00a0\d{4}\. Kiln Games can renew it\.$/,
+    );
+    expect(item!.action.label).toBe("Renew with Kiln Games");
+  });
 });
 
 describe("the server-side library (PX-W1: G1, G5, G16)", () => {

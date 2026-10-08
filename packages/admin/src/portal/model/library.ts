@@ -1207,7 +1207,8 @@ export function attentionItems(
     } else if (p.status.kind === "expired") {
       out.push({
         product: p,
-        text: `Your license ended on ${unbroken(formatDay(p.best.expiresAt ?? 0))}.`,
+        // The developer by name in the reason too: a long name truncates on the action.
+        text: `Your license ended on ${unbroken(formatDay(p.best.expiresAt ?? 0))}. ${who[0]!.toUpperCase()}${who.slice(1)} can renew it.`,
         action: { label: `Renew with ${who}`, href: link, external: true },
       });
     } else if (p.status.kind === "suspended") {

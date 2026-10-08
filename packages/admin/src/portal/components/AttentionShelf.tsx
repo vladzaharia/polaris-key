@@ -13,7 +13,8 @@ import { ProductArt } from "./ProductArt.js";
  * (§8). Each card is a size container: the thumbnail shows only when the card has 22rem for it
  * beside the title and reason. The action has its own row at the card's foot, full width and on
  * one line (a long developer's name truncates; the accessible name keeps it whole), so the actions
- * in a row line up.
+ * in a row line up. A truncated label shows in full on hover (`title`), and the reason names the
+ * developer too.
  */
 export function AttentionShelf({
   items,
@@ -61,12 +62,17 @@ export function AttentionShelf({
             </div>
             <Button asChild size="md" className="mt-auto w-full min-w-0">
               {action.external ? (
-                <a href={action.href} target="_blank" rel="noreferrer">
+                <a
+                  href={action.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={action.label}
+                >
                   <ExternalLink aria-hidden />
                   <span className="truncate">{action.label}</span>
                 </a>
               ) : (
-                <a href={action.href}>
+                <a href={action.href} title={action.label}>
                   <span className="truncate">{action.label}</span>
                 </a>
               )}
