@@ -40,7 +40,7 @@ not truncated.
 ## Both module vocabularies
 
 `.pkey/product`'s `modules` block accepts two vocabularies, and a manifest may mix them. The
-current one is the six service slugs; the pre-suite names are translated to slugs at ingest,
+current one is the seven service slugs; the pre-suite names are translated to slugs at ingest,
 so only slugs are ever stored. The legacy names are deprecated: `pkey validate` warns on each
 with `deprecated_spelling` (the full list of old spellings is in
 [Deprecated spellings](/docs/build/manifest/authoring/#deprecated-spellings)):

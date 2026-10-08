@@ -8,8 +8,8 @@
  * naming what is missing (/docs/contribute/layout/#adding-a-service).
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -67,5 +67,71 @@ describe("the service table, as the docs site sees it", () => {
       positions,
       "astro.config.mjs lists the service sidebar entries out of table order",
     ).toEqual([...positions].sort((a, b) => a - b));
+  });
+});
+
+/**
+ * P0-48: prose that counts the services agrees with the table. "The six service slugs" outlived
+ * Cloud Sync's row; a count of the WHOLE set ("the N service slugs", "one of the N opt-in
+ * services", "all N services", "which of the N services") must say the table's size. A count of
+ * a named subset ("the two services sign…", "the three services split…") is not matched.
+ */
+describe("prose that counts the services", () => {
+  const WORDS = [
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+  ];
+  const n = `(${WORDS.join("|")})`;
+  const WHOLE_SET = new RegExp(
+    [
+      `\\bthe ${n} service (?:slugs|namespaces|accents)\\b`,
+      `\\bthe ${n} opt-in services\\b`,
+      `\\ball ${n} (?:opt-in )?services\\b`,
+      `\\bof the ${n} (?:opt-in )?services\\b`,
+      `\\bcarries ${n} services\\b`,
+    ].join("|"),
+    "gi",
+  );
+
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const name of readdirSync(dir)) {
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) walk(full, out);
+      else if (/\.mdx?$/.test(name)) out.push(full);
+    }
+    return out;
+  }
+
+  it("says the service table's size wherever it counts the whole set", () => {
+    const expected = WORDS[table.services.length - 2]!;
+    const files = [
+      ...walk(join(docsRoot, "src", "content", "docs")),
+      join(repoRoot, "README.md"),
+      join(repoRoot, "AGENTS.md"),
+    ];
+    const wrong: string[] = [];
+    let counted = 0;
+    for (const file of files) {
+      const text = readFileSync(file, "utf8").replace(/\s+/g, " ");
+      for (const m of text.matchAll(WHOLE_SET)) {
+        counted++;
+        const word = m.slice(1).find((g) => g !== undefined)!.toLowerCase();
+        if (word !== expected)
+          wrong.push(`${relative(repoRoot, file)}: "${m[0]}"`);
+      }
+    }
+    // The pattern must still be finding the counts it polices.
+    expect(counted).toBeGreaterThan(0);
+    expect(
+      wrong,
+      `tools/services.json has ${table.services.length} rows ("${expected}")`,
+    ).toEqual([]);
   });
 });

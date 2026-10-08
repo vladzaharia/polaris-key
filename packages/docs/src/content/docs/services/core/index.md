@@ -19,10 +19,10 @@ What Core owns:
 - **discovery** — the one public document that describes a product honestly;
 - **rate limiting**, the **error taxonomy**, **audit**, and **manifest-ingest dispatch**.
 
-Everything else is one of the six opt-in services — [License](/docs/services/license/),
+Everything else is one of the seven opt-in services — [License](/docs/services/license/),
 [Config](/docs/services/config/), [Release](/docs/services/release/),
 [Distribution](/docs/services/distribution/), [Update](/docs/services/update/),
-[Identity](/docs/services/identity/) — addressed under
+[Identity](/docs/services/identity/), [Cloud Sync](/docs/services/sync/) — addressed under
 `/<product>/<slug>/…` and mounted through a registry Core owns.
 
 ## The core routes
