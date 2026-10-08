@@ -56,6 +56,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Homebrew with the GitHub App's write access enables in one confirmation
 - [ ] App Store channel and storefront activate together from one ASC key (after A-18k's Apple answer)
 - [ ] No fifth credential reader (resolveCredential only, grep)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

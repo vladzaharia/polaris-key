@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: `pkey.cloudSync.bytes` becomes a platform `quantity` entitlement (default 256 MiB, shown while Cloud Sync is on).
+
 ## Goal
 
 Entitlement catalog in Licensing; tier entitlements; platform entitlements (absorbs CFG-06), as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -61,6 +67,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] /config/schema byte-identical except the additive kind member
 - [ ] SDK transcripts unchanged
 - [ ] Validator warns, then refuses, flags in profiles
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/{entitlements, add-ons}`; `features/managed-config/catalog` (flags leave); `help/library` (add-ons).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

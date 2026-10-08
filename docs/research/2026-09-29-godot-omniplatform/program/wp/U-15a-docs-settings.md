@@ -21,6 +21,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Cloud Sync docs, settings half: concepts, the five-minute quickstart, client-writable banner, "no Cloud Sync without sign-in", the operators' migration notice, clock limits".
 - Absorbs U-15b: One Cloud Sync docs package.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: one quota number per tier, shown read-only with a link to Tiers, plus the ceiling and the pause state. Labels are read server-side.
+
 ## Goal
 
 Developers can adopt synced settings from the docs: concepts, the five-minute quickstart, the client-writable banner, a plain "no Cloud Sync without sign-in" statement, the migration notice for operators, and clock limits.

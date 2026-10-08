@@ -1,20 +1,26 @@
 # P0-44 Corpus generator split (corpus lane, right after HA-12)
 
-| Field       | Value                                                                                                                            |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))            |
-| Size        | 1.5–2 engineer-weeks                                                                                                             |
-| Depends on  | [HA-12](HA-12-presentation-discovery.md)                                                                                         |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-18](LX-18-licensing-wire.md), [SP-34](SP-34-client-core-takes-neutral-typescript.md) |
-| Role        | `pkey-implementer`                                                                                                               |
-| Plan mode   | no                                                                                                                               |
-| Gates       | `corpus`, `drift-gate`                                                                                                           |
-| Human input | none                                                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                                        |
+| Field       | Value                                                                                                                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                                        |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                         |
+| Depends on  | [HA-12](HA-12-presentation-discovery.md)                                                                                                                                                     |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-01b](U-01b-cloud-sync-plan-amendment-two-stores-one.md), [LX-18](LX-18-licensing-wire.md), [SP-34](SP-34-client-core-takes-neutral-typescript.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                                                           |
+| Gates       | `corpus`, `drift-gate`                                                                                                                                                                       |
+| Human input | none                                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                    |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CQT-03** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: moves `tools/ui-matrix.ts` if UK-02b lands first (D11).
 
 ## Goal
 

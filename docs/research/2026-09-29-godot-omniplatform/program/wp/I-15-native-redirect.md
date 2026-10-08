@@ -54,6 +54,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 > Native redirect (loopback, claimed HTTPS, scheme) on the same, now OAuth-shaped, authorize/token. signIn({redirect}) is named in api.json first.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the RFC 9126 `request`.
+
 ## Goal
 
 Desktop and mobile apps sign in by a native redirect: loopback, claimed-HTTPS and registered-scheme redirect URIs on I-08's code-exchange route, `signIn({redirect})` in all six SDKs with the system browser only, and `/auth/poll` retired.

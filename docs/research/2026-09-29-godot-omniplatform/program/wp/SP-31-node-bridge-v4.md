@@ -1,16 +1,16 @@
 # SP-31 Electron bridge v4: first slice of the Electron kit
 
-| Field       | Value                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                                                  |
-| Size        | 0.75–1.25 engineer-weeks                                                                                   |
-| Depends on  | [SP-12](SP-12-react-boot-download.md)                                                                      |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-20](U-20-sdk-settings-react.md), [UK-06](UK-06-electron-kit.md) |
-| Role        | `pkey-sdk-porter`                                                                                          |
-| Plan mode   | no                                                                                                         |
-| Gates       | `packages/sdk-node` and `packages/sdk-react` suites; `parity:check`; the generated parity page             |
-| Human input | none                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                  |
+| Field       | Value                                                                                                                                                          |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                                                                                                      |
+| Size        | 0.75–1.25 engineer-weeks                                                                                                                                       |
+| Depends on  | [SP-12](SP-12-react-boot-download.md)                                                                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-20](U-20-sdk-settings-react.md), [SP-58](SP-58-client-backend-node-react-python.md), [UK-06](UK-06-electron-kit.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                              |
+| Plan mode   | no                                                                                                                                                             |
+| Gates       | `packages/sdk-node` and `packages/sdk-react` suites; `parity:check`; the generated parity page                                                                 |
+| Human input | none                                                                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                      |
 
 ## Consolidation 2026-10-07
 
@@ -19,6 +19,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 > The first slice of the Electron kit inside @polaris-key/node/electron (exposePolarisBridge keeps its name, bridge v4); no separate @polaris-key/electron package (C-43). UK-06 builds on it; U-20 needs it.
 
 - Title: was "Node Electron host speaks PolarisBridge v4: `exposePolarisBridge` reports version 4 and answers every v4 `invoke` verb, sign-in field and activation kind over the Node client; `bridge.ts` documents the v4 contract".
+
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- SP-58 adds `backendHeaders()` to the bridge, so `usePolarisFetch()` works in Electron.
 
 ## Goal
 

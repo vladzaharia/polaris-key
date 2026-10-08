@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **OB-04** in [Track C, Products, onboarding and Integration](../../../2026-10-07-dx-consolidation/tracks.md#c-products-onboarding-and-integration).
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- A trust-manifest fetch with a `*-server` `sdkId` records a server sighting, which is the server lane's Verified.
+
 ## Goal
 
 Integration facts and SDK sightings, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -59,6 +65,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Writes at most once per key per isolate per 5 minutes (test)
 - [ ] Verified flips per feature and platform in a fixture
 - [ ] No product is hidden without an operator setup choice (test over the backfill)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/integration`; Verified in every **Check it works**; "Not seen yet" links `build/troubleshooting`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

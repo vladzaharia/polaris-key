@@ -20,6 +20,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: renames the dunning key to `license.dunningGraceDays` (C-11) and updates `DUNNING_GRACE_SETTING`, with no alias. The old manifest key is a validator error that names the new one, and the in-repo manifests move in the same change.
+
 ## Goal
 
 Retire the licensing-model settings (7 to 1), as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -40,7 +46,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- Remove licensing.entitlementModel (its one-time switch is a lead-run P0-49 job, no console card), entitlementHolder, anchorPolicy, reanchor, clampGraceToExpiry (always on), refundGraceHours and reservedNames from the registry, manifest (rule 9 deprecation warnings) and console (shared-manifest index.ts:223-241); keep license.dunningGraceDays, shown only when a subscription source exists; delete LicenseSettingsPage, COMBINED_ENTITLEMENT_MODEL_SINCE and entitlementModelFor; gen:settings --check.
+- Remove licensing.entitlementModel (its one-time switch is a lead-run P0-49 job, no console card), entitlementHolder, anchorPolicy, reanchor, clampGraceToExpiry (always on), refundGraceHours and reservedNames from the registry, manifest (each a validator error naming its replacement; docs plan §10 amendment 6) and console (shared-manifest index.ts:223-241); keep license.dunningGraceDays, shown only when a subscription source exists; delete LicenseSettingsPage, COMBINED_ENTITLEMENT_MODEL_SINCE and entitlementModelFor; gen:settings --check.
 
 **Out** (and where it belongs instead):
 
@@ -60,6 +66,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] Registry lists one licensing key
 - [ ] Manifests with retired keys warn, not fail, during the window
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/model` (holder states, tiers, limits); `help/license-status`, `help/messages/license-status`; `reference/settings`.
+- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

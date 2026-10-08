@@ -40,6 +40,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Optional now (was required).
 - Absorbs X-02: One Tauri path; UK-21 is parked and the Tauri recipe ships in UK-31.
 
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 A Tauri v2 app uses the elements or the React kit unchanged, backed by the same bridge contract as Electron.

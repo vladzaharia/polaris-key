@@ -20,6 +20,21 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "UI kits must-tier close-out: presentation accent and icon verified end to end in every must kit, `pnpm ui:report` review, `ui.*` parity rows proven, docs complete".
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: retires `ui.kit`, `ui.kit.manage` and `ui.kit.keyentry` once the ten rows are implemented, on the reduced matrix; checks the two terminal kits against `ui.cli` and the states their verbs reach (D12).
+
+## Owner direction (2026-10-08)
+
+- **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
+- **Resolution matrix.** Tested at every size in [UI-KITS.md](../../../../design/UI-KITS.md) §7.1, including 200% text or zoom.
+- **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
+- **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
+- **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
+- **For this package.** Confirm each must-tier kit meets the five rules above, with its matrix renders in the close-out report.
+
 ## Goal
 
 The must tier is done as one system: every must kit takes the product's registered accent and icon with zero integrator code against a real discovery document, the side-by-side report is reviewed, and the parity rows say so.
@@ -60,6 +75,7 @@ Kits were built against the presentation seam before HA-13 and HA-14 landed; thi
 
 - [ ] Every must kit has the end-to-end presentation test and it passes.
 - [ ] `pnpm parity:check -- --check` passes with the `ui.*` rows proven for the must kits.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify

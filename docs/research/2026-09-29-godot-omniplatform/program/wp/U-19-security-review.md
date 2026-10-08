@@ -18,6 +18,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 > Security review before any production deploy; scope also covers open settings and files on records (U-10).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: open settings (T17's cross-device reach), files, the entitlement quota and `cloudSyncWrite`.
+
 ## Goal
 
 An independent security review of U-05 is recorded before any production deploy: T1–T3 and T13–T16 tested, cross-tenant, cross-product and cross-account isolation proven, CORS behaviour, the HLC clamp and quota paths exercised, and every finding tracked as an R-series row.

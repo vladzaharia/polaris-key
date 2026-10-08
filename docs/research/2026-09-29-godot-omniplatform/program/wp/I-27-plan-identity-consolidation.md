@@ -1,22 +1,26 @@
 # I-27 Plan the identity consolidation
 
-| Field       | Value                                                                                                                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation K: Corpus lane (wire trains, serial))                                                                                                                                                |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                                                                                                    |
-| Depends on  | none                                                                                                                                                                                                                                                                      |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [I-30](I-30-connections-one-oidc-relying-party.md), [I-33](I-33-profile-v2-screen-name-birth-date.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md) |
-| Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                                                                                       |
-| Plan mode   | yes: this package writes `plans/I-27.md`, which needs human approval                                                                                                                                                                                                      |
-| Gates       | `plan-mode`, `rule-9`                                                                                                                                                                                                                                                     |
-| Human input | plan approval (`plans/I-27.md`)                                                                                                                                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                             |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation K: Corpus lane (wire trains, serial))                                                                                                                                                                                                                                        |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                                                                                                                                                                                            |
+| Depends on  | none                                                                                                                                                                                                                                                                                                                                                              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md), [I-27a](I-27a-sign-in-md-one-text.md), [I-30](I-30-connections-one-oidc-relying-party.md), [I-32b](I-32b-retire-legacy-identity-engine.md), [I-33](I-33-profile-v2-screen-name-birth-date.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md) |
+| Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                                                                                                                                                                               |
+| Plan mode   | yes: [`plans/I-27.md`](../plans/I-27.md), approved 2026-10-08; the packages in its §8 build it, including the new I-32b and I-32c                                                                                                                                                                                                                                 |
+| Gates       | `plan-mode`, `rule-9`                                                                                                                                                                                                                                                                                                                                             |
+| Human input | none                                                                                                                                                                                                                                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                         |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **IX-00** in [Track K, Corpus lane (wire trains, serial)](../../../2026-10-07-dx-consolidation/tracks.md#k-corpus-lane-wire-trains-serial).
 
 - Owner 2026-10-07: no compatibility window. What this package replaces (a route, mode, shape, Action input or CLI form) is removed in the same release; the one exception is a path that native app binaries already on end-user machines call (DJDL's desktop builds, the permanent alias routes), removed once DJDL has shipped a build on 0.9 (`tracks.md` rule 6).
+
+## Approved 2026-10-08
+
+The plan is approved, with the owner's answers to Q1 (auto-link, narrowly) and Q3 (no Pocket ID sunset). Its post-approval docs step (§8) is done in two parts: the I-08, I-09 and PX-14 briefs are single specs, and [I-27a](I-27a-sign-in-md-one-text.md) folds SIGN-IN.md's precedence notes into one text. Neither blocks the packages this one unblocks.
 
 ## Goal
 
@@ -57,7 +61,6 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Acceptance criteria
 
 - [ ] Plan approved; names the corpus and transcript impact and SDKs
-- [ ] No amendment layers left in SIGN-IN.md
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

@@ -22,6 +22,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added P0-21 and ST-05a; removed ST-05.
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-37.
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- Push delivery uses SP-66's Standard Webhooks format once SP-66 is approved; until then ST-27 signs with the same signer.
+
 ## Goal
 
 Operators set notification destinations: a platform `alerts.destinations` (email among allowed senders, HTTPS webhook with a signing secret) and per-product overrides for auto-halt, store-connection and commerce alerts.

@@ -1,16 +1,16 @@
 # U-27 Keep the licence config layer; delete the override-migration machinery
 
-| Field       | Value                                                                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (DX consolidation G: Managed config and Cloud Sync)                                                                                 |
-| Size        | 0.6–0.9 engineer-weeks                                                                                                                                   |
-| Depends on  | [P0-49](P0-49-data-migration-runner-dry-run-report.md)                                                                                                   |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-27b](U-27b-drop-override-migration-tables-release-n.md), [U-28](U-28-one-config-chain-default-profile-one.md) |
-| Role        | `pkey-implementer`                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                       |
-| Gates       | `migration`, `table-owners`, `rule-10`                                                                                                                   |
-| Human input | owner decision 1 (answered 2026-10-07, open to veto)                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                     |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (DX consolidation G: Managed config and Cloud Sync)                                                                                                                                  |
+| Size        | 0.6–0.9 engineer-weeks                                                                                                                                                                                    |
+| Depends on  | [P0-49](P0-49-data-migration-runner-dry-run-report.md)                                                                                                                                                    |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-32b](I-32b-retire-legacy-identity-engine.md), [U-27b](U-27b-drop-override-migration-tables-release-n.md), [U-28](U-28-one-config-chain-default-profile-one.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                        |
+| Plan mode   | no                                                                                                                                                                                                        |
+| Gates       | `migration`, `table-owners`, `rule-10`                                                                                                                                                                    |
+| Human input | owner decision 1 (answered 2026-10-07, open to veto)                                                                                                                                                      |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                 |
 
 ## Consolidation 2026-10-07
 
@@ -58,6 +58,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Licence overrides apply to floating and in-account licences (test)
 - [ ] No code reads override_migration (grep) and the old Worker keeps serving during the deploy
 - [ ] Owner decision 1 recorded
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

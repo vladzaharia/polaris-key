@@ -23,6 +23,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - Commerce (CM-29) is the sixth feature row; until CM-29 lands, the row is absent and the rule covers the existing services.
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: adopts the requirement rule and replaces the pull-on behaviour. Commerce is the sixth feature row, with §3.4's attention state. Adds `console.group`.
+
 ## Goal
 
 Service table: six features; one service-off state (absorbs DC-12), as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -64,6 +70,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Discovery, coherence codes and SDK constants byte-identical
 - [ ] Turning on Ship builds writes release, distribution and update in one audited batch
 - [ ] One service-off component
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): `features/` labels and `src/lib/features.ts` replaced by `console.group`; `operate/console/products`; the coherence-rule table.
+- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

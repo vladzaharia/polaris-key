@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation J: SDK and UI-kit consolidation)                                                                |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                                           |
 | Depends on  | [SP-34](SP-34-client-core-takes-neutral-typescript.md), [P0-42](P0-42-generator-registry-pnpm-gen.md), [SP-32b](SP-32b-polaris-key-json-fromconfig-doctor-in.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                           |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [DOC-06c](DOC-06c-kits-get-help.md)                                                                                      |
 | Role        | `pkey-sdk-porter`                                                                                                                                                |
 | Plan mode   | no                                                                                                                                                               |
 | Gates       | none beyond the green gate                                                                                                                                       |
@@ -15,6 +15,18 @@
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **SDX-08** in [Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: after a copy edit, regenerate `ui-matrix.json` with `pnpm gen:corpus` without holding the corpus lane (D13).
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- Swift core copy in a `PolarisKeyCore` bundle; vendor-neutral network copy; an update-not-configured key; activation copy routed by result kind.
 
 ## Goal
 

@@ -22,6 +22,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added ST-29.
 - UX rows that name this package: UX-06b (parked: entity search; revive when ST-10's settings search and the product switcher stop being enough (a third product or a support desk)).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: filtering through `useCan`.
+
 ## Goal
 
 ⌘K finds any setting by name, key or description, filters by scope and area, and deep-links to its row.

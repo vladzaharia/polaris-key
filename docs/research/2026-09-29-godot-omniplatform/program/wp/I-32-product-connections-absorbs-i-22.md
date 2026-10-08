@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                                                                               |
 | Size        | 1.4–2 engineer-weeks                                                                                                                                                            |
 | Depends on  | [I-30](I-30-connections-one-oidc-relying-party.md), [I-08](I-08-app-passthrough.md), [I-13](I-13-exchange-endpoint.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PS-08](PS-08-product-idp-path.md)                                                                                                      |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-32b](I-32b-retire-legacy-identity-engine.md), [PS-08](PS-08-product-idp-path.md)                                                     |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                           |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/I-32.md` first; no code before a human approves it                                                                                       |
 | Gates       | `plan-mode`, `migration`, `table-owners`, `threat-model`                                                                                                                        |
@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Owner 2026-10-07: no compatibility window. What this package replaces (a route, mode, shape, Action input or CLI form) is removed in the same release; the one exception is a path that native app binaries already on end-user machines call (DJDL's desktop builds, the permanent alias routes), removed once DJDL has shipped a build on 0.9 (`tracks.md` rule 6).
 - Absorbs I-22: Bring-your-own-auth becomes a product connection with exchange: true; firebase is an oidc connection with a JWKS override.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: product connections. The `302` only if its dry run is non-empty and the owner grants it (Q5). I-32b and I-32c take the retirement and the drops.
 
 ## Goal
 
@@ -62,6 +68,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Custom issuers migrate without losing licences
 - [ ] THREAT-MODEL row for tenant-minted identities
 - [ ] Plan approved before code
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

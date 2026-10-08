@@ -22,6 +22,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added U-05 and U-12; removed PX-W11.
 - Absorbs PX-W11: One portal Cloud Sync package (API and card). Its 'not on Identity' note was wrong.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: one quota number per tier, shown read-only with a link to Tiers, plus the ceiling and the pause state. Labels are read server-side.
+
 ## Goal
 
 Products with Cloud Sync show `CloudSyncCard` (storage bar, data classes, per-device last sync, export, delete with step-up) with a `#/p/:product/sync` section, a TOC entry and a ⌘K action; products without the service show none of it.

@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **OB-06** in [Track C, Products, onboarding and Integration](../../../2026-10-07-dx-consolidation/tracks.md#c-products-onboarding-and-integration).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: six features; Commerce is a service.
+
 ## Goal
 
 Create with defaults, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -55,6 +61,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] One D1 batch, rolled back whole on failure (test)
 - [ ] A created product is ready for an SDK in one call
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `start/first-product` (the wizard steps); `operate/console/products`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

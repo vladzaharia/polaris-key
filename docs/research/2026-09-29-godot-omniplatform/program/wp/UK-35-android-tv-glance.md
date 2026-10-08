@@ -46,6 +46,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 > Android TV, Glance and notifications. Revive with a product ask.
 
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 The Android TV and Glance surface exists over the existing core, with no second state machine, and is baselined in both themes.

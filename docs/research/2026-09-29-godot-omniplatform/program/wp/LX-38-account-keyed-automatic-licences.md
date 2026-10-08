@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (DX consolidation E: Licensing model)                                                                             |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                                                       |
 | Depends on  | [LX-36](LX-36-access-policy-license-access-absorbs-ps.md), [P0-20](P0-20-split-identity-oidc-ts-extract-issuance.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-16](LX-16-licensing-contract.md)                                                                                                 |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-32b](I-32b-retire-legacy-identity-engine.md), [LX-16](LX-16-licensing-contract.md)                                                |
 | Role        | `pkey-implementer`                                                                                                                                                           |
 | Plan mode   | no                                                                                                                                                                           |
 | Gates       | `threat-model`                                                                                                                                                               |
@@ -15,6 +15,12 @@
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **LX-38** in [Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the §2.2 swap; delete `"license-mint"`; `previewIdentityIssue`'s would-be row.
 
 ## Goal
 
@@ -58,6 +64,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Automatic paths create no key row (test); an admin can add one later
 - [ ] Two concurrent sign-ins, or a sign-in racing a Discover self-mint, create one licence (test)
 - [ ] Discover self-mint and use-time mint call the same function
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/access` (enrollment and policy merged; automatic licences); `help/activate`, `help/library`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

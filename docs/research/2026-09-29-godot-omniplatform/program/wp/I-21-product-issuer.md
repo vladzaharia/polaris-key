@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-2)                                                                                                                                                             |
 | Size        | 1.9–2.6 engineer-weeks                                                                                                                                                                                                                   |
 | Depends on  | [I-20](I-20-layer-2-plan.md)                                                                                                                                                                                                             |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-16](U-16-developer-backend-api.md)                                                                                                                                                            |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-16](U-16-developer-backend-api.md), [SP-68](SP-68-requiresignin-accepts-i21-tokens.md)                                                                                                        |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                    |
 | Plan mode   | yes: executes the approved [`plans/I-20.md`](../plans/I-20.md) (no separate plan)                                                                                                                                                        |
 | Gates       | plan mode; D1 migration; `TABLE_OWNERS`; rule 9 (validator rule, mutation table, JSON schema); rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `check:links`; OIDF Basic OP and Config OP conformance against staging; R-series audit |
@@ -38,6 +38,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "`Sign in with <Product>`: per-product OIDC issuer with a separate RS256 keyring, `sub` = pairwise subject, `pkey:*` scopes, static clients".
 - Estimate: 1.9–2.6 engineer-weeks (was 2.8–3.9).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the same endpoints; `openid`; clients extend `ClientRecord`; the §12.8 sentence.
 
 ## Goal
 

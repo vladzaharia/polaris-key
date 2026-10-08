@@ -27,6 +27,19 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "Developer backend for entitlements: admin grants API, `subjects/<s>/entitlements`, `entitlements.changed` event and webhook, account-merge re-keying, deletion of account-held grants".
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- Until SP-66 is approved, LX-13 keeps pull feeds; it moves to SP-66's push format afterwards.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: its account-merge binding steps are dropped (keeping the survivor's `dist_holder_bindings` row and inserting `dist_binding_aliases`): there are no account bindings (D5), and purchases move with their licences.
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: `subjects/<s>/entitlements` returns `licenseTerm`; no subscription routes.
+
 ## Goal
 
 Developer backends can manage entitlements: an admin grants API, `subjects/<s>/entitlements`, an `entitlements.changed` event and webhook, account-merge re-keying inside I-05's merge batch, and deletion of account-held grants.

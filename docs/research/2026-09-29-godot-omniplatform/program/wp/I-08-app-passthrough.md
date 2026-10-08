@@ -7,210 +7,97 @@
 | Depends on  | [I-04](I-04-account-contract-plan.md), [I-07](I-07-login-card-email.md), [I-09](I-09-key-entry-attach.md), [PX-W13](PX-W13-passthrough-metadata.md), [I-26](I-26-legacy-oidc-license-choice.md), [I-27](I-27-plan-identity-consolidation.md), [P0-20](P0-20-split-identity-oidc-ts-extract-issuance.md), [HA-12](HA-12-presentation-discovery.md)                                                                                                                                                                                 |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [I-15](I-15-native-redirect.md), [I-24a](I-24a-named-user-seats-server.md), [I-32](I-32-product-connections-absorbs-i-22.md), [I-34](I-34-granular-consent-connected-apps.md), [I-36](I-36-sign-in-integration-card.md), [U-05](U-05-cloud-sync-do.md), [U-20](U-20-sdk-settings-react.md), [PX-14](PX-14-passthrough-header.md), [SP-40](SP-40-retire-react-cookie-mode-browser.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd`                                                                                                                                                                                                                                                                                                                                                                            |
+| Plan mode   | yes: executes the approved [`plans/I-27.md`](../plans/I-27.md) (2026-10-08) §2.1, §2.2 and the hints, which amends [`plans/I-04.md`](../plans/I-04.md)                                                                                                                                                                                                                                                                                                                                                                            |
+| Gates       | plan mode; `errors.json` (rule 3); transcripts (rule 1) with the Swift and Godot mirrors; `gen:constants -- --check`; `parity:check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `test:workerd`                                                                                                                                                                                                                                                                                                                           |
 | Human input | none                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
-## Amendments from approved plans (2026-10-05)
-
-The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
-
-- **[`plans/I-09.md`](../plans/I-09.md):** call `bindSignedInDevice`; re-record `identity-attach.json` with real device-code sign-in; `accountPortal` is I-09's, not I-08's.
-- **[`plans/PX-W13.md`](../plans/PX-W13.md):** reuse PX-W13's request handle and `__Host-pk_req` binder for the R1-07 callback binding; write `account_product_grants.scope_hash` on Continue; Continue reads `AppConsentView`.
-- **[`plans/PX-W17.md`](../plans/PX-W17.md):** the passthrough context answers `identity_disabled`, and reads `identityEnabled`.
-- **[`plans/PX-W8.md`](../plans/PX-W8.md):** Q5: the sign-in seat refusal (`oidc.ts:944`) stays as it is in I-08; LX-18's `not_entitled` with `reason: device_limit` carries `manageUrl` from the same builder.
-
-## Owner decision (2026-10-05): licence choice at sign-in
-
-The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
-
-For this package:
-
-- **Dependencies.** I-08 now depends on **I-09**, for `rankAnchorCandidates` and
-  `bindSignedInDevice(…, choice)`; on **PX-W13**, for the request handle, the binder and the
-  consent route; and on **I-26**, so that the two packages edit `oidc.ts` in sequence.
-- **Card API** (I-04 amendment §C). Add `GET /api/signin/requests/:handle/licenses`
-  (`LicenseChoiceView`) and `GET …/licenses/:licenseId/devices` (`ReplaceView`). The Continue
-  `POST` gains `choice` (`license` with an optional `replaceDeviceId`, `keep` or `create`). Every
-  binding route stores the choice in its flow or code record: device code with its QR, the web
-  redirect and, later, I-15.
-- **`freeAccountDevice()`.** Extract it from the portal's `handleDeviceDelete`. The portal DELETE
-  and the card's Replace call the same function, with the same ownership check, `portal_enabled`
-  check, `portalDeviceDisconnect` budget (20 per 60 s, shared by both surfaces), audit row
-  `portal.device.disconnect` and `deviceRemovedNotice` email. A blocked Replace answers
-  `429 rate_limited` with `retryAfter`.
-- **`errors.json`**: `license_choice_required` (409, identity).
-- **Transcripts**: `devicecode-choose.json`, `devicecode-replace.json`,
-  `devicecode-choice-required.json`, `devicecode-autoissue.json` and `redirect-web-choose.json`.
-- **OpenAPI and `routeCoverage`** for the two routes (rule 10), and THREAT-MODEL notes.
-- **Retire the legacy page.** When the card takes over the device page (PX-14), delete I-26's
-  legacy chooser page and keep its rule. `provider: platform` products with Identity on stop
-  calling `activateFromIdentity`'s `sub`-keyed mint.
-- **Acceptance (additions).**
-  - Sign-in never mints while the account holds a usable licence, unless `choice.kind` is
-    `create` (test).
-  - Continue without a choice answers 409 when the step was shown (test).
-  - Replace and the portal's Remove share one rate-limit budget and write the same audit row
-    (test).
-
-## Sign-in alignment (2026-10-05): SIGN-IN.md
-
-[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
-§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
-differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
-**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
-
-- **Two steps.** LicenseChoiceStep, then ConsentStep (first time or a scope change) showing the chosen license with **Change** (SIGN-IN.md §3.6, §3.8). With no Consent, **Use this license and continue** is the explicit Continue D22 requires.
-- **Card API per `plans/I-04.md` §C as amended by §F:** `LicenseChoice` gains `current` and `access` (`"seats" | "account"`, the fact behind the origin "From signing in" and the mixed rule, never a displayed type: owner decision 2026-10-05, no 'Account-wide' label; seats count as today, SIGN-IN.md D-53); `keep` is true only for a licence outside `choices`; `create` gains `access`; `getLicense` gains `keyEntry`. `ReplaceView` answers for a sign-in licence like any other (it can be full).
-- **Replace in one D1 batch** (§F.3): `freeAccountDevice()` (already extracted on the I-26 branch, `portal/freeDevice.ts`) returns its statements and the Continue appends the guarded seat claim; `signin.replace.racedAfterFree` only if the claim cannot join the batch. The device-replaced email is the `deviceRemovedNotice` variant of SIGN-IN.md §3.15.
-- **Cancel returns `access_denied`** on every surface (§F.8): redirect `error=access_denied`, device code denies the code. No new poll answer.
-- **The device-code `confirm`/attach** is offered only after **Keep** (unchanged rule, I-04 decision 4). Drop approval-by-QR from scope: PX-W14 owns it (SIGN-IN.md D-18). `verification_uri` is `<origin>/device`; `/tv` is an alias for TV and console screens (D-16).
-- **ReturnStep variants** per SIGN-IN.md §3.10; the Worker device-code pages (`renderDeviceEntry`, `renderDeviceConfirmation`, `signedInPage`) become the card with the app header (§3.13, with UX-43).
-- **Transcripts:** add `devicecode-sign-in.json` (I-04 §F.6) to §C's list; `gen:transcripts` writes the Swift and Godot mirrors.
-- **THREAT-MODEL:** the ReplaceDevice row (fresh-session step-up, shared `portalDeviceDisconnect` budget, the confirm naming both devices, the notice). Retire I-26's page when the card ships, keeping its rule.
-
-## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
-
-The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
-morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
-show it, that the presentation is configurable with native controls kept, that there are **two
-equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
-the web flow is one continuous, animated card. The wire is
-[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
-the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
-D-78–D-93. Where this brief differs, they win. **No device-wire version change**
-(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
-the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
-every row, no "Account-wide"). For this package:
-
-- **Worker side of §G.** `license_choice=app` on `GET /<p>/identity/authorize`, recorded on the request and code record; the `licenseChoice` member on PX-W13's `POST /<p>/identity/request` with its echo; the `choose` answer of `redirect/token` (`{status, grant, expiresIn, choices}`); the four grant routes `POST /<p>/identity/choice/{licenses,devices,complete,cancel}`; `LicenseChoiceInput` `{kind: "key", key}`; discovery endpoints `choiceLicenses`, `choiceDevices`, `choiceComplete`, `choiceCancel`.
-- **Security (§G.6):** grant of 32 random bytes, hashed in the KV flow record, 300 s, bound to product, account, subject, the redeeming `X-PKey-Device` and the PKCE verifier, one per flow, consumed by `complete` or `cancel`; one `404 not_found` for every licence outside the view or not replaceable; 30 reads per grant; Replace through `freeAccountDevice()` with the shared `portalDeviceDisconnect` budget, audit "to sign in <label> in <App>" and the email. **Device code never issues a grant.** THREAT-MODEL row.
-- **No new error code** (`invalid_grant`, `license_choice_required`, `not_found`, `device_limit`, `rate_limited`). OpenAPI and `routeCoverage` for the four routes (rule 10); WIRE-CONTRACT-V4 §12.4–§12.5.
-- **Transcripts:** `redirect-web-choose-app.json`, `choice-replace-app.json`, `choice-key-app.json`, `choice-grant-errors.json`, and `discovery-capabilities.json` re-recorded; parity row `identity.choice` (planned, I-10a/I-10b).
-- **Acceptance (additions):** device code never issues a grant; a grant from another device id answers `invalid_grant`; `choice/devices` answers one `404` for unknown, foreign and non-replaceable licences; a Replace through a grant shares the portal's budget and audit row.
-
-## Follow-ups from the 2026-10-06 reviews
-
-Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
-
-- **Pass the product's terms into the gate** ([PX-W15](PX-W15-email-gate.md)). `beginProviderSignIn`
-  (`card/gate.ts`) takes `product: { slug, tenantScopes, terms }`, but I-06's provider callbacks
-  (`providers/flow.ts`) pass no product context, so the gate's terms step runs only in tests. A
-  passthrough sign-in knows its product: pass its `identity.requireTerms` (a `TermsRequirement`,
-  `{ url, version }`, from I-09's manifest block) as `product.terms`, so a first sign-in through the
-  app accepts the product's terms. Acceptances live in `account_terms_acceptances`
-  (`accounts/terms.ts`), never in `accounts.terms_json`.
-- **Call `onAccountEmailVerified` where an address is verified** ([LX-26](LX-26-licence-holders-worker.md)).
-  The hook (`core/licenseHolders.ts`) attaches the licences waiting on that address. On `main`,
-  every sign-in reaches it through the link sweep (`syncAccountLicenseLinks`, run by `finishSignIn`,
-  the portal OIDC callback and device login), `linkIdentity` calls it directly, and the portal API
-  also runs the sweep on every request (`handlePortalApi`, `handleMe` and `handleLicenses` in
-  `portal/api.ts`). Each verification point this package adds calls the hook directly. Once every
-  point outside a sign-in does (add-email, PX-W12; this package's and I-09's), drop the
-  per-request sweep from `portal/api.ts`; the per-sign-in sweeps stay. Whichever of I-08 and I-09
-  lands second makes the drop.
-- **The `picture` claim** ([PX-W16](PX-W16-profile-avatars.md)). The account's picture is
-  `avatarUrl(accounts.avatar_key)` (`card/avatars.ts`): the same value the consent view shows, a
-  same-origin `/media/avatar/<asset>` path served cross-origin, or `null` for initials. Layer 1
-  issues no ID token, and the device-code poll's `identity` carries only the consented `name` and
-  `email` (`plans/I-04.md` §2.4), even though the consent screen asks for `picture` (PX-W13's
-  `CONSENT_PROFILE_CLAIMS`). If this package hands an app the picture anywhere, it reads that value,
-  made absolute. On the device wire an `identity.picture` member would be a wire change (plan mode).
-  I-21's ID token carries it (recorded there).
-
-## Changed by plan PX-W9 (2026-10-06)
-
-[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
-
-- **One `app` entry for a key choice.** An app-mode `{kind: "key"}` choice through `choice/complete` (I-04
-  §G.5) records exactly one `app` key entry. It goes through PX-W9's `authorizeDevice(…, {keyEntry: {surface:
-"app"}})`, atomically with the seat claim, and never also as a `portal` claim.
-- **Refusals and `choice-key-app.json`.** The choice refuses with `key_entry_limit`, built as PX-W9 does, when the
-  limit applies. `choice-key-app.json` expects `keyEntries` on the activation response.
-- **Never counted.** Choosing a licence, **Keep**, **Create a new free license** and **Replace a device**.
-
-## Consolidation 2026-10-07
-
-The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track K, Corpus lane (wire trains, serial)](../../../2026-10-07-dx-consolidation/tracks.md#k-corpus-lane-wire-trains-serial)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
-
-> One consolidated spec (fold the five amendment sections). OAuth 2.1-shaped authorize/token (client_id, scope, nonce, login_hint) per I-27's plan amending I-04; absorbs PX-W18's hints. Header name from resolvePresentation (HA-12), not passthroughName. Consent posts a granted subset (I-34). A first automatic licence may skip LicenseChoice (decided under the brief, D4). Built on P0-20's productOidc split. W-ID order is I-27 -> I-09 -> I-08 (it keeps its I-09 dependency); no signed shape changes, redirect-web transcripts re-recorded.
-
-- Title: was "App passthrough: the "<App> wants you to sign in" header, Continue-to-App grants, device code onto the card with callback binding, QR sign-in, and the web redirect (authorize plus PKCE code exchange) that gives product web apps a browser device token".
-- Depends on: added I-27, P0-20 and HA-12.
-- Absorbs PX-W18: Same pushed request and authorize route: hints become login_hint on the OAuth-shaped authorize, one wire event not two.
-
 ## Goal
 
-An app can send a person to the login card and get them back signed in: the card carries a persistent "<App> wants you to sign in" header and ends with "Continue to <App>"; device code lands on the card with callback binding and an explicit Continue; a person can approve a sign-in on another device by QR; and a product web app gets a browser device token through a PKCE web redirect, never through a token in a URL.
+An app sends a person to the login card and gets them back signed in. The card carries a persistent "<App> wants you to sign in" header, lets the person choose a licence, and ends with "Continue to <App>". A product web app signs in through an OAuth-shaped `authorize` and `token` with PKCE and gets a browser device token, never a token in a URL. Device code lands on the same card, bound to the browser that entered the code. All of it runs only while the product's Identity service is on.
 
 ## Why
 
-Passthrough is how an app with the Identity service on reaches the shared account without hosting credential entry ([S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact); D17, accepted). It is the core of the per-product Identity service (owner, 2026-10-04): the account itself is platform-level, but "<App> wants you to sign in" exists only for products whose `identity` toggle is on. Device code becomes a main front door against an account holding every developer's licences, so R1-07 closes here ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 6). The web redirect is S-17's browser principal (decision 19) and the only way to web Cloud Sync (decision 23, decided by the owner 2026-10-04 in the final answers); Cloud Sync needs sign-in and requires Identity, so the sign-in this package delivers is how every device reaches Cloud Sync ([S-17 §6](../../notes/S-17-user-data-sync.md#6-phases-and-work-packages)).
+Passthrough is how an app reaches the one Polaris Key account without hosting credential entry ([S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact); D17). Device code becomes a main front door, so R1-07 closes here ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 6). The web redirect is S-17's browser principal (decision 19) and the way to web Cloud Sync (decision 23).
+
+Sources: [`plans/I-27.md`](../plans/I-27.md) (§2.1, §2.2, §4, the hints from PX-W18), [`plans/I-04.md`](../plans/I-04.md) (§C, §F and §G as I-27 amends them), [`plans/I-09.md`](../plans/I-09.md), [`plans/PX-W13.md`](../plans/PX-W13.md), [`plans/PX-W17.md`](../plans/PX-W17.md), [`plans/PX-W8.md`](../plans/PX-W8.md) Q5, [`plans/PX-W9.md`](../plans/PX-W9.md) and [`plans/UK-02b.md`](../plans/UK-02b.md) §8; the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) (copy from §5.2, `signin.*`).
 
 ## Read first
 
-- `AGENTS.md` (always) and `CLAUDE.md` (plan mode); [`plans/I-04.md`](../plans/I-04.md) (this package executes it).
-- [S-16 owner decisions](../../notes/S-16-identity-service.md), [S-16 §5.3](../../notes/S-16-identity-service.md#53-wire-impact) (passthrough and web redirect rows, the notes below the table), [S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) items 6, 7 and 13, [S-16 §8](../../notes/S-16-identity-service.md#8-work-packages) row I-08.
-- [S-17 §6](../../notes/S-17-user-data-sync.md#6-phases-and-work-packages) ("I-08 gains a new wire row"), [S-17 §7.3](../../notes/S-17-user-data-sync.md#73-owner-decisions) decision 19.
-- `packages/worker/src/services/identity/oidc.ts:80` (`FLOW_TTL_SECONDS`), `packages/worker/src/core/cors.ts`, `packages/worker/src/core/brandHtml.ts`, `docs/security/THREAT-MODEL.md:2148-2154` (R1-07); P0-05's `web.origins`.
+- `AGENTS.md` (always) and `CLAUDE.md` (plan mode).
+- [`plans/I-27.md`](../plans/I-27.md) §2.1, §2.2, §4, §10 and its owner decisions; [`plans/I-04.md`](../plans/I-04.md) §C, §F and §G.
+- [SIGN-IN.md](../../../../design/SIGN-IN.md) §2.4, §3.6–§3.18, §4.16 and D-78–D-93.
+- `packages/worker/src/services/identity/oidc.ts:80` (`FLOW_TTL_SECONDS`), `packages/worker/src/core/cors.ts`, `packages/worker/src/core/brandHtml.ts`, `docs/security/THREAT-MODEL.md:2148-2154` (R1-07).
 
 ## Scope
 
 **In:**
 
-- Wave order: contract (I-04) → `errors.json` (rule 3) → routes → transcripts (rule 1) → OpenAPI + `routeCoverage` (rule 10).
-- Passthrough header from `branding_json` as data, product slug in fixed text; "Continue to <App>" recorded in `account_product_grants` with the consented profile claims.
-- Device code onto the card: callback bound to the browser that confirmed the user code; the card names the app and the device ("reported by the device"); explicit Continue `POST`, never auto-completing even with an account session; codes live at most 10 minutes; a warning when network or country differ. Poll result members `subject` and `attachable`.
-- QR sign-in on another device for the card.
-- **Web redirect:** `GET /<p>/identity/authorize` (`redirect_uri`, `state`, `code_challenge`, S256 only) → card → `302` to `redirect_uri?code=…&state=…`; `POST /<p>/identity/redirect/token` (route name per I-04) with `code` and `code_verifier` returns the activation response (browser device token, device id, pairwise subject); CORS for the product's `web.origins` only, without credentials.
-- Per-product start rate limits; discovery advertises the routes.
-- **Behind the product's `identity` toggle** (owner, 2026-10-04): with it off, `authorize`, the code exchange and device-code passthrough answer as for an unknown service and discovery advertises no sign-in routes; the card never shows a passthrough header for that product.
+- **The authorization server (I-27 §2.1).** The issuer is `<origin>/<p>/identity`; discovery's identity fragment gains `issuer`, the `authorize` and `token` endpoints and `configured: true`. `client_id` is the product slug, a public client with PKCE; any other value is `invalid_client`.
+- **`GET /<p>/identity/authorize`:** `response_type=code`, `client_id`, `redirect_uri` (origin in `core.web.origins` and path in `identity.redirectPaths`, both exact), `state` (16 to 512 characters), `code_challenge` with `S256` only, optional `scope` (`profile`, `email`, `cloudSync`; absent means the product's whole `identity.claims` set; `openid` answers `invalid_scope` until I-21), `nonce` (kept for I-21), `login_hint`, and the Polaris extensions `name_hint`, `purpose` (`signin` or `attach`) and `license_choice` (`card` or `app`). A bad `client_id` or `redirect_uri` renders `invalid_client` or `redirect_uri_mismatch` on the card and never redirects. Later errors are `302 redirect_uri?error=…&state=…&iss=<issuer>` with `invalid_request`, `invalid_scope`, `access_denied` (Cancel) or `server_error`. Success is `302 redirect_uri?code=…&state=…&iss=<issuer>` (RFC 9207); the code lives 60 s, single use in I-02's store, bound to the product, `client_id`, `redirect_uri`, `code_challenge` and the granted scope.
+- **`POST /<p>/identity/token`** (`grant_type=authorization_code`), form-encoded, `no-store`, CORS for `core.web.origins` only and never with credentials; it requires `X-PKey-Device` and the metadata headers, and a JSON body is `invalid_request`. A `200` carries exactly `access_token` (the `pkeyt_` device token), `token_type: "Bearer"`, `scope` (the granted subset), `schemaVersion`, `device`, `license` (`null` on a licence-less device), `keyEntries` only when the flow entered a key, and `subject`. No `expires_in` and no `refresh_token` before I-21. Errors are RFC 6749's flat body: `invalid_request`, `invalid_client`, `invalid_grant`, `unsupported_grant_type`, `invalid_scope`; the Polaris refusals `not_entitled`, `device_limit`, `license_owned`, `key_entry_limit` and `429 rate_limited` with `retryAfter` are flat too. I-08 deletes "I-21 appends `oauth/authorize`" from WIRE-CONTRACT-V4 §12.8 rule 3 and writes §12.4–§12.5.
+- **Hints (absorbs PX-W18).** `login_hint`, `name_hint` and `purpose` on `authorize`, and `scope`, `loginHint`, `nameHint` and `purpose` on `auth/device/start`. A hint prefills the card and never verifies anything.
+- **Licence choice (I-04 §C, §F, §G).** `GET /api/signin/requests/:handle/licenses` (`LicenseChoiceView`: `current`, `access` (`"seats" | "account"`, never a displayed type), `keep` only for a licence outside `choices`, `create` with `access`, `getLicense` with `keyEntry`) and `GET …/licenses/:licenseId/devices` (`ReplaceView`). The Continue `POST` takes `choice` (`license` with an optional `replaceDeviceId`, `keep`, `create`, or `{kind: "key", key}`) and stores it on every binding route's flow or code record. App mode: `license_choice=app` on `authorize` and the `licenseChoice` member on PX-W13's `request` with its echo; `token` answers `{status: "choose", grant, expiresIn, choices}`; the grant routes `POST /<p>/identity/choice/{licenses,devices,complete,cancel}` (nested Polaris errors, including `400 invalid_grant`), and `choice/complete` answers the same token response; discovery endpoints `choiceLicenses`, `choiceDevices`, `choiceComplete`, `choiceCancel`.
+- **First automatic licence (I-27 §2.2, D4).** With no candidate licence and a policy that grants one, the card skips LicenseChoiceStep and always shows ConsentStep ("New: <Tier> license, created when you continue"); that press mints and then binds. Until LX-36 and LX-38: policy is P0-20's `identityIssuePolicy`; the mint is P0-20's `issueLicense(product, holder, via, target, device?)` with an account holder (origin `oidc`, `account_id` set, `sub` NULL, no key; I-08 adds the account arm if P0-20 ships only the identity holder), then I-09's `bindSignedInDevice(…, {kind: "create"})`; uniqueness is a `"license-mint"` `SingleUseKind` claim (`<product>:` plus a peppered hash of the account id, `putArtefact(…, 30, {ifAbsent: true})`). The winner re-reads `rankAnchorCandidates` and mints only if there is still no candidate; a loser answers `409 license_choice_required`; an unreachable store fails closed. Discover's `issueIdentityLicense` takes the same claim.
+- **Replace a device.** `freeAccountDevice()` (`portal/freeDevice.ts`) returns its statements and the Continue appends the guarded seat claim in one D1 batch; `signin.replace.racedAfterFree` only if the claim cannot join. Replace shares the portal's `portalDeviceDisconnect` budget (20 per 60 s), audit row and `deviceRemovedNotice` email; a blocked Replace answers `429 rate_limited` with `retryAfter`.
+- **The card and its routes.** The header comes from `resolvePresentation` (HA-12) as data; the Continue records `account_product_grants` with the consented claims (`scope_hash` on Continue; Continue reads `AppConsentView`); PX-W13's request handle and `__Host-pk_req` binder carry the R1-07 callback binding; I-09's `bindSignedInDevice` binds. The Worker device-code pages (`renderDeviceEntry`, `renderDeviceConfirmation`, `signedInPage`) become the card with the app header; `verification_uri` is `<origin>/device`, with `/tv` as the TV and console alias; codes live at most 10 minutes; a warning when network or country differ; poll members `subject` and `attachable`. The device-code `confirm`/attach is offered only after **Keep**. Cancel answers `access_denied` on every surface.
+- **Key entry in the card.** An app-mode `{kind: "key"}` choice through `choice/complete` records exactly one `app` key entry through PX-W9's `authorizeDevice(…, {keyEntry: {surface: "app"}})`, atomically with the seat claim, and refuses with `key_entry_limit` when the limit applies. Choosing a licence, Keep, Create and Replace are never counted.
+- **Terms and verified email.** A passthrough sign-in passes the product's `identity.terms` (I-09's reader) into `beginProviderSignIn` as `product.terms`; acceptances live in `account_terms_acceptances`. Each verification point I-08 adds calls `onAccountEmailVerified`; whichever of I-08 and I-09 lands second drops the per-request sweep from `portal/api.ts`.
+- **Behind the Identity toggle.** With it off, `authorize`, `token`, the choice routes and device-code passthrough answer as for an unknown service, discovery lists no sign-in routes, and the passthrough context answers `identity_disabled` (PX-W17).
+- **Contract artefacts.** `errors.json`: `license_choice_required` (409) and the six OAuth codes `invalid_request`, `invalid_client`, `invalid_grant`, `unsupported_grant_type`, `invalid_scope`, `redirect_uri_mismatch` (`kind: wire`, service `identity`). Transcripts: `redirect-web-happy.json`, `redirect-web-errors.json`, `redirect-web-choose.json`, `redirect-web-choose-app.json`, `choice-replace-app.json`, `choice-key-app.json` (expects `keyEntries`), `choice-grant-errors.json`, `devicecode-sign-in.json`, `devicecode-choose.json`, `devicecode-replace.json`, `devicecode-choice-required.json`, `devicecode-autoissue.json` (the card skips the choice step), `identity-request-hints.json` and `discovery-identity.json` (with `issuer`, `authorize`, `token` and `configured: true`); re-record `identity-attach.json` with a real device-code sign-in. Parity rows `identity.redirect.web`, `identity.choice` and `identity.signin.hints`, `planned` in all six SDKs. No `ui.kit.signin` row: `ui.signin` covers the form; if the views change or a later decision retires LicenseChoice `new`, I-08 updates the `ui-matrix.json` rows (UK-02b §4.8). OpenAPI and `routeCoverage` for every new route.
 
 **Out** (and where it belongs instead):
 
-- SDK calls (→ I-10a, I-10b); native redirect URIs on the same token route (→ I-15).
-- Attach and key-entry refusals (→ I-09).
+- SDK calls (→ I-10a, I-10b); the native redirect and `request` (→ I-15); token exchange and `interstitial_required` (→ I-13); `openid`, refresh and registered clients (→ I-21).
+- Attach, subject, sign-out and `license_owned` (→ I-09); the card's screens (→ PX-14); approval by QR (→ PX-W14).
+- The `picture` claim on the device wire (a wire change; I-21's ID token carries it). If I-08 hands an app the picture anywhere, it reads `avatarUrl(accounts.avatar_key)`, made absolute.
 
 ## Design notes
 
-- **Never a token in a URL or fragment.** The code lives 60 seconds, is single use in I-02's store, and is bound to the `code_challenge`, the product, the origin and the redirect URI. `redirect_uri`'s origin must equal a `web.origins` entry exactly (scheme, host, port) and its path must be in `identity.redirectPaths`; no wildcard, prefix or suffix matching; a mismatch shows an error on the card and never redirects.
-- **No silent grants (D22, accepted by the owner 2026-10-04).** No silent SSO into apps: the first sign-in to each app needs "Continue to <App>"; later web redirects may skip it, device code never does.
-- **Bounded yield.** A flow returns only the product the card names, its licences, its pairwise subject and the consented claims; never an account session. Anyone can start a flow for any product (no registered clients in layer 1): the card's product name, explicit Continue, exact origin matching and start rate limits are the mitigation ([S-16 §5.4](../../notes/S-16-identity-service.md#54-threat-model-deltas) item 6 residual).
-- `PROTOCOL_VERSION` unchanged; additive and feature-detected.
-- The first-party session cookie is never accepted on Cloud Sync routes (S-17 decision 19).
+- **Never a token in a URL or fragment**, and no wildcard, prefix or suffix matching of `redirect_uri`.
+- **No silent grants (D22).** The first sign-in to each app needs "Continue to <App>"; later web redirects may skip it; device code never does, and never issues a choice grant.
+- **The choice grant (I-04 §G.6).** 32 random bytes, hashed in the KV flow record, 300 s, bound to the product, account, subject, the redeeming `X-PKey-Device` and the PKCE verifier; one per flow, consumed by `complete` or `cancel`; one `404 not_found` for every licence outside the view or not replaceable; 30 reads per grant.
+- **Bounded yield.** A flow returns only the product the card names, its licences, its pairwise subject and the consented claims, never an account session. The first-party session cookie is never accepted on Cloud Sync routes.
+- **The sign-in seat refusal** (`oidc.ts:944`) stays as it is; LX-18's `not_entitled` with `reason: device_limit` carries `manageUrl` from PX-W8's builder.
+- **When the card takes over the device page,** I-26's legacy chooser page goes and its rule stays; `provider: platform` products with Identity on stop calling `activateFromIdentity`'s `sub`-keyed mint.
+- `PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `transcriptVersion` 1. Additive and feature-detected; no signed shape changes.
 
 ## Steps
 
-1. `errors.json` and contract types from the plan.
-2. Passthrough header, grants and Continue.
-3. Device-code binding and confirm screen; QR.
-4. Authorize and code exchange with CORS.
-5. Transcripts, OpenAPI, THREAT-MODEL sections for items 6, 7 and 13.
+1. `errors.json`, contract text and types from I-27 §2.1.
+2. `authorize` and `token`, with CORS and the error bodies.
+3. The choice API, the grant routes and the first automatic licence.
+4. Device code onto the card, with the callback binding and Continue.
+5. Transcripts, parity rows, OpenAPI, THREAT-MODEL.
 
 ## Acceptance criteria
 
-- [ ] Device-code completion requires the Continue `POST` from the browser that entered the user code (test).
-- [ ] An unlisted origin, an unlisted path or a near-match is refused without a redirect (tests); a replayed or expired code and a wrong verifier are refused (tests).
-- [ ] The exchange answers CORS for listed origins only, never with credentials (test).
-- [ ] An existing account session does not skip Continue on a first sign-in to an app, nor ever on device code (tests).
+- [ ] Every error row of I-27 §2.1, including that no redirect happens before `client_id` and `redirect_uri` are valid (tests).
+- [ ] A code redeemed twice, or with another verifier, `client_id` or `redirect_uri`, is refused; `iss` is present on success and error; `token` accepts a form body only, and its `200` has exactly the listed members (tests).
+- [ ] `choice/complete` and `token` answer the same shape (test).
+- [ ] D4: a mint only at Continue; two concurrent Continue presses on one account, and a Continue racing a Discover add, leave exactly one licence; the loser answers `license_choice_required`; an unreachable store mints nothing (tests).
+- [ ] Sign-in never mints while the account holds a usable licence unless `choice.kind` is `create`; Continue without a choice answers 409 when the step was shown (tests).
+- [ ] Device code never issues a grant; a grant from another device id answers `invalid_grant`; `choice/devices` answers one `404` for unknown, foreign and non-replaceable licences (tests).
+- [ ] Replace and the portal's Remove share one budget and write the same audit row (test).
+- [ ] Device-code completion requires the Continue `POST` from the browser that entered the user code, and an account session never skips Continue on device code or on a first sign-in to an app (tests).
 - [ ] With the product's Identity toggle off, every passthrough route is refused and discovery lists none (test).
-- [ ] Transcripts recorded; `errors.json`, OpenAPI and `routeCoverage` updated; THREAT-MODEL sections written; `PROTOCOL_VERSION` unchanged.
+- [ ] Transcripts and mirrors recorded; `errors.json`, parity rows, OpenAPI and `routeCoverage` updated; THREAT-MODEL rows for R1-07, the choice grant and Replace; `PROTOCOL_VERSION` unchanged.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`, `operate/platform/connections`, `help/work-account`, `help/account` and `help/connected-apps`.
+- [ ] The device-code approval page shows the product's name, icon and accent, never the slug ([SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
+`plans/I-27.md` §10's commands, then:
+
 ```sh
-mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity passthrough devicecode redirect
+mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity authorize token passthrough devicecode
 mise exec node@22 -- pnpm gen:transcripts -- --check
-mise exec node@22 -- pnpm gen:constants -- --check
 ```
 
 ## Hand-off
 
-- I-10a (React web redirect) and I-10b implement the SDK side against these transcripts.
-- I-15 reuses the token route for native redirect URIs; U-20 uses the browser device token for web Cloud Sync.
+I-10a (React's web redirect) and I-10b implement the SDK side against these transcripts; I-15 adds `request` and the native redirect on the same `token`; I-13 adds token exchange; LX-38 swaps in `accessFor()` and deletes `"license-mint"`; U-20 uses the browser device token for web Cloud Sync.
 
-The role agent sets `--set I-08 in-review` when it hands off. After review, the lead adds the last
-commit of the PR:
+The role agent sets `--set I-08 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set I-08 done`.

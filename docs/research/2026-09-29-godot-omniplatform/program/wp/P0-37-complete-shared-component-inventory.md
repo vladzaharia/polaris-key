@@ -19,6 +19,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-11.
 - UX rows that name this package: UX-49 (parked: portal on the shared kit beyond P0-37; revive when P0-37's inventory lands and a portal page needs a missing component).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 9: every component that components.md §7 lists for the docs stays renderable without the console's router, stores or query client, and keeps its class constants in `ui/classes.ts`.
+
 ## Goal
 
 Complete the shared component inventory, as scoped below. Done when every acceptance criterion holds and the green gate passes.

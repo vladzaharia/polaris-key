@@ -27,6 +27,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Plan layer 2: app-specific profiles, apps signing users in beyond licence attach, product-IdP kinds and their scoping, the per-product issuer (in-house `jose` against Ory Hydra), clients and consent".
 - Estimate: 0.4–0.6 engineer-weeks (was 0.6–0.85).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the same endpoints; `openid`; clients extend `ClientRecord`; the §12.8 sentence.
+
 ## Goal
 
 An approved plan, `plans/I-20.md`, for layer 2 (per-app identity): app-specific profiles, apps signing users in beyond licence attach, product-IdP kinds and their scoping (D18), and the per-product OIDC issuer ("Sign in with <Product>"), including the build choice between in-house on `jose` and Ory Hydra, clients and consent.

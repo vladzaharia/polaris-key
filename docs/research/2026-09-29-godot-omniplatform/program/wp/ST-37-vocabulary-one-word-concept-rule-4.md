@@ -1,20 +1,27 @@
 # ST-37 Vocabulary: one word per concept (rule 4)
 
-| Field       | Value                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings, access control and console shell (DX consolidation A: Ground truth, decisions and quick wins)                                       |
-| Size        | 0.3–0.5 engineer-weeks                                                                                                                            |
-| Depends on  | none                                                                                                                                              |
-| Unblocks    | [P0-41](P0-41-living-admin-md-portal-md-ux-rows.md), [P0-51](P0-51-1-0-readiness-review.md), [A-19](A-19-one-channel-catalogue-tools-channels.md) |
-| Role        | `pkey-implementer`                                                                                                                                |
-| Plan mode   | no                                                                                                                                                |
-| Gates       | `docs-links`                                                                                                                                      |
-| Human input | none                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                         |
+| Field       | Value                                                                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (DX consolidation A: Ground truth, decisions and quick wins)                                                                         |
+| Size        | 0.3–0.5 engineer-weeks                                                                                                                                                              |
+| Depends on  | none                                                                                                                                                                                |
+| Unblocks    | [P0-41](P0-41-living-admin-md-portal-md-ux-rows.md), [P0-51](P0-51-1-0-readiness-review.md), [A-19](A-19-one-channel-catalogue-tools-channels.md), [DOC-07a](DOC-07a-start-path.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                  |
+| Plan mode   | no                                                                                                                                                                                  |
+| Gates       | `docs-links`                                                                                                                                                                        |
+| Human input | none                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                           |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **OB-01** in [Track A, Ground truth, decisions and quick wins](../../../2026-10-07-dx-consolidation/tracks.md#a-ground-truth-decisions-and-quick-wins).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the glossary rows, "Account profile" included.
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: six features; the glossary's "Commerce (a fact, not a switch)" becomes a service.
 
 ## Goal
 
@@ -56,6 +63,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] Every UI word maps to a kept identifier
 - [ ] A copy lint flags 'outlet' and 'grant' in console strings
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): `start/concepts.md` (the glossary).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

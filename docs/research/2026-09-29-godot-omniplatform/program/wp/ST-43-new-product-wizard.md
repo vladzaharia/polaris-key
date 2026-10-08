@@ -1,22 +1,28 @@
 # ST-43 New Product wizard
 
-| Field       | Value                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings, access control and console shell (DX consolidation C: Products, onboarding and Integration)        |
-| Size        | 1–1.5 engineer-weeks                                                                                             |
-| Depends on  | [ST-39](ST-39-wizard-kit.md), [ST-42](ST-42-create-defaults.md), [P0-26](P0-26-core-manifest-ingest-pipeline.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [D-02](D-02-diceroll-after-p1.md)                                        |
-| Role        | `pkey-implementer`                                                                                               |
-| Plan mode   | no                                                                                                               |
-| Gates       | `console-csp-parity`                                                                                             |
-| Human input | none                                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                        |
+| Field       | Value                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (DX consolidation C: Products, onboarding and Integration)           |
+| Size        | 1–1.5 engineer-weeks                                                                                                |
+| Depends on  | [ST-39](ST-39-wizard-kit.md), [ST-42](ST-42-create-defaults.md), [P0-26](P0-26-core-manifest-ingest-pipeline.md)    |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [D-02](D-02-diceroll-after-p1.md), [SP-37](SP-37-developer-docs-reshape.md) |
+| Role        | `pkey-implementer`                                                                                                  |
+| Plan mode   | no                                                                                                                  |
+| Gates       | `console-csp-parity`                                                                                                |
+| Human input | none                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                           |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **OB-07** in [Track C, Products, onboarding and Integration](../../../2026-10-07-dx-consolidation/tracks.md#c-products-onboarding-and-integration).
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-73, UX-74, UX-76.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: six features; Commerce is a service.
 
 ## Goal
 
@@ -58,6 +64,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] Two or three steps from Home to a created product
 - [ ] Lands on Integration
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `start/first-product` (the wizard steps); `operate/console/products`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

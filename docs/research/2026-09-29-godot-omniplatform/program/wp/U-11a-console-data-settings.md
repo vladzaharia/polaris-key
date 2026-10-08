@@ -29,6 +29,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Absorbs U-11b: One Data tab for one store.
 - Absorbs U-11c: One browser for one store.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: one quota number per tier, shown read-only with a link to Tiers, plus the ceiling and the pause state. Labels are read server-side.
+
 ## Goal
 
 The console's Users page (I-12) gains a Data tab for one pairwise subject: settings, account overrides, "what the app sees" (the effective values with sources), quota meters, and audit, with step-up for writes.

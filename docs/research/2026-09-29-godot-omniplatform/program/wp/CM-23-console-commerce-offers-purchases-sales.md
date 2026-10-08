@@ -1,16 +1,16 @@
 # CM-23 Console commerce: Offers, Purchases and the Sales tab
 
-| Field       | Value                                                                                                                                                                                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                                                                                                       |
-| Size        | 1.4–2 engineer-weeks                                                                                                                                                                                                                                    |
-| Depends on  | [CM-21](CM-21-storefront-connection-notifications.md), [CM-22](CM-22-purchases-ledger-one-revocation-path.md), [LX-11](LX-11-commerce-rework.md), [A-22](A-22-channel-page-status-releases-listing.md), [LX-35](LX-35-add-on-definitions-grantaddon.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-12](CM-12-console-commerce.md)                                                                                                                                                                              |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                                      |
-| Plan mode   | no                                                                                                                                                                                                                                                      |
-| Gates       | `console-csp-parity`                                                                                                                                                                                                                                    |
-| Human input | none                                                                                                                                                                                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                               |
+| Field       | Value                                                                                                                                                                                                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                                                                                                                                           |
+| Size        | 1.4–2 engineer-weeks                                                                                                                                                                                                                                                                        |
+| Depends on  | [CM-21](CM-21-storefront-connection-notifications.md), [CM-22](CM-22-purchases-ledger-one-revocation-path.md), [LX-11](LX-11-commerce-rework.md), [A-22](A-22-channel-page-status-releases-listing.md), [LX-35](LX-35-add-on-definitions-grantaddon.md), [CM-29](CM-29-commerce-service.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-12](CM-12-console-commerce.md)                                                                                                                                                                                                                  |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                          |
+| Plan mode   | no                                                                                                                                                                                                                                                                                          |
+| Gates       | `console-csp-parity`                                                                                                                                                                                                                                                                        |
+| Human input | none                                                                                                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                   |
 
 ## Consolidation 2026-10-07
 
@@ -19,6 +19,13 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: its console lives in CM-29's Commerce section, which shows while the service is on. Its release removes the legacy `PUT|DELETE …/commerce/products` route, with no alias (§6.4).
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: its code goes in `services/commerce/`, after CM-29.
 
 ## Goal
 
@@ -60,6 +67,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] An offer is defined once and sold on several storefronts
 - [ ] A base price converts with Apple's and Play's tools under a typed confirmation; Steam and itch.io show copy cards
 - [ ] The legacy Commerce page redirects
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/commerce/*` (with `features/ship-builds/commerce` and `channels/storefronts` moved in); `help/restore-purchase`, `help/refunds`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

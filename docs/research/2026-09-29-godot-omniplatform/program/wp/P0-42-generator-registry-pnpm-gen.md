@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CQT-01** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 8: it registers the docs generators: help messages, install steps, CLI, Action, console tour, integration docs, changelog and the upgrade table.
+
 ## Goal
 
 Generator registry and pnpm gen, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -35,7 +41,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output; old scripts kept as aliases.
+- tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen:brand, gen:constants, gen:corpus, gen:mirrors, gen:platform-inventory, gen:services, gen:settings, gen:storefront-ci, gen:transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).
 
 **Out** (and where it belongs instead):
 
@@ -55,6 +61,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] One pnpm gen --check replaces per-family checks in CI and gate.sh
 - [ ] Every GENERATED banner maps to a registry entry (test)
+- [ ] No removed gen:\* script name remains in the repo (git grep)
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

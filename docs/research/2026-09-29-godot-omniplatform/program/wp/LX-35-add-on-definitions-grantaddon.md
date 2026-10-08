@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **LX-35** in [Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: `grantAddOn` takes the purchase reference (`external_ref_hash` and the grant id); it exports its backfill's find-or-create add-on for a key set, which LX-11's job and legacy mapping write call; it moves `applyStoreGrant`'s `grants` write and the catch-up projection onto add-ons (§6.3).
+
 ## Goal
 
 Add-on definitions and grantAddOn, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -55,6 +61,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] Grants are licence-held and reference an add-on (no account or store holder writes, no add-on-less grant)
 - [ ] Comps, codes and store grants all call grantAddOn (grep test)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/{entitlements, add-ons}`; `features/managed-config/catalog` (flags leave); `help/library` (add-ons).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

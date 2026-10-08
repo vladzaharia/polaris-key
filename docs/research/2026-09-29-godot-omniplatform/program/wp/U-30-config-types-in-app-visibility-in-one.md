@@ -4,7 +4,7 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | U: Cloud Sync (S-17) (DX consolidation G: Managed config and Cloud Sync)                                                                           |
 | Size        | 0.6–0.8 engineer-weeks                                                                                                                             |
-| Depends on  | none                                                                                                                                               |
+| Depends on  | [U-01b](U-01b-cloud-sync-plan-amendment-two-stores-one.md)                                                                                         |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-31](U-31-minted-tokens-carry-their-recipe.md), [U-32](U-32-catalog-templates-cloud-sync-page-minted.md) |
 | Role        | `pkey-implementer`                                                                                                                                 |
 | Plan mode   | no                                                                                                                                                 |
@@ -17,6 +17,12 @@
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CFG-04** in [Track G, Managed config and Cloud Sync](../../../2026-10-07-dx-consolidation/tracks.md#g-managed-config-and-cloud-sync).
 
 - Owner 2026-10-07: manifest fields are removed, not deprecated. A removed field is a validator error that names its replacement, with no rule-9 warning period; this package migrates the in-repo manifests (the repo-root `.pkey/` and `products/djdl/*`) in the same change, adopters' repos (DJDL's, Diceroll) are owner steps, and `pkey migrate` is used only where this package already plans it.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: the rule-2 warning and "Editable settings sync by default (the `user` block becomes optional tuning)" are U-01b's, and leave this scope. It keeps the console form's Syncs control, rebuilt on `syncedSettings` (the off state is `sync: "local"`).
 
 ## Goal
 
@@ -57,6 +63,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] Served documents unchanged (enums.json identical)
 - [ ] Nine type x visibility cells reduced to five, documented
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

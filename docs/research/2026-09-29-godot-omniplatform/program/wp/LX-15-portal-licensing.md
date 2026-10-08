@@ -27,6 +27,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Portal licensing: what you own with sources, licence cards, Apply to a licence, downloads on the resolver; PORTAL.md amendment".
 - Depends on: added LX-41 and P0-36.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: the duration line reads the portal view's `term` and `subscription`.
+
 ## Goal
 
 The portal shows what a person owns with sources, licence cards, "Apply to a licence", and downloads on the resolver; PORTAL.md is amended.

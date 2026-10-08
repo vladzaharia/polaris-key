@@ -1,20 +1,26 @@
 # P2-09 Demote a release down a release track
 
-| Field       | Value                                                                                              |
-| ----------- | -------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth, publishing and release tracks (DX consolidation I: Packages, updates and packs) |
-| Size        | 0.5–0.8 engineer-weeks                                                                             |
-| Depends on  | [P2-08](P2-08-built-in-dev-release-track-default-store.md)                                         |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                             |
-| Role        | `pkey-implementer`                                                                                 |
-| Plan mode   | no                                                                                                 |
-| Gates       | `migration`, `table-owners`, `rule-10`                                                             |
-| Human input | none                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                          |
+| Field       | Value                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------- |
+| Phase       | P2: Release truth, publishing and release tracks (DX consolidation I: Packages, updates and packs)              |
+| Size        | 0.5–0.8 engineer-weeks                                                                                          |
+| Depends on  | [P2-08](P2-08-built-in-dev-release-track-default-store.md), [P2-12](P2-12-one-update-resolver-retire-github.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                          |
+| Role        | `pkey-implementer`                                                                                              |
+| Plan mode   | no                                                                                                              |
+| Gates       | `migration`, `table-owners`, `rule-10`                                                                          |
+| Human input | none                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                       |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **UC-02** in [Track I, Packages, updates and packs](../../../2026-10-07-dx-consolidation/tracks.md#i-packages-updates-and-packs).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/P2-12.md`](../plans/P2-12.md) §7: it reads yanks only in `loadDeliverableState`. If it is ready before P2-12's switch, it instead patches `legacyPolicyFor` (§6.4), and P2-12b deletes the patch.
 
 ## Goal
 
@@ -56,6 +62,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] A demoted release leaves the stable feed and stays on beta
 - [ ] Audited
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

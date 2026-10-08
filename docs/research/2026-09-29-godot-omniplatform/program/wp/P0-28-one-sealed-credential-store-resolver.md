@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CQW-14** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: absorbs the secrets of `identity_connections`.
+
 ## Goal
 
 One sealed credential store and resolver, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -60,6 +66,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Four stores become one
 - [ ] Dry-run re-seal report reviewed before apply
 - [ ] Security review signed
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): `operate/console/keys-and-secrets`; `operate/platform/connections`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

@@ -1,20 +1,36 @@
 # SP-37 Developer docs reshape
 
-| Field       | Value                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration) |
-| Size        | 1–1.5 engineer-weeks                                                                                      |
-| Depends on  | [SP-33b](SP-33b-integration-content-on-polaris-key-json.md)                                               |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                    |
-| Role        | `pkey-implementer`                                                                                        |
-| Plan mode   | no                                                                                                        |
-| Gates       | `docs-links`                                                                                              |
-| Human input | none                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                 |
+| Field       | Value                                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration)                                           |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                |
+| Depends on  | [SP-33b](SP-33b-integration-content-on-polaris-key-json.md), [ST-41](ST-41-integration-page-overview-card.md), [ST-43](ST-43-new-product-wizard.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                              |
+| Role        | `pkey-implementer`                                                                                                                                  |
+| Plan mode   | no                                                                                                                                                  |
+| Gates       | `docs-links`                                                                                                                                        |
+| Human input | none                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                           |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **SDX-06** in [Track C, Products, onboarding and Integration](../../../2026-10-07-dx-consolidation/tracks.md#c-products-onboarding-and-integration).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 5: it depends on ST-41 and ST-43 as well as SP-33b, because "Your first product" mirrors the wizard. Its final path gets the fresh-reader run (§6.2). The developer changelog generator is DOC-12a's.
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- The one start path forks into two lanes; the `your-own-ui` pages survive the reference trim.
+
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
 ## Goal
 
@@ -55,6 +71,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] One start path
 - [ ] Programme-id lint passes on developer pages
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `reference/api-names`; every quickstart regenerated; snippets included from `examples/` (the SDK docs-snippets targets retire); `build/sdks/*` reference-only.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

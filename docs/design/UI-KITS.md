@@ -1170,17 +1170,46 @@ fixture product, wired to the test fixture adapters so it runs without a live Wo
 
 ### 7.1 Baselines per kit, both themes
 
-Every component × state in the fixtures (§5.2) is rendered in **dark and light**, at the platform's
-real sizes, and compared with a committed lossless baseline:
+Every component × state in the fixtures (§5.2) is rendered in **dark and light**, at every size
+below that the kit runs at, and compared with a committed lossless baseline. This section is the
+one home for the size matrix (owner, 2026-10-08: every kit screen adapts to its window, with
+landscape layouts where the window is landscape).
 
-| Kit                                   | Tool                                                                           | Variants                                                                                                                         | Baselines                                                             |
-| ------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| React, elements, Vue, Svelte, Angular | Playwright component tests (Chromium, WebKit)                                  | 1440 × 900 and 390 × 844 at 2x; dark, light; `polaris-key` and `native`; `forced-colors` (dark only); keyboard-focus state shots | `packages/<kit>/test/visual/__screenshots__/`                         |
-| SwiftUI, UIKit, AppKit                | swift-snapshot-testing on iOS 26 and macOS 26 simulators/hosts                 | iPhone, iPad, Mac; dark, light; AX3 Dynamic Type; iOS 18 and macOS 15 fallbacks                                                  | `sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/`           |
-| Compose                               | Roborazzi (exists, 136 baselines) + Compose Desktop screenshot tests           | phone, tablet, desktop (Windows, macOS, Linux chrome); dark, light; 200 % font; native preset                                    | `sdks/kotlin/ui/src/test/snapshots/`                                  |
-| Godot                                 | `tools/ui_screenshots.gd` (exists) promoted to a compared suite                | 1280 × 720, 1280 × 800 (Steam Deck), 1920 × 1080, 3840 × 2160, 720 × 1280; dark, light; native; opaque fallback                  | `sdks/godot/tests/ui/snapshots/`                                      |
-| Qt                                    | pytest-qt `grab()`, offscreen                                                  | macOS, Windows, Linux variants; dark, light; native                                                                              | `sdks/python/tests/ui/snapshots/`                                     |
-| Terminal                              | Golden ANSI text + an SVG rendered by a real terminal (VHS) at line-height 1.2 | truecolor, ANSI-16, `NO_COLOR`, ascii; 80 and 60 columns                                                                         | `packages/sdk-node/test/cli/golden/`, `sdks/python/tests/cli/golden/` |
+**GUI kits** (logical pixels; on a desktop platform, the phone and tablet rows are window sizes):
+
+| Row                | Size                                                                     | Kits                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Phone portrait     | 390 × 844                                                                | every GUI kit                                                                                                                           |
+| Phone landscape    | 844 × 390                                                                | every GUI kit                                                                                                                           |
+| Small landscape    | 640 × 360                                                                | every GUI kit                                                                                                                           |
+| Tablet             | 820 × 1180 and 1180 × 820                                                | every GUI kit                                                                                                                           |
+| Desktop            | 1440 × 900                                                               | every GUI kit                                                                                                                           |
+| Wide desktop       | 1920 × 1080                                                              | every GUI kit                                                                                                                           |
+| TV                 | 1920 × 1080 at TV scale, focus navigation                                | tvOS, Android TV and Godot                                                                                                              |
+| Godot game sizes   | 1280 × 720, 1280 × 800 (Steam Deck), 2560 × 1440, 3840 × 2160 at scale 2 | Godot                                                                                                                                   |
+| 200 % text or zoom | Phone portrait, phone landscape and desktop, again                       | every GUI kit: browser zoom 200 % (web), AX3 Dynamic Type (Apple), font scale 2.0 (Compose), font scale 2 (Qt), content scale 2 (Godot) |
+
+**Terminal kits** (columns × rows):
+
+| Row            | Size     |
+| -------------- | -------- |
+| Narrow         | 40 × 24  |
+| Small          | 60 × 24  |
+| Standard       | 80 × 24  |
+| Wide           | 120 × 40 |
+| Very wide      | 200 × 50 |
+| Short terminal | 80 × 12  |
+
+**Per kit:**
+
+| Kit                                   | Tool                                                                           | Variants, beyond the sizes above                                                           | Baselines                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| React, elements, Vue, Svelte, Angular | Playwright component tests (Chromium, WebKit)                                  | at 2x; `polaris-key` and `native`; `forced-colors` (dark only); keyboard-focus state shots | `packages/<kit>/test/visual/__screenshots__/`                         |
+| SwiftUI, UIKit, AppKit                | swift-snapshot-testing on iOS 26 and macOS 26 simulators/hosts                 | iPhone, iPad and Mac devices for the matching rows; iOS 18 and macOS 15 fallbacks          | `sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/`           |
+| Compose                               | Roborazzi (exists, 136 baselines) + Compose Desktop screenshot tests           | Windows, macOS and Linux chrome on the desktop rows; native preset                         | `sdks/kotlin/ui/src/test/snapshots/`                                  |
+| Godot                                 | `tools/ui_screenshots.gd` (exists) promoted to a compared suite                | native; opaque fallback                                                                    | `sdks/godot/tests/ui/snapshots/`                                      |
+| Qt                                    | pytest-qt `grab()`, offscreen                                                  | macOS, Windows and Linux styles; native                                                    | `sdks/python/tests/ui/snapshots/`                                     |
+| Terminal                              | Golden ANSI text + an SVG rendered by a real terminal (VHS) at line-height 1.2 | truecolor, ANSI-16, `NO_COLOR`, ascii                                                      | `packages/sdk-node/test/cli/golden/`, `sdks/python/tests/cli/golden/` |
 
 The fixture inputs are shared, so the same state is captured in every kit; a report page
 (`pnpm ui:report`) lays the kits side by side per state for review. React and the elements share one

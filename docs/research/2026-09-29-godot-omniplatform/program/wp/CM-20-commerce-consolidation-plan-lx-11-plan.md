@@ -7,9 +7,9 @@
 | Depends on  | [LX-08](LX-08-licensing-expand.md)                                                                                                                                                                                                                       |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-11](LX-11-commerce-rework.md), [LX-18](LX-18-licensing-wire.md), [CM-21](CM-21-storefront-connection-notifications.md), [CM-25](CM-25-app-purchase-as-licence-source.md), [CM-29](CM-29-commerce-service.md) |
 | Role        | `pkey-wire-planner` (planning only)                                                                                                                                                                                                                      |
-| Plan mode   | yes: this package writes `plans/CM-20.md`, which needs human approval                                                                                                                                                                                    |
+| Plan mode   | yes: [`plans/CM-20.md`](../plans/CM-20.md), approved 2026-10-08; LX-11 executes it (`planRef`), and LX-23, LX-18, LX-20 and CM-21 to CM-28 build inside it                                                                                               |
 | Gates       | `plan-mode`                                                                                                                                                                                                                                              |
-| Human input | plan approval (`plans/CM-20.md`)                                                                                                                                                                                                                         |
+| Human input | none                                                                                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                |
 
 ## Consolidation 2026-10-07
@@ -57,7 +57,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Acceptance criteria
 
 - [ ] Plan approved; names the corpus regeneration and LX-19/LX-20
-- [ ] No commerce service slug (C-17)
+- [ ] Commerce is the `commerce` service, which requires License (CM-29). This plan's routes, settings and tables are CM-29's
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

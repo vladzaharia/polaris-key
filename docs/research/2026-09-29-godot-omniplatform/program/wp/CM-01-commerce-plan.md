@@ -25,6 +25,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "Plan Polaris Key commerce: decision record, exact DDL, routes, wire changes W1–W4, settings, threat model".
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: §10, as a note only: the reduced Polaris Key checkout v1 sits on CM-20's model. It stays deferred until the owner's "commerce: go".
+
 ## Goal
 
 `plans/CM-01.md` exists and is approved: it fixes the exact DDL, every portal, admin, platform and device route, the four device-visible wire changes (W1–W4) with their corpus, transcript and constants consequences, the `commerce.*` registry rows, the provider interface and the threat-model rows, and it re-reads every Stripe fact S-22 marks [U].

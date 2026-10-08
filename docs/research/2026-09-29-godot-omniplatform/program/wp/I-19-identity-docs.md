@@ -49,6 +49,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Identity docs: the account and Library, recovery, key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, privacy-notice inputs".
 - Absorbs PX-19: One identity and portal docs package; customer help moves into the portal.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 1: customer help lives in the docs site's public Help area (D1); the portal links to it and keeps its in-product copy on the catalog. This package narrows to developer identity docs; the consumer identity articles are DOC-04b's, and each I- package updates its article.
+
 ## Goal
 
 Developers and end users have accurate docs for layer 1: the account and the Library, recovery ("remaining links, then the developer's licence tool"), key-entry limits for developers, tenant-scoped native links, Steam and Game Center guides, and the inputs for the Polaris privacy notice.

@@ -28,6 +28,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Cloud Sync Durable Object and routes: settings and members, `seq`, clients, tombstones, push rules 1–8, the settings account-merge hook, `403 account_required`, coalesced directory, limits and ceilings, pull and push routes, browser bearer and CORS".
 - Depends on: added U-01b and P0-25.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: §13.1–13.5, D3 (open settings), D5 (quota, resolved per device), D6 (`cloudSyncWrite`, `writes_paused`, the two settings), `empty`, the `syncAccess` change, §6.1's migration, T6, T14, T17, T18, the "One module for the licence question" rewrite and the PRIVACY row. It drops `byTier`, `unlicensed` and `requireLicense`. Its `cloudSyncWrite` relies on U-01b's lenient reader.
+
 ## Goal
 
 Devices push and pull user settings through `/<p>/sync/` against one Durable Object per `(product, subject)`, with push rules 1–8 enforced on the server, `403 account_required` for devices with no signed-in account, the settings account-merge hook, coalesced D1 directory writes, unlicensed limits and product ceilings, and browser bearer access through the CORS list.
@@ -80,6 +86,7 @@ This is the MVP's core service ([S-17 §5.4](../../notes/S-17-user-data-sync.md#
 - [ ] A merged account's settings end up in the surviving subject's DO (test).
 - [ ] A key-activated device that never signed in gets `account_required` even when its licence is attached to an account; a signed-in device syncs (tests).
 - [ ] Load test results (rows written, billable duration per op) in the PR.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

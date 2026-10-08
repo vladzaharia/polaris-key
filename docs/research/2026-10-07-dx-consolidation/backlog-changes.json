@@ -293,7 +293,7 @@
       "id": "I-10a",
       "action": "edit",
       "title": "SDK identity v2 and key-entry outcome: Node, React, Python (absorbs PX-W9b, UK-44)",
-      "note": "Absorbs PX-W9b (key-entry outcome) and UK-44 (sign-in hints) for Node, React and Python: one six-SDK pass over activation and sign-in. One signIn facade (signIn.start/exchange/choice/subject/signOut) on the OAuth-shaped endpoints, names from SP-35's api.json, deprecated aliases kept for the published SDK deprecation window (P0-24's ledger). Ships layer (c) only; the React activation UI renders in UK-05.",
+      "note": "Absorbs PX-W9b (key-entry outcome) and UK-44 (sign-in hints) for Node, React and Python: one six-SDK pass over activation and sign-in. One signIn facade (signIn.start/exchange/choice/subject/signOut) on the OAuth-shaped endpoints, names from SP-35's api.json, with no aliases: a renamed name goes in the release that renames it (owner, 2026-10-07). Ships layer (c) only; the React activation UI renders in UK-05.",
       "deps": {
         "add": ["SP-35"],
         "remove": ["PX-W9b"]
@@ -721,7 +721,7 @@
       "id": "ST-05",
       "action": "split",
       "target": ["ST-05a", "ST-05b"],
-      "note": "ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore) with the bespoke routes as thin adapters in the same package."
+      "note": "ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore), with the bespoke routes removed in the same release (no alias, no adapter)."
     },
     {
       "id": "ST-07",
@@ -853,7 +853,7 @@
       "id": "ST-25",
       "action": "edit",
       "title": "Legacy settings retirement (widened)",
-      "note": "Widened, driven by P0-24's migration ledger: also products.admin_group, core.adminGroup and manifest product.adminGroup (after ST-32's conversion), legacyDefault (after LX-16), the *_source markers, the retired licensing keys (LX-40), products.branding_json and the portal tintColor read, and the bespoke aliases ST-05b made adapters; PENDING emptied; each removal follows its P0-24 calendar window."
+      "note": "Widened, driven by P0-24's migration ledger: also products.admin_group, core.adminGroup and manifest product.adminGroup (after ST-32's conversion), legacyDefault (after LX-16), the *_source markers, the retired licensing keys (LX-40), products.branding_json and the portal tintColor read; PENDING emptied; each removal goes in the release that replaces it (owner, 2026-10-07)."
     },
     {
       "id": "LX-05b",
@@ -1110,7 +1110,7 @@
     {
       "id": "UK-05",
       "action": "edit",
-      "note": "PolarisKeyProvider config={polarisKey}; theme, branding and colorScheme collapse to theme; expectServices accepted as an alias of expectedServices."
+      "note": "PolarisKeyProvider config={polarisKey}; theme, branding and colorScheme collapse to theme; expectServices refused with invalid-options naming expectedServices (no alias; SP-35 D7)."
     },
     {
       "id": "UK-06",
@@ -1683,7 +1683,7 @@
       "deps": ["P0-18"],
       "planMode": false,
       "estimateWeeks": [0.4, 0.6],
-      "scope": "A RUNBOOK migration ledger listing every expand/contract pair with owner and exit criterion: U-03 (closed by U-27, U-27b), the ST-01c settings backfill, I-17's platform-IdP claim, LX-08's catch-up, LX-16 and LX-16b, I-28 and I-28b, P0-28 and P0-28b, A-27 and A-27b, PS-11, ST-25; the licensing rollback ladder (0105_licensing.down.sql valid only before LX-35's migration; each later migration ships its own down script); every deprecation window in calendar days with its production exit fact (break-glass, PKEY_ADMIN_COOKIE, SDK and Action aliases, Pocket ID env override); P0-49's job reports; delete the settings backfill runner, routes and console page once the owner has run it (owner step).",
+      "scope": "A RUNBOOK migration ledger listing every expand/contract pair with owner and exit criterion: U-03 (closed by U-27, U-27b), the ST-01c settings backfill, I-17's platform-IdP claim, LX-08's catch-up, LX-16 and LX-16b, I-28 and I-28b, P0-28 and P0-28b, A-27 and A-27b, PS-11, ST-25; the licensing rollback ladder (0105_licensing.down.sql valid only before LX-35's migration; each later migration ships its own down script); every remaining window with its production exit fact (break-glass, the two-release DB contracts, and paths shipped native binaries call until DJDL ships a 0.9 build; owner, 2026-10-07: no other window); P0-49's job reports; delete the settings backfill runner, routes and console page once the owner has run it (owner step).",
       "acceptance": [
         "Ledger exists with an exit criterion per row",
         "Every window is stated in days with a production fact, never in releases",
@@ -1996,10 +1996,11 @@
       "deps": ["HA-12", "UK-14"],
       "planMode": false,
       "estimateWeeks": [1, 1.5],
-      "scope": "tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output; old scripts kept as aliases.",
+      "scope": "tools/generators.ts declaring the 13 generator families (inputs, outputs, order, check); pnpm gen, --check, --changed, named runs; CI, gate.sh and pre-commit read it; generated reference/generators.mdx and the AGENTS.md rule-3 table; a test that every GENERATED banner maps to a registered output. The old root scripts (gen:brand, gen:constants, gen:corpus, gen:mirrors, gen:platform-inventory, gen:services, gen:settings, gen:storefront-ci, gen:transcripts) are removed in P0-42's release, with no alias: pnpm gen <family> replaces each, and CI, .husky/pre-commit, AGENTS.md, CLAUDE.md, the skills, the docs and the program's briefs and plans move to it in the same change (the lead's gate.sh, outside the repo, moves with it).",
       "acceptance": [
         "One pnpm gen --check replaces per-family checks in CI and gate.sh",
-        "Every GENERATED banner maps to a registry entry (test)"
+        "Every GENERATED banner maps to a registry entry (test)",
+        "No removed gen:* script name remains in the repo (git grep)"
       ]
     },
     {
@@ -2135,17 +2136,17 @@
     {
       "proposedId": "ST-05b",
       "alias": "ST-05 (split)",
-      "title": "Generic settings routes with bespoke routes as adapters",
+      "title": "Generic settings routes; the bespoke settings routes removed",
       "phase": "ST",
       "lane": "worker",
       "role": "pkey-implementer",
       "deps": ["ST-05a"],
       "planMode": false,
       "estimateWeeks": [0.5, 0.7],
-      "scope": "The generic settings admin routes of S-18 §4.7 minus history, as-of and restore; the bespoke routes rebuilt as thin adapters in the same package (no long alias period); declared on ST-29's route table if it has landed; aliases recorded in P0-24's ledger for ST-25.",
+      "scope": "The generic settings admin routes of S-18 §4.7 minus history, as-of and restore, declared on ST-29's route table if it has landed. The bespoke settings routes (…/update/settings, …/license/policy, …/trust-policy, …/distribution/access and the rest S-18 §4.7 lists) are removed in this package's release, with no alias and no adapter: the console moves to the generic routes in the same change, because it ships in lockstep with the Worker. Neither the CLI nor the Action calls them (checked 2026-10-08: the CLI's admin calls are /manage/api/me, …/bundles, …/distribution/listing/import and the products routes, and the Action is the bundled CLI on the CI plane), so neither moves.",
       "acceptance": [
         "Every settings write goes through the generic path",
-        "OpenAPI and routeCoverage updated"
+        "No bespoke settings route answers; OpenAPI and routeCoverage list none, and the console calls only the generic routes (test)"
       ]
     },
     {
@@ -2232,7 +2233,7 @@
       "deps": ["ST-31", "I-30"],
       "planMode": false,
       "estimateWeeks": [0.8, 1.1],
-      "scope": "SSO rules as the platform setting console.access in exactly license.access's rule JSON, written through writeSetting (step-up, audit, history) with one RuleEditor and match preview shared with LX-36 and P2-10; issuer allowlist check; matchers (groups includes, one claim equals, and a verified email domain that only matches an email vouched by a DNS-verified, enforced I-30 connection); minimal claims_json retention; evaluation at sign-in; identifier-first routing of operators to their SSO connection (moved from ST-30); the root rule card; core.adminGroup conversion offers and the manifest deprecation warning.",
+      "scope": "SSO rules as the platform setting console.access in exactly license.access's rule JSON, written through writeSetting (step-up, audit, history) with one RuleEditor and match preview shared with LX-36 and P2-10; issuer allowlist check; matchers (groups includes, one claim equals, and a verified email domain that only matches an email vouched by a DNS-verified, enforced I-30 connection); minimal claims_json retention; evaluation at sign-in; identifier-first routing of operators to their SSO connection (moved from ST-30); the root rule card; core.adminGroup conversion offers and the product.adminGroup refusal (a validator error naming its replacement).",
       "acceptance": [
         "Rules evaluate identically in preview and at sign-in (test)",
         "An address confirmed only by email code never matches a console domain rule (test)",
@@ -2254,7 +2255,8 @@
       "acceptance": [
         "A token never exceeds its holder's roles at use time (test)",
         "An admin-scope token is refused by the registry and a packages token by the admin API (test)",
-        "No PKEY_ADMIN_COOKIE in the CLI or docs after the window"
+        "No PKEY_ADMIN_COOKIE in the CLI, the Action bundle or the docs in the release that ships pkey login",
+        "Upgrade to 0.9: a changelog entry whose replaces rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in the same PR (docs plan §10 item 7)"
       ],
       "tags": ["sec"]
     },
@@ -2323,7 +2325,8 @@
       "acceptance": [
         "Discovery, coherence codes and SDK constants byte-identical",
         "Turning on Ship builds writes release, distribution and update in one audited batch",
-        "One service-off component"
+        "One service-off component",
+        "Upgrade to 0.9: a changelog entry whose replaces rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in the same PR (docs plan §10 item 7)"
       ]
     },
     {
@@ -2506,7 +2509,8 @@
       "acceptance": [
         "P0-49 report lists every effective-value change before the switch (expected none)",
         "Signed licence and update documents byte-identical across the switch (channels never rewritten)",
-        "No tierless licence remains; precedence tests per field"
+        "No tierless licence remains; precedence tests per field",
+        "Upgrade to 0.9: a changelog entry whose replaces rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in the same PR (docs plan §10 item 7)"
       ],
       "tags": ["mig"]
     },
@@ -2608,10 +2612,11 @@
       "deps": ["LX-09", "LX-10", "LX-12", "LX-05b"],
       "planMode": false,
       "estimateWeeks": [0.3, 0.5],
-      "scope": "Remove licensing.entitlementModel (its one-time switch is a lead-run P0-49 job, no console card), entitlementHolder, anchorPolicy, reanchor, clampGraceToExpiry (always on), refundGraceHours and reservedNames from the registry, manifest (rule 9 deprecation warnings) and console (shared-manifest index.ts:223-241); keep license.dunningGraceDays, shown only when a subscription source exists; delete LicenseSettingsPage, COMBINED_ENTITLEMENT_MODEL_SINCE and entitlementModelFor; gen:settings --check.",
+      "scope": "Remove licensing.entitlementModel (its one-time switch is a lead-run P0-49 job, no console card), entitlementHolder, anchorPolicy, reanchor, clampGraceToExpiry (always on), refundGraceHours and reservedNames from the registry, manifest (each a validator error naming its replacement) and console (shared-manifest index.ts:223-241); keep license.dunningGraceDays, shown only when a subscription source exists; delete LicenseSettingsPage, COMBINED_ENTITLEMENT_MODEL_SINCE and entitlementModelFor; gen:settings --check.",
       "acceptance": [
         "Registry lists one licensing key",
-        "Manifests with retired keys warn, not fail, during the window"
+        "A manifest with a retired key fails validation with an error naming its replacement",
+        "Upgrade to 0.9: a changelog entry whose replaces rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in the same PR (docs plan §10 item 7)"
       ]
     },
     {
@@ -2810,7 +2815,7 @@
       "deps": ["I-30", "I-08", "I-13", "I-35"],
       "planMode": true,
       "estimateWeeks": [1.4, 2],
-      "scope": "A product-scoped connection used on that product's card (button and domain routing in product context) and at /<p>/identity/token when exchange: true (JWKS-verified ID token; firebase as an oidc connection with a JWKS override); tenant-scoped links (product:<slug>) never vouch email_verified (the email gate's code applies); migration of oidc.provider: custom products (config into a connection, sub-keyed licences claimed at next sign-in, an email-less count, an owner-set sunset); after the sunset licenses.sub stops being an owner key (release N: no read or write; the column stays dormant, and dropping idx_licenses_sub ships a new 00XX_index_assertion.sql in release N+1), and oidc_config and /<p>/identity/auth/{start,callback,choose} retire; old redirect URIs 302 during the window. Plan mode: exchange kinds are advertised in discovery.",
+      "scope": "A product-scoped connection used on that product's card (button and domain routing in product context) and at /<p>/identity/token when exchange: true (JWKS-verified ID token; firebase as an oidc connection with a JWKS override); tenant-scoped links (product:<slug>) never vouch email_verified (the email gate's code applies); migration of oidc.provider: custom products (config into a connection, sub-keyed licences claimed at next sign-in, an email-less count, an owner-set sunset); after the sunset licenses.sub stops being an owner key (release N: no read or write; the column stays dormant, and dropping idx_licenses_sub ships a new 00XX_index_assertion.sql in release N+1), and oidc_config and /<p>/identity/auth/{start,callback,choose} retire; old redirect URIs are re-registered at the IdP (an owner step); a 302 only if the dry run is non-empty and the owner grants it (plans/I-27.md Q5). Plan mode: exchange kinds are advertised in discovery.",
       "acceptance": [
         "Custom issuers migrate without losing licences",
         "THREAT-MODEL row for tenant-minted identities",
@@ -2861,7 +2866,7 @@
       "deps": ["I-27", "I-09", "LX-36"],
       "planMode": false,
       "estimateWeeks": [0.8, 1.2],
-      "scope": "identity.{methods, connections, claims, terms, keyEntry, redirectPaths} with validator rules and schema; deprecated spellings through ST-19's mechanism (oidc.* -> identity.connections[] or nothing for provider: platform; groupRoleMap and autoIssue.mode -> licensing.access; provisioning[] entitlements -> access-rule targets); the keyEntry block is the manifest side of the setting I-09 implemented (claimByKey included); no identity.native; settings registry entries; rule 9 drift gates (schema-parity test, manifest tests, bundle:action --check).",
+      "scope": "identity.{methods, connections, claims, terms, keyEntry, redirectPaths} with validator rules and schema; removed spellings, each a validator error naming its replacement in the release that stops reading it (oidc.* -> identity.connections[] or nothing for provider: platform; groupRoleMap and autoIssue.mode -> licensing.access; provisioning[] entitlements -> access-rule targets); the keyEntry block is the manifest side of the setting I-09 implemented (claimByKey included); no identity.native; settings registry entries; rule 9 drift gates (schema-parity test, manifest tests, bundle:action --check).",
       "acceptance": [
         "Rule 9 drift gates pass",
         "djdl's manifest resyncs with warnings only"
@@ -3096,11 +3101,12 @@
       "deps": ["F-33"],
       "planMode": false,
       "estimateWeeks": [0.5, 0.8],
-      "scope": "pkey feeds setup --write mints its own pkeyp_ token with only packages:read through the account device-code flow (the portal's deviceLogin.ts), never pkey login's admin token, and writes npm, yarn, pnpm, bun, uv and pip netrc, docker, swift registry login and gradle.properties at user level (--print for CI); renderCombinedFeedSetup in @polaris-key/manifest beside SP-33a's generator; pkey feeds fdroid becomes pkey storefront fdroid (alias kept for the CLI deprecation window in P0-24).",
+      "scope": "pkey feeds setup --write mints its own pkeyp_ token with only packages:read through the account device-code flow (the portal's deviceLogin.ts), never pkey login's admin token, and writes npm, yarn, pnpm, bun, uv and pip netrc, docker, swift registry login and gradle.properties at user level (--print for CI); renderCombinedFeedSetup in @polaris-key/manifest beside SP-33a's generator; pkey feeds fdroid becomes pkey storefront fdroid (the old form removed in the same release).",
       "acceptance": [
         "Never writes a token into a project file",
         "Never writes an admin-scope token anywhere (test)",
-        "One command configures every package manager a product uses"
+        "One command configures every package manager a product uses",
+        "Upgrade to 0.9: a changelog entry whose replaces rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in the same PR (docs plan §10 item 7)"
       ]
     },
     {
@@ -3179,7 +3185,7 @@
       "deps": ["P0-26"],
       "planMode": true,
       "estimateWeeks": [1, 1.5],
-      "scope": "Appcast, /version and legacy downloads resolve from release rows through resolve.ts for every product; the GitHub API only at ingest; a backfill of artifacts for linked products without rows; no per-product fallback flag: a P0-49 job compares old and new resolver output byte for byte per product in production before the switch, and the old path stays one release for a deploy rollback, then goes; golden byte tests for legacy-only products and a plan for legacy SUFeedURLs; release.betaBranch and release.channelWorkflow deprecated (registry deprecated, manifest warnings). W-UP train, after W-LX's prerequisites in the corpus lane.",
+      "scope": "Appcast, /version and legacy downloads resolve from release rows through resolve.ts for every product; the GitHub API only at ingest; a backfill of artifacts for linked products without rows; no per-product fallback flag: a P0-49 job compares old and new resolver output byte for byte per product in production before the switch, and the old path stays one release for a deploy rollback, then goes; golden byte tests for legacy-only products and a plan for legacy SUFeedURLs; release.betaBranch and release.channelWorkflow removed at the switch (each a validator error naming the replacement). W-UP train, after W-LX's prerequisites in the corpus lane.",
       "acceptance": [
         "Transcripts byte-identical (golden tests)",
         "The GitHub-resolved resolver is deleted"
@@ -3379,10 +3385,11 @@
       "deps": ["A-19", "P0-45"],
       "planMode": false,
       "estimateWeeks": [1, 1.4],
-      "scope": "pkey storefronts sync, pkey channel add and renderOutletBlock (UX-56); the Action's channels: auto covers CI and PR channels and implied transport steps; thin inputs (command, args, secrets, base-url, working-directory, dry-run; the product from .pkey/), old inputs accepted for the Action's deprecation window (at least 30 days and one minor, P0-24) with a deprecation annotation; storefront, itch-platform and storefront-outlet inputs deprecated; bundle regenerated. Absorbs UX-56.",
+      "scope": "pkey storefronts sync, pkey channel add and renderOutletBlock (UX-56); the Action's channels: auto covers CI and PR channels and implied transport steps; thin inputs (command, args, secrets, base-url, working-directory, dry-run; the product from .pkey/), old inputs, and the storefront, itch-platform and storefront-outlet inputs, removed in the same release, each refused with a message naming its replacement; bundle regenerated. Absorbs UX-56.",
       "acceptance": [
         "A product's workflow needs no per-channel step",
-        "Old inputs warn through the window"
+        "A removed input fails with a message naming its replacement",
+        "Upgrade to 0.9: a changelog entry whose replaces rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in the same PR (docs plan §10 item 7)"
       ]
     },
     {
@@ -3446,7 +3453,7 @@
       "deps": ["A-19"],
       "planMode": false,
       "estimateWeeks": [0.6, 0.9],
-      "scope": "Commerce settings and outlet identity checks derive from platform_credential_pins (appStore.bundleId/appAppleId, play.packageName and steam.appId are no longer typed); a mismatch attention item; prefilled console fields; product-key products unchanged; absorbs CM-21's identity half; dist_purchase_binding_aliases replaced by one alias path.",
+      "scope": "Commerce settings and outlet identity checks derive from platform_credential_pins (appStore.bundleId/appAppleId, play.packageName and steam.appId are no longer typed); a mismatch attention item; prefilled console fields; product-key products unchanged; absorbs CM-21's identity half; the one alias path stays dist_purchase_binding_aliases (plans/CM-20.md D5).",
       "acceptance": [
         "No store identity is typed twice",
         "A pin mismatch raises attention instead of failing silently"
@@ -3701,10 +3708,11 @@
       "deps": ["SP-32a"],
       "planMode": false,
       "estimateWeeks": [1.0, 1.4],
-      "scope": "Executes SP-32a's approved plan for Swift (fromBundle alias), Kotlin (PolarisKeyAndroid.client(context), desktop, JVM) and Godot (res://polaris-key.json with an export filter): fromConfig() then boot(), auto-version, doctor(); legacy plist, .tres and typed-module fallbacks.",
+      "scope": "Executes SP-32a's approved plan for Swift, Kotlin (PolarisKeyAndroid.client(context), desktop, JVM) and Godot (res://polaris-key.json with an export filter): fromConfig() then boot(), auto-version, doctor(). Removed in SP-32b's v0.9.x release, with no alias and no fallback (owner, 2026-10-07): Swift's PolarisKeyClient.fromBundle() and PolarisKey.plist (fromConfig() reads polaris-key.json from the bundle instead), the legacy .tres options and the typed-module config. A legacy config fails with an error naming polaris-key.json, which pkey sdk writes; the Godot setup dock fills it from an old .tres once, as an editor migration, never a run-time read (SP-35 D7). Each removal has its api.json removed row and its Upgrade to 0.9 row.",
       "acceptance": [
         "All six SDKs load the same fixture",
-        "Legacy configs still load (test per SDK)"
+        "A legacy config (PolarisKey.plist, the old .tres options, the typed-module config) fails with an error naming polaris-key.json, and no SDK reads it at run time (test per SDK)",
+        "fromBundle() is gone from the Swift SDK, with its api.json removed row naming fromConfig()"
       ]
     },
     {
@@ -3767,11 +3775,12 @@
       "deps": ["P0-42", "HA-13", "HA-14"],
       "planMode": true,
       "estimateWeeks": [2, 3],
-      "scope": "conformance/parity/api.json: canonical concept -> per-SDK symbol with deprecated rows and removal versions; the canonical name is the one most SDKs ship (config.get, getSecret, mintToken, set, clear, clearAll, setting(key) with visibility and sync, onConfigChange; entitlements.has/value/grants with quantity reserved; identity.signIn/subject/signOut; one events stream with a cloudSync kind; collection() reserved); renames only where SDKs disagree (React expectedServices, Godot product_slug, Python pinned_keys, Kotlin options flattened) with language-native deprecated aliases kept for the published deprecation window (P0-24); HA-13 and HA-14's presentation readers land first and are recorded; React cookie mode marked deprecated for SP-40; generated per-SDK surface tests; reference/api-names.mdx; samples, docs and console snippets regenerated. Two slices: TypeScript and Python, then Swift, Kotlin and Godot. Heads the serial SDK lane (SP-35 -> SP-34 -> SP-32a -> SP-32b -> SP-39); lands before I-10a/b, LX-19, U-06 and CM-15.",
+      "scope": "conformance/parity/api.json: canonical concept -> per-SDK symbol with removed rows (no aliases); the canonical name is the one most SDKs ship (config.get, getSecret, mintToken, set, clear, clearAll, setting(key) with visibility and sync, onConfigChange; entitlements.has/value/grants with quantity reserved; identity.signIn/subject/signOut; one events stream with a cloudSync kind; collection() reserved); renames only where SDKs disagree (React expectedServices, Godot product_slug, Python pinned_keys, Kotlin options flattened); HA-13 and HA-14's presentation readers land first and are recorded; React's auth row for SP-40's removal of cookie mode; generated per-SDK surface tests; reference/api-names.mdx; samples, docs and console snippets regenerated. Two slices: TypeScript and Python, then Swift, Kotlin and Godot. Heads the serial SDK lane (SP-35 -> SP-34 -> SP-32a -> SP-32b -> SP-39); lands before I-10a/b, LX-19, U-06 and CM-15.",
       "acceptance": [
         "Each SDK's surface test asserts every canonical symbol",
         "No new SDK verb outside api.json (lint)",
-        "Plan approved (all-SDK public API)"
+        "Plan approved (all-SDK public API)",
+        "Upgrade to 0.9: a changelog entry whose replaces rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in the same PR (docs plan §10 item 7)"
       ],
       "tags": ["plan:client-api"]
     },
@@ -3845,10 +3854,11 @@
       "deps": ["I-08", "I-10a", "SP-35"],
       "planMode": false,
       "estimateWeeks": [0.4, 0.6],
-      "scope": "Owner decision 7's retirement path: BrowserAuthMode 'cookie' (packages/sdk-react/src/core/types.ts:366) is marked deprecated in api.json (SP-35) with a migration note to bearer mode plus I-08's web redirect; after the calendar window in P0-24's ledger (30 days with no cookie-mode session in production, and the SDK deprecation policy), the mode is removed from the React SDK and identity/browserSession.ts's cookie route is deleted.",
+      "scope": "Owner decision 7's retirement path: BrowserAuthMode 'cookie' (packages/sdk-react/src/core/types.ts:366) is removed from the React SDK, and identity/browserSession.ts's cookie route from the Worker, in the same 0.9.x release as I-10a; api.json records a removed row whose note names bearer mode plus I-08's web redirect.",
       "acceptance": [
-        "Deprecation entry and migration note published",
-        "Cookie mode and its Worker route removed after the window (test)"
+        "api.json has the removed row with its note",
+        "Cookie mode and its Worker route are removed in the same release as I-10a (test)",
+        "Upgrade to 0.9: a changelog entry whose replaces rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in the same PR (docs plan §10 item 7)"
       ],
       "tags": ["owner-decision-7"]
     }

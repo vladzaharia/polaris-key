@@ -58,6 +58,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] A Windows-only product sees no Apple channel in console, portal or CLI
 - [ ] An arm64-only Windows build offers no x64 download or winget installer; the Mac App Store channel requires a universal or arm64 build
 - [ ] 'one click' computed from credentials already held
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

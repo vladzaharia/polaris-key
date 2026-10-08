@@ -27,6 +27,14 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "SDK user settings in React: web (IndexedDB journal, one writer tab, bearer device token from I-08's web redirect, `pagehide` flush) and desktop (bridge v4), `useSetting`, `ConfigPanel` persistence, first-sign-in upload, scenario runner".
 - Depends on: added SP-35 and SP-31.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: D8's names and codes, `setting(key).sync()`, routes from `syncedSettings` (with `deviceLocal` on the existing `config.local` store), `importLocal` at the HLC floor, the v2 runner plus `settingCases`, and the `setting-*` codes dropped.
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: `setting(key).sync` and the `cloudSync` kind as recorded in `api.json`. U-20 drops "plus useConfig".
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: appends its rows to `ui-matrix.json` (§4.8).
+
 ## Goal
 
 React persists and syncs user settings on the web (IndexedDB journal, one writer tab over `BroadcastChannel`, bearer device token from I-08's web redirect, `pagehide` flush) and on desktop (main-process journal, bridge v4), with `useSetting`, `ConfigPanel` persistence, first-sign-in upload and a scenario runner.

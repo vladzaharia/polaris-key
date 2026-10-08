@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce) |
 | Size        | 0.6–0.9 engineer-weeks                                                                                                                            |
-| Depends on  | [CM-22](CM-22-purchases-ledger-one-revocation-path.md), [LX-15](LX-15-portal-licensing.md)                                                        |
+| Depends on  | [CM-22](CM-22-purchases-ledger-one-revocation-path.md), [LX-15](LX-15-portal-licensing.md), [CM-29](CM-29-commerce-service.md)                    |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-11](CM-11-portal-billing.md)                                                                          |
 | Role        | `pkey-implementer`                                                                                                                                |
 | Plan mode   | no                                                                                                                                                |
@@ -15,6 +15,12 @@
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CM-26** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: its code goes in `services/commerce/`, after CM-29.
 
 ## Goal
 
@@ -54,6 +60,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Acceptance criteria
 
 - [ ] Customers see store purchases with Commerce checkout off
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/commerce/*` (with `features/ship-builds/commerce` and `channels/storefronts` moved in); `help/restore-purchase`, `help/refunds`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

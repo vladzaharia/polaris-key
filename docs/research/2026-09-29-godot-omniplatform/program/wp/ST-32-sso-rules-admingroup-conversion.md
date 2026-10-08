@@ -20,6 +20,13 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: it owns the `ClaimMatcher` JSON, `PRIVILEGE_GRANT_KEYS` and the operator-audience write gate. It evaluates rules per request over stored link claims, not only at sign-in, and reads `claims_json`, which I-30 owns. It owns the stopped `admin_group` writes, the non-default-only offers and their outcome rows, the `product.adminGroup` refusal (`invalid_admin_group`, both spellings, schema `false`), the deleted parser read and spelling row, and the migration of `products/djdl/product.json`.
+- [`plans/I-27.md`](../plans/I-27.md) §12: `SignInFacts`; `connection:<id>` in `amr`; one Pocket ID connection with audience `both`.
+
 ## Goal
 
 SSO rules and the adminGroup conversion, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -61,6 +68,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Rules evaluate identically in preview and at sign-in (test)
 - [ ] An address confirmed only by email code never matches a console domain rule (test)
 - [ ] Every product with an adminGroup gets a one-click conversion offer
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

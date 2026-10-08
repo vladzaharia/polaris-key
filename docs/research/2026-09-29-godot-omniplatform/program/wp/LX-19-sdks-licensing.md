@@ -1,16 +1,16 @@
 # LX-19 Six SDKs on the licensing wire (one wave with LX-20)
 
-| Field       | Value                                                                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire)                                                                      |
-| Size        | 1.6–2.25 engineer-weeks                                                                                                                             |
-| Depends on  | [LX-18](LX-18-licensing-wire.md), [LX-17](LX-17-sdk-licenseid-audit.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [UK-03](UK-03-ui-core.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-15](CM-15-sdk-purchase-handoff.md)                                                                      |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                |
-| Plan mode   | yes: executes the approved [`plans/LX-18.md`](../plans/LX-18.md) (no separate plan)                                                                 |
-| Gates       | plan mode; all six SDKs (`parity:check`); every conformance runner; visual baselines (both themes, phone)                                           |
-| Human input | none                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                           |
+| Field       | Value                                                                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire)                                                                                                                              |
+| Size        | 1.6–2.25 engineer-weeks                                                                                                                                                                                     |
+| Depends on  | [LX-18](LX-18-licensing-wire.md), [LX-17](LX-17-sdk-licenseid-audit.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [UK-03](UK-03-ui-core.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-15](CM-15-sdk-purchase-handoff.md)                                                                                                                              |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                        |
+| Plan mode   | yes: executes the approved [`plans/LX-18.md`](../plans/LX-18.md) (no separate plan)                                                                                                                         |
+| Gates       | plan mode; all six SDKs (`parity:check`); every conformance runner; visual baselines (both themes, phone)                                                                                                   |
+| Human input | none                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                   |
 
 ## Consolidation 2026-10-07
 
@@ -22,6 +22,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added SP-35 and UK-03.
 
 - Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: the `entitlements.*` names, `license.term()` and the `entitlement` kind. [`plans/UK-02b.md`](../plans/UK-02b.md) §8: appends its rows to `ui-matrix.json` (§4.8).
 
 ## Goal
 
@@ -63,6 +69,7 @@ Decision 14 makes `isEntitled` false whenever the gate is not usable, in all six
 - [ ] Every conformance runner passes.
 - [ ] `parity.json` updated in every SDK.
 - [ ] Migration guide published.
+- [ ] Every kit renders renew copy for an expired licence, from the reason LX-18 carries ([SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

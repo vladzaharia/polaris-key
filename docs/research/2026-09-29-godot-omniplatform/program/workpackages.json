@@ -92,6 +92,10 @@
       "title": "Commerce: store commerce (required) and Polaris Key checkout (deferred)"
     },
     {
+      "id": "DOC",
+      "title": "Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/)"
+    },
+    {
       "id": "X",
       "title": "Optional SDKs"
     },
@@ -693,8 +697,8 @@
       "stage": "DX consolidation H: Distribution channels, storefronts and commerce",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [1.2, 1.8],
-      "deps": ["A-19", "P0-17"],
+      "estimateWeeks": [0.8, 1.3],
+      "deps": ["A-19", "P0-27a"],
       "planMode": false,
       "gates": ["rule-10"],
       "humanInputs": [],
@@ -708,6 +712,27 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md"
       ],
       "brief": "wp/P0-27-one-adapter-store-delivery-commerce.md",
+      "status": "todo"
+    },
+    {
+      "id": "P0-27a",
+      "title": "Store clients and events to `core/stores/`",
+      "phase": "P0",
+      "stage": "DX consolidation H: Distribution channels, storefronts and commerce",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["P0-17"],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/CM-29.md Q5 and D3 (approved 2026-10-08)",
+        "docs/research/2026-10-07-dx-consolidation/audits/cq-worker-services.md §5.7"
+      ],
+      "brief": "wp/P0-27a-store-clients-core-stores.md",
       "status": "todo"
     },
     {
@@ -1524,7 +1549,74 @@
         "D-04",
         "D-05",
         "P0-50",
-        "CM-29"
+        "CM-29",
+        "ST-25b",
+        "I-32b",
+        "I-32c",
+        "LX-41b",
+        "SP-35b",
+        "P2-12b",
+        "P0-27a",
+        "CM-29b",
+        "I-27a",
+        "PX-26",
+        "DOC-01",
+        "DOC-02a",
+        "DOC-02b",
+        "DOC-02c",
+        "DOC-03a",
+        "DOC-03b",
+        "DOC-04a",
+        "DOC-04b",
+        "DOC-05a",
+        "DOC-05b",
+        "DOC-05c",
+        "DOC-06a",
+        "DOC-06b",
+        "DOC-07a",
+        "DOC-07b",
+        "DOC-08a",
+        "DOC-08b",
+        "DOC-09a",
+        "DOC-09b",
+        "DOC-09c",
+        "DOC-10a",
+        "DOC-10b",
+        "DOC-10c",
+        "DOC-11a",
+        "DOC-11b",
+        "DOC-12a",
+        "DOC-12b",
+        "P0-52",
+        "SP-41",
+        "SP-42",
+        "SP-43",
+        "SP-44",
+        "SP-45a",
+        "SP-45b",
+        "SP-46",
+        "SP-47",
+        "SP-48",
+        "SP-49",
+        "SP-50",
+        "SP-51",
+        "SP-52",
+        "UK-45",
+        "UK-46",
+        "UK-47",
+        "UK-48",
+        "UK-49",
+        "UK-50",
+        "SP-53",
+        "SP-55",
+        "SP-56",
+        "SP-57",
+        "SP-58",
+        "SP-59",
+        "SP-64",
+        "SP-65",
+        "UK-51",
+        "SP-54"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -1538,6 +1630,29 @@
       "brief": "wp/P0-51-1-0-readiness-review.md",
       "status": "todo",
       "milestone": "v1.0.0 when the readiness bar passes"
+    },
+    {
+      "id": "P0-52",
+      "title": "Feed coherence: atomic lockstep publishing and a closure check",
+      "phase": "P0",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci"],
+      "humanInputs": [
+        "the owner approves the `package-registry` run that publishes `jws@0.8.28` and `protocol@0.8.29` from their tags (approved 2026-10-08)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (P0-52)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/P0-52-feed-coherence-atomic-lockstep-publishing.md",
+      "status": "in-progress"
     },
     {
       "id": "P1-01",
@@ -2126,7 +2241,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.5, 0.8],
-      "deps": ["P2-08"],
+      "deps": ["P2-08", "P2-12"],
       "planMode": false,
       "gates": ["migration", "table-owners", "rule-10"],
       "humanInputs": [],
@@ -2199,13 +2314,16 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.5],
-      "deps": ["P0-26"],
+      "deps": ["P0-26", "P0-49"],
       "planMode": true,
       "gates": ["plan-mode", "rule-9"],
-      "humanInputs": [],
+      "humanInputs": [
+        "before PR 2, djdl's channel workflow publishes beta builds as GitHub prereleases or with descriptor `channel: beta`, and PR builds with `channel: pr-<n>`; right after PR 2 deploys, djdl's repository drops `channelWorkflow` and `betaBranch` (plans/P2-12.md Q2)"
+      ],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/P2-12.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track K",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -2215,6 +2333,25 @@
       ],
       "brief": "wp/P2-12-one-update-resolver-retire-github.md",
       "status": "todo"
+    },
+    {
+      "id": "P2-12b",
+      "title": "Retire the GitHub-resolved resolver",
+      "phase": "P2",
+      "stage": "DX consolidation K: Corpus lane (wire trains, serial)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["P2-12"],
+      "planMode": true,
+      "gates": ["plan-mode"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/P2-12.md §6.8, §7 and D8 (approved 2026-10-08)"],
+      "brief": "wp/P2-12b-retire-github-resolver.md",
+      "status": "todo",
+      "planRef": "P2-12"
     },
     {
       "id": "P2-13",
@@ -4040,7 +4177,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.4, 1.95],
-      "deps": ["I-04", "I-08", "I-09", "SP-35"],
+      "deps": ["I-04", "I-08", "I-09", "SP-35", "SP-35b"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -4604,6 +4741,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/I-27.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track K",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -4611,6 +4749,27 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-27-plan-identity-consolidation.md",
+      "status": "done"
+    },
+    {
+      "id": "I-27a",
+      "title": "SIGN-IN.md as one current text",
+      "phase": "I",
+      "stage": "DX consolidation K: Corpus lane (wire trains, serial)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["I-27"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/I-27.md §8 (approved 2026-10-08)",
+        "docs/design/SIGN-IN.md"
+      ],
+      "brief": "wp/I-27a-sign-in-md-one-text.md",
       "status": "todo"
     },
     {
@@ -4759,6 +4918,54 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-32-product-connections-absorbs-i-22.md",
+      "status": "todo"
+    },
+    {
+      "id": "I-32b",
+      "title": "Retire the legacy identity engine: `oidc_config` and `licenses.sub` unread, `PLATFORM_OIDC_*` removed (release N)",
+      "phase": "I",
+      "stage": "DX consolidation F: Identity",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.7],
+      "deps": ["I-27", "I-32", "SP-40", "LX-38", "U-27"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "migration",
+        "rule-9",
+        "rule-10",
+        "threat-model",
+        "drift-gate",
+        "cli-bundle"
+      ],
+      "humanInputs": [
+        "the owner decides each licence the `legacy-sub-sunset` count lists (re-issue or let go) before I-32b deploys; the count runs 60 days after I-32 reaches production (lead decision, 2026-10-08; plans/I-27.md Q6)",
+        "DJDL's own `.pkey/product` drops `oidc` and `provisioning` before its first push after this release (plans/I-27.md §12)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/I-27.md §6, §7, §8 and §12 (approved 2026-10-08)"],
+      "brief": "wp/I-32b-retire-legacy-identity-engine.md",
+      "status": "todo",
+      "planRef": "I-27"
+    },
+    {
+      "id": "I-32c",
+      "title": "Identity contract drops: `oidc_config` and the `licenses.sub` indexes (release N+1)",
+      "phase": "I",
+      "stage": "DX consolidation F: Identity",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.15],
+      "deps": ["I-32b"],
+      "planMode": false,
+      "gates": ["migration", "table-owners", "docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/I-27.md §3 and §6 (approved 2026-10-08)"],
+      "brief": "wp/I-32c-identity-contract-drops.md",
       "status": "todo"
     },
     {
@@ -5124,7 +5331,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.4, 1.95],
-      "deps": ["U-01", "U-05", "U-18", "I-10b", "SP-35"],
+      "deps": ["U-01", "U-05", "U-18", "I-10b", "SP-35", "SP-35b"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -5153,7 +5360,7 @@
       "lane": "godot",
       "role": "pkey-godot-engineer",
       "estimateWeeks": [1, 1.4],
-      "deps": ["U-01", "U-05", "U-18", "I-10b", "SP-35"],
+      "deps": ["U-01", "U-05", "U-18", "I-10b", "SP-35", "SP-35b"],
       "planMode": true,
       "gates": ["plan-mode", "drift-gate", "all-sdks"],
       "humanInputs": [],
@@ -5259,7 +5466,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [0.4, 0.55],
-      "deps": ["U-01", "U-06", "U-07", "U-20", "U-21", "I-05"],
+      "deps": ["U-01", "U-06", "U-07", "U-20", "U-21", "I-05", "U-09"],
       "planMode": true,
       "gates": ["plan-mode", "drift-gate", "all-sdks", "ui-snapshots"],
       "humanInputs": [],
@@ -5293,7 +5500,7 @@
         "wrangler"
       ],
       "humanInputs": [
-        "a dedicated R2 bucket for save blobs per environment, binding `SYNC_SAVES`, no bucket lock (plans/U-01.md Q4), plus an EU twin if U-24 offers residency"
+        "the R2 buckets `polaris-key-sync-files-{prod,staging,dev}`, binding `SYNC_FILES`, no bucket lock (plans/U-01.md Q4; plans/U-01b.md §11), plus an EU twin if U-24 offers residency"
       ],
       "repo": "polaris-key",
       "optional": false,
@@ -5483,7 +5690,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.2, 1.7],
-      "deps": ["U-01", "U-09", "U-08"],
+      "deps": ["U-01", "U-09", "U-08", "SP-35b"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -5640,19 +5847,27 @@
     },
     {
       "id": "U-01b",
-      "title": "Cloud Sync plan amendment: two stores, one conflict vocabulary, quota as an entitlement",
+      "title": "Cloud Sync amendment: two stores, one conflict vocabulary, quota as an entitlement",
       "phase": "U",
       "stage": "DX consolidation G: Managed config and Cloud Sync",
       "lane": "corpus",
-      "role": "pkey-wire-planner",
-      "estimateWeeks": [0.4, 0.6],
-      "deps": [],
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.4, 1.9],
+      "deps": ["P0-44"],
       "planMode": true,
-      "gates": ["plan-mode"],
+      "gates": [
+        "plan-mode",
+        "rule-9",
+        "corpus",
+        "drift-gate",
+        "docs-generated",
+        "cli-bundle"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/U-01b.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track G",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -5768,7 +5983,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.6, 0.8],
-      "deps": [],
+      "deps": ["U-01b"],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
@@ -8283,7 +8498,7 @@
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.4, 0.8],
-      "deps": ["PX-12", "PX-W13", "I-08", "I-15", "P0-38"],
+      "deps": ["PX-12", "PX-W13", "I-08", "I-15", "P0-38", "UK-02b"],
       "planMode": false,
       "gates": ["console-csp-parity", "portal-e2e"],
       "humanInputs": [],
@@ -9141,6 +9356,27 @@
       "status": "todo"
     },
     {
+      "id": "ST-25b",
+      "title": "Drop `products.admin_group` (the release after ST-25)",
+      "phase": "ST",
+      "stage": "phase 5: governance and environments",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.1, 0.2],
+      "deps": ["ST-25"],
+      "planMode": false,
+      "gates": ["migration", "table-owners"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/ST-28.md §5.1 and Q4 (approved 2026-10-08)",
+        "docs/research/2026-10-07-dx-consolidation/tracks.md rules 5 and 6"
+      ],
+      "brief": "wp/ST-25b-drop-products-admin-group.md",
+      "status": "todo"
+    },
+    {
       "id": "ST-05a",
       "title": "One settings read and write path",
       "phase": "ST",
@@ -9165,7 +9401,7 @@
     },
     {
       "id": "ST-05b",
-      "title": "Generic settings routes with bespoke routes as adapters",
+      "title": "Generic settings routes; the bespoke settings routes removed",
       "phase": "ST",
       "stage": "DX consolidation B: Foundations (code quality the feature tracks build on)",
       "lane": "worker",
@@ -9201,6 +9437,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/ST-28.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track D",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -9210,7 +9447,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-28-plan-console-rbac-console-identity-on.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-29",
@@ -9247,7 +9484,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1.2, 1.8],
-      "deps": ["ST-29", "P0-38"],
+      "deps": ["ST-29", "P0-38", "P0-21"],
       "planMode": false,
       "gates": ["threat-model"],
       "humanInputs": [],
@@ -9274,7 +9511,7 @@
       "lane": "console",
       "role": "pkey-implementer",
       "estimateWeeks": [1.4, 2],
-      "deps": ["ST-30"],
+      "deps": ["ST-30", "P0-21"],
       "planMode": false,
       "gates": [
         "migration",
@@ -9508,7 +9745,7 @@
       "lane": "console",
       "role": "pkey-implementer",
       "estimateWeeks": [1.2, 1.6],
-      "deps": ["ST-40", "SP-33a", "ST-39"],
+      "deps": ["ST-40", "SP-33a", "ST-39", "HA-13", "HA-14"],
       "planMode": false,
       "gates": ["console-csp-parity"],
       "humanInputs": [],
@@ -9946,13 +10183,13 @@
     },
     {
       "id": "LX-11",
-      "title": "Store bindings on offers and add-ons (executes CM-20's plan)",
+      "title": "Store purchases on offers: placement, restore and one revocation path (executes CM-20)",
       "phase": "LX",
       "stage": "phase B: the model, server-only",
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.4],
-      "deps": ["LX-08", "LX-10", "CM-20", "LX-35"],
+      "deps": ["LX-08", "LX-10", "CM-20", "LX-35", "CM-29", "LX-12", "P0-21"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -10161,7 +10398,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1.6, 2.25],
-      "deps": ["LX-18", "LX-17", "SP-35", "UK-03"],
+      "deps": ["LX-18", "LX-17", "SP-35", "UK-03", "SP-35b"],
       "planMode": true,
       "gates": ["plan-mode", "all-sdks", "corpus-runner", "ui-snapshots"],
       "humanInputs": [],
@@ -10186,7 +10423,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.4],
-      "deps": ["LX-11", "LX-18", "SP-35"],
+      "deps": ["LX-11", "LX-18", "SP-35", "SP-35b", "CM-25", "CM-29"],
       "planMode": false,
       "gates": ["all-sdks", "ci:macos", "ci:android"],
       "humanInputs": [],
@@ -10259,7 +10496,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1.4, 1.95],
-      "deps": ["LX-11", "LX-12", "LX-41"],
+      "deps": ["LX-11", "LX-12", "LX-41", "CM-29"],
       "planMode": true,
       "gates": ["plan-mode", "threat-model", "migration"],
       "humanInputs": [
@@ -10928,7 +11165,7 @@
       "lane": "sdk",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.4],
-      "deps": ["SP-32a"],
+      "deps": ["SP-32a", "SP-35b"],
       "planMode": false,
       "gates": ["all-sdks"],
       "humanInputs": [],
@@ -10976,7 +11213,7 @@
       "lane": "sdk",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.2],
-      "deps": ["SP-33a", "SP-32b", "SP-35"],
+      "deps": ["SP-33a", "SP-32b", "SP-35", "SP-35b", "SP-45a"],
       "planMode": false,
       "gates": ["all-sdks"],
       "humanInputs": [],
@@ -11025,14 +11262,15 @@
       "stage": "DX consolidation J: SDK and UI-kit consolidation",
       "lane": "parity",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [2, 3],
-      "deps": ["P0-42", "HA-13", "HA-14"],
+      "estimateWeeks": [1.5, 2],
+      "deps": ["P0-42", "HA-13", "HA-14", "P0-39"],
       "planMode": true,
       "gates": ["plan-mode"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/SP-35.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track J",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -11045,6 +11283,35 @@
       "status": "todo"
     },
     {
+      "id": "SP-35b",
+      "title": "SDK API 0.9 renames in Godot, Swift and Kotlin",
+      "phase": "SP",
+      "stage": "DX consolidation J: SDK and UI-kit consolidation",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1, 1.5],
+      "deps": ["SP-35", "HA-14"],
+      "planMode": true,
+      "gates": [
+        "plan-mode",
+        "all-sdks",
+        "drift-gate",
+        "docs-generated",
+        "ui-snapshots",
+        "ci:macos",
+        "ci:android"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/SP-35.md §7 slice 2 and Appendix A (approved 2026-10-08)"
+      ],
+      "brief": "wp/SP-35b-sdk-api-renames-godot-swift-kotlin.md",
+      "status": "todo",
+      "planRef": "SP-35"
+    },
+    {
       "id": "SP-36",
       "title": "Examples in one tree, built in CI",
       "phase": "SP",
@@ -11052,7 +11319,7 @@
       "lane": "sdk",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.5],
-      "deps": ["SP-32b", "SP-33b", "P0-43"],
+      "deps": ["SP-32b", "SP-33b", "P0-43", "SP-41"],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
@@ -11077,7 +11344,7 @@
       "lane": "docs",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.5],
-      "deps": ["SP-33b"],
+      "deps": ["SP-33b", "ST-41", "ST-43"],
       "planMode": false,
       "gates": ["docs-links"],
       "humanInputs": [],
@@ -11164,6 +11431,610 @@
         "consolidation tags: owner-decision-7"
       ],
       "brief": "wp/SP-40-retire-react-cookie-mode-browser.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-41",
+      "title": "`pkey dev`: a local Polaris Key for integrators",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.5, 2.2],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci", "cli-bundle", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-41)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-41-pkey-dev-a-local-polaris-key-for-integrators.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-42",
+      "title": "Test doubles on the real client, in every SDK",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.2, 1.8],
+      "deps": ["SP-41", "SP-35"],
+      "planMode": false,
+      "gates": ["all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-42)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-42-test-doubles-on-the-real-client-in-every-sdk.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-43",
+      "title": "Sync outcomes: reasons, same-second documents, a sync status",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "corpus",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.5, 2.0],
+      "deps": ["SP-35"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "all-sdks", "threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-43)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-43-sync-outcomes-reasons-same-second-documents.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-44",
+      "title": "Updates for package-manager installs",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "corpus",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["P2-12", "SP-35"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-44)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-44-updates-for-package-manager-installs.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-45a",
+      "title": "Developer docs, two lanes per SDK on today's API: Node, React, Python",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-45a)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-45a-developer-docs-two-lanes-per-sdk-on-today-s.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-45b",
+      "title": "Developer docs, two lanes per SDK on today's API: Swift, Kotlin, Godot",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["SP-45a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links", "ci", "ci:macos"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-45b)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-45b-developer-docs-two-lanes-per-sdk-on-today-s.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-46",
+      "title": "Node library 0.8.x: one error taxonomy, redaction",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-46)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-46-node-library-0-8-x-one-error-taxonomy.md",
+      "status": "in-progress"
+    },
+    {
+      "id": "SP-47",
+      "title": "React bundle diet and size budget",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-47)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-47-react-bundle-diet-and-size-budget.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-48",
+      "title": "Python 0.8.x patch: fail-open, leak and error-model fixes",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-48)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-48-python-0-8-x-patch-fail-open-leak-and-error.md",
+      "status": "in-progress"
+    },
+    {
+      "id": "SP-49",
+      "title": "Python typed surface for 0.9",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["SP-35"],
+      "planMode": true,
+      "gates": ["plan-mode"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-49)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-49-python-typed-surface-for-0-9.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-50",
+      "title": "Kotlin 0.8.x hotfix: Android runtime, packaging, desktop store",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.5, 2.0],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:android"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-50)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-50-kotlin-0-8-x-hotfix-android-runtime.md",
+      "status": "in-progress"
+    },
+    {
+      "id": "SP-51",
+      "title": "Kotlin live state and lifecycle",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:kotlin"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-51)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-51-kotlin-live-state-and-lifecycle.md",
+      "status": "in-progress"
+    },
+    {
+      "id": "SP-52",
+      "title": "Swift package footprint",
+      "phase": "SP",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci:macos"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (SP-52)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/SP-52-swift-package-footprint.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-53",
+      "title": "Backend credential contract: `X-PKey-License`, the verdict, `backend` codes and copy, `backend-matrix.json`, client-core `backend`",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": [],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "threat-model", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-53)"
+      ],
+      "brief": "wp/SP-53-backend-credential-contract.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-54",
+      "title": "Signed-in subject in the licence document (`profile.user` whenever `devices.subject` is set)",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["I-05"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "threat-model", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-54)"
+      ],
+      "brief": "wp/SP-54-signed-in-subject-in-licence-document.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-55",
+      "title": "`@polaris-key/server`: the Fetch core, Express, Hono and Next.js, `/testing`, their example apps",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.6, 2.2],
+      "deps": ["SP-53"],
+      "planMode": false,
+      "gates": ["drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-55)"
+      ],
+      "brief": "wp/SP-55-polaris-key-server-express-hono-next.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-56",
+      "title": "Python server drop-ins: `polaris_key.server` with FastAPI/Starlette, Django and DRF, Flask",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.4, 1.9],
+      "deps": ["SP-53"],
+      "planMode": false,
+      "gates": ["drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-56)"
+      ],
+      "brief": "wp/SP-56-python-server-drop-ins.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-57",
+      "title": "Kotlin server drop-ins: `polaris-key-server` and the Ktor plugin",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["SP-53"],
+      "planMode": false,
+      "gates": ["drift-gate", "ci:kotlin"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-57)"
+      ],
+      "brief": "wp/SP-57-kotlin-server-drop-ins-ktor.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-58",
+      "title": "The client half: `client.backend` in Node, React and Python",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["SP-53", "SP-31"],
+      "planMode": false,
+      "gates": ["all-sdks", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-58)"
+      ],
+      "brief": "wp/SP-58-client-backend-node-react-python.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-59",
+      "title": "The client half in Swift, Kotlin and Godot",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.1, 1.5],
+      "deps": ["SP-58"],
+      "planMode": false,
+      "gates": ["all-sdks", "drift-gate", "ci:macos", "ci:android"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-59)"
+      ],
+      "brief": "wp/SP-59-client-backend-swift-kotlin-godot.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-60",
+      "title": "Node server drop-ins, should tier: Fastify, NestJS, Koa",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.1],
+      "deps": ["SP-55"],
+      "planMode": false,
+      "gates": ["drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-60)"
+      ],
+      "brief": "wp/SP-60-node-server-fastify-nestjs-koa.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-61",
+      "title": "Spring Boot starter on Spring Security",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.1],
+      "deps": ["SP-57"],
+      "planMode": false,
+      "gates": ["ci:kotlin"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-61)"
+      ],
+      "brief": "wp/SP-61-spring-boot-starter.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-62",
+      "title": "Swift server drop-in: `PolarisKeyServer` building on Linux, and the Vapor package",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.2, 1.7],
+      "deps": ["SP-53", "SP-52"],
+      "planMode": false,
+      "gates": ["ci:macos"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-62)"
+      ],
+      "brief": "wp/SP-62-swift-server-vapor.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-63",
+      "title": "Managed config on a server: `serverClient()` in Node and Python",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": [],
+      "planMode": false,
+      "gates": ["drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-63)"
+      ],
+      "brief": "wp/SP-63-server-client-config.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-64",
+      "title": "Framework drop-ins on the Integration page and in the docs (servers and CLIs)",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": [
+        "SP-33a",
+        "SP-55",
+        "SP-56",
+        "UK-46",
+        "UK-48",
+        "DOC-03a",
+        "SP-54"
+      ],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-64)"
+      ],
+      "brief": "wp/SP-64-framework-drop-ins-integration-and-docs.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-65",
+      "title": "End-to-end CI: client SDK → example backend → `pkey dev`",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["SP-41", "SP-55", "SP-56", "SP-57", "SP-58"],
+      "planMode": false,
+      "gates": ["ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-65)"
+      ],
+      "brief": "wp/SP-65-end-to-end-ci-client-backend-pkey-dev.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-66",
+      "title": "Plan developer webhooks: Standard Webhooks signing, the event catalogue, delivery",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "corpus",
+      "role": "pkey-wire-planner",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": true,
+      "gates": ["plan-mode", "human-approval"],
+      "humanInputs": ["the owner's go on push webhooks"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-66)"
+      ],
+      "brief": "wp/SP-66-plan-developer-webhooks.md",
+      "status": "todo",
+      "deferred": "the owner's go on push webhooks"
+    },
+    {
+      "id": "SP-67",
+      "title": "Developer webhooks: delivery, console endpoints, `verifyWebhook()` and `polarisWebhook()` in every server drop-in",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.8, 2.5],
+      "deps": ["SP-66", "SP-55", "SP-56", "SP-57"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate"],
+      "humanInputs": ["the owner's go on push webhooks"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-67)"
+      ],
+      "brief": "wp/SP-67-developer-webhooks-delivery-and-adapters.md",
+      "status": "todo",
+      "deferred": "the owner's go on push webhooks",
+      "planRef": "SP-66"
+    },
+    {
+      "id": "SP-68",
+      "title": "`requireSignIn()` accepts I-21 issuer tokens (`Authorization: Bearer`, RS256 JWKS)",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["I-21", "SP-55", "SP-56", "SP-57"],
+      "planMode": false,
+      "gates": ["all-sdks", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-68)"
+      ],
+      "brief": "wp/SP-68-requiresignin-accepts-i21-tokens.md",
       "status": "todo"
     },
     {
@@ -11635,7 +12506,7 @@
       "lane": "parity",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.5],
-      "deps": ["UK-02", "SP-00"],
+      "deps": ["UK-02", "SP-00", "UK-02a"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -11648,13 +12519,13 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/UK-02b.md (approved 2026-10-08)",
         "docs/design/UI-KITS.md §4.6, §5.2",
         "plans/UK-02.md",
         "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-02b-ui-fixtures-parity.md",
-      "status": "todo",
-      "planRef": "UK-02"
+      "status": "todo"
     },
     {
       "id": "UK-03",
@@ -13686,6 +14557,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/CM-20.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track K",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -13693,7 +14565,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/commerce.md"
       ],
       "brief": "wp/CM-20-commerce-consolidation-plan-lx-11-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CM-21",
@@ -13703,7 +14575,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.6, 0.9],
-      "deps": ["CM-20", "A-28", "P0-49"],
+      "deps": ["CM-20", "A-28", "P0-49", "CM-29"],
       "planMode": false,
       "gates": ["threat-model"],
       "humanInputs": [],
@@ -13752,7 +14624,7 @@
       "lane": "console",
       "role": "pkey-implementer",
       "estimateWeeks": [1.4, 2],
-      "deps": ["CM-21", "CM-22", "LX-11", "A-22", "LX-35"],
+      "deps": ["CM-21", "CM-22", "LX-11", "A-22", "LX-35", "CM-29"],
       "planMode": false,
       "gates": ["console-csp-parity"],
       "humanInputs": [],
@@ -13776,7 +14648,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.7, 1.1],
-      "deps": ["LX-11", "LX-35"],
+      "deps": ["LX-11", "LX-35", "CM-29", "CM-25"],
       "planMode": false,
       "gates": [],
       "humanInputs": [],
@@ -13800,7 +14672,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.5],
-      "deps": ["CM-20", "LX-11", "LX-10", "CM-22"],
+      "deps": ["CM-20", "LX-11", "LX-10", "CM-29"],
       "planMode": true,
       "gates": ["plan-mode", "threat-model"],
       "humanInputs": [],
@@ -13825,7 +14697,7 @@
       "lane": "portal",
       "role": "pkey-implementer",
       "estimateWeeks": [0.6, 0.9],
-      "deps": ["CM-22", "LX-15"],
+      "deps": ["CM-22", "LX-15", "CM-29"],
       "planMode": false,
       "gates": ["portal-e2e", "console-csp-parity"],
       "humanInputs": [],
@@ -13873,7 +14745,7 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [0.8, 1.2],
-      "deps": ["CM-27", "CM-22", "LX-42"],
+      "deps": ["CM-27", "CM-22", "LX-42", "CM-29"],
       "planMode": true,
       "gates": ["plan-mode", "threat-model"],
       "humanInputs": [],
@@ -13898,20 +14770,660 @@
       "lane": "corpus",
       "role": "pkey-implementer",
       "estimateWeeks": [1.5, 2.5],
-      "deps": ["ST-38", "CM-20", "P0-17", "P0-27"],
+      "deps": ["ST-38", "CM-20", "P0-27a"],
       "planMode": true,
       "gates": ["plan-mode", "corpus", "drift-gate", "docs-generated"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
-        "plans/CM-29.md",
+        "plans/CM-29.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/integration.md C-17 (reversed by the owner, 2026-10-07)",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track H, Track K (W-LX)",
         "consolidation alias CQW-14"
       ],
       "brief": "wp/CM-29-commerce-service.md",
-      "status": "planning"
+      "status": "todo"
+    },
+    {
+      "id": "CM-29b",
+      "title": "Commerce's accent: a ninth, red-orange family",
+      "phase": "CM",
+      "stage": "DX consolidation H: Channels, storefronts and commerce",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["CM-29"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate", "golden-images", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/CM-29.md §10 (approved 2026-10-08)",
+        "docs/design/BRAND.md §5",
+        "owner decision 2026-10-08: \"Add a red-orange accent\""
+      ],
+      "brief": "wp/CM-29b-commerce-accent.md",
+      "status": "todo",
+      "planRef": "CM-29"
+    },
+    {
+      "id": "DOC-01",
+      "title": "Docs mockups (design)",
+      "phase": "DOC",
+      "stage": "design",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-01), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-01-docs-mockups.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-02a",
+      "title": "Shared components",
+      "phase": "DOC",
+      "stage": "site design",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": [
+        "human-approval",
+        "docs-generated",
+        "docs-links",
+        "ui-snapshots"
+      ],
+      "humanInputs": [
+        "the lead approves the components.md §7 and BRAND.md §2 lines (D7, plan mode)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-02a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-02a-shared-components.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-02b",
+      "title": "Chrome",
+      "phase": "DOC",
+      "stage": "site design",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-01", "DOC-02a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-02b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-02b-chrome.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-02c",
+      "title": "Search",
+      "phase": "DOC",
+      "stage": "site design",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.4],
+      "deps": ["DOC-02a", "DOC-03b"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-02c), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-02c-search.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-03a",
+      "title": "Skeleton and contracts",
+      "phase": "DOC",
+      "stage": "skeleton and access",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-03a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-03a-skeleton-and-contracts.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-03b",
+      "title": "Public access",
+      "phase": "DOC",
+      "stage": "skeleton and access",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": [
+        "rule-9",
+        "rule-10",
+        "threat-model",
+        "docs-generated",
+        "docs-links"
+      ],
+      "humanInputs": [
+        "D4: the Polaris Key support and privacy addresses in docs/legal/help.md, before the public switch (owner step; docs plan §0)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-03b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-03b-public-access.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-04a",
+      "title": "Help: get started",
+      "phase": "DOC",
+      "stage": "Help",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.3],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-04a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-04a-help-get-started.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-04b",
+      "title": "Help: sign-in and account",
+      "phase": "DOC",
+      "stage": "Help",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.4],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-04b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-04b-help-sign-in-and-account.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-05a",
+      "title": "Help: messages",
+      "phase": "DOC",
+      "stage": "Help",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.4],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-05a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-05a-help-messages.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-05b",
+      "title": "Help: library and devices",
+      "phase": "DOC",
+      "stage": "Help",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.4],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-05b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-05b-help-library-and-devices.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-05c",
+      "title": "Help: downloads, updates, purchases",
+      "phase": "DOC",
+      "stage": "Help",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.3],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-05c), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-05c-help-downloads-updates-purchases.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-06a",
+      "title": "Portal entry points",
+      "phase": "DOC",
+      "stage": "entry points",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.4],
+      "deps": [
+        "DOC-03b",
+        "DOC-04a",
+        "DOC-04b",
+        "DOC-05a",
+        "DOC-05b",
+        "DOC-05c"
+      ],
+      "planMode": false,
+      "gates": ["portal-e2e", "ui-snapshots", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-06a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-06a-portal-entry-points.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-06b",
+      "title": "Worker entry points",
+      "phase": "DOC",
+      "stage": "entry points",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.3],
+      "deps": [
+        "DOC-03b",
+        "DOC-04a",
+        "DOC-04b",
+        "DOC-05a",
+        "DOC-05b",
+        "DOC-05c"
+      ],
+      "planMode": false,
+      "gates": ["email-snapshots", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-06b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-06b-worker-entry-points.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-06c",
+      "title": "Kits' Get help (P2)",
+      "phase": "DOC",
+      "stage": "entry points",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.6, 1],
+      "deps": ["SP-39", "SP-35"],
+      "planMode": false,
+      "gates": ["all-sdks", "drift-gate", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-06c), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-06c-kits-get-help.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-07a",
+      "title": "Start path",
+      "phase": "DOC",
+      "stage": "Developers: start and build",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a", "ST-37"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-07a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-07a-start-path.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-07b",
+      "title": "Build basics",
+      "phase": "DOC",
+      "stage": "Developers: start and build",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-07b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-07b-build-basics.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-08a",
+      "title": "SDK quickstarts",
+      "phase": "DOC",
+      "stage": "Developers: SDKs and kits",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-08a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-08a-sdk-quickstarts.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-08b",
+      "title": "UI kits and web apps",
+      "phase": "DOC",
+      "stage": "Developers: SDKs and kits",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.4],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-08b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-08b-ui-kits-and-web-apps.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-09a",
+      "title": "Licensing",
+      "phase": "DOC",
+      "stage": "Developers: features",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-09a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-09a-licensing.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-09b",
+      "title": "Sign-in",
+      "phase": "DOC",
+      "stage": "Developers: features",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.4],
+      "deps": ["DOC-03a", "SP-54"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-09b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-09b-sign-in.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-09c",
+      "title": "Managed config and Cloud Sync",
+      "phase": "DOC",
+      "stage": "Developers: features",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.4],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-09c), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-09c-managed-config-and-cloud-sync.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-10a",
+      "title": "Releases and updates",
+      "phase": "DOC",
+      "stage": "Developers: features",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-10a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-10a-releases-and-updates.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-10b",
+      "title": "Channels",
+      "phase": "DOC",
+      "stage": "Developers: features",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-10b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-10b-channels.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-10c",
+      "title": "Packages and packs",
+      "phase": "DOC",
+      "stage": "Developers: features",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.3],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-10c), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-10c-packages-and-packs.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-11a",
+      "title": "Operate: console",
+      "phase": "DOC",
+      "stage": "Operate",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-11a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-11a-operate-console.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-11b",
+      "title": "Operate: platform",
+      "phase": "DOC",
+      "stage": "Operate",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.4],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-11b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-11b-operate-platform.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-12a",
+      "title": "Generators",
+      "phase": "DOC",
+      "stage": "Reference and contribute",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.6],
+      "deps": ["DOC-03a", "DOC-05a"],
+      "planMode": false,
+      "gates": ["drift-gate", "docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-12a), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-12a-generators.md",
+      "status": "todo"
+    },
+    {
+      "id": "DOC-12b",
+      "title": "Reference and contribute",
+      "phase": "DOC",
+      "stage": "Reference and contribute",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.4],
+      "deps": ["DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-docs/README.md §6.1 (row DOC-12b), §6.3",
+        "docs/research/2026-10-08-docs/style-guide.md"
+      ],
+      "brief": "wp/DOC-12b-reference-and-contribute.md",
+      "status": "todo"
     },
     {
       "id": "LX-26",
@@ -14286,14 +15798,15 @@
       "stage": "DX consolidation E: Licensing model",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 2.8],
-      "deps": ["LX-33", "LX-12"],
+      "estimateWeeks": [1.5, 2.1],
+      "deps": ["LX-33", "LX-12", "P0-21"],
       "planMode": true,
       "gates": ["plan-mode", "migration", "table-owners", "threat-model"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/LX-41.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track E",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -14304,6 +15817,25 @@
       ],
       "brief": "wp/LX-41-durations-subscriptions-core-trials.md",
       "status": "todo"
+    },
+    {
+      "id": "LX-41b",
+      "title": "Console durations and subscriptions: When it ends, trials, the subscription panel, Preview at a date",
+      "phase": "LX",
+      "stage": "DX consolidation E: Licensing model",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.7],
+      "deps": ["LX-41", "LX-44"],
+      "planMode": true,
+      "gates": ["plan-mode", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/LX-41.md §7 item 2 (approved 2026-10-08)"],
+      "brief": "wp/LX-41b-console-durations-subscriptions.md",
+      "status": "todo",
+      "planRef": "LX-41"
     },
     {
       "id": "LX-42",
@@ -14339,7 +15871,7 @@
       "lane": "console",
       "role": "pkey-implementer",
       "estimateWeeks": [0.8, 1.1],
-      "deps": ["LX-41", "LX-44", "ST-41"],
+      "deps": ["LX-41", "LX-44", "ST-41", "LX-41b"],
       "planMode": false,
       "gates": ["console-csp-parity"],
       "humanInputs": [],
@@ -14515,6 +16047,212 @@
       "status": "dropped"
     },
     {
+      "id": "UK-45",
+      "title": "Node terminal kit 0.8.x fixes",
+      "phase": "UK",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (UK-45)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/UK-45-node-terminal-kit-0-8-x-fixes.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-46",
+      "title": "Node terminal kit for existing CLIs",
+      "phase": "UK",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["UK-51"],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (UK-46)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/UK-46-node-terminal-kit-for-existing-clis.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-47",
+      "title": "React kit and gate fixes before UK-05",
+      "phase": "UK",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ui-snapshots", "modernity-lint"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (UK-47)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/UK-47-react-kit-and-gate-fixes-before-uk-05.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-48",
+      "title": "Python terminal kit as a mountable drop-in",
+      "phase": "UK",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["UK-51"],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (UK-48)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/UK-48-python-terminal-kit-as-a-mountable-drop-in.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-49",
+      "title": "SwiftUI kit and Swift SDK 0.8.x correctness pass",
+      "phase": "UK",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.0, 1.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ui-snapshots", "ci:macos"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (UK-49)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/UK-49-swiftui-kit-and-swift-sdk-0-8-x-correctness.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-50",
+      "title": "Godot drop-in fixes ahead of UK-11",
+      "phase": "UK",
+      "stage": "SDK usability review (2026-10-08)",
+      "lane": "godot",
+      "role": "pkey-godot-engineer",
+      "estimateWeeks": [1.5, 2.0],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-sdk-usability/README.md §10.2 (UK-50)",
+        "docs/research/2026-10-08-sdk-usability/findings.json"
+      ],
+      "brief": "wp/UK-50-godot-drop-in-fixes-ahead-of-uk-11.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-51",
+      "title": "Terminal drop-in contract: the `cli` family in `ui-matrix.json`, exit 4",
+      "phase": "UK",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "parity",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["UK-02b"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (UK-51)"
+      ],
+      "brief": "wp/UK-51-terminal-drop-in-contract.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-52",
+      "title": "Node CLI frameworks, should tier: the `@polaris-key/oclif` plugin and Ink components",
+      "phase": "UK",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["UK-46", "UK-51"],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (UK-52)"
+      ],
+      "brief": "wp/UK-52-node-cli-oclif-ink.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-53",
+      "title": "Textual screens for host apps",
+      "phase": "UK",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["UK-48", "UK-51"],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (UK-53)"
+      ],
+      "brief": "wp/UK-53-textual-screens.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-54",
+      "title": "JVM terminal kit on Mordant, with Clikt and picocli adapters",
+      "phase": "UK",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.8, 2.4],
+      "deps": ["UK-51", "UK-02b"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "ci:kotlin"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (UK-54)"
+      ],
+      "brief": "wp/UK-54-jvm-terminal-kit-clikt-picocli.md",
+      "status": "todo"
+    },
+    {
       "id": "PX-24",
       "title": "Library \"Added just now\": for 24 hours a newly added product carries a ring, the quiet text \"Added just now\" and its download as the tile's lead (EXPERIENCE §0.7, frame 7)",
       "phase": "PX",
@@ -14558,6 +16296,28 @@
       ],
       "brief": "wp/PX-25-account-v2-gaps-ui.md",
       "status": "dropped"
+    },
+    {
+      "id": "PX-26",
+      "title": "Wide and zoomed layouts: content max widths, 1920 px and 200% zoom in the console and portal quality bar",
+      "phase": "PX",
+      "stage": "phase B: new API, S-16, S-17",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["PX-20"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "owner direction 2026-10-08 (wide windows, 200% zoom, content max widths)",
+        "docs/design/UI-KITS.md §7.1",
+        "design/PORTAL §8"
+      ],
+      "brief": "wp/PX-26-wide-zoomed-layouts.md",
+      "status": "todo"
     }
   ]
 }

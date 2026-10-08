@@ -39,6 +39,14 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: adds §3.3's section, which it numbers, and the enums and features. It changes no commerce corpus file; LX-11 and CM-25 record the transcripts.
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: its store-commerce section points to CM-29's §5 bullet, and it adds the `@polaris-key/protocol/commerce` subpath. The W-LX member list starts with CM-29.
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: `term` from `licenseTerm()` (§2.5) replaces `licenseExpiresAt`; the 401 reasons are `licenseState().reason`.
+
 ## Goal
 
 The device wire carries the model: per-entry `expiresAt`, `licenseExpiresAt`, `grants`, a 401 `reason`, and `not_entitled` reasons, in `shared-protocol`, client-core, parity and appended corpus cases.
@@ -79,6 +87,7 @@ SDKs cannot tell expired from revoked or refunded, and `isEntitled` ignores stat
 
 - [ ] `gen:corpus`, `gen:constants` and `gen:transcripts` `--check` pass.
 - [ ] Browser runners pass.
+- [ ] `activate-refusals` step 3 carries the expired reason; sync 401s carry it for authenticated tokens ([SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

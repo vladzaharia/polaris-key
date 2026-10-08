@@ -67,6 +67,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Exchange endpoint `POST /<p>/identity/token` for platform kinds (native Apple and Google ID tokens first), tenant-scoped links, `interstitial_required`; `exchange` in all six SDKs".
 - Depends on: added I-30.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the token-exchange grant; `interstitial_required` as a flat refusal.
+
 ## Goal
 
 `POST /<p>/identity/token` exchanges a platform identity token (native Sign in with Apple and Google ID tokens first) for the activation response, through tenant-scoped links; a link not seen before answers `interstitial_required` with a login-card URL; all six SDKs gain `exchange`.

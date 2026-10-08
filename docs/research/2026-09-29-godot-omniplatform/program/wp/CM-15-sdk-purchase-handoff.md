@@ -25,6 +25,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "SDKs and UI kits: `offers()`, `purchase()` hand-off to Polaris Key checkout on desktop and web, store billing on store builds, `manageBilling()`".
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: its verbs become `api.json` rows when it is built. It stays deferred with Polaris Key checkout. [`plans/UK-02b.md`](../plans/UK-02b.md) §8: appends its rows to `ui-matrix.json` (§4.8).
+
 ## Goal
 
 Node, React/client-core, Python, Swift, Kotlin and Godot expose `offers()`, `purchase(offerId)` and `manageBilling()`: desktop and web builds open the checkout ticket in the system browser and poll for the entitlement; store builds use their store's billing through the existing commerce client; each SDK replays the CM-14 transcript; parity manifests updated.

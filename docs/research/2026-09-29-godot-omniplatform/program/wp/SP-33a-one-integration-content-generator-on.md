@@ -1,22 +1,45 @@
 # SP-33a One integration content generator on today's names, and pkey sdk add --expect
 
-| Field       | Value                                                                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration)                                             |
-| Size        | 1.2–1.5 engineer-weeks                                                                                                                                |
-| Depends on  | [P0-42](P0-42-generator-registry-pnpm-gen.md), [UK-14](UK-14-node-terminal.md)                                                                        |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-41](ST-41-integration-page-overview-card.md), [SP-33b](SP-33b-integration-content-on-polaris-key-json.md) |
-| Role        | `pkey-implementer`                                                                                                                                    |
-| Plan mode   | no                                                                                                                                                    |
-| Gates       | none beyond the green gate                                                                                                                            |
-| Human input | none                                                                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                             |
+| Field       | Value                                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation C: Products, onboarding and Integration)                                                                                                        |
+| Size        | 1.2–1.5 engineer-weeks                                                                                                                                                                                           |
+| Depends on  | [P0-42](P0-42-generator-registry-pnpm-gen.md), [UK-14](UK-14-node-terminal.md)                                                                                                                                   |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-41](ST-41-integration-page-overview-card.md), [SP-33b](SP-33b-integration-content-on-polaris-key-json.md), [SP-64](SP-64-framework-drop-ins-integration-and-docs.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                               |
+| Plan mode   | no                                                                                                                                                                                                               |
+| Gates       | none beyond the green gate                                                                                                                                                                                       |
+| Human input | none                                                                                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                        |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **SDX-02** in [Track C, Products, onboarding and Integration](../../../2026-10-07-dx-consolidation/tracks.md#c-products-onboarding-and-integration).
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-60.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: canonical names; the goldens are in the removed-name scan.
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 3: `renderUsage(feature, lang, lane)`, with `lane` = `kit` or `library`, and goldens for both lanes. SP-33a also writes the docs' generated blocks.
+
+## SDK usability review (2026-10-08)
+
+Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.
+
+- `sdkFit` host types; the console start is the drop-in only; the headless and direct blocks render as docs goldens with link targets; a strict-index `renderFeedSetup` with an Xcode tab; warnings for Update without release keys; `pkey sdk add` names missing flags.
+
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- `sdkFit` hosts `server` and `cli` as well as `app`, plus `framework`; `renderUsage(feature, lang, lane, framework)` gains lane `server`, with a golden for each must-tier framework.
+
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
 ## Goal
 

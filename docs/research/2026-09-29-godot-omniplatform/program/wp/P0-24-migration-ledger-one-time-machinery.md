@@ -18,6 +18,16 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Owner 2026-10-07: no compatibility windows (`tracks.md` rule 6). The ledger keeps only the break-glass `ADMIN_OIDC_*` window, paths that native binaries already on end-user machines call (DJDL's desktop builds, the permanent alias routes; removed once DJDL has shipped a build on 0.9) and the two-release DB contracts. There is no SDK, CLI, Action, cookie-mode, `PKEY_ADMIN_COOKIE` or Pocket ID env window, and manifest fields are removed, not deprecated.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: ledger rows for break-glass, the `adminGroup` offers' outcome fact and the `admin_group` column's two-release contract. `PKEY_ADMIN_COOKIE` gets no row: it goes in ST-34's release.
+- [`plans/I-27.md`](../plans/I-27.md) §12: rows for the seeded audience, the `sub` sunset and the native-binary checks of SP-40 and I-32b. No row for the Pocket ID env or `SIGNIN_*`: they have no window.
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: the ledger row in its §6.1.
+- [`plans/P2-12.md`](../plans/P2-12.md) §7: the P2-12/P2-12b pair, P2-12b's production fact and the expected-row acknowledgements; the deviation from `tracks.md` rule 5 and its reason (§6.5); two owner steps for djdl (the channel-workflow change ahead of PR 2, and dropping the two settings right after PR 2 deploys).
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: the ledger records §3.5's pre-deploy check. [`plans/SP-35.md`](../plans/SP-35.md) §12: no SDK row.
+
 ## Goal
 
 Migration ledger and one-time machinery sunset, as scoped below. Done when every acceptance criterion holds and the green gate passes.

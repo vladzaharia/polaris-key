@@ -19,6 +19,14 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - Owner 2026-10-07: manifest fields are removed, not deprecated. A removed field is a validator error that names its replacement, with no rule-9 warning period; this package migrates the in-repo manifests (the repo-root `.pkey/` and `products/djdl/*`) in the same change, adopters' repos (DJDL's, Diceroll) are owner steps, and `pkey migrate` is used only where this package already plans it.
 - Absorbs PS-09: An email-domain rule is one branch of license.access; autoIssue.emailDomains is never created.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: `license.access` rules use §2.4's `when` object verbatim.
+- [`plans/I-27.md`](../plans/I-27.md) §12: `SignInFacts`; the approval's policy half and its job (`edge-mint-approval-access`).
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: wire the Anonymous devices tier into `syncAccess`'s quota.
+
 ## Goal
 
 Access policy license.access (absorbs PS-09), as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -62,6 +70,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] P0-49 report for djdl and polaris-key shows identical outcomes, provisioned keys included
 - [ ] accessFor() is the only evaluator (grep test)
 - [ ] Unverified emails never match a domain rule (test)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/access` (enrollment and policy merged; automatic licences); `help/activate`, `help/library`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

@@ -16,6 +16,13 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **AC-08** in [Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: it consolidates the AT-2 rows, the rule 11 text and the lockout rehearsal, and records the decisions: S-16 decision 3 and §5.6 (operators are accounts); S-18 D10 (the roles are these four); S-13 §8.2 (`console.access` is the one grant mechanism, strictly below a deploy-time root).
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 2, with the owner's 2026-10-08 decision (D2): Help and the developer sections are public; Operate → Console is member-only and Operate → Platform, Contribute and the runbook are admin-only. ST-35 keeps the Pagefind split (`help` and `developers` public, `member` and `admin` gated) and the rule 11 text, which now covers only the gated Operate pages.
+
 ## Goal
 
 RBAC docs, lockout recovery, docs-gate split and adminGroup contract, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -56,6 +63,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] Rule 11 text amended
 - [ ] Lockout recovery rehearsed in a test environment
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

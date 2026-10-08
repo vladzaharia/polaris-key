@@ -1,16 +1,16 @@
 # U-23 Saves SDK on the records store: Swift, Kotlin, Godot (absorbs U-25)
 
-| Field       | Value                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                                                      |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                     |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-09](U-09-collections-backend.md), [U-08](U-08-merge-prompt.md)                                         |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                     |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                       |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                          |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); CI: macOS; CI: Android |
-| Human input | none                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
+| Field       | Value                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                                                                      |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                     |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-09](U-09-collections-backend.md), [U-08](U-08-merge-prompt.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                     |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                       |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                          |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); CI: macOS; CI: Android                 |
+| Human input | none                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
 
 ## Consolidation 2026-10-07
 
@@ -20,6 +20,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "Collections SDK in Swift, Kotlin and Godot: the same with `Codable`, `@Serializable` and GDScript dictionaries".
 - Absorbs U-25: As U-13 for Swift, Kotlin and Godot.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: `cloudSync.saves` on records and files; `collection()` reserved. [`plans/SP-35.md`](../plans/SP-35.md) §12: `cloudSync.saves` as recorded.
 
 ## Goal
 
@@ -52,6 +58,7 @@ Swift, Kotlin and Godot expose collections like U-22, with `Codable`, `@Serializ
 ## Acceptance criteria
 
 - [ ] Three SDKs replay the records transcripts and scenarios; macOS and Android CI green.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation J: SDK and UI-kit consolidation)                                  |
 | Size        | 0.4–0.6 engineer-weeks                                                                                                             |
 | Depends on  | [I-08](I-08-app-passthrough.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-32b](I-32b-retire-legacy-identity-engine.md)                                            |
 | Role        | `pkey-sdk-porter`                                                                                                                  |
 | Plan mode   | no                                                                                                                                 |
 | Gates       | none beyond the green gate                                                                                                         |
@@ -17,6 +17,13 @@
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **SDX-09** in [Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation).
 
 - Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break. Its server half goes in the same release: the Worker drops cookie mode and its route with the SDK, with no window for 0.8 clients (`tracks.md` rule 6).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: removes cookie mode outright, from the React SDK (`BrowserAuthMode` `'cookie'`) and the Worker, in the same 0.9.x release as I-10a. Retiring cookie mode is a prerequisite of I-32b.
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: remove `"cookie"` from React's `auth` row and add its `removed` row (note: bearer mode plus I-08's redirect), with the Worker half in the same release.
 
 ## Goal
 
@@ -36,7 +43,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- Owner decision 7's retirement path: BrowserAuthMode 'cookie' (packages/sdk-react/src/core/types.ts:366) is marked deprecated in api.json (SP-35) with a migration note to bearer mode plus I-08's web redirect; after the calendar window in P0-24's ledger (30 days with no cookie-mode session in production, and the SDK deprecation policy), the mode is removed from the React SDK and identity/browserSession.ts's cookie route is deleted.
+- BrowserAuthMode 'cookie' (packages/sdk-react/src/core/types.ts:366) is removed from the React SDK, and identity/browserSession.ts's cookie route from the Worker, in the same 0.9.x release as I-10a, with no deprecation entry and no window. `api.json` records it as a `removed` row whose note names bearer mode plus I-08's web redirect.
 
 **Out** (and where it belongs instead):
 
@@ -55,8 +62,10 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] Deprecation entry and migration note published
-- [ ] Cookie mode and its Worker route removed after the window (test)
+- [ ] `api.json` has the `removed` row with its note
+- [ ] Cookie mode and its Worker route are removed in the same release as I-10a (test)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
+- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

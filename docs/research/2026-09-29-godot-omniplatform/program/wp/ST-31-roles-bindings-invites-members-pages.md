@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | ST: Settings, access control and console shell (DX consolidation D: Administration, access control and console identity)                          |
 | Size        | 1.4–2 engineer-weeks                                                                                                                              |
-| Depends on  | [ST-30](ST-30-console-sign-in-on-polaris-key-accounts.md)                                                                                         |
+| Depends on  | [ST-30](ST-30-console-sign-in-on-polaris-key-accounts.md), [P0-21](P0-21-notification-substrate-core-notify.md)                                   |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-32](ST-32-sso-rules-admingroup-conversion.md), [ST-35](ST-35-rbac-docs-lockout-recovery-docs-gate.md) |
 | Role        | `pkey-implementer`                                                                                                                                |
 | Plan mode   | no                                                                                                                                                |
@@ -17,6 +17,12 @@
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **AC-04** in [Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity).
 
 - Absorbs ST-22: No longer optional: the owner asks for full RBAC (ST-28 plan, ST-29 gate, ST-30 sign-in, ST-31 roles). Security review carried over.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: it owns the §5.1 DDL, G1–G8, SM-6, SM-7, the merge on conversion and the generated `console-roles.mdx`.
 
 ## Goal
 
@@ -61,6 +67,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Console access alone shows NoAccessPage with the scope's admins to contact
 - [ ] A product admin sees only their products; an area-narrowed one sees only those areas
 - [ ] Roles matrix is generated and drift-gated; security review before merge
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

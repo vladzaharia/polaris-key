@@ -39,6 +39,10 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Optional now (was required).
 
+## Owner direction (2026-10-08)
+
+- **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
 ## Goal
 
 The UIKit and Mac Catalyst surface of the Swift kit exists, reuses the SwiftUI views and presentation core with no second implementation, and is baselined in both themes.

@@ -7,9 +7,9 @@
 | Depends on  | none                                                                                                                     |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-29](ST-29-admin-route-table-can-usecan.md)                                   |
 | Role        | `pkey-wire-planner` (planning only)                                                                                      |
-| Plan mode   | yes: this package writes `plans/ST-28.md`, which needs human approval                                                    |
+| Plan mode   | yes: [`plans/ST-28.md`](../plans/ST-28.md), approved 2026-10-08; ST-29 to ST-35, ST-25 and ST-25b build it               |
 | Gates       | `plan-mode`, `threat-model`, `rule-10`                                                                                   |
-| Human input | plan approval (`plans/ST-28.md`)                                                                                         |
+| Human input | none                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                |
 
 ## Consolidation 2026-10-07

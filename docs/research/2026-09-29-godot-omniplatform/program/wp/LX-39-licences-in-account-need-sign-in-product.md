@@ -60,6 +60,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Report lists affected devices before each flip
 - [ ] Floating keys still activate (test)
 - [ ] Plan approved: contract text and transcript named
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): `features/sign-in/*` (key entry); `help/messages/accounts` (`license_owned`).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
