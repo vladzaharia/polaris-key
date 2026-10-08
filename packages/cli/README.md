@@ -248,10 +248,10 @@ pkey trust --kid pkey-djdl-prod-2026-06 --public-key <base64url>
 
 Without `--lang`, prints a ready `@polaris-key/node` quick-start snippet
 (`PolarisKeyClient.create({...})`, `sync()`, a `getConfig`/`getSecret` example) for `--product`,
-including a `trust:` block when `--kid`/`--public-key` are also given. `--base-url` defaults to the
-placeholder `https://key.example.com` — deliberately **not** the real `https://key.plrs.im`
-default that `bundle`/`doctor` use, so a snippet pasted without editing cannot silently point a
-new product at Polaris Key's own production origin.
+including a `trust:` block when `--kid`/`--public-key` are also given. `--base-url` defaults to
+`https://key.plrs.im`, the same production origin every other command uses (`DEFAULT_BASE_URL`),
+so the snippet works as pasted for a product hosted there. Pass `--base-url` for a self-hosted
+deployment.
 
 With `--lang`, it writes a typed configuration module for one SDK from the product's live
 discovery document (`<base>/<product>/.well-known/polaris.json`; `--base-url` defaults to
