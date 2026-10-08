@@ -639,23 +639,23 @@ jobs:
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          node actions/publish/dist/index.js feeds prune --product polaris-key > prune-dry-run.txt
-          cat prune-dry-run.txt
-          { echo "### Feed retention: dry run"; echo '```'; grep -v '^::' prune-dry-run.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-          node actions/publish/dist/index.js feeds prune --product polaris-key --json | grep -v '^::' > prune-plan.json
+          node actions/publish/dist/index.js feeds prune --product polaris-key > "$RUNNER_TEMP/prune-dry-run.txt"
+          cat "$RUNNER_TEMP/prune-dry-run.txt"
+          { echo "### Feed retention: dry run"; echo '```'; grep -v '^::' "$RUNNER_TEMP/prune-dry-run.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          node actions/publish/dist/index.js feeds prune --product polaris-key --json | grep -v '^::' > "$RUNNER_TEMP/prune-plan.json"
       - name: The plan holds builds of main only
         if: steps.plan.outputs.skip != 'true'
         run: |
           jq -e '[.packages[].prune[].version
                   | select(test("^v?[0-9]+(\\.[0-9]+)*-main\\.[0-9]+$|^[0-9]+(\\.[0-9]+)*\\.dev[0-9]+$") | not)]
-                 | if length == 0 then true else error("not a build of main: \(join(", "))") end' prune-plan.json
+                 | if length == 0 then true else error("not a build of main: \(join(", "))") end' "$RUNNER_TEMP/prune-plan.json"
       - name: Apply the prune
         if: steps.plan.outputs.skip != 'true'
         env:
           PKEY_CI_TOKEN: ${{ secrets.PKEY_FEED_PRUNE_TOKEN }}
         run: |
           status=0
-          node actions/publish/dist/index.js feeds prune --product polaris-key --apply > prune-applied.txt || status=$?
-          cat prune-applied.txt
-          { echo "### Feed retention: applied"; echo '```'; grep -v '^::' prune-applied.txt || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          node actions/publish/dist/index.js feeds prune --product polaris-key --apply > "$RUNNER_TEMP/prune-applied.txt" || status=$?
+          cat "$RUNNER_TEMP/prune-applied.txt"
+          { echo "### Feed retention: applied"; echo '```'; grep -v '^::' "$RUNNER_TEMP/prune-applied.txt" || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           exit "$status"

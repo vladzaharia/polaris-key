@@ -453,6 +453,24 @@ describe("the backstop prune after a stable tag (P0-48, feed retention)", () => 
       expect(steps[i]!.env).toEqual({
         PKEY_CI_TOKEN: "${{ secrets.PKEY_FEED_PRUNE_TOKEN }}",
       });
+    // The plan and the reports are written under $RUNNER_TEMP, never into the checkout.
+    for (const i of [dry, check, apply]) {
+      expect(steps[i]!.run).toContain('"$RUNNER_TEMP/prune-');
+      expect(steps[i]!.run).not.toMatch(/[> ]prune-[a-z-]+\.(txt|json)/);
+    }
+  });
+
+  it("warns and stops, green, when the token is not set", () => {
+    const dry = steps[at("Dry run (deletes nothing)")]!.run!;
+    const guard = dry.indexOf('if [ -z "$PKEY_CI_TOKEN" ]; then');
+    expect(guard).toBeGreaterThanOrEqual(0);
+    // The guard comes before the first pkey call, and its branch ends the step without one.
+    expect(guard).toBeLessThan(dry.indexOf("node actions/publish"));
+    const branch = dry.slice(guard, dry.indexOf("\nfi\n", guard));
+    expect(branch).toContain("::warning::PKEY_FEED_PRUNE_TOKEN is not set");
+    expect(branch).toContain('echo "skip=true" >> "$GITHUB_OUTPUT"');
+    expect(branch).toContain("exit 0");
+    expect(branch).not.toContain("node ");
   });
 
   it("is the only workflow that applies a prune", () => {
