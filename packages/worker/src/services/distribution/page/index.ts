@@ -52,7 +52,12 @@ import type { ServiceContext } from "../../../core/registry.js";
 import type { ByteRoute, ByteRouteContext } from "../../../core/bytesHost.js";
 import { bytesHostname } from "../../../core/bytesHost.js";
 import { normalizeHostname } from "../../../core/bytesHostname.js";
-import type { Db, Env } from "../../../core/platform.js";
+import {
+  cspImageOrigin,
+  sha256Base64,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { errorResponse, notFound } from "../../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
@@ -64,7 +69,6 @@ import {
 } from "../feeds/cache.js";
 import { feedResponse } from "../feeds/index.js";
 import { detectPlatform } from "./detect.js";
-import { cspImageOrigin } from "../../../core/platform.js";
 import {
   PRESENTATION_ICON_SLOTS,
   firstHostedImage,
@@ -82,16 +86,6 @@ const PAGE_CACHE = "public, max-age=300";
 /** The sandbox tokens the page keeps (see the file comment). Never `allow-scripts`. */
 export const PAGE_SANDBOX =
   "sandbox allow-downloads allow-top-navigation-to-custom-protocols";
-
-async function sha256Base64(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  let bin = "";
-  for (const b of new Uint8Array(digest)) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
 
 let cssHash: Promise<string> | null = null;
 

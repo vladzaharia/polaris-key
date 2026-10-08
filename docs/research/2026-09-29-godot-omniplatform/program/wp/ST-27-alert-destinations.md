@@ -1,16 +1,26 @@
-# ST-27 Notification destinations: platform `alerts.destinations` and per-product overrides for auto-halt, store-connection and commerce alerts
+# ST-27 Notification destinations on core/notify
 
-| Field       | Value                                                                          |
-| ----------- | ------------------------------------------------------------------------------ |
-| Phase       | ST: Settings architecture (S-18) (phase 3: coverage)                           |
-| Size        | 0.6–0.85 engineer-weeks                                                        |
-| Depends on  | [ST-05](ST-05-settings-admin-api.md), [ST-09](ST-09-platform-settings-area.md) |
-| Unblocks    | none                                                                           |
-| Role        | `pkey-implementer`                                                             |
-| Plan mode   | no                                                                             |
-| Gates       | THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`)                              |
-| Human input | none                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                      |
+| Field       | Value                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | ST: Settings, access control and console shell (phase 3: coverage)                                                                               |
+| Size        | 0.6–0.85 engineer-weeks                                                                                                                          |
+| Depends on  | [ST-09](ST-09-platform-settings-area.md), [P0-21](P0-21-notification-substrate-core-notify.md), [ST-05a](ST-05a-one-settings-read-write-path.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                           |
+| Role        | `pkey-implementer`                                                                                                                               |
+| Plan mode   | no                                                                                                                                               |
+| Gates       | THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`)                                                                                                |
+| Human input | none                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                        |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Destinations are core/notify (P0-21), no new email path; absorbs UX-37 alerts-from-attention (reading ST-44's attention read); adds access.changed and commerce alert kinds (notifications failing, unmapped purchase, identity mismatch, refund spike).
+
+- Title: was "Notification destinations: platform `alerts.destinations` and per-product overrides for auto-halt, store-connection and commerce alerts".
+- Depends on: added P0-21 and ST-05a; removed ST-05.
+- UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-37.
 
 ## Goal
 

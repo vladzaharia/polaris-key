@@ -12,6 +12,15 @@
 | Human input | none                                                                                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                        |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive condition (the note): Parked with I-24a; kit screens would render in the rebuilt kits only. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Parked with I-24a; kit screens would render in the rebuilt kits only.
+
 ## Goal
 
 Node, React, Python, Swift, Godot and Kotlin expose the named-user seat claim and the policy keys,

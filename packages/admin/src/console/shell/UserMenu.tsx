@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "../../ui/DropdownMenu.js";
 import { useMediaQuery } from "../../ui/data-table/DataTable.js";
-import { Kbd } from "./bits.js";
+import { Kbd } from "../../ui/Kbd.js";
 import { AppearanceMenuItems } from "./ThemeMenu.js";
 import { r } from "../routes.js";
 import { Link } from "../router.js";

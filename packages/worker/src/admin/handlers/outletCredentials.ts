@@ -67,6 +67,7 @@ import {
   notFound,
   readBody,
 } from "../lib/respond.js";
+import { randomHex } from "../../platform/random.js";
 
 export async function handleOutletCredentials(
   req: Request,
@@ -216,12 +217,7 @@ export async function handleOutletCredentials(
           fields: ["value"],
         },
       );
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    value = {
-      secret: Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
-        "",
-      ),
-    };
+    value = { secret: randomHex(32) };
   }
   if (body.kind === "google-service-account" && typeof value === "string") {
     try {

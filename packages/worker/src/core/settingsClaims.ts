@@ -215,27 +215,6 @@ export async function claimsView(
   };
 }
 
-/** The product's live break-glass claims (ST-20). */
-export async function breakGlassClaims(
-  db: Db,
-  product: string,
-  now: number,
-): Promise<BreakGlassClaim[]> {
-  return (await listClaims(db, product, now)).flatMap((c) =>
-    c.breakGlass
-      ? [
-          {
-            key: c.key,
-            claimedBy: c.claimedBy,
-            claimedAt: c.claimedAt,
-            reason: c.breakGlass.reason,
-            expiresAt: c.breakGlass.expiresAt,
-          },
-        ]
-      : [],
-  );
-}
-
 /** The claimed keys as a set (what a resync skips). */
 export async function claimedKeys(
   db: Db,

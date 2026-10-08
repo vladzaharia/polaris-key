@@ -32,7 +32,7 @@
 
 import type { ServiceContext } from "../../../core/registry.js";
 import { errorResponse, json, wireError } from "../../../core/errors.js";
-import { bearer } from "../../../core/platform.js";
+import { bearer, parseJsonObject } from "../../../core/platform.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
 import { trustRefusal } from "../../../core/deviceTrust.js";
 import type { DeviceRow } from "../../../core/data.js";
@@ -95,7 +95,7 @@ import {
   type RecordOutcome,
   type VerifiedPurchase,
 } from "./state.js";
-import { StoreUnavailable, jsonObject } from "./http.js";
+import { StoreUnavailable } from "./http.js";
 
 /** A claim body: a StoreKit JWS is the largest member (a few KiB). */
 export const MAX_CLAIM_BODY = 32 * 1024;
@@ -396,7 +396,7 @@ async function handleClaim(ctx: ServiceContext): Promise<Response | null> {
     "wire",
   );
   if (untrusted) return untrusted;
-  const body = jsonObject(raw);
+  const body = parseJsonObject(raw);
   if (!body || !isStore(body.store))
     return bad(
       "bad_body",
@@ -554,7 +554,7 @@ async function handleAppStoreHook(
   const raw = await readBody(ctx.req, MAX_HOOK_BODY);
   if (raw === null)
     return errorResponse(413, "body_too_large", "notification too large");
-  const body = jsonObject(raw);
+  const body = parseJsonObject(raw);
   if (!body || typeof body.signedPayload !== "string")
     return bad("bad_body", "body must be {signedPayload}");
 
@@ -693,7 +693,7 @@ async function handlePlayHook(ctx: ServiceContext): Promise<Response | null> {
     ))
   )
     return errorResponse(429, "rate_limited", "too many notifications");
-  const body = jsonObject(raw);
+  const body = parseJsonObject(raw);
   const msg = body ? decodeRtdn(body) : null;
   // A malformed push is acknowledged (2xx) so Pub/Sub does not redeliver it forever.
   if (!msg) return json({ ok: true, ignored: "not_rtdn" });

@@ -37,7 +37,7 @@ import {
   releaseKeysJson,
 } from "../../releaseKeysFixture.js";
 import { seedDeliveryAccess } from "../../releaseSurface.js";
-import { sha256HexOfAscii } from "../../../src/services/release/records.js";
+import { sha256Hex } from "../../../src/platform/hash.js";
 
 const WITH_UPDATE = servicesOn(
   "license",
@@ -92,7 +92,7 @@ async function updateWorld(): Promise<{
     RELEASE_KID,
     "pkey-release+jws",
   );
-  const recordSha = await sha256HexOfAscii(record);
+  const recordSha = await sha256Hex(record);
   const db = world.db;
   await db.run(
     `INSERT INTO release_config

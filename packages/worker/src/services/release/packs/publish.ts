@@ -46,8 +46,11 @@ import {
   type TicketRecord,
 } from "../../../core/publisher.js";
 import { appendAudit } from "../../../core/data.js";
-import { randomId } from "../../../core/platform.js";
-import type { DbStatement } from "../../../core/platform.js";
+import {
+  randomId,
+  sha256Hex,
+  type DbStatement,
+} from "../../../core/platform.js";
 import type { PackRecordDoc } from "@polaris-key/protocol/packs";
 import { MAX_RECORD_JWS_BYTES } from "@polaris-key/protocol/core";
 import { DATA_ONLY_EXTENSIONS } from "@polaris-key/protocol/packs";
@@ -58,11 +61,7 @@ import {
   getReleaseConfig,
 } from "../config.js";
 import { storeAccess } from "../store.js";
-import {
-  sha256HexOfAscii,
-  verifyRecordJws,
-  type RecordRefusalReason,
-} from "../records.js";
+import { verifyRecordJws, type RecordRefusalReason } from "../records.js";
 import { readPackDeliverable, readPackDeliverables } from "./deliverables.js";
 import { checkPackPublish } from "./checks.js";
 import { checkProvidesKept, checkProvidesShape } from "./provides.js";
@@ -451,7 +450,7 @@ export async function handlePackSubmit(
       "an app record is submitted with its release descriptor; only a kind: pack, kind: revocation or kind: delegation record is submitted alone",
     );
   const record = shared.payload as unknown as PackRecordDoc;
-  const recordSha256 = await sha256HexOfAscii(shared.jws);
+  const recordSha256 = await sha256Hex(shared.jws);
   const pack = await readPackDeliverable(db, product.slug, record.deliverable);
   if (!pack)
     return recordRefusal(

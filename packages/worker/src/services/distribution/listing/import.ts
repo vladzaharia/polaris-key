@@ -23,7 +23,13 @@
  * adapter's read path, under the same gate as everything else.
  */
 
-import type { Db, DbStatement, Env } from "../../../core/platform.js";
+import {
+  parseJsonColumn,
+  sha256Hex,
+  type Db,
+  type DbStatement,
+  type Env,
+} from "../../../core/platform.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import type { FetchImpl } from "../../../core/outletTokens.js";
 import {
@@ -40,7 +46,7 @@ import {
   type SourceOutcome,
 } from "../../../core/storefront/listingImport.js";
 import { localeProblem } from "../../../core/storefront/listingModel.js";
-import { listOutlets, parseJsonColumn } from "../outlets.js";
+import { listOutlets } from "../outlets.js";
 import {
   appStoreSource,
   godotSnapshot,
@@ -169,16 +175,6 @@ export function currentOf(stored: StoredListing | null): CurrentListing {
     ),
     precedence: precedenceOf(stored.row),
   };
-}
-
-async function sha256Hex(text: string): Promise<string> {
-  const d = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(d)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 /** The digest an apply must echo: the diff exactly as shown (values, sources, actions). */

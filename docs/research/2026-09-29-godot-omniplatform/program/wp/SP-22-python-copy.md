@@ -12,6 +12,14 @@
 | Human input | none                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                     |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (93d25e485).
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 `polaris_key.copy.message()` and `title()` read `copy_generated.py` (error code, then gate status, then activation result; activation results only from the activation table), fall back to `COPY_FALLBACK`, fill placeholders, and keep a host English override layer as React and Node do, so the hand-kept EN table is deleted.

@@ -1,6 +1,6 @@
 // @pkey-feature outlet.detect
 // The Swift runner for `conformance/corpus/v2/outlet-matrix.json`'s detection rows
-// (plans/P3-01.md §2.9, §4.7), read from the generator-owned mirror in `Resources/v2/`, with the
+// (plans/P3-01.md §2.9, §4.7), read from the checkout through `CorpusLocator`, with the
 // same row names as the Node runner (`conformance/runners/node/corpusV2.test.ts`), pytest and
 // the Godot runner: the signal table and platform data equal the compiled `OUTLET_SIGNALS` and
 // `OUTLET_PLATFORM_DATA`, and every row runs through `detectOutlet`.
@@ -40,7 +40,7 @@ private struct DetectionFile: Decodable {
 
 final class OutletMatrixTests: XCTestCase {
     private func file() throws -> DetectionFile {
-        try CorpusBundleLoader.load(DetectionFile.self, "outlet-matrix")
+        try CorpusLocator.load(DetectionFile.self, "outlet-matrix")
     }
 
     func testSignalTableEqualsTheMatrix() throws {

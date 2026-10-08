@@ -27,6 +27,8 @@ import type {
   HookContext,
   ReleaseCatalog,
 } from "../../core/hooks.js";
+// A JSON object column; anything unreadable or not an object reads as `null`.
+import { parseJsonObject } from "../../core/platform.js";
 import {
   listArtifactsForBuild,
   listBuilds,
@@ -76,23 +78,8 @@ function buildRecord(b: ReleaseBuildRow): CatalogBuild {
     format: b.format,
     buildNumber: b.build_number,
     minOs: b.min_os,
-    metadata: parseObject(b.metadata_json),
+    metadata: parseJsonObject(b.metadata_json),
   };
-}
-
-/** A JSON object column; anything unreadable or not an object reads as `null`. */
-function parseObject(
-  json: string | null | undefined,
-): Record<string, unknown> | null {
-  if (!json) return null;
-  try {
-    const v: unknown = JSON.parse(json);
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
 }
 
 function sourceRecord(a: ReleaseArtifactRow): CatalogSourceArtifact {
@@ -111,7 +98,7 @@ function artifactRecord(a: ReleaseArtifactRow): CatalogArtifact {
     contentType: a.content_type,
     sizeBytes: a.size_bytes,
     sha256: a.sha256,
-    metadata: parseObject(a.metadata_json),
+    metadata: parseJsonObject(a.metadata_json),
   };
 }
 

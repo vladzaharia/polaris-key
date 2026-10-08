@@ -144,11 +144,14 @@ export function DiscoverTile({
               size={64}
               className="relative border-[3px] border-surface-raised shadow-elevation-2"
             />
-            <div className="min-w-0 pt-9">
+            <div className="min-w-0 flex-1 pt-9">
               <h3 id={id} className="truncate text-lg font-bold text-fg-strong">
                 <a
                   href={page}
-                  className="pk-press-link rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                  // block: the name's full line is the link (24 px or taller), so a short name
+                  // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
+                  // card's, which it stretches over (styles.css, .pk-press-link).
+                  className="pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
                 >
                   {offer.name}
                 </a>
@@ -170,7 +173,7 @@ export function DiscoverTile({
             </div>
           ) : null}
           {reason && ReasonIcon ? (
-            <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md bg-surface-sunken px-3 py-2.5 text-[0.9375rem] text-fg-strong">
+            <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md bg-surface-sunken px-3 py-2.5 text-md text-fg-strong">
               <span className="flex min-w-0 flex-1 gap-2.5">
                 <ReasonIcon
                   aria-hidden

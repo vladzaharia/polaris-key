@@ -377,6 +377,21 @@ export interface PortalDownloads {
   }>;
   extras: PortalDownloadFile[];
   stores: PortalStoreLink[];
+  /** The download page's install sources (Homebrew, Scoop, AltStore, F-Droid, Obtainium…),
+   *  shown under each platform so an owner sees every channel (P0-48). An older Worker omits it. */
+  installSources?: PortalInstallSource[];
+}
+
+/**
+ * One install source (P0-48): a store link's shape, where `deepLink` is the app's own link (the
+ * one to open) and `url` the source or repository URL to paste by hand (a browser shows JSON or a
+ * 404 there, so it is never the link).
+ */
+export interface PortalInstallSource extends PortalStoreLink {
+  /** F-Droid only: the repository's signing-certificate SHA-256, else `null`. */
+  fingerprint: string | null;
+  /** A QR code of the deep link as a `data:image/svg+xml` URI, for a phone to scan; or `null`. */
+  qr: string | null;
 }
 
 // ── Package access (F-21; PORTAL.md §4.20, §4.21, G13) ───────────────────────────────────
@@ -481,27 +496,6 @@ export interface PortalKeyPreview {
 export interface PortalKeyEntries {
   used: number;
   limit: number;
-}
-
-/**
- * `POST /api/key/preview` (PX-W9, §12.2 rule 8): the login card's signed-out key preview, before
- * anyone signs in. Read-only, never counted; never an email, a licence id or devices.
- */
-export interface PortalSignedOutKeyPreview {
-  product: {
-    slug: string;
-    name: string;
-    developerName: string | null;
-    iconUrl: string | null;
-    headerUrl: string | null;
-  };
-  /** `license_owned`: the licence is in an account (never whose). */
-  verdict: "addable" | "license_owned" | "portal_off";
-  /** `term`: `perpetual`, or the licence's end in epoch seconds. `null` on `portal_off`. */
-  license: { tierName: string | null; term: "perpetual" | number } | null;
-  keyEntries: PortalKeyEntries | null;
-  /** `forced` exactly when a new device would be refused `key_entry_limit`. */
-  upgrade: "skippable" | "forced";
 }
 
 // ── Discover, the Polaris Key storefront (PX-W10, G24, G25; PS-04, notes/S-21 §6.3–6.5) ───────
@@ -1132,11 +1126,14 @@ export const portalApi = {
       method: "POST",
       ...(path ? { body: JSON.stringify({ path }) } : {}),
     }),
-  /** PS-04: remove a library ENTRY (an open product); a licence is never removed here. */
+  /** PS-04: remove a library ENTRY (an open product); a licence is never removed here.
+   *  `inLibrary`: a licence keeps the product in the library (an entry a licence replaced
+   *  meanwhile); absent from a Worker that predates it. */
   removeLibraryEntry: (product: string) =>
-    call<{ ok: true; product: string }>(`/api/library/${enc(product)}`, {
-      method: "DELETE",
-    }),
+    call<{ ok: true; product: string; inLibrary?: boolean }>(
+      `/api/library/${enc(product)}`,
+      { method: "DELETE" },
+    ),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
   downloads: (product: string) =>

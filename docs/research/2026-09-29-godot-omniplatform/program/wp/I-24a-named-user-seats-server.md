@@ -22,6 +22,15 @@ origin "seat". On a full per-user slot the row is `full`, and the sign-in refusa
 only the **Free a device** link, never the inline Replace, until this package defines how a seat
 holder releases their own devices.
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive when a product asks; its wire rows then join the next licensing train. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Named-user seats: not an owner ask and would add licensing-train members (C-45). Revive when a product asks; its wire rows then join the next licensing train.
+
 ## Goal
 
 A licence can hold named-user seats: the Worker signs `profile.user = {"subject":"ps_…"}` into the

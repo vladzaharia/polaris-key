@@ -104,6 +104,12 @@ Where the brief and the code disagreed, the code was the fact:
   with the count it reached (the undo and the audit stay); focus moves to the page heading after an
   undo removes its note; the Users page names a holder move's account-less side "an email address".
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Already stamped done on main (2eb10597c); the hygiene PR leaves it. Merged (5786044f1). Already the holder surface of the target model (in an account / waiting / floating).
+
 ## Goal
 
 An operator can see who holds each licence (or that it is floating), filter by holder and batch,

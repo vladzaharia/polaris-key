@@ -5,12 +5,21 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-0–1a)                                                                                                      |
 | Size        | 0.6–0.85 engineer-weeks                                                                                                                                                                       |
 | Depends on  | [I-02](I-02-single-use-store.md)                                                                                                                                                              |
-| Unblocks    | [I-07](I-07-login-card-email.md), [CM-13](CM-13-commerce-emails.md), [LX-27](LX-27-create-limit-delivery.md)                                                                                  |
+| Unblocks    | [I-07](I-07-login-card-email.md), [LX-27](LX-27-create-limit-delivery.md)                                                                                                                     |
 | Role        | `pkey-implementer`                                                                                                                                                                            |
 | Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                      |
 | Gates       | `wrangler.toml`; THREAT-MODEL; D1 migration; `TABLE_OWNERS`; deliverability check on staging                                                                                                  |
 | Human input | owner DNS: SPF, DKIM and DMARC for the auth sending subdomain of plrs.im, and its Cloudflare Email Service onboarding; Apple private-relay sender registration in the Apple developer account |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                     |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (3e57ef5a8). Owner DNS and Apple relay registration stay in HANDOFF.md; `email_unavailable` is the degradation signal the card uses.
+
+- Status: stamped `done` (was `in-review`).
+- UX rows that name this package: UX-44 (built by I-07 and I-18).
 
 ## Goal
 

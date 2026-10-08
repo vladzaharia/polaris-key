@@ -1,7 +1,9 @@
 /**
  * License → Settings (LX-06; S-19 §7.13, S-18 §4.5 model C) through the whole console: each
  * licensing setting with its value and owner, a save that asks for the registry's confirmation
- * (and a reason for a critical setting) and sends the row version it read, and Revert.
+ * (and a reason for a critical setting) and sends the row version it read, and Revert. The
+ * settings whose behavior has not shipped are read-only, grouped under "Not in effect yet" after the
+ * clamp, each with what devices do today (P0-47); only the offline grace clamp is edited here.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -14,6 +16,7 @@ import {
   confirmLevel,
   formatSettingValue,
 } from "../src/console/components/ProductSettingsSection.js";
+import { LICENSING_PENDING } from "../src/console/pages/license/LicenseSettingsPage.js";
 
 beforeEach(resetConsole);
 afterEach(cleanup);
@@ -66,6 +69,16 @@ const HOLDER = setting("licensing.entitlementHolder", {
   value: "device",
   defaultValue: "device",
 });
+const CLAMP = setting("licensing.clampGraceToExpiry", {
+  label: "Clamp offline grace to expiry",
+  spec: { kind: "boolean" },
+  confirm: { on: "L0", off: "L1" },
+  critical: true,
+  value: true,
+  defaultValue: true,
+  source: "default",
+  version: 2,
+});
 const REFUND = setting("licensing.refundGraceHours", {
   label: "Refund grace",
   spec: { kind: "integer", unit: "hours", min: 0, max: 168 },
@@ -77,7 +90,7 @@ const REFUND = setting("licensing.refundGraceHours", {
   version: 3,
 });
 
-function boot(settings: ProductSetting[] = [ANCHOR, HOLDER, REFUND]) {
+function boot(settings: ProductSetting[] = [ANCHOR, HOLDER, CLAMP, REFUND]) {
   return bootLicense(HASH, {
     routes: {
       [EFFECTIVE]: { settings },
@@ -87,15 +100,10 @@ function boot(settings: ProductSetting[] = [ANCHOR, HOLDER, REFUND]) {
           releaseSource: "github",
         },
       },
-      [`PATCH ${API}/settings/licensing.anchorPolicy`]: {
+      [`PATCH ${API}/settings/licensing.clampGraceToExpiry`]: {
         ok: true,
         claimed: true,
-        setting: { ...ANCHOR, value: "oldest", source: "console", version: 2 },
-      },
-      [`PATCH ${API}/settings/licensing.entitlementHolder`]: {
-        ok: true,
-        claimed: true,
-        setting: { ...HOLDER, value: "owner", source: "console", version: 1 },
+        setting: { ...CLAMP, value: false, source: "console", version: 3 },
       },
       [`DELETE ${API}/settings/licensing.refundGraceHours`]: {
         ok: true,
@@ -117,7 +125,7 @@ describe("License → Settings", () => {
     const c = await card();
     expect(await within(c).findByText("Anchor licence choice")).toBeTruthy();
     expect(within(c).getByText("From manifest")).toBeTruthy();
-    expect(within(c).getByText("Code default")).toBeTruthy();
+    expect(within(c).getAllByText("Code default")).toHaveLength(2);
     expect(within(c).getByText("Set in console")).toBeTruthy();
     expect(
       log.calls.some(
@@ -130,71 +138,107 @@ describe("License → Settings", () => {
     expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 
-  it("saves a change behind the registry's confirmation, with the version it read", async () => {
+  it("groups the settings that do nothing yet after the clamp, read-only, each saying what devices do today (P0-47)", async () => {
+    boot();
+    const c = await card();
+    await within(c).findByText("Anchor licence choice");
+    // One subheading over the pending rows, not a pill on each.
+    const group = within(c).getByRole("group", { name: "Not in effect yet" });
+    expect(within(c).getAllByText("Not in effect yet")).toHaveLength(1);
+    expect(
+      within(group).getByText(/keep their value but change nothing/),
+    ).toBeTruthy();
+    for (const name of [
+      "Anchor licence choice",
+      "Entitlement holder",
+      "Refund grace",
+    ]) {
+      expect(within(group).getByText(name)).toBeTruthy();
+      expect(within(c).queryByRole("combobox", { name })).toBeNull();
+      expect(within(c).queryByRole("spinbutton", { name })).toBeNull();
+    }
+    // The clamp is in effect: editable, outside the group, and first.
+    const clamp = within(c).getByRole("switch", {
+      name: "Clamp offline grace to expiry",
+    });
+    expect(group.contains(clamp)).toBe(false);
+    expect(
+      clamp.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // The value stored, in words and muted, and what devices do today, per key.
+    expect(within(group).getByText("Highest-ranked tier").className).toContain(
+      "text-fg-muted",
+    );
+    expect(within(group).getByText("Signed-in account")).toBeTruthy();
+    expect(
+      within(group).getByText(
+        "Today a device runs on the license it was activated with.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(group).getByText(
+        "Today each device sees only its own license's entitlements, whoever is signed in.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(group).getByText("Today a refund takes effect at once."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/behaviour/)).toBeNull();
+    expect(
+      screen.getByText(
+        /Only clamping offline grace to expiry is in effect\. Devices pick up a change to it at their next license refresh\./,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("names every no-op licensing setting pending, and never the clamp", () => {
+    expect(Object.keys(LICENSING_PENDING).sort()).toEqual([
+      "licensing.anchorPolicy",
+      "licensing.entitlementHolder",
+      "licensing.entitlementModel",
+      "licensing.reanchor",
+      "licensing.refundGraceHours",
+    ]);
+    expect(LICENSING_PENDING["licensing.clampGraceToExpiry"]).toBeUndefined();
+  });
+
+  it("saves a change behind the registry's confirmation and a reason, with the version it read", async () => {
     const user = userEvent.setup();
     const log = boot();
     const c = await card();
     await user.click(
-      await within(c).findByRole("combobox", { name: "Anchor licence choice" }),
-    );
-    await user.click(
-      await screen.findByRole("option", { name: "Oldest licence" }),
+      await within(c).findByRole("switch", {
+        name: "Clamp offline grace to expiry",
+      }),
     );
     await user.click(within(c).getByRole("button", { name: "Save…" }));
     const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(
+        "A license that expires can keep running offline until its offline grace ends.",
+      ),
+    ).toBeTruthy();
     expect(
       within(dialog).getByText(/claims it from \.pkey\/product/),
     ).toBeTruthy();
-    await user.click(
-      within(dialog).getByRole("button", {
-        name: "Change anchor licence choice",
-      }),
-    );
-    await waitFor(() =>
-      expect(writes(log)).toEqual([
-        {
-          path: `${API}/settings/licensing.anchorPolicy`,
-          method: "PATCH",
-          body: { value: "oldest", expectedVersion: 1 },
-        },
-      ]),
-    );
-  });
-
-  it("asks for a reason, with S-19's warning, before widening the entitlement holder", async () => {
-    const user = userEvent.setup();
-    const log = boot();
-    const c = await card();
-    await user.click(
-      await within(c).findByRole("combobox", { name: "Entitlement holder" }),
-    );
-    await user.click(
-      await screen.findByRole("option", { name: "Licence owner" }),
-    );
-    await user.click(within(c).getByRole("button", { name: "Save…" }));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(
-      within(dialog).getByText(/sees everything the owner holds/),
-    ).toBeTruthy();
     const confirm = within(dialog).getByRole("button", {
-      name: "Change entitlement holder",
+      name: "Change clamp offline grace to expiry",
     });
+    // A critical setting asks for a reason first.
     expect((confirm as HTMLButtonElement).disabled).toBe(true);
     await user.type(
       within(dialog).getByRole("textbox", { name: "Reason" }),
-      "Studio keys are shared",
+      "Offline studios",
     );
     await user.click(confirm);
     await waitFor(() =>
-      expect(writes(log)[0]).toEqual({
-        path: `${API}/settings/licensing.entitlementHolder`,
-        method: "PATCH",
-        body: {
-          value: "owner",
-          expectedVersion: 0,
-          reason: "Studio keys are shared",
+      expect(writes(log)).toEqual([
+        {
+          path: `${API}/settings/licensing.clampGraceToExpiry`,
+          method: "PATCH",
+          body: { value: false, expectedVersion: 2, reason: "Offline studios" },
         },
-      }),
+      ]),
     );
   });
 

@@ -1,7 +1,7 @@
 import * as React from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { ThemeProvider } from "./components/theme.js";
-import { queryClient } from "./console/data/queryClient.js";
+import { ConsoleQueryProvider } from "./console/data/queryClient.js";
 import { useMe } from "./console/data/hooks.js";
 import { AppShell } from "./console/shell/AppShell.js";
 import { BootScreen } from "./console/shell/StatePages.js";
@@ -12,14 +12,19 @@ import { AppToaster } from "./ui/toast.js";
  * other, so it refreshes on focus and after a product create or delete), then hands the frame to
  * `AppShell`, which reads the route from the hash.
  */
-export function App(): React.ReactElement {
+export function App({
+  queryClient,
+}: {
+  /** The query client; the provider creates the tree's own when none is passed (tests pass one to seed or inspect the cache). */
+  queryClient?: QueryClient;
+}): React.ReactElement {
   return (
-    <QueryClientProvider client={queryClient}>
+    <ConsoleQueryProvider client={queryClient}>
       <ThemeProvider>
         {KIT_ENABLED ? <DevKitOr /> : <Boot />}
         <AppToaster />
       </ThemeProvider>
-    </QueryClientProvider>
+    </ConsoleQueryProvider>
   );
 }
 

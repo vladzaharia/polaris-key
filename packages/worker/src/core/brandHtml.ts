@@ -24,16 +24,7 @@
 import { createHash } from "node:crypto";
 import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
 import { lockupMetrics, markParts } from "@polaris-key/brand/svg";
-
-/** Escape for HTML text and double-quoted attribute values. */
-export function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}
+import { escapeHtml } from "../platform/html.js";
 
 /** Where the admin build emits the brand fonts and the Pinned K web identity. */
 export const BRAND_FONT_PATH = "/assets/branding/fonts";

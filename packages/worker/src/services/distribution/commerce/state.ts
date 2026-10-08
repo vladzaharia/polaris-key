@@ -30,7 +30,11 @@
 
 import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { isDeliverableId } from "@polaris-key/manifest";
-import type { Db, DbStatement } from "../../../core/platform.js";
+import {
+  sha256Hex,
+  type Db,
+  type DbStatement,
+} from "../../../core/platform.js";
 import type { LicenseMergeChange } from "../../../core/licenseMerge.js";
 import {
   idChunks,
@@ -41,13 +45,6 @@ import {
 import type { Store, StoreGrantWriter } from "../../../core/storeGrants.js";
 
 // ── hashing ──────────────────────────────────────────────────────────────────────────────────
-
-export async function sha256Hex(s: string): Promise<string> {
-  const d = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)),
-  );
-  return Array.from(d, (b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 /** The stored identity of a purchase: SHA-256 of `<store>:<key>`. */
 export function purchaseKeyHash(store: Store, key: string): Promise<string> {

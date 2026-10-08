@@ -9,17 +9,23 @@ import ts from "typescript";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as React from "react";
+import { cleanup, render } from "@testing-library/react";
 import type { QueryKey } from "@tanstack/react-query";
 import { api, setLoginRedirectForTests } from "../src/api.js";
 import {
   MUTATIONS,
+  bindWriteInvalidation,
   invalidateAfter,
   invalidationFor,
   mutate,
   type WriteMethod,
 } from "../src/console/data/mutations.js";
 import { qk } from "../src/console/data/queries.js";
-import { queryClient } from "../src/console/data/queryClient.js";
+import {
+  ConsoleQueryProvider,
+  createQueryClient,
+} from "../src/console/data/queryClient.js";
 
 /**
  * The mutation → invalidation table (docs/design/ADMIN.md §5.4; fixes CC-1 to CC-4).
@@ -60,12 +66,18 @@ async function httpMethods(): Promise<Record<string, string>> {
   return seen;
 }
 
+/** This suite's cache, bound to the write path the way a mounted console tree binds its own. */
+const queryClient = createQueryClient();
+let unbind: () => void = () => undefined;
+
 beforeEach(() => {
   queryClient.clear();
+  unbind = bindWriteInvalidation(queryClient);
   setLoginRedirectForTests(() => undefined);
 });
 
 afterEach(() => {
+  unbind();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -442,6 +454,29 @@ describe("mutate()", () => {
     expect(queryClient.getQueryState(qk.tiers("djdl"))?.isInvalidated).toBe(
       true,
     );
+  });
+
+  it("a provider's cache is bound before its children's mount effects run", () => {
+    // A write confirmed during the commit that mounts the tree (here, synchronously from a
+    // child's mount effect) still reaches the tree's own cache.
+    const own = createQueryClient();
+    own.setQueryData(qk.tiers("djdl"), {});
+    function WritesOnMount(): null {
+      React.useEffect(() => invalidateAfter("createTier", ["djdl", {}]), []);
+      return null;
+    }
+    render(
+      React.createElement(ConsoleQueryProvider, {
+        client: own,
+        children: React.createElement(WritesOnMount),
+      }),
+    );
+    expect(own.getQueryState(qk.tiers("djdl"))?.isInvalidated).toBe(true);
+    cleanup();
+    // Unmounted, it is unbound: a later write leaves its cache alone.
+    own.setQueryData(qk.tiers("djdl"), {});
+    invalidateAfter("createTier", ["djdl", {}]);
+    expect(own.getQueryState(qk.tiers("djdl"))?.isInvalidated).toBe(false);
   });
 
   it("invalidates nothing when the write fails, and rethrows", async () => {

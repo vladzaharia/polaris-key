@@ -1,16 +1,16 @@
-# UK-06 `@polaris-key/electron`: `registerPolarisKey` (main) and `exposePolarisKey` (preload) replacing the hand-written bridge, menu items, notifications, autoUpdater progress into UpdateProgress
+# UK-06 Electron kit inside @polaris-key/node/electron
 
-| Field       | Value                                                                                              |
-| ----------- | -------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                       |
-| Size        | 1.5–2 engineer-weeks                                                                               |
-| Depends on  | [UK-03](UK-03-ui-core.md), [UK-05](UK-05-react-kit.md), [UK-16](UK-16-ui-docs-scaffold.md)         |
-| Unblocks    | [UK-21](UK-21-tauri-bridge.md), [UK-41](UK-41-must-tier-closeout.md)                               |
-| Role        | `pkey-sdk-porter`                                                                                  |
-| Plan mode   | no                                                                                                 |
-| Gates       | Playwright Electron screenshots on Windows, macOS and Linux chrome; `pnpm ui:lint` on the renderer |
-| Human input | none                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                          |
+| Field       | Value                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                 |
+| Size        | 1.5–2 engineer-weeks                                                                                                         |
+| Depends on  | [UK-03](UK-03-ui-core.md), [UK-05](UK-05-react-kit.md), [UK-16](UK-16-ui-docs-scaffold.md), [SP-31](SP-31-node-bridge-v4.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-21](UK-21-tauri-bridge.md), [UK-41](UK-41-must-tier-closeout.md)                 |
+| Role        | `pkey-sdk-porter`                                                                                                            |
+| Plan mode   | no                                                                                                                           |
+| Gates       | Playwright Electron screenshots on Windows, macOS and Linux chrome; `pnpm ui:lint` on the renderer                           |
+| Human input | none                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                    |
 
 ## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
 
@@ -27,6 +27,15 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the main process holds the grant and calls `choice.*`; the renderer's form gets view data only and posts the pick through `exposePolarisKey()` (SIGN-IN.md D-91). Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Inside @polaris-key/node/electron on SP-31's bridge v4: menu items, notifications and updater progress into UpdateProgress. No new package.
+
+- Title: was "`@polaris-key/electron`: `registerPolarisKey` (main) and `exposePolarisKey` (preload) replacing the hand-written bridge, menu items, notifications, autoUpdater progress into UpdateProgress".
+- Depends on: added SP-31.
 
 ## Goal
 

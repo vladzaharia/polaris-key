@@ -1,16 +1,27 @@
 # U-15c Cloud Sync docs, records half: collections guide
 
-| Field       | Value                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                                                  |
-| Size        | 0.2–0.3 engineer-weeks                                                                                                                 |
-| Depends on  | [U-15a](U-15a-docs-settings.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md) |
-| Unblocks    | none                                                                                                                                   |
-| Role        | `pkey-implementer`                                                                                                                     |
-| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package                                               |
-| Gates       | `check:links`                                                                                                                          |
-| Human input | none                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                              |
+| Field       | Value                                                                                    |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                    |
+| Size        | 0.2–0.3 engineer-weeks                                                                   |
+| Depends on  | none                                                                                     |
+| Unblocks    | none                                                                                     |
+| Role        | `pkey-implementer`                                                                       |
+| Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package |
+| Gates       | `check:links`                                                                            |
+| Human input | none                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): dropped.** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **drop** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> No collections guide: the v1 SDK surface is saves only; the records guide lands with the first non-save collection.
+
+- Dependencies cleared on closing (they were U-15a, U-22 and U-23), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

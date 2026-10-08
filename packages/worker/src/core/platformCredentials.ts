@@ -47,7 +47,8 @@ import type { Env } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
 import { open, seal, type SealContext } from "../keyvault.js";
 import { appendAudit } from "../repo.js";
-import { randomId, sha256Hex } from "../crypto.js";
+import { randomId } from "../crypto.js";
+import { sha256Hex } from "../platform/hash.js";
 import {
   OUTLET_CREDENTIAL_ACTOR,
   validateOutletCredential,

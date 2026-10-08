@@ -1,8 +1,8 @@
 /**
- * State pages (ADMIN.md §3 T8, EXPERIENCE.md §9): not found, unknown product, service off and
- * boot. Each one says what is missing and offers the way out, rather than falling back to some
- * other page in silence (SH-8). The first three are the shared `ui/EmptyState` (kinds `not-found`
- * and `service-off`) under the page's `<h1>`, inside the product chrome.
+ * State pages (ADMIN.md §3 T8, EXPERIENCE.md §9): not found, page moved, unknown product, service
+ * off and boot. Each one says what is missing and offers the way out, rather than falling back to
+ * some other page in silence (SH-8). All but boot are the shared `ui/EmptyState` (kinds
+ * `not-found` and `service-off`) under the page's `<h1>`, inside the product chrome.
  *
  * Motion (S-23 §6.1; MO-10): a state page and the boot error card enter (`animate-pk-enter`);
  * they leave with their route, which owns the exit. "Loading console…" waits out the skeleton's
@@ -16,10 +16,10 @@ import { Logo } from "../../components/brand/Logo.js";
 import { Button } from "../../ui/Button.js";
 import { EmptyState } from "../../ui/EmptyState.js";
 import { Spinner } from "../../ui/Spinner.js";
-import type { NavSection } from "../nav.js";
+import { pageOf, sectionOf, type NavSection } from "../nav.js";
 import { Link } from "../router.js";
-import { r } from "../routes.js";
-import { LiveRegion } from "./bits.js";
+import { movedHref, r, searchTermFor, type MovedTo } from "../routes.js";
+import { LiveRegion } from "../../ui/LiveRegion.js";
 
 /** A page title for a state page: an `<h1>` the route focus can land on. */
 function StateHeading({ children }: { children: React.ReactNode }) {
@@ -67,6 +67,10 @@ export function closestSlugs(
     .map(({ p }) => p);
 }
 
+/**
+ * A path that matches no page. "Search or jump to…" opens the palette already searching for the
+ * dead segment (`searchTermFor`), so a near miss is one Enter away.
+ */
 export function NotFoundPage({
   path,
   slug,
@@ -76,7 +80,8 @@ export function NotFoundPage({
   path: string;
   slug?: string;
   productName?: string;
-  onOpenPalette: () => void;
+  /** Open the command palette with `query` typed into it. */
+  onOpenPalette: (query?: string) => void;
 }): React.ReactElement {
   return (
     <section className="space-y-6 animate-pk-enter">
@@ -99,7 +104,64 @@ export function NotFoundPage({
           </Button>
         }
         secondaryAction={
-          <Button variant="outline" onClick={onOpenPalette}>
+          <Button
+            variant="outline"
+            onClick={() => onOpenPalette(searchTermFor(path))}
+          >
+            Search or jump to…
+          </Button>
+        }
+      />
+    </section>
+  );
+}
+
+/**
+ * A pre-redesign product URL (`routes.ts` `MOVED_TABS`): not found, but the page says where it
+ * went and links there, keeping the record id and the query. It does not redirect; the 0.9 line
+ * keeps no compatibility windows, and the bookmark is the operator's to update.
+ */
+export function MovedPage({
+  path,
+  slug,
+  moved,
+  query,
+  onOpenPalette,
+}: {
+  path: string;
+  slug: string;
+  moved: MovedTo;
+  query: URLSearchParams;
+  onOpenPalette: (query?: string) => void;
+}): React.ReactElement {
+  const page = pageOf(moved.page);
+  const section = sectionOf(moved.page);
+  const record = moved.id !== undefined ? page.record : undefined;
+  return (
+    <section className="space-y-6 animate-pk-enter">
+      <StateHeading>Page moved</StateHeading>
+      <EmptyState
+        kind="not-found"
+        headingLevel={2}
+        // No-break spaces keep "License → Licenses" on one line when the title wraps on a phone.
+        title={`This page moved to ${section ? `${section.label}\u00a0→\u00a0` : ""}${page.label}`}
+        description={
+          <>
+            <code className="font-mono">{path}</code> is an address from before
+            the console was reorganized. Update your bookmark to the new one.
+          </>
+        }
+        primaryAction={
+          <Button asChild>
+            <Link to={movedHref(slug, moved, query)}>
+              {record
+                ? `Open ${record.noun.toLowerCase()} ${moved.id}`
+                : `Go to ${page.label}`}
+            </Link>
+          </Button>
+        }
+        secondaryAction={
+          <Button variant="outline" onClick={() => onOpenPalette()}>
             Search or jump to…
           </Button>
         }
@@ -228,7 +290,7 @@ export function BootScreen({
         {error ? (
           <section
             aria-labelledby="boot-error-title"
-            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-pk-sm animate-pk-enter sm:p-8"
+            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-elevation-1 animate-pk-enter sm:p-8"
           >
             <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-danger-subtle text-danger">
               <AlertTriangle aria-hidden className="size-5" />

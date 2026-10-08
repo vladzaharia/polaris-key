@@ -1,16 +1,16 @@
-# LX-13 Developer backend for entitlements: admin grants API, `subjects/<s>/entitlements`, `entitlements.changed` event and webhook, account-merge re-keying, deletion of account-held grants
+# LX-13 Developer backend for entitlements and add-on grants
 
-| Field       | Value                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)              |
-| Size        | 0.6–0.85 engineer-weeks                                                                                   |
-| Depends on  | [LX-08](LX-08-licensing-expand.md), [LX-09](LX-09-entitlement-resolver.md), [I-05](I-05-accounts-core.md) |
-| Unblocks    | [LX-22](LX-22-licensing-closeout.md), [CM-05](CM-05-checkout-fulfilment.md)                               |
-| Role        | `pkey-implementer`                                                                                        |
-| Plan mode   | no                                                                                                        |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; privacy docs                                           |
-| Human input | none                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                 |
+| Field       | Value                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                        |
+| Size        | 0.6–0.85 engineer-weeks                                                                                             |
+| Depends on  | [LX-08](LX-08-licensing-expand.md), [LX-09](LX-09-entitlement-resolver.md), [I-05](I-05-accounts-core.md)           |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-22](LX-22-licensing-closeout.md), [CM-05](CM-05-checkout-fulfilment.md) |
+| Role        | `pkey-implementer`                                                                                                  |
+| Plan mode   | no                                                                                                                  |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; privacy docs                                                     |
+| Human input | none                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                           |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -18,6 +18,14 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** Q4: `entitlements.changed` is delivered through `entitlement_events` with a pull cursor, and webhooks come later, so drop "webhook" from the scope. The I-05 follow-ups: `mergeAccounts`' batch moves account-held grants, keeps the survivor's `dist_holder_bindings` row, inserts `dist_binding_aliases` for the absorbed binding, re-keys first-held `dist_purchases` and bumps both versions. Account deletion and per-product removal clear `grants.account_id` holders according to D25 and D27 (D27 pending legal review).
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** use `identityEnabled` to decide whether to create licence-held grants.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Grants API takes addonId only (every grant references an add-on); a one-off comp is a licence entitlement override, a repeatable one is a comp add-on; subjects/<s>/entitlements returns the duration; subscription routes move to LX-41, consumable routes to LX-42; written as route-table entries.
+
+- Title: was "Developer backend for entitlements: admin grants API, `subjects/<s>/entitlements`, `entitlements.changed` event and webhook, account-merge re-keying, deletion of account-held grants".
 
 ## Goal
 

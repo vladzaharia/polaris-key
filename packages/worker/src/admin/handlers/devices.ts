@@ -32,6 +32,10 @@ import { shapeFacts, shapeFingerprint } from "../lib/deviceShape.js";
 import { adminJson, err, notFound } from "../lib/respond.js";
 import { deviceSummary, listDevicesPage } from "../repo.js";
 import type { AdminSession } from "../session.js";
+import {
+  b64urlDecodeBinaryUnpadded,
+  b64urlEncodeBinary,
+} from "../../platform/bytes.js";
 
 export const DEVICE_PAGE_DEFAULT = 50;
 export const DEVICE_PAGE_MAX = 200;
@@ -83,16 +87,14 @@ function shapeSummary(d: DeviceRow): Record<string, unknown> {
 // Opaque to the client: base64url of `[lastSeen, deviceId]`. Nothing here is secret (both values
 // are in the row the previous page returned) so it is encoded, not signed.
 function encodeCursor(row: DeviceRow): string {
-  const json = JSON.stringify([row.last_seen, row.device_id]);
-  return btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return b64urlEncodeBinary(JSON.stringify([row.last_seen, row.device_id]));
 }
 
 function decodeCursor(
   raw: string,
 ): { lastSeen: number; deviceId: string } | null {
   try {
-    const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
-    const parsed: unknown = JSON.parse(atob(b64));
+    const parsed: unknown = JSON.parse(b64urlDecodeBinaryUnpadded(raw));
     if (
       Array.isArray(parsed) &&
       parsed.length === 2 &&

@@ -986,7 +986,7 @@ describe("main flows", () => {
     ]);
     await picker.selectOption({ label: "Free · From Harbor Audio" });
     await licenseSourceIs(o.page, "From Harbor Audio");
-    // The term is said once, as Updates included, never as a meta line under the tier.
+    // The term is said once, as Access, never as a meta line under the tier.
     expect(await card.getByText(/ · (Lifetime|Expires|Ended)/).count()).toBe(0);
     expect(await o.violations()).toEqual([]);
     await o.close();
@@ -1253,6 +1253,24 @@ describe("product page, owner polish 2026-10-07", () => {
         await links.getByRole("link", { name: pick }).click();
         await o.page.waitForTimeout(300);
         expect(await marked(o.page, nav)).toBe(pick);
+      }
+
+      // A jump lands its section on the reading line, below the sticky chrome (the header, and
+      // the pills on a phone): once the person scrolls a little themselves, which ends the hold,
+      // the mark is still the section they picked, never the one above it. Focus went to its
+      // heading (PS-05 review M4). (On the wide page every card below License is in the page's
+      // last screen, where the line slides down by design, so License is the one to land.)
+      for (const pick of width === 390
+        ? ["License", "Devices 2"]
+        : ["License"]) {
+        await links.getByRole("link", { name: pick }).click();
+        await o.page.waitForTimeout(300);
+        expect(
+          await o.page.evaluate(() => document.activeElement?.id ?? null),
+        ).toBe(pick === "License" ? "section-license-h" : "section-devices-h");
+        await o.page.mouse.wheel(0, 2);
+        await o.page.waitForTimeout(150);
+        expect(await marked(o.page, nav), `after a jump to ${pick}`).toBe(pick);
       }
       expect(await o.violations()).toEqual([]);
       await o.close();

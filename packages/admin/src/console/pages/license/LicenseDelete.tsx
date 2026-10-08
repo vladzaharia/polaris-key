@@ -14,7 +14,7 @@
  */
 
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   api,
   ApiError,
@@ -26,7 +26,6 @@ import {
 } from "../../../api.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { r } from "../../routes.js";
 import { navigate } from "../../router.js";
 import { confirmFor } from "../../../lib/actions.js";
@@ -138,6 +137,7 @@ export function DeleteLicenseDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
+  const queryClient = useQueryClient();
   const policy = confirmFor("license.delete");
   const devices = license.devices.length;
   const keys = license.keys.length;
@@ -258,14 +258,11 @@ export function BulkDeleteDialog({
 // ── the cleanup helper ───────────────────────────────────────────────────────────────────────
 
 export function useLicenseCleanup(slug: string, enabled: boolean) {
-  return useQuery(
-    {
-      queryKey: qk.licenseCleanup(slug),
-      queryFn: () => api.licenseCleanupCandidates(slug),
-      enabled,
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.licenseCleanup(slug),
+    queryFn: () => api.licenseCleanupCandidates(slug),
+    enabled,
+  });
 }
 
 /**

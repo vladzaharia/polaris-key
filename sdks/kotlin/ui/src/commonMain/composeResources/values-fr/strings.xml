@@ -1205,6 +1205,8 @@
     <string name="cli_option_yes">Ne pas demander avant la déconnexion</string>
     <!-- Terminal help: what the -device-code flag does. -->
     <string name="cli_option_deviceCode">Se connecter avec un code au lieu du navigateur local</string>
+    <!-- Terminal help: what the -allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log. -->
+    <string name="cli_option_allowWorkflowCommands">Afficher la valeur même si un journal de CI exécuterait l’une de ses lignes comme une commande</string>
     <!-- Terminal key hints under the license key prompt. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
     <string name="cli_keys_activate">Entrée activer · Échap annuler</string>
     <!-- Terminal key hints while waiting for a code sign-in. 'c' is the key to press; keep the key first and the ' · ' separators. -->
@@ -1261,6 +1263,8 @@
     <string name="cli_config_unset">%1$s n’a pas de valeur.</string>
     <!-- Terminal: the secret command found nothing. {name} is the secret's key. Arguments: 1=name. -->
     <string name="cli_secret_none">Aucun secret nommé %1$s n’est fourni à cet appareil.</string>
+    <!-- Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with -allow-workflow-commands). Arguments: 1=command. -->
+    <string name="cli_output_workflowCommand">La valeur n’a pas été affichée : ce journal de CI exécuterait l’une de ses lignes comme une commande. Pour l’afficher quand même, exécutez %1$s.</string>
     <!-- Terminal offline activation: what to do with the activation file. {command} is a command line. Arguments: 1=command. -->
     <string name="cli_offline_import">Exécutez ensuite %1$s avec le fichier que vous recevrez en retour.</string>
     <!-- Terminal diagnostics: the row label for the SDK name and version. -->

@@ -1,16 +1,24 @@
-# U-08 Merge prompt framework for collections and saves: `empty` flag, `MergeRequest` in six SDKs, merge prompt components in the four UI kits, parking added to U-05's account-merge hook
+# U-08 One conflict vocabulary and MergeRequest in six SDKs
 
 | Field       | Value                                                                                                                                                                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                                                                                                   |
 | Size        | 0.4–0.55 engineer-weeks                                                                                                                                                                                                                     |
 | Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-06](U-06-sdk-settings-node-python.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-20](U-20-sdk-settings-react.md), [U-21](U-21-sdk-settings-godot.md), [I-05](I-05-accounts-core.md)                 |
-| Unblocks    | [U-13](U-13-saves-sdk-node-react-python.md), [U-25](U-25-saves-sdk-swift-kotlin-godot.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md)                                            |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md)                                                                                               |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                        |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                           |
 | Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); UI kit screenshots; transcripts and scenarios for empty and non-empty clouds and for a merged account with parked units |
 | Human input | none                                                                                                                                                                                                                                        |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                   |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track G, Managed config and Cloud Sync](../../../2026-10-07-dx-consolidation/tracks.md#g-managed-config-and-cloud-sync)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> One conflict vocabulary (lastWrite, max, min, merge, union, revision) and one MergeRequest with keep(...) across six SDKs; no onAttach (first sign-in is an ordinary sync). Prompt renders in the rebuilt kits only.
+
+- Title: was "Merge prompt framework for collections and saves: `empty` flag, `MergeRequest` in six SDKs, merge prompt components in the four UI kits, parking added to U-05's account-merge hook".
 
 ## Goal
 

@@ -32,7 +32,11 @@ import {
   type ManifestListing,
   type ParsedManifest,
 } from "@polaris-key/manifest";
-import type { Db, DbStatement } from "../../core/platform.js";
+import {
+  parseJsonColumn,
+  type Db,
+  type DbStatement,
+} from "../../core/platform.js";
 import { kindsNarrowableTo } from "./capabilities.js";
 
 /** A `dist_outlets` row. */
@@ -281,14 +285,4 @@ export async function setCapabilityOverride(
     outletId,
   );
   return changed > 0;
-}
-
-/** Parse a JSON column, or `null` when it is NULL or unparseable (never throws). */
-export function parseJsonColumn(raw: string | null): unknown {
-  if (raw === null) return null;
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return null;
-  }
 }

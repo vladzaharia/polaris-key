@@ -24,12 +24,16 @@
  * metadata is read here — listing never selects the sealed column — so resolving opens nothing.
  */
 
-import type { Db, Env } from "../../../../core/platform.js";
+import {
+  parseJsonColumn,
+  type Db,
+  type Env,
+} from "../../../../core/platform.js";
 import {
   checkOutletCredentialPin,
   listOutletCredentials,
 } from "../../../../core/outletCredentials.js";
-import { listOutlets, parseJsonColumn } from "../../outlets.js";
+import { listOutlets } from "../../outlets.js";
 import {
   platformFallback,
   platformFallbackMessage,

@@ -72,6 +72,15 @@ import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 import { graceClampFor } from "../../core/graceClamp.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
+import { resolveAccount } from "./accounts/repo.js";
+import { platformSubjectAccountRefused } from "./accounts/platformMigration.js";
+
+/** The platform-IdP subject a `provider: platform` sign-in verified (the OIDC return path). */
+export interface BrowserSessionSubject {
+  /** The platform issuer the ID token was verified against. */
+  issuer: string;
+  sub: string;
+}
 
 interface BrowserSessionRecord {
   token: string;
@@ -79,6 +88,19 @@ interface BrowserSessionRecord {
   licenseId: string;
   deviceId: string;
   createdAt: number;
+  /** The platform-IdP subject that signed in, when a `provider: platform` sign-in opened this
+   *  session (the OIDC return path); absent on a key session and on a custom issuer's. While it
+   *  is set, {@link loadBrowserSession} runs N9's check on it at every read, so the session ends
+   *  once ANY account that holds the subject's method can no longer sign in: one the subject
+   *  already belonged to, one it was linked to after the session opened, or one its method moved
+   *  to. */
+  subject?: BrowserSessionSubject;
+  /** The Polaris Key account the subject belonged to when the session opened; absent for a
+   *  subject with no account. Kept beside `subject` for erasure: erasing an account deletes its
+   *  methods (`account_links`), after which the subject resolves no account and N9's check
+   *  alone would let the session live on. While it is set, the session also ends once this
+   *  account is disabled, being deleted or gone (the N9 residual). */
+  accountId?: string;
 }
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -120,8 +142,14 @@ export async function createBrowserSession(
    *  headers are all the honest signal there is. */
   req?: Request,
   /** PX-W9 (WIRE-CONTRACT-V4 §12.2): a browser KEY session on an Identity product records its
-   *  key entry with the seat claim. The OIDC return path never passes it. */
-  opts: { keyEntry?: { surface: "browser" } } = {},
+   *  key entry with the seat claim. The OIDC return path never passes it. `subject` and
+   *  `accountId` are the other way round: only the OIDC return path passes them, for a
+   *  `provider: platform` sign-in (see `BrowserSessionRecord`). */
+  opts: {
+    keyEntry?: { surface: "browser" };
+    subject?: BrowserSessionSubject | null;
+    accountId?: string | null;
+  } = {},
 ): Promise<
   | { ok: true; cookie: string; record: BrowserSessionRecord }
   | {
@@ -171,6 +199,10 @@ export async function createBrowserSession(
     licenseId: license.id,
     deviceId,
     createdAt: now,
+    ...(opts.subject
+      ? { subject: { issuer: opts.subject.issuer, sub: opts.subject.sub } }
+      : {}),
+    ...(opts.accountId ? { accountId: opts.accountId } : {}),
   };
   await env.HOT.put(
     sessionKey(product.slug, sessionHash),
@@ -200,16 +232,35 @@ export async function createBrowserSession(
  * escape as a 500. That mattered less when only `GET /session` read this; it matters now that
  * the registration policy does, because a 500 there is a mint path failing open-endedly rather
  * than refusing.
+ *
+ * The one thing it does besides reading: a session a `provider: platform` sign-in opened lives
+ * only as long as its subject could sign in again (N9). Every read runs N9's check on the
+ * recorded subject (`record.subject`: whichever account holds its method now, so a subject
+ * linked to an account after the session opened, or whose method moved to another account, is
+ * covered), and checks the account it belonged to at sign-in (`record.accountId`, which also
+ * catches erasure, since erasing an account deletes its methods). Either one disabled, being
+ * deleted or gone (an absorbed account follows its join as `signIn` does) ends the session: the
+ * record is deleted and the answer is "no session", so the page reads signed out, a
+ * `requires-identity` product refuses to register a device on it, and sign-out has nothing to
+ * end. The browser device's seat and token are left alone: they belong to the licence, not the
+ * account (the N9 residual's decision).
+ *
+ * A D1 error while checking answers "no session" too, for that request only: the record is
+ * kept, since the failure says nothing about the account, and the next read checks again. The
+ * same never-a-500 rule as a corrupt record, and it fails closed.
  */
 export async function loadBrowserSession(
   req: Request,
   env: Env,
+  db: Db,
   product: Product,
+  now: number,
 ): Promise<{ tokenHash: string; record: BrowserSessionRecord } | null> {
   const token = readCookie(req, cookieName(product.slug));
   if (!token) return null;
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const raw = await env.HOT.get(sessionKey(product.slug, tokenHash));
+  const key = sessionKey(product.slug, tokenHash);
+  const raw = await env.HOT.get(key);
   if (!raw) return null;
   let parsed: unknown;
   try {
@@ -218,7 +269,44 @@ export async function loadBrowserSession(
     return null;
   }
   if (!parsed || typeof parsed !== "object") return null;
-  return { tokenHash, record: parsed as BrowserSessionRecord };
+  const record = parsed as BrowserSessionRecord;
+  let ended: boolean;
+  try {
+    ended = await sessionAccountRefused(db, record, now);
+  } catch {
+    return null; // D1 unavailable: signed out for now, the record kept (see above)
+  }
+  if (ended) {
+    await env.HOT.delete(key);
+    return null;
+  }
+  return { tokenHash, record };
+}
+
+/**
+ * Whether a browser session's sign-in can no longer stand (N9): its platform subject belongs to
+ * an account that can no longer sign in, or the account it signed in as is disabled, being
+ * deleted or gone. `false` for a session with neither (a key session, a custom issuer's, a
+ * subject that never had an account). Throws on a D1 error; the caller decides.
+ */
+async function sessionAccountRefused(
+  db: Db,
+  record: BrowserSessionRecord,
+  now: number,
+): Promise<boolean> {
+  const subject = record.subject;
+  if (
+    subject &&
+    typeof subject.issuer === "string" &&
+    typeof subject.sub === "string" &&
+    (await platformSubjectAccountRefused(db, subject.issuer, subject.sub, now))
+  )
+    return true;
+  if (typeof record.accountId === "string") {
+    const account = await resolveAccount(db, record.accountId, now);
+    if (!account || account.status !== "active") return true;
+  }
+  return false;
 }
 
 async function browserDoc(
@@ -333,7 +421,7 @@ export async function handleBrowserSession(
   settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
-  const session = await loadBrowserSession(req, env, product);
+  const session = await loadBrowserSession(req, env, db, product, now);
   if (!session) return json({ authenticated: false, doc: null });
   const result = await browserDoc(
     req,
@@ -480,9 +568,10 @@ export async function handleBrowserLogout(
   env: Env,
   db: Db,
   product: Product,
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
-  const session = await loadBrowserSession(req, env, product);
+  const session = await loadBrowserSession(req, env, db, product, now);
   if (session) {
     const csrf = req.headers.get("x-csrf-token");
     if (!csrf || csrf !== session.record.csrf)

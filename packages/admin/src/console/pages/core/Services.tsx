@@ -18,7 +18,7 @@
  */
 
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Undo2 } from "lucide-react";
 import {
   ApiError,
@@ -50,8 +50,7 @@ import { Switch } from "../../../ui/Switch.js";
 import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import { useUnsavedChangesGuard } from "../../../ui/useUnsavedChangesGuard.js";
-import { PageHeader } from "../../components/PageHeader.js";
-import { queryClient } from "../../data/queryClient.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
 import {
@@ -220,10 +219,10 @@ function listOf(slugs: readonly ServiceSlug[]): string {
 }
 
 export function ServicesPage({ slug }: { slug: string }): React.ReactElement {
-  const query = useQuery(
-    { queryKey: qk.services(slug), queryFn: () => api.services(slug) },
-    queryClient,
-  );
+  const query = useQuery({
+    queryKey: qk.services(slug),
+    queryFn: () => api.services(slug),
+  });
   useLoadingAnnouncement("services", query.isPending);
 
   const header = (
@@ -261,6 +260,7 @@ function ServicesForm({
   data: ServicesResponse;
   header: React.ReactNode;
 }): React.ReactElement {
+  const queryClient = useQueryClient();
   const [codes, setCodes] = React.useState<string[]>([]);
   const [switchError, setSwitchError] = React.useState<unknown>(null);
   const [pending, setPending] = React.useState<{
@@ -541,7 +541,7 @@ function ServicesForm({
             aside={
               <span className="text-fg-muted">
                 Enforced now:{" "}
-                <span className="font-medium text-fg-strong">
+                <span className="font-normal text-fg-strong">
                   {REGISTRATION_LABELS[data.effectiveRegistration] ??
                     data.effectiveRegistration}
                 </span>
@@ -549,7 +549,7 @@ function ServicesForm({
                 effectiveOf(draft) !== data.effectiveRegistration ? (
                   <>
                     {" · After saving: "}
-                    <span className="font-medium text-fg-strong">
+                    <span className="font-normal text-fg-strong">
                       {REGISTRATION_LABELS[effectiveOf(draft)] ??
                         effectiveOf(draft)}
                     </span>
@@ -653,13 +653,11 @@ function PackageFeedsSection({
   slug: string;
   distributionOn: boolean;
 }): React.ReactElement {
-  const query = useQuery(
-    {
-      queryKey: qk.packageFeedsSwitch(slug),
-      queryFn: () => api.packageFeeds(slug),
-    },
-    queryClient,
-  );
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: qk.packageFeedsSwitch(slug),
+    queryFn: () => api.packageFeeds(slug),
+  });
   const gate = useConfirmGate<true>();
   const [pending, setPending] = React.useState<boolean | null>(null);
   const [error, setError] = React.useState<unknown>(null);

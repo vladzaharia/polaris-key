@@ -6,15 +6,16 @@ description: "The case families every SDK verifies identically, generated from t
 {/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
     Source of truth and emitter: packages/docs/scripts/gen-reference.mjs. */}
 
-One generator (`tools/sign-corpus.ts`) signs every vector, and every language runner
+One generator (`tools/sign-corpus.ts`, over its family modules in `tools/corpus/`) signs every vector, and every language runner
 verifies them: Node, Python, Swift, React (the gate matrix, the `web` rows of
 `headers.json` and the no-environment answers of `config-matrix.json`), Godot (every
 `cases.json` family and the `fingerprint.json` device ids, from an editor and an exported
 release template) and Kotlin (every `cases.json` family, `update-matrix.json`,
 `plan-matrix.json`, every `content/` section, `headers.json`, `fingerprint.json`,
-`stage-matrix.json` and `outlet-matrix.json`, read in place on both Ed25519 backends). `pnpm gen:corpus -- --check` is the CI drift gate,
-over the source and both generator-owned mirrors (the Swift test resources and the Godot
-`res://` mirror at `sdks/godot/tests/corpus/v2/`). Corpus v1 is deleted — v2 is the
+`stage-matrix.json` and `outlet-matrix.json`, read in place on both Ed25519 backends). Swift reads
+the corpus in place too. `pnpm gen:corpus -- --check` is the CI drift gate, over the source and
+the one generator-owned mirror (the Godot `res://` mirror at `sdks/godot/tests/corpus/v2/`).
+Corpus v1 is deleted — v2 is the
 only corpus. `corpusVersion 2`,
 `gateMatrixVersion 2`, `fingerprintVersion 1`,
 `stageMatrixVersion 3`, `headersVersion 2`,

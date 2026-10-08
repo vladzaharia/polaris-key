@@ -12,6 +12,11 @@
  * Every save carries the version the row was read at (`expectedVersion`), so a concurrent change
  * is refused rather than overwritten; the card then reloads.
  *
+ * A page can mark keys `pending` (P0-47): settings stored and resynced whose behaviour has not
+ * shipped. They follow the live rows under a "Not in effect yet" subheading, each with its value
+ * read-only and muted and the page's note on what devices do today; a console claim can still be
+ * reverted.
+ *
  * ST-07's `SettingsRow` v2 (history drawer, pre-save diff) replaces the per-row chrome here.
  */
 
@@ -39,7 +44,6 @@ import { toast } from "../../ui/toast.js";
 import { useProduct } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
-import { queryClient } from "../data/queryClient.js";
 import { SettingsRow, SettingsSection } from "../templates/Settings.js";
 
 /** Per-setting copy a page supplies: value labels, and what a change to a value means. */
@@ -108,6 +112,8 @@ export function ProductSettingsSection({
   description,
   keys,
   copy = {},
+  pending = {},
+  pendingDescription,
 }: {
   slug: string;
   area: string;
@@ -117,14 +123,15 @@ export function ProductSettingsSection({
   /** Only these keys of the area (all of them when absent), in this order. */
   keys?: readonly string[];
   copy?: Record<string, SettingCopy>;
+  /** Keys whose behaviour has not shipped, each with what devices do today: read-only rows. */
+  pending?: Record<string, string>;
+  /** Under the "Not in effect yet" subheading. */
+  pendingDescription?: React.ReactNode;
 }): React.ReactElement | null {
-  const q = useQuery(
-    {
-      queryKey: qk.productSettings(slug, area),
-      queryFn: () => api.productSettings(slug, area),
-    },
-    queryClient,
-  );
+  const q = useQuery({
+    queryKey: qk.productSettings(slug, area),
+    queryFn: () => api.productSettings(slug, area),
+  });
   const product = useProduct(slug).data;
   const linked = product?.releaseSource === "github";
 
@@ -152,16 +159,41 @@ export function ProductSettingsSection({
           .filter((s): s is ProductSetting => s !== undefined)
       : all;
     if (rows.length === 0) return null;
-    body = rows.map((s) => (
+    const row = (s: ProductSetting) => (
       <ProductSettingRow
         key={s.key}
         slug={slug}
         setting={s}
         linked={linked}
         copy={copy[s.key]}
+        pendingNote={pending[s.key]}
         onConflict={() => void q.refetch()}
       />
-    ));
+    );
+    // The settings in effect first; the pending ones after them, grouped under one subheading.
+    const live = rows.filter((s) => pending[s.key] === undefined);
+    const later = rows.filter((s) => pending[s.key] !== undefined);
+    body = (
+      <>
+        {live.map(row)}
+        {later.length > 0 ? (
+          <div role="group" aria-labelledby={`${id}-pending`}>
+            <div className="space-y-0.5 px-5 pb-1 pt-4">
+              <h3
+                id={`${id}-pending`}
+                className="text-sm font-bold text-fg-strong"
+              >
+                Not in effect yet
+              </h3>
+              {pendingDescription ? (
+                <p className="text-sm text-fg-muted">{pendingDescription}</p>
+              ) : null}
+            </div>
+            <div className="divide-y divide-border">{later.map(row)}</div>
+          </div>
+        ) : null}
+      </>
+    );
   }
   return (
     <SettingsSection id={id} title={title} description={description}>
@@ -175,12 +207,15 @@ function ProductSettingRow({
   setting: s,
   linked,
   copy,
+  pendingNote,
   onConflict,
 }: {
   slug: string;
   setting: ProductSetting;
   linked: boolean;
   copy?: SettingCopy;
+  /** Set when the setting's behaviour has not shipped: the row is read-only. */
+  pendingNote?: string;
   onConflict: () => void;
 }): React.ReactElement {
   const [draft, setDraft] = React.useState<unknown>(s.value);
@@ -220,8 +255,11 @@ function ProductSettingRow({
     else setConfirming(true);
   };
 
+  const pendingRow = pendingNote !== undefined;
   let control: React.ReactNode;
-  if (s.spec.kind === "enum")
+  if (pendingRow)
+    control = <span className="text-sm text-fg-muted">{fmt(s.value)}</span>;
+  else if (s.spec.kind === "enum")
     control = (
       <Select
         id={controlId}
@@ -267,8 +305,16 @@ function ProductSettingRow({
     <>
       <SettingsRow
         label={s.label}
-        help={s.description}
-        htmlFor={controlId}
+        help={
+          pendingRow ? (
+            <>
+              {s.description} <span className="text-fg">{pendingNote}</span>
+            </>
+          ) : (
+            s.description
+          )
+        }
+        htmlFor={pendingRow ? undefined : controlId}
         source={
           <SourceBadge
             source={BADGE[s.source]}

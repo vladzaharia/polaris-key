@@ -22,8 +22,9 @@
 // `waitForSignIn(prompt, {confirm})`), never by default (SDK parity pass §3.12).
 //
 // `signInWithBrowser()` is device code opened in the system browser, the interim for native hosts
-// until I-15's redirect token route (it needs no new route; `/identity/auth/poll` is deprecated and
-// never used). `signOut()` deactivates and forgets the signed-in identity; `current()` reads it.
+// until I-15's redirect token route (it needs no new route: it polls `/identity/auth/device/poll`
+// like any device-code sign-in; the old `/identity/auth/poll` is retired and the Worker no longer
+// serves it). `signOut()` deactivates and forgets the signed-in identity; `current()` reads it.
 
 import { spawn } from "node:child_process";
 import { join } from "node:path";

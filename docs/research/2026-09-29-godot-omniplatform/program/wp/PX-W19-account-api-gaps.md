@@ -1,11 +1,11 @@
-# PX-W19 Account API gaps for Account v2 (PX-13): `POST /api/me/methods/<id>/primary` (step-up, an own verified email), passkey rename (`name` column, `PATCH /api/me/passkeys/<id>`, `name` in `PasskeyView`), and the products each email brought in on `GET /api/me/methods`
+# PX-W19 Account v2 gaps, Worker and controls (absorbs PX-25)
 
 | Field       | Value                                                                              |
 | ----------- | ---------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)            |
 | Size        | 0.4–0.8 engineer-weeks                                                             |
 | Depends on  | [PX-W12](PX-W12-sign-in-methods-api.md), [PX-13](PX-13-account-v2.md)              |
-| Unblocks    | [PX-25](PX-25-account-v2-gaps-ui.md)                                               |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                             |
 | Role        | `pkey-implementer`                                                                 |
 | Plan mode   | no                                                                                 |
 | Gates       | rule 10 (OpenAPI and `routeCoverage`); migration (`00XX_<name>.sql`); THREAT-MODEL |
@@ -17,6 +17,15 @@
 Filed on 2026-10-07 as "PX-W17". That id belongs to "Identity as a per-product service" (done),
 and PX-W18 is taken too, so this package takes the next free Worker-addition id, as README §8
 (phase PX) prescribes for later packages.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Absorbs PX-25: the Worker and the controls for Make primary, passkey Rename and the products each email brought in, in one package.
+
+- Title: was "Account API gaps for Account v2 (PX-13): `POST /api/me/methods/<id>/primary` (step-up, an own verified email), passkey rename (`name` column, `PATCH /api/me/passkeys/<id>`, `name` in `PasskeyView`), and the products each email brought in on `GET /api/me/methods`".
+- Absorbs PX-25: Same three account actions.
 
 ## Goal
 

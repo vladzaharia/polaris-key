@@ -17,7 +17,6 @@ import {
   type TierSummary,
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { fromSeconds, formatDate } from "../../../lib/format.js";
 import { compareVersions } from "../../../lib/version.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
@@ -25,24 +24,21 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 // ── Queries ────────────────────────────────────────────────────────────────────────────────────
 
 export function useLicenses(slug: string) {
-  return useQuery(
-    { queryKey: qk.licenses(slug), queryFn: () => api.licenses(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.licenses(slug),
+    queryFn: () => api.licenses(slug),
+  });
 }
 
 export function useTiers(slug: string) {
-  return useQuery(
-    { queryKey: qk.tiers(slug), queryFn: () => api.tiers(slug) },
-    queryClient,
-  );
+  return useQuery({ queryKey: qk.tiers(slug), queryFn: () => api.tiers(slug) });
 }
 
 export function useProfiles(slug: string) {
-  return useQuery(
-    { queryKey: qk.profiles(slug), queryFn: () => api.profiles(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.profiles(slug),
+    queryFn: () => api.profiles(slug),
+  });
 }
 
 /**
@@ -51,10 +47,10 @@ export function useProfiles(slug: string) {
  * error or a 404 (Release off) means there are none: the picker still offers the canonical ones.
  */
 export function useManualChannels(slug: string): string[] {
-  const res = useQuery(
-    { queryKey: qk.releases(slug), queryFn: () => api.releases(slug) },
-    queryClient,
-  );
+  const res = useQuery({
+    queryKey: qk.releases(slug),
+    queryFn: () => api.releases(slug),
+  });
   return React.useMemo(
     () => (res.data?.channels ?? []).map((c) => c.channel),
     [res.data],

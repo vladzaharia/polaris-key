@@ -1,16 +1,25 @@
-# ST-09 Console Platform settings area: Limits generated from code, Product defaults, Product policies matrix, feeds policy move
+# ST-09 Platform settings ordered by use
 
-| Field       | Value                                                                                                                                               |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 2: experience)                                                                                              |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                |
-| Depends on  | [ST-07](ST-07-settings-row-v2.md), [ST-02](ST-02-platform-inventory.md)                                                                             |
-| Unblocks    | [ST-11](ST-11-sql-only-settings.md), [ST-12](ST-12-api-only-settings.md), [ST-16](ST-16-platform-defaults.md), [ST-27](ST-27-alert-destinations.md) |
-| Role        | `pkey-implementer`                                                                                                                                  |
-| Plan mode   | no                                                                                                                                                  |
-| Gates       | console CSP parity; docsLinks                                                                                                                       |
-| Human input | none                                                                                                                                                |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                           |
+| Field       | Value                                                                                                                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 2: experience)                                                                                                                                                                            |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                            |
+| Depends on  | [ST-07](ST-07-settings-row-v2.md), [ST-02](ST-02-platform-inventory.md)                                                                                                                                                                         |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-31](I-31-platform-connections-setup-wizards.md), [ST-11](ST-11-sql-only-settings.md), [ST-12](ST-12-api-only-settings.md), [ST-16](ST-16-platform-defaults.md), [ST-27](ST-27-alert-destinations.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                              |
+| Plan mode   | no                                                                                                                                                                                                                                              |
+| Gates       | console CSP parity; docsLinks                                                                                                                                                                                                                   |
+| Human input | none                                                                                                                                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                       |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Platform settings ordered by use: Recently changed, Platform ready, Product defaults, Sign-in, Storefront and hosting, Email and alerts, Licensing, Jobs, Advanced. Rendered from the registry (no area silently dropped); replaces platformSettings.tsx (2,089 lines); feeds policy is the kill switch and size ceiling only; constants inventory goes to the docs. Absorbs UX-30 (Platform Status). Wave 7.
+
+- Title: was "Console Platform settings area: Limits generated from code, Product defaults, Product policies matrix, feeds policy move".
+- UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-30.
 
 ## Goal
 

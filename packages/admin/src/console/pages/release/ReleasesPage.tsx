@@ -15,7 +15,7 @@ import {
 import { announce } from "../../../ui/LiveRegion.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { Version } from "../../../ui/Version.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { Link, codecs, useSearchParam } from "../../router.js";
 import { r } from "../../routes.js";

@@ -49,7 +49,12 @@ import {
   type ManifestAppDeliverable,
   type ReleaseDescriptor,
 } from "@polaris-key/manifest";
-import type { Db, DbStatement, Env } from "../../core/platform.js";
+import {
+  sha256Hex,
+  type Db,
+  type DbStatement,
+  type Env,
+} from "../../core/platform.js";
 import { ErrorCode } from "../../core/errors.js";
 import {
   referencedKeys,
@@ -348,16 +353,6 @@ export async function readDescriptorMarkers(
     }
   }
   return out;
-}
-
-async function sha256Hex(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(buf)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 function publishedSeconds(iso: string | null | undefined): number | null {

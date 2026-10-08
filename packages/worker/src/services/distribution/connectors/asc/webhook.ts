@@ -39,7 +39,13 @@
 
 import type { ServiceContext } from "../../../../core/registry.js";
 import { errorResponse, json } from "../../../../core/errors.js";
-import { kvKey } from "../../../../core/platform.js";
+import {
+  constantTimeEqualBytes,
+  hexDecode,
+  hmacSha256,
+  importHmacKey,
+  kvKey,
+} from "../../../../core/platform.js";
 import { rateLimitOk } from "../../../../core/rateLimit.js";
 import { openOutletCredential } from "../../../../core/outletCredentials.js";
 import {
@@ -71,24 +77,10 @@ export const ASC_WEBHOOK_RATE = { limit: 60, windowSec: 60 } as const;
 
 const SIGNATURE = /^hmacsha256=([0-9a-fA-F]{64})$/;
 
-function hexToBytes(hex: string): Uint8Array {
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i++)
-    out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  return out;
-}
-
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
-  return diff === 0;
-}
-
 /** The presented MAC from `x-apple-signature`, or `null` when missing or not `hmacsha256=`. */
 export function parseSignature(header: string | null): Uint8Array | null {
   const m = header?.trim().match(SIGNATURE);
-  return m?.[1] ? hexToBytes(m[1]) : null;
+  return m?.[1] ? hexDecode(m[1]) : null;
 }
 
 /** HMAC-SHA256(secret, body) compared in constant time with the presented MAC. */
@@ -97,17 +89,8 @@ export async function signatureMatches(
   body: Uint8Array,
   presented: Uint8Array,
 ): Promise<boolean> {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const mac = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, body as BufferSource),
-  );
-  return timingSafeEqual(mac, presented);
+  const mac = await hmacSha256(await importHmacKey(secret), body);
+  return constantTimeEqualBytes(mac, presented);
 }
 
 const unauthorized = () =>

@@ -91,6 +91,7 @@
  * two read-only here (CI and, later, connectors write them), the inventory operator-owned.
  */
 
+import { parseJsonColumn } from "../../core/platform.js";
 import { ENTITLEMENT_PATTERN } from "@polaris-key/protocol/packs";
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
@@ -112,7 +113,6 @@ import {
   getOutlet,
   listOutlets,
   listTransports,
-  parseJsonColumn,
   setCapabilityOverride,
   transportSupported,
   type DistOutletRow,

@@ -18,7 +18,7 @@ import { mutate } from "../../data/mutations.js";
 import { r } from "../../routes.js";
 import { Link, navigate } from "../../router.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { CollectionTemplate } from "../../templates/Collection.js";
 import { confirmFor } from "../../../lib/actions.js";
 import { errorCopy } from "../../../lib/errorCopy.js";

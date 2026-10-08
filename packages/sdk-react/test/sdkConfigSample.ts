@@ -4,26 +4,27 @@
 // you ship (pkey sdk prints them). Release keys match release.releaseKeyFingerprints.
 import type { PolarisKeyProviderProps } from "@polaris-key/react";
 
+/** The trust pins. Bearer mode (a page on its own origin, or Tauri) verifies every document in
+ *  the page against them; a desktop host's `@polaris-key/node` client pins the same keys. */
+export const pinnedKeys = {
+  "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+};
+
+/** The pinned release keys, for a desktop host (`update.pinnedReleaseKeys`). */
+export const pinnedReleaseKeys = {
+  "acme-release-2026": "Z6FCkd1K7Om4lxUk4og_J0m73saH4BrrLk8igXzwcJM",
+};
+
 /**
- * The provider's product facts:
+ * The provider's product facts and trust pins:
  *
  *   <PolarisKeyProvider {...polarisConfig} version={APP_VERSION}>…</PolarisKeyProvider>
  */
 export const polarisConfig = {
   productSlug: "acme",
   baseUrl: "https://key.plrs.im",
+  trust: { pinnedKeys },
   expectServices: ["license", "config", "release", "update"],
 } satisfies Partial<PolarisKeyProviderProps>;
-
-/** The trust pins, for the desktop host's `@polaris-key/node` client (the bridge's main
- *  process verifies; the renderer never does). */
-export const pinnedKeys = {
-  "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
-};
-
-/** The pinned release keys, for the same host (`update.pinnedReleaseKeys`). */
-export const pinnedReleaseKeys = {
-  "acme-release-2026": "Z6FCkd1K7Om4lxUk4og_J0m73saH4BrrLk8igXzwcJM",
-};
 
 export default polarisConfig;

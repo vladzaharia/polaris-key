@@ -26,7 +26,7 @@ import { CodeBlock } from "../../../ui/CodeBlock.js";
 import { useCopy } from "../../../ui/CopyButton.js";
 import { CheckRow } from "../../components/CheckRow.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   IssueCiTokenFlow,
   PublisherDrawer,
@@ -81,6 +81,7 @@ export function FirstReleasePanel({
   linked,
   health,
 }: FirstReleasePanelProps): React.ReactElement {
+  const queryClient = useQueryClient();
   const publisher = useCiPublisher(slug);
   const tokens = useCiTokens(slug);
   const [editingPublisher, setEditingPublisher] = React.useState(false);

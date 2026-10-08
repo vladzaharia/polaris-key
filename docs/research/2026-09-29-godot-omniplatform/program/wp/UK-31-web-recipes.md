@@ -1,16 +1,27 @@
-# UK-31 Optional: recipes over the elements for SolidJS, Preact, Qwik, htmx and plain pages (a Solid signals adapter only if demanded)
+# UK-31 UI-kit recipes: Vue, Svelte, Angular, Solid, htmx, Tauri, your own design system
 
 | Field       | Value                                                                         |
 | ----------- | ----------------------------------------------------------------------------- |
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (could) |
-| Size        | 0.5–1 engineer-weeks                                                          |
+| Size        | 1–1.5 engineer-weeks                                                          |
 | Depends on  | [UK-04](UK-04-web-components.md)                                              |
-| Unblocks    | none                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                        |
 | Role        | `pkey-implementer`                                                            |
 | Plan mode   | no                                                                            |
 | Gates       | docs link check                                                               |
 | Human input | none                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                     |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Required: the one Recipes package (Vue, Svelte, Angular, Solid, Preact, htmx, Tauri, bring your own design system) over the elements, each with a sample built in CI (SP-36 layout).
+
+- Title: was "Optional: recipes over the elements for SolidJS, Preact, Qwik, htmx and plain pages (a Solid signals adapter only if demanded)".
+- Required now (was optional).
+- Estimate: 1–1.5 engineer-weeks (was 0.5–1).
+- Absorbs UK-22 (split; this package takes its share): Tailwind v4 preset to UK-04, the CSS-variable 'bring your own design system' recipe to UK-31; the shadcn registry route and the MUI, Mantine and Chakra theme objects are parked.
 
 ## Goal
 

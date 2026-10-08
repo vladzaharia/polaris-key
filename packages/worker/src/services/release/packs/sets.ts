@@ -15,10 +15,15 @@ import {
   type ManifestPackDeliverable,
 } from "@polaris-key/manifest";
 import { packSetId, variantKey } from "@polaris-key/client-core/packs";
-import type { Db, DbStatement } from "../../../core/platform.js";
+import {
+  parseJsonOr,
+  randomHex,
+  randomId,
+  type Db,
+  type DbStatement,
+} from "../../../core/platform.js";
 import { parseIgnoreTags, parseManualChannels } from "../channels.js";
 import { appendAudit } from "../../../core/data.js";
-import { randomId } from "../../../core/platform.js";
 import { getReleaseConfig, type ReleaseConfigRow } from "../config.js";
 import type { ReleaseChannelPolicyRow } from "../model.js";
 import {
@@ -79,15 +84,6 @@ export interface ResolutionState {
   generation: number;
 }
 
-function jsonOr<T>(text: string | null | undefined, fallback: T): T {
-  if (!text) return fallback;
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return fallback;
-  }
-}
-
 function asStringRecord(v: unknown): Record<string, string> | null {
   if (!v || typeof v !== "object" || Array.isArray(v)) return null;
   const out: Record<string, string> = {};
@@ -102,9 +98,9 @@ export function packVariantFacts(row: {
   requires_json: string | null;
   conflicts_json: string | null;
 }): PackVariantFacts {
-  const variant = jsonOr<Record<string, string>>(row.variant_json, {});
-  const requires = jsonOr<Record<string, unknown>>(row.requires_json, {});
-  const conflicts = jsonOr<unknown>(row.conflicts_json, []);
+  const variant = parseJsonOr<Record<string, string>>(row.variant_json, {});
+  const requires = parseJsonOr<Record<string, unknown>>(row.requires_json, {});
+  const conflicts = parseJsonOr<unknown>(row.conflicts_json, []);
   return {
     variantKey: variantKey(
       variant && typeof variant === "object" ? variant : {},
@@ -176,13 +172,13 @@ export async function loadResolutionState(
     appReleases.set(r.release_id, {
       contentApi: r.content_api ?? null,
       builds: (app.buildsByRelease.get(r.release_id) ?? []).map((b) => {
-        const req = jsonOr<Record<string, unknown>>(b.requires_json, {});
+        const req = parseJsonOr<Record<string, unknown>>(b.requires_json, {});
         return {
           platform: b.platform,
           engine: typeof req?.engine === "string" ? req.engine : null,
         };
       }),
-      packChannels: asStringRecord(jsonOr(r.pack_channels_json, null)),
+      packChannels: asStringRecord(parseJsonOr(r.pack_channels_json, null)),
       holds: holdsBy.get(r.release_id) ?? [],
     });
   const minSupported = (
@@ -637,11 +633,6 @@ export type StoreOutcome =
       message: string;
     };
 
-function newToken(): string {
-  const b = crypto.getRandomValues(new Uint8Array(12));
-  return [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
-}
-
 /**
  * Write `resolved` if the generation it was resolved from is still current; true when written.
  * A concurrent trigger that moved the generation first wins, and this write is a no-op.
@@ -652,7 +643,7 @@ export async function storeResolution(
   resolved: ResolvedForStore,
   now: number,
 ): Promise<boolean> {
-  const token = newToken();
+  const token = randomHex(12);
   const statements = setStatements(product, resolved.sets, now, {
     generation: resolved.generation,
     token,
@@ -693,7 +684,7 @@ export function invalidateSetsStatements(
              WHERE ${after}${RESOLVES_SETS_SQL}
             ON CONFLICT(product) DO UPDATE SET generation = release_set_state.generation + 1,
               token = excluded.token, modified_at = excluded.modified_at`,
-      params: [product, newToken(), now, product, product],
+      params: [product, randomHex(12), now, product, product],
     },
     {
       sql: `DELETE FROM release_sets WHERE ${opts.onlyAfterAChange ? "changes() > 0 AND " : ""}product = ?`,
@@ -862,8 +853,9 @@ export async function readStoredSets(
     engine: r.engine,
     variant: r.variant,
     packSetId: r.pack_set_id,
-    packs: jsonOr<{ packs?: StoredSet["packs"] }>(r.set_json, {}).packs ?? [],
-    unsatisfied: jsonOr<Unsatisfied[]>(r.unsatisfied_json, []),
+    packs:
+      parseJsonOr<{ packs?: StoredSet["packs"] }>(r.set_json, {}).packs ?? [],
+    unsatisfied: parseJsonOr<Unsatisfied[]>(r.unsatisfied_json, []),
     resolvedAt: r.resolved_at,
   }));
 }

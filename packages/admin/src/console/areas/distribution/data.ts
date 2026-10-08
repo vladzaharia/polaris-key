@@ -23,7 +23,6 @@ import {
 } from "../../../api.js";
 import type { ProductCatalog } from "@polaris-key/catalog";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { navigate } from "../../router.js";
 import { codecs, type QueryCodec } from "../../routes.js";
 
@@ -99,85 +98,70 @@ export function useMatrix(
   deliverable: string,
   limit: number,
 ): UseQueryResult<DistributionMatrix> {
-  return useQuery(
-    {
-      queryKey: qk.matrix(slug, `${deliverable}:${limit}`),
-      queryFn: () => fetchMatrix(slug, deliverable, limit),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.matrix(slug, `${deliverable}:${limit}`),
+    queryFn: () => fetchMatrix(slug, deliverable, limit),
+  });
 }
 
 export function useRollouts(slug: string): UseQueryResult<RolloutsResponse> {
-  return useQuery(
-    { queryKey: qk.rollouts(slug), queryFn: () => api.rollouts(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.rollouts(slug),
+    queryFn: () => api.rollouts(slug),
+  });
 }
 
 export function useHealth(
   slug: string,
   windowHours: number,
 ): UseQueryResult<UpdateHealthResponse> {
-  return useQuery(
-    {
-      queryKey: qk.health(slug, windowHours),
-      queryFn: () => api.updateHealth(slug, windowHours),
-      // A window change keeps the last reading on screen while the next loads.
-      placeholderData: (prev) => prev,
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.health(slug, windowHours),
+    queryFn: () => api.updateHealth(slug, windowHours),
+    // A window change keeps the last reading on screen while the next loads.
+    placeholderData: (prev) => prev,
+  });
 }
 
 export function useAccess(slug: string): UseQueryResult<DeliveryAccess> {
-  return useQuery(
-    { queryKey: qk.access(slug), queryFn: () => api.deliveryAccess(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.access(slug),
+    queryFn: () => api.deliveryAccess(slug),
+  });
 }
 
 export function useCredentials(
   slug: string,
 ): UseQueryResult<OutletCredentialsResponse> {
-  return useQuery(
-    {
-      queryKey: qk.credentials(slug),
-      queryFn: () => api.outletCredentials(slug),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.credentials(slug),
+    queryFn: () => api.outletCredentials(slug),
+  });
 }
 
 export function useOutlets(slug: string): UseQueryResult<OutletsResponse> {
-  return useQuery(
-    {
-      queryKey: qk.outlets(slug),
-      queryFn: () => api.distributionOutlets(slug),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.outlets(slug),
+    queryFn: () => api.distributionOutlets(slug),
+  });
 }
 
 export function useDistributionKeys(
   slug: string,
 ): UseQueryResult<DistributionKeysResponse> {
-  return useQuery(
-    {
-      queryKey: qk.distributionKeys(slug),
-      queryFn: () => api.distributionKeys(slug),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.distributionKeys(slug),
+    queryFn: () => api.distributionKeys(slug),
+  });
 }
 
 export function useConnectors(
   slug: string,
 ): UseQueryResult<ConnectorsResponse> {
-  return useQuery(
-    { queryKey: qk.connectors(slug), queryFn: () => api.connectors(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.connectors(slug),
+    queryFn: () => api.connectors(slug),
+  });
 }
 
 /** One connector read (A-17g), by its path under the connector and its query. */
@@ -202,35 +186,32 @@ export function useConnectorRead<T>(
   opts: { enabled?: boolean; poll?: number | false } = {},
 ): UseQueryResult<T> {
   const qs = new URLSearchParams(query).toString();
-  return useQuery(
-    {
-      queryKey: qk.connectorRead(slug, kind, path, qs),
-      queryFn: () => fetchConnectorRead<T>(slug, kind, path, query),
-      enabled: opts.enabled ?? true,
-      refetchInterval: opts.poll ?? false,
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.connectorRead(slug, kind, path, qs),
+    queryFn: () => fetchConnectorRead<T>(slug, kind, path, query),
+    enabled: opts.enabled ?? true,
+    refetchInterval: opts.poll ?? false,
+  });
 }
 
 /** Release's deliverables (the same fetcher as the Release pages). */
 export function useDeliverables(
   slug: string,
 ): UseQueryResult<DeliverablesResponse> {
-  return useQuery(
-    { queryKey: qk.deliverables(slug), queryFn: () => api.deliverables(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.deliverables(slug),
+    queryFn: () => api.deliverables(slug),
+  });
 }
 
 /** Release's store: releases and channel pointers (the same fetcher as the Release pages). */
 export function useReleaseStore(
   slug: string,
 ): UseQueryResult<ReleaseStoreResponse> {
-  return useQuery(
-    { queryKey: qk.releases(slug), queryFn: () => api.releases(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.releases(slug),
+    queryFn: () => api.releases(slug),
+  });
 }
 
 /** The config catalog (the same fetcher as the Config pages): the pack gates' flags. */
@@ -238,21 +219,18 @@ export function useCatalog(
   slug: string,
   enabled = true,
 ): UseQueryResult<ProductCatalog> {
-  return useQuery(
-    {
-      queryKey: qk.catalog(slug),
-      queryFn: () => api.schema(slug),
-      enabled,
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.catalog(slug),
+    queryFn: () => api.schema(slug),
+    enabled,
+  });
 }
 
 export function useFeed(slug: string): UseQueryResult<UpdateSettings> {
-  return useQuery(
-    { queryKey: qk.feed(slug), queryFn: () => api.updateSettings(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.feed(slug),
+    queryFn: () => api.updateSettings(slug),
+  });
 }
 
 /** The epoch-ms instant a query last answered (for the T1 freshness line). */

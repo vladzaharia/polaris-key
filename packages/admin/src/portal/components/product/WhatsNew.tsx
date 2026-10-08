@@ -44,7 +44,7 @@ export function WhatsNew({
         .join(" · ")}
     >
       {notes && notes.summary.length ? (
-        <div data-notes="" className="text-[0.9375rem] text-fg">
+        <div data-notes="" className="text-md text-fg">
           <div className="space-y-3">
             <Markdown blocks={notes.summary} />
           </div>
@@ -80,7 +80,7 @@ export function WhatsNew({
       {earlier.length ? (
         <div className="mt-6">
           <div className="flex items-center justify-between border-b border-border pb-2">
-            <h3 className="text-[0.9375rem] font-bold text-fg-strong">
+            <h3 className="text-md font-bold text-fg-strong">
               Earlier versions
             </h3>
             {earlier.length > 3 ? (

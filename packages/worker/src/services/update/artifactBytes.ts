@@ -31,8 +31,7 @@ import type {
   CatalogSourceArtifact,
   ReleaseCatalog,
 } from "../../core/hooks.js";
-import type { Db, Env } from "../../core/platform.js";
-import { kvKey } from "../../core/platform.js";
+import { kvKey, sha256Hex, type Db, type Env } from "../../core/platform.js";
 import { hasRef, parseKey } from "../../core/blobs.js";
 import { verifyEd25519OverBytes } from "../release/sparkle.js";
 
@@ -54,12 +53,6 @@ const SHA1_MEMO_TTL_SECONDS = 365 * 86_400;
 const SHA1_NEGATIVE_TTL_SECONDS = 86_400;
 
 const LOCATION_RANK: Record<string, number> = { r2: 0, github: 1 };
-
-function hex(bytes: ArrayBuffer | Uint8Array): string {
-  return [...new Uint8Array(bytes)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 /**
  * Open one artifact's stored bytes, or `null` when no readable location has them. The stream is
@@ -177,8 +170,8 @@ export async function readSmallArtifact(
     out.set(p, at);
     at += p.byteLength;
   }
-  const digest = await crypto.subtle.digest("SHA-256", out);
-  return hex(digest) === artifact.sha256 && total === artifact.sizeBytes
+  return (await sha256Hex(out)) === artifact.sha256 &&
+    total === artifact.sizeBytes
     ? out
     : null;
 }

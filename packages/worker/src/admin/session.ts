@@ -20,6 +20,9 @@
  */
 
 import type { Env } from "../env.js";
+import { importHmacKey } from "../platform/hash.js";
+import { signHmacToken, verifyHmacToken } from "../platform/hmacToken.js";
+import { randomToken } from "../platform/random.js";
 
 /**
  * Cookie name for the admin session.
@@ -83,35 +86,9 @@ export function isSteppedUp(session: AdminSession, now: number): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// base64url + HMAC (kept local; identical scheme to the rest of the worker).
+// Key + realm tag. The token format itself is `platform/hmacToken.ts` (shared with the portal
+// session; P0-15), and it is byte-for-byte the format this file used to implement locally.
 // ---------------------------------------------------------------------------
-
-function base64UrlEncode(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function base64UrlEncodeString(s: string): string {
-  return base64UrlEncode(new TextEncoder().encode(s));
-}
-
-function base64UrlDecodeToString(s: string): string {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
-  const bin = atob(pad);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return new TextDecoder().decode(out);
-}
-
-/** Constant-time-ish comparison of two equal-length strings. */
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
 
 /**
  * The HMAC key for session signing. Uses ONLY `ADMIN_SESSION_SECRET` and fails closed when
@@ -121,19 +98,7 @@ function safeEqual(a: string, b: string): boolean {
 async function sessionKey(env: Env): Promise<CryptoKey> {
   const material = env.ADMIN_SESSION_SECRET;
   if (!material) throw new Error("ADMIN_SESSION_SECRET is required");
-  return crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(material),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"],
-  );
-}
-
-function randomToken(byteLength: number): string {
-  const buf = new Uint8Array(byteLength);
-  crypto.getRandomValues(buf);
-  return base64UrlEncode(buf);
+  return importHmacKey(material);
 }
 
 /**
@@ -153,11 +118,6 @@ function randomToken(byteLength: number): string {
  * `.v1` allows a future rotation of the scheme itself.
  */
 const ADMIN_SESSION_DOMAIN = "pkey.admin.v1|";
-
-/** The exact bytes that get HMAC'd: the realm tag followed by the encoded body. */
-function signingInput(body: string): Uint8Array {
-  return new TextEncoder().encode(ADMIN_SESSION_DOMAIN + body);
-}
 
 // ---------------------------------------------------------------------------
 // Issue / verify
@@ -192,10 +152,11 @@ export async function issueSession(
         ? identity.authTime
         : now,
   };
-  const body = base64UrlEncodeString(JSON.stringify(session));
-  const key = await sessionKey(env);
-  const sig = await crypto.subtle.sign("HMAC", key, signingInput(body));
-  const token = `${body}.${base64UrlEncode(new Uint8Array(sig))}`;
+  const token = await signHmacToken(
+    await sessionKey(env),
+    ADMIN_SESSION_DOMAIN,
+    session,
+  );
   return { token, session };
 }
 
@@ -205,28 +166,11 @@ export async function verifySession(
   token: string | null,
   now: number,
 ): Promise<AdminSession | null> {
-  if (!token) return null;
-  const dot = token.lastIndexOf(".");
-  if (dot <= 0) return null;
-  const body = token.slice(0, dot);
-  const sig = token.slice(dot + 1);
-
-  const key = await sessionKey(env);
-  let ok: boolean;
-  try {
-    const expected = await crypto.subtle.sign("HMAC", key, signingInput(body));
-    ok = safeEqual(sig, base64UrlEncode(new Uint8Array(expected)));
-  } catch {
-    return null;
-  }
-  if (!ok) return null;
-
-  let session: AdminSession;
-  try {
-    session = JSON.parse(base64UrlDecodeToString(body)) as AdminSession;
-  } catch {
-    return null;
-  }
+  const payload = await verifyHmacToken(token, ADMIN_SESSION_DOMAIN, () =>
+    sessionKey(env),
+  );
+  if (payload === undefined) return null;
+  const session = payload as AdminSession;
   if (typeof session.exp !== "number" || session.exp <= now) return null;
   if (!session.sub || !Array.isArray(session.groups)) return null;
   return session;

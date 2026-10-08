@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 4: manifest round trip)                             |
+| Phase       | ST: Settings, access control and console shell (phase 4: manifest round trip)               |
 | Size        | 0.4–0.6 engineer-weeks                                                                      |
 | Depends on  | [ST-19](ST-19-manifest-cleanup.md)                                                          |
 | Unblocks    | [ST-25](ST-25-legacy-retirement.md)                                                         |

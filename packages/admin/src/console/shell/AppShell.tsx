@@ -2,7 +2,6 @@ import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { type Me } from "../../api.js";
-import { AdminProvider } from "../../context.js";
 import { PageSkeleton, type SkeletonTemplate } from "../../ui/Skeleton.js";
 import { TooltipProvider } from "../../ui/Tooltip.js";
 import { usePlatformVersion, useProduct, useProducts } from "../data/hooks.js";
@@ -36,17 +35,15 @@ import { prefetchSection, sectionPages } from "../pages/index.js";
 import { Home } from "../pages/global/Home.js";
 import { ProductNew } from "../pages/global/ProductNew.js";
 import { Products } from "../pages/global/Products.js";
-import { LiveRegion, type ProductLike } from "./bits.js";
-import {
-  CommandPalette,
-  navigationSource,
-  productSource,
-} from "./CommandPalette.js";
-import { LegacyPage } from "./LegacyPage.js";
+import { LiveRegion } from "../../ui/LiveRegion.js";
+import type { ProductLike } from "./bits.js";
+import { CommandPalette } from "./CommandPalette.js";
+import { navigationSource, productSource } from "./palette/navigation.js";
 import { PageErrorBoundary } from "./PageErrorBoundary.js";
 import { ShortcutSheet } from "./ShortcutSheet.js";
 import { Sidebar, useNavCollapse } from "./Sidebar.js";
 import {
+  MovedPage,
   NotFoundPage,
   ServiceOffPage,
   UnknownProductPage,
@@ -65,7 +62,8 @@ export const NAV_BUTTON_ID = "console-nav-button";
 
 /** The title of the page a route shows, without the product (ADMIN.md §2.6 `document.title`). */
 export function pageTitle(route: Route): string {
-  if (route.kind === "not-found") return "Page not found";
+  if (route.kind === "not-found")
+    return route.moved ? "Page moved" : "Page not found";
   const page = pageOf(route.page);
   if (route.child && page.record?.child) {
     return `${page.record.child.noun} ${route.child.ids[route.child.ids.length - 1]}`;
@@ -196,6 +194,10 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const accent = page ? accentOf(page) : "core";
   const productPageId: ProductPageId | null =
     route.kind === "product" ? route.page : null;
+  // The page the product switcher keeps. A not-found page under a known product keeps the
+  // product's chrome (switcher and sidebar); switching from it lands on the other's Overview.
+  const switcherPage: ProductPageId | null =
+    productPageId ?? (slug !== null ? "overview" : null);
 
   // The section rides <html> too, so what Radix portals out of this tree (dialogs, menus) takes
   // the section's accent, and the header mark's bit follows the route (BRAND.md §6).
@@ -224,6 +226,12 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   }, []);
   const [navOpen, setNavOpen] = React.useState(false);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  // What the palette opens already searching for: a not-found page's dead segment, else nothing.
+  const [paletteQuery, setPaletteQuery] = React.useState("");
+  const openPalette = React.useCallback((query = "") => {
+    setPaletteQuery(query);
+    setPaletteOpen(true);
+  }, []);
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [switcherOpen, setSwitcherOpen] = React.useState(false);
   const { expanded, toggle } = useNavCollapse(group);
@@ -248,19 +256,22 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   const announcement = useRouteFocus(key, pageTitle(route));
 
   useGlobalShortcuts({
-    openPalette: () => setPaletteOpen(true),
-    togglePalette: () => setPaletteOpen((o) => !o),
+    openPalette: () => openPalette(),
+    togglePalette: () => {
+      setPaletteQuery("");
+      setPaletteOpen((o) => !o);
+    },
     openSheet: () => setSheetOpen(true),
     toggleSidebar: toggleRail,
     go: (k) => {
       if (k === "h") return navigate(r.home());
       if (k === "p") {
-        if (slug && productPageId) setSwitcherOpen(true);
+        if (slug && switcherPage) setSwitcherOpen(true);
         else navigate(r.products());
         return true;
       }
       if (!slug) return false;
-      const target = PRODUCT_PAGES.find((p) => p.shortcut === k && p.ready);
+      const target = PRODUCT_PAGES.find((p) => p.shortcut === k);
       if (!target || !isPageEnabled(target.page as ProductPageId, services))
         return false;
       return navigate(productPage(slug, target.page as ProductPageId));
@@ -291,19 +302,13 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <AdminProvider
-        value={{
-          me,
-          product: slug ?? "",
-          setProduct: (s) => navigate(r.overview(s)),
-        }}
-      >
+      <>
         <div
           data-service={accent}
           style={
             { "--sidebar-w": rail ? "3.5rem" : "15rem" } as React.CSSProperties
           }
-          className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-background text-foreground lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
+          className="relative grid h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-surface-page text-fg lg:grid-cols-[var(--sidebar-w)_minmax(0,1fr)]"
         >
           <a
             href="#content"
@@ -321,11 +326,11 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
             section={accent}
             product={slug ? product : null}
             products={productList}
-            page={productPageId}
+            page={switcherPage}
             switcherOpen={switcherOpen}
             onSwitcherOpenChange={setSwitcherOpen}
             docsHref={page ? docsFor(page) : "/docs/admin/"}
-            onOpenPalette={() => setPaletteOpen(true)}
+            onOpenPalette={() => openPalette()}
             onOpenNav={() => setNavOpen(true)}
             onShortcuts={() => setSheetOpen(true)}
             onSignOut={signOut}
@@ -355,7 +360,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 knownProduct={knownProduct}
                 services={services}
                 productName={productName ?? routeSlug ?? ""}
-                onOpenPalette={() => setPaletteOpen(true)}
+                onOpenPalette={openPalette}
               />
             </div>
           </main>
@@ -371,7 +376,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 e.preventDefault();
                 document.getElementById(NAV_BUTTON_ID)?.focus();
               }}
-              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-pk-lg animate-pk-in pk-nav-drawer lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-elevation-3 animate-pk-in pk-nav-drawer lg:hidden"
             >
               <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
                 <DialogPrimitive.Title className="text-sm font-bold text-fg-strong">
@@ -394,13 +399,15 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
         </DialogPrimitive.Root>
 
         <CommandPalette
+          me={me}
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
+          initialQuery={paletteQuery}
           items={paletteItems}
         />
         <ShortcutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
         <LiveRegion message={announcement} id="route-announcer" />
-      </AdminProvider>
+      </>
     </TooltipProvider>
   );
 }
@@ -415,7 +422,6 @@ export function routeSkeleton(route: Route): SkeletonTemplate {
   if (route.id !== undefined || route.child) return "record";
   if (
     route.page === "overview" ||
-    route.page === "platform" ||
     route.page === "platform-deployment" ||
     route.page === "platform-operations"
   )
@@ -472,11 +478,22 @@ function PageContent({
   knownProduct: boolean;
   services: ServiceState;
   productName: string;
-  onOpenPalette: () => void;
+  onOpenPalette: (query?: string) => void;
 }): React.ReactElement {
   if (route.kind === "not-found") {
     if (route.slug && !me.products.some((p) => p.slug === route.slug)) {
       return <UnknownProductPage slug={route.slug} products={me.products} />;
+    }
+    if (route.slug && route.moved) {
+      return (
+        <MovedPage
+          path={route.path}
+          slug={route.slug}
+          moved={route.moved}
+          query={route.query}
+          onOpenPalette={onOpenPalette}
+        />
+      );
     }
     return (
       <NotFoundPage
@@ -518,9 +535,7 @@ function PageContent({
   return (
     <React.Suspense fallback={<PageLoading route={route} />}>
       <PageErrorBoundary>
-        <LegacyPage>
-          <Pages route={route} />
-        </LegacyPage>
+        <Pages route={route} />
       </PageErrorBoundary>
     </React.Suspense>
   );

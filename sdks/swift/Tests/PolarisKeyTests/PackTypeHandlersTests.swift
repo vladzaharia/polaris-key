@@ -1,7 +1,7 @@
 // @pkey-feature packs.type.l10n.table packs.type.data.json packs.type.ml.model packs.handlers
 //
 // P4-16: the v3 pack-type handlers. The shared cases (`packages/client-core/test/fixtures/
-// pack-type-cases.json`, read from the checkout through `#filePath`) run through each handler's
+// pack-type-cases.json`, read from the checkout through `CorpusLocator`) run through each handler's
 // check and must reach client-core's verdicts; the engine tests drive each type through the
 // pipeline against the fake byte server: stage, verify and activate, rollback, uninstall (a
 // collected older release), one rejection each, and a game-registered `custom.dialogue`.
@@ -13,9 +13,7 @@ import XCTest
 
 private enum PackTypeCases {
     static var url: URL {
-        var u = URL(fileURLWithPath: #filePath)
-        for _ in 0..<5 { u.deleteLastPathComponent() }
-        return u.appendingPathComponent("packages/client-core/test/fixtures/pack-type-cases.json")
+        CorpusLocator.file("packages/client-core/test/fixtures/pack-type-cases.json")
     }
 
     static func load() throws -> [String: JSONValue] {

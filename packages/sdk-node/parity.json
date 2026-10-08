@@ -136,7 +136,7 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12)."
+      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4). The interim is identity.signInWithBrowser(): device code opened in the system browser and polled at /identity/auth/device/poll like any device-code sign-in (SDK parity pass §3.12); the old /identity/auth/poll is retired and the Worker no longer serves it."
     },
     "identity.devicecode": {
       "status": "implemented"

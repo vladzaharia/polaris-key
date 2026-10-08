@@ -1,16 +1,26 @@
-# ST-25 Legacy settings retirement: `artifacts_access`, `products.branding_json`, bespoke route aliases, access-mode copy; coverage allow-list empty
+# ST-25 Legacy settings retirement (widened)
 
 | Field       | Value                                                                                                                                           |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 5: governance and environments)                                                                         |
+| Phase       | ST: Settings, access control and console shell (phase 5: governance and environments)                                                           |
 | Size        | 0.4–0.55 engineer-weeks                                                                                                                         |
 | Depends on  | [ST-11](ST-11-sql-only-settings.md), [ST-14](ST-14-portal-settings.md), [ST-17](ST-17-resync-dry-run.md), [ST-19b](ST-19b-manifest-settings.md) |
-| Unblocks    | none                                                                                                                                            |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                          |
 | Role        | `pkey-implementer`                                                                                                                              |
 | Plan mode   | no                                                                                                                                              |
 | Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; rule 10 (OpenAPI + `routeCoverage`)                                        |
 | Human input | none                                                                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                       |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Widened, driven by P0-24's migration ledger: also products.admin_group, core.adminGroup and manifest product.adminGroup (after ST-32's conversion), legacyDefault (after LX-16), the \*\_source markers, the retired licensing keys (LX-40), products.branding_json and the portal tintColor read, and the bespoke aliases ST-05b made adapters; PENDING emptied; each removal follows its P0-24 calendar window.
+
+- Title: was "Legacy settings retirement: `artifacts_access`, `products.branding_json`, bespoke route aliases, access-mode copy; coverage allow-list empty".
+- Owner 2026-10-07: no compatibility window. What this package replaces (a route, mode, shape, Action input or CLI form) is removed in the same release; the one exception is a path that native app binaries already on end-user machines call (DJDL's desktop builds, the permanent alias routes), removed once DJDL has shipped a build on 0.9 (`tracks.md` rule 6).
+- Owner 2026-10-07: manifest fields are removed, not deprecated. A removed field is a validator error that names its replacement, with no rule-9 warning period; this package migrates the in-repo manifests (the repo-root `.pkey/` and `products/djdl/*`) in the same change, adopters' repos (DJDL's, Diceroll) are owner steps, and `pkey migrate` is used only where this package already plans it.
 
 ## Goal
 

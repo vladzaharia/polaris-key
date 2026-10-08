@@ -12,6 +12,17 @@
 | Human input | Steamworks partner account (P5-08's test app, build account and test branch); test devices (a Steam client on macOS, Windows and Linux) |
 | Repo        | `vladzaharia/polaris-key`                                                                                                               |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive when such a product ships; P4-33's auto then picks it. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Steam depot transport for non-Godot desktop SDKs. Revive when such a product ships; P4-33's auto then picks it.
+
+- Optional now (was required).
+
 ## Goal
 
 A desktop app built with Node, Python, Swift (macOS) or Kotlin (JVM) takes a pack from an installed Steam depot or DLC: the `steam` transport locates the install directory, checks DLC ownership where the pack is gated, verifies the pack marker exactly as Godot's `transport_steam.gd` does, and hands the payload to the pack engine.

@@ -1,16 +1,27 @@
 # ST-21 Capability gate `can()` on every settings write; `useCan` reads capabilities
 
-| Field       | Value                                                                   |
-| ----------- | ----------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 5: governance and environments) |
-| Size        | 0.5–0.7 engineer-weeks                                                  |
-| Depends on  | [ST-05](ST-05-settings-admin-api.md)                                    |
-| Unblocks    | [ST-22](ST-22-per-product-roles.md), [CM-03](CM-03-merchants.md)        |
-| Role        | `pkey-implementer`                                                      |
-| Plan mode   | no                                                                      |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                       |
-| Human input | none                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                               |
+| Field       | Value                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 5: governance and environments) |
+| Size        | 0.5–0.7 engineer-weeks                                                                |
+| Depends on  | none                                                                                  |
+| Unblocks    | none                                                                                  |
+| Role        | `pkey-implementer`                                                                    |
+| Plan mode   | no                                                                                    |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                                     |
+| Human input | none                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                             |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [ST-29](ST-29-admin-route-table-can-usecan.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [ST-29](ST-29-admin-route-table-can-usecan.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> can() belongs on every admin route, not only settings writes; the registry capability becomes the settings routes' capability.
+
+- Dependencies cleared on closing (they were ST-05), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

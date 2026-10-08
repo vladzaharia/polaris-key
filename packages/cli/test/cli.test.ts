@@ -398,6 +398,14 @@ describe("@polaris-key/cli", () => {
       ),
     ).toBe(0);
     expect(sdk.out()).toContain('productSlug: "djdl"');
+    expect(sdk.out()).toContain('baseUrl: "https://key.example"');
+  });
+
+  it("points the Node snippet at the production origin when no --base-url is given", async () => {
+    const sdk = capture();
+    expect(await runPkey(["sdk", "--product", "djdl"], sdk)).toBe(0);
+    expect(sdk.out()).toContain('baseUrl: "https://key.plrs.im"');
+    expect(sdk.out()).not.toContain("example.com");
   });
 
   it("accepts JSON product manifests", async () => {

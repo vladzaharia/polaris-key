@@ -19,7 +19,12 @@
  * request for a release whose signature fails would re-download and re-hash the whole DMG.
  */
 
-import { kvKey, type Env } from "../../core/platform.js";
+import {
+  base64DecodeEitherAlphabet,
+  kvKey,
+  sha256Hex,
+  type Env,
+} from "../../core/platform.js";
 import type { FetchImpl } from "./githubApp.js";
 import {
   ed25519SignaturePrecheck,
@@ -49,13 +54,12 @@ export const MAX_VERIFY_BYTES = 2 * 1024 * 1024 * 1024;
 
 /** Decode base64 (accepting the base64url alphabet) to bytes; `null` on malformed input. */
 function decodeBase64(value: string): Uint8Array | null {
-  const normalized = value.trim().replace(/-/g, "+").replace(/_/g, "/");
-  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)) return null;
+  // Either alphabet, padding complete or absent, no whitespace inside: `atob` with nothing
+  // added, so a partially padded value is refused rather than repaired.
+  const normalized = value.trim();
+  if (!/^[A-Za-z0-9+/_-]*={0,2}$/.test(normalized)) return null;
   try {
-    const bin = atob(normalized);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
+    return base64DecodeEitherAlphabet(normalized);
   } catch {
     return null;
   }
@@ -68,13 +72,7 @@ async function cacheKey(
   signature: string,
   publicKey: string,
 ): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(`${subject}\u0000${signature}\u0000${publicKey}`),
-  );
-  const hex = [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const hex = await sha256Hex(`${subject}\u0000${signature}\u0000${publicKey}`);
   return kvKey(product, "sparkle-sig", hex);
 }
 

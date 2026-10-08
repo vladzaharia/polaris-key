@@ -1,16 +1,16 @@
 # UK-08 SwiftUI kit for macOS 26: Settings scene pane, `CommandGroup`s, inset sheets, a SwiftUI Sparkle `SPUUserDriver`, the inactive-window button fix, macOS 15 fallback
 
-| Field       | Value                                                                        |
-| ----------- | ---------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must) |
-| Size        | 2–3 engineer-weeks                                                           |
-| Depends on  | [UK-07](UK-07-swiftui-ios.md)                                                |
-| Unblocks    | [UK-24](UK-24-appkit-kit.md), [UK-41](UK-41-must-tier-closeout.md)           |
-| Role        | `pkey-sdk-porter`                                                            |
-| Plan mode   | no                                                                           |
-| Gates       | Mac snapshot baselines on macOS 26 and 15; the SwiftUI lint equivalents      |
-| Human input | none                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                    |
+| Field       | Value                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                               |
+| Size        | 2–3 engineer-weeks                                                                                         |
+| Depends on  | [UK-07](UK-07-swiftui-ios.md)                                                                              |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-24](UK-24-appkit-kit.md), [UK-41](UK-41-must-tier-closeout.md) |
+| Role        | `pkey-sdk-porter`                                                                                          |
+| Plan mode   | no                                                                                                         |
+| Gates       | Mac snapshot baselines on macOS 26 and 15; the SwiftUI lint equivalents                                    |
+| Human input | none                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                  |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -36,6 +36,12 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the Welcome pane as the inline form (frames 23, 24, 35, 36, 37, 41), one inset sheet for `presentation: .sheet` (frames 38, 18), **Sign In…** in the account menu opening the sheet, `confirmationDialog` for Replace, and the SwiftUI motion of SIGN-IN.md §3.18. Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Adds the AppKit hosting recipe and the Sparkle bridge (from UK-24); the Sparkle user driver reads P2-11's config.
 
 ## Goal
 
