@@ -405,7 +405,9 @@ shape it is minted (1–255 characters, no whitespace, control or format charact
 value. `packages/cli/test/untrusted.test.ts` drives `pkey` and the Action against a Worker that
 answers with all of these. Residual: a step that runs `pkey` in a container started without
 `GITHUB_ACTIONS` still has its output read by the runner, and there only the control stripping
-applies.
+applies. The defusing knows GitHub's `::` and `##[` syntax only: Azure Pipelines `##vso[…]`
+(including `task.setvariable`) and TeamCity `##teamcity[…]` lines pass through unchanged, and the
+vendor tools `pkey storefront` runs with inherited stdio (`storefronts/run.ts`) bypass the guard.
 
 **Residual risk: an existence oracle on other tenants' bytes.** `blob_objects` is shared, and
 `promote` short-circuits a target that already exists (`alreadyStored`: no copy). The submit

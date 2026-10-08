@@ -600,3 +600,35 @@ describe("the Action against a hostile Worker", () => {
     expectInert(`${io.out()}${io.err()}`, true);
   });
 });
+
+describe("judgeContentInterface (the content-interface note quotes server text)", () => {
+  it("strips every control character from the previous release id and content API", async () => {
+    const { judgeContentInterface } = await import("../src/saveCompat.js");
+    const hostile = "v1\u001b]52;c;aGk=\u0007\n::stop-commands::q";
+    const changed = judgeContentInterface(
+      {
+        sha256: "b".repeat(64),
+        previous: {
+          releaseId: hostile,
+          sha256: "a".repeat(64),
+          contentApi: "2\u001b[2J",
+        },
+      },
+      "c".repeat(64),
+      1,
+      false,
+    );
+    expect(changed.note).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+    const warned = judgeContentInterface(
+      {
+        sha256: "b".repeat(64),
+        previous: { releaseId: hostile, sha256: "a".repeat(64), contentApi: 1 },
+      },
+      "c".repeat(64),
+      1,
+      false,
+    );
+    expect(warned.note).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+    expect(warned.warning).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/);
+  });
+});

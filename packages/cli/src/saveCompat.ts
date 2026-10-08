@@ -23,6 +23,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { clean } from "@polaris-key/node/terminal";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import {
@@ -165,7 +166,8 @@ export function judgeContentInterface(
       warning: null,
       note: "the channel serves no app release yet: nothing to compare",
     };
-  const name = `${String(prev.releaseId)}`;
+  // Server text, quoted into lines pkey prints: no control character survives (UK-14 review).
+  const name = clean(String(prev.releaseId));
   if (typeof prev.sha256 !== "string")
     return {
       warning: null,
@@ -176,7 +178,7 @@ export function judgeContentInterface(
   if (prev.contentApi !== contentApi)
     return {
       warning: null,
-      note: `changed since ${name}, with contentApi ${String(prev.contentApi)} → ${String(contentApi)}`,
+      note: `changed since ${name}, with contentApi ${clean(String(prev.contentApi))} → ${String(contentApi)}`,
     };
   const warning = `the content interface changed since ${name} (${prev.sha256.slice(0, 12)}… → ${fingerprint.slice(0, 12)}…), but contentApi is still ${String(contentApi)}: packs on that contentApi line may not have the content shape this build expects. Bump deliverables.app.content.contentApi${strict ? "" : ", or pass --strict to fail on this"}.`;
   if (strict) throw new Error(`--strict: ${warning}`);

@@ -271,7 +271,18 @@ export async function statusFlow(
     version: client.core.version,
     channel: client.core.channel,
     tier: info?.tierLabel ?? info?.tier ?? null,
-    tokenStore: store?.backend ?? null,
+    // UK-13's shape (UI-KITS §1.4): the backend and why it is degraded, never a bare string.
+    tokenStore: store
+      ? {
+          backend: store.backend,
+          degraded: store.degraded
+            ? {
+                reason: store.degraded.reason,
+                detail: store.degraded.detail ?? null,
+              }
+            : null,
+        }
+      : null,
   };
   if (quiet(ctx)) return { exitCode, state: view.state, result };
   const t = ctx.copy.t.bind(ctx.copy);

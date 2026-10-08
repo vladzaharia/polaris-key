@@ -798,10 +798,12 @@ export async function publishRelease(
       descriptor.content?.contentApi ?? null,
       opts.strict === true,
     );
-    out.write(`Content interface: ${verdict.note}\n`);
+    // The verdict quotes the server's previous release id and content API: untrusted text.
+    out.write(`Content interface: ${untrusted(verdict.note, opts.env)}\n`);
     if (verdict.warning) {
-      result.warnings.push(verdict.warning);
-      opts.stderr.write(`warning: ${verdict.warning}\n`);
+      const warning = untrusted(verdict.warning, opts.env);
+      result.warnings.push(warning);
+      opts.stderr.write(`warning: ${warning}\n`);
     }
   };
   if (opts.dryRun) {
