@@ -393,6 +393,13 @@ jobs:
       - uses: actions/checkout@v7
       - name: Xcode 26.6, Swift 6.3 or later
         run: sdks/swift/tools/select-xcode-26.sh
+      - name: Boot the iOS simulator for the hosted tests
+        # Now, so its first boot settles while the libraries build: on this 3-vCPU runner a new
+        # simulator stays busy for minutes, and StoreKit Testing stalled inside that window
+        # (PlatformHostTests/run.sh, which still waits for it to go quiet).
+        run: |
+          udid="$(sdks/swift/PlatformHostTests/run.sh --boot)"
+          echo "SIM_UDID=$udid" >> "$GITHUB_ENV"
       - name: swift build + test (warnings as errors)
         run: |
           swift build --package-path sdks/swift -Xswiftc -warnings-as-errors
