@@ -282,12 +282,22 @@ def wrap(spans: Sequence[Span], width: int, *, ellipsis: str = "…") -> List[Li
     width = max(1, width)
     lines: List[List[List[Span]]] = [[]]
     used = 0
+
+    def trim(line: List[List[Span]]) -> None:
+        # A separator ("·") divides items on one line: a line never ends with one.
+        while len(line) > 1 and "".join(s.text for s in line[-1]).strip(" ") == "·":
+            line.pop()
+
+    def new_line() -> None:
+        trim(lines[-1])
+        lines.append([])
+
     for kind, words, total in _groups(spans):
         if kind == "group":
             span = words[0][0]
             tail = words[0][1:]  # the spaces after it
             if lines[-1] and used + total > width:
-                lines.append([])
+                new_line()
                 used = 0
             pieces = break_pieces(span.text, BREAKS[span.src], width)
             for i, piece in enumerate(pieces):
@@ -296,7 +306,7 @@ def wrap(spans: Sequence[Span], width: int, *, ellipsis: str = "…") -> List[Li
                     word += tail
                 n = cell_len(piece)
                 if lines[-1] and used + n > width:
-                    lines.append([])
+                    new_line()
                     used = 0
                 lines[-1].append(word)
                 used += _word_len(word)
@@ -308,7 +318,7 @@ def wrap(spans: Sequence[Span], width: int, *, ellipsis: str = "…") -> List[Li
             w = [Span(middle(s0.text, width, ellipsis=ellipsis), s0.roles, s0.link, s0.src, True)]
             n = _word_len(w, trailing=False)
         if lines[-1] and used + n > width:
-            lines.append([])
+            new_line()
             used = 0
         lines[-1].append(w)
         used += _word_len(w)
@@ -319,6 +329,7 @@ def wrap(spans: Sequence[Span], width: int, *, ellipsis: str = "…") -> List[Li
             moved = lines[-2].pop()
             if sum(_word_len(x) for x in [moved] + lines[-1]) <= width:
                 lines[-1].insert(0, moved)
+                trim(lines[-2])
             else:
                 lines[-2].append(moved)
     out: List[List[Span]] = []

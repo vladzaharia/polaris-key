@@ -180,6 +180,12 @@ def test_a_code_wraps_after_its_hyphens_only_where_the_line_is_too_narrow() -> N
     assert break_pieces(LONG["code"], "code", 10) == ["WDJB-", "MJHT-", "QXRP-", "LMNV"]
 
 
+def test_a_wrapped_line_never_ends_on_a_separator() -> None:
+    sep = Span(" · ", ("muted",))
+    spans = [Span("Enter", ("strong",)), Span(" open again", ("muted",)), sep, Span("c", ("strong",)), Span(" use a code", ("muted",)), sep, Span("Esc", ("strong",)), Span(" cancel", ("muted",))]
+    assert ["".join(s.text for s in r) for r in wrap(spans, 37)] == ["Enter open again · c use a code", "Esc cancel"]
+
+
 def test_the_long_values_fixture_is_the_one_the_owner_asked_for() -> None:
     assert [len(LONG[k]) for k in ("name", "code", "url", "device")] == [60, 19, 110, 60]
 
