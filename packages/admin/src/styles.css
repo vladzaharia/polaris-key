@@ -96,8 +96,8 @@
   --text-display: 2.5rem;
   --text-display--line-height: 1.1;
   /* Steps the brand scale (xs 12 … 5xl 48) does not have, named so no view writes an arbitrary
-     `text-[…]` size (EXPERIENCE.md §3). Each sets the font size only, as the arbitrary values it
-     replaced did. The type-scale pass maps them onto display / title / section / row. */
+     bracketed text size (EXPERIENCE.md §3). Each sets the font size only, as the arbitrary values
+     it replaced did. The type-scale pass maps them onto display / title / section / row. */
   --text-3xs: 0.625rem; /* 10 px: the letter on the 20 px product tile */
   --text-2xs: 0.6875rem; /* 11 px: keyboard hints */
   --text-code: 0.8125rem; /* 13 px: code in the portal's prose and key rows */

@@ -4,8 +4,8 @@ import { extendTailwindMerge } from "tailwind-merge";
 /**
  * The type steps `styles.css` adds to the brand scale. tailwind-merge reads only the t-shirt
  * sizes as font sizes and files any other `text-<name>` as a text colour, so without this
- * `cn("text-code", "text-fg")` would drop the size as a colour conflict. The arbitrary
- * `text-[…]` values these steps replaced were always read as sizes
+ * `cn("text-code", "text-fg")` would drop the size as a colour conflict. The arbitrary sizes
+ * these steps replaced (a rem or px value in brackets) were always read as sizes
  * (test/tokenAliases.test.ts keeps this list in step with styles.css).
  */
 const ADMIN_TEXT_SIZES = [

@@ -15,7 +15,9 @@ import { cn } from "../src/lib/cn.js";
  *
  * The pre-brand alias layer (bg-card, text-muted-foreground, bg-primary, border-input, ring-ring,
  * font-medium and font-semibold as Rubik's 400 and 700…) was deleted in chunk 11, so a view that
- * reaches for one of those names fails the last case here.
+ * reaches for one of its colour names fails the last case here. Its weights are not checked:
+ * font-medium and font-semibold are the brand's own 500 and 600 now (its variable Rubik ships
+ * them), and the first case only keeps styles.css from remapping them again.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));

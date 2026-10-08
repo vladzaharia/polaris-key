@@ -11,7 +11,7 @@
  *   an L1 confirm that shows the dry run's plan, then a focused, announced result panel listing
  *   what it re-applied, what it refused, what it kept because the console claimed it, and the
  *   pack-set outcome (RSY-3).
- * - ST-01b (S-18 model C): on a repo-linked product the display name and the licence defaults
+ * - ST-01b (S-18 model C): on a repo-linked product the display name and the license defaults
  *   carry a SourceBadge. Saving one claims it for the console (an L1 confirm says so) and every
  *   resync leaves it alone until Revert to manifest, which restores the last applied manifest's
  *   value at once (or at the next resync when there is no snapshot yet). The admin group is
@@ -593,8 +593,8 @@ function ManifestAuthorityRow({
       label="Manifest-authoritative"
       help={
         mode.locked
-          ? "Always on for the system product: a console change to a licence default is a break-glass claim with a reason, which ends within 7 days or at the first deploy that changes it."
-          : "When on, .pkey/ is the only writer of the display name, licence defaults, web origins and catalog: a console change to one is a break-glass claim with a reason, which ends after 7 days or at the first resync that changes it. Other settings .pkey/ declares are not covered yet."
+          ? "Always on for the system product: a console change to a license default is a break-glass claim with a reason, which ends within 7 days or at the first deploy that changes it."
+          : "When on, .pkey/ is the only writer of the display name, license defaults, web origins and catalog: a console change to one is a break-glass claim with a reason, which ends after 7 days or at the first resync that changes it. Other settings .pkey/ declares are not covered yet."
       }
     >
       {mode.locked ? (
@@ -619,8 +619,8 @@ function ManifestAuthorityRow({
         }
         description={
           asking
-            ? `Console changes to ${product.name}'s display name, licence defaults, web origins and catalog are refused, except as break-glass claims.`
-            : `A console change to ${product.name}'s display name, licence defaults, web origins or catalog claims it again, until it is reverted.`
+            ? `Console changes to ${product.name}'s display name, license defaults, web origins and catalog are refused, except as break-glass claims.`
+            : `A console change to ${product.name}'s display name, license defaults, web origins or catalog claims it again, until it is reverted.`
         }
         consequences={
           asking
