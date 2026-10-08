@@ -481,7 +481,11 @@ async function identityEvidence(
       terms: {
         tier: preview.tierId,
         tierLabel: tier?.label ?? null,
-        deviceLimit: await licenseDeviceLimit(db, product, would, now),
+        // LX-08: `would`'s overrides already carry the provisioned keys, and a licence with no
+        // id has no stored `oidc` grant, so the grant is not read (`core/payload.ts`).
+        deviceLimit: await licenseDeviceLimit(db, product, would, now, {
+          withoutOidcGrant: true,
+        }),
         expiresAt: preview.expiresAt,
         expiryDays: tier?.policy_expiry_days ?? null,
       },
