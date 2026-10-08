@@ -80,3 +80,72 @@ export {
   cspImageOrigin,
   staticHtmlSecurityHeaders,
 } from "../securityHeaders.js";
+
+/**
+ * The platform primitives (P0-15): one implementation each of the byte encodings, digests,
+ * constant-time compares, random tokens, PKCE, JSON-column readers, realm-tagged HMAC tokens,
+ * HTML escaping, the sign-in `returnTo` check and the email matching key. They live in
+ * `src/platform/` and are lent to services here, so no service needs a local copy;
+ * `test/platformPrimitives.test.ts` refuses one.
+ */
+export {
+  b64urlDecode,
+  b64urlDecodeStrict,
+  b64urlDecodeUtf8,
+  b64urlEncode,
+  b64urlEncodeUtf8,
+  base64Decode,
+  base64Encode,
+  hexDecode,
+  hexEncode,
+  toArrayBuffer,
+  utf8Encode,
+} from "../platform/bytes.js";
+
+export {
+  hmacSha256,
+  importHmacKey,
+  sha256,
+  sha256B64url,
+  sha256Base64,
+  sha256Hex,
+  type DigestInput,
+} from "../platform/hash.js";
+
+export {
+  constantTimeEqual,
+  constantTimeEqualBytes,
+} from "../platform/compare.js";
+
+export { randomBytes, randomHex, randomToken } from "../platform/random.js";
+
+export { pkceChallenge, pkcePair } from "../platform/pkce.js";
+
+export {
+  isJsonObject,
+  parseJsonArray,
+  parseJsonColumn,
+  parseJsonObject,
+  parseJsonOr,
+  parseJsonStringList,
+  toJsonColumn,
+  tryParseJson,
+} from "../platform/json.js";
+
+export { signHmacToken, verifyHmacToken } from "../platform/hmacToken.js";
+
+export {
+  escapeHtml,
+  escapeHtmlDecimalApostrophe,
+  escapeHtmlKeepApostrophe,
+} from "../platform/html.js";
+
+export {
+  CARD_RETURN_TO,
+  PORTAL_SIGNIN_RETURN_TO,
+  PRODUCT_SIGNIN_RETURN_TO,
+  safeReturnTo,
+  type ReturnToPolicy,
+} from "../platform/returnTo.js";
+
+export { normalizeEmail } from "../platform/email.js";

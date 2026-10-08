@@ -2,35 +2,16 @@
 // so the backend/SDK can route by product from the key alone; per-device tokens are the
 // `pkeyt_` device principal of wire contract v3 §6 and never shown. Keys are stored only as
 // hashes (optionally peppered so a KV/D1 dump can't confirm guessed keys).
+//
+// The byte, digest and randomness primitives underneath live in `platform/` (P0-15).
 
-function b64url(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function randomBytes(n: number): Uint8Array {
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return a;
-}
-
-function toArrayBuffer(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-
-function hex(bytes: ArrayBuffer): string {
-  return [...new Uint8Array(bytes)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+import { hexEncode } from "./platform/bytes.js";
+import { hmacSha256, importHmacKey, sha256Hex } from "./platform/hash.js";
+import { randomToken } from "./platform/random.js";
 
 /** A license key: `pkey_<product>_<128-bit base64url>`, shown to the user once. */
 export function mintLicenseKey(product: string): string {
-  return `pkey_${product}_${b64url(randomBytes(16))}`;
+  return `pkey_${product}_${randomToken(16)}`;
 }
 
 /**
@@ -42,7 +23,7 @@ export const DEVICE_TOKEN_PREFIX = "pkeyt_";
 
 /** A per-device bearer token: `pkeyt_` + 43 base64url chars (256 bits), never shown. */
 export function mintDeviceToken(): string {
-  return `${DEVICE_TOKEN_PREFIX}${b64url(randomBytes(32))}`;
+  return `${DEVICE_TOKEN_PREFIX}${randomToken(32)}`;
 }
 
 /**
@@ -67,7 +48,7 @@ export function isDeviceToken(token: string): boolean {
  * they are looked up in the one store that owns them.
  */
 export function mintOpaqueToken(): string {
-  return b64url(randomBytes(32));
+  return randomToken(32);
 }
 
 /**
@@ -75,12 +56,12 @@ export function mintOpaqueToken(): string {
  * Random and stored, never derived from the account id (S-16 §5.1), so ending it ends it.
  */
 export function mintPairwiseSubject(): string {
-  return `ps_${b64url(randomBytes(16))}`;
+  return `ps_${randomToken(16)}`;
 }
 
 /** A short opaque id with a typed prefix (lic_, dev_, flow_, …). */
 export function randomId(prefix: string): string {
-  return `${prefix}_${b64url(randomBytes(9))}`;
+  return `${prefix}_${randomToken(9)}`;
 }
 
 /**
@@ -102,42 +83,8 @@ export function productFromKey(key: string): string | null {
   return m ? (m[1] ?? null) : null;
 }
 
-async function sha256(input: string): Promise<ArrayBuffer> {
-  return crypto.subtle.digest(
-    "SHA-256",
-    toArrayBuffer(new TextEncoder().encode(input)),
-  );
-}
-
-export async function sha256Hex(input: string): Promise<string> {
-  return hex(await sha256(input));
-}
-
-/** SHA-256 → base64url, optionally truncated. This is the digest shape the device id
- *  (`pkey-device:…`) and the fingerprint component/hwid hashes (`pkey-hw:…`) both use, so the
- *  Worker and every SDK derive identical values from identical inputs. */
-export async function sha256B64url(
-  input: string,
-  length?: number,
-): Promise<string> {
-  const digest = b64url(new Uint8Array(await sha256(input)));
-  return length === undefined ? digest : digest.slice(0, length);
-}
-
 /** Hash a credential for storage. With a pepper, an offline KV dump can't confirm guesses. */
 export async function hashKey(value: string, pepper?: string): Promise<string> {
   if (!pepper) return sha256Hex(value);
-  const key = await crypto.subtle.importKey(
-    "raw",
-    toArrayBuffer(new TextEncoder().encode(pepper)),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    toArrayBuffer(new TextEncoder().encode(value)),
-  );
-  return hex(sig);
+  return hexEncode(await hmacSha256(await importHmacKey(pepper), value));
 }
