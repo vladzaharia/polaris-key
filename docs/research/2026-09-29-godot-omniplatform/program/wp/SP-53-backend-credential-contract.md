@@ -6,9 +6,9 @@
 | Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                                              |
 | Depends on  | none                                                                                                                                                                                                                                                                              |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-55](SP-55-polaris-key-server-express-hono-next.md), [SP-56](SP-56-python-server-drop-ins.md), [SP-57](SP-57-kotlin-server-drop-ins-ktor.md), [SP-58](SP-58-client-backend-node-react-python.md), [SP-62](SP-62-swift-server-vapor.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                |
-| Plan mode   | no: executes the approved plan [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §9.1                                                                                                                                                                   |
-| Gates       | `corpus`, `threat-model`, `drift-gate`                                                                                                                                                                                                                                            |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                             |
+| Plan mode   | yes: executes the approved plan [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §9.1                                                                                                                                                                  |
+| Gates       | `plan-mode`, `corpus`, `threat-model`, `drift-gate`                                                                                                                                                                                                                               |
 | Human input | none                                                                                                                                                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                         |
 
@@ -35,7 +35,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Design notes
 
-- This is the backend half of the wire; the plan (§9.1) is approved, so no separate plan file is written.
+- This is the backend half of the wire; the planner turns the research README §9.1 into a short `plans/SP-53.md` for owner approval before any code.
 - No Worker code changes: the new codes come from the SDK server cores.
 
 ## Steps

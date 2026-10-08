@@ -6,9 +6,9 @@
 | Size        | 0.4–0.6 engineer-weeks                                                                                                                                                                                                                                                                 |
 | Depends on  | [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                                                                                                                                                                                 |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-46](UK-46-node-terminal-kit-for-existing-clis.md), [UK-48](UK-48-python-terminal-kit-as-a-mountable-drop-in.md), [UK-52](UK-52-node-cli-oclif-ink.md), [UK-53](UK-53-textual-screens.md), [UK-54](UK-54-jvm-terminal-kit-clikt-picocli.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                     |
-| Plan mode   | no: executes the approved plan [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §7.1 and §9.3                                                                                                                                                               |
-| Gates       | `corpus`, `drift-gate`                                                                                                                                                                                                                                                                 |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                  |
+| Plan mode   | yes: executes the approved plan [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §7.1 and §9.3                                                                                                                                                              |
+| Gates       | `plan-mode`, `corpus`, `drift-gate`                                                                                                                                                                                                                                                    |
 | Human input | none                                                                                                                                                                                                                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                              |
 
@@ -35,6 +35,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Design notes
 
+- The planner turns the research README §7.1 and §9.3 into a short `plans/UK-51.md` for owner approval before any code.
 - Exit 4 matches `gh` for "requires authentication" (decision 10).
 
 ## Steps
