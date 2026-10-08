@@ -614,20 +614,26 @@ describe("R1-06 unauthenticated /manage asset proxy", () => {
     } as unknown as Fetcher;
   }
 
-  it("R1-06a: any /manage/<x>.<y> path is proxied to ASSETS with NO session check", async () => {
+  it("R1-06a: SEC-WEB-1 FIXED — /manage proxies only /assets/<file> to ASSETS; any other file path is the SPA shell", async () => {
     const db = makeTestDb();
     const env = adminEnv(new KvMock());
     const seen: string[] = [];
     env.ASSETS = assetsEcho(seen);
-    const res = await handleAdmin(
-      req("GET", "https://key.plrs.im/manage/manage.js"),
-      env,
-      db,
+    for (const p of [
+      "/assets/manage.js",
       "/manage.js",
-      { now: NOW },
-    );
-    expect(res.status).toBe(200);
-    expect(seen).toContain("/manage.js");
+      "/docs/admin/kek/index.html",
+    ]) {
+      const res = await handleAdmin(
+        req("GET", `https://key.plrs.im/manage${p}`),
+        env,
+        db,
+        p,
+        { now: NOW },
+      );
+      expect(res.status).toBe(200);
+    }
+    expect(seen).toEqual(["/assets/manage.js", "/manage.html", "/manage.html"]);
   });
 
   it("R1-06b: FIXED — percent-encoded dot-segments no longer escape /manage, and every asset response carries the CSP", async () => {
