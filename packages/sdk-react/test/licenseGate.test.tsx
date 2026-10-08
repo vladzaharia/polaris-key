@@ -83,8 +83,8 @@ describe("LicenseGate — expired screen", () => {
   });
 });
 
-describe("LicenseGate — version-block shows the allowed range", () => {
-  it("renders the version-block screen with the allowed range in the body", async () => {
+describe("LicenseGate — version-block copy (core gate.*)", () => {
+  it("renders the catalog's title and sentence, without a raw range", async () => {
     const { container } = renderGate(
       okBridgeState({
         blocked: {
@@ -98,7 +98,14 @@ describe("LicenseGate — version-block shows the allowed range", () => {
         container.querySelector('[data-polaris-gate="version-block"]'),
       ).toBeTruthy(),
     );
-    expect(container.textContent).toContain("allowed: 2.0.0 – 3.0.0");
+    expect(container.textContent).toContain("Update required");
+    expect(container.textContent).toContain(
+      "This version is no longer supported. Update the app to continue.",
+    );
+    expect(container.textContent).not.toContain("allowed:");
+    // The update service is off here, so Try again is the only action, as a primary.
+    const buttons = within(container).getAllByRole("button");
+    expect(buttons.map((b) => b.textContent)).toEqual(["Try again"]);
   });
 
   it("uses the version-too-new copy for that reason", async () => {
@@ -112,8 +119,11 @@ describe("LicenseGate — version-block shows the allowed range", () => {
         container.querySelector('[data-polaris-gate="version-block"]'),
       ).toBeTruthy(),
     );
-    expect(container.textContent).toContain("Version not allowed");
-    expect(container.textContent).toContain("allowed: * – 3.0.0");
+    expect(container.textContent).toContain("Not available on this license");
+    expect(container.textContent).toContain(
+      "This build is newer than your license allows.",
+    );
+    expect(container.textContent).not.toContain("allowed:");
   });
 
   it("uses the channel-not-entitled copy for that reason", async () => {
@@ -125,7 +135,7 @@ describe("LicenseGate — version-block shows the allowed range", () => {
         container.querySelector('[data-polaris-gate="version-block"]'),
       ).toBeTruthy(),
     );
-    expect(container.textContent).toContain("Channel not entitled");
+    expect(container.textContent).toContain("Channel not included");
   });
 });
 
@@ -138,8 +148,8 @@ describe("LicenseGate — grace banner vs. block", () => {
       ).toBeTruthy(),
     );
     expect(within(container).getByTestId("app")).toBeTruthy();
-    // The default grace banner shows the grace copy.
-    expect(container.textContent).toContain("Offline grace");
+    // The default grace banner counts down from graceUntil (grace.daysLeft / grace.lastDay).
+    expect(container.textContent).toMatch(/Offline · /);
   });
 
   it("allowGrace=false blocks like a login screen (children hidden)", async () => {
@@ -256,7 +266,7 @@ describe("LicenseGate — error screen", () => {
     // First-load failures surface as a `network`-coded PolarisError → the gate shows the
     // clearer, remediation-oriented copy (not the raw IPC message).
     expect(container.textContent).toContain(
-      "couldn't reach the licensing service",
+      "Can't reach Polaris Key. Check your connection and try again.",
     );
     adapter.dispose();
   });

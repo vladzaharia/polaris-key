@@ -1,19 +1,25 @@
-// `<PolarisLogin>` — the drop-in sign-in card: an OIDC button plus a typed key-entry form.
-// Themed entirely via the `--pk-*` custom properties the Provider sets, so it inherits the
-// brand without any CSS-in-JS. All copy comes from the theme so it's fully localizable.
+// `<PolarisLogin>` — the drop-in sign-in card: Sign in, and a license key behind "Use a license
+// key". Themed entirely via the `--pk-*` custom properties the Provider sets; every string is a
+// catalog value from the theme copy, so it is fully localizable.
 //
-// WHICH METHODS APPEAR is a capability question, not a mode question (D-21). The OIDC button
-// appears when the product runs the IDENTITY service; the key form appears when it runs the
-// LICENSE service, because a key activates a license and a config-only product has none. Both
-// answers come from discovery when it answered and from `expectServices` when it did not —
-// never from "assume on".
+// WHICH METHODS APPEAR is a capability question, not a mode question (D-21). Sign in appears
+// when the product runs the IDENTITY service; the key form appears when it runs the LICENSE
+// service, because a key activates a license and a config-only product has none. Both answers
+// come from discovery when it answered and from `expectServices` when it did not.
 //
-// Accessibility: the primary action (OIDC button) is auto-focused on mount; the key form
-// submits on Enter; the input has an associated <label> and is wired to its error via
-// `aria-describedby`; errors are `role="alert"`; busy/disabled states are announced with
-// `aria-busy`. The whole card carries an accessible name (`aria-labelledby` → the title).
+// ERRORS have two homes: a sign-in failure under Sign in, a key failure under the key field,
+// each wired to its control. Only a key that is itself wrong marks the field invalid. A
+// device-limit refusal is not an error at all: the key is good and the license is full, so it
+// is a neutral callout ("Your license is on 3 of 3 devices") with "Replace a device" as the one
+// filled action, which opens the customer portal and re-tries the key when the person comes back.
+//
+// Accessibility: the first method takes focus on mount (never a text field on a touch screen);
+// the key form submits on Enter; the field has a real <label>; errors are `role="alert"`;
+// busy actions are announced with `aria-busy` and keep their labels.
 
 import {
+  forwardRef,
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -23,22 +29,39 @@ import {
   type ReactNode,
 } from "react";
 import { SPACE } from "@polaris-key/brand";
-import { usePolarisAuth, usePolarisTheme } from "../react/hooks.js";
+import {
+  isSignInRefusal,
+  useAdapterState,
+  useCtx,
+  usePolarisAuth,
+  usePolarisTheme,
+} from "../react/hooks.js";
+import type { PolarisError } from "../core/index.js";
 import { Button } from "./primitives/buttons.js";
 import {
   Panel,
   actionPanel,
   dangerText,
   mutedText,
+  prettyText,
+  screenTitle,
+  stickyColumn,
   titleText,
-  typeStep,
+  twoColumnCard,
 } from "./primitives/card.js";
 import { TextField } from "./primitives/input.js";
 import { useWindowLayout } from "./primitives/layout.js";
+import { COARSE_POINTER, useMediaQuery } from "./primitives/media.js";
 import { screenLogo, themePoweredBy } from "./brand.js";
 import { knownProductName, type PolarisTheme } from "./theme.js";
+import { formatCopy } from "./format.js";
+import {
+  deviceLimitOf,
+  errorSentence,
+  keyIsWrong,
+  type ErrorLike,
+} from "./errors.js";
 import { withManageKey, withManageReturn } from "@polaris-key/client-core";
-import { describeError } from "../core/copy.js";
 
 export interface PolarisLoginProps {
   /** Hide the typed-key card. */
@@ -48,8 +71,8 @@ export interface PolarisLoginProps {
   /** A node rendered above the card (overrides the theme logo for this instance; `null`
    *  renders none). */
   logo?: ReactNode;
-  /** Auto-focus the primary action on mount (default true). Disable when several login
-   *  cards share a screen, to avoid focus fights. */
+  /** Focus the first sign-in method on mount (default true). Disable when several login cards
+   *  share a screen, to avoid focus fights. */
   autoFocus?: boolean;
   /** Drop the card chrome (border, background, padding) when the form sits inside another
    *  card, such as the gate's "license expired" screen. */
@@ -58,6 +81,11 @@ export interface PolarisLoginProps {
    *  `return=`. The portal honours it only when it is one of the product's declared return
    *  targets; leave it unset to add none. */
   returnUrl?: string;
+  /**
+   * @internal The gate's expired and revoked screens set `false`: the card drops its identity,
+   * title and lede and renders the sign-in methods only, under the screen's own title.
+   */
+  heading?: boolean;
 }
 
 /**
@@ -77,234 +105,393 @@ export function openManageUrl(
   return url;
 }
 
-/** The user-facing sentence for a sign-in failure: the copy catalog's, chosen by the typed
- *  activation kind, then the server's code, then the SDK's code (SP-R03). Never the error's
- *  message text, which is diagnostic and unlocalized. */
-function describeAuthError(err: unknown): string {
-  return describeError(
-    err && typeof err === "object"
-      ? (err as Parameters<typeof describeError>[0])
-      : null,
+/** The sign-in title: "Welcome to {product}" once the product's name is known. */
+export function signInTitle(theme: PolarisTheme): string {
+  const product = knownProductName(theme);
+  return product
+    ? formatCopy(theme.copy.welcomeTitle, { product })
+    : theme.copy.signInTitle;
+}
+
+/** The sign-in card: narrow, so the form reads as one column. */
+const loginCard: CSSProperties = { width: "min(27.5rem, 100%)" };
+
+/** A device-limit callout: neutral (the key is good), default text on the sunken surface. */
+const callout: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: SPACE["1"],
+  padding: SPACE["3"],
+  borderRadius: "var(--pk-control-radius, var(--pk-radius))",
+  background: "var(--pk-surface-sunken, var(--pk-surface))",
+  color: "var(--pk-text)",
+  fontSize: mutedText.fontSize,
+  lineHeight: mutedText.lineHeight,
+};
+
+/** The new-tab cue on "Replace a device": an arrow out of a box, in the label's colour. */
+function ExternalGlyph(): JSX.Element {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="1em"
+      height="1em"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 3h4v4M13 3 7.5 8.5M11.5 9.5V13H3V4.5h3.5" />
+    </svg>
   );
 }
 
-/**
- * The line under the sign-in title: the integrator's `signInSubtitle` when set, otherwise one
- * that says what the card offers and, when the product's name is known, names it.
- */
-export function signInLede(
-  theme: PolarisTheme,
-  methods: { signIn: boolean; key: boolean },
-): string {
-  if (theme.copy.signInSubtitle !== "") return theme.copy.signInSubtitle;
-  const product = knownProductName(theme);
-  if (methods.signIn && methods.key)
-    return product
-      ? `Sign in or enter a license key to use ${product}.`
-      : "Sign in or use a license key to continue.";
-  if (methods.signIn)
-    return product ? `Sign in to use ${product}.` : "Sign in to continue.";
-  if (methods.key)
-    return product
-      ? `Enter a license key to use ${product}.`
-      : "Enter a license key to continue.";
-  return product ? `Sign in to use ${product}.` : "Sign in to continue.";
+/** The refusal a license error carries for this card, if it is one (`isSignInRefusal`). */
+function keyRefusal(err: PolarisError | null | undefined): PolarisError | null {
+  return err && isSignInRefusal(err) ? err : null;
 }
 
-/** The sign-in card: narrow, so the form reads as one centred column. */
-const loginCard: CSSProperties = { width: "min(27.5rem, 100%)" };
+export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
+  function PolarisLogin(props, ref) {
+    const theme = usePolarisTheme();
+    const auth = usePolarisAuth();
+    const { adapter } = useCtx();
+    const state = useAdapterState(adapter);
+    const layout = useWindowLayout();
+    const coarse = useMediaQuery(COARSE_POINTER);
+    const heading = props.heading ?? true;
+    const autoFocus = props.autoFocus ?? true;
+    // The card's own placement in a window; a bare card nested in another screen has none.
+    const inWindow = layout !== null && !props.bare;
+    const bleed = inWindow && layout.bleed;
+    const twoColumn = inWindow && layout.twoColumn;
 
-const bareCard: CSSProperties = {
-  width: "100%",
-  padding: 0,
-  border: "none",
-  background: "transparent",
-  textAlign: "left",
-};
+    const showOidc = auth.supportsOidcLogin;
+    const showKey = auth.supportsKeyEntry && !props.hideKeyEntry;
+    const keyOnly = showKey && !showOidc;
+    const showNoMethods = !showOidc && !showKey;
 
-const divider: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: SPACE["3"],
-  color: "var(--pk-text-muted)",
-  ...typeStep("sm"),
-};
+    const [key, setKey] = useState("");
+    const [keyOpened, setKeyOpened] = useState(false);
+    const [keyErr, setKeyErr] = useState<ErrorLike | null>(() =>
+      keyRefusal(state.error.license),
+    );
+    const [signInErr, setSignInErr] = useState<ErrorLike | null>(
+      () => state.error.identity,
+    );
 
-const dividerRule: CSSProperties = {
-  flex: 1,
-  height: "1px",
-  background: "var(--pk-border)",
-};
+    // A refusal the adapter reports (this card's attempt, or another's) lands in its slot; a
+    // slot this card cleared stays clear until the adapter reports a new one.
+    const licenseError = state.error.license;
+    const identityError = state.error.identity;
+    useEffect(() => {
+      const refusal = keyRefusal(licenseError);
+      if (refusal) setKeyErr(refusal);
+    }, [licenseError]);
+    useEffect(() => {
+      if (identityError) setSignInErr(identityError);
+    }, [identityError]);
 
-export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
-  const theme = usePolarisTheme();
-  const auth = usePolarisAuth();
-  const [key, setKey] = useState("");
-  const [keyError, setKeyError] = useState<string | null>(null);
-  const [keyManageUrl, setKeyManageUrl] = useState<string | null>(null);
+    const titleId = useId();
+    const keyInputId = useId();
+    const keyErrorId = useId();
+    const signInErrorId = useId();
+    const browserLineId = useId();
+    const cardRef = useRef<HTMLElement | null>(null);
+    const fieldRef = useRef<HTMLInputElement>(null);
+    const replaceRef = useRef<HTMLButtonElement>(null);
+    const keyErrorRef = useRef<HTMLParagraphElement>(null);
 
-  const titleId = useId();
-  const keyInputId = useId();
-  const errorId = useId();
+    const limit = deviceLimitOf(keyErr);
+    const keyFormOpen = keyOnly || keyOpened || keyErr !== null;
+    const trimmed = key.trim();
 
-  const showOidcLogin = auth.supportsOidcLogin;
-  const showKeyEntry = auth.supportsKeyEntry && !props.hideKeyEntry;
-  const showNoMethods = !showOidcLogin && !showKeyEntry;
-  const logo = props.logo !== undefined ? props.logo : screenLogo(theme);
-  const autoFocus = props.autoFocus ?? true;
-  // Full-bleed on a narrow window (the gate on a phone): the title sits in the middle of the
-  // space above the sign-in methods, and the methods dock at the bottom, where a thumb is.
-  const bleed = useWindowLayout()?.bleed === true;
-  const docked: CSSProperties | null = bleed ? { marginTop: "auto" } : null;
+    // A key submitted from this card, so a refusal that follows may move focus and scroll; a
+    // refusal already standing when the card mounts never scrolls the host's page.
+    const submitted = useRef(false);
+    // "Replace a device" opened the portal: the key is tried again when the person comes back.
+    const awaitingReturn = useRef(false);
 
-  async function onSubmitKey(e: FormEvent): Promise<void> {
-    e.preventDefault();
-    setKeyError(null);
-    setKeyManageUrl(null);
-    try {
-      await auth.submitKey(key.trim());
-    } catch (err) {
-      setKeyError(describeAuthError(err));
-      setKeyManageUrl((err as { manageUrl?: string }).manageUrl ?? null);
+    const submitKey = useCallback(async (): Promise<void> => {
+      const value = key.trim();
+      if (!value || auth.keyEntryBusy) return;
+      setKeyErr(null);
+      setSignInErr(null);
+      submitted.current = true;
+      try {
+        await auth.submitKey(value);
+      } catch (err) {
+        setKeyErr(
+          err && typeof err === "object"
+            ? (err as ErrorLike)
+            : { code: "unknown" },
+        );
+      }
+    }, [key, auth]);
+
+    const latestSubmit = useRef(submitKey);
+    latestSubmit.current = submitKey;
+
+    useEffect(() => {
+      if (typeof window === "undefined") return;
+      const back = (): void => {
+        if (!awaitingReturn.current || document.visibilityState === "hidden")
+          return;
+        awaitingReturn.current = false;
+        void latestSubmit.current();
+      };
+      window.addEventListener("focus", back);
+      document.addEventListener("visibilitychange", back);
+      return () => {
+        window.removeEventListener("focus", back);
+        document.removeEventListener("visibilitychange", back);
+      };
+    }, []);
+
+    // After a refusal from this card: focus "Replace a device" (the way out), and bring the
+    // refusal into view on a short window.
+    useEffect(() => {
+      if (!keyErr || !submitted.current) return;
+      submitted.current = false;
+      const target = replaceRef.current ?? keyErrorRef.current;
+      if (replaceRef.current) replaceRef.current.focus();
+      target?.scrollIntoView?.({ block: "nearest" });
+    }, [keyErr]);
+
+    // Initial focus: the first method. A key-only card on a touch screen focuses itself rather
+    // than the field, which would raise the keyboard over the screen.
+    useEffect(() => {
+      if (!autoFocus || !keyOnly || !coarse) return;
+      cardRef.current?.focus();
+      // Mount only.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const [focusField, setFocusField] = useState(false);
+    useEffect(() => {
+      if (!focusField) return;
+      setFocusField(false);
+      fieldRef.current?.focus();
+    }, [focusField]);
+
+    function onSubmit(e: FormEvent): void {
+      e.preventDefault();
+      void submitKey();
     }
-  }
 
-  // Prefer the explicit key-entry error; otherwise surface the adapter's last error.
-  const errorText = keyError
-    ? keyError
-    : auth.error
-      ? describeAuthError(auth.error)
-      : null;
-  // PX-W8: the device-limit refusal's portal link, from the key entry just made or from the
-  // adapter's last error.
-  const manageUrl = keyError
-    ? keyManageUrl
-    : ((auth.error as { manageUrl?: string } | null | undefined)?.manageUrl ??
-      null);
+    function signIn(): void {
+      setKeyErr(null);
+      setSignInErr(null);
+      void Promise.resolve(auth.signInWithOidc()).catch(() => undefined);
+    }
 
-  // A refusal lands under the form, which on a short window (a phone on its side) is below the
-  // fold: bring it, and "Replace a device" with it, into view.
-  const errorRef = useRef<HTMLParagraphElement>(null);
-  const replaceRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (!errorText) return;
-    (replaceRef.current ?? errorRef.current)?.scrollIntoView?.({
-      block: "nearest",
-    });
-  }, [errorText, manageUrl]);
+    function replace(): void {
+      if (!limit) return;
+      awaitingReturn.current = true;
+      openManageUrl(limit.manageUrl, {
+        ...(props.returnUrl ? { returnUrl: props.returnUrl } : {}),
+        ...(trimmed ? { key: trimmed } : {}),
+      });
+    }
 
-  return (
-    <Panel
-      className={props.className}
-      style={props.bare ? bareCard : loginCard}
-      data-polaris-login=""
-      aria-labelledby={titleId}
-    >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: SPACE["5"],
-          ...docked,
+    const product = knownProductName(theme) ?? theme.copy.productName;
+    const counts =
+      limit?.activation?.deviceCount !== undefined &&
+      limit.activation.limit !== undefined
+        ? {
+            used: limit.activation.deviceCount,
+            limit: limit.activation.limit,
+          }
+        : null;
+
+    const identitySize = layout && !layout.short && inWindow ? "6rem" : "4rem";
+    const logo =
+      props.logo !== undefined ? props.logo : screenLogo(theme, identitySize);
+    const subtitle = theme.copy.signInSubtitle;
+
+    return (
+      <Panel
+        ref={(node) => {
+          cardRef.current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref) ref.current = node;
         }}
+        className={props.className}
+        bare={props.bare}
+        style={{
+          ...loginCard,
+          ...(props.bare
+            ? { width: "100%", padding: 0, textAlign: "start" }
+            : null),
+          ...(twoColumn ? twoColumnCard : null),
+        }}
+        tabIndex={keyOnly && coarse ? -1 : undefined}
+        data-polaris-login=""
+        {...(inWindow ? { "data-polaris-card": "" } : {})}
+        aria-labelledby={heading ? titleId : undefined}
       >
-        {logo ? (
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            {logo}
+        {/* On a full-bleed window the head sits in the upper third of the space above the
+            methods, which dock at the bottom: spacers growing 1 above and 2 below it. */}
+        {bleed && heading ? (
+          <div aria-hidden="true" style={{ flexGrow: 1, minHeight: 0 }} />
+        ) : null}
+        {heading ? (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: twoColumn ? "flex-start" : "center",
+              gap: SPACE["4"],
+              textAlign: twoColumn ? "start" : "center",
+              ...(twoColumn ? stickyColumn : null),
+            }}
+            data-polaris-head=""
+          >
+            {logo ? <div style={{ display: "flex" }}>{logo}</div> : null}
+            <div>
+              <h2
+                id={titleId}
+                style={inWindow ? screenTitle : titleText}
+                dir="auto"
+              >
+                {signInTitle(theme)}
+              </h2>
+              {subtitle ? (
+                <p
+                  style={{ ...mutedText, ...prettyText, marginTop: SPACE["2"] }}
+                >
+                  {subtitle}
+                </p>
+              ) : null}
+            </div>
           </div>
         ) : null}
-        <div style={{ textAlign: "center" }}>
-          <h2 id={titleId} style={titleText}>
-            {theme.copy.signInTitle}
-          </h2>
-          <p style={mutedText} data-polaris-login-lede="">
-            {signInLede(theme, { signIn: showOidcLogin, key: showKeyEntry })}
-          </p>
-        </div>
-      </div>
+        {bleed && heading ? (
+          <div aria-hidden="true" style={{ flexGrow: 2, minHeight: 0 }} />
+        ) : null}
 
-      <div style={{ ...actionPanel, gap: SPACE["4"], ...docked }}>
-        {showOidcLogin ? (
-          <div style={actionPanel}>
+        <div
+          style={{ ...actionPanel, gap: SPACE["3"] }}
+          data-polaris-methods=""
+        >
+          {showOidc ? (
             <Button
-              variant="primary"
-              disabled={auth.busy}
+              variant={limit ? "secondary" : "primary"}
               busy={auth.busy}
               label={theme.copy.oidcButtonLabel}
               autoFocus={autoFocus}
-              onClick={() => {
-                void auth.signInWithOidc();
-              }}
+              describedBy={signInErr ? signInErrorId : undefined}
+              onClick={signIn}
               data-polaris-oidc=""
             >
-              {auth.busy ? "..." : theme.copy.oidcButtonLabel}
+              {theme.copy.oidcButtonLabel}
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+          {signInErr ? (
+            <p
+              id={signInErrorId}
+              role="alert"
+              style={dangerText}
+              data-polaris-signin-error=""
+            >
+              {errorSentence(signInErr)}
+            </p>
+          ) : null}
 
-        {showOidcLogin && showKeyEntry ? (
-          <div style={divider} aria-hidden="true">
-            <span style={dividerRule} />
-            <span>{theme.copy.orDivider}</span>
-            <span style={dividerRule} />
-          </div>
-        ) : null}
-
-        {showKeyEntry ? (
-          <form onSubmit={onSubmitKey} style={actionPanel}>
-            <TextField
-              id={keyInputId}
-              label={theme.copy.keyEntryLabel}
-              value={key}
-              placeholder={theme.copy.keyEntryPlaceholder}
-              onChange={setKey}
-              autoFocus={!showOidcLogin && autoFocus}
-              invalid={Boolean(errorText)}
-              errorId={errorText ? errorId : undefined}
-              data-polaris-key-input=""
-            />
+          {showKey && !keyFormOpen ? (
             <Button
               variant="secondary"
-              type="submit"
-              disabled={auth.keyEntryBusy || key.trim().length === 0}
-              busy={auth.keyEntryBusy}
+              onClick={() => {
+                setKeyOpened(true);
+                setFocusField(true);
+              }}
+              data-polaris-use-key=""
             >
-              {theme.copy.keySubmitLabel}
+              {theme.copy.useKeyLabel}
             </Button>
-          </form>
-        ) : null}
+          ) : null}
 
-        {showNoMethods ? (
-          <p style={mutedText} role="status">
-            No sign-in methods are available.
-          </p>
-        ) : null}
-      </div>
+          {showKey && keyFormOpen ? (
+            <form
+              onSubmit={onSubmit}
+              noValidate
+              style={actionPanel}
+              data-polaris-key-form=""
+            >
+              <TextField
+                ref={fieldRef}
+                id={keyInputId}
+                label={theme.copy.keyEntryLabel}
+                value={key}
+                placeholder={theme.copy.keyEntryPlaceholder}
+                onChange={(value) => {
+                  setKey(value);
+                  setKeyErr(null);
+                }}
+                autoFocus={keyOnly && autoFocus}
+                invalid={keyIsWrong(keyErr)}
+                errorId={keyErr && !limit ? keyErrorId : undefined}
+                data-polaris-key-input=""
+              />
+              {keyErr && !limit ? (
+                <p
+                  id={keyErrorId}
+                  ref={keyErrorRef}
+                  role="alert"
+                  style={dangerText}
+                  data-polaris-key-error=""
+                >
+                  {errorSentence(keyErr)}
+                </p>
+              ) : null}
+              {limit ? (
+                <div style={callout} role="status" data-polaris-device-limit="">
+                  {counts ? (
+                    <span style={{ fontWeight: 500 }}>
+                      {formatCopy(theme.copy.deviceLimitHeading, counts)}
+                    </span>
+                  ) : null}
+                  <span id={browserLineId}>
+                    {formatCopy(theme.copy.deviceLimitBrowser, { product })}
+                  </span>
+                </div>
+              ) : null}
+              {limit ? (
+                <Button
+                  ref={replaceRef}
+                  variant="primary"
+                  label={theme.copy.freeDeviceLabel}
+                  describedBy={browserLineId}
+                  onClick={replace}
+                  data-polaris-free-device=""
+                >
+                  {theme.copy.freeDeviceLabel}
+                  <ExternalGlyph />
+                </Button>
+              ) : null}
+              <Button
+                variant={keyOnly && !limit ? "primary" : "secondary"}
+                type="submit"
+                disabled={trimmed.length === 0}
+                busy={auth.keyEntryBusy}
+                data-polaris-key-submit=""
+              >
+                {theme.copy.keySubmitLabel}
+              </Button>
+            </form>
+          ) : null}
 
-      {errorText ? (
-        <p id={errorId} ref={errorRef} style={dangerText} role="alert">
-          {errorText}
-        </p>
-      ) : null}
-
-      {errorText && manageUrl ? (
-        <Button
-          ref={replaceRef}
-          variant="secondary"
-          label={theme.copy.freeDeviceLabel}
-          onClick={() => {
-            openManageUrl(manageUrl, {
-              ...(props.returnUrl ? { returnUrl: props.returnUrl } : {}),
-              ...(key.trim() ? { key: key.trim() } : {}),
-            });
-          }}
-          data-polaris-free-device=""
-        >
-          {theme.copy.freeDeviceLabel}
-        </Button>
-      ) : null}
-
-      {themePoweredBy(theme)}
-    </Panel>
-  );
-}
+          {showNoMethods ? (
+            <p style={mutedText} role="status">
+              No sign-in methods are available.
+            </p>
+          ) : null}
+          {themePoweredBy(theme)}
+        </div>
+      </Panel>
+    );
+  },
+);

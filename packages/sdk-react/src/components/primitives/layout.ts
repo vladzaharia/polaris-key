@@ -37,13 +37,23 @@ export interface RemSize {
 
 /** How a full-window screen lays its card out. */
 export interface WindowLayout {
-  /** The card fills the window: no inset, no border or radius, actions docked. */
+  /** A narrow window: the card fills it (no inset, no border or radius, actions docked). */
   bleed: boolean;
-  /** The window is short: the card never grows past it. */
+  /** A short window (under 30rem: a phone on its side, a laptop at 200 % zoom). */
   short: boolean;
+  /** Short and wide: the card lays out in two columns, the title in the start column and the
+   *  controls in the end column, so neither scrolls out of view. */
+  twoColumn: boolean;
+  /** A narrow window under a dismissible dialog: the card is a bottom sheet over the scrim. */
+  sheet: boolean;
 }
 
-export const REGULAR_LAYOUT: WindowLayout = { bleed: false, short: false };
+export const REGULAR_LAYOUT: WindowLayout = {
+  bleed: false,
+  short: false,
+  twoColumn: false,
+  sheet: false,
+};
 
 /** A layout effect in the browser (it runs before paint); a plain effect on a server render,
  *  where React warns about layout effects and neither runs. */
@@ -91,12 +101,21 @@ export function useRemSize<T extends HTMLElement>(): [RefCallback<T>, RemSize] {
   return [setEl, size];
 }
 
-/** The layout a full-window screen of this size takes. Unmeasured is the regular layout. */
-export function windowLayoutOf(size: RemSize): WindowLayout {
+/** The layout a full-window screen of this size takes; `scrim` for a dismissible dialog over
+ *  the host app. Unmeasured is the regular layout. */
+export function windowLayoutOf(
+  size: RemSize,
+  opts: { scrim?: boolean } = {},
+): WindowLayout {
   if (size.width <= 0) return REGULAR_LAYOUT;
+  const narrow = size.width < BLEED_BELOW_REM;
+  const short = size.height > 0 && size.height < SHORT_BELOW_REM;
+  const scrim = opts.scrim === true;
   return {
-    bleed: size.width < BLEED_BELOW_REM,
-    short: size.height > 0 && size.height < SHORT_BELOW_REM,
+    bleed: narrow && !scrim,
+    short,
+    twoColumn: short && !narrow,
+    sheet: narrow && scrim,
   };
 }
 

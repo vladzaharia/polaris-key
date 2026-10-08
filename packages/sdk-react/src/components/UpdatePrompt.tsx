@@ -45,10 +45,89 @@ import {
   type UseUpdateDecisionOptions,
 } from "../update/useUpdateDecision.js";
 import { SPACE } from "@polaris-key/brand";
-import { Button, compactStyle } from "./primitives/buttons.js";
+import { Button } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
 import { bannerStyle, mutedText } from "./primitives/card.js";
 import { screenLogo } from "./brand.js";
+import { knownProductName, type PolarisTheme } from "./theme.js";
+import { formatCopy } from "./format.js";
+
+/** "{product} {version}" once the product's name and the version are known (update.title),
+ *  else "An update is available" (update.availableTitle). */
+function updateTitleFor(theme: PolarisTheme, version: string | null): string {
+  const product = knownProductName(theme);
+  return product && version
+    ? formatCopy(theme.copy.updateProductTitle, { product, version })
+    : theme.copy.updateTitle;
+}
+
+/**
+ * The banner: the title (and a line, when there is one) on the start side, the action and
+ * Later on the end, on one line from about 40rem of width and wrapping below it. A notice the
+ * player cannot dismiss is the warning callout, an alert with no Later.
+ */
+function UpdateBanner(props: {
+  className?: string;
+  title: string;
+  body?: string;
+  locked?: boolean;
+  actionLabel?: string;
+  onAction?: (() => void) | null;
+  dismissLabel: string;
+  onDismiss: () => void;
+  marker: string;
+}): JSX.Element {
+  const { locked } = props;
+  return (
+    <div
+      className={props.className}
+      {...(locked
+        ? { role: "alert", "data-polaris-update-mandatory": "" }
+        : { role: "status", "aria-live": "polite" as const })}
+      aria-label={props.title}
+      style={{
+        ...bannerStyle(locked ? "warning" : "neutral"),
+        justifyContent: "flex-start",
+        textAlign: "start",
+      }}
+      data-polaris-update={props.marker}
+    >
+      <span style={{ flex: "1 1 24rem", minWidth: 0 }}>
+        <strong
+          style={{
+            fontWeight: 500,
+            color: "var(--pk-text-strong, var(--pk-text))",
+          }}
+        >
+          {props.title}
+        </strong>
+        {props.body ? <> {props.body}</> : null}
+      </span>
+      <span style={{ display: "flex", flexWrap: "wrap", gap: SPACE["2"] }}>
+        {props.onAction ? (
+          <Button
+            variant="primary"
+            size="compact"
+            onClick={props.onAction}
+            data-polaris-update-action=""
+          >
+            {props.actionLabel}
+          </Button>
+        ) : null}
+        {locked ? null : (
+          <Button
+            variant="secondary"
+            size="compact"
+            onClick={props.onDismiss}
+            data-polaris-update-dismiss=""
+          >
+            {props.dismissLabel}
+          </Button>
+        )}
+      </span>
+    </div>
+  );
+}
 
 /** The "You're up to date." line: the banner's inset, without its strip. */
 const currentLine = {
@@ -150,22 +229,28 @@ function VersionPrompt(
     }
   };
 
-  const body = check.latest
-    ? `${theme.copy.updateBody} (${check.latest.version})`
-    : theme.copy.updateBody;
+  const title = updateTitleFor(theme, check.latest?.version ?? null);
+  const body = theme.copy.updateBody;
 
   if (variant === "dialog") {
+    // A dismissible dialog: a card over a scrim, the app visible behind it; a bottom sheet on
+    // a phone; Escape is Later, and focus goes back where it was when it closes.
     return (
       <MessageScreen
         className={className}
-        title={theme.copy.updateTitle}
+        title={title}
         body={body}
-        logo={screenLogo(theme, "delivery")}
+        logo={screenLogo(theme, "3.5rem")}
         onRetry={act}
         retryLabel={theme.copy.updateActionLabel}
-        retryVariant="primary"
+        scrim={theme.scheme ?? "dark"}
+        onDismiss={dismiss}
         secondaryAction={
-          <Button variant="ghost" onClick={dismiss}>
+          <Button
+            variant="secondary"
+            onClick={dismiss}
+            data-polaris-update-dismiss=""
+          >
             {theme.copy.updateDismissLabel}
           </Button>
         }
@@ -175,34 +260,16 @@ function VersionPrompt(
   }
 
   return (
-    <div
+    <UpdateBanner
       className={className}
-      role="status"
-      aria-live="polite"
-      aria-label={theme.copy.updateTitle}
-      style={bannerStyle()}
-      data-polaris-update="banner"
-    >
-      <span>
-        {theme.copy.updateTitle} — {body}
-      </span>
-      <Button
-        variant="secondary"
-        style={compactStyle}
-        onClick={act}
-        data-polaris-update-action=""
-      >
-        {theme.copy.updateActionLabel}
-      </Button>
-      <Button
-        variant="ghost"
-        style={compactStyle}
-        onClick={dismiss}
-        data-polaris-update-dismiss=""
-      >
-        {theme.copy.updateDismissLabel}
-      </Button>
-    </div>
+      title={title}
+      body={body}
+      actionLabel={theme.copy.updateActionLabel}
+      onAction={act}
+      dismissLabel={theme.copy.updateDismissLabel}
+      onDismiss={dismiss}
+      marker="banner"
+    />
   );
 }
 
@@ -264,23 +331,26 @@ function DecisionPrompt(
   const c = theme.copy;
   const version =
     decision.action === "blocked" ? null : decision.release.version;
-  const withVersion = (text: string): string =>
-    version ? `${text} (${version})` : text;
   const mandatory =
     decision.action !== "code-ready" &&
     decision.action !== "blocked" &&
     decision.mandatory;
 
-  let title = c.updateTitle;
-  let body = withVersion(c.updateBody);
+  let title = updateTitleFor(theme, version);
+  let body = c.updateBody;
   let label = c.updateActionLabel;
   let fallback: (() => void) | null = null;
   switch (decision.action) {
-    case "code-ready":
-      title = c.updateReadyTitle;
-      body = withVersion(c.updateReadyBody);
+    case "code-ready": {
+      const product = knownProductName(theme);
+      title =
+        product && version
+          ? formatCopy(c.updateReadyProductTitle, { product, version })
+          : c.updateReadyTitle;
+      body = c.updateReadyBody;
       label = c.updateRestartLabel;
       break;
+    }
     case "binary": {
       const build = decision.build;
       const v = decision.release.version;
@@ -304,7 +374,7 @@ function DecisionPrompt(
       break;
     }
     case "platform":
-      body = withVersion(c.updatePlatformBody);
+      body = c.updatePlatformBody;
       if (adapter.mode === "browser")
         fallback = () => {
           if (typeof window !== "undefined") window.location.reload();
@@ -319,11 +389,10 @@ function DecisionPrompt(
       break;
   }
   if (mandatory)
-    body = withVersion(
+    body =
       ctx.reason === "content-floor"
         ? c.updateContentFloorBody
-        : c.updateMandatoryBody,
-    );
+        : c.updateMandatoryBody;
   const act = onAction ? () => onAction(ctx) : fallback;
 
   // Revoked required content stops the boot (boot `required`): a full-window hard stop with no
@@ -335,7 +404,7 @@ function DecisionPrompt(
         className={className}
         title={c.updateRevokedContentTitle}
         body={c.updateRevokedContentBody}
-        logo={screenLogo(theme, "delivery")}
+        logo={screenLogo(theme)}
         {...(offer ? { onRetry: act, retryLabel: label } : {})}
         data-polaris-update={decision.action}
         data-polaris-update-required=""
@@ -349,12 +418,13 @@ function DecisionPrompt(
         className={className}
         title={title}
         body={body}
-        logo={screenLogo(theme, "delivery")}
+        logo={screenLogo(theme, "3.5rem")}
         {...(act ? { onRetry: act, retryLabel: label } : {})}
-        retryVariant="primary"
+        scrim={theme.scheme ?? "dark"}
+        onDismiss={dismiss}
         secondaryAction={
           <Button
-            variant="ghost"
+            variant="secondary"
             onClick={dismiss}
             data-polaris-update-dismiss=""
           >
@@ -369,38 +439,16 @@ function DecisionPrompt(
   // The banner. A decision the player cannot dismiss stays here too, as a persistent alert
   // with no dismiss control: it sits in the layout and never covers the running app.
   return (
-    <div
+    <UpdateBanner
       className={className}
-      {...(locked
-        ? { role: "alert", "data-polaris-update-mandatory": "" }
-        : { role: "status", "aria-live": "polite" as const })}
-      aria-label={title}
-      style={bannerStyle(locked ? "warning" : "neutral")}
-      data-polaris-update={decision.action}
-    >
-      <span>
-        {title} — {body}
-      </span>
-      {act ? (
-        <Button
-          variant="secondary"
-          style={compactStyle}
-          onClick={act}
-          data-polaris-update-action=""
-        >
-          {label}
-        </Button>
-      ) : null}
-      {locked ? null : (
-        <Button
-          variant="ghost"
-          style={compactStyle}
-          onClick={dismiss}
-          data-polaris-update-dismiss=""
-        >
-          {c.updateDismissLabel}
-        </Button>
-      )}
-    </div>
+      title={title}
+      body={body}
+      locked={locked}
+      actionLabel={label}
+      onAction={act}
+      dismissLabel={c.updateDismissLabel}
+      onDismiss={dismiss}
+      marker={decision.action}
+    />
   );
 }

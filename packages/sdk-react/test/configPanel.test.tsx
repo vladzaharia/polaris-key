@@ -204,12 +204,78 @@ describe("ConfigPanel — the config service disabled", () => {
         container.querySelector('[data-polaris-config="disabled"]'),
       ).toBeTruthy(),
     );
-    // It inherits MessageScreen's blocking contract.
-    const dialog = within(container).getByRole("alertdialog");
-    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    // Inline, in the host's page: the panel explains itself in place, never a full-window
+    // dialog over the host app.
+    const panel = container.querySelector(
+      '[data-polaris-config="disabled"]',
+    ) as HTMLElement;
+    expect(panel.tagName).toBe("SECTION");
+    expect(panel.style.position).not.toBe("fixed");
+    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(within(panel).getByRole("heading").textContent).toBe(
+      "Settings are not managed",
+    );
     expect(container.textContent).toMatch(
       /does not distribute managed settings/i,
     );
+    adapter.dispose();
+  });
+});
+
+describe("ConfigPanel — layout and chrome", () => {
+  it("the key names the field; no visible '{key} Override' label repeats it", async () => {
+    const { container, adapter } = renderPanel(sample, {
+      onOverride: vi.fn(),
+    });
+    const input = await findEl<HTMLInputElement>(
+      container,
+      '[data-polaris-config-input="c.default"]',
+    );
+    expect(within(container).getByLabelText("c.default")).toBe(input);
+    expect(container.textContent).not.toContain("c.default Override");
+    adapter.dispose();
+  });
+
+  it("draws no divider under the last row", async () => {
+    const { container, adapter } = renderPanel(sample);
+    await findEl(container, '[data-polaris-config="rows"]');
+    const rows = container.querySelectorAll<HTMLElement>(
+      "[data-polaris-config-row]",
+    );
+    expect(rows[rows.length - 1]!.style.borderBottom).not.toContain("solid");
+    expect(rows[0]!.style.borderBottom).toContain("1px solid");
+    adapter.dispose();
+  });
+
+  it("starts at the host's start edge, and bare drops the card chrome", async () => {
+    const framed = renderPanel(sample);
+    const panel = await findEl<HTMLElement>(
+      framed.container,
+      '[data-polaris-config="panel"]',
+    );
+    // A panel in the host's page never centres itself.
+    expect(panel.style.margin).toMatch(/^0(px)?$/);
+    expect(panel.style.border).toContain("1px solid");
+    framed.adapter.dispose();
+    cleanup();
+    const capabilities = services("license", "config");
+    const adapter = desktopAdapter({
+      bridge: makeFakeBridge(okBridgeState({ config: sample, capabilities })),
+      now: () => NOW_SEC,
+      expectServices: capabilities,
+    });
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <ConfigPanel bare />
+      </PolarisKeyProvider>,
+    );
+    const bare = await findEl<HTMLElement>(
+      container,
+      '[data-polaris-config="panel"]',
+    );
+    expect(bare.style.background).toBe("transparent");
+    expect(bare.style.borderRadius).toMatch(/^0(px)?$/);
+    expect(within(bare).getByRole("heading").textContent).toBe("Settings");
     adapter.dispose();
   });
 });

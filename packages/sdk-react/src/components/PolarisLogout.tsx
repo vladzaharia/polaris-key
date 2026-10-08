@@ -27,8 +27,13 @@ export function PolarisLogout(props: PolarisLogoutProps): JSX.Element {
     <Button
       className={props.className}
       variant={props.variant === "ghost" ? "ghost" : "secondary"}
-      style={{ padding: quietStyle.padding, fontSize: quietStyle.fontSize }}
-      disabled={auth.busy}
+      style={{
+        padding: quietStyle.padding,
+        fontSize: quietStyle.fontSize,
+        lineHeight: quietStyle.lineHeight,
+        // Its own opaque ground, so the label never depends on the host's background.
+        background: "var(--pk-surface)",
+      }}
       busy={auth.busy}
       label={label}
       onClick={() => {

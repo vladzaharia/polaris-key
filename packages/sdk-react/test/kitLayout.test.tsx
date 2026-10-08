@@ -1,8 +1,8 @@
 // @pkey-feature ui.kit ui.kit.manage
 //
-// The drop-in kit's narrow fixes ahead of UK-05: a full device limit never dead-ends the gate,
-// the sign-in line names the product, the kit never falls back to the browser's serif, and the
-// full-window layout switches on the window's size. The real-browser half (overflow, first
+// The drop-in kit's fixes ahead of UK-05: a full device limit never dead-ends the gate, the
+// sign-in card's errors sit by the control they belong to, the kit never falls back to the
+// browser's serif, and the full-window layout switches on the window's size. The real-browser half (overflow, first
 // viewport, target sizes, text scaling at every width) is test/browser/responsive.browser.test.tsx.
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -14,7 +14,7 @@ import {
 } from "@testing-library/react";
 import { PolarisKeyProvider } from "../src/react/Provider.js";
 import { LicenseGate } from "../src/components/LicenseGate.js";
-import { PolarisLogin, signInLede } from "../src/components/PolarisLogin.js";
+import { PolarisLogin, signInTitle } from "../src/components/PolarisLogin.js";
 import { MessageScreen } from "../src/components/primitives/MessageScreen.js";
 import { Button } from "../src/components/primitives/buttons.js";
 import {
@@ -42,6 +42,7 @@ import {
   makeFakeBridge,
   services,
 } from "./fixtures.js";
+import { keyField } from "./keyField.js";
 
 afterEach(() => {
   cleanup();
@@ -51,17 +52,17 @@ afterEach(() => {
 const MANAGE =
   "https://key.plrs.im/activate?product=acme&next=free-device&for=Web";
 
-function deviceLimitAdapter(): PolarisAdapter {
+function deviceLimitAdapter(
+  submitKey: () => Promise<BridgeActivation> = async () =>
+    ({
+      kind: "device-limit",
+      limit: 3,
+      deviceCount: 3,
+      manageUrl: MANAGE,
+    }) as BridgeActivation,
+): PolarisAdapter {
   const bridge = makeFakeBridge(emptyBridgeState());
-  bridge.submitKey = vi.fn(
-    async () =>
-      ({
-        kind: "device-limit",
-        limit: 3,
-        deviceCount: 3,
-        manageUrl: MANAGE,
-      }) as BridgeActivation,
-  );
+  bridge.submitKey = vi.fn(submitKey);
   return desktopAdapter({
     bridge,
     now: () => NOW_SEC,
@@ -88,21 +89,30 @@ function withLicenseError(
 }
 
 describe("LicenseGate — a full device limit never dead-ends", () => {
-  it("keeps a refused key on the sign-in card, with Replace a device", async () => {
+  it("keeps a refused key on the sign-in card: a neutral callout and Replace a device, focused", async () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
-    const adapter = deviceLimitAdapter();
+    const submitKey = vi.fn(
+      async () =>
+        ({
+          kind: "device-limit",
+          limit: 3,
+          deviceCount: 3,
+          manageUrl: MANAGE,
+        }) as BridgeActivation,
+    );
+    const adapter = deviceLimitAdapter(submitKey);
     const { container } = render(
-      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+      <PolarisKeyProvider
+        productSlug="acme"
+        adapter={adapter}
+        theme={{ copy: { productName: "Tidewater" } }}
+      >
         <LicenseGate returnUrl="myapp://back">
           <div data-testid="app">APP</div>
         </LicenseGate>
       </PolarisKeyProvider>,
     );
-    const input = await waitFor(() => {
-      const el = container.querySelector("[data-polaris-key-input]");
-      expect(el).toBeTruthy();
-      return el as HTMLInputElement;
-    });
+    const input = await keyField(container);
     fireEvent.change(input, { target: { value: "pkey_acme_KEY" } });
     fireEvent.submit(input.closest("form")!);
     const replace = await waitFor(() => {
@@ -110,19 +120,99 @@ describe("LicenseGate — a full device limit never dead-ends", () => {
       expect(el).toBeTruthy();
       return el as HTMLButtonElement;
     });
-    // Still the sign-in card: the key the person typed and the refusal under it.
+    // Still the sign-in card: the key the person typed, and the limit under it.
     expect(container.querySelector('[data-polaris-gate="login"]')).toBeTruthy();
     expect(container.querySelector('[data-polaris-gate="error"]')).toBeNull();
     expect(input.value).toBe("pkey_acme_KEY");
-    expect(within(container).getByRole("alert").textContent).toMatch(
-      /already on all its devices/i,
+    const callout = container.querySelector(
+      "[data-polaris-device-limit]",
+    ) as HTMLElement;
+    expect(callout.textContent).toBe(
+      "Your license is on 3 of 3 devices" +
+        "Replace a device in your browser. Tidewater continues when you're done.",
     );
+    // Not an error: the key is good. No alert, no invalid field.
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(input.getAttribute("aria-invalid")).toBeNull();
+    // The way out is the one filled action, focused, describing where it goes.
+    await waitFor(() => expect(document.activeElement).toBe(replace));
+    const described = replace.getAttribute("aria-describedby")!;
+    expect(document.getElementById(described)?.textContent).toMatch(
+      /^Replace a device in your browser/,
+    );
+    const oidc = container.querySelector("[data-polaris-oidc]") as HTMLElement;
+    expect(oidc.style.background).toBe("transparent");
     fireEvent.click(replace);
     expect(open).toHaveBeenCalledWith(
       "https://key.plrs.im/activate?product=acme&next=free-device&for=Web&return=myapp%3A%2F%2Fback#key=pkey_acme_KEY",
       "_blank",
       "noopener,noreferrer",
     );
+    // Back from the portal: the key in the field is tried again, once.
+    expect(submitKey).toHaveBeenCalledTimes(1);
+    fireEvent(window, new Event("focus"));
+    await waitFor(() => expect(submitKey).toHaveBeenCalledTimes(2));
+    fireEvent(window, new Event("focus"));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(submitKey).toHaveBeenCalledTimes(2);
+    adapter.dispose();
+  });
+
+  it("a sign-in failure sits under Sign in and never marks the key field", async () => {
+    const bridge = makeFakeBridge(emptyBridgeState());
+    bridge.beginSignIn = async () => {
+      throw new Error("browser closed");
+    };
+    const adapter = desktopAdapter({
+      bridge,
+      now: () => NOW_SEC,
+      expectServices: services(),
+    });
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <PolarisLogin />
+      </PolarisKeyProvider>,
+    );
+    const oidc = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-oidc]");
+      expect(el).toBeTruthy();
+      return el as HTMLButtonElement;
+    });
+    fireEvent.click(oidc);
+    const alert = await waitFor(() => {
+      const el = container.querySelector("[data-polaris-signin-error]");
+      expect(el).toBeTruthy();
+      return el as HTMLElement;
+    });
+    expect(alert.textContent).toBe("Sign-in didn't finish. Try again.");
+    expect(oidc.getAttribute("aria-describedby")).toBe(alert.id);
+    expect(alert.previousElementSibling).toBe(oidc);
+    adapter.dispose();
+  });
+
+  it("an unknown refusal code is never shown raw, and typing clears the refusal", async () => {
+    const adapter = deviceLimitAdapter(
+      async () =>
+        ({
+          kind: "refused",
+          code: "license_suspended",
+          message: "nope",
+        }) as BridgeActivation,
+    );
+    const { container } = render(
+      <PolarisKeyProvider productSlug="acme" adapter={adapter}>
+        <PolarisLogin />
+      </PolarisKeyProvider>,
+    );
+    const input = await keyField(container);
+    fireEvent.change(input, { target: { value: "k" } });
+    fireEvent.submit(input.closest("form")!);
+    const alert = await waitFor(() => within(container).getByRole("alert"));
+    expect(alert.textContent).toBe("Something went wrong. Try again.");
+    // A refused key is not a wrong key: the field is not marked invalid.
+    expect(input.getAttribute("aria-invalid")).toBeNull();
+    fireEvent.change(input, { target: { value: "k2" } });
+    expect(container.querySelector('[role="alert"]')).toBeNull();
     adapter.dispose();
   });
 
@@ -156,6 +246,11 @@ describe("LicenseGate — a full device limit never dead-ends", () => {
       ).toBeTruthy(),
     );
     const dialog = within(container).getByRole("alertdialog");
+    // The catalog's limit title, and where Replace goes.
+    expect(within(dialog).getByRole("heading").textContent).toBe(
+      "Device limit reached",
+    );
+    expect(dialog.textContent).toContain("Replace a device in your browser.");
     const buttons = within(dialog).getAllByRole("button");
     // The main action first (and focused), Try again beside it.
     expect(buttons.map((b) => b.textContent)).toEqual([
@@ -199,42 +294,19 @@ describe("LicenseGate — a full device limit never dead-ends", () => {
   });
 });
 
-describe("PolarisLogin — the line under the title names the product", () => {
-  const both = { signIn: true, key: true };
-  it("names the product when the integrator gave its name", () => {
-    const theme = mergeTheme({ copy: { productName: "Tidewater" } });
-    expect(signInLede(theme, both)).toBe(
-      "Sign in or enter a license key to use Tidewater.",
-    );
-    expect(signInLede(theme, { signIn: true, key: false })).toBe(
-      "Sign in to use Tidewater.",
-    );
-    expect(signInLede(theme, { signIn: false, key: true })).toBe(
-      "Enter a license key to use Tidewater.",
-    );
-  });
-
-  it("says what the card offers when the name is a placeholder", () => {
-    expect(signInLede(defaultTheme, both)).toBe(
-      "Sign in or use a license key to continue.",
-    );
+describe("PolarisLogin — the title names the product", () => {
+  it("is Welcome to {product} once the name is set, else Sign in", () => {
+    expect(
+      signInTitle(mergeTheme({ copy: { productName: "Tidewater" } })),
+    ).toBe("Welcome to Tidewater");
+    expect(signInTitle(defaultTheme)).toBe("Sign in");
     // "Polaris Key" names the platform, not the product behind the gate.
-    expect(signInLede(mergeTheme({ branding: "polaris-key" }), both)).toBe(
-      "Sign in or use a license key to continue.",
-    );
-    expect(signInLede(defaultTheme, { signIn: false, key: true })).toBe(
-      "Enter a license key to continue.",
+    expect(signInTitle(mergeTheme({ branding: "polaris-key" }))).toBe(
+      "Sign in",
     );
   });
 
-  it("an explicit signInSubtitle wins", () => {
-    const theme = mergeTheme({
-      copy: { productName: "Tidewater", signInSubtitle: "Welcome back." },
-    });
-    expect(signInLede(theme, both)).toBe("Welcome back.");
-  });
-
-  it("renders it on the card", async () => {
+  it("renders no lede by default, and the integrator's when set", async () => {
     const adapter = desktopAdapter({
       bridge: makeFakeBridge(emptyBridgeState()),
       now: () => NOW_SEC,
@@ -244,15 +316,15 @@ describe("PolarisLogin — the line under the title names the product", () => {
       <PolarisKeyProvider
         productSlug="acme"
         adapter={adapter}
-        theme={{ copy: { productName: "Tidewater" } }}
+        theme={{ copy: { signInSubtitle: "Welcome back." } }}
       >
         <PolarisLogin />
       </PolarisKeyProvider>,
     );
     await waitFor(() =>
-      expect(
-        container.querySelector("[data-polaris-login-lede]")?.textContent,
-      ).toBe("Sign in or enter a license key to use Tidewater."),
+      expect(container.querySelector("h2 + p")?.textContent).toBe(
+        "Welcome back.",
+      ),
     );
     expect(container.textContent).not.toMatch(/Authenticate to unlock/);
     adapter.dispose();
@@ -317,15 +389,26 @@ describe("Full-window layout", () => {
     expect(windowLayoutOf({ width: 0, height: 0 })).toEqual({
       bleed: false,
       short: false,
+      twoColumn: false,
+      sheet: false,
     });
     expect(windowLayoutOf({ width: 390 / 16, height: 844 / 16 })).toEqual({
       bleed: true,
       short: false,
+      twoColumn: false,
+      sheet: false,
     });
+    // A phone on its side: two columns, the title beside the controls.
     expect(windowLayoutOf({ width: 844 / 16, height: 390 / 16 })).toEqual({
       bleed: false,
       short: true,
+      twoColumn: true,
+      sheet: false,
     });
+    // A dismissible dialog on a phone is a bottom sheet over the app.
+    expect(
+      windowLayoutOf({ width: 390 / 16, height: 844 / 16 }, { scrim: true }),
+    ).toEqual({ bleed: false, short: false, twoColumn: false, sheet: true });
     // A 24 px root makes a 768 px window narrow: 32rem of text.
     expect(windowLayoutOf({ width: 768 / 24, height: 1024 / 24 }).bleed).toBe(
       true,
@@ -334,7 +417,7 @@ describe("Full-window layout", () => {
     expect(SHORT_BELOW_REM).toBe(30);
   });
 
-  it("a message screen's actions share one row, the main action first", () => {
+  it("a message screen's actions stack, the main action first", () => {
     const { container } = render(
       <PolarisKeyProvider productSlug="acme" adapter={deviceLimitAdapter()}>
         <MessageScreen
@@ -342,7 +425,7 @@ describe("Full-window layout", () => {
           onRetry={() => undefined}
           retryLabel="Get the update"
           retryVariant="primary"
-          secondaryAction={<Button variant="ghost">Not now</Button>}
+          secondaryAction={<Button variant="secondary">Later</Button>}
         />
       </PolarisKeyProvider>,
     );
@@ -350,9 +433,10 @@ describe("Full-window layout", () => {
       "[data-polaris-actions]",
     ) as HTMLElement;
     expect(row.style.display).toBe("grid");
+    expect(row.style.gridTemplateColumns).toBe("minmax(0, 1fr)");
     expect([...row.children].map((b) => b.textContent)).toEqual([
       "Get the update",
-      "Not now",
+      "Later",
     ]);
   });
 });
