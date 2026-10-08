@@ -130,6 +130,26 @@ struct PolarisOfflineSurface: View {
     /// it, all from this one value.
     static func requestCode(deviceId: String) -> String { deviceId }
 
+    /// The code as DRAWN: the raw id with invisible break points after every 4 characters (a short
+    /// tail joins the group before it, so no line ends in an orphan) and word joiners around real
+    /// hyphens. The text never relies on the system's hyphenation, which draws hyphens that are not
+    /// in the code. Copy and the QR carry the raw id; stripping U+200B and U+2060 gives it back.
+    static func displayCode(_ id: String) -> String {
+        let chars = Array(id)
+        var out = ""
+        for (i, ch) in chars.enumerated() {
+            if ch == "-" {
+                out.append("\u{2060}-\u{2060}")
+            } else {
+                out.append(ch)
+            }
+            let done = i + 1
+            let remaining = chars.count - done
+            if done % 4 == 0 && remaining > 2 { out.append("\u{200B}") }
+        }
+        return out
+    }
+
     /// Drag and drop is offered on macOS and iPad (regular width), not on iPhone.
     private var offersDrop: Bool {
         #if os(macOS)
@@ -205,11 +225,12 @@ struct PolarisOfflineSurface: View {
         -> some View
     {
         let card = HStack(spacing: PolarisSpace.s) {
-            Text(shownCode)
+            Text(deviceId.isEmpty ? shownCode : Self.displayCode(shownCode))
                 .font(style.monoBody)
                 .foregroundStyle(style.palette.textStrong)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
+                .polarisLayoutProbe(.code)
                 .redacted(reason: deviceId.isEmpty ? .placeholder : [])
                 .frame(maxWidth: .infinity, alignment: .leading)
             if !deviceId.isEmpty {

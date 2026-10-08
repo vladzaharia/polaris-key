@@ -292,6 +292,7 @@ struct PolarisPageActions: View {
             .modifier(KitTint(color: style.textTint))
             .modifier(PolarisButtonSkin(style: style, prominent: false))
             .modifier(CancelShortcut(active: secondaryCancels))
+            .polarisLayoutProbe(.secondaryAction)
         }
     }
 
@@ -303,6 +304,7 @@ struct PolarisPageActions: View {
             .polarisSecondaryButton()
             .modifier(KitTint(color: style.textTint))
             .modifier(PolarisButtonSkin(style: style, prominent: false))
+            .polarisLayoutProbe(.leadingAction)
         }
     }
 
@@ -345,8 +347,10 @@ struct PolarisButtonSkin: ViewModifier {
                 PolarisSkinStyle(
                     prominent: prominent, fill: style.palette.accent, on: style.palette.onAccent,
                     text: style.palette.accentText))
+        } else if prominent {
+            content.buttonStyle(.borderedProminent)
         } else {
-            content
+            content.buttonStyle(.bordered)
         }
     }
 }
@@ -378,7 +382,8 @@ struct PolarisSkinStyle: ButtonStyle {
                 if prominent {
                     Capsule().fill(fill)
                 } else {
-                    Capsule().strokeBorder(text, lineWidth: 1.5)
+                    // Clipped to the capsule: an unclipped stroke left a stray bar at each end.
+                    Capsule().strokeBorder(text, lineWidth: 1.5).clipShape(Capsule())
                 }
             }
             .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
@@ -516,6 +521,9 @@ struct PolarisUserCode: View {
                 .foregroundStyle(style.palette.textStrong)
                 .lineLimit(isAX ? 2 : 1)
                 .minimumScaleFactor(isAX ? 0.5 : 0.4)
+                // The height is never squeezed: a squeezed page would otherwise scale the code
+                // down (the scale factor answers any shortfall), so only width can shrink it.
+                .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.center)
                 .textSelection(.enabled)
                 .accessibilityLabel(
@@ -582,17 +590,11 @@ struct KitTint: ViewModifier {
 }
 
 extension View {
-    /// The kit's primary (prominent, large) button look, in the system's own shape.
-    func polarisPrimaryButton() -> some View {
-        self.buttonStyle(.borderedProminent)
-            .controlSize(.large)
-    }
-
-    /// The kit's secondary (bordered, large) button look, in the system's own shape.
-    func polarisSecondaryButton() -> some View {
-        self.buttonStyle(.bordered)
-            .controlSize(.large)
-    }
+    /// The kit's primary and secondary buttons are large. The button STYLE comes from
+    /// `PolarisButtonSkin`, which must be the only `buttonStyle` on the button (the innermost style
+    /// wins, so a system style applied before the skin would hide it).
+    func polarisPrimaryButton() -> some View { self.controlSize(.large) }
+    func polarisSecondaryButton() -> some View { self.controlSize(.large) }
 }
 
 /// A QR code for `text`, drawn by CoreImage's generator (no dependency), crisp at any size.

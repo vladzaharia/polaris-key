@@ -156,6 +156,14 @@ struct PolarisScrollRequestKey: PreferenceKey {
     }
 }
 
+/// True while a text field in the page's act has focus. The page freezes its fit then: typing
+/// changes the act's natural height (a callout clears), and a fit that flips under the keyboard
+/// slides the field behind it.
+struct PolarisFieldFocusKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
 extension View {
     /// Ask the enclosing page to scroll its act into view (raise a new token on each focus gain).
     func polarisScrollRequest(_ token: Int) -> some View {
@@ -181,6 +189,9 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
     @State private var naturalSideLeading: CGFloat = 0
     @State private var naturalSideAct: CGFloat = 0
     @State private var scrollToken = 0
+    /// A field is focused: the measured heights are held (see `PolarisFieldFocusKey`).
+    @State private var fieldFocused = false
+    @State private var pendingColumnHeight: CGFloat = 0
 
     var body: some View {
         let arrangement = PolarisKitLayout.arrangement(for: size)
@@ -194,6 +205,13 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
             #if os(iOS)
                 .scrollDismissesKeyboard(.interactively)
             #endif
+            .onPreferenceChange(PolarisFieldFocusKey.self) { focused in
+                fieldFocused = focused
+                if !focused, pendingColumnHeight > 0 {
+                    naturalColumnHeight = pendingColumnHeight
+                    pendingColumnHeight = 0
+                }
+            }
             .onPreferenceChange(PolarisScrollRequestKey.self) { token in
                 guard token != scrollToken else { return }
                 scrollToken = token
@@ -331,7 +349,11 @@ struct PolarisAdaptivePage<Heading: View, Detail: View, Act: View>: View {
             }
         )
         .onPreferenceChange(PolarisHeightKey.self) { h in
-            if h > 0 { naturalColumnHeight = h }
+            guard h > 0 else { return }
+            // Held while a field is focused, so typing never reflows the page under the keyboard.
+            if fieldFocused, naturalColumnHeight > 0 { pendingColumnHeight = h } else {
+                naturalColumnHeight = h
+            }
         }
         .hidden()
         .accessibilityHidden(true)
@@ -436,6 +458,13 @@ enum PolarisLayoutRole: Hashable, Sendable {
     case code
     case primaryAction
     case activate
+    /// The gate's Sign in, whether or not it is the primary.
+    case signIn
+    /// A page's secondary (Cancel) and leading (Paste) buttons.
+    case secondaryAction
+    case leadingAction
+    /// The license-key text field.
+    case keyField
 }
 
 struct PolarisLayoutProbeKey: PreferenceKey {

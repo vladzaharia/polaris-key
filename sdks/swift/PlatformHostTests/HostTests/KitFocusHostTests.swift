@@ -21,6 +21,7 @@
             var error: String?
             var manage: String?
             var preset: PolarisBranding
+            var dts: DynamicTypeSize = .large
             var body: some View {
                 PolarisGateSurface(
                     status: .needsActivation, allowedRange: nil, isWorking: false,
@@ -30,8 +31,93 @@
                     content: { Text("App") }
                 )
                 .polarisKeyBranding(preset)
+                .environment(\.dynamicTypeSize, dts)
             }
         }
+
+        /// A real full-screen window on the simulator's own scene (so the software keyboard
+        /// overlaps it as it does in an app); optionally rotated to landscape first.
+        private func fullScreenCheck(
+            _ name: String, preset: PolarisBranding, landscape: Bool, dts: DynamicTypeSize
+        ) {
+            guard let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene }).first
+            else { return XCTFail("\(name): the hosted app has no scene") }
+            if landscape {
+                scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeRight)) { _ in }
+                wait(1.5)
+            }
+            defer {
+                if landscape {
+                    scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { _ in }
+                    wait(1.5)
+                }
+            }
+            final class Box: @unchecked Sendable { var frame = CGRect.zero }
+            let box = Box()
+            let obs = NotificationCenter.default.addObserver(
+                forName: UIResponder.keyboardDidShowNotification, object: nil, queue: .main
+            ) { n in
+                box.frame =
+                    (n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue
+                    ?? .zero
+            }
+            defer { NotificationCenter.default.removeObserver(obs) }
+            let window = UIWindow(windowScene: scene)
+            window.frame = scene.coordinateSpace.bounds
+            let limit = ErrorCopy.message(ErrorCode.deviceLimit)
+            window.rootViewController = UIHostingController(
+                rootView: Harness(
+                    key: Self.key, error: limit,
+                    manage: "https://key.plrs.im/portal/tidewater/devices", preset: preset,
+                    dts: dts))
+            window.makeKeyAndVisible()
+            wait(1.2)
+            guard let field = live(window) else {
+                window.isHidden = true
+                return XCTFail("\(name): no live key field")
+            }
+            XCTAssertTrue(field.becomeFirstResponder(), "\(name): the field takes focus")
+            wait(1.5)
+            XCTAssertNotEqual(box.frame, .zero, "\(name): the keyboard showed")
+            func above(_ when: String) {
+                let rect = field.convert(field.bounds, to: window)
+                XCTAssertLessThanOrEqual(
+                    rect.maxY, box.frame.minY + 0.5,
+                    "\(name): the field \(rect.integral) is under the keyboard \(box.frame.integral) \(when)")
+                XCTAssertGreaterThanOrEqual(rect.minY, -0.5, "\(name): the field is above the screen \(when)")
+            }
+            above("after focus")
+            // The first keystroke clears the refusal callout and used to flip the page's fit,
+            // sliding the field behind the keyboard.
+            field.insertText("X")
+            wait(1.2)
+            XCTAssertTrue(live(window) === field && field.isFirstResponder, "\(name): same field")
+            above("after the first keystroke")
+            field.insertText("Y")
+            wait(0.6)
+            above("after the second keystroke")
+            field.resignFirstResponder()
+            wait(0.5)
+            window.isHidden = true
+            window.rootViewController = nil
+        }
+
+        /// The field stays above the keyboard after the first keystroke, portrait and landscape,
+        /// at the default and the smallest Dynamic Type, native and Polaris.
+        func testTheFieldStaysAboveTheKeyboardAfterTheFirstKeystroke() {
+            for landscape in [false, true] {
+                for dts in [DynamicTypeSize.large, .xSmall] {
+                    for preset in [PolarisBranding.native, .polarisKey] {
+                        fullScreenCheck(
+                            "\(landscape ? "land" : "port")-\(dts)-\(preset)", preset: preset,
+                            landscape: landscape, dts: dts)
+                    }
+                }
+            }
+        }
+
+        static let key = "pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA"
 
         private func wait(_ s: Double) { RunLoop.main.run(until: Date().addingTimeInterval(s)) }
 
@@ -93,7 +179,6 @@
             window.rootViewController = nil
         }
 
-        private static let key = "pkey_tidewater_7Q2Mx9cLr4TbV0aZ3WPLDA"
 
         /// 390 x 844 (iPhone 16e / 17e) and 402 x 874 (17 Pro): the sizes where the refused page
         /// sits near the tall/compressed threshold; plus the small and large extremes.

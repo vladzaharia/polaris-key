@@ -382,6 +382,8 @@ struct PolarisGateSurface<Content: View>: View {
                     disabled: isWorking, compact: compact, action: onSignIn)
                     .modifier(
                         GateProbe(role: signInProminent ? .primaryAction : nil))
+                    // A background, because a probe on the same view as another replaces it.
+                    .background(Color.clear.polarisLayoutProbe(.signIn))
             }
 
             if showsKeyEntry {
@@ -438,7 +440,6 @@ struct PolarisGateSurface<Content: View>: View {
             .modifier(PolarisButtonFont(style: style))
             .frame(maxWidth: .infinity)
         }
-        .modifier(ProminentWhen(prominent: prominent))
         .controlSize(compact ? .regular : (prominent && role == .primary ? .extraLarge : .large))
         .modifier(KitTint(color: prominent ? tint : accentTextTint))
         .modifier(PolarisButtonSkin(style: style, prominent: prominent))
@@ -503,7 +504,6 @@ struct PolarisGateSurface<Content: View>: View {
                     .modifier(PolarisButtonFont(style: style))
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
             .controlSize(compact ? .regular : .large)
             .modifier(KitTint(color: tint))
             .modifier(PolarisButtonSkin(style: style, prominent: true))
@@ -561,7 +561,11 @@ struct PolarisGateSurface<Content: View>: View {
     /// VoiceOver reads the key. Under the native preset on macOS it is the system rounded field.
     @ViewBuilder private func licenseKeyField(hasError: Bool) -> some View {
         let resting = !keyFieldFocused && !licenseKey.isEmpty
-        let field = TextField(theme.copy.kit.keyFieldPlaceholder, text: $licenseKey)
+        let field = TextField(
+            theme.copy.kit.keyFieldPlaceholder, text: $licenseKey,
+            // The placeholder is the only visible name in compact mode: muted text, not the
+            // system placeholder grey (1.8:1 on the light page).
+            prompt: Text(theme.copy.kit.keyFieldPlaceholder).foregroundStyle(palette.textMuted))
             .font(style.monoBody)
             .multilineTextAlignment(.leading)
             .autocorrectionDisabled()
@@ -570,8 +574,15 @@ struct PolarisGateSurface<Content: View>: View {
                 .submitLabel(.go)
             #endif
             .focused($keyFieldFocused)
+            .preference(key: PolarisFieldFocusKey.self, value: keyFieldFocused)
+            .polarisLayoutProbe(.keyField)
             .onChange(of: keyFieldFocused) { _, focused in
                 if focused { focusToken += 1 }
+            }
+            // The first keystroke clears the refusal callout and reflows the act: ask the page to
+            // bring the act back above the keyboard.
+            .onChange(of: errorDismissed) { _, dismissed in
+                if dismissed, keyFieldFocused { focusToken += 1 }
             }
             .onSubmit {
                 guard !isWorking, !licenseKey.trimmingCharacters(in: .whitespaces).isEmpty else {
@@ -854,19 +865,6 @@ private struct ExtrasButtonStyle: ViewModifier {
         #else
             content.buttonStyle(.borderless).modifier(OptionalTint(color: tint))
         #endif
-    }
-}
-
-/// `.borderedProminent` when the button is the card's primary action, `.bordered` otherwise.
-private struct ProminentWhen: ViewModifier {
-    let prominent: Bool
-
-    func body(content: Content) -> some View {
-        if prominent {
-            content.buttonStyle(.borderedProminent)
-        } else {
-            content.buttonStyle(.bordered)
-        }
     }
 }
 
