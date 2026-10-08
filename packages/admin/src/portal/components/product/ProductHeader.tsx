@@ -17,6 +17,9 @@ import { QuickActionButton } from "../QuickAction.js";
  * name, and without an icon its letter tile stands in. The name as the page's `h1` (focus lands
  * here after adding a product), "by <developer> · <tier>" as text, the status only as a
  * right-aligned issue pill (healthy is silence), and the one lead action with the overflow menu.
+ *
+ * On a short screen (§8: at most 512 px tall) the art steps aside for the task: no banner, and the
+ * no-cover arrangement (the icon beside the name), so the lead action is on the first screen.
  */
 export function ProductHeader({
   product,
@@ -60,7 +63,7 @@ export function ProductHeader({
           // a centred 3:1 band, capped at 26 rem so it never fills the first screen. pk-vt-hero:
           // the Library tile's art flies into it and back (motion.css; named only during a
           // forward or back transition, MO-05).
-          className="pk-vt-hero -mx-4 aspect-video desk:mx-0 desk:aspect-[3/1] desk:max-h-[26rem] desk:rounded-xl"
+          className="pk-vt-hero -mx-4 aspect-video desk:mx-0 desk:aspect-[3/1] desk:max-h-[26rem] desk:rounded-xl short:hidden"
         />
       ) : null}
       <div
@@ -68,7 +71,8 @@ export function ProductHeader({
         className={cn(
           "flex gap-4 desk:gap-6",
           hasCover
-            ? "flex-col desk:flex-row desk:items-end desk:px-6"
+            ? // On a short screen, the no-cover row below (the banner is hidden there).
+              "flex-col desk:flex-row desk:items-end desk:px-6 short:flex-row short:flex-wrap short:items-center short:px-0 short:pt-2 short:desk:flex-nowrap"
             : "flex-row flex-wrap items-center pt-2 desk:flex-nowrap",
         )}
       >
@@ -86,7 +90,8 @@ export function ProductHeader({
             // the tile's icon flies into it with the art and the name (MO-05).
             "pk-vt-hero-icon relative z-10 max-desk:size-20",
             // Half the tile over the cover: pinned to the row's top, not its end, on desktop.
-            hasCover && "-mt-10 desk:-mt-16 desk:self-start",
+            hasCover &&
+              "-mt-10 desk:-mt-16 desk:self-start short:mt-0 short:self-auto",
           )}
         />
         <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
@@ -130,7 +135,10 @@ export function ProductHeader({
             />
           </div>
         </div>
-        <div className="flex gap-2 max-desk:w-full desk:pb-1">
+        <div
+          data-product-actions=""
+          className="flex gap-2 max-desk:w-full desk:pb-1"
+        >
           <QuickActionButton
             product={product}
             action={action}
