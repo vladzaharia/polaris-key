@@ -6,9 +6,10 @@
 
 import {
   brandedHtmlSecurityHeaders,
+  escapeHtml,
   type Env,
 } from "../../../core/platform.js";
-import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
+import { renderBrandPage } from "../../../core/brandHtml.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 
 /** A JSON answer. `cookies` become separate `Set-Cookie` fields. */
@@ -106,20 +107,6 @@ export function parseEmail(raw: unknown): string | null {
   const email = raw.trim().toLowerCase();
   if (email.length > 254) return null;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
-}
-
-/** A same-origin return URL, or `undefined` (the console under `/manage` never is one). */
-export function safeReturnTo(req: Request, raw: unknown): string | undefined {
-  if (typeof raw !== "string" || raw === "") return undefined;
-  try {
-    const parsed = new URL(raw, req.url);
-    const here = new URL(req.url);
-    if (parsed.origin !== here.origin) return undefined;
-    if (parsed.pathname.startsWith("/manage")) return undefined;
-    return parsed.pathname + parsed.search + parsed.hash;
-  } catch {
-    return undefined;
-  }
 }
 
 /**

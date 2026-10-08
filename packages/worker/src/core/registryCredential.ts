@@ -22,15 +22,15 @@ export interface FeedCredential {
   readonly username?: string;
 }
 
+import { base64Decode } from "../platform/bytes.js";
+
 const MAX_AUTHORIZATION = 8_192;
 
 function decodeBase64(s: string): string | null {
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(s) || s.length % 4 === 1) return null;
   try {
-    const bin = atob(s);
-    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
     return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(
-      bytes,
+      base64Decode(s),
     );
   } catch {
     return null;

@@ -26,7 +26,7 @@ export const PRODUCT_SIGNIN_RETURN_TO: ReturnToPolicy = {
   pathOnly: false,
 };
 
-/** Portal and hosted-provider sign-in: an absolute same-origin URL outside the console. */
+/** Portal and hosted-provider sign-in: an absolute same-origin URL, never under `/manage`. */
 export const PORTAL_SIGNIN_RETURN_TO: ReturnToPolicy = {
   relative: false,
   refuseConsole: true,

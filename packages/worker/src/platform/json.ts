@@ -2,10 +2,12 @@
  * Reading and writing JSON-in-a-text-column (the `*_json` columns of D1, KV values, cursors).
  *
  * ONE set of helpers (P0-15; there were about thirty local copies, two of them named
- * `parseJsonColumn` with different signatures). The rule they share: a stored value that is
- * absent, empty or not valid JSON DEGRADES to a caller-chosen fallback and never throws. A
- * manual `wrangler d1 execute` repair, or a writer that forgot `JSON.stringify`, must not turn
- * into a `SyntaxError` out of whatever handler reads the column next.
+ * `parseJsonColumn` with different signatures). The rule they share (R11-06): a stored value
+ * that is absent, empty or not valid JSON DEGRADES to a caller-chosen fallback and never throws.
+ * No `_json` column has a `json_valid()` constraint behind it, so a truncated D1 write, a manual
+ * `wrangler d1 execute` repair or a writer that forgot `JSON.stringify` must not turn into a
+ * `SyntaxError` out of whatever handler reads the column next (one bad `licenses.channels_json`
+ * row once took down the whole console licence list).
  *
  * "Absent" is `null`, `undefined` or the empty string. The empty string is not valid JSON, so a
  * copy that only special-cased `null` reached the same fallback through the `catch`; the helpers

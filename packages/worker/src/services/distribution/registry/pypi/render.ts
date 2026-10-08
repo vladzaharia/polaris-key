@@ -23,7 +23,7 @@
  *     `PYPI_DOCUMENT_CSP`, which `inertDocumentPolicy` accepts.
  */
 
-import { escapeHtml } from "../../../../core/bytesLanding.js";
+import { escapeHtml } from "../../../../core/platform.js";
 import type {
   PackageFile,
   PackageVersion,

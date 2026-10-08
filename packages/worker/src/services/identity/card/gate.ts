@@ -43,7 +43,9 @@
 
 import {
   hashKey,
+  normalizeEmail,
   randomId,
+  randomToken,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -73,10 +75,7 @@ import {
 } from "../../../core/accountCookies.js";
 import { portalAudit } from "../portal/repo.js";
 import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
-import {
-  checkAccountSession,
-  randomSecret,
-} from "../portal/accountSessions.js";
+import { checkAccountSession } from "../portal/accountSessions.js";
 import {
   portalSessionAuthenticatedAt,
   portalSessionFromRequest,
@@ -92,7 +91,6 @@ import {
   findLink,
   getAccountRow,
   insertLink,
-  normalizeEmail,
   resolveAccount,
   touchAccountSignIn,
   touchLink,
@@ -349,7 +347,7 @@ export async function beginProviderSignIn(
       return cardRedirect(input.returnTo ?? "/", [finished.cookie]);
     }
   }
-  const secret = randomSecret(32);
+  const secret = randomToken(32);
   const ref = await gateRefFor(env, secret);
   const gate: GateRecord = {
     v: 1,

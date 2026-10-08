@@ -5,8 +5,15 @@ import {
   ID_TOKEN_MAX_AGE,
 } from "../idToken.js";
 import {
+  brandedHtmlSecurityHeaders,
+  escapeHtml,
   hashKey,
+  isSameOriginNavigation,
+  pkcePair,
   platformOidcConfig,
+  PORTAL_SIGNIN_RETURN_TO,
+  randomToken,
+  safeReturnTo,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -47,11 +54,7 @@ import {
 
 export { portalMagicKey } from "../card/emailSignIn.js";
 import { portalSecurityHeaders } from "./headers.js";
-import {
-  brandedHtmlSecurityHeaders,
-  isSameOriginNavigation,
-} from "../../../core/platform.js";
-import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
+import { renderBrandPage } from "../../../core/brandHtml.js";
 import {
   LINK_FLOW_COOKIE,
   PORTAL_SSO_COOKIE,
@@ -182,50 +185,6 @@ function authJson(body: unknown, status = 200): Response {
   });
 }
 
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-
-function randomBytes(n: number): Uint8Array {
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return a;
-}
-
-async function pkce(): Promise<{ verifier: string; challenge: string }> {
-  const verifier = b64url(randomBytes(32));
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    toAB(new TextEncoder().encode(verifier)),
-  );
-  return { verifier, challenge: b64url(new Uint8Array(digest)) };
-}
-
-export function safeReturnTo(
-  req: Request,
-  raw: string | null,
-): string | undefined {
-  if (!raw) return undefined;
-  try {
-    const parsed = new URL(raw);
-    const here = new URL(req.url);
-    if (parsed.origin !== here.origin) return undefined;
-    if (parsed.pathname.startsWith("/manage")) return undefined;
-    return parsed.toString();
-  } catch {
-    return undefined;
-  }
-}
-
 function mapClaims(payload: Record<string, unknown>): {
   sub: string;
   email?: string;
@@ -317,16 +276,16 @@ export async function handlePortalLogin(
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
-  const returnTo = safeReturnTo(req, rawReturnTo);
+  const returnTo = safeReturnTo(req, rawReturnTo, PORTAL_SIGNIN_RETURN_TO);
   if (rawReturnTo && !returnTo) return htmlError(400, "Invalid return URL.");
 
-  const state = b64url(randomBytes(16));
-  const nonce = b64url(randomBytes(16));
-  const { verifier, challenge } = await pkce();
+  const state = randomToken(16);
+  const nonce = randomToken(16);
+  const { verifier, challenge } = await pkcePair();
   const redirectUri = `${url.origin}/callback`;
   // I-17: the flow is bound to this browser. Pocket ID returns by a top-level GET, which carries a
   // `SameSite=Lax` cookie, so the callback can require it (login CSRF, and a planted join offer).
-  const binding = b64url(randomBytes(32));
+  const binding = randomToken(32);
   const flow: FlowRecord = {
     verifier,
     nonce,

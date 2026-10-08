@@ -32,7 +32,12 @@
  * the flow's cookie.
  */
 
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import {
+  hashKey,
+  randomToken,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import {
   LINK_FLOW_COOKIE,
@@ -63,7 +68,6 @@ import {
 import { getAccountRow, listLinks } from "../accounts/repo.js";
 import { avatarUrl } from "../card/avatars.js";
 import { cardJson, originOf, readJsonObject } from "../card/http.js";
-import { randomSecret } from "./accountSessions.js";
 
 /** How long a link flow waits for the person. */
 export const LINK_FLOW_TTL_SECONDS = 15 * 60;
@@ -287,7 +291,7 @@ async function linkStart(
   if (!(await changesAllowed(env, caller, now)))
     return cardJson({ error: "rate_limited" }, 429);
   if (!isFresh(caller, now)) return stepUpRequired();
-  const secret = randomSecret(32);
+  const secret = randomToken(32);
   const flow: LinkFlow = {
     v: 1,
     rev: 0,

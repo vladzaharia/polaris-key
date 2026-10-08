@@ -17,6 +17,13 @@ export function randomBytes(n: number): Uint8Array {
   return a;
 }
 
+/** One uniformly random unsigned 32-bit integer (for rejection sampling a small range). */
+export function randomUint32(): number {
+  const a = new Uint32Array(1);
+  crypto.getRandomValues(a);
+  return a[0]!;
+}
+
 /** `byteLength` random bytes as unpadded base64url (`ceil(byteLength * 4 / 3)` characters). */
 export function randomToken(byteLength: number): string {
   return b64urlEncode(randomBytes(byteLength));

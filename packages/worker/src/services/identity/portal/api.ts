@@ -5,6 +5,8 @@ import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
   isAllowedDownloadRedirectHost,
   isAllowedStorageHost,
+  parseJsonOr,
+  platformOidcConfig,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -112,7 +114,6 @@ import {
   sendSecurityNotice,
 } from "./email.js";
 import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
-import { platformOidcConfig } from "../../../core/platform.js";
 import { platformSignInEnded } from "../accounts/platformMigration.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handleProductDownloads } from "./downloads.js";
@@ -183,21 +184,12 @@ export async function readBody(req: Request): Promise<Record<string, unknown>> {
   }
 }
 
-function parseJson<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
-
 function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
   return {
     id: row.id,
     product: row.product,
     productName: row.product_name,
-    productBranding: parseJson(row.product_branding_json, null),
+    productBranding: parseJsonOr(row.product_branding_json, null),
     name: row.name ?? "",
     email: row.email ?? "",
     status: row.status,
@@ -1721,7 +1713,7 @@ export async function handlePortalDownload(
   if (settings.portal_enabled !== 1 || settings.releases_enabled !== 1) {
     return notFound();
   }
-  const scope = parseJson<{ portalAccountId?: string }>(row.scope_json, {});
+  const scope = parseJsonOr<{ portalAccountId?: string }>(row.scope_json, {});
   if (!scope.portalAccountId) return notFound();
   const account = await getPortalAccount(db, scope.portalAccountId, now);
   if (!account || account.status !== "active") return notFound();

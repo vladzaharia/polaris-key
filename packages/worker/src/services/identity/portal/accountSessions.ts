@@ -18,7 +18,13 @@
  * reaches a product route: the dispatcher strips it (`core/accountCookies.ts`).
  */
 
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import {
+  hashKey,
+  parseJsonStringList,
+  randomToken,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import { getPortalAccount } from "./repo.js";
 import {
   buildPortalSessionCookie,
@@ -77,15 +83,6 @@ export interface AccountSessionRow {
   amr_json: string | null;
 }
 
-/** `n` random bytes, base64url without padding. */
-export function randomSecret(n = 32): string {
-  const bytes = new Uint8Array(n);
-  crypto.getRandomValues(bytes);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
 /** The row key for a cookie's `sid`. */
 export function sessionIdHash(env: Env, sid: string): Promise<string> {
   return hashKey(`account-session:${sid}`, env.KEY_HASH_PEPPER);
@@ -121,7 +118,7 @@ export async function startAccountSession(
   },
   now: number,
 ): Promise<StartedSession> {
-  const sid = randomSecret(32);
+  const sid = randomToken(32);
   const idHash = await sessionIdHash(env, sid);
   const label = browserLabel(input.req?.headers.get("user-agent"));
   await db.run(
@@ -207,18 +204,6 @@ export interface AccountSessionView {
   current: boolean;
 }
 
-function parseAmr(raw: string | null): string[] {
-  if (!raw) return [];
-  try {
-    const v = JSON.parse(raw) as unknown;
-    return Array.isArray(v)
-      ? v.filter((x): x is string => typeof x === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
 /** The account's live sessions, newest first. */
 export async function listAccountSessions(
   db: Db,
@@ -239,7 +224,7 @@ export async function listAccountSessions(
     lastSeenAt: r.last_seen_at,
     expiresAt: r.expires_at,
     browser: r.user_agent,
-    methods: parseAmr(r.amr_json),
+    methods: parseJsonStringList(r.amr_json),
     current: r.id_hash === currentIdHash,
   }));
 }

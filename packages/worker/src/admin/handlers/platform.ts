@@ -69,6 +69,7 @@ import { operationsSnapshot } from "../../core/operations.js";
 import { adminOidcIsDedicated } from "../../platformOidc.js";
 import { platformMigrationReport } from "../../services/identity/accounts/platformMigration.js";
 import { handleOverrideMigration } from "./overrideMigration.js";
+import { parseJsonColumn } from "../../platform/json.js";
 
 /** The bindings the Deployment page lists. Presence only. */
 const BINDINGS = [
@@ -102,15 +103,6 @@ function cursorOf(url: URL, defaultLimit: number, maxLimit: number): Cursor {
     : { limit };
 }
 
-function parseJson(raw: string | null): unknown {
-  if (raw == null) return null;
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 function identity(env: Env) {
   return { ...deployIdentity(env), environment: consoleEnvironment(env) };
 }
@@ -131,7 +123,7 @@ async function deployment(req: Request, env: Env, db: Db): Promise<Response> {
     gitSha: r.git_sha,
     runUrl: r.run_url,
     scripts: (() => {
-      const v = parseJson(r.scripts);
+      const v = parseJsonColumn(r.scripts);
       return Array.isArray(v) ? v.filter((s) => typeof s === "string") : [];
     })(),
     latestMigration: r.latest_migration,
@@ -181,8 +173,8 @@ async function activity(req: Request, db: Db): Promise<Response> {
       ? { kind: r.target_kind, id: r.target_id ?? "" }
       : null,
     summary: r.summary ?? "",
-    before: parseJson(r.before_json),
-    after: parseJson(r.after_json),
+    before: parseJsonColumn(r.before_json),
+    after: parseJsonColumn(r.after_json),
   }));
   const last = rows[rows.length - 1];
   return adminJson({

@@ -57,14 +57,28 @@ export function base64Decode(s: string): Uint8Array {
   return fromBinaryString(atob(s));
 }
 
+/**
+ * Standard base64 that also takes the URL alphabet: `-`/`_` are mapped back to `+`/`/` and the
+ * rest is exactly `atob`'s reading, padding and whitespace as given (so a pasted secret's
+ * trailing newline is skipped). The KEK and other operator-supplied key material read this way.
+ */
+export function base64DecodeEitherAlphabet(s: string): Uint8Array {
+  return fromBinaryString(atob(standardAlphabet(s)));
+}
+
 // ── base64url (RFC 4648 §5, unpadded) ───────────────────────────────────────────────────────
+
+/**
+ * A binary string (one char per byte, every char at most U+00FF: what `btoa` takes) as unpadded
+ * base64url. Throws, as `btoa` does, on a wider char. The opaque JSON cursors use it directly.
+ */
+export function b64urlEncodeBinary(bin: string): string {
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 
 /** Bytes as unpadded base64url: the token, cookie, PKCE and JWS-segment alphabet. */
 export function b64urlEncode(bytes: Uint8Array | ArrayBuffer): string {
-  return base64Encode(bytes)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return b64urlEncodeBinary(toBinaryString(asBytes(bytes)));
 }
 
 /** `s`'s UTF-8 bytes as unpadded base64url. */
@@ -72,14 +86,37 @@ export function b64urlEncodeUtf8(s: string): string {
   return b64urlEncode(utf8Encode(s));
 }
 
+/** The standard-alphabet spelling of base64url text, padding and whitespace left as they are. */
+function standardAlphabet(s: string): string {
+  return s.replace(/-/g, "+").replace(/_/g, "/");
+}
+
 /**
- * base64url to bytes, leniently: maps `-`/`_` to `+`/`/`, restores the padding, and decodes
- * with `atob`, so standard-alphabet and already-padded input are also accepted. Throws on
- * anything `atob` refuses. For untrusted input that must be canonical, use `b64urlDecodeStrict`.
+ * base64url to a binary string (one char per byte, what `atob` returns), leniently: maps
+ * `-`/`_` back to `+`/`/` and restores the padding before `atob`, so standard-alphabet and
+ * already-padded input are also accepted. Throws on anything `atob` refuses.
+ */
+export function b64urlDecodeBinary(s: string): string {
+  const b64 = standardAlphabet(s);
+  return atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+}
+
+/**
+ * As `b64urlDecodeBinary`, but WITHOUT restoring the padding: exactly `atob` of the
+ * standard-alphabet spelling. The two differ only on malformed input (a partial `=` padding is
+ * refused here and accepted there; ASCII whitespace can shift the count the other way), and the
+ * console's device-list cursor has always been read this way.
+ */
+export function b64urlDecodeBinaryUnpadded(s: string): string {
+  return atob(standardAlphabet(s));
+}
+
+/**
+ * base64url to bytes, leniently (`b64urlDecodeBinary`'s reading). Throws on anything `atob`
+ * refuses. For untrusted input that must be canonical, use `b64urlDecodeStrict`.
  */
 export function b64urlDecode(s: string): Uint8Array {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
-  return base64Decode(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+  return fromBinaryString(b64urlDecodeBinary(s));
 }
 
 /** `b64urlDecode`, then UTF-8 (a malformed sequence decodes to U+FFFD; it does not throw). */

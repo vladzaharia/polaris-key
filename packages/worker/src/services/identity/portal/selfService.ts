@@ -46,6 +46,8 @@
 import {
   hashKey,
   mintLicenseKey,
+  normalizeEmail,
+  parseJsonColumn,
   productFromKey,
   type Db,
   type Env,
@@ -77,7 +79,6 @@ import {
   getPortalProductSettings,
   licenseLinkedElsewhere,
   listVisibleKeys,
-  normalizeEmail,
   portalAudit,
   type PortalLicenseRow,
 } from "./repo.js";
@@ -136,15 +137,6 @@ export type KeyClaimVerdict =
   /** May be added. */
   | { kind: "addable"; product: ProductFacts; license: LicenseRow };
 
-function parseJsonOrNull(raw: string | null | undefined): unknown {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 /**
  * `m•••@proton.me`: the first character of the local part and the domain, nothing else (§4.19).
  * Enough for the holder to recognise their own address, not enough to read someone else's.
@@ -186,7 +178,7 @@ async function resolveClaimKey(
   const product: ProductFacts = {
     slug,
     name: productRow.name,
-    branding: parseJsonOrNull(productRow.branding_json),
+    branding: parseJsonColumn(productRow.branding_json),
   };
   const keyRow = await getKey(
     db,
