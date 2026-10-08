@@ -259,8 +259,9 @@ Releases page before the first release. Both open the same drawer, and it works 
    checks a resync would otherwise hit halfway: an OIDC issuer change outside the platform's
    allowlist, an unsafe binary name, a catalog the validator refuses. Nothing is written. A
    passing check lists what the link will do:
-   - **Applies**: the values and rows the manifest writes (name and defaults, a new catalog
-     version, tiers, profiles, release settings, the trusted publisher, and so on);
+   - **Applies**: the values and rows the manifest writes (name and defaults, the presentation's
+     icon and accents, a new catalog version, tiers, profiles, release settings, the trusted
+     publisher, and so on);
    - **Stays (set in the console)**: values the manifest declares but an operator already set
      here (services, the compatibility window, the fingerprint and auto-issue policies, release
      access, a trusted publisher saved in Keys & secrets). The ownership rule above applies from
