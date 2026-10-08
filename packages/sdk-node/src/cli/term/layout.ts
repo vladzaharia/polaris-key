@@ -44,7 +44,30 @@ export type Mark =
 export interface RailRow {
   mark: Mark;
   spans: Line;
+  /**
+   * Compaction tier for a live screen taller than the terminal (see `fitScreen`): the row is
+   * dropped at this tier when the screen does not fit, lowest first. `undefined` means the row is
+   * never dropped (the URL line, the code, the key hints).
+   */
+  drop?: number;
+  /**
+   * `spinner` marks the waiting line that the key hints merge onto first; `hints` marks the hints
+   * row that merges. A `blank` spacing row is dropped at its tier even when empty.
+   */
+  role?: "spinner" | "hints";
 }
+
+/** The compaction tiers a live screen drops in order when it is taller than the terminal. */
+export const DROP = {
+  /** Blank rail rows between prose blocks. */
+  blankProse: 2,
+  /** The "Check the code there matches this one." line. */
+  checkLine: 3,
+  /** The blank rail rows around the code chip. */
+  blankCode: 4,
+  /** The "Code expires in" countdown line. */
+  countdown: 5,
+} as const;
 
 const MARKS: Record<
   Exclude<Mark, "none" | { glyph: string }>,

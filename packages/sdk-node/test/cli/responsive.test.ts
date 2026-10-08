@@ -201,10 +201,10 @@ describe("URLs and codes wrap and are never cut", () => {
       "&b=2",
     ]);
   });
-  it("starts a URL that does not fit on a line of its own, each piece keeping the link", () => {
+  it("starts a URL that does not fit on a line of its own, each piece keeping the link, the lead-in with it", () => {
     const lines = wrapSpans(
       [
-        { text: "go to " },
+        { text: "On any phone or computer, go to " },
         {
           text: shown(LONG.url),
           link: LONG.url,
@@ -215,11 +215,43 @@ describe("URLs and codes wrap and are never cut", () => {
       ],
       37,
     );
-    expect(lines[0]!.map((s) => s.text).join("")).toBe("go to");
+    // The short lead-in "go to" moves onto the URL's line.
+    expect(lines[0]!.map((s) => s.text).join("")).toBe(
+      "On any phone or computer,",
+    );
+    expect(lines[1]!.map((s) => s.text).join("")).toMatch(/^go to /);
     const pieces = lines.flatMap((l) => l.filter((s) => s.link));
     expect(pieces.map((s) => s.text).join("")).toBe(shown(LONG.url));
     expect(pieces.every((s) => s.link === LONG.url)).toBe(true);
     expect(lines.flat().some((s) => s.text.includes("…"))).toBe(false);
+  });
+  it("moves a keep-unit to the next line whole and drops the separator before it", () => {
+    const line = (spans: unknown[]) =>
+      wrapSpans(spans as never, 37).map((l) => l.map((s) => s.text).join(""));
+    expect(
+      line([
+        { text: "License   " },
+        { text: "Pro license" },
+        { text: " · ", style: ["muted"] },
+        { text: "mara@fennick.studio", unit: true },
+      ]),
+    ).toEqual(["License   Pro license", "mara@fennick.studio"]);
+    // A keep-unit never splits when it fits a line of its own.
+    expect(
+      line([
+        { text: "Signed in as " },
+        { text: "Mara Fennick", unit: true },
+        { text: " · ", style: ["muted"] },
+        { text: "mara@fennick.studio", unit: true },
+      ]),
+    ).toEqual(["Signed in as Mara Fennick", "mara@fennick.studio"]);
+  });
+  it("does not open an empty line before a code that follows an indent", () => {
+    const lines = wrapSpans(
+      [{ text: "   " }, { text: " WDJB-MJHT-QXRP-LMNV ", break: "code" }],
+      12,
+    ).map((l) => l.map((s) => s.text).join(""));
+    expect(lines[0]!.trim()).not.toBe("");
   });
   it("wraps a code after its hyphens, and only where the line is too narrow for it", () => {
     const lines = wrapSpans([{ text: LONG.code, break: "code" }], 40);

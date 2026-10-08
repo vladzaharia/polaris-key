@@ -120,6 +120,12 @@ export interface Span {
    */
   break?: "url" | "code";
   /**
+   * Part of one keep-unit (a name, an email, a date, "3 of 3", "38 MB", a key and its label): a
+   * maximal run of adjacent spans all marked `unit` moves to the next line whole, and breaks at
+   * its own spaces only when it is wider than the line. A separator span (not `unit`) ends a run.
+   */
+  unit?: boolean;
+  /**
    * A name that gives way (the product chip): when the spans do not fit one line, this one is cut
    * at its end with an ellipsis, inside its pad, so the line fits. At the width it is laid out at,
    * so a resize lays it out again.
@@ -235,7 +241,8 @@ const words = (pieces: readonly Span[]) =>
 /** A last line of one Latin word (CJK lines and kept tokens such as a URL are never orphans). */
 function isOrphan(pieces: readonly Span[]): boolean {
   const ws = words(pieces);
-  if (ws.length !== 1 || ws[0]!.keep || ws[0]!.break) return false;
+  if (ws.length !== 1 || ws[0]!.keep || ws[0]!.break || ws[0]!.unit)
+    return false;
   return ![...ws[0]!.text].some((c) => charWidth(c) === 2);
 }
 
@@ -247,8 +254,8 @@ function balanceLast(lines: Span[][], width: number): void {
   const last = lines[n - 1]!;
   // Pieces keep their trailing space; the previous line's last word needs one again.
   for (let k = prev.length - 1; k >= 1; k--) {
-    // A piece of a URL or a code stays where it is: moving it would put a space inside it.
-    if (prev.slice(k).some((p) => p.break)) return;
+    // A piece of a URL, a code or a keep-unit stays where it is.
+    if (prev.slice(k).some((p) => p.break || p.unit)) return;
     const head = prev.slice(0, k);
     const moved = prev
       .slice(k)
@@ -276,40 +283,100 @@ function balanceLast(lines: Span[][], width: number): void {
 /** A separator between items ("·"): it divides items on one line, so a line never ends with one. */
 const SEPARATOR = /^\s*·\s*$/;
 
+/** The non-space width of a run of spans. */
+const runWidth = (run: readonly Span[]) =>
+  cellWidth(
+    run
+      .map((p) => p.text)
+      .join("")
+      .trimEnd(),
+  );
+
+/** Pull a short trailing lead-in ("go to") off `line` down onto a URL's own line, when it fits. */
+function pullLeadIn(line: Span[], first: number, width: number): Span[] {
+  const moved: Span[] = [];
+  let w = first;
+  while (line.length) {
+    const word = line[line.length - 1]!;
+    if (word.break || word.unit || /^\s+$/.test(word.text)) break;
+    const ww = cellWidth(word.text.trimEnd());
+    // Only a short lead-in of one or two words moves; a long trailing word stays put.
+    if (ww > 6 || moved.length >= 2 || w + ww + 1 > width) break;
+    moved.unshift(line.pop()!);
+    w += ww + 1;
+  }
+  // Drop a trailing separator left on the previous line.
+  while (line.length && SEPARATOR.test(line[line.length - 1]!.text)) line.pop();
+  return moved;
+}
+
 function wrapPieces(spans: Line, width: number, ellipsis: string): Span[][] {
   const lines: Span[][] = [[]];
   let w = 0;
+  const cur = () => lines[lines.length - 1]!;
+  const onlyWhitespace = () => cur().every((p) => /^\s*$/.test(p.text));
   const newLine = () => {
-    const last = lines[lines.length - 1]!;
+    const last = cur();
     while (last.length > 1 && SEPARATOR.test(last[last.length - 1]!.text))
       last.pop();
     lines.push([]);
     w = 0;
   };
+  // A maximal run of adjacent `unit` spans is one token.
+  const runs: Span[][] = [];
   for (const span of spans) {
-    if (span.break) {
-      // A URL or a code that does not fit the rest of this line starts a line of its own, then
-      // wraps at its own break points; it is never cut.
-      const tw = cellWidth(span.text);
-      if (w > 0 && w + tw > width) newLine();
-      for (const text of breakPieces(span.text, span.break, width)) {
-        const pw = cellWidth(text);
-        if (w > 0 && w + pw > width) newLine();
-        lines[lines.length - 1]!.push({ ...span, text });
-        w += pw;
+    const last = runs[runs.length - 1];
+    if (span.unit && last && last[0]!.unit) last.push(span);
+    else runs.push([span]);
+  }
+  for (const run of runs) {
+    if (run[0]!.unit && run.length >= 1 && !run[0]!.break) {
+      const rw = runWidth(run);
+      // A unit that does not fit the rest of the line moves to the next line whole; wider than a
+      // line, it falls through to break at its own spaces.
+      if (rw <= width) {
+        if (w > 0 && w + rw > width) newLine();
+        for (const p of run) {
+          cur().push(p);
+          w += cellWidth(p.text);
+        }
+        continue;
       }
-      continue;
     }
-    for (let p of pieces(span)) {
-      const pw = cellWidth(p.text.trimEnd());
-      if (w > 0 && w + pw > width) {
-        newLine();
-        if (/^\s+$/.test(p.text)) continue;
+    for (const span of run) {
+      if (span.break) {
+        const tw = cellWidth(span.text);
+        if (w > 0 && w + tw > width && !onlyWhitespace()) {
+          const lead = pullLeadIn(
+            cur(),
+            cellWidth(breakPieces(span.text, span.break, width)[0] ?? ""),
+            width,
+          );
+          newLine();
+          for (const p of lead) {
+            cur().push(p);
+            w += cellWidth(p.text);
+          }
+        }
+        for (const text of breakPieces(span.text, span.break, width)) {
+          const pw = cellWidth(text);
+          if (w > 0 && w + pw > width) newLine();
+          cur().push({ ...span, text });
+          w += pw;
+        }
+        continue;
       }
-      if (pw > width && p.keep)
-        p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
-      lines[lines.length - 1]!.push(p);
-      w += cellWidth(p.text);
+      for (let p of pieces(span)) {
+        const pw = cellWidth(p.text.trimEnd());
+        if (w > 0 && w + pw > width) {
+          newLine();
+          if (/^\s+$/.test(p.text)) continue;
+        }
+        if (pw > width && p.keep)
+          p = { ...p, text: truncateMiddle(p.text, width, ellipsis) };
+        cur().push(p);
+        w += cellWidth(p.text);
+      }
     }
   }
   return lines;
@@ -356,6 +423,7 @@ function merge(pieces: Span[]): Line {
       last.link === p.link &&
       last.keep === p.keep &&
       last.break === p.break &&
+      last.unit === p.unit &&
       (last.style ?? []).join() === (p.style ?? []).join()
     )
       last.text += p.text;
