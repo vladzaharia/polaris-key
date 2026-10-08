@@ -21,7 +21,7 @@ import { NumberInput } from "../../../ui/NumberInput.js";
 import { RadioCards } from "../../../ui/RadioCards.js";
 import { useUnsavedChangesGuard } from "../../../ui/useUnsavedChangesGuard.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProducts } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { codecs, Link, navigate, useSearchParam } from "../../router.js";

@@ -37,7 +37,7 @@ import { Switch } from "../../../ui/Switch.js";
 import { toast } from "../../../ui/toast.js";
 import { VersionInput, versionError } from "../../../ui/VersionInput.js";
 import { Input } from "../../../ui/Input.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";

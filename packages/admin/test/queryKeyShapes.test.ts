@@ -10,10 +10,10 @@ import { describe, expect, it } from "vitest";
  * (the raw `{ products }` response in one, the bare array in the other) break each other in
  * whichever order they load: that was the blank Products page and the crashing switcher.
  *
- * So this scans every `useResource(qk.X(…), fetcher)` and `useQuery({ queryKey: qk.X(…), queryFn })`
- * in `src/` and requires every reader of one key family to pass the same fetcher (compared as
- * source text, give or take whitespace, `async` and non-null `!`). Sharing a named fetcher such as
- * `fetchProducts` or `fetchProduct` is the way to satisfy it.
+ * So this scans every `useQuery({ queryKey: qk.X(…), queryFn })` in `src/` and requires every
+ * reader of one key family to pass the same fetcher (compared as source text, give or take
+ * whitespace, `async` and non-null `!`). Sharing a named fetcher such as `fetchProducts` or
+ * `fetchProduct` is the way to satisfy it.
  */
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
@@ -74,15 +74,12 @@ const normalize = (text: string): string =>
     .replace(/!(?=[),.\s])/g, "")
     .replace(/\s+/g, "");
 
-/** `useResource`'s own `useQuery({ queryKey: key, queryFn: fetcher })`: generic by design. */
-const GENERIC = new Set(["context.tsx"]);
-
 function scan(): { readers: Reader[]; unresolved: string[] } {
   const readers: Reader[] = [];
   const unresolved: string[] = [];
   for (const path of sourceFiles(SRC)) {
     const text = readFileSync(path, "utf8");
-    if (!/useResource\(|useQuery\(/.test(text)) continue;
+    if (!/useQuery\(/.test(text)) continue;
     const file = ts.createSourceFile(
       path,
       text,
@@ -100,7 +97,7 @@ function scan(): { readers: Reader[]; unresolved: string[] } {
       const at = `${rel}:${line}`;
       const family = resolveFamily(key, file);
       if (!family) {
-        if (!GENERIC.has(rel)) unresolved.push(`${at} ${key.getText()}`);
+        unresolved.push(`${at} ${key.getText()}`);
         return;
       }
       readers.push({ family, fetcher: normalize(fetcher.getText()), at });
@@ -108,9 +105,7 @@ function scan(): { readers: Reader[]; unresolved: string[] } {
     const visit = (node: ts.Node): void => {
       if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
         const callee = node.expression.text;
-        if (callee === "useResource" && node.arguments.length >= 2) {
-          record(node.arguments[0]!, node.arguments[1]!, node);
-        } else if (callee === "useQuery") {
+        if (callee === "useQuery") {
           const opts = node.arguments[0];
           if (opts && ts.isObjectLiteralExpression(opts)) {
             const prop = (name: string): ts.Expression | undefined => {

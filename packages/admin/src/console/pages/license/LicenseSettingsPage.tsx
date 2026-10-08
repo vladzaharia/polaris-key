@@ -15,7 +15,7 @@ import {
   ProductSettingsSection,
   type SettingCopy,
 } from "../../components/ProductSettingsSection.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { SettingsTemplate } from "../../templates/Settings.js";
 import { Callout } from "../../../ui/Callout.js";
 

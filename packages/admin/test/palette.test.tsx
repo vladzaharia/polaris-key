@@ -8,10 +8,10 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  filterItems,
   navigationSource,
   productSource,
-} from "../src/console/shell/CommandPalette.js";
+} from "../src/console/shell/palette/navigation.js";
+import { filterItems } from "../src/console/shell/palette/rank.js";
 import { PREF_KEYS } from "../src/console/storage.js";
 import { ALL_ON, boot, resetConsole } from "./consoleHarness.js";
 

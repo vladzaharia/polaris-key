@@ -17,7 +17,7 @@ export function Kbd({
       {keys.split(" ").map((k, i) => (
         <kbd
           key={i}
-          className="rounded-xs border border-border bg-surface-sunken px-1.5 font-sans text-[0.6875rem] leading-4 text-fg-muted"
+          className="rounded-xs border border-border bg-surface-sunken px-1.5 font-sans text-2xs leading-4 text-fg-muted"
         >
           {k}
         </kbd>

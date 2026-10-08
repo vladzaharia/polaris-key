@@ -8,7 +8,7 @@ import { Select } from "../../../ui/Select.js";
 import { SegmentedControl } from "../../../ui/SegmentedControl.js";
 import { useProduct } from "../../data/hooks.js";
 import { codecs, useSearchParam } from "../../router.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import {
   usePackReleases,
   useReleaseChannels,

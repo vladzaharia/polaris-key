@@ -181,9 +181,7 @@ export function GetItPanel({
           ))}
         </div>
       ) : null}
-      <h3 className="mb-2 text-[0.9375rem] font-bold text-fg-strong">
-        All platforms
-      </h3>
+      <h3 className="mb-2 text-md font-bold text-fg-strong">All platforms</h3>
       <div className="divide-y divide-border border-t border-border">
         {model.groups.map((g) => (
           <div key={g.label} className="py-2">
@@ -269,7 +267,7 @@ export function GetItPanel({
         <div className="mt-5 space-y-2">
           <h3
             id={`${product.slug}-also-yours-on`}
-            className="text-[0.9375rem] font-bold text-fg-strong"
+            className="text-md font-bold text-fg-strong"
           >
             {C["getIt.alsoYoursOn"]}
           </h3>

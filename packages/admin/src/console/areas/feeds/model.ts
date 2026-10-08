@@ -197,9 +197,6 @@ export type FeedCredential = FeedSetupCredential;
 /** The environment variable the docs and the Setup tab name the token by. */
 export const TOKEN_ENV = "PKEY_REGISTRY_TOKEN";
 
-/** The username every client that needs one sends beside a registry token. */
-export const REGISTRY_USERNAME = "__token__";
-
 /**
  * The copy-paste setup for one feed, for its owner, optionally for one package, with or without a
  * registry credential (F-21, plans/F-20.md §6.3): `@polaris-key/manifest` `renderFeedSetup`, the

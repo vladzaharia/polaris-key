@@ -173,7 +173,7 @@ export function DiscoverTile({
             </div>
           ) : null}
           {reason && ReasonIcon ? (
-            <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md bg-surface-sunken px-3 py-2.5 text-[0.9375rem] text-fg-strong">
+            <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 rounded-md bg-surface-sunken px-3 py-2.5 text-md text-fg-strong">
               <span className="flex min-w-0 flex-1 gap-2.5">
                 <ReasonIcon
                   aria-hidden

@@ -3,14 +3,6 @@
  * (`border-border-strong`), the sunken well, the violet focus ring, the danger edge when invalid,
  * 36 px tall (32 px minimum hit target, 36 px on coarse pointers).
  */
-export const CONTROL_FRAME = [
-  "rounded-md border border-border-strong bg-surface-sunken text-sm text-fg",
-  "transition-colors duration-(--pk-duration-fast) ease-standard",
-  "focus-within:outline-hidden",
-  "aria-[invalid=true]:border-danger has-[[aria-invalid=true]]:border-danger",
-  "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
-].join(" ");
-
 export const CONTROL_INPUT = [
   "h-9 w-full min-w-0 rounded-md border border-border-strong bg-surface-sunken px-3 text-sm text-fg",
   "transition-colors duration-(--pk-duration-fast) ease-standard",

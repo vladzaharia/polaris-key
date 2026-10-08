@@ -2,15 +2,22 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { cn } from "../src/lib/cn.js";
 
 /**
- * The token alias smoke test (docs/design/ADMIN.md §7.2, chunk 1).
+ * The token smoke test (docs/design/ADMIN.md §7.2, chunks 1 and 11).
  *
  * Tailwind v4 emits nothing for a colour utility whose `--color-*` token does not exist, so a
- * renamed or forgotten alias is a silent unstyled element, not a build error. This sweeps every
- * class-shaped token in `src/` and requires each colour utility to resolve to a token that
- * `styles.css` (the pre-brand alias layer) or the brand's `theme.css` defines, and requires every
- * alias to point at a custom property that actually exists.
+ * renamed or forgotten token is a silent unstyled element, not a build error. This sweeps every
+ * class-shaped token in `src/` and requires each colour utility to resolve to a token that the
+ * brand's `theme.css` defines (or `styles.css`'s one admin token, `hover`), and requires every
+ * admin token to point at a custom property that actually exists.
+ *
+ * The pre-brand alias layer (bg-card, text-muted-foreground, bg-primary, border-input, ring-ring,
+ * font-medium and font-semibold as Rubik's 400 and 700…) was deleted in chunk 11, so a view that
+ * reaches for one of its colour names fails the last case here. Its weights are not checked:
+ * font-medium and font-semibold are the brand's own 500 and 600 now (its variable Rubik ships
+ * them), and the first case only keeps styles.css from remapping them again.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -54,7 +61,7 @@ const PALETTE_COLORS = new Set(["black", "white"]);
  * until it is listed here, which is the point: every value is classified on purpose.
  */
 const NOT_COLOR: Record<string, RegExp> = {
-  text: /^(xs|sm|base|lg|[2-9]?xl|display|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|clip|ellipsis)$/,
+  text: /^([23]?xs|sm|md|base|lg|[2-9]?xl|display|code|headline|headline-lg|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|clip|ellipsis)$/,
   border: /^(\d+|collapse|separate|solid|dashed|dotted|double|none|hidden)$/,
   divide: /^(x|y|\d+|x-\d+|y-\d+|solid|dashed|dotted|none)$/,
   outline: /^(hidden|none|\d+|solid|dashed|dotted|double|offset-\d+)$/,
@@ -109,37 +116,14 @@ function colorUtilityUses(): Use[] {
   return uses;
 }
 
-describe("the token alias layer", () => {
-  it("styles.css defines every pre-brand alias the views were written against", () => {
-    for (const name of [
-      "background",
-      "foreground",
-      "card",
-      "card-foreground",
-      "popover",
-      "popover-foreground",
-      "primary",
-      "primary-foreground",
-      "secondary",
-      "secondary-foreground",
-      "muted",
-      "muted-foreground",
-      "hover",
-      "destructive",
-      "destructive-foreground",
-      "success-foreground",
-      "warning-foreground",
-      "input",
-      "ring",
-      "sidebar",
-      "sidebar-foreground",
-      "sidebar-border",
-      "sidebar-accent",
-    ])
-      expect(aliasColors.has(name), `--color-${name}`).toBe(true);
+describe("the admin's tokens on the brand", () => {
+  it("styles.css defines no pre-brand alias: its one colour token is the admin fill", () => {
+    expect([...aliasColors.keys()]).toEqual(["hover"]);
+    expect(themeDecls(styles, "shadow").size).toBe(0);
+    expect(themeDecls(styles, "font-weight").size).toBe(0);
   });
 
-  it("every alias points at a custom property that exists", () => {
+  it("every admin token points at a custom property that exists", () => {
     const defined = new Set(
       [...`${brandTokens}\n${styles}`.matchAll(/(--pk-[a-z0-9-]+)\s*:/g)].map(
         (m) => m[1]!,
@@ -155,9 +139,40 @@ describe("the token alias layer", () => {
     }
   });
 
-  it("no alias shadows a brand token with a different meaning", () => {
+  it("no admin token shadows a brand token with a different meaning", () => {
     for (const name of aliasColors.keys())
       expect(brandColors.has(name), `--color-${name}`).toBe(false);
+  });
+
+  it("every type size is a named step, never an arbitrary bracketed size (EXPERIENCE.md §3)", () => {
+    const sizes = new Set(themeDecls(styles, "text").keys());
+    for (const step of ["3xs", "2xs", "code", "md", "headline", "headline-lg"])
+      expect(sizes.has(step), `--text-${step}`).toBe(true);
+    const arbitrary: string[] = [];
+    for (const file of sourceFiles(join(pkg, "src"))) {
+      const text = readFileSync(file, "utf8");
+      for (const m of text.matchAll(
+        /\btext-\[(?:length:)?[\d.]+(?:rem|px|em)\]/g,
+      ))
+        arbitrary.push(`${m[0]} (${file.slice(pkg.length + 1)})`);
+    }
+    expect(arbitrary).toEqual([]);
+  });
+
+  it("cn() merges every admin type step as a font size, as it did the arbitrary sizes", () => {
+    const steps = [...themeDecls(styles, "text").keys()].filter(
+      (k) => !k.includes("--"),
+    );
+    expect(steps.length).toBeGreaterThan(5);
+    for (const step of steps) {
+      // Not a colour: a text colour beside it survives…
+      expect(cn(`text-${step}`, "text-fg").split(" "), step).toEqual([
+        `text-${step}`,
+        "text-fg",
+      ]);
+      // …and it replaces another size, like any font size.
+      expect(cn("text-sm", `text-${step}`), step).toBe(`text-${step}`);
+    }
   });
 
   it("every colour utility used in src resolves to a defined token", () => {

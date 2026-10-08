@@ -18,7 +18,7 @@ import { toast } from "../../../ui/toast.js";
 import { useUnsavedChangesGuard } from "../../../ui/useUnsavedChangesGuard.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs } from "../../components/PageTabs.js";
 import { mutate } from "../../data/mutations.js";
 import { Link, navigate } from "../../router.js";

@@ -8,7 +8,6 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { api, type OverrideMigrationResponse } from "../../api.js";
 import { formatDate, fromSeconds } from "../../lib/format.js";
 import { qk } from "./queries.js";
-import { queryClient } from "./queryClient.js";
 
 export function fetchOverrideMigration(): Promise<OverrideMigrationResponse> {
   return api.overrideMigration();
@@ -18,14 +17,11 @@ export function fetchOverrideMigration(): Promise<OverrideMigrationResponse> {
 export function useOverrideMigration(
   enabled = true,
 ): UseQueryResult<OverrideMigrationResponse> {
-  return useQuery(
-    {
-      queryKey: qk.overrideMigration(),
-      queryFn: fetchOverrideMigration,
-      enabled,
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.overrideMigration(),
+    queryFn: fetchOverrideMigration,
+    enabled,
+  });
 }
 
 /** "5 Nov 2026" while the earliest run is ahead; `null` once it has passed (or is unknown). */

@@ -27,8 +27,6 @@ export type EntityRef =
   /** A rollout: the matrix cell (`?cell=<release>:<outlet>`). */
   | { kind: "rollout"; release: string; outlet: string; deliverable?: string };
 
-export type EntityKind = EntityRef["kind"];
-
 /** The hash an entity lives at, within product `slug`. */
 export function entityHref(slug: string, ref: EntityRef): string {
   switch (ref.kind) {

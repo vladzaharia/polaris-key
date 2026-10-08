@@ -43,7 +43,6 @@ import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
 import { intentOf } from "./confirmGate.js";
 
@@ -73,18 +72,18 @@ export function fetchCiTokens(slug: string): Promise<CiTokenDto[]> {
 export function useCiPublisher(
   slug: string,
 ): UseQueryResult<PublisherPolicyDto | null> {
-  return useQuery(
-    { queryKey: qk.ciPublisher(slug), queryFn: () => fetchCiPublisher(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.ciPublisher(slug),
+    queryFn: () => fetchCiPublisher(slug),
+  });
 }
 
 /** The product's CI tokens: one reader for this page and Release's guided panel. */
 export function useCiTokens(slug: string): UseQueryResult<CiTokenDto[]> {
-  return useQuery(
-    { queryKey: qk.ciTokens(slug), queryFn: () => fetchCiTokens(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.ciTokens(slug),
+    queryFn: () => fetchCiTokens(slug),
+  });
 }
 
 export function CiPublishingSection({

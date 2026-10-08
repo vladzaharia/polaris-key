@@ -394,28 +394,35 @@ The scheme is `#/p/<slug>/<section>/<page>[/<id>[/<tab>]][?<query>]`.
 The open drawer id is part of the path when the drawer shows an entity
 (`devices/dev_123`), and part of the query when it shows a cell (`?cell=rel_1:appstore`).
 
-**Old routes keep working.** `parseRoute` gains a redirect table, applied with
-`history.replaceState`, so Back does not loop. The table is tested exhaustively (§7, chunk 2):
+**Old routes say where they went.** The pre-redesign product tabs do not redirect: the 0.9 line
+keeps no compatibility windows (owner rule; P0-31, 2026-10-07). `routes.ts` keeps them in one small data map,
+`MOVED_TABS` (old tab → the page it became), and an old URL opens the product not-found page in
+its moved form, inside the product's chrome (switcher and sidebar): the `<h1>` "Page moved", "This
+page moved to License → Licenses", and one primary button to the new address that keeps the record
+id and the query (`#/p/:s/licenses/lic_1?x=1` → `#/p/:s/license/licenses/lic_1?x=1`). Nothing
+replaces the address in the bar; the bookmark is the operator's to update. An old tab with an id
+is moved only when the new page has records (`[/:id]` below); anything deeper is plain not-found.
+A section's key alone (`#/p/:s/license`, `#/platform`) still redirects to the section's first
+page with `history.replaceState`, so Back does not loop; the old `config`, `distribution` and
+`identity` tabs are section keys now, so they redirect that way. Every row is tested (§7,
+chunk 2):
 
-| Old hash                     | New hash                                                                                                            |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `#/p/:s/overview`            | `#/p/:s`                                                                                                            |
-| `#/p/:s/secrets`             | `#/p/:s/keys`                                                                                                       |
-| `#/p/:s/licenses[/:id]`      | `#/p/:s/license/licenses[/:id]`                                                                                     |
-| `#/p/:s/tiers`               | `#/p/:s/license/tiers`                                                                                              |
-| `#/p/:s/fingerprints`        | `#/p/:s/license/enrollment`                                                                                         |
-| `#/p/:s/config`              | `#/p/:s/config/catalog`                                                                                             |
-| `#/p/:s/profiles[/:id]`      | `#/p/:s/config/profiles[/:id]`                                                                                      |
-| `#/p/:s/releases`            | `#/p/:s/release/releases`                                                                                           |
-| `#/p/:s/deliverables[/:id]`  | `#/p/:s/release/deliverables[/:id]`                                                                                 |
-| `#/p/:s/compatibility`       | `#/p/:s/release/compatibility`                                                                                      |
-| `#/p/:s/distribution`        | `#/p/:s/distribution/matrix`                                                                                        |
-| `#/p/:s/distribution-matrix` | `#/p/:s/distribution/matrix`                                                                                        |
-| `#/p/:s/distribution-health` | `#/p/:s/distribution/health`                                                                                        |
-| `#/p/:s/updates`             | `#/p/:s/update/feed` (delivery access now at `distribution/access`)                                                 |
-| `#/p/:s/identity`            | `#/p/:s/identity/portal`                                                                                            |
-| `#/p/:s/<unknown>`           | **Not found** page (T8) naming the segment, with links to Overview and the palette. No more silent fallback (SH-8). |
-| `#/productsfoo`              | Not found (exact match only)                                                                                        |
+| Old hash                     | Shown as "moved to"                                                                                                                                                   | Its button's hash                   |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `#/p/:s/overview`            | Core → Overview                                                                                                                                                       | `#/p/:s`                            |
+| `#/p/:s/secrets`             | Core → Keys & secrets                                                                                                                                                 | `#/p/:s/keys`                       |
+| `#/p/:s/licenses[/:id]`      | License → Licenses                                                                                                                                                    | `#/p/:s/license/licenses[/:id]`     |
+| `#/p/:s/tiers[/:id]`         | License → Tiers                                                                                                                                                       | `#/p/:s/license/tiers[/:id]`        |
+| `#/p/:s/fingerprints`        | License → Enrollment                                                                                                                                                  | `#/p/:s/license/enrollment`         |
+| `#/p/:s/profiles[/:id]`      | Config → Profiles                                                                                                                                                     | `#/p/:s/config/profiles[/:id]`      |
+| `#/p/:s/releases[/:id]`      | Release → Releases                                                                                                                                                    | `#/p/:s/release/releases[/:id]`     |
+| `#/p/:s/deliverables[/:id]`  | Release → Deliverables                                                                                                                                                | `#/p/:s/release/deliverables[/:id]` |
+| `#/p/:s/compatibility`       | Release → Compatibility                                                                                                                                               | `#/p/:s/release/compatibility`      |
+| `#/p/:s/distribution-matrix` | Distribution → Matrix                                                                                                                                                 | `#/p/:s/distribution/matrix`        |
+| `#/p/:s/distribution-health` | Distribution → Health                                                                                                                                                 | `#/p/:s/distribution/health`        |
+| `#/p/:s/updates`             | Update → Feed (delivery access now at `distribution/access`)                                                                                                          | `#/p/:s/update/feed`                |
+| `#/p/:s/<unknown>`           | **Not found** page (T8) naming the segment, with links to Overview and to the palette, which opens already searching for the dead segment. No silent fallback (SH-8). | none                                |
+| `#/productsfoo`              | Not found (exact match only)                                                                                                                                          | none                                |
 
 **Help links in other places.** `D/admin/*` pages and `lib/docsLinks.ts` link into the console
 in prose only. The docs `console-tour.md` page is rewritten in chunk 2 (§7.2).
@@ -699,6 +706,7 @@ result), create license (in a dialog, as steps).
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Service off**     | `EmptyState kind="service-off"` in the service's accent and glyph: "The License service isn't enabled for DJDL." **Enable License** (goes to Services with the row focused and pre-toggled, unsaved) + docs                                                                                                                                                                                                  |
 | **Not found**       | Names the missing thing ("No license `lic_123` in DJDL"), links to its collection and to the palette                                                                                                                                                                                                                                                                                                         |
+| **Page moved**      | A pre-redesign URL (§2.5 `MOVED_TABS`): "This page moved to License → Licenses", a primary button to the new address (record id and query kept), and the palette. Not a redirect                                                                                                                                                                                                                             |
 | **Unknown product** | Lists the closest slugs (edit distance ≤ 2) + "All products"                                                                                                                                                                                                                                                                                                                                                 |
 | **Session expired** | **Superseded by SIGN-IN.md §3.12:** "Your session ended" renders in place on the shared card with the email chip and Continue. As first written: a non-dismissible dialog over the current page: "Your session ended. Sign in again to continue; your unsaved changes stay in this tab." **Sign in** opens `/manage/login?returnTo=<current hash>` in the same tab after stashing drafts in `sessionStorage` |
 | **Boot**            | The brand mark (display cut, 48 px, gold bit), "Loading console…" in a live region; on failure an `ErrorState` with Retry and Sign in                                                                                                                                                                                                                                                                        |
@@ -2228,8 +2236,11 @@ unchanged; add `me` fields), `main.tsx` (`QueryClientProvider`), and the worker 
 
 **Tests.**
 
-- `route.test.ts` is rewritten: every page parses and round-trips; **every old URL in §2.5
-  redirects**; unknown segments resolve to not-found; query codecs.
+- `route.test.ts` is rewritten: every page parses and round-trips; **every old URL in §2.5 is
+  not-found and names its new page and address** (`MOVED_TABS`, id and query kept; superseded the
+  redirect table in P0-31); unknown segments resolve to not-found; query codecs. `shell.test.tsx`
+  renders the moved page for several old URLs and checks the palette opens searching for an
+  unknown segment.
 - `shell.test.tsx` is rewritten:
   - sections by enablement;
   - section bit color token per section;
@@ -2244,7 +2255,9 @@ unchanged; add `me` fields), `main.tsx` (`QueryClientProvider`), and the worker 
 
 **Risks.**
 
-- Breaking bookmarks (mitigated by the redirect table and its tests).
+- Breaking bookmarks. Mitigated first by the redirect table; since P0-31 (no compatibility
+  windows in 0.9) by the moved page, which names the new page and links to it, and by the
+  palette opening on an unknown segment. A bookmark still costs one click until it is updated.
 - Hash `replaceState` interplay with the blocker.
 - Section-gating flicker: keep "show all while loading".
 

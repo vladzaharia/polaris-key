@@ -32,9 +32,9 @@ import { SourceBadge } from "../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
-import { useProductServices } from "../../../context.js";
+import { useProductServices } from "../../data/hooks.js";
 import { useSearchParam } from "../../router.js";
 import {
   SettingsRow,

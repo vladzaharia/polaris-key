@@ -37,12 +37,11 @@ import { SaveBar } from "../../../ui/SaveBar.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { toast } from "../../../ui/toast.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { useResyncFlow } from "../../components/ResyncDialog.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
@@ -113,10 +112,10 @@ const MANIFEST_EXAMPLE = `"oidc": {
 }`;
 
 export function SignInPage({ slug }: { slug: string }): React.ReactElement {
-  const mint = useQuery(
-    { queryKey: qk.mint(slug), queryFn: () => api.edgeMintRecipes(slug) },
-    queryClient,
-  );
+  const mint = useQuery({
+    queryKey: qk.mint(slug),
+    queryFn: () => api.edgeMintRecipes(slug),
+  });
   const product = useProduct(slug);
   const linked = product.data ? isRepoLinked(product.data) : false;
   // The console's one resync flow (UX-78): the dry run's plan, then a focused result panel.
@@ -428,13 +427,10 @@ export function SignInThroughProduct({
 }: {
   slug: string;
 }): React.ReactElement | null {
-  const q = useQuery(
-    {
-      queryKey: qk.signInSettings(slug),
-      queryFn: () => api.signInSettings(slug).then((res) => res.settings),
-    },
-    queryClient,
-  );
+  const q = useQuery({
+    queryKey: qk.signInSettings(slug),
+    queryFn: () => api.signInSettings(slug).then((res) => res.settings),
+  });
   if (q.isPending)
     return <PageSkeleton template="form" label="sign-in settings" />;
   if (q.isError)

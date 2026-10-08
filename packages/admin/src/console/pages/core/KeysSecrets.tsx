@@ -37,7 +37,6 @@ import { mutate } from "../../data/mutations.js";
 import { codecs } from "../../routes.js";
 import { useSearchParam } from "../../router.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { SettingsSection } from "../../templates/Settings.js";
 
 const SECRET_PARAM = codecs.string();
@@ -58,10 +57,10 @@ export function SecretsSection({
   slug: string;
   product: ProductDetail;
 }): React.ReactElement {
-  const secrets = useQuery(
-    { queryKey: qk.secrets(slug), queryFn: () => fetchSecrets(slug) },
-    queryClient,
-  );
+  const secrets = useQuery({
+    queryKey: qk.secrets(slug),
+    queryFn: () => fetchSecrets(slug),
+  });
   const [editing, setEditing] = React.useState<{ name: string } | null>(null);
   // `?secret=<name>` opens Set secret with the name filled in; closing it drops the parameter.
   const [linked, setLinked] = useSearchParam("secret", SECRET_PARAM);

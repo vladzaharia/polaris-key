@@ -4,7 +4,11 @@
  * delete refreshes the switcher and Home (fixes SH-1).
  */
 
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   api,
   setCsrf,
@@ -13,8 +17,8 @@ import {
   type PlatformIdentity,
   type ProductDetail,
 } from "../../api.js";
+import type { ServiceState } from "../nav.js";
 import { qk } from "./queries.js";
-import { queryClient } from "./queryClient.js";
 
 /** Fetch the session and arm the CSRF token every write echoes. */
 export async function fetchMe(): Promise<Me> {
@@ -24,7 +28,7 @@ export async function fetchMe(): Promise<Me> {
 }
 
 export function useMe(): UseQueryResult<Me> {
-  return useQuery({ queryKey: qk.me(), queryFn: fetchMe }, queryClient);
+  return useQuery({ queryKey: qk.me(), queryFn: fetchMe });
 }
 
 /**
@@ -39,10 +43,7 @@ export function fetchProducts(): Promise<ProductDetail[]> {
 }
 
 export function useProducts(): UseQueryResult<ProductDetail[]> {
-  return useQuery(
-    { queryKey: qk.products(), queryFn: fetchProducts },
-    queryClient,
-  );
+  return useQuery({ queryKey: qk.products(), queryFn: fetchProducts });
 }
 
 export function fetchSummary(): Promise<AdminSummary> {
@@ -55,10 +56,7 @@ export function fetchSummary(): Promise<AdminSummary> {
  * reads them now, and the read is kept for the fleet facts A-8 plans (ADMIN.md §6.1).
  */
 export function useSummary(): UseQueryResult<AdminSummary> {
-  return useQuery(
-    { queryKey: qk.summary(), queryFn: fetchSummary, retry: 1 },
-    queryClient,
-  );
+  return useQuery({ queryKey: qk.summary(), queryFn: fetchSummary, retry: 1 });
 }
 
 export function fetchProduct(slug: string): Promise<ProductDetail> {
@@ -70,18 +68,26 @@ export function fetchProduct(slug: string): Promise<ProductDetail> {
  * the shell can draw the product's sections without waiting on a second round trip.
  */
 export function useProduct(slug: string | null): UseQueryResult<ProductDetail> {
-  return useQuery(
-    {
-      queryKey: qk.product(slug ?? ""),
-      queryFn: () => fetchProduct(slug!),
-      enabled: !!slug,
-      placeholderData: () =>
-        queryClient
-          .getQueryData<ProductDetail[]>(qk.products())
-          ?.find((p) => p.slug === slug),
-    },
-    queryClient,
-  );
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: qk.product(slug ?? ""),
+    queryFn: () => fetchProduct(slug!),
+    enabled: !!slug,
+    placeholderData: () =>
+      queryClient
+        .getQueryData<ProductDetail[]>(qk.products())
+        ?.find((p) => p.slug === slug),
+  });
+}
+
+/**
+ * Which services a product runs (D-15): the sidebar's filter and the router's enablement gate.
+ * `null` means "not loaded, or a row that predates `services_json`", and every caller treats it as
+ * SHOW EVERYTHING (see `isSectionEnabled` in `console/nav.ts`).
+ */
+export function useProductServices(slug: string): ServiceState {
+  const { data } = useProduct(slug || null);
+  return data?.services ?? null;
 }
 
 export function fetchPlatformVersion(): Promise<PlatformIdentity> {
@@ -93,13 +99,10 @@ export function fetchPlatformVersion(): Promise<PlatformIdentity> {
  * it is not refetched on every focus; a failure hides the chip rather than reporting anything.
  */
 export function usePlatformVersion(): UseQueryResult<PlatformIdentity> {
-  return useQuery(
-    {
-      queryKey: qk.platformVersion(),
-      queryFn: fetchPlatformVersion,
-      staleTime: 5 * 60_000,
-      retry: false,
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.platformVersion(),
+    queryFn: fetchPlatformVersion,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 }

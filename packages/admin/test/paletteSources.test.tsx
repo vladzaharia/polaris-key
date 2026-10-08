@@ -7,7 +7,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { navigationSource } from "../src/console/shell/CommandPalette.js";
+import { navigationSource } from "../src/console/shell/palette/navigation.js";
 import {
   createActions,
   missingChain,
