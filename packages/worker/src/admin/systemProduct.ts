@@ -199,6 +199,15 @@ export type LinkSystemProduct =
       publisherClaimed: boolean;
       /** SEC-WP-05: live static CI tokens this run revoked (none can be issued any more). */
       staticTokensRevoked: number;
+      /** SEC-WP-05 forensics: the claimed policy this run replaced (`null`: none was claimed). */
+      replacedClaim: {
+        source: string;
+        repository: string;
+        workflow: string;
+        environment: string;
+        scopes: string[];
+        modifiedBy: string | null;
+      } | null;
       /** Whether this run changed the publisher (a replaced claim counts). */
       publisherChanged: boolean;
       /**
@@ -399,21 +408,22 @@ export async function linkSystemProduct(
         slug,
       )
     )?.n ?? 0;
-  if (staticTokensRevoked > 0)
-    stmts.push(
-      {
-        sql: `UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?)
+  // Unconditional: the statements are no-ops when nothing matches, and a token minted between
+  // the count above and the batch is revoked too.
+  stmts.push(
+    {
+      sql: `UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?)
                WHERE redeemed_at IS NULL AND token_hash IN
                  (SELECT token_hash FROM ci_tokens
                    WHERE product = ? AND kind = 'static' AND revoked_at IS NULL)`,
-        params: [now, slug],
-      },
-      {
-        sql: `UPDATE ci_tokens SET revoked_at = ?
+      params: [now, slug],
+    },
+    {
+      sql: `UPDATE ci_tokens SET revoked_at = ?
                WHERE product = ? AND kind = 'static' AND revoked_at IS NULL`,
-        params: [now, slug],
-      },
-    );
+      params: [now, slug],
+    },
+  );
 
   if (ingest) {
     const services = parseServices(product.services_json).services;
@@ -459,6 +469,17 @@ export async function linkSystemProduct(
     publisherClaimed: claimed,
     publisherChanged: publisherChanged || claimed,
     staticTokensRevoked,
+    replacedClaim:
+      claimed && current
+        ? {
+            source: current.source,
+            repository: current.repository,
+            workflow: current.workflow,
+            environment: current.environment,
+            scopes: current.scopes,
+            modifiedBy: current.modifiedBy ?? null,
+          }
+        : null,
     breakGlass: claims.live,
     breakGlassEnded: claims.ended.map((e) => ({ key: e.key, why: e.why })),
   };

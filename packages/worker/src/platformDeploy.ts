@@ -394,7 +394,9 @@ export async function handleDeployHook(
           : "; no trusted publisher)") +
       breakGlassNote +
       endedNote,
-    before_json: null,
+    before_json: linked.replacedClaim
+      ? JSON.stringify({ replacedPublisherClaim: linked.replacedClaim })
+      : null,
     after_json: JSON.stringify({
       created: ensured.created,
       repository: policy.repository,

@@ -40,6 +40,9 @@ import { matchRoute } from "../src/router.js";
 import {
   claimPublisherPolicy,
   issueStaticCiToken,
+  issueUploadTicket,
+  findUploadTicket,
+  lookupCiToken,
   getPublisherPolicy,
   GITHUB_OIDC_ISSUER,
 } from "../src/core/publisher.js";
@@ -419,6 +422,49 @@ describe("the deploy hook (F-10 automation)", () => {
       minted.tokenId,
     );
     expect(row?.revoked_at).not.toBeNull();
+    // Forensics: the platform audit row keeps the replaced claim's old values.
+    const aud = await db.first<{ before_json: string | null }>(
+      "SELECT before_json FROM platform_audit WHERE action = 'feed.bootstrap' ORDER BY at DESC, rowid DESC LIMIT 1",
+    );
+    expect(JSON.parse(aud!.before_json!)).toMatchObject({
+      replacedPublisherClaim: {
+        source: "admin",
+        workflow: ".github/workflows/other.yml",
+        environment: "elsewhere",
+        modifiedBy: "u1",
+      },
+    });
+  });
+
+  it("a static token and its open ticket are dead after the deploy (SEC-WP-05)", async () => {
+    expect((await hook(await token())).status).toBe(200);
+    const minted = await issueStaticCiToken(env, db, {
+      product: SYSTEM_PRODUCT_SLUG,
+      scopes: ["release:publish"],
+      expiresAt: NOW + 86400,
+      label: null,
+      createdBy: "u1",
+      now: NOW,
+    });
+    const holder = (await lookupCiToken(env, db, minted.token, NOW))!;
+    expect(holder).not.toBeNull();
+    const t = await issueUploadTicket(env, db, {
+      product: SYSTEM_PRODUCT_SLUG,
+      holder,
+      objects: [],
+      now: NOW,
+    });
+    const find = () =>
+      findUploadTicket(env, db, {
+        ticket: t.ticket,
+        product: SYSTEM_PRODUCT_SLUG,
+        holder,
+        now: NOW,
+      });
+    expect((await find()).ok).toBe(true);
+    expect((await hook(await token())).status).toBe(200);
+    expect(await lookupCiToken(env, db, minted.token, NOW)).toBeNull();
+    expect(await find()).toMatchObject({ ok: false, reason: "ticket_expired" });
   });
 
   it("refuses a replayed token", async () => {
