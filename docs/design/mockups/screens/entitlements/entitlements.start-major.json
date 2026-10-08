@@ -8,15 +8,15 @@
     "LX-44"
   ],
   "uxRows": [],
-  "summary": "The dialog behind the new-major notice's Start a 5.x tier…: Pro 5 is created as a copy of Pro 4 covering 5.x, with what it copies (limits, includes, profile) listed in words, and a plain statement that no license moves on its own.",
+  "summary": "The dialog behind the new-major notice's Start a 5.x tier…: Pro 5 is created as a copy of Pro 4 covering 5.x, Name over Id with a taken id's inline error and a one-click suggestion, what it copies (limits, includes, profile) listed in words, and the one outcome of list order.",
   "compare": [
-    "The dialog opens over the Licenses page, dimmed, with focus in Name. Its title is 'Start a 5.x tier' and the button says exactly what happens: 'Create Pro 5'. It is drawn after Create Pro 5 was pressed with a taken id: the error sits inline under Id ('pro-5 belongs to an archived tier, Pro 5 preview. Ids are never reused: try pro-5-2026.') and focus moves to that field.",
+    "The dialog opens over the Licenses page (entitlements.new-major), dimmed, with focus in Name. It is the default 480 dialog at the overlay's default top, Name over Id. Its title is 'Start a 5.x tier' and the button says exactly what happens: 'Create Pro 5'. It is drawn after Create Pro 5 was pressed with a taken id: the error sits inline under Id ('pro-5 belongs to an archived tier, Pro 5 preview.') with a link button 'Use pro-5-2026' that fills the field, and focus moves to Id.",
     "Name and id are prefilled from the old tier (Pro 4 → Pro 5, pro-4 → pro-5); the id says it can't change later.",
-    "The major line is prefilled with the new major (5.x). The hint gives the range in the tier record's words ('Covers 5.0.0 up to, but not including, 6.0.0') and keeps Pro 4's duration (no end date).",
-    "Copy from Pro 4 lists Limits, Includes and Profile with their actual values, each ticked by default; a line under them says an unticked group starts empty (platform default limits, no entitlements, no profile).",
-    "The note says no license moves on its own and how a holder upgrades (Change tier, or the admin API from DJDL's billing), and what list order does: 'Pro 5 goes just above Pro 4 in list order, so a holder of both runs as Pro 5.' With Commerce on, an optional upgrade offer field appears here instead of the billing sentence.",
-    "Phone: the dialog takes the full width, Name and Id stack, and Cancel and Create Pro 5 share the foot.",
-    "Create Pro 5 opens Pro 5's record (Tier tab) with the toast 'Created Pro 5'; the new-major notice is gone from Licenses and from Pro 4's record, because a 5.x tier now exists."
+    "The major line is prefilled with the new major (5.x); the hint gives the range and keeps Pro 4's duration ('5.0.0 up to 6.0.0, with 5.x betas on the beta track. No end date, like Pro 4.'). A line that overlaps Pro 4's 4.x shows an inline error under the field ('4.x is Pro 4’s line. Pick a major no tier covers.') and Create moves focus there.",
+    "Copy from Pro 4 lists Limits, Includes and Profile with their actual values, each ticked by default (an unticked group starts empty; that needs no sentence).",
+    "The intro says Pro 4 and its 64 licenses stay on 4.x; the closing line says the one outcome of list order: 'A holder of both runs as Pro 5.' How a holder moves (Change tier, or the admin API) is in the docs, not the dialog.",
+    "Phone: a bottom sheet whose body scrolls under a fade above the foot (.dialog.scroll.fade; the body is a focusable region), the foot lifted by a shadow while it scrolls, and Cancel and Create Pro 5 side by side in two equal columns, in tab order.",
+    "Create Pro 5 opens Pro 5's record with the toast 'Created Pro 5'; the new-major notice is gone from Licenses and from Pro 4's record, because a 5.x tier now exists."
   ],
   "status": "mockup",
   "designReview": {
@@ -29,6 +29,54 @@
         "severity": "minor",
         "issue": "'5.0.0 up to 6.0.0' doesn't say whether 6.0.0 is included; 'above Pro 4 in list order' doesn't say what list order affects; unticked groups are unexplained; where Create Pro 5 lands isn't shown; the Id error isn't drawn.",
         "resolution": "The hint reads 'Covers 5.0.0 up to, but not including, 6.0.0 …'. The note says 'Pro 5 goes just above Pro 4 in list order, so a holder of both runs as Pro 5.' Under the ticks: 'Untick a group to start it empty: platform default limits, no entitlements, no profile.' The compare says Create Pro 5 opens Pro 5's record with the toast 'Created Pro 5', and the notice then disappears for Pro 4. The Id field is drawn in its error state, with focus on it: 'pro-5 belongs to an archived tier, Pro 5 preview. Ids are never reused: try pro-5-2026.' The page behind takes the Licenses fixes (outline notice actions, list order, units, paging)."
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the sheet cut the Profile row and two paragraphs with no cue; on desktop the Id error left a 40px hole under Name (two columns); the closing paragraph explained mechanism (list order, admin API) and a sentence told how to untick.",
+        "resolution": "The default 480 dialog with Name over Id, so the error flows under its own field; the overlay's default top; .dialog.scroll.fade, so the phone sheet's body fades above the foot (with the foot's shadow and a focusable body). Cut 'Untick a group to start it empty.'; the closing paragraph is 'A holder of both runs as Pro 5.'; the Id suggestion is a link button 'Use pro-5-2026'; the compare adds the inline error for a major line that overlaps Pro 4's 4.x. The page behind is the converged new-major. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #4",
+          "reviewer #3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Update the compares to say the phone dialog feet and the add-on header actions stack full width.",
+        "resolution": "declined: The kit now puts two actions side by side (.kit-next sheet feet, .action-pair). That fixes the reversed visual vs tab order and matches the existing compares, so the render changes and the compares don't.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The primary was enabled while the Id was invalid and the copy repeated itself.",
+        "resolution": "Intro 'Copies Pro 4 for 5.x. Pro 4 stays on 4.x.'; major-line hint '5.0.0 up to 6.0.0, betas included.'; 'A holder of both runs as Pro 5.' deleted; the Id error is one sentence with 'Use pro-5-2026' as a small button inside the field; Create is disabled until the Id is valid; the error keeps its red border and the focus ring is an offset outline; 'Can't change later' is 12px in the AA muted token; the scrolling body has a scroll shadow (.scroll-shadow); Copy-from labels carry the values ('Limits (5 devices, 30 offline days, stable and beta tracks)').",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Dialog geometry as for extend-major.",
+        "resolution": "Same viewport-tall screen, 12vh placement, max-height 90vh, pinned foot; phone stays a bottom sheet.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
       }
     ]
   },

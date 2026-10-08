@@ -9,18 +9,17 @@
     "LX-09"
   ],
   "uxRows": [],
-  "summary": "Diceroll's License → Entitlements page: the catalog moved out of Managed config, with the three kinds (on/off, quantity, consumable) and each one's combine rule, a tier-by-entitlement view with the add-ons that give each key, and the platform entitlements, each shown only while its feature is on.",
+  "summary": "Diceroll's License → Entitlements page: Diceroll's own entitlements (each name opens its edit drawer) and the platform entitlements in two tables that share one set of column widths, the kind filter with counts, and the three kinds as the kit's legend, after the tables below 1600 and in the aside from 1600.",
   "compare": [
     "The page lives in the Licensing group (Licenses, Tiers, Add-ons, Entitlements) of the Product context, in the License accent; there is no Licensing Settings page and no entitlement table left in Managed config's catalog.",
-    "Three kind tiles explain the one rule per kind in plain words: an on/off entitlement is off unless the tier, the license or any add-on turns it on; a quantity is the license's value, else the tier's, plus every add-on; a consumable is units with a balance and a ledger per license. The UI calls kind `feature` 'On/off', never 'Feature', which names the six features (C-58).",
-    "Each catalog row shows the label, the key in mono (what the code asks for), the kind, the value per tier in list order (Free, Premium), and the add-ons that give it as links to their records. A pack-gating key says which pack it opens. An on/off value reads 'On' with a tick or 'Off' in muted text; '—' appears only where no value can exist (a consumable's tier cells, an empty Add-ons cell).",
-    "Quantities show numbers per tier and the add-on's '+2'; consumables show no tier values (units come only from add-ons).",
-    "Platform entitlements are a separate, read-mostly table: Release tracks (channels) under Ship builds, Versions (app.minVersion/maxVersion, set in the tier's Duration or on a license), Device limit and Tier (license.tier/tierLabel, locked, set by Polaris Key) under Licensing, Cloud Sync storage (pkey.cloudSync.bytes) under Cloud Sync, each with the feature's glyph in its accent and where it can be set.",
-    "Turning off Ship builds or Cloud Sync removes its row here and in the tier and add-on editors without deleting values; test by toggling the feature on Settings and reloading this page.",
-    "The footer explains the composition order (tier, license overrides, add-ons, platform keys) and that devices keep receiving flag rows, so no SDK code changes (C-09).",
+    "The section says 'Declared in .pkey/product.'; a row the console has taken over from the file carries a 'Set here' source tag after its key (Loadout slots). Saving an edit to a declared entitlement asks first ('No ads is declared in .pkey/product. After this, resyncs leave it as you set it here.', button 'Save and stop following the file'), so the consequence is said where it happens.",
+    "Each entitlement's name is the row's link and opens its edit drawer (drawn in the states round). A row shows the key in mono and one fact after it ('pack.obsidian · opens a pack'), the kind, the value per tier in list order (Free, Premium), and the add-ons that give it as links. On and Off start at one x in a column (Off keeps On's tick slot); '—' appears only where no value can exist.",
+    "Both tables share one colgroup with fixed layout (Entitlement 34%, Kind or Feature 16%, Free 10%, Premium 10%, the last column the rest, a 56px actions column, empty in the platform table), so Free, Premium and the right edges line up between them.",
+    "The kind filter (All 7 · On/off 5 · Quantities 1 · Consumables 1) is a radiogroup carrying the counts; the UI calls kind `feature` 'On/off', never 'Feature', which names the six features (C-58).",
+    "Platform entitlements is a separate, read-mostly table: 'Polaris Key’s own keys, shown while their feature is on.' Release tracks (channels) under Ship builds, Versions (set in the tier's Duration or on a license), Device limit and Tier (locked, set by Polaris Key) under Licensing, Cloud Sync storage under Cloud Sync.",
+    "Kinds is the kit's legend: each kind's glyph in the media column, its name (14/20 bold) over its one combine rule (13/20, body colour), no numerals; its foot says 'Applied in order: tier, the license’s own values, add-ons, platform entitlements.' Below 1600 it follows the two tables (three columns on a wide card, rows on a narrow one); from 1600 it sits in the aside.",
     "Words: 'Entitlement', 'Add-on', 'Release tracks', 'Limits'; never 'flag', 'grant' or 'capability' in the UI.",
-    "Phone: the sidebar folds into the menu button, the kind tiles stack, the filter becomes a full-width segmented control, the tables drop their header row, and each row keeps its label and key with one summary line that starts with the kind's icon and names tiers and add-ons apart ('On in Premium · add-on Obsidian dice pack'), add-ons as links; nothing scrolls sideways.",
-    "The section says what editing does to a declared entitlement: 'Edit one here and the console owns it from then on: later changes to the file won’t touch it.' Saving an edit to an entitlement declared in .pkey/product asks first ('No ads is declared in .pkey/product. After this, resyncs leave it as you set it here.') with the button 'Save and stop following the file'."
+    "Phone: the tables drop their header row, each row keeps its name and key with one summary line led by the kind's glyph (role=img, named), add-ons as links, facts never broken mid-fact ('add-on' never breaks at its hyphen); the row's ⋯ sits on the title line; the kind filter goes two by two; Kinds closes the page."
   ],
   "status": "mockup",
   "designReview": {
@@ -53,6 +52,142 @@
         "severity": "minor",
         "issue": "Phone: a header row holding only 'Entitlement', add-on names lose their links, a tier and an add-on run together in the summary, and Versions says 'Set on: Tier, license' although versions are set in the tier's Duration.",
         "resolution": "The header row is hidden on phone. Summaries start with the kind's icon and name each part: 'On in Premium · add-on Obsidian dice pack', 'Free 2 · Premium 6 · Loadout pack +2 · Neon dice pack +1', with every add-on a link. Versions' Set on reads 'Tier duration, license' on desktop and 'set in the tier’s Duration' on phone."
+      },
+      {
+        "severity": "major",
+        "issue": "The kind counts were the loudest type on the page and the least useful facts, while the rules were 12px grey; the card took 225px on desktop and 40% of the first phone screen, above the work the page exists for.",
+        "resolution": "Kinds is the kit's legend (.ref-legend): glyph in the 28px media column, name at 14/20 bold, rule at 13/20 body colour, no numerals; the counts moved into the filter segments ('On/off 5', 'Quantities 1', 'Consumables 1'); below 1600 the card follows the two tables, from 1600 it stays in the aside; its foot keeps 'Applied in order: …' and cuts 'The game's code doesn't change.' The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Free sat at 808 vs 851 and Premium at 883 vs 959 on desktop, so the verticals jumped between two tables that compare the same tiers.",
+        "resolution": "Both tables share one colgroup with table-layout: fixed (34%, 16%, 10%, 10%, the rest, 56px); the platform table has an empty actions column. Checked: Free and Premium start at the same x in both tables at every width from tablet up.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "How to edit an entitlement wasn't discoverable; a row repeated 'obsidian' four times; nothing showed which keys the console had taken over; the tick misaligned On against Off.",
+        "resolution": "Names are the rows' links (to the edit drawer); sub-lines read 'pack.obsidian · opens a pack'; the platform subtitle is one sentence; the section subtitle is 'Declared in .pkey/product.' with a 'Set here' tag on Loadout slots and the file consequence moved to the edit's confirmation; on phone the ⋯ sits on the title line and 'add-on' never breaks; Off keeps On's glyph slot.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
+        "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Add a 'Set here' filter beside the kind segments.",
+        "resolution": "declined: It adds chrome for a rare state. The per-row 'Set here' tag is enough at this catalog's size.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Draw the missing states and flows now: catalog-states, addons-empty, addon-states, save failed, the read-only viewer, the edit drawer and file confirmation, New add-on, the Remove and Change-to-units confirms, the Override editor, Comp flows, Create codes, the Preview at a date result, the canceled subscription and the move-major confirm.",
+        "resolution": "declined: The owner scoped this pass to spacing and kept the content, so new screens are logged for the area's next states round, not drawn now. The behaviour they need is already in the accepted compare items. After convergence, Override, Comp an add-on and Preview at a date belong to licenses.detail. Create codes belongs to commerce. The read-only state is a cross-area RBAC kit pattern. The ledger's empty and error states follow ADMIN.md T2's generic table states.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The h2 repeated the h1 and pushed the table about 90px down; the Kinds card added about 200px and restated the Kind column.",
+        "resolution": "h2 and subtitle removed; a 'Declared in .pkey/product' line sits in the page header meta with no trailing period. 'Platform entitlements' keeps its title with the subtitle 'Set by Polaris Key'. The Kind definitions are a tooltip on the Kind header (.info-tip). The caption 'Applied in order: tier, the license's own values, add-ons, platform entitlements.' is one 12px muted caption under the platform table. No Kinds card at any width, so the composition no longer changes between wide and desktop. The page is .page.table-page (1600 cap).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'Set here' jammed the key line and Free/Premium values were indented from their headers.",
+        "resolution": "'Set here' is a muted pill in the Add-ons cell; sub-lines are the key plus at most one short clause (the clause is hidden on phone); On and Off are words that start at the header's edge (tick slot removed in value columns); the platform table has 44px rows and a single-line 'Set on'; the Entitlement column takes the slack. First table uses 57px rows.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The 2x2 tinted filter box on phone was tall and its unselected counts read as loose text.",
+        "resolution": "One horizontally scrolling 40px chip row (.segmented.scroll-row) with an edge fade; counts stay on All only; phone rows are title and overflow, the key on one line, one muted meta line.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Keep the Kinds side panel from 1280 up as an alternative to removing the card.",
+        "resolution": "declined: a card that only restates the Kind column adds a layout variant; the tooltip and one caption cover it.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Add a dashed empty row to the first table and a states sheet per screen (loading, error, viewer, manifest-managed).",
+        "resolution": "declined: these are new screens or states, not spacing; a states sheet is for the owner to schedule.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Adopt a new breakpoint set (rail at 1280, tables drop columns at 1100) and drop the Add-ons column at tablet.",
+        "resolution": "declined: breakpoints belong to the kit and the tablet change would remove content from view; the kit gets one grid rule instead.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Make the light-theme primary lime-600 so it is not olive.",
+        "resolution": "declined: a brand token decision outside this pass; flagged as a kit question.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "minor",
+        "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
+        "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Gaps of 24, 32 and 48px and meta type of 12/20 against 13/22 drifted between screens.",
+        "resolution": "Under .ent2: 32px section gap, card head 56px (72px with a subtitle), meta type 12/18 in the muted token, sentence-case 12px label (.eyebrow), content caps .page.form-page 1280 and .page.table-page 1600; the page-title to first-section gap equals the section gap (the page is one flex column).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
       }
     ]
   },

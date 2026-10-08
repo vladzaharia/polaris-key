@@ -10,20 +10,23 @@
     "LX-33"
   ],
   "uxRows": [],
-  "summary": "DJDL's Pro tier record: the six ways to sell it as presets with Renewing, keeps the last version chosen, its settings (yearly period, what happens at lapse, versions, the product's grace days) beside a worked timeline, then Limits, Includes and Profile, all edited in place. One unsaved change (offline days 30 → 60) shows the tier's sticky save bar.",
+  "summary": "DJDL's Pro tier as a state of the licenses.tiers editor: the Order list beside Pro's record, whose Duration group has Renewing, keeps the last version chosen among the six presets, its settings (yearly, when it ends, versions, the product's grace) and the worked timeline, then Limits, Includes and Profile. One unsaved change (offline days 30 → 60) shows the record's save bar.",
   "compare": [
-    "The tier record is one page with four groups in this order: Duration, Limits, Includes, Profile (Profile only while Managed config is on), all edited in place: no group has an Edit button. The tabs are Tier and Licenses (a filtered list), nothing else. The header says the tier's place in list order (Pro is 1st of 4: Pro, Pro trial, Pro 4, Standard; top is best).",
-    "Duration offers six presets in one radio group: Lifetime, Fixed, Trial, Version-scoped, Renewing, and Renewing, keeps the last version, each with a one-line plain description; exactly one is selected, drawn once (tint plus check).",
-    "Choosing a preset only fills the fields below it; the fields stay editable (Renews every, When it lapses with Stops working / Keeps the last version / Moves to another tier, Versions with Any / One major line / A range), so a fixed year that keeps its last version is reachable too.",
-    "Keeps the last version explains itself under the radio: the newest stable release published while active, stable track only, entitlements kept.",
-    "Grace after a missed renewal is read-only here (license.dunningGraceDays, the one licensing setting), shown only because the tier renews, with a link to Settings.",
-    "The timeline uses DJDL's real names and versions (4.2.0 is the newest stable today) and the portal's exact words, 'Updates ended at 4.2.0 · keeps working'.",
-    "An unsaved change shows one save bar for the tier, sticky at the bottom of the window while anything is unsaved, never inside a card. It names the group and says what Save does to how many licenses ('1 change, in Limits. Pro’s 71 licenses can stay offline for 60 days between checks instead of 30…'), with Discard and 'Save Pro'. The changed field has an accent outline and 'was 30'. Leaving with unsaved changes asks first.",
-    "Preview at a date… is in the header; it opens the tier's effective limits and entitlements at a chosen date (LX-41).",
-    "The words are Duration and Limits, never 'terms' or 'policy'; 'Release tracks', not 'channels'. The timeline's last event is 'Renewing brings updates back'.",
-    "Phone: presets stack in one column with only the selected one's description; settings sit above the timeline; the save bar is one row at the bottom of the screen ('1 change, in Limits', Discard, Save Pro) and stays there while scrolling, so it is always next to whatever changed.",
-    "Limits shows where the values it doesn't own come from: 'Versions from Duration' (read-only here, set by the Duration group) and 'Fingerprint mode platform default' until the tier sets its own.",
-    "Includes lists each entitlement with its key in muted mono under the label and its control on the right (a switch for on/off, a number with its unit for a quantity), then Add an entitlement. Profile is a select with '3 values: …' and a link to the profile."
+    "The tier record is a state of the licenses.tiers editor, the one tier record (LX-44): h1 Tiers, New tier as the page's one primary; the Order list beside the open record (360px, 400 at wide; stacked above the record below 1280), best first, each row a rank, the tier's name, its license count and a one-line summary; the open tier is the marked row.",
+    "The record head says the tier's name and id, 'Used by N licenses →' (the Licenses list filtered to this tier), 'Declared in .pkey/product', Preview at a date… (hidden on phone; also in ⋯) and ⋯ (Duplicate, Delete). There are no tabs and no breadcrumb page.",
+    "Four groups, edited in place, a hairline apart: Duration, Limits, Includes, Profile (Profile only while Managed config is on). Each group's label sits in a 200px column (over its fields under 720px of card), and the field column stops at 640px, so every control stays near its label at every width.",
+    "Duration offers six presets in one radiogroup, each a title over one line: Lifetime, Fixed, Trial, Version-scoped, Renewing, and Renewing, keeps the last version. LX-43's 'free' is the Lifetime preset on a tier with no offer: a tier carries no price, so there is no seventh preset.",
+    "The lit preset is derived from the fields. When the fields match no preset, no option is chosen and a line under the list reads 'Custom: Fixed 365 days, keeps the last version'. Choosing a preset overwrites only the fields it owns, and each changed field gets its 'was …' mark.",
+    "Under the presets come the chosen preset's settings, then 'When it ends' in licenses.tiers' words and order (Keeps the last version, Stops working, Moves to another tier, each with its line), then Versions (Any version, One major line, A range): versions are set here only, never in Limits.",
+    "The group ends with the worked timeline ('What a … license does') in DJDL's real names and versions.",
+    "Limits: Devices and Offline days are short number fields (never stretched); blank uses the platform default and a license can override each. Release tracks are chips with stable always on (locked); choosing dev also includes beta. Fingerprint mode is a segmented control with its 'From .pkey/product' badge; changing it takes it over from the manifest.",
+    "Includes lists each entitlement label first with its key in muted mono under it and its control at the end of the 640px column (a switch named by its row, or a number with its unit), then Add an entitlement. Profile is a select (at most 320px) with '3 values: …' and Open profile.",
+    "One save bar for the record, under it and pinned to the window while anything is unsaved: 'N changes. Applies to X of Y licenses; .pkey/product stops changing <tier>.', Discard and 'Save <tier>'. On phone it is one 56px row: 'N changes', Discard, Save. Leaving with unsaved changes asks first.",
+    "Words: Duration and Limits, never 'terms' or 'policy'; 'Release tracks', not 'channels'.",
+    "Renewing, keeps the last version's settings: Renews every (Month | Year, no hint: the subscription's source decides how a license renews), When it ends with Keeps the last version chosen, Versions Any version, and Grace after a missed renewal (7 days, read-only, license.dunningGraceDays, with Change in Settings →), shown only because the tier renews.",
+    "The timeline: Starts (Oct 7, 2026), Renews for another year (Oct 7, 2027), Past due for 7 days if a renewal doesn't arrive (warning), Keeps the last version 7 days later ('4.2.0 if it lapsed today. The portal says “Updates ended at 4.2.0 · keeps working”.'), Renewing brings updates back.",
+    "The unsaved change is Offline days 30 → 60 (accent ring, 'was 30'); the bar reads '1 change. Applies to 71 of 71 licenses; .pkey/product stops changing Pro.' with Discard and Save Pro.",
+    "Phone: the list stacks over the record, the six presets are a one-column list with every line kept, the settings sit above the timeline, and the save bar is one row."
   ],
   "status": "mockup",
   "designReview": {
@@ -51,6 +54,163 @@
         "severity": "minor",
         "issue": "The story contradicts itself: Pro is being changed from Stops working to Keeps the last version, yet Licenses already shows Kofi on Pro as 'Updates ended at 4.1.3 · keeps working'.",
         "resolution": "Pro already keeps the last version, so Kofi, Ines ('then keeps the last version') and Northside's health line all stay true. The unsaved change is now Offline days 30 → 60 in Limits, and the bar says: '1 change, in Limits. Pro’s 71 licenses can stay offline for 60 days between checks instead of 30, from their next refresh. None of them sets its own.'"
+      },
+      {
+        "severity": "blocking",
+        "issue": "The tier record was drawn twice (here and licenses.tiers) with incompatible layout, words and save bar, so LX-43 and LX-44 builders could not meet 'A tier is edited on one record'. At wide the Includes switches sat about 1,100px from their labels, Limits inputs were 380px wide for 1–2 digits, and the presets went 6-up and wrapped.",
+        "resolution": "Redrawn as a state of the licenses.tiers editor frame: h1 Tiers; the Order list (360px, 400 at wide, stacked over the record below 1280) with this tier marked; the record head (name, id, 'Used by N licenses →', 'Declared in .pkey/product', Preview at a date…, ⋯); four .form-section groups, Duration, Limits, Includes, Profile, with the field column capped at 640. Duration holds the six presets as a .radio-list (a title over one line), then the chosen preset's settings in licenses.tiers' 'When it ends' wording and order, Versions as radios (set only here), grace, and the worked timeline last. Limits: Devices and Offline days as .input.short; Release tracks with the locked stable chip; Fingerprint mode as the segmented control with its 'From .pkey/product' badge. Includes rows are label first with the key in muted mono under it. The breadcrumb page, the Tier | Licenses tabs and the separate cards are gone. The save bar sits under the record. Licenses-area follow-up: licenses.tiers takes this Duration group in place of its 3-segment control. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #3 (blocking: two tier records)",
+          "reviewer #1 (wide stretch, stretched Limits inputs, wide 3×2 presets)",
+          "reviewer #4 (label 1,100px from control at wide)",
+          "reviewer #3 (ownership signal, license count in the save bar)"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Subtitles restated their titles (Includes, Profile), the 'Renews every' hint described the mechanism and was wrong for store and checkout subscriptions, and facts repeated across the page.",
+        "resolution": "Cut the Includes and Profile subtitles (the frame's one-line group notes stay), cut the 'Renews every' hint; on duration-trial the 'Then moves to' hint is 'Devices stay activated.' and the Includes line is 'Matches Pro'; on duration-version the timeline item '5.0.0-beta.1 is out of reach' reads 'DJDL says “Your license covers DJDL 4.x”.' and the notice uses new-major's words.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The preset model was undefined: which option is lit when the fields are edited by hand, and what choosing a preset overwrites.",
+        "resolution": "Compare item added: the lit preset is derived from the fields; when no preset matches, none is chosen and a 'Custom: …' line says what the fields make; choosing a preset overwrites only the fields it owns, each with its 'was …' mark.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
+        "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Put Limits and Profile in a 400px .page.columns aside at 1600px and up (#1), or use grid-template-columns: minmax(0,1fr) 560px (#3).",
+        "resolution": "declined: Superseded by the accepted convergence onto the licenses.tiers editor. Its list takes the wide space and its 640px field column keeps every control near its label, so there is no second layout to maintain.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Collapse the presets into one row with a Change button that opens a bottom sheet, and put the worked timeline behind a disclosure on phone.",
+        "resolution": "declined: The accepted .radio-list already shows the six options compactly with one tap. A sheet would hide the choice. The timeline is the one place the duration's effect is told, and hiding it only on phone makes phone a different product. Content stays in this pass.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Add a seventh 'Free' preset tile (LX-43 lists free).",
+        "resolution": "declined: A tier carries no price (offers do), so free is the Lifetime preset on a tier with no offer. This is recorded in the compare instead of adding a duplicate option.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Rewrite the timeline row 'The portal says “Updates ended at 4.2.0 · keeps working”' as 'Keeps the last version · Updates ended at 4.2.0 · keeps working'.",
+        "resolution": "declined: The quoted line is the customer-visible outcome, which is what the worked timeline is for. The proposed version repeats the item's own title.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Lay setting-row lists out in two columns in cards 900px and wider, and cap list-row content at 960px.",
+        "resolution": "declined: Splitting one list into two columns breaks the top-to-bottom scan and the 56px row rhythm. After convergence, the 640px form-section field column already keeps controls near their labels. A trailing action at the row's end is the standard list pattern.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Use one DJDL tier set and one set of license counts across entitlements and licenses (now 4 tiers and 240 licenses vs 5 tiers and 1,284).",
+        "resolution": "declined: DJDL's fixtures differ across six areas, not two. That is the cross-area consistency pass, which was paused for this spacing pass (commit db2a650fd). Until then, the converged record lists this area's tiers.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Accept three Gems figures and a two-row phone save bar as better drifts.",
+        "resolution": "declined: Both are fixed in the render instead: the balance tile is restored, and the phone save bar becomes one row. The compares already describe that.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The Order card ended near y=460 while the editor ran to 2,468px, the controls stopped well short of the right edge, and the timeline (an output) sat under the inputs.",
+        "resolution": "Rebuilt as a grid: the Order card is sticky (top 88px) from 1280; every group stacks its label over a 640px-capped field column; where the record card is 760px or wider, 'What a Pro license does' is a sticky 340px aside beside the Duration controls, with Limits, Includes and Profile under it. Duration radios use a 2-column grid (.radio-list.rows.grid2) from 960px of card, which the 1280 content cap means only a wider card reaches. Page height 2,468 to 1,834 at desktop. New kit primitives: .form-section.stacked.with-aside, .form-aside, .mk-editor.sticky-list.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Six presets, then 'When it ends' and 'Versions' asked the same question again and contradicted the preset.",
+        "resolution": "The preset owns its settings (.preset-settings): Renewing, keeps the last version shows Renews every and Grace; Trial shows Runs for and Then moves to; Version-scoped shows Major line and Within the line. 'When it ends' is dropped from the three drawn presets (it belongs to Fixed and Renewing, not drawn here), 'Any version' is no longer a group. Helpers stay only as a 'then' outcome (Fixed, Trial, Version-scoped, Renewing). One radio row (.radio-list.rows): 36px, 44px on phone, 8px gap, one line with or without its helper.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The same fact was stated twice in headers, helpers and the save bar.",
+        "resolution": "'Declared in .pkey/product' once, in the record header; the Fingerprint chip stays (field-level). Save bar: '1 change · applies to 71 licenses · .pkey/product stops syncing this tier'. Order helper 'Best first. Higher tier wins.'; Limits helper 'Blank uses the platform default.'; 'Add-ons can add more.' and 'Managed config over the Default profile.' deleted; Fingerprint note 'Normal allows up to 2 hardware changes.'; Order rows drop '• N devices' and fit two lines. The save bar is .save-bar.pinned (sticky to the window's bottom); shoot.mjs draws it at rest in full-page shots.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Timeline kicker was tiny, uppercase, tracked and low contrast in dark.",
+        "resolution": "Sentence-case 12px semibold kicker (.aside-title), meta lines 12/18 in the AA muted token, the Keeps-the-last-version row is one line, and the past-due row carries the grace.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4",
+          "ux2"
+        ]
+      },
+      {
+        "issue": "Make 'Renewing, keeps the last version' a 'When it ends' choice on Fixed and Renewing and collapse the timeline behind 'Preview at a date…'.",
+        "resolution": "declined: this changes the duration model and structure, and the owner said to keep structure; hiding 'When it ends' for that preset removes the contradiction without a model change, and the timeline stays visible beside the form.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Cap the editor at 1280px and center it, or put Limits and Includes side by side at wide.",
+        "resolution": "declined: the sticky timeline column already uses the width and a second grid would fragment the form; the 1280px form-page cap is a kit-level token (.page.form-page).",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Show radio descriptions only on the selected option, or as tooltips.",
+        "resolution": "declined: hiding helpers until selection hides the choice from people comparing options; pruning the redundant ones is enough.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "minor",
+        "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
+        "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
       }
     ]
   },

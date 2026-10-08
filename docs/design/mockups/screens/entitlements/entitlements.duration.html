@@ -1,247 +1,22 @@
 <style>
-  /* entitlements.duration: only what the kit does not already say. */
-  [data-screen="entitlements.duration"] .dur-choices {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+  /* entitlements.duration: widths and visibility only; spacing comes from the kit. The licenses.tiers frame: the Order card sticks beside the record. */
+  [data-screen="entitlements.duration"] .mk-editor {
+    --list-w: 320px;
   }
-  [data-screen="entitlements.duration"] .dur-choices .choice {
-    padding: 12px 40px 12px 14px;
-    gap: 4px;
-  }
-  [data-screen="entitlements.duration"] .dur-choices .choice-title .ic {
-    width: 16px;
-    height: 16px;
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="entitlements.duration"] .dur-split {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="entitlements.duration"] .dur-split .form {
-    gap: 18px;
-  }
-  [data-screen="entitlements.duration"] .radios {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  [data-screen="entitlements.duration"] .radio-desc {
-    margin: -4px 0 2px 26px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="entitlements.duration"] .fact {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 8px;
-    font-size: 14px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="entitlements.duration"] .tl {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 4px 0 0;
-  }
-  [data-screen="entitlements.duration"] .tl::before {
-    content: "";
-    position: absolute;
-    left: 5px;
-    top: 10px;
-    bottom: 10px;
-    width: 2px;
-    border-radius: 1px;
-    background: var(--mk-line);
-  }
-  [data-screen="entitlements.duration"] .tl-item {
-    position: relative;
-    display: grid;
-    grid-template-columns: 12px minmax(0, 1fr);
-    column-gap: 14px;
-  }
-  [data-screen="entitlements.duration"] .tl-dot {
-    grid-row: span 3;
-    width: 12px;
-    height: 12px;
-    margin-top: 4px;
-    border-radius: 50%;
-    background: var(--pk-accent);
-    box-shadow: 0 0 0 3px var(--pk-surface-raised);
-  }
-  [data-screen="entitlements.duration"] .tl-item.warn .tl-dot {
-    background: var(--pk-warning);
-  }
-  [data-screen="entitlements.duration"] .tl-item.lapse .tl-dot {
-    background: var(--pk-surface-raised);
-    border: 2px solid var(--pk-text-muted);
-  }
-  [data-screen="entitlements.duration"] .tl-item.later .tl-dot {
-    background: var(--pk-surface-raised);
-    border: 2px dashed var(--pk-border-strong);
-  }
-  [data-screen="entitlements.duration"] .tl-when {
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--pk-text-subtle);
-    font-variant-numeric: tabular-nums;
-  }
-  [data-screen="entitlements.duration"] .tl-what {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="entitlements.duration"] .tl-desc {
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="entitlements.duration"] .val-on {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="entitlements.duration"] .val-on .ic {
-    width: 14px;
-    height: 14px;
-    color: var(--pk-accent-fg);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="entitlements.duration"] .dur-choices {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+  @container screen (min-width: 1600px) {
+    [data-screen="entitlements.duration"] .mk-editor {
+      --list-w: 360px;
     }
   }
-  @container screen (max-width: 639px) {
-    [data-screen="entitlements.duration"] .dur-choices {
+  /* Below 1280 the record needs the width more than the list does: the list stacks over it. */
+  @container screen (max-width: 1279px) {
+    [data-screen="entitlements.duration"] .mk-editor {
       grid-template-columns: minmax(0, 1fr);
-      gap: 6px;
-    }
-    [data-screen="entitlements.duration"] .dur-choices .choice:not(.on) .choice-desc {
-      display: none;
-    }
-        }
-  /* Every group on the tier record edits in place (ADMIN.md T4); one save bar names what changed. */
-  [data-screen="entitlements.duration"] .lim-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px 20px;
-  }
-  [data-screen="entitlements.duration"] .lim-grid .field {
-    min-width: 0;
-  }
-  [data-screen="entitlements.duration"] .src-tag {
-    margin-left: 6px;
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="entitlements.duration"] .field.changed .input {
-    border-color: var(--pk-accent);
-    box-shadow: 0 0 0 1px var(--pk-accent);
-  }
-  [data-screen="entitlements.duration"] .was {
-    margin-left: 6px;
-    font-size: 12px;
-    font-weight: 400;
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="entitlements.duration"] .read-val {
-    display: flex;
-    align-items: center;
-    min-height: 36px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="entitlements.duration"] .tracks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    min-height: 36px;
-    align-items: center;
-  }
-  [data-screen="entitlements.duration"] .incl-card .setting-row {
-    padding: 12px 20px;
-  }
-  [data-screen="entitlements.duration"] .incl-card .setting-desc.mono {
-    font-size: 12px;
-  }
-  [data-screen="entitlements.duration"] .incl-card .input {
-    width: 120px;
-  }
-  [data-screen="entitlements.duration"] .save-bar {
-    position: sticky;
-    bottom: 16px;
-    z-index: 10;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 12px;
-    padding: 12px 16px;
-    border: 1px solid var(--pk-accent);
-    border-radius: 14px;
-    background: color-mix(in oklab, var(--pk-accent-subtle) 35%, var(--pk-surface-overlay));
-    box-shadow: var(--mk-pop-shadow);
-  }
-  [data-screen="entitlements.duration"] .save-bar .msg {
-    flex: 1 1 360px;
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="entitlements.duration"] .save-bar .msg .ic {
-    flex: none;
-    margin-top: 1px;
-    color: var(--pk-accent-fg);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="entitlements.duration"] .lim-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="entitlements.duration"] .lim-grid {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 16px;
-    }
-    [data-screen="entitlements.duration"] .incl-card .setting-row {
-      padding: 12px 16px;
-    }
-    [data-screen="entitlements.duration"] .incl-card .input {
-      width: 100px;
-    }
-    [data-screen="entitlements.duration"] .save-bar {
-      bottom: 12px;
-      padding: 12px 14px;
-    }
-    /* On phone the bar is one row, so it hides as little as possible; the changed field shows
-       its old value. */
-    [data-screen="entitlements.duration"] .save-bar {
-      flex-wrap: nowrap;
-      gap: 8px;
-      padding: 10px 10px 10px 14px;
-    }
-    [data-screen="entitlements.duration"] .save-bar .msg {
-      flex: 1 1 auto;
-      min-width: 0;
-      align-items: center;
-    }
-    [data-screen="entitlements.duration"] .dur-choices .choice {
-      padding-top: 9px;
-      padding-bottom: 9px;
-    }
-    [data-screen="entitlements.duration"] .dur-choices .choice::after {
-      top: 10px;
-    }
-    [data-screen="entitlements.duration"] .dur-choices .choice.on::before {
-      top: 13px;
     }
   }
 </style>
 
-<div class="console" data-service="license">
+<div class="console kit-next ent2" data-service="license">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -264,16 +39,16 @@
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
     <div class="nav-group" data-service="license">
-      <div class="nav-label">Licensing<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">240</span></a>
       <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">4</span></a>
       <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">2</span></a>
       <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
     </div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="identity" style="padding-top: 4px"><div class="nav-label">Sign-in<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="sync" style="padding-top: 4px"><div class="nav-label">Cloud Sync<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -281,176 +56,172 @@
   </nav>
 
   <main class="main">
-    <div class="page">
+    <div class="page form-page">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Tiers</a><i class="ic ic-chevron-right"></i>Pro</nav>
-        <div class="page-heading"><h1>Pro</h1></div>
-        <p class="page-sub"><span class="id"><i class="ic ic-layers"></i>pro<i class="ic ic-copy"></i></span><span>71 licenses</span><span class="hide-phone">1st of 4 in list order</span></p>
+        <div class="page-heading"><h1>Tiers</h1></div>
         <div class="page-actions">
-          <button class="btn outline"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
-          <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn primary"><i class="ic ic-plus"></i>New tier</button>
         </div>
       </header>
 
-      <nav class="tabs"><a class="tab active" href="#">Tier</a><a class="tab" href="#">Licenses <span class="count">71</span></a></nav>
-
-      <!-- Duration (LX-41, LX-43, LX-44): one model; the presets set its fields. -->
-      <section class="card" aria-labelledby="dur-title">
-        <div class="card-head">
-          <span class="icon-tile"><i class="ic ic-calendar-clock"></i></span>
-          <div class="title">
-            <h2 id="dur-title">Duration</h2>
-            <p>How long a Pro license runs and what happens when it ends.</p>
-          </div>
-        </div>
-        <div class="card-body">
-          <p class="eyebrow">Choose how you sell it</p>
-          <div class="choices dur-choices" role="radiogroup" aria-label="Duration">
-            <div class="choice"><div class="choice-title"><i class="ic ic-badge-check"></i>Lifetime</div><div class="choice-desc">Runs forever, with every update.</div></div>
-            <div class="choice"><div class="choice-title"><i class="ic ic-calendar"></i>Fixed</div><div class="choice-desc">Runs a set number of days, then ends.</div></div>
-            <div class="choice"><div class="choice-title"><i class="ic ic-hourglass"></i>Trial</div><div class="choice-desc">Runs a set number of days, then moves to another tier.</div></div>
-            <div class="choice"><div class="choice-title"><i class="ic ic-git-branch"></i>Version-scoped</div><div class="choice-desc">Runs forever on one major line, such as 4.x.</div></div>
-            <div class="choice"><div class="choice-title"><i class="ic ic-repeat"></i>Renewing</div><div class="choice-desc">Runs while its subscription renews, then ends.</div></div>
-            <div class="choice on" aria-checked="true"><div class="choice-title"><i class="ic ic-history"></i>Renewing, keeps the last version</div><div class="choice-desc">Runs while its subscription renews. After that, it keeps the last version released while it was active.</div></div>
-          </div>
-        </div>
-
-        <div class="card-split dur-split">
-          <div>
-            <p class="eyebrow">Settings</p>
-            <div class="form">
-              <div class="field">
-                <label class="field-label">Renews every</label>
-                <div><span class="segmented sm"><span>Month</span><span class="on">Year</span></span></div>
-                <span class="hint">The length of each period. A license renews when its subscription renews: through DJDL’s billing with the admin API, or with Renew… on the license.</span>
-              </div>
-              <div class="field">
-                <label class="field-label">When it lapses</label>
-                <div class="radios">
-                  <span class="radio"><span class="box"></span>Stops working</span>
-                  <span class="radio on"><span class="box"></span>Keeps the last version</span>
-                  <div class="radio-desc">Runs the newest stable release published while it was active, on the stable track. Its entitlements stay.</div>
-                  <span class="radio"><span class="box"></span>Moves to another tier</span>
-                </div>
-              </div>
-              <div class="field">
-                <label class="field-label">Versions</label>
-                <div class="radios">
-                  <span class="radio on"><span class="box"></span>Any version</span>
-                  <span class="radio"><span class="box"></span>One major line</span>
-                  <span class="radio"><span class="box"></span>A range</span>
-                </div>
-              </div>
-              <div class="field">
-                <label class="field-label">Grace after a missed renewal</label>
-                <div class="fact"><span class="strong nowrap">7 days</span><span class="muted">for every DJDL subscription</span><a class="link small" href="#">Change in Settings<i class="ic ic-arrow-right"></i></a></div>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p class="eyebrow">What a Pro license does<span class="end">Bought Oct 7, 2026</span></p>
-            <div class="tl">
-              <div class="tl-item">
-                <span class="tl-dot"></span>
-                <span class="tl-when">Oct 7, 2026</span>
-                <span class="tl-what">Starts</span>
-                <span class="tl-desc">Every DJDL release on the stable and beta tracks, with lossless audio, stem separation and 500 synced crates.</span>
-              </div>
-              <div class="tl-item">
-                <span class="tl-dot"></span>
-                <span class="tl-when">Oct 7, 2027</span>
-                <span class="tl-what">Renews for another year</span>
-                <span class="tl-desc">When its subscription renews. Nothing changes on the holder’s Macs and PCs.</span>
-              </div>
-              <div class="tl-item warn">
-                <span class="tl-dot"></span>
-                <span class="tl-when">If a renewal doesn’t arrive</span>
-                <span class="tl-what">Past due for 7 days</span>
-                <span class="tl-desc">Still works, with every update, while the holder sorts out payment.</span>
-              </div>
-              <div class="tl-item lapse">
-                <span class="tl-dot"></span>
-                <span class="tl-when">7 days later</span>
-                <span class="tl-what">Keeps the last version</span>
-                <span class="tl-desc">Runs the newest stable release from before the lapse (4.2.0 if it lapsed today), on the stable track, for good. The portal says “Updates ended at 4.2.0 · keeps working”.</span>
-              </div>
-              <div class="tl-item later">
-                <span class="tl-dot"></span>
-                <span class="tl-when">Any time after</span>
-                <span class="tl-what">Renewing brings updates back</span>
-                <span class="tl-desc">The same license gets every release again. Nothing to reactivate.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </section>
-
-      <!-- The tier's other three groups (LX-44), edited in place like Duration. -->
-      <section class="card" aria-labelledby="limits-title">
-        <div class="card-head">
-          <span class="icon-tile"><i class="ic ic-gauge"></i></span>
-          <div class="title"><h2 id="limits-title">Limits</h2><p>A license can override any of these; anything it doesn’t set comes from here.</p></div>
-        </div>
-        <div class="card-body">
-          <div class="lim-grid">
-            <div class="field">
-              <label class="field-label">Device limit</label>
-              <div class="input"><span class="grow tnum">5</span><span class="affix">devices</span></div>
-            </div>
-            <div class="field changed">
-              <label class="field-label">Offline days<span class="was">was 30</span></label>
-              <div class="input"><span class="grow tnum">60</span><span class="affix">days</span></div>
-            </div>
-            <div class="field">
-              <label class="field-label">Release tracks</label>
-              <div class="tracks"><span class="chip on">stable</span><span class="chip on">beta</span><span class="chip">dev</span></div>
-            </div>
-            <div class="field">
-              <label class="field-label">Versions<span class="src-tag">from Duration</span></label>
-              <div class="read-val">Any</div>
-            </div>
-            <div class="field">
-              <label class="field-label">Fingerprint mode<span class="src-tag">platform default</span></label>
-              <div class="select"><span class="grow">Normal</span><i class="ic ic-chevrons-up-down"></i></div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div class="grid cols-2">
-        <section class="card incl-card" aria-labelledby="inc-title">
+      <div class="mk-editor sticky-list">
+        <!-- List order is the rank: drag a row, or use its menu. -->
+        <section class="card" aria-labelledby="order-title">
           <div class="card-head">
-            <span class="icon-tile"><i class="ic ic-list-checks"></i></span>
-            <div class="title"><h2 id="inc-title">Includes</h2><p>Entitlements every Pro license gets.</p></div>
+            <div class="title"><h2 id="order-title">Order</h2><p>Best first. Higher tier wins.</p></div>
           </div>
-          <div class="setting-row"><div><div class="setting-title">Lossless audio</div><div class="setting-desc mono">lossless</div></div><span class="switch on" aria-label="On"></span></div>
-          <div class="setting-row"><div><div class="setting-title">Stem separation</div><div class="setting-desc mono">stems</div></div><span class="switch on" aria-label="On"></span></div>
-          <div class="setting-row"><div><div class="setting-title">Synced crates</div><div class="setting-desc mono">crates</div></div><div class="input sm"><span class="grow tnum">500</span><span class="affix">crates</span></div></div>
-          <div class="setting-row"><div><div class="setting-title">Cloud Sync storage</div><div class="setting-desc mono">pkey.cloudSync.bytes</div></div><div class="input sm"><span class="grow tnum">200</span><span class="affix">MB</span></div></div>
-          <div class="card-row" style="border-top: 1px solid var(--mk-line)"><button class="btn ghost sm"><i class="ic ic-plus"></i>Add an entitlement</button></div>
-        </section>
-        <section class="card" data-service="config" aria-labelledby="prof-title">
-          <div class="card-head">
-            <span class="icon-tile"><i class="svc"></i></span>
-            <div class="title"><h2 id="prof-title">Profile</h2><p>Managed config values for Pro devices.</p></div>
-          </div>
-          <div class="card-body">
-            <div class="field">
-              <label class="field-label">Profile</label>
-              <div class="select"><span class="grow">pro</span><i class="ic ic-chevrons-up-down"></i></div>
-              <span class="hint">3 values: <span class="mono">quality.floor</span>, <span class="mono">run.concurrency</span>, <span class="mono">quality.upgrade.enabled</span>. <a class="link small" href="#">Open profile<i class="ic ic-arrow-right"></i></a></span>
+          <div class="card-rows">
+            <div class="item-row lead keep-end marked" aria-current="true">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">1</span>
+              <div class="item-text"><div class="item-title">Pro<small>71 licenses</small></div><div class="item-desc">Renewing, keeps the last version</div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Pro: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
+            </div>
+            <div class="item-row lead keep-end">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">2</span>
+              <div class="item-text"><div class="item-title">Pro trial<small>9 licenses</small></div><div class="item-desc">14 days, then Standard</div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Pro trial: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
+            </div>
+            <div class="item-row lead keep-end">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">3</span>
+              <div class="item-text"><div class="item-title">Pro 4<small>64 licenses</small></div><div class="item-desc">4.x</div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Pro 4: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
+            </div>
+            <div class="item-row lead keep-end">
+              <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">4</span>
+              <div class="item-text"><div class="item-title">Standard<small>96 licenses</small></div><div class="item-desc">Lifetime</div></div>
+              <div class="item-end"><button class="btn ghost icon xs" aria-label="Standard: Move up, Move down, Duplicate, Delete"><i class="ic ic-ellipsis"></i></button></div>
             </div>
           </div>
         </section>
-      </div>
 
-      <!-- One tier, one save bar (ADMIN.md T4): sticky at the bottom of the window while anything is unsaved. -->
-      <div class="save-bar" role="region" aria-label="Unsaved changes">
-        <span class="msg"><i class="ic ic-info"></i><span class="hide-phone">1 change, in Limits. Pro’s 71 licenses can stay offline for 60 days between checks instead of 30, from their next refresh. None of them sets its own.</span><span class="show-phone">1 change, in Limits</span></span>
-        <button class="btn ghost">Discard</button>
-        <button class="btn primary">Save Pro</button>
+        <!-- The tier record (LX-44): Duration, Limits, Includes, Profile, edited in place. -->
+        <div class="mk-stack-4">
+          <section class="card" aria-labelledby="tier-title">
+            <div class="card-head">
+              <div class="title fill">
+                <div class="mk-cluster baseline"><h2 id="tier-title">Pro</h2><span class="slug">pro</span></div>
+                <p class="mk-cluster-3"><a class="link" href="#">Used by 71 licenses<i class="ic ic-arrow-right"></i></a><span>Declared in <code>.pkey/product</code></span></p>
+              </div>
+              <button class="btn ghost sm hide-phone"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
+              <button class="btn outline icon sm" aria-label="More: Duplicate, Delete"><i class="ic ic-ellipsis"></i></button>
+            </div>
+
+            <!-- Duration (LX-41, LX-43, LX-44): six presets; the chosen preset owns its settings; the worked timeline sits beside them. -->
+            <div class="form-section stacked with-aside">
+              <div class="form-section-label"><h3>Duration</h3></div>
+              <div class="form">
+                <div class="radio-list rows grid2" role="radiogroup" aria-label="Duration preset">
+                  <div class="radio-option"><span class="radio" role="radio" aria-checked="false"><span class="box"></span>Lifetime</span></div>
+                  <div class="radio-option"><span class="radio" role="radio" aria-checked="false"><span class="box"></span>Fixed</span><span class="radio-desc">then ends</span></div>
+                  <div class="radio-option"><span class="radio" role="radio" aria-checked="false"><span class="box"></span>Trial</span><span class="radio-desc">then moves to another tier</span></div>
+                  <div class="radio-option"><span class="radio" role="radio" aria-checked="false"><span class="box"></span>Version-scoped</span><span class="radio-desc">one major line, such as 4.x</span></div>
+                  <div class="radio-option"><span class="radio" role="radio" aria-checked="false"><span class="box"></span>Renewing</span><span class="radio-desc">while its subscription renews</span></div>
+                  <div class="radio-option"><span class="radio on" role="radio" aria-checked="true"><span class="box"></span>Renewing, keeps the last version</span></div>
+                </div>
+                <div class="preset-settings">
+                <div class="field">
+                  <span class="field-label" id="renews-label">Renews every</span>
+                  <div class="mk-cluster"><div class="segmented sm" role="radiogroup" aria-labelledby="renews-label"><span role="radio" aria-checked="false">Month</span><span class="on" role="radio" aria-checked="true">Year</span></div></div>
+                </div>
+                <div class="field">
+                  <span class="field-label">Grace after a missed renewal</span>
+                  <div class="mk-cluster baseline"><span class="strong">7 days</span><a class="link small tap" href="#">Change in Settings<i class="ic ic-arrow-right"></i></a></div>
+                </div>
+                </div>
+              </div>
+              <aside class="form-aside" aria-label="What a Pro license does">
+                <p class="aside-title">What a Pro license does</p>
+                <ol class="timeline">
+                    <li class="timeline-item">
+                      <span class="timeline-when">Oct 7, 2026</span>
+                      <span class="timeline-what">Starts</span>
+                      <span class="timeline-desc">Every release on the stable and beta tracks, with everything Pro includes.</span>
+                    </li>
+                    <li class="timeline-item">
+                      <span class="timeline-when">Oct 7, 2027</span>
+                      <span class="timeline-what">Renews for another year</span>
+                      <span class="timeline-desc">Nothing changes on the holder’s devices.</span>
+                    </li>
+                    <li class="timeline-item warning">
+                      <span class="timeline-when">If a renewal doesn’t arrive</span>
+                      <span class="timeline-what">Past due for 7 days</span>
+                      <span class="timeline-desc">Grace: still works, with every update.</span>
+                    </li>
+                    <li class="timeline-item ended">
+                      <span class="timeline-when">7 days later</span>
+                      <span class="timeline-what">Keeps the last version</span>
+                      <span class="timeline-desc">4.2.0 if it lapsed today.</span>
+                    </li>
+                    <li class="timeline-item later">
+                      <span class="timeline-when">Any time after</span>
+                      <span class="timeline-what">Renewing brings updates back</span>
+                      <span class="timeline-desc">The same license gets every release again.</span>
+                    </li>
+                </ol>
+              </aside>
+            </div>
+
+            <!-- Limits (LX-33): blank means the platform default; a license can override each. -->
+            <div class="form-section stacked">
+              <div class="form-section-label"><h3>Limits</h3><p>Blank uses the platform default.</p></div>
+              <div class="form">
+                <div class="mk-cluster-6">
+                  <div class="field">
+                    <label class="field-label" for="lim-devices">Devices</label>
+                    <div class="input short" id="lim-devices"><span class="grow tnum">5</span></div>
+                  </div>
+                  <div class="field changed">
+                    <label class="field-label" for="lim-offline">Offline days<span class="was">was 30</span></label>
+                    <div class="input short changed" id="lim-offline"><span class="grow tnum">60</span></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <span class="field-label" id="tracks-label">Release tracks</span>
+                  <div class="mk-cluster" role="group" aria-labelledby="tracks-label">
+                    <span class="chip on locked" aria-disabled="true" title="Always included">stable</span><span class="chip on" role="checkbox" aria-checked="true">beta</span><span class="chip" role="checkbox" aria-checked="false">dev</span>
+                  </div>
+                  <span class="hint">Choosing dev also includes beta.</span>
+                </div>
+                <div class="field">
+                  <span class="field-label" id="fp-label">Fingerprint mode<span class="pill sm"><i class="ic ic-file-code-2"></i>From .pkey/product</span></span>
+                  <div class="mk-cluster"><div class="segmented" role="radiogroup" aria-labelledby="fp-label"><span role="radio" aria-checked="false">Off</span><span role="radio" aria-checked="false">Lenient</span><span class="on" role="radio" aria-checked="true">Normal</span><span role="radio" aria-checked="false">Strict</span></div></div>
+                  <span class="hint">Normal allows up to 2 hardware changes.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Includes (LX-34): label first, the key in muted mono under it, the control at the end of the 640px field column. -->
+            <div class="form-section stacked">
+              <div class="form-section-label"><h3>Includes</h3></div>
+              <div class="card-rows flush">
+                <div class="setting-row dense"><div><div class="setting-title" id="inc-lossless">Lossless audio</div><div class="setting-desc mono">lossless</div></div><button class="switch on" role="switch" aria-checked="true" aria-labelledby="inc-lossless"></button></div>
+                <div class="setting-row dense"><div><div class="setting-title" id="inc-stems">Stem separation</div><div class="setting-desc mono">stems</div></div><button class="switch on" role="switch" aria-checked="true" aria-labelledby="inc-stems"></button></div>
+                <div class="setting-row dense"><div><div class="setting-title" id="inc-crates">Synced crates</div><div class="setting-desc mono">crates</div></div><div class="input sm unit" role="group" aria-labelledby="inc-crates"><span class="grow tnum">500</span><span class="affix">crates</span></div></div>
+                <div class="setting-row dense" data-service="sync"><div><div class="setting-title" id="inc-sync"><i class="svc sm" aria-hidden="true"></i>Cloud Sync storage</div><div class="setting-desc mono">pkey.cloudSync.bytes</div></div><div class="input sm unit" role="group" aria-labelledby="inc-sync"><span class="grow tnum">200</span><span class="affix">MB</span></div></div>
+                <div class="card-row"><button class="btn link tap"><i class="ic ic-plus"></i>Add an entitlement</button></div>
+              </div>
+            </div>
+
+            <!-- Profile (Managed config on): at most one; config and secrets only. -->
+            <div class="form-section stacked">
+              <div class="form-section-label"><h3>Profile</h3></div>
+              <div class="form">
+                <div class="field">
+                  <div class="select" data-service="config" role="button" aria-label="Profile: pro"><i class="svc sm" aria-hidden="true"></i><span class="grow">pro</span><i class="ic ic-chevrons-up-down"></i></div>
+                  <span class="hint">3 values: <span class="mono">quality.floor</span>, <span class="mono">run.concurrency</span>, <span class="mono">quality.upgrade.enabled</span></span>
+                  <div><a class="link tap" href="#">Open profile<i class="ic ic-arrow-right"></i></a></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- One record, one save bar (ADMIN.md T4); pinned to the window's bottom while dirty. -->
+          <div class="save-bar pinned" role="region" aria-label="Unsaved changes">
+            <p class="save-bar-msg"><i class="ic ic-info"></i><span class="hide-phone">1 change · applies to 71 licenses · <code>.pkey/product</code> stops syncing this tier</span><span class="show-phone">1 change</span></p>
+            <button class="btn ghost">Discard</button>
+            <button class="btn primary"><span class="hide-phone">Save Pro</span><span class="show-phone">Save</span></button>
+          </div>
+        </div>
       </div>
     </div>
   </main>
