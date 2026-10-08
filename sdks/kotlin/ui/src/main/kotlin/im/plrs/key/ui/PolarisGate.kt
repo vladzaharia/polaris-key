@@ -546,7 +546,8 @@ public fun PolarisActivationScreen(
                     initialFocus = true,
                 )
                 Spacer(Modifier.height(PolarisSpace.controls))
-                if (noBrowser) {
+                // Only the validated portal link is ever copied (offeredManageUrl validates it; a host's own value is checked here).
+                if (noBrowser && ManageLink.isValid(manage)) {
                     PolarisPrimaryButton(
                         text = copy.signInCopyLink,
                         initialFocus = true,

@@ -375,4 +375,22 @@ class FlowTest {
         assertEquals("Diceroll 2.5.0 is ready" to "Restart Diceroll to finish updating.", named.updatePromptText(PolarisUpdateUi("2.5.0", kind = PolarisUpdateUi.Kind.Restart)))
         assertEquals("Update to keep using Diceroll", named.updatePromptText(PolarisUpdateUi("2.5.0", mandatory = true)).first)
     }
+
+    private fun assertNoCopyPathAfterOpening(link: String) {
+        val bad = PolarisSignInUi.Showing(samplePrompt.copy(verificationUriComplete = link), NOW)
+        rule.setContent {
+            StockHost(false) { PolarisTheme(copy = sampleCopy, darkTheme = false) { PolarisSignInScreen(bad) } }
+        }
+        rule.onNodeWithText(sampleCopy.signInOpenBrowser).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText(sampleCopy.signInNoBrowser).assertExists()
+        assertEquals(0, rule.onAllNodes(androidx.compose.ui.test.hasText(sampleCopy.signInCopyLink)).fetchSemanticsNodes().size)
+        assertEquals(0, rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(sampleCopy.signInCopyLink), useUnmergedTree = true).fetchSemanticsNodes().size)
+    }
+
+    @Test
+    fun aNonHttpsLinkHasNoCopyPathAfterAFailedOpen() = assertNoCopyPathAfterOpening("http://key.plrs.im/x")
+
+    @Test
+    fun anOverLongLinkHasNoCopyPathAfterAFailedOpen() = assertNoCopyPathAfterOpening("https://key.plrs.im/" + "a".repeat(2100))
 }

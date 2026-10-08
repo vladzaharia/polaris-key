@@ -422,7 +422,9 @@ private fun PolarisCodeView(
     val linkOk = isSafeSignInLink(link)
     val clipboard = LocalClipboard.current
     val clipScope = rememberCoroutineScope()
-    val copyLink: () -> Unit = {
+    val copyLink: () -> Unit = copyLink@{
+        // Only a validated link is ever copied.
+        if (!linkOk) return@copyLink
         if (onCopyLink != null) onCopyLink(link)
         else clipScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, link))) }
     }
@@ -504,7 +506,7 @@ private fun PolarisCodeView(
                 PolarisTextButton(copy.cancel, onCancel, initialFocus = onUseKey == null)
             } else {
                 // After a failed open, Copy link leads (and takes focus) and the opener steps down to tonal.
-                if (noBrowser) {
+                if (noBrowser && linkOk) {
                     PolarisPrimaryButton(copy.signInCopyLink, onClick = copyLink, initialFocus = true)
                     Spacer(Modifier.height(PolarisSpace.controls))
                     PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open)
