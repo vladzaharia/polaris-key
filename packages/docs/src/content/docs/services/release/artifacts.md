@@ -143,7 +143,8 @@ only for a public artifact of a public repository, and everything else keeps str
 
 All three routes count against the artifact rate-limit lane and follow the deliverable's
 delivery access (below). A moving selector is cached for two minutes, a version selector, a
-file and a blob for a year (immutable); a non-public deliverable's bytes are
+file and a blob for an hour (`public, max-age=3600`, so a later change of the deliverable's
+access reaches a shared cache within the hour); a non-public deliverable's bytes are
 `private, no-store`. Every byte response carries `no-transform`, so the edge never recompresses
 bytes whose length, ranges and digest are fixed.
 

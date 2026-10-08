@@ -59,6 +59,11 @@ export async function addPackageRelease(
     },
     now,
   );
+  // SEC-DST-14: the bytes are in the store too. Without them every blob-route answer for a
+  // package is a 404 for want of an object, and "the route never serves a package" passes
+  // vacuously (it hid SEC-DST-1).
+  if (env.BLOBS)
+    await env.BLOBS.put(blobKey(digest), bytes, { sha256: digest });
   const res = await ingestPackageDescriptor(
     db,
     env,

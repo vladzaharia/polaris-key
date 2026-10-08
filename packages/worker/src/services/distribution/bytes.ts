@@ -90,7 +90,13 @@ import type {
   ServiceHooks,
 } from "../../core/hooks.js";
 import { errorResponse, notFound } from "../../core/errors.js";
-import { BLOB_CSP, blobResponse, hasRef, parseKey } from "../../core/blobs.js";
+import {
+  BLOB_CSP,
+  PUBLIC_BLOB_CACHE,
+  blobResponse,
+  hasRef,
+  parseKey,
+} from "../../core/blobs.js";
 import { isBytesHost } from "../../core/bytesHost.js";
 import {
   DOWNLOAD_TICKET_PARAM,
@@ -193,8 +199,8 @@ function payloadTargetOf(rest: readonly string[]): PayloadTarget | null {
 
 /** A moving selector's URL changes content when the channel moves; revalidate soon. */
 const MOVING_BYTES_CACHE = "public, max-age=120, no-transform";
-/** A file of a release, a pinned version, a blob: the bytes behind the URL never change. */
-const FIXED_BYTES_CACHE = "public, max-age=31536000, immutable, no-transform";
+/** A file of a release, a pinned version, a blob: the bytes behind the URL never change, but who may read them can (SEC-DST-1), so the entry is bounded. */
+const FIXED_BYTES_CACHE = PUBLIC_BLOB_CACHE;
 /** Anything not public: never stored by a shared cache, never recompressed. */
 const PRIVATE_BYTES_CACHE = "private, no-store, no-transform";
 /** The installer: small, deterministic per product. */
@@ -677,6 +683,9 @@ async function computeBlob(
     // A `gated/` key is private whatever this says (`blobResponse`).
     gated: !blob.publicCache,
     env,
+    // SEC-DST-1: an app artifact's audience can narrow (mode change, withdrawal), so a shared
+    // cache holds it for an hour at most, not a year.
+    ...(blob.boundedCache ? { publicCache: PUBLIC_BLOB_CACHE } : {}),
   });
 }
 

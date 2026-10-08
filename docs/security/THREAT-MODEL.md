@@ -1212,6 +1212,25 @@ symbol); review catches the rest.
   and Maven file's, once, streamed through `createHash` after promotion, for the digests those
   clients verify. A size ceiling per feed, never above the platform's per-ecosystem ceiling
   (`dist_registry_policy`), refuses an oversized release (`package-too-large`).
+- **A package file is not an app artifact (SEC-DST-1).** Its blob refs are `package-file`
+  (`PACKAGE_FILE_REF`), not `artifact`: the anonymous blob route
+  (`/<p>/distribution/blobs/sha256/<hex>`) reads a `package-file` ref as granting nothing, so a
+  key only package files hold is the plain not-found, whatever the app's or the package's
+  `dist_access`, the feed's `access_mode`, a yank or a removal. The ecosystem routes serve the
+  bytes under `stricter(feed, deliverable)` and `hasRef` (any ref kind); the F-Droid relay
+  (`publicKeyIsPublic`) refuses a key a package file holds (SEC-DST-2). Before the kind existed,
+  a content hash taken from a lockfile, a PyPI fragment or an OCI digest was a bearer capability
+  to every package file of every ecosystem. Migration `0107_package_file_ref_kind.sql` re-kinds
+  the existing refs (apply it before the code). Digest-keyed refusals on the app side are
+  uniform (SEC-DST-12): a licensed caller outside the entitlement window gets the same flat
+  not-found as for a digest the product never held, so the route is no hash-existence oracle.
+  **Cache.** A blob-route or pinned-file response for an app artifact is
+  `public, max-age=3600, no-transform` (`PUBLIC_BLOB_CACHE`), not a year: its audience can narrow
+  (a tightened mode, a withdrawn release) and a shared cache must not outlive that by more than the
+  hour. Pack objects and registry files keep the year: the registry runs its access ladder before
+  its cache, and a pack object's audience is fixed by its prefix. Responses cached under the old
+  year-long header before this change are an owner step (purge the zone's cache for the bytes
+  host and the blob route path; see the owner checklist).
 - **Unique forever.** `(product, ecosystem, normalised name, version)` is the primary key of
   `release_packages`, nothing deletes a row, and a yanked or deprecated version is a tombstone: it
   is never published again (`package-version-taken`), even byte-identical. That is what makes the

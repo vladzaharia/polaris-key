@@ -52,6 +52,7 @@ import {
 import { ErrorCode } from "../../../core/errors.js";
 import type { PackageFeedSettings } from "../../../core/hooks.js";
 import {
+  PACKAGE_FILE_REF,
   referencedKeys,
   stmtRecordRef,
   storedObjects,
@@ -560,7 +561,7 @@ export async function ingestPackageDescriptor(
           {
             product,
             storageKey: l.key,
-            refKind: "artifact",
+            refKind: PACKAGE_FILE_REF,
             refId: `${releaseId}/${artifactId}`,
           },
           now,

@@ -199,7 +199,7 @@ export async function seedPypi(persistTo) {
           stmts.push(
             DB.prepare(
               `INSERT OR IGNORE INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
-               VALUES (?, ?, 'artifact', ?, ?)`,
+               VALUES (?, ?, 'package-file', ?, ?)`,
             ).bind(
               owner,
               `blobs/sha256/${f.sha256}`,

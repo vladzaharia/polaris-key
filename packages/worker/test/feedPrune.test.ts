@@ -259,7 +259,7 @@ async function publishRow(
       },
       {
         sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
-              VALUES (?, ?, 'artifact', ?, ?)`,
+              VALUES (?, ?, 'package-file', ?, ?)`,
         params: [product, key, `${releaseId}/file:${f.name}`, NOW],
       },
     );
@@ -538,7 +538,7 @@ describe("the shared-blob refcount", () => {
     });
     await db.run(
       `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
-       VALUES ('other', ?, 'artifact', 'x/y', ?)`,
+       VALUES ('other', ?, 'package-file', 'x/y', ?)`,
       `blobs/sha256/${hex("cross")}`,
       NOW,
     );

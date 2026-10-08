@@ -2557,9 +2557,11 @@ paths:
         answer is the same plain not-found as an unknown hash). The public key
         `blobs/sha256/{sha256}` is tried first and never reads the gated prefix; the gated key
         `gated/blobs/sha256/{sha256}` holds only the objects of a pack published while it was
-        gated. An app artifact follows the strictest delivery access of the deliverables whose
-        releases carry the digest, as before (under `entitled`, an app release carrying it must
-        pass the caller's window). A pack's object follows the PACK's delivery access
+        gated. A package version's file (any ecosystem) is never served here: it is reached
+        through its package feed alone, and its digest answers the plain not-found. An app
+        artifact follows the strictest delivery access of the deliverables whose releases carry
+        the digest, as before (under `entitled`, an app release carrying it must pass the
+        caller's window; outside it the answer is the plain `404`, the same as an unknown hash). A pack's object follows the PACK's delivery access
         (`dist_access`, never the app's version window); under the gated prefix, or under an
         `entitled` mode, it needs the pack's CURRENT gate — the licence flag in its own
         `dist_access.entitlement`, never the manifest's assertion or a record's `entitlement` —
@@ -2569,8 +2571,9 @@ paths:
         covers the whole representation (also on a 206); a single `Range`, `If-Range` (on the
         strong ETag, evaluated by the Worker) and `If-None-Match` are evaluated against it, a
         multi-range request gets the whole 200, and no response carries `Content-Encoding`;
-        `HEAD` returns the same headers. Only an object every holder of whose public key is
-        `public` is cached `public, max-age=31536000, immutable, no-transform`; anything else,
+        `HEAD` returns the same headers. A public pack object is cached
+        `public, max-age=31536000, immutable, no-transform`, a public app artifact
+        `public, max-age=3600, no-transform`; anything else,
         and everything under the gated prefix, is `private, no-store, no-transform`. P4-29: when
         neither blob key is held, the hash may name a generated lazy delta (stored at
         `deltas/<from>/<to>.zstd-patch-from`, or under `gated/`) this product holds a
@@ -2610,9 +2613,9 @@ paths:
                   - { $ref: "#/components/schemas/WireError" }
         "403":
           description: >
-            A grant refused it: the app's `entitled` window (`channel_not_allowed`,
-            `version_blocked`, see `ReleaseForbidden`), a pack gate the licence does not hold
-            (`not_entitled`), or an `entitled` pack with no gate (`delivery_gate_missing`).
+            A pack grant refused it: a gate the licence does not hold (`not_entitled`), or an
+            `entitled` pack with no gate (`delivery_gate_missing`). An app artifact outside the
+            `entitled` window is the plain `404`, not a 403.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }

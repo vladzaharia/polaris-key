@@ -20,7 +20,8 @@
  *
  * ── WHAT EACH HOLDER REQUIRES ───────────────────────────────────────────────────────────────
  *
- *   - nobody, for listing art and hosted copies (`listing-asset`, `hosted-asset`; HA-07): those refs
+ *   - nobody, for a package version's files (`package-file`, SEC-DST-1: the package feeds serve
+ *     them under their own ladder; the ref grants nothing here) and for listing art and hosted copies (`listing-asset`, `hosted-asset`; HA-07): those refs
  *     authorise nothing here (`SERVES_NOTHING_REF_KINDS`); the image host serves them;
  *   - the app side (any other non-pack ref, public path only): P2b-04's rule, unchanged — the strictest
  *     delivery mode of the deliverables whose releases carry the digest (the `app` mode when none
@@ -67,6 +68,7 @@ import {
   blobKey,
   LAZY_DELTA_REF,
   OCI_PUSH_REF,
+  PACKAGE_FILE_REF,
   lazyDeltaKeys,
   parseKey,
   refHolders,
@@ -87,7 +89,13 @@ import type { ByteContext } from "./bytes.js";
 /** What the blob route does with one request. */
 export type BlobDecision =
   /** Serve `key`; `publicCache` only when every holder of a public key is `public`. */
-  | { kind: "serve"; key: string; publicCache: boolean }
+  | {
+      kind: "serve";
+      key: string;
+      publicCache: boolean;
+      /** An app-side holder serves it: its audience can narrow, so the cache is bounded. */
+      boundedCache: boolean;
+    }
   /** Refused by a holder's rule. */
   | { kind: "refused"; response: Response }
   /** This product holds neither key: not-found (answered after the rate limit). */
@@ -128,6 +136,8 @@ interface KeyHolders {
   gated: boolean;
   /** Some non-pack ref (an app artifact, a feed file, …) holds it. */
   appSide: boolean;
+  /** A package version's file (`package-file`) holds it: never serves anything here. */
+  packageFile: boolean;
   /** The pack deliverables holding a ref to it, sorted. */
   packs: string[];
 }
@@ -139,8 +149,15 @@ function classify(
 ): KeyHolders {
   const packs = new Set<string>();
   let appSide = false;
+  let packageFile = false;
   for (const r of rows) {
     if (r.storageKey !== key) continue;
+    // SEC-DST-1: a package version's file is served by its feed under the feed's own ladder,
+    // never by hash on this route: the ref grants no standing here.
+    if (r.refKind === PACKAGE_FILE_REF) {
+      packageFile = true;
+      continue;
+    }
     // F-23: an OCI push upload is possession only and authorises nothing (core `OCI_PUSH_REF`).
     if (r.refKind === OCI_PUSH_REF) continue;
     // HA-07: listing art and hosted copies are the image host's, never this route's.
@@ -149,7 +166,13 @@ function classify(
     // A malformed holder (no `@` in a pack release id) names no pack and so admits nothing.
     else if (isDeliverableId(r.holder)) packs.add(r.holder);
   }
-  return { key, gated, appSide, packs: [...packs].sort() };
+  return {
+    key,
+    gated,
+    appSide,
+    packageFile,
+    packs: [...packs].sort(),
+  };
 }
 
 function modeRequirement(
@@ -374,7 +397,9 @@ export async function decideBlob(
       false,
       now,
     );
-    return denied ? { kind: "refused", response: denied } : { kind: "absent" };
+    return denied
+      ? { kind: "refused", response: await uniformRefusal(denied) }
+      : { kind: "absent" };
   }
 
   let first: Response | null = null;
@@ -386,10 +411,35 @@ export async function decideBlob(
         kind: "serve",
         key: h.key,
         publicCache: !h.gated && reqs.every((r) => r.level === 0),
+        boundedCache: h.appSide,
       };
     first ??= denied;
   }
-  return { kind: "refused", response: first ?? notFound() };
+  const appOnly = candidates.every((h) => h.packs.length === 0);
+  const refusal = first ?? notFound();
+  return {
+    kind: "refused",
+    response: appOnly ? await uniformRefusal(refusal) : refusal,
+  };
+}
+
+/**
+ * SEC-DST-12: a caller who holds a usable licence but is outside the app's entitlement window
+ * must not learn, from a 403 body, that a digest exists here (the absent path answers a flat 404
+ * once the licence passes). Applies to the app side only: a pack's 403 `not_entitled` is its
+ * published wire contract (its hashes are named by signed records). Every 403 but the
+ * operator-facing `delivery_gate_missing` becomes the plain not-found; 401 (no or bad
+ * credentials) is the same for held and absent digests and stays.
+ */
+async function uniformRefusal(res: Response): Promise<Response> {
+  if (res.status !== 403) return res;
+  try {
+    const body = (await res.clone().json()) as { error?: { code?: string } };
+    if (body.error?.code === "delivery_gate_missing") return res;
+  } catch {
+    // An unreadable 403 is not the operator hint: fall through to the plain not-found.
+  }
+  return notFound();
 }
 
 /**
@@ -397,6 +447,10 @@ export async function decideBlob(
  * requires nothing (the blob route's rule above, at its loosest). The F-Droid relay serves its
  * registered files to anyone, so it asks this at registration and on every relay request; a key
  * no holder holds yet (a file being registered) is judged by the app side's rule.
+ *
+ * INTENTIONAL (SEC-DST-2): a key any package file holds is never public here, whatever the app's
+ * mode, so an operator who registers the same bytes in an F-Droid feed is refused (registration
+ * and relay alike): the relay would otherwise publish a package's file to anyone.
  */
 export async function publicKeyIsPublic(
   db: Db,
@@ -408,6 +462,8 @@ export async function publicKeyIsPublic(
   const rows = await refHolders(db, product, [key]);
   if (rows === null) return false;
   const h = classify(key, false, rows);
+  // SEC-DST-2: a package version's file is never relay-public, whatever the app's mode is.
+  if (h.packageFile) return false;
   if (!h.packs.length) h.appSide = true;
   const reqs = await requirementsOf(
     await blobReads(db, product, catalog, sha256),
