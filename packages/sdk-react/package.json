@@ -59,6 +59,7 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:browser": "vitest run -c vitest.browser.config.ts",
     "lint": "prettier --check \"src/**/*.{ts,tsx}\" \"test/**/*.{ts,tsx}\"",
     "clean": "rm -rf dist"
   },
@@ -79,9 +80,12 @@
     "@testing-library/react": "^16.1.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "@vitest/browser-playwright": "4.1.11",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^26.0.0",
+    "playwright": "1.63.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "vitest": "4.1.11"
   }
 }

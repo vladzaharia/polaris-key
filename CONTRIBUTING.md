@@ -53,6 +53,11 @@ pnpm --filter @polaris-key/worker test:workerd
 # `pnpm --filter @polaris-key/conformance-browser exec playwright install chromium`.
 pnpm test:browser                # add `-- --browser=firefox` or `-- --browser=webkit`
 
+# The React drop-in kit at every size in Chromium (CI job react-kit): no sideways scroll, the main
+# action in the first viewport, 24 px targets, text that scales with the root font. Set
+# PKEY_KIT_SHOTS=<dir> to also write each render to <dir>/react.<screen>/<size>-<scheme>.png.
+pnpm --filter @polaris-key/react test:browser
+
 ( cd sdks/python && .venv/bin/python -m pytest -q )   # Python (CPython 3.9 + 3.14 on ubuntu, macOS in CI)
 ( cd sdks/swift && swift build && swift test )        # Swift
 sdks/godot/tools/run_tests.sh    # Godot (set GODOT_TEMPLATE to add the exported-pack run)
