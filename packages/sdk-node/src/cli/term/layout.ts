@@ -123,20 +123,37 @@ function markGlyph(
 /**
  * End the rail on the last content row: a bare `end` row under a row on the rail is dropped and
  * that row's last line takes the end mark instead, so no empty `└` row hangs below the content.
+ * Under a row with a mark of its own (a ✓ result, a status line) the bare `end` row has nothing
+ * to close and is dropped.
  */
 export function closeRail(rows: readonly RailRow[]): RailRow[] {
   const out = [...rows];
   const last = out[out.length - 1];
   const prev = out[out.length - 2];
-  if (
-    last?.mark === "end" &&
-    last.spans.length === 0 &&
-    prev?.mark === "rail" &&
-    prev.spans.length > 0
-  ) {
-    out.splice(out.length - 2, 2, { ...prev, mark: "end" });
+  if (last?.mark === "end" && last.spans.length === 0 && prev?.spans.length) {
+    if (prev.mark === "rail")
+      out.splice(out.length - 2, 2, { ...prev, mark: "end" });
+    else if (
+      prev.mark === "ok" ||
+      prev.mark === "fail" ||
+      prev.mark === "warn" ||
+      prev.mark === "done" ||
+      prev.mark === "active"
+    )
+      out.pop();
   }
   return out;
+}
+
+/** What `railLines` can report about the lines it wrote, one entry per line. */
+export interface LineMeta {
+  /**
+   * The line must stay when the screen is too tall: a kept row's lines, except the words around a
+   * URL or a code that wrap onto lines of their own (the URL's pieces stay, the prose goes first).
+   */
+  keep: boolean[];
+  /** The line belongs to a header row. */
+  header: boolean[];
 }
 
 /** Render rail rows to lines: each row wraps under its content column. */
@@ -145,6 +162,7 @@ export function railLines(
   painter: Painter,
   symbols: Symbols,
   columns: number,
+  meta?: LineMeta,
 ): string[] {
   const out: string[] = [];
   const gap = " ".repeat(GUTTER);
@@ -166,15 +184,17 @@ export function railLines(
       ? wrapSpans(row.spans, width, symbols.ellipsis)
       : [[]];
     const rail = painter.style(symbols.rail, ["muted"]);
+    const hasBreak = row.spans.some((sp) => sp.break !== undefined);
     wrapped.forEach((line, i) => {
+      meta?.keep.push(
+        row.keep === true && (!hasBreak || line.some((sp) => sp.break)),
+      );
+      meta?.header.push(row.role === "header");
       // The end mark closes the rail on the row's last line only; a closing line that wraps keeps
       // the rail on every line above it.
+      const last = i === wrapped.length - 1;
       const glyph =
-        row.mark === "end" && i < wrapped.length - 1
-          ? rail
-          : i === 0
-            ? first
-            : next;
+        row.mark === "end" ? (last ? first : rail) : i === 0 ? first : next;
       const body = painter.line(line);
       if (narrow && row.mark !== "none") {
         // No rail on a narrow line: a step keeps its mark (✓ ✗ ▲ or the spinner) on its first line.

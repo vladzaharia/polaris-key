@@ -19,6 +19,7 @@ import { KeyReader } from "./term/keys.js";
 import {
   railLines,
   symbolsFor,
+  type LineMeta,
   type RailRow,
   type Symbols,
 } from "./term/layout.js";
@@ -78,11 +79,16 @@ export interface KitContext {
   /** Print rail rows on stdout. */
   rows(rows: readonly RailRow[]): void;
   /** Lines for rail rows, without printing. */
-  render(rows: readonly RailRow[]): string[];
+  render(rows: readonly RailRow[], meta?: LineMeta): string[];
   /** Lines for rail rows that fit the terminal: compacted by tier, then cut from the top. */
   fit(rows: readonly RailRow[]): Fitted;
   /** Re-read the terminal's size into `caps` (a live region calls it on SIGWINCH). */
   refreshSize(): void;
+  /**
+   * The cursor's row (1-based) from a cursor-position report, for a live region that must find
+   * its own top after the window grew; null when nobody can answer in time.
+   */
+  cursorRow(): Promise<number | null>;
   /** A live region on stdout that lays its whole screen out again on a resize. */
   live(): LiveRegion;
   /** Release the keyboard (raw mode off). Call when the flow ends. */
@@ -192,8 +198,8 @@ function buildContext(
     caps.dumb && caps.tty && stdin.isTTY === true && !caps.json && !caps.ci
       ? new KeyReader(stdin)
       : null;
-  const render = (rows: readonly RailRow[]) =>
-    railLines(rows, painter, symbols, caps.columns);
+  const render = (rows: readonly RailRow[], meta?: LineMeta) =>
+    railLines(rows, painter, symbols, caps.columns, meta);
   const fit = (rows: readonly RailRow[]) =>
     fitScreen(rows, {
       maxRows: caps.rows - 1,
@@ -234,6 +240,10 @@ function buildContext(
       if (stdout.columns) caps.columns = layoutColumns(stdout.columns);
       if (stdout.rows) caps.rows = stdout.rows;
     },
+    cursorRow: () =>
+      keys
+        ? keys.cursorRow(() => stdout.write("\x1b[6n"), 100)
+        : Promise.resolve(null),
     live: () => new LiveRegion(stdout, ctx),
     close: () => {
       keys?.close();

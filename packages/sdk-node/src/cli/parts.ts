@@ -94,6 +94,34 @@ export function stepRow(
   return { mark, spans: m.length ? [...t, { text: " " }, ...m] : t };
 }
 
+/**
+ * A catalog message whose named values are keep-units (a name, an email): each moves to the next
+ * line whole and breaks at its own spaces only when it is wider than the line, so "Mara Fennick"
+ * is never split from its surname at 40 columns. The words around them wrap as usual.
+ */
+export function unitLine(
+  ctx: KitContext,
+  key: string,
+  values: Readonly<Record<string, string>>,
+  style: string[] = ["strong"],
+): Line {
+  const names = Object.keys(values);
+  const marker = (n: string) => `\uE000${n}\uE001`;
+  const text = ctx.copy.t(
+    key,
+    Object.fromEntries(names.map((n) => [n, marker(n)])),
+  );
+  const out: Line = [];
+  text.split(/(\uE000\w+\uE001)/).forEach((part, i) => {
+    if (part === "") return;
+    if (i % 2 === 1) {
+      const name = part.slice(1, -1);
+      out.push({ text: values[name] ?? "", style, unit: true });
+    } else out.push({ text: part, style });
+  });
+  return out;
+}
+
 /** Body text under a step, on the rail. */
 export function textRow(text: string | Line, style?: string[]): RailRow {
   return {

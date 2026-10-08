@@ -68,6 +68,8 @@ interface Run {
   locale?: string;
   interactive?: boolean;
   headless?: boolean;
+  /** The terminal answers a cursor-position request (default); false is one that stays silent. */
+  cpr?: boolean;
 }
 
 interface Harness {
@@ -85,6 +87,11 @@ async function run(
   const screen = new XtermScreen(o.columns, o.rows);
   const stdin = new FakeStdin(o.interactive === true);
   if (!o.interactive) stdin.end();
+  // The terminal's own answer to ESC [ 6 n arrives on stdin, as a person's terminal sends it.
+  if (o.interactive && o.cpr !== false)
+    screen.term.onData((d) =>
+      stdin.emit("keypress", d, { sequence: d, name: undefined }),
+    );
   const v = o.values ?? SHORT;
   let clock = NOW;
   const ctx = await createKitContext({
@@ -670,7 +677,20 @@ describe("a window dragged through several sizes mid-flow", () => {
         expect(
           snaps[0]!.filter((r) => r.text.startsWith("┌")).length,
         ).toBeLessThanOrEqual(1);
-        const end = screen.all().map((r) => r.text);
+        // The window that grew again shows the whole flow, header included, once; rows the
+        // terminal kept in its scrollback (it cannot be told to forget them) are its own.
+        const sizes = [[columns, rows], ...steps];
+        const grewBack = sizes.some(
+          (s, i) =>
+            i > 1 &&
+            s[1]! > sizes[i - 1]![1]! &&
+            sizes
+              .slice(0, i)
+              .some((p, j) => j > 0 && p[1]! < sizes[j - 1]![1]!),
+        );
+        const end = (grewBack ? screen.viewport() : screen.all()).map(
+          (r) => r.text,
+        );
         expect(end.filter((t) => t.startsWith("┌"))).toHaveLength(1);
         // Rows the terminal itself pushed into its scrollback while reflowing cannot be erased;
         // what is on the screen is only the result.
@@ -681,6 +701,233 @@ describe("a window dragged through several sizes mid-flow", () => {
             .join("\n"),
         ).not.toContain("Waiting for you to sign in");
       });
+});
+
+describe("a window shrunk and then grown again", () => {
+  const drags: Array<[string, Array<[number, number]>]> = [
+    [
+      "80x24 → 60x10 → 80x24",
+      [
+        [80, 24],
+        [60, 10],
+        [80, 24],
+      ],
+    ],
+    [
+      "80x24 → 32x10 → 110x30",
+      [
+        [80, 24],
+        [32, 10],
+        [110, 30],
+      ],
+    ],
+  ];
+  const tidy = (rows: Row[]) =>
+    rows
+      .map((r) => r.text.replace(/\d+:\d\d/, "m:ss"))
+      .join("\n")
+      .trimEnd();
+  for (const [name, steps] of drags)
+    for (const cpr of [true, false])
+      for (const values of [SHORT, LONG])
+        it(`${name}, ${values === LONG ? "long" : "short"} values, ${cpr ? "with" : "without"} a cursor-position answer: the screen is a fresh launch's, once`, async () => {
+          const [columns, rows] = steps[0]!;
+          const [lastC, lastR] = steps.at(-1)!;
+          const gate = deferred<unknown>();
+          const { screen, snaps } = await run(
+            { columns, rows, values, interactive: true, cpr },
+            async (h) => {
+              const done = loginFlow(
+                h.ctx,
+                signInClient(values, gate.promise),
+                { deviceCode: true },
+              );
+              await settle();
+              for (const [c, r] of steps.slice(1)) {
+                await h.screen.resize(c, r);
+                await settle();
+                // Let a cursor-position answer (or its silence) come in.
+                await new Promise((r) => setTimeout(r, cpr ? 30 : 160));
+              }
+              await h.snap();
+              gate.resolve({ status: "expired" });
+              await done;
+            },
+          );
+          const again = deferred<unknown>();
+          const fresh = await run(
+            { columns: lastC, rows: lastR, values, interactive: true },
+            async (h) => {
+              const done = loginFlow(
+                h.ctx,
+                signInClient(values, again.promise),
+                { deviceCode: true },
+              );
+              await settle();
+              await h.snap();
+              again.resolve({ status: "expired" });
+              await done;
+            },
+          );
+          expect(tidy(snaps[0]!)).toBe(tidy(fresh.snaps[0]!));
+          // And the outcome it leaves is the one a fresh launch leaves.
+          expect(tidy(screen.viewport())).toBe(tidy(fresh.screen.viewport()));
+        });
+});
+
+describe("the device limit shrunk and grown again", () => {
+  for (const cpr of [true, false])
+    it(`80x24 → 40x8 → 80x24 ${cpr ? "with" : "without"} a cursor-position answer: a fresh launch's screen`, async () => {
+      const manageUrl = LONG.url.replace("activate/device", "portal/devices");
+      const flow = (h: Harness) =>
+        activateFlow(
+          h.ctx,
+          stubClient({
+            license: {
+              activateWithKey: async () => ({
+                kind: "device-limit",
+                code: "device_limit",
+                limit: 3,
+                deviceCount: 3,
+                manageUrl,
+              }),
+            },
+          }),
+          { key: KEY },
+        );
+      const { snaps } = await run(
+        { columns: 80, rows: 24, values: LONG, interactive: true, cpr },
+        async (h) => {
+          const done = flow(h);
+          await settle();
+          for (const [c, r] of [
+            [40, 8],
+            [80, 24],
+          ] as const) {
+            await h.screen.resize(c, r);
+            await settle();
+            await new Promise((r) => setTimeout(r, cpr ? 30 : 160));
+          }
+          await h.snap();
+          h.stdin.press("escape", { sequence: "\x1b" });
+          await done;
+        },
+      );
+      const fresh = await run(
+        { columns: 80, rows: 24, values: LONG, interactive: true },
+        async (h) => {
+          const done = flow(h);
+          await settle();
+          await h.snap();
+          h.stdin.press("escape", { sequence: "\x1b" });
+          await done;
+        },
+      );
+      expect(snaps[0]!.map((r) => r.text)).toEqual(
+        fresh.snaps[0]!.map((r) => r.text),
+      );
+    });
+});
+
+describe("a screen too tall for a 32×8 window", () => {
+  it("keeps the first piece of a long URL: the sentence around it goes first", async () => {
+    const gate = deferred<unknown>();
+    const { snaps } = await run(
+      { columns: 32, rows: 8, values: LONG, interactive: true },
+      async (h) => {
+        const done = loginFlow(h.ctx, signInClient(LONG, gate.promise), {
+          deviceCode: true,
+        });
+        await settle();
+        await h.snap();
+        gate.resolve({ status: "expired" });
+        await done;
+      },
+    );
+    expect(joined(snaps[0]!)).toContain(shown(LONG.url));
+    expect(snaps[0]!.some((r) => /\bEsc\b/.test(r.text))).toBe(true);
+    expect(joined(snaps[0]!)).toContain(LONG.code);
+  });
+});
+
+describe("the end of a flow draws no empty closing row", () => {
+  it("the status table, a one-line success and a cancelled update end on their last content", async () => {
+    const status = await run({ columns: 80, rows: 24 }, async (h) =>
+      statusFlow(h.ctx, stubClient()),
+    );
+    const rows = status.screen.all().map((r) => r.text);
+    expect(rows.at(-1)).toMatch(/Version/);
+    expect(rows).not.toContain("└");
+    const gate = deferred<unknown>();
+    const ok = await run(
+      {
+        columns: 80,
+        rows: 24,
+        values: SHORT,
+        interactive: true,
+        headless: true,
+      },
+      async (h) => {
+        const done = loginFlow(h.ctx, signInClient(SHORT, gate.promise), {
+          deviceCode: true,
+        });
+        await settle();
+        gate.resolve({
+          status: "ready",
+          identity: { email: "mara@fennick.studio" },
+        });
+        await done;
+      },
+    );
+    const okRows = ok.screen.all().map((r) => r.text);
+    expect(okRows.at(-1)).toMatch(/^✓/);
+  });
+
+  it("an update cancelled with Esc says so in a title and a body line", async () => {
+    const started = deferred<void>();
+    const { screen } = await run(
+      { columns: 80, rows: 24, interactive: true },
+      async (h) => {
+        const done = updateApplyFlow(
+          h.ctx,
+          stubClient({
+            update: {
+              decide: async () => ({
+                decision: {
+                  action: "binary",
+                  release: { version: "2.5.0" },
+                  mandatory: false,
+                },
+                channel: "stable",
+              }),
+              install: async (
+                _d: unknown,
+                o: {
+                  signal?: AbortSignal;
+                  onProgress(d: number, t: number): void;
+                },
+              ) => {
+                o.onProgress(10, 100);
+                started.resolve();
+                await new Promise((_, reject) =>
+                  o.signal?.addEventListener("abort", () =>
+                    reject(new Error("cancelled")),
+                  ),
+                );
+              },
+            },
+          }),
+        );
+        await started.promise;
+        await settle();
+        h.stdin.press("escape", { sequence: "\x1b" });
+        await done;
+      },
+    );
+    const rows = screen.all().map((r) => r.text);
+    expect(rows.at(-2)).toMatch(/^✗ {2}Update cancelled\.$/);
+    expect(rows.at(-1)).toMatch(/^└ {2}Nothing was installed\.$/);
+  });
 });
 
 describe("a flow's end states leave one result block under one header", () => {
@@ -722,12 +969,65 @@ describe("a flow's end states leave one result block under one header", () => {
         );
         const all = screen.all().map((r) => r.text);
         check(`${label} ${columns}x${rows}`, screen, screen.viewport(), {});
-        expect(all.filter((t) => t.startsWith("┌")).length).toBeLessThanOrEqual(
-          1,
-        );
+        expect(all.filter((t) => t.startsWith("┌"))).toHaveLength(1);
         expect(all.join("")).toContain(title.split(" ")[0]!);
+        // A name is one unit: "Mara Fennick" is never split across two rows.
+        if (label === "signed in")
+          expect(
+            all.some((t) => t.includes("Mara Fennick")),
+            all.join("\n"),
+          ).toBe(true);
         expect(all.join("\n")).not.toContain("Check the code there");
       });
+  for (const [columns, rows, values] of [
+    [40, 12, LONG],
+    [40, 8, SHORT],
+    [32, 12, LONG],
+  ] as const)
+    it(`the device limit left with Esc at ${columns}×${rows} (${values === LONG ? "long" : "short"}) keeps its header, title and closing row`, async () => {
+      const manageUrl =
+        values === LONG
+          ? LONG.url.replace("activate/device", "portal/devices")
+          : "https://key.plrs.im/portal/tidewater/devices";
+      const { screen } = await run(
+        { columns, rows, values, interactive: true },
+        async (h) => {
+          const done = activateFlow(
+            h.ctx,
+            stubClient({
+              license: {
+                activateWithKey: async () => ({
+                  kind: "device-limit",
+                  code: "device_limit",
+                  limit: 3,
+                  deviceCount: 3,
+                  manageUrl,
+                }),
+              },
+            }),
+            { key: KEY },
+          );
+          await settle();
+          h.stdin.press("escape", { sequence: "\x1b" });
+          await done;
+        },
+      );
+      const all = screen.all().map((r) => r.text);
+      const text = all.join("\n");
+      expect(all.filter((t) => t.startsWith("┌"))).toHaveLength(1);
+      expect(text.replace(/\n[│└▲] +/g, " ")).toContain(
+        "Your license is on 3 of 3 devices",
+      );
+      expect(all.at(-1)!.startsWith("└"), `no closing row:\n${text}`).toBe(
+        true,
+      );
+      // The sentence that asked to try again here is not said a second time.
+      expect(text).not.toContain("try again here");
+      expect(text).toContain("Free a device, then run");
+      check(`device limit end ${columns}×${rows}`, screen, screen.viewport(), {
+        url: manageUrl,
+      });
+    });
   it("cancelling with Esc replaces the code view with the result and the verb that was run", async () => {
     const gate = deferred<unknown>();
     const { screen } = await run(

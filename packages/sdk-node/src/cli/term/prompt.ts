@@ -59,6 +59,7 @@ export function interactiveRegion(
     refreshSize: () => host.refreshSize(),
     render: (r) => host.render(r),
     fit: (r) => host.fit(r),
+    cursorRow: () => host.cursorRow?.() ?? Promise.resolve(null),
   });
 }
 

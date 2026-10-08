@@ -45,6 +45,7 @@ import {
   stepRow,
   tableRows,
   textRow,
+  unitLine,
 } from "./parts.js";
 import {
   CANCEL,
@@ -467,7 +468,11 @@ export async function checkFlow(
  * draws them: the title, the meter as dots only (the title already says "3 of 3"), one sentence,
  * then the page that frees a seat.
  */
-function deviceLimitRows(ctx: KitContext, v: DeviceLimitView): RailRow[] {
+function deviceLimitRows(
+  ctx: KitContext,
+  v: DeviceLimitView,
+  ended = false,
+): RailRow[] {
   const t = ctx.copy.t.bind(ctx.copy);
   const rows: RailRow[] = [];
   if (v.used !== null && v.limit !== null)
@@ -481,8 +486,10 @@ function deviceLimitRows(ctx: KitContext, v: DeviceLimitView): RailRow[] {
   else rows.push(stepRow("warn", t("core.activation.device-limit.title")));
   if (v.manageUrl)
     rows.push(
-      // The terminal does not poll: it never promises the product continues by itself.
-      textRow(t("cli.deviceLimit.body")),
+      // The terminal does not poll: it never promises the product continues by itself. Once the
+      // person has left, the closing line says what to run, so the sentence that asked to try
+      // again here is not said a second time.
+      ...(ended ? [] : [textRow(t("cli.deviceLimit.body"))]),
       { ...textRow([linkSpan(v.manageUrl)]), keep: true },
     );
   else rows.push(textRow(t("core.activation.device-limit.message")));
@@ -768,7 +775,7 @@ export async function activateFlow(
     };
     if (quiet(ctx)) return result;
     const outcome = (): RailRow[] => [
-      ...deviceLimitRows(ctx, dl),
+      ...deviceLimitRows(ctx, dl, true),
       endRow(t("cli.deviceLimit.again", { command: cmd(ctx, "activate") })),
     ];
     if (!ctx.keys || !dl.manageUrl || attempt >= 5) {
@@ -1076,9 +1083,12 @@ export async function loginFlow(
   }
   if (r.status === "ready") {
     const who = r.identity ?? {};
-    const line =
+    const line: string | Line =
       who.name && who.email
-        ? t("signin.cli.signedIn", { name: who.name, email: who.email })
+        ? unitLine(ctx, "signin.cli.signedIn", {
+            name: who.name,
+            email: who.email,
+          })
         : who.email
           ? t("cli.signin.signedInEmail", { email: who.email })
           : t("signInHandoff.ok");
@@ -1833,7 +1843,11 @@ export async function updateApplyFlow(
     abort.abort();
     await keyLoop;
     if (cancelled) {
-      finish([stepRow("fail", t("cli.update.cancelled")), endRow()]);
+      finish([
+        stepRow("fail", t("cli.update.cancelled")),
+        textRow(t("cli.update.nothingInstalled")),
+        endRow(),
+      ]);
       if (interrupt) return interrupted({ state: "cancelled", ...fields });
       return {
         exitCode: EXIT.failed,

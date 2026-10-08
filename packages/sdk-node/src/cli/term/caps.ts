@@ -47,6 +47,8 @@ export interface TerminalInput {
   removeListener?(event: string, listener: (...args: any[]) => void): unknown;
   resume?(): unknown;
   pause?(): unknown;
+  /** Put bytes back at the front of the stream, for the key reader that comes next. */
+  unshift?(chunk: Buffer | string): unknown;
 }
 
 /** Flags every verb accepts (UI-KITS §1.4 "Interaction" and "Fallbacks"). */
@@ -290,11 +292,15 @@ export function queryBackground(
       off?.call(stdin, "data", onData);
       stdin.setRawMode?.(false);
       stdin.pause?.();
+      // Whatever is not the answer was typed by the person (Esc, say) while the question was out:
+      // it goes back to the front of the stream for the key reader.
+      const rest = buf.replace(REPLY, "");
+      if (rest) stdin.unshift?.(Buffer.from(rest));
       resolve(v);
     };
     const onData = (chunk: Buffer | string) => {
       buf += chunk.toString();
-      if (/\x07|\x1b\\/.test(buf)) done(schemeFromOsc11(buf));
+      if (REPLY.test(buf)) done(schemeFromOsc11(buf));
     };
     const timer = setTimeout(() => done(null), timeoutMs);
     stdin.setRawMode!(true);
@@ -303,3 +309,6 @@ export function queryBackground(
     stdout.write("\x1b]11;?\x07");
   });
 }
+
+/** The terminal's answer to the OSC 11 question, to its terminator. */
+const REPLY = /\x1b\]11;[^\x07\x1b]*(?:\x07|\x1b\\)/;

@@ -13,7 +13,7 @@
 // The URL line, the code and the key hints are never dropped. Printed output (status, devices,
 // offline) is never compacted: it scrolls.
 
-import { contentWidth, type RailRow } from "./layout.js";
+import { contentWidth, type LineMeta, type RailRow } from "./layout.js";
 import { cellWidth, type Span } from "./width.js";
 
 const widthOf = (spans: readonly Span[]) =>
@@ -50,7 +50,7 @@ export interface FitOptions {
   columns: number;
   separator: string;
   /** `density: "spacious"` keeps every blank row whenever the screen fits. */
-  render(rows: readonly RailRow[]): string[];
+  render(rows: readonly RailRow[], meta?: LineMeta): string[];
 }
 
 /** The lines that fit, and how many of the leading ones are the flow's header. */
@@ -93,7 +93,22 @@ export function fitScreen(rows: readonly RailRow[], o: FitOptions): Fitted {
     cur = cur.filter((_, j) => j !== i);
     lines = o.render(cur);
   }
+  // Still too tall: a kept row that wraps (a URL inside its sentence) gives up the lines that are
+  // only words, from the top, before any piece of the URL goes.
+  const meta: LineMeta = { keep: [], header: [] };
+  lines = o.render(cur, meta);
+  while (lines.length > max) {
+    const j = meta.keep.indexOf(false);
+    if (j < 0) break;
+    lines.splice(j, 1);
+    meta.keep.splice(j, 1);
+    meta.header.splice(j, 1);
+  }
   // Nothing else can go: the top lines leave the view.
   const cut = Math.max(0, lines.length - max);
-  return { lines: cut ? lines.slice(cut) : lines, head: headOf(cur, cut) };
+  const head = meta.header.slice(cut).findIndex((h) => !h);
+  return {
+    lines: cut ? lines.slice(cut) : lines,
+    head: head < 0 ? meta.header.length - cut : head,
+  };
 }
