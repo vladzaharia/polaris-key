@@ -85,6 +85,44 @@ public struct PolarisTypography: Sendable, Equatable {
         }
     }
 
+    /// How heavy a kit-internal text role is. The brand family ships Regular and Bold only, so
+    /// `.medium` renders Regular there and never asks for a synthesised weight.
+    enum Emphasis {
+        case regular
+        case medium
+        case bold
+    }
+
+    /// The family at any text style, scaling with Dynamic Type from it.
+    func font(style: Font.TextStyle, emphasis: Emphasis) -> Font {
+        switch resolvedFamily {
+        case .system:
+            switch emphasis {
+            case .regular: return .system(style)
+            case .medium: return .system(style).weight(.medium)
+            case .bold: return .system(style).bold()
+            }
+        case .brand:
+            return .custom(
+                emphasis == .bold ? BrandFonts.boldName : BrandFonts.regularName,
+                size: Self.pointSize(style), relativeTo: style)
+        case .custom(let regular, let bold):
+            return .custom(
+                emphasis == .bold ? bold : regular, size: Self.pointSize(style), relativeTo: style)
+        }
+    }
+
+    /// The family at a fixed size (a glyph drawn inside a fixed tile, such as the monogram).
+    func fixedFont(size: CGFloat, bold: Bool) -> Font {
+        switch resolvedFamily {
+        case .system: return .system(size: size, weight: bold ? .semibold : .regular)
+        case .brand:
+            return .custom(bold ? BrandFonts.boldName : BrandFonts.regularName, fixedSize: size)
+        case .custom(let regular, let boldName):
+            return .custom(bold ? boldName : regular, fixedSize: size)
+        }
+    }
+
     static func spec(_ role: Role) -> (Font.TextStyle, Bool) {
         switch role {
         case .title: return (.title2, true)
@@ -100,16 +138,26 @@ public struct PolarisTypography: Sendable, Equatable {
     static func pointSize(_ style: Font.TextStyle) -> CGFloat {
         #if os(macOS)
             switch style {
+            case .largeTitle: return 26
+            case .title: return 22
             case .title2: return 17
+            case .title3: return 15
+            case .callout: return 12
             case .subheadline: return 11
-            case .caption: return 10
+            case .footnote, .caption, .caption2: return 10
             default: return 13
             }
         #else
             switch style {
+            case .largeTitle: return 34
+            case .title: return 28
             case .title2: return 22
+            case .title3: return 20
+            case .callout: return 16
             case .subheadline: return 15
+            case .footnote: return 13
             case .caption: return 12
+            case .caption2: return 11
             default: return 17
             }
         #endif

@@ -1,4 +1,5 @@
-// The launch kit's artwork, as SwiftUI views: the Pinned K (the gate's default logo) and the
+// The launch kit's artwork, as SwiftUI views: the Pinned K (for a host's own about or credits
+// screen; kit screens lead with the product and show no mark, UI-KITS §1.6) and the
 // "Powered by Polaris Key" badge. Both render the kit's own PNGs, bundled unchanged in
 // `Resources/Brand/` (tools/sync-brand-assets.sh copies them; BrandThemeTests checks the bytes), so
 // the marks are never redrawn. "dark" artwork is FOR dark grounds: each view picks its variant from

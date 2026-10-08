@@ -11,10 +11,27 @@ public struct PolarisKitCopy: Sendable, Equatable {
     public var activateOfflineLink = "Activate offline"
     public var manageDevicesButton = "Manage devices"
 
-    // Sign-in (device code).
+    // Sign-in (device code). The code view's strings are the catalog's `signin.handoff.*` keys
+    // (SIGN-IN.md §3.17); macOS takes title-case button labels, as its catalog variant does.
     public var signInTitle = "Sign in"
+    /// The TV code view's subtitle, where the QR code shows (no QR on phones, tablets or Macs:
+    /// SIGN-IN.md D-67).
     public var signInSubtitle = "Scan the code or open the link, then enter this code."
-    public var openBrowserButton = "Open browser"
+    /// `signin.handoff.codeTitle`.
+    public var signInCodeTitle = "Sign in with a code"
+    /// `signin.handoff.codeBody`; `%@` is the verification page, shown without its scheme.
+    public var signInCodeBody = "On any phone or computer, go to %@ and enter this code."
+    /// `signin.handoff.check`.
+    public var signInCodeCheck = "Check the code there matches this one."
+    /// `part.code.label`: what VoiceOver calls the user code.
+    public var codeLabel = "Sign-in code"
+    #if os(macOS)
+        public var openBrowserButton = "Open Browser"
+        public var copyLinkButton = "Copy Link"
+    #else
+        public var openBrowserButton = "Open browser"
+        public var copyLinkButton = "Copy link"
+    #endif
     public var cancelButton = "Cancel"
     public var tryAgainButton = "Try again"
     public var codeExpiresIn = "Code expires in"

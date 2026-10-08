@@ -199,7 +199,7 @@ public struct PolarisLoginView<Content: View>: View {
                     signingIn = false
                     Task { await model.reload() }
                 }
-                .frame(minWidth: 360, minHeight: 520)
+                .polarisSheetFrame()
             }
         }
     }
@@ -209,9 +209,10 @@ public struct PolarisLoginView<Content: View>: View {
 /// it is drawn. Split from `PolarisLoginView` so previews can render every state without a live
 /// `LicenseClient`; the routing is exactly the view's.
 ///
-/// Layout: every full-screen state centres its card horizontally and vertically, at a comfortable
-/// maximum width (`PolarisGateLayout.cardMaxWidth`) rather than edge to edge on iPad and macOS, and
-/// scrolls instead of clipping when Dynamic Type makes it taller than the screen.
+/// Layout: every full-screen state is a `PolarisAdaptivePage`: one column on a phone in portrait,
+/// the form beside the welcome in landscape and short windows (so Activate is never below the
+/// fold), and the split Welcome on iPad and roomy Mac windows; a page taller than the screen puts
+/// its actions first and scrolls the rest.
 struct PolarisGateSurface<Content: View>: View {
     let status: LicenseStatus
     let allowedRange: AllowedRange?
@@ -234,23 +235,26 @@ struct PolarisGateSurface<Content: View>: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.polarisKeyBranding) private var environmentBranding
+    @Environment(\.polarisKeyPresentation) private var presentation
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.openURL) private var openURL
-    @ScaledMetric(relativeTo: .body) private var scaledCardPadding: CGFloat = 28
+    @FocusState private var keyFieldFocused: Bool
+    #if os(macOS)
+        @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 64
+    #else
+        @ScaledMetric(relativeTo: .largeTitle) private var heroSize: CGFloat = 88
+    #endif
 
-    private var branding: PolarisBranding { theme.resolvedBranding(environmentBranding) }
-    private var palette: PolarisPalette {
-        theme.resolvedPalette(for: colorScheme, branding: environmentBranding)
+    private var style: PolarisKitStyle {
+        PolarisKitStyle(
+            theme: theme, scheme: colorScheme, branding: environmentBranding,
+            presentation: presentation)
     }
+    private var palette: PolarisPalette { style.palette }
     /// The tint the gate imposes, or nil to inherit the host app's.
-    private var tint: Color? {
-        theme.setsTint(branding: environmentBranding) ? palette.accent : nil
-    }
+    private var tint: Color? { style.tint }
     private var accentTextTint: Color? { tint == nil ? nil : palette.accentText }
-    private var cardPadding: CGFloat { min(scaledCardPadding, PolarisGateLayout.cardPaddingMax) }
-    private func font(_ role: PolarisTypography.Role) -> Font {
-        theme.resolvedTypography(branding: environmentBranding).font(role)
-    }
+    private func font(_ role: PolarisTypography.Role) -> Font { style.typography.font(role) }
 
     var body: some View {
         Group {
@@ -276,90 +280,98 @@ struct PolarisGateSurface<Content: View>: View {
         }
     }
 
-    // ── needs-activation: OIDC button + license-key card ──
+    // ── needs-activation: the product, then Sign in and the license key ──
+    //
+    // The Welcome leads with the product (its icon at hero size, never a Polaris Key mark: UI-KITS
+    // §1.2, §1.6) and lays out for the space it gets (`PolarisAdaptivePage`): one column on a
+    // phone in portrait, the form beside the welcome in landscape, and the split Welcome on iPad
+    // and roomy Mac windows.
     private var activationScreen: some View {
-        centredCard(badge: theme.poweredBy) {
-            VStack(spacing: 10) {
-                logo
-                    .padding(.bottom, 6)
-                Text(theme.copy.welcomeTitle)
+        let style = self.style
+        let identity = PolarisProductIdentity.resolve(theme: theme, presentation: presentation)
+        return PolarisAdaptivePage(style: style, identity: identity) { layout in
+            VStack(alignment: layout.horizontalAlignment, spacing: PolarisSpace.m) {
+                if layout != .split {
+                    PolarisPageDecoration {
+                        PolarisProductIcon(
+                            identity: identity, size: welcomeIconSize(layout), style: style)
+                    }
+                }
+                Text(theme.copy.welcomeTitle(naming: identity.name))
                     .font(font(.title)).foregroundStyle(palette.textStrong)
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(layout.textAlignment)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
-                Text(theme.copy.welcomeSubtitle)
-                    .font(font(.subtitle)).foregroundStyle(palette.textMuted)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+        } detail: { layout in
+            PolarisPageText(text: Text(theme.copy.welcomeSubtitle), style: style, layout: layout)
+        } act: { layout in
+            activationForm(layout)
+        }
+        .modifier(OptionalTint(color: tint))
+    }
+
+    /// The Welcome's icon: hero size in a column, smaller beside the form and at accessibility
+    /// type sizes, where the form needs the room.
+    private func welcomeIconSize(_ layout: PolarisKitLayout) -> CGFloat {
+        if layout == .sideBySide || dynamicTypeSize.isAccessibilitySize { return 56 }
+        return min(heroSize, 120)
+    }
+
+    private func activationForm(_ layout: PolarisKitLayout) -> some View {
+        VStack(spacing: PolarisSpace.s) {
+            if let onSignIn {
+                Button(action: onSignIn) {
+                    Text(theme.copy.signInButton)
+                        .font(font(.body))
+                        .foregroundStyle(palette.onAccent)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .modifier(OptionalTint(color: tint))
+                .disabled(isWorking)
+                .accessibilityLabel(theme.copy.signInButton)
+                .accessibilityHint("Signs in to license \(theme.copy.productName).")
+                .polarisLayoutProbe(.primaryAction)
             }
 
-            VStack(spacing: 14) {
-                if let onSignIn {
-                    Button(action: onSignIn) {
-                        Text(theme.copy.signInButton)
-                            .font(font(.body))
-                            .foregroundStyle(palette.onAccent)
-                            .frame(maxWidth: .infinity)
+            if showsKeyEntry {
+                if onSignIn != nil {
+                    HStack(spacing: PolarisSpace.s) {
+                        divider
+                        Text(theme.copy.orDividerLabel)
+                            .font(font(.caption)).foregroundStyle(palette.textMuted)
+                            .layoutPriority(1)
+                        divider
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
-                    .modifier(OptionalTint(color: tint))
-                    .disabled(isWorking)
-                    .accessibilityLabel(theme.copy.signInButton)
-                    .accessibilityHint("Signs in to license \(theme.copy.productName).")
+                    .padding(.vertical, PolarisSpace.xxs)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(theme.copy.orDividerLabel)
                 }
 
-                if showsKeyEntry {
-                    if onSignIn != nil {
-                        HStack(spacing: 12) {
-                            divider
-                            Text(theme.copy.orDividerLabel)
-                                .font(font(.caption)).foregroundStyle(palette.textMuted)
-                                .layoutPriority(1)
-                            divider
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(theme.copy.orDividerLabel)
-                    }
+                licenseKeyField
 
-                    licenseKeyField
-
-                    Button {
-                        onActivate(licenseKey)
-                    } label: {
-                        Text(theme.copy.activateButton)
-                            .font(font(.body))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .modifier(ProminentWhen(prominent: onSignIn == nil))
-                    .controlSize(.large)
-                    .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
-                    .modifier(OptionalTint(color: onSignIn == nil ? tint : accentTextTint))
-                    .disabled(isWorking || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .accessibilityLabel(theme.copy.activateButton)
-                    .accessibilityHint("Activates the license key you entered above.")
+                Button {
+                    onActivate(licenseKey)
+                } label: {
+                    Text(theme.copy.activateButton)
+                        .font(font(.body))
+                        .frame(maxWidth: .infinity)
                 }
+                .modifier(ProminentWhen(prominent: onSignIn == nil))
+                .controlSize(.large)
+                .modifier(OptionalTint(color: onSignIn == nil ? tint : accentTextTint))
+                .disabled(isWorking || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityLabel(theme.copy.activateButton)
+                .accessibilityHint("Activates the license key you entered above.")
+                .modifier(ActivateProbe(isPrimary: onSignIn == nil))
+            }
 
-                if let onContinueFree {
-                    Button(action: onContinueFree) {
-                        Text(theme.copy.kit.continueFreeButton)
-                            .font(font(.body))
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderless)
-                    .controlSize(.large)
-                    .modifier(OptionalTint(color: accentTextTint))
-                    .disabled(isWorking)
-                    .accessibilityHint("Starts the free tier without a license key.")
-                }
-
-                if let onActivateOffline, showsKeyEntry {
-                    Button(theme.copy.kit.activateOfflineLink, action: onActivateOffline)
-                        .buttonStyle(.borderless)
-                        .font(font(.caption))
-                        .modifier(OptionalTint(color: accentTextTint))
-                }
+            if onContinueFree != nil || (onActivateOffline != nil && showsKeyEntry) {
+                extras(layout)
+                    .padding(.top, PolarisSpace.xs)
             }
 
             if let err = lastError {
@@ -371,7 +383,9 @@ struct PolarisGateSurface<Content: View>: View {
                         .accessibilityHidden(true)
                 }
                 .font(font(.caption)).foregroundStyle(palette.danger)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(layout.textAlignment)
+                .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+                .padding(.top, PolarisSpace.xxs)
                 .accessibilityAddTraits(.isStaticText)
             }
             if let link = manageURL, let url = URL(string: link) {
@@ -381,7 +395,34 @@ struct PolarisGateSurface<Content: View>: View {
                 ProgressView()
                     .accessibilityLabel("Working")
             }
+            if let badge = theme.poweredBy {
+                PolarisPoweredByBadge(layout: badge.layout, treatment: badge.treatment)
+                    .padding(.top, PolarisSpace.l)
+            }
         }
+    }
+
+    /// The quiet extras (Continue free, Activate offline) as one row of links under the form
+    /// (UI-KITS §4.3), stacking when the row does not fit.
+    private func extras(_ layout: PolarisKitLayout) -> some View {
+        let links = Group {
+            if let onContinueFree {
+                Button(theme.copy.kit.continueFreeButton, action: onContinueFree)
+                    .disabled(isWorking)
+                    .accessibilityHint("Starts the free tier without a license key.")
+            }
+            if let onActivateOffline, showsKeyEntry {
+                Button(theme.copy.kit.activateOfflineLink, action: onActivateOffline)
+            }
+        }
+        .buttonStyle(.borderless)
+        .font(font(.subtitle))
+        .modifier(OptionalTint(color: accentTextTint))
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: PolarisSpace.l) { links }
+            VStack(spacing: PolarisSpace.s) { links }
+        }
+        .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
     }
 
     /// PX-W8: "Replace a device" for a `device_limit` refusal. A button that opens the portal on
@@ -390,7 +431,7 @@ struct PolarisGateSurface<Content: View>: View {
     @ViewBuilder private func freeDeviceAction(_ url: URL) -> some View {
         switch PolarisManagePresentation.current {
         case .qr:
-            VStack(spacing: 8) {
+            VStack(spacing: PolarisSpace.xs) {
                 PolarisQRCode(url.absoluteString, accessibilityLabel: theme.copy.freeDeviceButton)
                     .frame(width: 200, height: 200)
                 Text(theme.copy.freeDeviceScanCaption)
@@ -408,48 +449,56 @@ struct PolarisGateSurface<Content: View>: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-            .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
             .modifier(OptionalTint(color: accentTextTint))
             .accessibilityLabel(theme.copy.freeDeviceButton)
             .accessibilityHint("Opens your account in the browser to free a device.")
         }
     }
 
+    /// The license-key field. A key stays on one line and, when it does not fit, gives way in the
+    /// middle ("pkey_tidewater_7Q2M…3WPLDA"), keeping the prefix and the end people compare
+    /// against the purchase email (UI-KITS §4.3); while editing, the field scrolls to the caret.
     private var licenseKeyField: some View {
         let shape = RoundedRectangle(
             cornerRadius: PolarisGateLayout.controlRadius, style: .continuous)
+        let resting = !keyFieldFocused && !licenseKey.isEmpty
         return TextField(theme.copy.licenseKeyPlaceholder, text: $licenseKey)
             .textFieldStyle(.plain)
             .font(font(.body))
+            .monospaced(!licenseKey.isEmpty)
             .foregroundStyle(palette.textDefault)
             .multilineTextAlignment(.center)
             .autocorrectionDisabled()
             #if os(iOS)
                 .textInputAutocapitalization(.never)
+                .submitLabel(.go)
             #endif
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
+            .focused($keyFieldFocused)
+            .onSubmit {
+                if !licenseKey.trimmingCharacters(in: .whitespaces).isEmpty {
+                    onActivate(licenseKey)
+                }
+            }
+            .opacity(resting ? 0 : 1)
+            .overlay {
+                if resting {
+                    Text(licenseKey)
+                        .font(font(.body))
+                        .monospaced()
+                        .foregroundStyle(palette.textDefault)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(.horizontal, PolarisSpace.m)
+            .padding(.vertical, PolarisSpace.s)
             .background(shape.fill(palette.page))
             .overlay(shape.strokeBorder(palette.borderStrong, lineWidth: 1))
             .modifier(OptionalTint(color: tint == nil ? nil : palette.focus))
             .accessibilityLabel(theme.copy.licenseKeyPlaceholder)
             .accessibilityHint("Enter a license key to activate without signing in.")
-    }
-
-    /// The product's logo, else the branding's default: a neutral key glyph in the tint natively,
-    /// the bit-less Pinned K under `.polarisKey`.
-    @ViewBuilder private var logo: some View {
-        if let custom = theme.logoOverride {
-            custom()
-                .accessibilityHidden(true)
-        } else if branding == .polarisKey {
-            PolarisMark(accessibilityLabel: nil)
-        } else {
-            Image(systemName: "key.fill")
-                .font(.largeTitle).imageScale(.large)
-                .foregroundStyle(.tint)
-                .accessibilityHidden(true)
-        }
     }
 
     // ── grace: keep working, with a reconnect affordance ──
@@ -464,31 +513,21 @@ struct PolarisGateSurface<Content: View>: View {
     }
 
     // ── shared building blocks ──
+
+    /// A terminal state (revoked, expired, version block): its glyph and title, the explanation,
+    /// and Retry, on the same page as the Welcome.
     private func messageScreen(title: String, subtitle: String, symbol: String, tone: Color)
         -> some View
     {
-        centredCard(badge: nil) {
-            // Group the glyph + title + body so VoiceOver reads them as one status card
-            // ("<title>. <subtitle>.") instead of three disjoint swipes; the glyph carries no
-            // independent meaning, so it folds into the combined label.
-            VStack(spacing: 10) {
-                Image(systemName: symbol)
-                    .font(.largeTitle).imageScale(.large)
-                    .foregroundStyle(tone)
-                    .padding(.bottom, 6)
-                    .accessibilityHidden(true)
-                Text(title)
-                    .font(font(.title)).foregroundStyle(palette.textStrong)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
-                Text(subtitle)
-                    .font(font(.subtitle)).foregroundStyle(palette.textMuted)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .accessibilityElement(children: .combine)
-
+        let style = self.style
+        let identity = PolarisProductIdentity.resolve(theme: theme, presentation: presentation)
+        return PolarisAdaptivePage(style: style, identity: identity) { layout in
+            PolarisPageHeading(
+                title: title, identity: identity, style: style, layout: layout, symbol: symbol,
+                symbolTint: tone)
+        } detail: { layout in
+            PolarisPageText(text: Text(subtitle), style: style, layout: layout)
+        } act: { _ in
             Button {
                 onRefresh()
             } label: {
@@ -498,40 +537,13 @@ struct PolarisGateSurface<Content: View>: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-            .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
             .modifier(OptionalTint(color: accentTextTint))
             .disabled(isWorking)
             .accessibilityLabel(theme.copy.retryButton)
             .accessibilityHint("Re-checks your license with the server.")
+            .polarisLayoutProbe(.primaryAction)
         }
-    }
-
-    /// A card centred on the page, horizontally and vertically, at the comfortable maximum width;
-    /// it scrolls (still centred when it fits) once Dynamic Type makes it taller than the screen.
-    private func centredCard<C: View>(
-        badge: PolarisPoweredBy?, @ViewBuilder _ inner: () -> C
-    ) -> some View {
-        let shape = RoundedRectangle(cornerRadius: PolarisGateLayout.cardRadius, style: .continuous)
-        let stack = VStack(spacing: 24) {
-            VStack(spacing: 24) { inner() }
-                .padding(cardPadding)
-                .frame(maxWidth: PolarisGateLayout.cardMaxWidth)
-                .background(shape.fill(palette.raised))
-                .overlay(shape.strokeBorder(palette.borderSubtle, lineWidth: 1))
-            if let badge {
-                PolarisPoweredByBadge(layout: badge.layout, treatment: badge.treatment)
-            }
-        }
-        .padding(.horizontal, PolarisGateLayout.pagePadding)
-        .padding(.vertical, 32)
-        return GeometryReader { proxy in
-            ScrollView(.vertical) {
-                stack
-                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
-            }
-            .scrollBounceBehavior(.basedOnSize)
-        }
-        .background(palette.page.ignoresSafeArea())
+        .modifier(OptionalTint(color: tint))
     }
 
     private func banner(title: String, subtitle: String, symbol: String) -> some View {
@@ -539,7 +551,7 @@ struct PolarisGateSurface<Content: View>: View {
             .font(font(.body))
             .foregroundStyle(palette.warning)
             .accessibilityHidden(true)
-        let text = VStack(alignment: .leading, spacing: 2) {
+        let text = VStack(alignment: .leading, spacing: PolarisSpace.xxs) {
             Text(title)
                 .font(font(.bannerTitle)).foregroundStyle(palette.textStrong)
                 .fixedSize(horizontal: false, vertical: true)
@@ -554,7 +566,6 @@ struct PolarisGateSurface<Content: View>: View {
         let button = Button(theme.copy.reconnectButton) { onRefresh() }
             .font(font(.body))
             .buttonStyle(.bordered)
-            .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
             .modifier(OptionalTint(color: accentTextTint))
             .controlSize(.small)
             .disabled(isWorking)
@@ -564,23 +575,23 @@ struct PolarisGateSurface<Content: View>: View {
         return Group {
             if dynamicTypeSize.isAccessibilitySize {
                 // At accessibility sizes a single row squeezes the copy into a sliver: stack it.
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(alignment: .firstTextBaseline, spacing: 10) { glyph; text }
+                VStack(alignment: .leading, spacing: PolarisSpace.s) {
+                    HStack(alignment: .firstTextBaseline, spacing: PolarisSpace.xs) { glyph; text }
                     button
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: PolarisSpace.s) {
                     glyph
                     text
-                    Spacer(minLength: 12)
+                    Spacer(minLength: PolarisSpace.s)
                     button
                 }
             }
         }
         .frame(maxWidth: PolarisGateLayout.bannerMaxWidth)
         .padding(.horizontal, PolarisGateLayout.pagePadding)
-        .padding(.vertical, 12)
+        .padding(.vertical, PolarisSpace.s)
         .frame(maxWidth: .infinity)
         .background(bannerGround.ignoresSafeArea(edges: .top))
         .overlay(alignment: .bottom) { divider }
@@ -598,18 +609,17 @@ struct PolarisGateSurface<Content: View>: View {
     private var divider: some View { Rectangle().fill(palette.borderSubtle).frame(height: 1) }
 }
 
-/// The gate's layout constants: one corner radius per element kind and the comfortable widths.
+/// The gate's layout constants. The page's arrangement and widths are `PolarisKitLayout`'s.
 enum PolarisGateLayout {
-    /// The card's maximum width: comfortable on iPad and macOS, full width (minus the page
-    /// padding) on iPhone.
-    static let cardMaxWidth: CGFloat = 420
+    /// The form's maximum width: comfortable on iPad and macOS, full width (minus the page inset)
+    /// on iPhone.
+    static let cardMaxWidth: CGFloat = PolarisKitLayout.columnMaxWidth
     /// The grace banner's content width: centred, never edge to edge on a wide window.
     static let bannerMaxWidth: CGFloat = 680
-    static let cardRadius: CGFloat = 20
-    static let controlRadius: CGFloat = 10
-    static let pagePadding: CGFloat = 20
-    /// The card padding scales with Dynamic Type up to this, so large text keeps its width.
-    static let cardPaddingMax: CGFloat = 36
+    /// The license-key field's corner radius.
+    static let controlRadius: CGFloat = 12
+    /// The grace banner's side inset.
+    static let pagePadding: CGFloat = PolarisSpace.l
 }
 
 /// How the gate offers a refusal link (PX-W8): a button where a browser is at hand, a QR code on
@@ -624,6 +634,31 @@ public enum PolarisManagePresentation: Sendable, Equatable {
         #else
             return .button
         #endif
+    }
+}
+
+extension View {
+    /// A kit sheet's size. macOS sizes a sheet from its content, so it gets a comfortable ideal
+    /// size and a minimum small enough for a 480 x 520 window (a 520-pt minimum clipped Cancel
+    /// there); iOS gives the sheet the screen and the page lays itself out in it.
+    func polarisSheetFrame() -> some View {
+        #if os(macOS)
+            frame(minWidth: 380, idealWidth: 460, minHeight: 360, idealHeight: 480)
+        #else
+            self
+        #endif
+    }
+}
+
+/// Activate is the primary action when no Sign in sits above it.
+private struct ActivateProbe: ViewModifier {
+    let isPrimary: Bool
+    func body(content: Content) -> some View {
+        if isPrimary {
+            content.polarisLayoutProbe(.primaryAction)
+        } else {
+            content.polarisLayoutProbe(.activate)
+        }
     }
 }
 

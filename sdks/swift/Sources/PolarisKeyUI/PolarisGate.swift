@@ -3,8 +3,8 @@
 // Every `gate-matrix` status routes to its surface (the same surfaces as `PolarisLoginView`).
 // What the model adds:
 //
-//   * "Sign in" opens the built-in device-code sign-in (`PolarisSignIn`, with a QR code) when the
-//     product runs Identity, and is HIDDEN when it does not — never a button that does nothing;
+//   * "Sign in" opens the built-in device-code sign-in (`PolarisSignIn`; a QR code on TV only) when
+//     the product runs Identity, and is HIDDEN when it does not — never a button that does nothing;
 //   * "Continue free" (keyless enrolment) when the host says the product offers a free tier;
 //   * "Activate offline" opens `PolarisOfflineActivation`;
 //   * key entry is hidden where the host says the outlet forbids it (`showsKeyEntry: false`);
@@ -69,7 +69,7 @@ public struct PolarisGate<Content: View>: View {
                     PolarisOfflineActivation(model: model, theme: theme) { sheet = nil }
                 }
             }
-            .frame(minWidth: 360, minHeight: 520)
+            .polarisSheetFrame()
         }
     }
 }

@@ -111,48 +111,92 @@ struct PolarisOfflineSurface: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.polarisKeyBranding) private var branding
+    @Environment(\.polarisKeyPresentation) private var presentation
 
     private var copy: PolarisKitCopy { theme.copy.kit }
 
     var body: some View {
-        let style = PolarisKitStyle(theme: theme, scheme: colorScheme, branding: branding)
-        PolarisCard(theme: theme) {
+        let style = PolarisKitStyle(
+            theme: theme, scheme: colorScheme, branding: branding, presentation: presentation)
+        let identity = PolarisProductIdentity.resolve(theme: theme, presentation: presentation)
+        PolarisAdaptivePage(style: style, identity: identity) { layout in
+            PolarisPageHeading(
+                title: copy.offlineTitle, identity: identity, style: style, layout: layout,
+                symbol: imported ? "checkmark.seal.fill" : nil)
+        } detail: { layout in
+            PolarisPageText(
+                text: Text(imported ? copy.importedMessage : copy.offlineSubtitle), style: style,
+                layout: layout)
+        } act: { layout in
             if imported {
-                PolarisHeading(
-                    title: copy.offlineTitle, subtitle: copy.importedMessage,
-                    symbol: "checkmark.seal.fill", theme: theme)
-                Button(action: onDone) { Text(copy.confirmContinue).frame(maxWidth: .infinity) }
-                    .polarisPrimaryButton()
+                PolarisPageActions(
+                    primaryTitle: copy.confirmContinue, primary: onDone, layout: layout)
             } else {
-                PolarisHeading(
-                    title: copy.offlineTitle, subtitle: copy.offlineSubtitle,
-                    symbol: "doc.badge.arrow.up", theme: theme)
-                VStack(spacing: 6) {
-                    Text(copy.requestCodeLabel)
-                        .font(style.font(.caption)).foregroundStyle(style.palette.textMuted)
+                request(style: style, layout: layout)
+            }
+        }
+        .modifier(KitTint(color: style.tint))
+    }
+
+    /// The request code (with Copy, and a QR another phone can scan when this device is offline),
+    /// then the ways to bring the activation file back.
+    @ViewBuilder private func request(style: PolarisKitStyle, layout: PolarisKitLayout)
+        -> some View
+    {
+        VStack(spacing: PolarisSpace.l) {
+            VStack(spacing: PolarisSpace.xs) {
+                Text(copy.requestCodeLabel)
+                    .font(style.font(.meta)).foregroundStyle(style.palette.textMuted)
+                    .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+                HStack(spacing: PolarisSpace.s) {
                     Text("\(product) · \(deviceId)")
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(style.palette.textStrong)
-                        .multilineTextAlignment(.center)
+                        // Never truncated: every character is needed to mint the bundle.
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.6)
                         .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     if !deviceId.isEmpty {
-                        PolarisQRCode(deviceId, accessibilityLabel: copy.requestCodeLabel)
-                            .frame(maxWidth: 140, maxHeight: 140)
-                    }
-                    Button(copied ? copy.copiedLabel : copy.copyButton, action: onCopy)
+                        Button(action: onCopy) {
+                            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                                .imageScale(.large)
+                                .frame(minWidth: 28, minHeight: 28)
+                        }
                         .buttonStyle(.borderless)
-                        .disabled(deviceId.isEmpty)
+                        .accessibilityLabel(copied ? copy.copiedLabel : copy.copyButton)
+                    }
                 }
-                Button(action: onImportFile) {
-                    Text(copy.importFileButton).frame(maxWidth: .infinity)
+                .padding(.vertical, PolarisSpace.s)
+                .padding(.horizontal, PolarisSpace.m)
+                .background(
+                    style.sunken, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                if !deviceId.isEmpty, layout != .sideBySide {
+                    PolarisQRCode(deviceId, accessibilityLabel: copy.requestCodeLabel)
+                        .frame(maxWidth: 128, maxHeight: 128)
+                        .padding(.top, PolarisSpace.xs)
+                        .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
                 }
-                .polarisPrimaryButton()
-                Button(action: onPaste) { Text(copy.pasteButton).frame(maxWidth: .infinity) }
-                    .polarisSecondaryButton()
+            }
+            VStack(spacing: PolarisSpace.s) {
+                PolarisPageActions(
+                    primaryTitle: copy.importFileButton, primary: onImportFile,
+                    secondaryTitle: copy.pasteButton, secondary: onPaste, layout: layout,
+                    secondaryCancels: false)
                 Text(copy.dropHint)
-                    .font(style.font(.caption)).foregroundStyle(style.palette.textMuted)
-                if let message { PolarisErrorLine(message: message, theme: theme) }
-                Button(copy.cancelButton, action: onDone).buttonStyle(.borderless)
+                    .font(style.font(.meta)).foregroundStyle(style.palette.textMuted)
+                    .multilineTextAlignment(layout.textAlignment)
+                    .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+                if let message {
+                    PolarisErrorLine(
+                        message: message, theme: theme, alignment: layout.textAlignment
+                    )
+                    .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
+                }
+                Button(copy.cancelButton, action: onDone)
+                    .buttonStyle(.borderless)
+                    .keyboardShortcut(.cancelAction)
+                    .frame(maxWidth: .infinity, alignment: layout.frameAlignment)
             }
         }
     }

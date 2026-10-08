@@ -130,10 +130,10 @@
         }
 
         func testGateLayoutIsCentredAtAComfortableWidth() {
-            // A readable card on iPad and macOS rather than edge to edge; one radius per kind.
+            // A readable column on iPad and macOS rather than edge to edge (the arrangement itself
+            // is KitLayoutTests').
             XCTAssertLessThanOrEqual(PolarisGateLayout.cardMaxWidth, 480)
             XCTAssertGreaterThanOrEqual(PolarisGateLayout.cardMaxWidth, 360)
-            XCTAssertGreaterThan(PolarisGateLayout.cardRadius, PolarisGateLayout.controlRadius)
             XCTAssertGreaterThanOrEqual(PolarisGateLayout.pagePadding, 16)
         }
 

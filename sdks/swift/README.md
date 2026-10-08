@@ -243,8 +243,9 @@ any request.
 
 ```swift
 let prompt = try await client.identity.beginSignIn(deviceName: "Living-room Apple TV")
-// Show prompt.userCode; render prompt.verificationUriComplete as a QR code (the verification
-// page with the code filled in); show prompt.verificationUri as the short URL.
+// Show prompt.userCode and prompt.verificationUri (the short URL); "Open browser" opens
+// prompt.verificationUriComplete (the page with the code filled in). On a TV, also render that
+// URL as a QR code; never on a phone, tablet or Mac (SIGN-IN.md D-67).
 let signIn = Task { try await client.identity.waitForSignIn(prompt) }
 // …cancel `signIn` if the player backs out: polling stops and it throws CancellationError.
 if try await signIn.value == .ready {
@@ -433,10 +434,20 @@ var body: some View {
 
 **Native by default.** Out of the box the gate looks like your app: system fonts with Dynamic Type,
 your app's tint (`.tint(_:)` / the asset catalog accent), system colours that follow dark and
-light, a neutral key glyph, and no Polaris Key branding. Every state is centred horizontally and,
-full screen, vertically, in a card of comfortable width (420 pt) rather than edge to edge on iPad
-and macOS; it scrolls instead of clipping at the largest accessibility sizes, and the grace
-banner sits on the native bar material.
+light, system button shapes, and no Polaris Key branding. The product leads every screen: your
+`logo:`, else the product's presentation icon (below), else your app's icon from the bundle, else
+a monogram tile of the product's initial.
+
+**Every screen lays out for the space it gets**, not for a device: the gate's Welcome, the
+device-code sign-in (`PolarisSignIn`) and offline activation are one centred column on a phone in
+portrait and in narrow windows; in landscape and short windows the form, or the code and its
+actions, sit beside the welcome; and on iPad and roomy Mac windows (760 × 520 pt and up) they use
+the split Welcome, the product's identity pane beside the form. When a column is taller than the
+screen (the largest accessibility sizes on a small phone), the code and the primary action move up
+under the heading and the rest scrolls, so the action is never below the fold. The user code stays
+on one line (it shrinks rather than wrap), a long license key gives way in the middle, and the
+device-code view shows a QR code on TV screens only. The grace banner sits on the native bar
+material. On macOS the kit's sheets size to their content and fit a 480 × 520 window.
 
 **Polaris Key branding is an opt-in**, with one modifier on the gate or any ancestor:
 
@@ -451,11 +462,17 @@ system (`docs/design/BRAND.md`), read from the generated `PolarisBrand` tokens i
 environment with the core violet accent; Rubik (Bold for headings, Regular for body), bundled
 unchanged with its SIL Open Font License (`Resources/Brand/fonts/OFL.txt`) and registered for your
 process only the first time a branded gate draws, falling back to the system font if it cannot
-register; and the Pinned K (`PolarisMark`, display cut, no section bit) as the logo.
+register. The product stays the hero there too: no Polaris Key mark on the gate (UI-KITS §1.6).
+
+**The product's presentation** (discovery `core.presentation`: name, developer, accent and the
+verified icon) reaches the kit through `.polarisKeyPresentation(_:)`, the seam the SDK's
+accessor fills once HA-13 lands. Under `.polarisKey` branding its accent (`accentDark` in the dark
+scheme) colours the kit through the contrast resolver (`PolarisAccent`); natively your app's tint
+still leads. Your theme wins over the presentation field by field.
 
 Overrides apply in either mode and win over the branding: `accent:` / `accentOn:` re-point the
 primary button in both schemes, `palette:` replaces every colour per scheme, `typography:` picks
-`.system`, `.brand` or `.custom(regular:bold:)`, and `logo:` replaces the glyph or mark.
+`.system`, `.brand` or `.custom(regular:bold:)`, and `logo:` replaces the product icon.
 
 **"Powered by Polaris Key" is optional and off by default** in both modes. Opt in with
 `poweredBy: PolarisPoweredBy()` to show the kit's compact badge centred under the activation card,
@@ -463,7 +480,12 @@ or place `PolarisPoweredByBadge` on your about or credits screen. It renders the
 less than the kit minimum (compact 232 × 88, horizontal 376 × 144, stacked 288 × 336 points).
 
 Xcode previews in `PolarisLoginView.swift` cover every gate state, native and branded, in dark and
-light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size.
+light, at iPhone, iPad and Mac sizes and at an accessibility Dynamic Type size. `KitLayoutTests`
+hosts the gate, the device-code sign-in and offline activation at iPhone SE, 440 × 956 and iPad
+sizes in both orientations and in 480 × 520, 900 × 640 and 1440 × 900 Mac windows, at Dynamic Type
+L and AX3, native and branded, and asserts the code and the primary action are on screen without
+scrolling (run it on an iOS simulator for the phone and tablet type sizes; `PKEY_KIT_SNAPSHOTS=<dir>`
+writes the renders).
 
 ## Updates (macOS, D-24)
 
