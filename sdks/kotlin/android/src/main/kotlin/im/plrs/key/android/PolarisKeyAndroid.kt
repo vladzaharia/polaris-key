@@ -15,6 +15,12 @@
 //
 // A pack Play delivers during this session (PlayPackTransport.ensure) mounts at the pack facet's next
 // start: :packs loads its baselines once per process (P6-08's PackEngine.load contract).
+//
+// SP-50: `client()` returns a client that is USABLE at once and touches no file on the calling
+// thread: the Keystore store, its directory and Play's pack locations are resolved on first use,
+// off the main thread, and the client starts itself (the device id, token and cached documents load
+// on `Dispatchers.IO` before the first call that needs them; a background start warms them now).
+// `create()` is the suspend form that returns once they are loaded.
 
 package im.plrs.key.android
 
@@ -69,7 +75,10 @@ public object PolarisKeyAndroid {
     public fun playPacks(context: Context, android: AndroidOptions = AndroidOptions()): PlayPackTransport =
         PlayPackTransport.create(context.applicationContext, android.playPacks, android.activity, android.confirmPack)
 
-    /** [options] with every Android edge the host left unset filled in; see the file comment. */
+    /**
+     * [options] with every Android edge the host left unset filled in; see the file comment. Usable
+     * at once, from any thread: it starts itself (call [create] to wait for the start).
+     */
     public fun client(context: Context, options: PolarisKeyClientOptions, android: AndroidOptions = AndroidOptions()): PolarisKeyClient {
         val ctx = context.applicationContext
         val product = options.core.productSlug
@@ -106,12 +115,14 @@ public object PolarisKeyAndroid {
         val p = options.packs
         val packs = PacksOptions(
             contentStamp = p.contentStamp,
-            embedded = p.embedded + playPacks(ctx, android).installed(),
+            // Play's pack locations are read when the pack facet starts (off the main thread), not here.
+            embedded = LazyList { p.embedded + playPacks(ctx, android).installed() },
             axes = p.axes,
             engine = p.engine,
             memBudget = p.memBudget,
-            // java.nio.file arrives on API 26; below it the host passes a directory itself.
-            dir = p.dir ?: if (Build.VERSION.SDK_INT >= 26) File(ctx.noBackupFilesDir, "pkey/$product/packs").toPath() else null,
+            // Null: `<store directory>/packs`, i.e. `noBackupFilesDir/pkey/<product>/packs`, resolved
+            // when the facet starts. The pack store needs java.nio.file, which arrives on API 26.
+            dir = p.dir,
             handlers = p.handlers,
             objectTransport = p.objectTransport,
         )
@@ -130,8 +141,14 @@ public object PolarisKeyAndroid {
             ),
         )
         self.set(built)
+        // Warm the start now; any call that needs the state waits for it (or starts it itself).
+        built.startInBackground()
         return built
     }
+
+    /** [client], then `start()`: returns once the device id, token and cached documents are loaded. */
+    public suspend fun create(context: Context, options: PolarisKeyClientOptions, android: AndroidOptions = AndroidOptions()): PolarisKeyClient =
+        client(context, options, android).also { it.start() }
 
     /** UpdateClientOptions' default methods, which the flavour's replace. */
     private val DEFAULT_METHODS = listOf(BinaryMethod.download)
@@ -146,4 +163,11 @@ internal fun androidDeviceName(context: Context): String? {
         null
     }
     return named?.takeIf { it.isNotBlank() } ?: Build.MODEL?.takeIf { it.isNotBlank() }
+}
+
+/** A list computed on first read: Play's installed packs are read when the pack facet starts. */
+private class LazyList<T>(compute: () -> List<T>) : AbstractList<T>() {
+    private val items by lazy(compute)
+    override val size: Int get() = items.size
+    override fun get(index: Int): T = items[index]
 }

@@ -17,16 +17,21 @@
 // `$XDG_STATE_HOME/polaris-key/<product>`, the same place a FileStore build kept its token, so an
 // earlier build's token moves into the keyring on the first read.
 //
-// The desktop app ships java-keyring at runtime (`runtimeOnly("com.github.javakeyring:java-keyring:
-// 1.0.4")`; the Compose Desktop kit, UK-10, brings it). :core declares it compileOnly so Android
-// builds never carry JNA.
+// SP-50: this is the desktop artifact, im.plrs.key:polaris-key-desktop. It brings java-keyring (and
+// JNA) at runtime, so the one dependency line gives a desktop app the OS keyring; :core declares
+// java-keyring compileOnly so Android builds never carry JNA. Where the keyring still cannot take the
+// token, the store keeps it in the 0600 file and warns once per run (DegradedStoreWarning).
+//
+//     implementation("im.plrs.key:polaris-key-desktop:<version>")
 
-package im.plrs.key.sdk
+package im.plrs.key.desktop
 
 import im.plrs.key.core.FileStore
 import im.plrs.key.core.JavaKeyringBackend
 import im.plrs.key.core.KeyringBackend
 import im.plrs.key.core.KeyringStore
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.sdk.PolarisKeyClientOptions
 import im.plrs.key.update.BootGuard
 import im.plrs.key.update.DesktopInstallDriver
 import im.plrs.key.update.DirUpdateSlots
@@ -89,7 +94,11 @@ public object PolarisKeyDesktop {
                 ),
             )
         }
-        return PolarisKeyClient(options.copy(core = core, update = update)).also { self.set(it) }
+        return PolarisKeyClient(options.copy(core = core, update = update)).also {
+            self.set(it)
+            // Usable at once: it starts itself; this warms the start (SP-50).
+            it.startInBackground()
+        }
     }
 
     /** [client], then `start()` (token, device id and cache, NO network). */

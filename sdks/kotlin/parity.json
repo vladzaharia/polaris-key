@@ -1,7 +1,10 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "kotlin",
-  "runtimes": ["android", "jvm"],
+  "runtimes": [
+    "android",
+    "jvm"
+  ],
   "testRoots": [
     "sdks/kotlin/core/src/test",
     "sdks/kotlin/license/src/test",
@@ -16,7 +19,9 @@
     "sdks/kotlin/android/src/test",
     "sdks/kotlin/android/src/testPlay",
     "sdks/kotlin/android/src/testDirect",
-    "sdks/kotlin/billing/src/test"
+    "sdks/kotlin/billing/src/test",
+    "sdks/kotlin/desktop/src/test",
+    "sdks/kotlin/samples/android-consumer/app/src/androidTest"
   ],
   "features": {
     "core.verify": {
@@ -59,7 +64,7 @@
           "reason": "dependency"
         }
       ],
-      "note": "Android: :android's AndroidKeystoreStore, the token and device id wrapped by :platform's SecureStore (an AndroidKeyStore AES-256-GCM key, StrongBox where present), the verified cache in a noBackup file; a FileStore's token and device id migrate in, a failed Keystore call throws and status() reports keyring-error, a lost key drops the token and keeps the device id (AndroidKeystoreStoreTest). JVM desktop (UK-40): :core's KeyringStore, Python's KeyringStore ported (the token in the OS keyring, Keychain, Credential Manager or Secret Service through java-keyring, service pkey:<product>; a verified write, else the 0600 file with status() saying keyring-error; file-first reads; a FileStore token moves in), wired by PolarisKeyDesktop; the storage contract runs against the real OS keyring on macOS, Windows and Linux in the kotlin-desktop CI matrix (KeyringStoreTest, PolarisKeyDesktopTest). java-keyring is compileOnly: without it, or with no reachable keyring (a headless Linux session with no Secret Service), the token stays in the 0600 file and supports() reports dependency, as it does for a plain FileStore."
+      "note": "Android: :android's AndroidKeystoreStore, the token and device id wrapped by :platform's SecureStore (an AndroidKeyStore AES-256-GCM key, StrongBox where present), the verified cache in a noBackup file; a FileStore's token and device id migrate in, a failed Keystore call throws and status() reports keyring-error, a lost key drops the token and keeps the device id (AndroidKeystoreStoreTest). JVM desktop (UK-40): :core's KeyringStore, Python's KeyringStore ported (the token in the OS keyring, Keychain, Credential Manager or Secret Service through java-keyring, service pkey:<product>; a verified write, else the 0600 file with status() saying keyring-error; file-first reads; a FileStore token moves in), wired by PolarisKeyDesktop in the polaris-key-desktop artifact, which brings java-keyring at runtime (SP-50); the storage contract runs against the real OS keyring on macOS, Windows and Linux in the kotlin-desktop CI matrix (KeyringStoreTest, PolarisKeyDesktopTest). java-keyring is compileOnly in :core: without it, or with no reachable keyring (a headless Linux session with no Secret Service), the token stays in the 0600 file, supports() reports dependency, as it does for a plain FileStore, and the store warns once per run (DegradedStoreWarningTest). On Android a client built without a store is refused invalid-options, never a FileStore under an empty user.home (StartedClientTest, AndroidRuntimeTest)."
     },
     "core.copy": {
       "status": "implemented",
@@ -273,12 +278,12 @@
         {
           "runtime": "android",
           "reason": "dependency",
-          "note": "Where zstd-jni's native libzstd cannot load; :android links zstd-jni's Android AAR (1.5.7-12, 16 KB aligned: later AARs need compileSdk 37), and supports() reports dependency without it."
+          "note": "Without the opt-in pack decoder, or where zstd-jni's native libzstd cannot load: an app adds polaris-key-zstd, whose Android variant is zstd-jni's AAR (1.5.7-12, 16 KB aligned: later AARs need compileSdk 37; SP-50), and supports() reports dependency without it (AndroidRuntimeTest on the emulator lane)."
         },
         {
           "runtime": "jvm",
           "reason": "dependency",
-          "note": "Where zstd-jni ships no native binary for the OS or arch; supports() reports dependency."
+          "note": "Without the opt-in pack decoder (polaris-key-zstd, whose JVM variant is zstd-jni's JAR; SP-50), or where zstd-jni ships no native binary for the OS or arch; supports() reports dependency."
         }
       ],
       "note": "zstd-jni (libzstd 1.5.7): the base as a raw-content dictionary (ZSTD_DCtx_loadDictionary; §2.7 rule 5's magic refusal runs first) with ZSTD_d_windowLogMax, the window check in the applier before every prefix decode; a start-up probe gates zstd-patch-from (applyCases, feedDeltaApplyCases, PackZstdTest)."
@@ -293,7 +298,10 @@
     },
     "packs.type.godot.zip": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "packs.type.l10n.table": {
@@ -306,7 +314,10 @@
     },
     "packs.type.audio.bank": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "packs.type.ml.model": {
@@ -319,7 +330,10 @@
     },
     "packs.transport.apple": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "packs.transport.play": {
@@ -345,12 +359,18 @@
     },
     "packs.transport.msix": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "packs.transport.flatpak": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime"
     },
     "ui.stages": {
@@ -375,7 +395,10 @@
     },
     "ui.cli": {
       "status": "na",
-      "runtime": ["android", "jvm"],
+      "runtime": [
+        "android",
+        "jvm"
+      ],
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },

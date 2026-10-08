@@ -26,9 +26,13 @@ base { archivesName.set("polaris-key-packs") }
 
 dependencies {
     api(project(":core"))
-    // zstd for deltas, chunks and zstd-coded objects (LibZstd, behind ZstdPort). On Android the
-    // :android glue swaps in zstd-jni's Android AAR (zstdJniAndroid, 16 KB aligned natives, P6-12).
-    implementation(libs.zstd.jni)
+    // zstd for deltas, chunks and zstd-coded objects (LibZstd, behind ZstdPort). OPT-IN (SP-50):
+    // compileOnly, so neither the JVM jar nor an APK carries a native library unless the app adds
+    // polaris-key-zstd (:zstd), whose variants bring zstd-jni's JAR on a JVM and its 16 KB-aligned
+    // AAR on Android. Without it `selectZstd` answers the `dependency` N/A. The jar's embedded R8 rule
+    // (META-INF/proguard/polaris-key-packs.pro) keeps a minified app that leaves it out building.
+    compileOnly(libs.zstd.jni)
+    testImplementation(libs.zstd.jni)
     // The default pack object transport streams blobs through OkHttp (the HTTP client :core uses).
     implementation(libs.okhttp)
     testImplementation(testFixtures(project(":core")))

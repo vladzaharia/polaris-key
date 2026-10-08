@@ -93,6 +93,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -231,6 +233,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * outlet); the options are the current channel, `stable` and every channel the licence grants.
      */
     public suspend fun channelChoices(): ChannelChoices {
+        core.ensureStarted()
         val current = core.channel
         val options = LinkedHashSet<String>()
         options += current
@@ -302,6 +305,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * dependency: pass them to `Sentry.init` (or any reporter) yourself.
      */
     public suspend fun crashTags(): Map<String, String> {
+        core.ensureStarted()
         val out = linkedMapOf(
             "release" to "app@${core.version}${buildNumber?.let { "+$it" } ?: ""}",
             "environment" to core.channel,
@@ -386,12 +390,42 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         packs.on { eventFlow.tryEmit(PolarisEvent.Packs(it)) }
     }
     private var refreshJob: Job? = null
+    private val startLock = kotlinx.coroutines.sync.Mutex()
+    @Volatile private var started = false
 
-    /** Load device id, token and cached documents, re-verifying everything. NO NETWORK. */
+    /**
+     * Load device id, token and cached documents, re-verifying everything (NO NETWORK), and start
+     * the refresh loop when one is configured. Once: later calls return at once. Optional, since
+     * every call loads what it needs first (SP-50), and main-safe. `core.start()` reloads.
+     */
     public suspend fun start() {
-        core.start()
-        config.publish(emit = false)
+        if (!started) {
+            startLock.withLock {
+                if (!started) {
+                    core.ensureStarted()
+                    config.publish(emit = false)
+                    started = true
+                }
+            }
+        }
         startRefreshLoop()
+    }
+
+    /**
+     * [start] in the client's own scope, without waiting: what `PolarisKeyAndroid.client` does. A
+     * failure surfaces at the next call, which starts the client itself.
+     */
+    public fun startInBackground() {
+        scope.launch {
+            try {
+                start()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // Never a crash from a background warm-up: the next call that needs the state loads
+                // it, and reports the failure where the host can see it.
+            }
+        }
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────────
@@ -449,8 +483,8 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         }
 
     /** The fingerprint a registration sends: collected when fingerprinting is enabled, none otherwise. */
-    private fun registrationFingerprint(): HardwareFingerprint? =
-        if (fingerprintEnabled) fingerprintSource.collect(product) else null
+    private suspend fun registrationFingerprint(): HardwareFingerprint? =
+        if (fingerprintEnabled) withContext(Dispatchers.IO) { fingerprintSource.collect(product) } else null
 
     // ── Telemetry (§6) ───────────────────────────────────────────────────────────────────────
     /**
@@ -459,7 +493,10 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * `sync()` already reports after every pass that warrants it. Best-effort: false when no
      * credential is held, the server refused, or the network failed; never throws at the host.
      */
-    public suspend fun report(): Boolean {
+    public suspend fun report(): Boolean = withContext(Dispatchers.IO) { reportOnIo() }
+
+    /** [report]'s body: the facts, the pending journal and the post are blocking work (SP-50). */
+    private suspend fun reportOnIo(): Boolean {
         val facts = try {
             factsSource.collect(probes).toJson()
         } catch (e: CancellationException) {
@@ -603,6 +640,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────────
     /** Start polling on `refreshIntervalSeconds` (no-op when unset, already running or local-only). */
+    @Synchronized
     public fun startRefreshLoop() {
         val seconds = refreshIntervalSeconds ?: return
         if (seconds <= 0 || refreshJob != null || core.localOnly) return
@@ -621,6 +659,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     /** Stop the refresh loop. Safe to call more than once. */
+    @Synchronized
     public fun close() {
         refreshJob?.cancel()
         refreshJob = null

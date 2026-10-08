@@ -5,9 +5,10 @@
 // record and builds route, and the default slots and boot guard under the data directory. A host
 // that sets its own store or driver keeps it.
 
-package im.plrs.key.sdk
+package im.plrs.key.desktop
 
 import im.plrs.key.core.CoreOptions
+import im.plrs.key.sdk.PolarisKeyClientOptions
 import im.plrs.key.core.DecisionRelease
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
@@ -84,10 +85,13 @@ class PolarisKeyDesktopTest {
     }
 
     @Test
-    fun theDefaultKeyringIsJavaKeyringAndAbsentHere() {
-        // The :sdk test classpath does not carry java-keyring: the store reports why, never throws.
+    fun theDesktopArtifactBringsJavaKeyring() {
+        // SP-50: polaris-key-desktop carries java-keyring at runtime (this test classpath has it only
+        // through the module's runtimeOnly dependency), so the default keyring is never "missing".
+        assertTrue(im.plrs.key.core.JavaKeyringBackend.onClasspath)
         val store = PolarisKeyDesktop.store("djdl", DesktopOptions(dataDirectory = tempDir()))
-        assertTrue(store.keyringUnavailable()!!.contains("java-keyring"))
+        val why = store.keyringUnavailable()
+        assertFalse(why ?: "", (why ?: "").contains("not on the classpath"))
     }
 
     @Test
