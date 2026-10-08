@@ -50,8 +50,9 @@ export function qrLines(
 /**
  * Whether a QR fits: it is drawn only on a terminal, only when it is as narrow as the terminal
  * (its own width plus the indent) and only when the whole screen with it (`screenLines` without
- * it, plus its rows) fits the terminal's height. The thresholds come from the content, never fixed
- * numbers, so a QR shows wherever it really fits and never pushes the header off the screen.
+ * it, plus its rows, plus the line the cursor rests on after it) fits the terminal's height. The
+ * thresholds come from the content, never fixed numbers, so a QR shows wherever it really fits
+ * and never pushes the header off the screen.
  */
 export function qrFits(
   lines: readonly string[],
@@ -61,6 +62,6 @@ export function qrFits(
   if (!caps.tty || lines.length === 0) return false;
   const width = QR_INDENT + Math.max(...lines.map((l) => cellWidth(l)));
   return (
-    width <= caps.terminalColumns && screenLines + lines.length <= caps.rows
+    width <= caps.terminalColumns && screenLines + lines.length + 1 <= caps.rows
   );
 }

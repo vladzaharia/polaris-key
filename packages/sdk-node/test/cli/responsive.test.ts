@@ -334,10 +334,10 @@ describe("the resolution matrix (40/60/80/120 × 12/24, long values)", () => {
             code: "dev_9fK2Lw7QmZ",
           });
           const qr = all.some((r) => r.text.includes("█"));
-          // The QR never pushes the header off the screen.
-          if (qr) expect(all.length).toBeLessThanOrEqual(rows);
+          // The QR never pushes the header off the screen (the cursor's line after it included).
+          if (qr) expect(all.length).toBeLessThan(rows);
           if (rows === 12) expect(qr).toBe(false);
-          if (columns >= 60 && rows === 24 && values === SHORT)
+          if (columns >= 80 && rows === 24 && values === SHORT)
             expect(qr).toBe(true);
         });
 
