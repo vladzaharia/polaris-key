@@ -178,6 +178,39 @@ class LiveStateTest {
     }
 
     @Test
+    fun aPublishQueuedBehindTheLockNeverEmitsAStaleLicensedState() = runBlocking {
+        val server = Server(signer, now)
+        val c = client(server)
+        c.activate("pkey_djdl_x")
+        val seen = java.util.concurrent.CopyOnWriteArrayList<LicenseState>()
+        val collector = async(kotlinx.coroutines.Dispatchers.Unconfined) { c.licenseChanges.collect { seen += it } }
+        // Hold the publish lock, as a slow concurrent pass would.
+        val field = PolarisKeyClient::class.java.getDeclaredField("publishLock").apply { isAccessible = true }
+        val lock = field.get(c) as kotlinx.coroutines.sync.Mutex
+        lock.lock()
+        try {
+            // A forced publish (a second activation's) queues behind it while the licence is still ok...
+            val first = async(kotlinx.coroutines.Dispatchers.Default) { c.activate("pkey_djdl_x") }
+            delay(500)
+            // ...then the server revokes, and a forced sync learns it (its publish queues too).
+            server.revoked = true
+            val second = async(kotlinx.coroutines.Dispatchers.Default) { c.sync(force = true) }
+            withTimeout(5_000) { while (c.status().status != LicenseStatus.revoked) delay(10) }
+            lock.unlock()
+            first.await()
+            second.await()
+        } catch (e: Throwable) {
+            if (lock.isLocked) lock.unlock()
+            throw e
+        }
+        delay(100)
+        collector.cancel()
+        assertTrue("emissions: ${seen.map { it.status }}", seen.isNotEmpty())
+        assertEquals("emissions: ${seen.map { it.status }}", LicenseStatus.revoked, seen.first().status)
+        assertEquals(LicenseStatus.revoked, c.licenseState.value?.status)
+    }
+
+    @Test
     fun deactivatingThroughTheLicenseClientIsPublishedToo() = runBlocking {
         val server = Server(signer, now)
         val c = client(server)

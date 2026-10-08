@@ -172,6 +172,10 @@ client.identity.waitForSignIn(prompt)
   `setting(key)` is a live `StateFlow` of the key's effective value and `changes` a
   `SharedFlow<ConfigChange>` of every change (a local override or a new document). `fetchCatalog()` / `catalog` type the served catalog (label, description, schema,
   widget) for a settings screen.
+- **Source-breaking (SP-51):** `LicenseClient`'s constructor takes `onDeactivated` before `onAcquired`
+  (so the trailing lambda still binds `onAcquired`); a caller passing the listener positionally must
+  now pass it by name or swap the order. `OkHttpTransport` has two constructors, `()` (owns its client,
+  `close()` shuts it down) and `(client)` (shares the host's, `close()` leaves it alone).
 - **Live licence state** (SP-51): `licenseChanges`, `events` and the `licenseState` StateFlow emit on
   every transition (activate, deactivate, wipe, a server revoke or block seen by a sync, grace and
   expiry as the floor moves), not only when a document's ETag moved; an unchanged state is not

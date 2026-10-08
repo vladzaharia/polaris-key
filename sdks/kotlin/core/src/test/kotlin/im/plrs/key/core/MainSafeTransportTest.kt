@@ -63,7 +63,10 @@ class TransportCloseTest {
         org.junit.Assert.assertFalse(host.dispatcher.executorService.isShutdown)
         // Its own client is shut down.
         val own = OkHttpTransport()
+        val field = OkHttpTransport::class.java.getDeclaredField("base").apply { isAccessible = true }
+        val ownClient = field.get(own) as okhttp3.OkHttpClient
         own.close()
         own.close()
+        org.junit.Assert.assertTrue(ownClient.dispatcher.executorService.isShutdown)
     }
 }
