@@ -493,8 +493,9 @@ describe("Needs attention", () => {
       href: "https://northpaw.example/renew",
       external: true,
     });
+    // The date's spaces are non-breaking, so "10 Oct" never splits across lines.
     expect(items[0]!.text).toMatch(
-      /^Your Studio license ends on \d+ \w{3}\. Updates stop after that\.$/,
+      /^Your Studio license ends on \d+\u00a0\w{3}\. Updates stop after that\.$/,
     );
   });
 });
@@ -602,6 +603,19 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
       href: "#/p/x/devices",
       external: false,
     });
+    // The card's title names the product, so the reason does not.
+    expect(att!.text).toBe(
+      "All 3 devices are in use. Remove one to use it on another device.",
+    );
+  });
+
+  it("words a two-device limit as 'Both devices'", () => {
+    const l = license({ product: "orbit", deviceCount: 2 });
+    const [p] = build([l], [], NOW_S, [libraryItem(l, { deviceLimit: 2 })]);
+    const [att] = attentionItems([p!], (s) => `#/p/${s}/devices`);
+    expect(att!.text).toBe(
+      "Both devices are in use. Remove one to use it on another device.",
+    );
   });
 
   it("describes the licence the Worker ranked best, with its seats", () => {

@@ -1152,6 +1152,22 @@ export interface AttentionItem {
 }
 
 /**
+ * The device-limit reason. The card's title already names the product, so the text does not.
+ * "Both devices are in use. Remove one to use it on another device."
+ */
+function devicesInUse(limit: number): string {
+  if (limit === 1)
+    return "Its one device is in use. Remove it to use another device.";
+  const all = limit === 2 ? "Both devices" : `All ${limit} devices`;
+  return `${all} are in use. Remove one to use it on another device.`;
+}
+
+/** A date that never breaks across lines ("11 Sep 2026"): its spaces are non-breaking. */
+function unbroken(day: string): string {
+  return day.replace(/ /g, "\u00a0");
+}
+
+/**
  * Only items the person can act on: a device limit (free a device, G5), or an expiring,
  * expired or suspended license with a renewal or contact link (G16). Without a link there is
  * nothing to press, so the item is not shown (never a dead-end "Needs attention"). Steam keys
@@ -1168,7 +1184,7 @@ export function attentionItems(
     if (p.status.kind === "deviceLimit" && p.seats && devicesHref) {
       out.push({
         product: p,
-        text: `All ${devicesText(p.seats.limit)} are in use. Remove one to use ${p.name} on another.`,
+        text: devicesInUse(p.seats.limit),
         action: {
           label: "Free a device",
           href: devicesHref(p.slug),
@@ -1185,13 +1201,13 @@ export function attentionItems(
     if (p.status.kind === "expiresSoon" && p.best.expiresAt) {
       out.push({
         product: p,
-        text: `Your ${tier ? `${tier} ` : ""}license ends on ${formatDay(p.best.expiresAt, false)}. Updates stop after that.`,
+        text: `Your ${tier ? `${tier} ` : ""}license ends on ${unbroken(formatDay(p.best.expiresAt, false))}. Updates stop after that.`,
         action: { label: `Renew with ${who}`, href: link, external: true },
       });
     } else if (p.status.kind === "expired") {
       out.push({
         product: p,
-        text: `Your license ended on ${formatDay(p.best.expiresAt ?? 0)}.`,
+        text: `Your license ended on ${unbroken(formatDay(p.best.expiresAt ?? 0))}.`,
         action: { label: `Renew with ${who}`, href: link, external: true },
       });
     } else if (p.status.kind === "suspended") {

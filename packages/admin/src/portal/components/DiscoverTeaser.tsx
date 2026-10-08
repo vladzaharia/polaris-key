@@ -44,8 +44,8 @@ export function DiscoverTeaser({
           <ArrowRight aria-hidden className="size-4" />
         </a>
       </div>
-      {/* Three columns from 1180 px, two on tablets (§8). */}
-      <ul className="grid gap-4 desk:grid-cols-2 wide:grid-cols-3">
+      {/* Three columns from 1180 px, two on tablets, where an odd last offer spans both (§8). */}
+      <ul className="grid gap-4 desk:grid-cols-2 desk:[&>li:last-child:nth-child(odd)]:col-span-2 wide:grid-cols-3 wide:[&>li:last-child:nth-child(odd)]:col-span-1">
         {offers.map((o) => (
           <li key={o.product} className="grid">
             <a
