@@ -165,8 +165,8 @@ export type MutationTable = {
 
 /** §5.4 "channel policy (promote/pin/…/floor), yank, unyank". */
 /**
- * Home's product-card facts (`GET /summary`): active licences, the release a channel serves,
- * storefronts and users, for every product in one read. Every write that can move one of them, or
+ * Every product's per-service facts (`GET /summary`): active licences, the release a channel
+ * serves, storefronts and users, in one read (Home's card showed them until 2026-10-07). Every write that can move one of them, or
  * the registry itself, refreshes it.
  */
 const summary = (): Target => exact(qk.summary());

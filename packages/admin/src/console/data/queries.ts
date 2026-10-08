@@ -31,7 +31,7 @@ const product = (slug: string, ...rest: (string | number)[]): QueryKey => [
 export const qk = {
   me: (): QueryKey => ["me"],
   products: (): QueryKey => ["products"],
-  /** Home's product-card facts (`GET /summary`); Home's Refresh refetches it with the registry. */
+  /** Every product's per-service facts (`GET /summary`); no reader since the 2026-10-07 polish. */
   summary: (): QueryKey => ["summary"],
 
   // platform (instance-wide; notes/S-13 §9.2)

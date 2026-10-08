@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, writeFileSync, writeSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  writeSync,
+} from "node:fs";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, firefox, webkit, type Browser, type Page } from "playwright";
@@ -435,3 +442,123 @@ for (const vp of VIEWPORTS) {
     });
   }
 }
+
+// ── Home's product card (owner polish 2026-10-07) ─────────────────────────────────────────────
+
+const AXE_SOURCE = readFileSync(
+  createRequire(import.meta.url).resolve("axe-core/axe.min.js"),
+  "utf8",
+);
+
+/** axe-core (WCAG 2.2 A/AA) over one element of the page; one line per failing node. */
+async function axeWithin(page: Page, selector: string): Promise<string[]> {
+  await page.evaluate(AXE_SOURCE);
+  return page.evaluate(async (sel) => {
+    const a = (
+      window as unknown as {
+        axe: {
+          run: (
+            ctx: Element,
+            opts: unknown,
+          ) => Promise<{
+            violations: { id: string; nodes: { target: unknown[] }[] }[];
+          }>;
+        };
+      }
+    ).axe;
+    const r = await a.run(document.querySelector(sel)!, {
+      runOnly: {
+        type: "tag",
+        values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+      },
+      resultTypes: ["violations"],
+    });
+    return r.violations.flatMap((v) =>
+      v.nodes.map((n) => `${v.id} @ ${n.target.join(" ")}`),
+    );
+  }, selector);
+}
+
+describe("Home's product card (owner polish 2026-10-07)", () => {
+  const HOME: Case = { name: "global:home", hash: "#/" };
+  const CARDS = 'main [aria-label="Products"]';
+
+  for (const theme of THEMES) {
+    it(`${theme}: one row of named service icons; on a phone, the name and one pip per service in its accent`, async () => {
+      const desk = await open(HOME, theme, { width: 1440, height: 900 });
+      try {
+        const page = desk.page;
+        const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
+        const icons = card.locator("[data-service-link]");
+        expect(await icons.count()).toBe(7);
+        for (const label of ["License", "Distribution", "Cloud Sync"]) {
+          const link = card.getByRole("link", { name: label, exact: true });
+          expect(await link.isVisible()).toBe(true);
+          expect(await link.getAttribute("title")).toBe(label);
+        }
+        expect(await card.locator("[data-service-pips]").isVisible()).toBe(
+          false,
+        );
+        // No facts, rows or footer on the card.
+        expect(await card.locator("[data-service-row]").count()).toBe(0);
+        expect(await card.textContent()).not.toMatch(/Synced|Changed|active/);
+        expect(await axeWithin(page, CARDS)).toEqual([]);
+      } finally {
+        await desk.page.context().close();
+      }
+
+      const phone = await open(HOME, theme, { width: 390, height: 844 });
+      try {
+        const page = phone.page;
+        const card = page.locator(`${CARDS} article[aria-label="DJDL"]`);
+        const pips = card.getByRole("img", {
+          name: "Runs License, Config, Release, Distribution, Update, Identity and Cloud Sync",
+        });
+        expect(await pips.isVisible()).toBe(true);
+        // Only the name and the pips: the logo, slug, pill and icon row step aside.
+        for (const sel of [
+          "[data-logo]",
+          "[data-service-icons]",
+          "[data-card-header] [data-status]",
+        ])
+          expect(await card.locator(sel).first().isVisible(), sel).toBe(false);
+        expect(await card.getByText("djdl", { exact: true }).isVisible()).toBe(
+          false,
+        );
+        expect(await card.getByRole("link", { name: "DJDL" }).isVisible()).toBe(
+          true,
+        );
+        // Each pip is its service's accent, as the brand tokens define it for that section.
+        const colours = await card.locator("[data-pip]").evaluateAll((els) =>
+          els.map((el) => {
+            const probe = document.createElement("span");
+            probe.setAttribute("data-service", el.getAttribute("data-pip")!);
+            probe.style.color = "var(--pk-accent)";
+            document.body.append(probe);
+            const want = getComputedStyle(probe).color;
+            probe.remove();
+            return {
+              service: el.getAttribute("data-pip"),
+              got: getComputedStyle(el).backgroundColor,
+              want,
+            };
+          }),
+        );
+        expect(colours.map((c) => c.service)).toEqual([
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+        ]);
+        for (const c of colours) expect(c.got, c.service!).toBe(c.want);
+        expect(new Set(colours.map((c) => c.got)).size).toBe(colours.length);
+        expect(await axeWithin(page, CARDS)).toEqual([]);
+      } finally {
+        await phone.page.context().close();
+      }
+    });
+  }
+});

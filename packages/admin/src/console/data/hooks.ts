@@ -50,9 +50,9 @@ export function fetchSummary(): Promise<AdminSummary> {
 }
 
 /**
- * Home's product-card facts (`GET /manage/api/summary`): every product's in one read. A card
- * renders without them; while they load each fact is a skeleton, and if they fail it simply has
- * none (the facts are additive, never the card's content).
+ * Every product's per-service facts (`GET /manage/api/summary`) in one read. Home's product card
+ * showed them until the owner polish of 2026-10-07 simplified it to its services' icons; nothing
+ * reads them now, and the read is kept for the fleet facts A-8 plans (ADMIN.md §6.1).
  */
 export function useSummary(): UseQueryResult<AdminSummary> {
   return useQuery(

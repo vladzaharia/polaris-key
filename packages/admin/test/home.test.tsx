@@ -23,9 +23,11 @@ import {
 
 /**
  * Home (ADMIN.md §6.1; closes DSH-1 to DSH-7) with the product card of the owner's 2026-10-06
- * request (docs/design/console-product-card/, direction B): the logo, the name and slug, and a
- * ledger of the services the product runs with one fact each and its issues in place. Driven
- * through the whole console so the registry query, the router and the shell are the real ones.
+ * request, simplified in the owner polish of 2026-10-07: the logo, the name and slug (and a pill
+ * when the product needs something), then one row of icons for the services it runs, named, with
+ * no facts and no rows; below the small breakpoint, the name and one pip per service in that
+ * service's accent. Driven through the whole console so the registry query, the router and the
+ * shell are the real ones.
  */
 
 const axe = configureAxe({
@@ -106,11 +108,14 @@ const cards = (): HTMLElement[] =>
   );
 const card = (name: string): HTMLElement =>
   cards().find((c) => c.getAttribute("aria-label") === name)!;
-/** The card's service rows (each a link). */
-const rows = (c: HTMLElement): HTMLElement[] =>
-  Array.from(c.querySelectorAll<HTMLElement>("[data-service-row]"));
-const row = (c: HTMLElement, service: string): HTMLElement =>
-  rows(c).find((r) => r.getAttribute("data-service-row") === service)!;
+/** The card's service icons (each a link), in order. */
+const icons = (c: HTMLElement): HTMLElement[] =>
+  Array.from(c.querySelectorAll<HTMLElement>("[data-service-link]"));
+const iconIds = (c: HTMLElement): (string | null)[] =>
+  icons(c).map((i) => i.getAttribute("data-service-link"));
+/** The phone's pips, in order. */
+const pips = (c: HTMLElement): HTMLElement[] =>
+  Array.from(c.querySelectorAll<HTMLElement>("[data-pip]"));
 
 describe("Home", () => {
   it("shows the most recently changed products, capped at six, with a link to all of them", async () => {
@@ -158,27 +163,137 @@ describe("Home", () => {
     expect(acme.className).not.toMatch(/has-\[a:focus-visible\]/);
   });
 
-  it("lists each service as a labelled link to its page, with one fact", async () => {
+  it("the main section is one row of named service icons, each linking to its service, and nothing else", async () => {
+    const log = boot("#/", { extra: registry() });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const acme = card("Acme");
+    expect(iconIds(acme)).toEqual(["license", "config", "release"]);
+    const list = within(acme).getByRole("list", { name: "Services" });
+    for (const [label, href] of [
+      ["License", "#/p/acme/license/licenses"],
+      ["Config", "#/p/acme/config/catalog"],
+      ["Release", "#/p/acme/release/releases"],
+    ]) {
+      const link = within(list).getByRole("link", { name: label });
+      expect(link.getAttribute("href")).toBe(href);
+      expect(link.getAttribute("title")).toBe(label);
+      // The glyph is the whole link: no label text, no fact.
+      expect(link.textContent).toBe("");
+      expect(link.querySelector("[data-service]")).not.toBeNull();
+    }
+    // No rows, no facts, no footer, no healthy pill.
+    expect(acme.querySelector("[data-service-row]")).toBeNull();
+    expect(acme.textContent).not.toMatch(/Schema|active|Synced|Changed|more/);
+    expect(acme.querySelector("[data-status=pill]")).toBeNull();
+    expect(within(acme).queryByText("Setup complete")).toBeNull();
+    // The facts' read is gone with them.
+    expect(log.calls.some((c) => c.path === "/manage/api/summary")).toBe(false);
+  });
+
+  it("every service the product runs gets an icon, in the service table's order", async () => {
+    boot("#/", { extra: registry() });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    expect(iconIds(card("DJDL"))).toEqual([
+      "license",
+      "config",
+      "release",
+      "distribution",
+      "update",
+      "identity",
+      "sync",
+    ]);
+    for (const [label, href] of [
+      ["Distribution", "#/p/djdl/distribution/matrix"],
+      ["Update", "#/p/djdl/update/feed"],
+      ["Identity", "#/p/djdl/identity/portal"],
+      ["Cloud Sync", "#/p/djdl/sync/data"],
+    ])
+      expect(
+        within(card("DJDL"))
+          .getByRole("link", { name: label })
+          .getAttribute("href"),
+      ).toBe(href);
+  });
+
+  it("a product with one service shows one icon", async () => {
+    const solo = {
+      ...productRow("djdl", "DJDL", only("license")),
+      modifiedAt: 5,
+    };
+    boot("#/", { extra: { "/manage/api/products": { products: [solo] } } });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(1));
+    expect(iconIds(card("DJDL"))).toEqual(["license"]);
+  });
+
+  it("issues sit in the header's pill, never in the icon row: several are counted", async () => {
+    boot("#/", { extra: registry() });
+    await home();
+    await waitFor(() => expect(cards()).toHaveLength(2));
+    const djdl = card("DJDL");
+    const header = djdl.querySelector("[data-card-header]")!;
+    const last = header.lastElementChild!;
+    expect(last.getAttribute("data-status")).toBe("pill");
+    expect(last.textContent).toBe("2 need attention");
+    expect(djdl.querySelector("[data-service-icons] [data-status]")).toBeNull();
+  });
+
+  it("one issue on a service is named in the header pill", () => {
+    const issue: ProductAttention = {
+      id: "djdl:identity",
+      product: { slug: "djdl", name: "DJDL" },
+      kind: "secret.missing",
+      tone: "warning",
+      reason: "Secret missing",
+      service: "identity",
+      short: "Secret missing",
+      action: { label: "Fix", href: "#/p/djdl/keys" },
+    };
+    const { container } = render(
+      <ProductCard
+        product={productRow("djdl", "DJDL", ALL_ON) as unknown as ProductDetail}
+        attention={[issue]}
+      />,
+    );
+    const header = container.querySelector("[data-card-header]")!;
+    expect(header.lastElementChild!.textContent).toBe("Secret missing");
+    expect(header.lastElementChild!.getAttribute("data-tone")).toBe("warning");
+  });
+
+  it("below the small breakpoint: only the name and one pip per service in its accent, named together", async () => {
     boot("#/", { extra: registry() });
     await home();
     await waitFor(() => expect(cards()).toHaveLength(2));
     const acme = card("Acme");
-    expect(rows(acme).map((r) => r.getAttribute("data-service-row"))).toEqual([
+    // One pip per service, each scoped to its service's accent token (no colour named in code).
+    expect(pips(acme).map((p) => p.getAttribute("data-service"))).toEqual([
       "license",
       "config",
       "release",
     ]);
-    const config = row(acme, "config");
-    expect(config.getAttribute("href")).toBe("#/p/acme/config/catalog");
-    // Schema vN rides /me (ME's acme is schema 1), so it needs no fetch of its own.
-    expect(config.textContent).toBe("ConfigSchema v1");
-    expect(row(acme, "license").getAttribute("href")).toBe(
-      "#/p/acme/license/licenses",
+    for (const p of pips(acme)) {
+      expect(p.className).toMatch(/\bbg-accent\b/);
+      expect(p.className).toMatch(/\brounded-full\b/);
+    }
+    const group = within(acme).getByRole("img", {
+      name: "Runs License, Config and Release",
+    });
+    expect(group.className).toMatch(/\bsm:hidden\b/);
+    // Everything else steps aside on a phone: the logo, the slug, the pill and the icon row.
+    const hiddenOnPhone = (el: Element | null) =>
+      expect(el?.getAttribute("class") ?? "").toMatch(/\bmax-sm:hidden\b/);
+    hiddenOnPhone(acme.querySelector("[data-logo]"));
+    hiddenOnPhone(within(acme).getByText("acme"));
+    hiddenOnPhone(acme.querySelector("[data-service-icons]")!.parentElement);
+    hiddenOnPhone(
+      card("DJDL").querySelector("[data-card-header] [data-status=pill]"),
     );
-    // No "more" row under four services, and no healthy pill anywhere.
-    expect(within(acme).queryByText(/ more$/)).toBeNull();
-    expect(acme.querySelector("[data-status=pill]")).toBeNull();
-    expect(within(acme).queryByText("Setup complete")).toBeNull();
+    // The name, the card's one link, stays.
+    expect(
+      within(acme).getByRole("link", { name: "Acme" }).className,
+    ).not.toMatch(/(^|\s)(max-sm:)?hidden(\s|$)/);
   });
 
   it("shows the hosted logo at the tile size, and a monogram when there is none", async () => {
@@ -228,97 +343,6 @@ describe("Home", () => {
     ).toBeNull();
   });
 
-  it("a product with one service lists one row", async () => {
-    const solo = {
-      ...productRow("djdl", "DJDL", only("license")),
-      modifiedAt: 5,
-    };
-    boot("#/", { extra: { "/manage/api/products": { products: [solo] } } });
-    await home();
-    await waitFor(() => expect(cards()).toHaveLength(1));
-    expect(rows(card("DJDL")).map((r) => r.textContent)).toEqual(["License"]);
-  });
-
-  it("past four services: three rows, issues first, and the rest as named glyph links", async () => {
-    boot("#/", { extra: registry() });
-    await home();
-    await waitFor(() => expect(cards()).toHaveLength(2));
-    const djdl = card("DJDL");
-    // Identity and Config need something, so they take two of the three rows; the table's order
-    // holds within the rows.
-    expect(rows(djdl).map((r) => r.getAttribute("data-service-row"))).toEqual([
-      "license",
-      "config",
-      "identity",
-    ]);
-    expect(within(djdl).getByText("4 more")).toBeTruthy();
-    for (const [label, href] of [
-      ["Release", "#/p/djdl/release/releases"],
-      ["Distribution", "#/p/djdl/distribution/matrix"],
-      ["Update", "#/p/djdl/update/feed"],
-      ["Cloud Sync", "#/p/djdl/sync/data"],
-    ])
-      expect(
-        within(djdl).getByRole("link", { name: label }).getAttribute("href"),
-      ).toBe(href);
-  });
-
-  it("puts a service's issue in its row, naming it, and the row links to the fix", async () => {
-    boot("#/", { extra: registry() });
-    await home();
-    await waitFor(() => expect(cards()).toHaveLength(2));
-    const djdl = card("DJDL");
-    const config = row(djdl, "config");
-    expect(within(config).getByText("Needs approval")).toBeTruthy();
-    expect(config.querySelector("[data-status=pill]")).not.toBeNull();
-    expect(config.getAttribute("href")).toBe("#/p/djdl/config/edge-mint");
-    // The issue replaces the fact.
-    expect(config.textContent).not.toContain("Schema");
-    const identity = row(djdl, "identity");
-    expect(within(identity).getByText("Secret missing")).toBeTruthy();
-    expect(identity.getAttribute("href")).toBe("#/p/djdl/keys");
-    // Both issues sit on services, so the header carries no pill.
-    expect(
-      djdl.querySelector("[data-card-header] [data-status=pill]"),
-    ).toBeNull();
-  });
-
-  it("never hides an issue: one on a service collapsed into the glyph links moves to the header pill", () => {
-    const issue = (
-      service: ProductAttention["service"],
-      short: string,
-    ): ProductAttention => ({
-      id: `djdl:${service}`,
-      product: { slug: "djdl", name: "DJDL" },
-      kind: "secret.missing",
-      tone: "warning",
-      reason: short,
-      service,
-      short,
-      action: { label: "Fix", href: "#/p/djdl/keys" },
-    });
-    // Four services need something; three take the rows, and Identity collapses.
-    const { container } = render(
-      <ProductCard
-        product={productRow("djdl", "DJDL", ALL_ON) as unknown as ProductDetail}
-        attention={[
-          issue("license", "Licence issue"),
-          issue("config", "Needs approval"),
-          issue("release", "Needs setup"),
-          issue("identity", "Secret missing"),
-        ]}
-      />,
-    );
-    const article = container.querySelector("article")!;
-    expect(
-      rows(article).map((r) => r.getAttribute("data-service-row")),
-    ).toEqual(["license", "config", "release"]);
-    expect(within(article).getByText("4 more")).toBeTruthy();
-    const header = article.querySelector("[data-card-header]")!;
-    expect(header.lastElementChild!.getAttribute("data-status")).toBe("pill");
-    expect(header.lastElementChild!.textContent).toBe("Secret missing");
-  });
-
   it("an issue that belongs to the product is one pill, at the end of the card header", async () => {
     const keyless = {
       ...productRow("djdl", "DJDL", only("license", "config")),
@@ -343,125 +367,8 @@ describe("Home", () => {
     await home();
     await waitFor(() => expect(cards()).toHaveLength(1));
     expect(within(card("DJDL")).getByText("No services")).toBeTruthy();
-    expect(rows(card("DJDL"))).toHaveLength(0);
-  });
-
-  it("shows each service's fact from the summary read", async () => {
-    boot("#/", {
-      extra: {
-        ...registry(),
-        "/manage/api/summary": {
-          products: {
-            djdl: {
-              license: { active: 1284 },
-              release: { version: "2.4.0", channel: "stable" },
-              distribution: { storefronts: 3 },
-              identity: { users: 312 },
-            },
-            acme: { license: { active: 1 }, release: null },
-          },
-        },
-      },
-    });
-    await home();
-    await waitFor(() =>
-      expect(row(card("DJDL"), "license").textContent).toBe(
-        "License1,284 active",
-      ),
-    );
-    const acme = card("Acme");
-    expect(row(acme, "license").textContent).toBe("License1 active");
-    expect(row(acme, "release").textContent).toBe("ReleaseNo releases");
-    // The seven-service card shows its three rows' facts; an issue still wins over a fact.
-    const djdl = card("DJDL");
-    expect(row(djdl, "config").textContent).toContain("Needs approval");
-    expect(row(djdl, "identity").textContent).toContain("Secret missing");
-  });
-
-  it("names the release version and its channel, and counts storefronts and users", async () => {
-    const quiet = {
-      ...productRow(
-        "djdl",
-        "DJDL",
-        only("release", "distribution", "identity"),
-      ),
-    };
-    boot("#/", {
-      extra: {
-        "/manage/api/products": { products: [quiet] },
-        "/manage/api/summary": {
-          products: {
-            djdl: {
-              release: { version: "2.4.0", channel: "beta" },
-              distribution: { storefronts: 1 },
-              identity: { users: 312 },
-            },
-          },
-        },
-      },
-    });
-    await home();
-    await waitFor(() =>
-      expect(row(card("DJDL"), "release").textContent).toBe(
-        "Release2.4.0 · beta",
-      ),
-    );
-    expect(row(card("DJDL"), "distribution").textContent).toBe(
-      "Distribution1 storefront",
-    );
-    expect(row(card("DJDL"), "identity").textContent).toBe("Identity312 users");
-  });
-
-  it("while the facts load, each is a skeleton and the card is otherwise complete", async () => {
-    boot("#/", {
-      extra: { ...registry(), "/manage/api/summary": PENDING },
-    });
-    await home();
-    await waitFor(() => expect(cards()).toHaveLength(2));
-    const acme = card("Acme");
-    expect(
-      row(acme, "license").querySelector("[data-fact-skeleton]"),
-    ).not.toBeNull();
-    expect(
-      row(acme, "release").querySelector("[data-fact-skeleton]"),
-    ).not.toBeNull();
-    // Config's fact rides /me, so it never waits on the summary.
-    expect(row(acme, "config").textContent).toBe("ConfigSchema v1");
-    expect(
-      within(acme)
-        .getByRole("list", { name: "Services" })
-        .getAttribute("aria-busy"),
-    ).toBe("true");
-    expect(within(acme).getByRole("link", { name: "Acme" })).toBeTruthy();
-  });
-
-  it("renders the card fully, without facts, when the summary read fails", async () => {
-    boot("#/", {
-      extra: {
-        ...registry(),
-        "/manage/api/summary": new Response(
-          JSON.stringify({ error: "internal" }),
-          { status: 500, headers: { "content-type": "application/json" } },
-        ),
-      },
-    });
-    await home();
-    await waitFor(() => expect(cards()).toHaveLength(2));
-    const acme = card("Acme");
-    await waitFor(() =>
-      expect(acme.querySelector("[data-fact-skeleton]")).toBeNull(),
-    );
-    expect(row(acme, "license").textContent).toBe("License");
-    expect(row(acme, "config").textContent).toBe("ConfigSchema v1");
-    expect(within(main()).queryByRole("alert")).toBeNull();
-  });
-
-  it("says when a repository-linked product last synced, and when a manual one changed", async () => {
-    boot("#/", { extra: registry() });
-    await home();
-    await waitFor(() => expect(cards()).toHaveLength(2));
-    expect(card("DJDL").textContent).toMatch(/Synced /);
-    expect(card("Acme").textContent).toMatch(/Changed /);
+    expect(icons(card("DJDL"))).toHaveLength(0);
+    expect(pips(card("DJDL"))).toHaveLength(0);
   });
 
   it("lists attention items from the registry's setup state, each with one action (DSH-1)", async () => {
