@@ -6776,7 +6776,7 @@
         "notes/S-19 §9 LX-08"
       ],
       "brief": "wp/LX-08-licensing-expand.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-09",
@@ -7988,7 +7988,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.9", "plans/HA-11.md"],
       "brief": "wp/HA-12-presentation-discovery.md",
-      "status": "in-review",
+      "status": "done",
       "planRef": "HA-11"
     },
     {
@@ -8451,7 +8451,7 @@
         "docs/design/ui-kits/terminal.html"
       ],
       "brief": "wp/UK-13-python-terminal.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-14",
@@ -8478,7 +8478,7 @@
         "docs/design/ui-kits/terminal.html"
       ],
       "brief": "wp/UK-14-node-terminal.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-15",
