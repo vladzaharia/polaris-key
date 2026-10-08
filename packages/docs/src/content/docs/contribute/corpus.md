@@ -1,6 +1,6 @@
 ---
 title: "The conformance corpus"
-description: "One generator, the language runners, the generator-owned Swift and Godot mirrors, how to add a case without hand-editing generated output, and the HTTP transcripts recorded beside it."
+description: "One generator and its family modules, the language runners, the generator-owned Godot mirror, how to add a case without hand-editing generated output, and the HTTP transcripts recorded beside it."
 sidebar:
   order: 5
   label: "Corpus"
@@ -12,7 +12,11 @@ byte-for-byte. It is how every language agrees on the wire without one interpret
 same prose per language.
 
 One generator, `tools/sign-corpus.ts` (run via `pnpm gen:corpus`), signs every vector from a
-fixed keypair and a fixed case list. The runner set is taxonomized in full on
+fixed keypair and a fixed case list. It is a driver: each corpus file and each `cases.json`
+section is built by its own family module in `tools/corpus/` (`gate.ts`, `stage.ts`, `jws.ts`,
+`feed.ts`, `update.ts` and so on, over the shared fixtures in `common.ts`, `release-records.ts`,
+`pack-records.ts` and `content-fixture.ts`), and every verdict is recomputed by the generator's
+independent reference implementations in `tools/corpus/reference/`. The runner set is taxonomized in full on
 [the wire-contract corpus page](/docs/build/wire/corpus/) (which also counts React's
 gate-matrix-only runner); the ones a contributor touches most:
 
@@ -37,7 +41,8 @@ gate-matrix-only runner); the ones a contributor touches most:
   and 3.14 (Linux) and on the current CPython (macOS).
 - **Swift** — `sdks/swift/Tests/PolarisKeyTests/`: `ConformanceTests.swift`,
   `GateMatrixTests.swift`, `FingerprintConformanceTests.swift`, `StageMatrixTests.swift`,
-  `HeadersTests.swift`, `ConfigMatrixTests.swift`, and more.
+  `HeadersTests.swift`, `ConfigMatrixTests.swift`, and more, reading `conformance/corpus/v2/` in
+  place through `CorpusLocator` (no mirror).
 - **Godot** — `sdks/godot/tests/`: `suite_conformance.gd` covers every `cases.json` family, the
   `fingerprint.json` device ids and both `headers.json` sections, and `config/test_matrix.gd`
   runs `config-matrix.json` with the environment layer on and off (the gate and stage matrices
@@ -98,19 +103,21 @@ files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerpr
 `feedUrlMatrixVersion` **1**, `contentCorpusVersion` **2**, `presentationMatrixVersion` **1** — and case counts, generated straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
-## The Swift resource mirror
+## Swift reads the checkout
 
-The Swift test target can't reach up the monorepo at test time, so `sign-corpus.ts` also copies
-every file into `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` — a generator-owned mirror
-rather than a hand-kept translation. `main()` reconciles each file into every directory of
-`CORPUS_TARGETS`, so a new file or a new mirror needs no other change. The mirror is guarded by the same drift check as
-the source, file for file.
+The Swift tests read `conformance/corpus/v2/` (and `conformance/transcripts/`) in place.
+`CorpusLocator` (`sdks/swift/Tests/PolarisKeyTests/CorpusLocator.swift`) finds the repository
+root from its own `#filePath`, which is fixed at compile time, so `swift test` finds the files
+from any working directory as long as the package sits in a monorepo checkout; nothing is copied
+into the test bundle. The former generator-owned mirror under
+`sdks/swift/Tests/PolarisKeyTests/Resources/` was retired by P0-44, and the drift checks fail if
+that directory reappears (an older branch can merge a file back into it).
 
 ## The Godot resource mirror
 
 An exported Godot pack can read only `res://`, its own project directory, so the generator also
 writes every file into `sdks/godot/tests/corpus/v2/`. The editor run and the
-release-template run both read that mirror, and the drift check guards it like the Swift one.
+release-template run both read that mirror, and the drift check guards it like the source.
 Every target is one entry in `CORPUS_TARGETS` in `sign-corpus.ts`, so a new corpus file reaches
 every mirror by construction. A JSON file in a mirror that the generator does not write fails
 the check as a stray; it is never deleted automatically.
@@ -164,14 +171,14 @@ over it and needs a PR of its own with the guard deliberately relaxed. `.prettie
 `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`,
 `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`,
 `feed-url-matrix.json`, `sync-scenarios.json`, `device-label.json`, `presentation-matrix.json`,
-`content/cases.json`, and both
-mirrors are all output.
+`content/cases.json`, and the Godot
+mirror are all output.
 `pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
-committed file differs — mirrors included. A red drift job means a wire-affecting change wasn't
+committed file differs — the mirror included. A red drift job means a wire-affecting change wasn't
 reflected in the corpus; regenerate and commit the result in the same PR:
 
 ```sh
-pnpm gen:corpus            # write the corpus (and the Swift and Godot mirrors)
+pnpm gen:corpus            # write the corpus (and the Godot mirror)
 pnpm gen:corpus -- --check # the drift guard — exit 1 if anything is stale
 ```
 
@@ -181,15 +188,16 @@ reason to loosen an assertion.
 
 ## Adding a case
 
-Each case family in `tools/sign-corpus.ts` is an array returned by its own `async function` —
-`buildJwsCases`, `buildLicenseDocCases`, `buildConfigDocCases`, `buildTrustCasesV2`,
-`buildClockFloorCasesV2`, `buildBundleCases`, `buildFeedCases`, `buildReleaseRecordCases` —
-assembled by `buildV2()` into the object
+Each case family is an array returned by its own `async function` in its family module under
+`tools/corpus/` — `buildJwsCases` (`jws.ts`), `buildLicenseDocCases` and `buildConfigDocCases`
+(`claims.ts`), `buildTrustCasesV2` (`trust.ts`), `buildClockFloorCasesV2` (`clock.ts`),
+`buildBundleCases` (`bundle.ts`), `buildFeedCases` (`feed.ts`), `buildReleaseRecordCases`
+(`record.ts`) and the rest — assembled by `buildV2()` (`cases.ts`) into the object
 `gen:corpus` writes as `cases.json`. To add a case:
 
 1. Add a case object to the relevant array, with a unique `id` and a `description` explaining
    what it proves and why (the existing cases are the style guide — read a few nearby first).
-2. Run `pnpm gen:corpus` to sign it and update every output file, source and mirrors alike.
+2. Run `pnpm gen:corpus` to sign it and update every output file, source and mirror alike.
 3. Run `pnpm gen:corpus -- --check` before committing, to confirm nothing else drifted.
 
 The gate matrix is different: it is hand-authored, and its carried rows — the fifteen inlined
@@ -362,12 +370,11 @@ serves the recorded responses and asserts each request.
 | Format (documented)    | `packages/worker/test/transcripts/format.ts`                                                       |
 | Recorder and scenarios | `packages/worker/test/transcripts/` (`recorder.ts`, `determinism.ts`, `scenarios/`)                |
 | Drift check            | `packages/worker/test/transcripts.test.ts`, wrapped by `pnpm gen:transcripts`                      |
-| Swift mirror           | `sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/` (generator-owned, like `v2/`)            |
 | Godot mirror           | `sdks/godot/tests/transcripts/` (generator-owned; an exported pack reads only `res://`)            |
 | Node replayer          | `conformance/runners/node/transcripts.test.ts` over `transcriptReplay.ts`                          |
 | React replayer         | `packages/sdk-react/test/transcripts.test.ts` (the same engine; discovery, update and chunk range) |
 | Python replayer        | `sdks/python/tests/test_transcripts.py` over `transcript_replay.py`                                |
-| Swift replayer         | `sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift` over `TranscriptReplay.swift`             |
+| Swift replayer         | `sdks/swift/Tests/PolarisKeyTests/TranscriptTests.swift` over `TranscriptReplay.swift` (in place)  |
 | Godot replayer         | `sdks/godot/tests/suite_transcripts.gd` over `support/transcript_replay.gd`                        |
 | Kotlin replayer        | `sdks/kotlin/conformance/…/TranscriptTest.kt` over `TranscriptReplay.kt` (in place)                |
 
@@ -392,7 +399,7 @@ each feature it proves needs a test tagged `@pkey-feature <id>` that replays
 `conformance/transcripts`.
 
 ```sh
-pnpm gen:transcripts            # re-record every scenario, write the files and both mirrors
+pnpm gen:transcripts            # re-record every scenario, write the files and the Godot mirror
 pnpm gen:transcripts -- --check # the drift guard — exit 1 if anything is stale
 ```
 

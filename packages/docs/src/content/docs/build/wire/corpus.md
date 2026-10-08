@@ -30,7 +30,6 @@ tools/sign-corpus.ts  →  conformance/corpus/v2/cases.json
                          conformance/corpus/v2/feed-url-matrix.json
                          conformance/corpus/v2/sync-scenarios.json  (literal, tools/sync-scenarios.ts)
                          conformance/corpus/v2/device-label.json
-                      →  sdks/swift/Tests/PolarisKeyTests/Resources/v2/   (Swift mirror)
                       →  sdks/godot/tests/corpus/v2/                      (Godot mirror)
 
 tools/gen-content-corpus.ts (called from sign-corpus.ts's main)
@@ -41,17 +40,21 @@ tools/gen-content-corpus.ts (called from sign-corpus.ts's main)
 
 One signer produces the canonical vectors. Ed25519 is deterministic, so re-signing the same
 inputs reproduces the same bytes — which is what makes a drift check possible at all.
+`sign-corpus.ts` is the driver: each file and each `cases.json` section has its own family
+module in `tools/corpus/`, and the generator's independent reference implementations, which
+recompute every verdict, live in `tools/corpus/reference/`.
 
-The mirrors exist because two runners cannot reach up the monorepo at test time. The Swift test
-target bundles its fixtures as copied resources, and an exported Godot pack can read only
-`res://`, its own project directory. The `v2/` path segment is preserved so each mirror path
-matches the source path one-for-one. The generator writes every file into every target in one
-list (`CORPUS_TARGETS`), and the drift gate guards the mirrors exactly like the source. A JSON
-file in a target that the generator does not write fails the gate as a stray.
+The one mirror exists because one runner cannot reach up the monorepo at test time: an exported
+Godot pack can read only `res://`, its own project directory. The `v2/` path segment is preserved
+so the mirror path matches the source path one-for-one. The generator writes every file into
+every target in one list (`CORPUS_TARGETS`), and the drift gate guards the mirror exactly like
+the source. A JSON file in a target that the generator does not write fails the gate as a stray.
+Every other runner reads `conformance/` in place; the Swift tests find it through
+`CorpusLocator`, which resolves the repository root from its own `#filePath`.
 
 The corpus is signed with **two committed test keypairs**, `djdl-test-2026` and
 `pkey-test-prod-2026`. They exist only to sign the corpus. They are not production keys, they
-are not secret, and nothing outside the corpus and its generator-owned mirrors should ever
+are not secret, and nothing outside the corpus and its generator-owned mirror should ever
 reference them.
 
 `corpus/v1` is **deleted** — v2 is the only corpus. Its fifteen gate-matrix rows were inlined
@@ -124,7 +127,7 @@ reference implementation written for the test.
 | Node    | `conformance/runners/node/corpusV2.test.ts`               | `@polaris-key/client-core` — the reference client                                                  |
 | Browser | `conformance/runners/browser/corpusV2.browser.test.ts`    | The same suites as Node (`conformance/runners/node/suites.ts`), in Chromium, Firefox and WebKit    |
 | Python  | `sdks/python/tests/test_conformance.py`                   | `verify_jws`, `verify_license_doc`, `verify_config_doc`, `verify_trust_manifest`, `inspect_bundle` |
-| Swift   | `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift` | The Swift SDK, against the mirrored `Resources/v2/`                                                |
+| Swift   | `sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift` | The Swift SDK, reading `conformance/corpus/v2/` in place through `CorpusLocator`                   |
 | React   | `packages/sdk-react/test/gateMatrixParity.test.ts`        | `gate-matrix.json` through `licenseState` **and** the React projection                             |
 | Godot   | `sdks/godot/tests/suite_conformance.gd`                   | The addon's core, from the `res://` mirror, on an editor **and** an exported template              |
 | Kotlin  | `sdks/kotlin/conformance/src/test/…/CorpusV2Test.kt`      | `:core` and the service modules, reading `conformance/corpus/v2/` in place, on JCA and on Tink     |
@@ -216,7 +219,7 @@ the clients do.
 ## The drift gate
 
 ```sh
-pnpm gen:corpus              # write the corpus (and the Swift and Godot mirrors)
+pnpm gen:corpus              # write the corpus (and the Godot mirror)
 pnpm gen:corpus -- --check   # re-emit in memory; exit 1 if any committed file drifted
 ```
 
