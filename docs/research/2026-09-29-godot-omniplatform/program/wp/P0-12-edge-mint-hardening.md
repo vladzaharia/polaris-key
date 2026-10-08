@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                           |
 | ----------- | --------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene and unblockers                                                                                      |
+| Phase       | P0: Hygiene, unblockers and code quality                                                                        |
 | Size        | 0.5–0.75 engineer-weeks                                                                                         |
 | Depends on  | none                                                                                                            |
 | Unblocks    | [P1-04](P1-04-godot-config.md), [P1b-08](P1b-08-devicecode-edgemint-ports.md)                                   |

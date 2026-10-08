@@ -4,13 +4,24 @@
 | ----------- | ---------------------------------------------------------------------------------------- |
 | Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                |
 | Size        | 0.4–0.55 engineer-weeks                                                                  |
-| Depends on  | [U-12](U-12-privacy-settings-portal.md), [U-10](U-10-saves-backend.md)                   |
+| Depends on  | none                                                                                     |
 | Unblocks    | none                                                                                     |
 | Role        | `pkey-implementer`                                                                       |
 | Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package |
 | Gates       | privacy docs; THREAT-MODEL; privacy review                                               |
 | Human input | none                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [U-10](U-10-saves-backend.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [U-10](U-10-saves-backend.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Export and delete land with each store; shredding and prefix delete with files.
+
+- Dependencies cleared on closing (they were U-12 and U-10), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

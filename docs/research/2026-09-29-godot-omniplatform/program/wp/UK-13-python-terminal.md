@@ -5,7 +5,7 @@
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                      |
 | Size        | 1.5–2.5 engineer-weeks                                                                                                                            |
 | Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md) |
-| Unblocks    | [UK-41](UK-41-must-tier-closeout.md)                                                                                                              |
+| Unblocks    | [UK-12](UK-12-python-qt.md), [UK-41](UK-41-must-tier-closeout.md)                                                                                 |
 | Role        | `pkey-sdk-porter`                                                                                                                                 |
 | Plan mode   | no                                                                                                                                                |
 | Gates       | golden ANSI text plus an SVG drawn from it (truecolor, ANSI-16, `NO_COLOR`, ascii; 80 and 60 columns); the string lint                            |
@@ -50,6 +50,12 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the browser presentation only: `login` opens the card, which chooses the license; never license rows (SIGN-IN.md D-93). Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged into integ/batch-6 as reviewed (dc3c1dc70) and stamped done there (e4a527fee). Its polaris_key.ui.core seeds UK-12 (Qt Quick only).
 
 ## Goal
 

@@ -4,7 +4,7 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | X: Optional SDKs                                                                                                                                               |
 | Size        | 2–3 engineer-weeks                                                                                                                                             |
-| Depends on  | [P1b-01](P1b-01-parity-registry.md), [P3-05](P3-05-v4-react.md), [P1b-09](P1b-09-fingerprint-storage-fixes.md), [P1b-04](P1b-04-headers-config-corpora.md)     |
+| Depends on  | none                                                                                                                                                           |
 | Unblocks    | none                                                                                                                                                           |
 | Role        | `pkey-implementer`                                                                                                                                             |
 | Plan mode   | no, except one sub-step: if `shared-jws` has no injectable Ed25519 primitive by then, adding one touches `shared-jws` and `client-core` and needs a plan first |
@@ -15,6 +15,17 @@
 This is a **kickoff brief**: scope, layout, the plugin surface and the order of work. Tauri is an
 adapter, not a new SDK. The webview runs `@polaris-key/react`, and the plugin supplies only what a
 webview lacks ([PARITY §1](../../PARITY.md#1-sdks-runtimes-and-shared-native-backends)).
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [UK-21](UK-21-tauri-bridge.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [UK-21](UK-21-tauri-bridge.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> One Tauri path; UK-21 is parked and the Tauri recipe ships in UK-31.
+
+- Dependencies cleared on closing (they were P1b-01, P3-05, P1b-09 and P1b-04), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

@@ -1,16 +1,24 @@
-# ST-12 API-only settings into the console: device trust policy (critical), auto-issue editor, commerce settings, store credentials and settings editors
+# ST-12 Device trust policy editor
 
 | Field       | Value                                                                            |
 | ----------- | -------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 3: coverage)                             |
+| Phase       | ST: Settings, access control and console shell (phase 3: coverage)               |
 | Size        | 0.9–1.25 engineer-weeks                                                          |
 | Depends on  | [ST-08](ST-08-product-settings-hub.md), [ST-09](ST-09-platform-settings-area.md) |
-| Unblocks    | none                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                           |
 | Role        | `pkey-implementer`                                                               |
 | Plan mode   | no                                                                               |
 | Gates       | THREAT-MODEL; console CSP parity                                                 |
 | Human input | none                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                        |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Keeps the device trust policy editor only. The auto-issue editor becomes the automatic-licences section of P2-10's product Access page; store credential editors go to the channel page's Setup tab (A-22); commerce settings and store-product mapping go to CM-23.
+
+- Title: was "API-only settings into the console: device trust policy (critical), auto-issue editor, commerce settings, store credentials and settings editors".
 
 ## Goal
 

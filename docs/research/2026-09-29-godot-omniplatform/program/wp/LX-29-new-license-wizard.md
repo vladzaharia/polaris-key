@@ -1,16 +1,25 @@
-# LX-29 Console New License wizard: a five-step drawer (Product and tier, Who it's for, Limits, Delivery, Review) replacing `CreateLicenseDialog`, single and batch, Done with the key shown once or a CSV, S-23 motion
+# LX-29 New License wizard on the wizard kit
 
-| Field       | Value                                                                                                         |
-| ----------- | ------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (S-24: licence holders)                            |
-| Size        | 1–1.5 engineer-weeks                                                                                          |
-| Depends on  | [LX-27](LX-27-create-limit-delivery.md), [LX-28](LX-28-bulk-floating-keys.md), [MO-02](MO-02-motion-layer.md) |
-| Unblocks    | [LX-31](LX-31-holders-closeout.md)                                                                            |
-| Role        | `pkey-implementer`                                                                                            |
-| Plan mode   | no                                                                                                            |
-| Gates       | console CSP parity; docsLinks; console e2e in both themes at 1440 and 390                                     |
-| Human input | none                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                     |
+| Field       | Value                                                                                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (S-24: licence holders)                                                                                                                  |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                                |
+| Depends on  | [LX-27](LX-27-create-limit-delivery.md), [LX-28](LX-28-bulk-floating-keys.md), [MO-02](MO-02-motion-layer.md), [ST-39](ST-39-wizard-kit.md), [LX-32](LX-32-one-resolver-licence-limits-duration.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-31](LX-31-holders-closeout.md)                                                                                                                          |
+| Role        | `pkey-implementer`                                                                                                                                                                                  |
+| Plan mode   | no                                                                                                                                                                                                  |
+| Gates       | console CSP parity; docsLinks; console e2e in both themes at 1440 and 390                                                                                                                           |
+| Human input | none                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                           |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> On ST-39's drawer host; Limits shows inherited values with sources (LX-32) and per-field Override; no 'profiles in order'; delivery per LX-27.
+
+- Title: was "Console New License wizard: a five-step drawer (Product and tier, Who it's for, Limits, Delivery, Review) replacing `CreateLicenseDialog`, single and batch, Done with the key shown once or a CSV, S-23 motion".
+- Depends on: added ST-39 and LX-32.
 
 ## Goal
 

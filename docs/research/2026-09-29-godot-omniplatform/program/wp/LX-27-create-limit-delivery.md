@@ -1,16 +1,16 @@
-# LX-27 Create a licence with a device limit and delivery: `deviceLimit` and `delivery.email` on create (lifting LX-14a's create refusal), the "Your <Product> license" key email sent in the create request, and **Send a new key** (`POST …/licenses/<id>/send-key`)
+# LX-27 Create a licence: device limit and invitation delivery
 
-| Field       | Value                                                                                                                  |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (S-24: licence holders)                                     |
-| Size        | 0.5–0.8 engineer-weeks                                                                                                 |
-| Depends on  | [LX-14a](LX-14a-per-license-device-limit.md), [LX-26](LX-26-licence-holders-worker.md), [I-18](I-18-email-delivery.md) |
-| Unblocks    | [LX-29](LX-29-new-license-wizard.md)                                                                                   |
-| Role        | `pkey-implementer`                                                                                                     |
-| Plan mode   | no                                                                                                                     |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; email snapshots; workerd                                            |
-| Human input | none (the sending domain is I-18's)                                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                                                                              |
+| Field       | Value                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (S-24: licence holders)                                                                                           |
+| Size        | 0.5–0.8 engineer-weeks                                                                                                                                                       |
+| Depends on  | [LX-14a](LX-14a-per-license-device-limit.md), [LX-26](LX-26-licence-holders-worker.md), [I-18](I-18-email-delivery.md), [P0-21](P0-21-notification-substrate-core-notify.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-29](LX-29-new-license-wizard.md), [LX-39](LX-39-licences-in-account-need-sign-in-product.md)                                     |
+| Role        | `pkey-implementer`                                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                                           |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; email snapshots; workerd                                                                                                  |
+| Human input | none (the sending domain is I-18's)                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
 
 ## Follow-ups from the 2026-10-06 reviews
 
@@ -36,6 +36,15 @@ LX-30 shipped before this package, so it could not wire the two console entry po
   mutation entry (`mutations.ts`, ADMIN.md §5.4).
 - **Email them the key** on the record's **Assign…** dialog (`LicenseHolderDialogs.tsx`): after the
   `PATCH` assigns the licence, a ticked box calls `send-key` (a new key, D12), off by default.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Email through core/notify (P0-21), not identity/portal/email.ts (rule 6). On Identity products delivery defaults to an invitation (sign-in link, no key); 'Also create a key' is optional; with Identity off it keeps minting a key.
+
+- Title: was "Create a licence with a device limit and delivery: `deviceLimit` and `delivery.email` on create (lifting LX-14a's create refusal), the "Your <Product> license" key email sent in the create request, and **Send a new key** (`POST …/licenses/<id>/send-key`)".
+- Depends on: added P0-21.
 
 ## Goal
 

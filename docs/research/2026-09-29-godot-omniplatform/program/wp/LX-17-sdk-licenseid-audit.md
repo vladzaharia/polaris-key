@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase A: independent fixes) |
 | Size        | 0.3–0.4 engineer-weeks                                                                  |
 | Depends on  | none                                                                                    |
-| Unblocks    | [LX-19](LX-19-sdks-licensing.md), [LX-21](LX-21-reanchor-on-refresh.md)                 |
+| Unblocks    | [LX-19](LX-19-sdks-licensing.md)                                                        |
 | Role        | `pkey-sdk-porter`                                                                       |
 | Plan mode   | no                                                                                      |
 | Gates       | all six SDKs (`parity:check`)                                                           |

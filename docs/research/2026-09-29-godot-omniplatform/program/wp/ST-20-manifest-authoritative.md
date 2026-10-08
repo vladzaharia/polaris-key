@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                  |
 | ----------- | ---------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 1: foundation)                 |
+| Phase       | ST: Settings, access control and console shell (phase 1: foundation)   |
 | Size        | 0.4–0.55 engineer-weeks                                                |
 | Depends on  | [ST-01b](ST-01b-resync-claims.md), [ST-03](ST-03-settings-registry.md) |
 | Unblocks    | none                                                                   |

@@ -5,12 +5,18 @@
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                            |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                                                    |
 | Depends on  | [UK-42](UK-42-activation-holders-web.md), [UK-07](UK-07-swiftui-ios.md), [UK-09](UK-09-compose-android.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md) |
-| Unblocks    | none                                                                                                                                                                                                                    |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-31](LX-31-holders-closeout.md)                                                                                                                                              |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                                                      |
 | Gates       | UI snapshots per kit in both themes; modernity lint; UI fixtures in every SDK                                                                                                                                           |
 | Human input | none                                                                                                                                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                               |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> In the rebuilt native kits only. LX-31's global default waits for it; LX-39's per-product flips do not.
 
 ## Goal
 

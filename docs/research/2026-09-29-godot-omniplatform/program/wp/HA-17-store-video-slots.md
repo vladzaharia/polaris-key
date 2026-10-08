@@ -12,6 +12,15 @@
 | Human input | none                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                       |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive as a listing slot when a channel requires one (Steam trailer). Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Store video slots. Revive as a listing slot when a channel requires one (Steam trailer).
+
 ## Goal
 
 A trailer can be uploaded or pulled and stored as a hosted MP4. A YouTube URL is stored as a URL-only slot. Both are served from the media host, or as a link, for the store pushers.

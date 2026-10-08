@@ -1,16 +1,27 @@
 # ST-15 Hard-coded product policy into the registry (D7): seat dormancy, blob GC keep-N, feed depths, registry-token caps, portal presentation, shorten-only sessions and retention
 
-| Field       | Value                                                |
-| ----------- | ---------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 3: coverage) |
-| Size        | 0.7–1 engineer-weeks                                 |
-| Depends on  | [ST-04](ST-04-settings-resolver.md)                  |
-| Unblocks    | none                                                 |
-| Role        | `pkey-implementer`                                   |
-| Plan mode   | no                                                   |
-| Gates       | THREAT-MODEL                                         |
-| Human input | none                                                 |
-| Repo        | `vladzaharia/polaris-key`                            |
+| Field       | Value                                                              |
+| ----------- | ------------------------------------------------------------------ |
+| Phase       | ST: Settings, access control and console shell (phase 3: coverage) |
+| Size        | 0.7–1 engineer-weeks                                               |
+| Depends on  | none                                                               |
+| Unblocks    | none                                                               |
+| Role        | `pkey-implementer`                                                 |
+| Plan mode   | no                                                                 |
+| Gates       | THREAT-MODEL                                                       |
+| Human input | none                                                               |
+| Repo        | `vladzaharia/polaris-key`                                          |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): dropped.** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **drop** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Pushback: promoting about seven hard-coded policies (seat dormancy, blob GC keep-N, feed depths, token caps, sessions, retention) adds configuration. They become NOT_A_SETTING entries with search copy; promote one only when a product asks.
+
+- Dependencies cleared on closing (they were ST-04), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

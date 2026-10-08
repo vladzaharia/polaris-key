@@ -1,16 +1,16 @@
 # ST-05 Generic settings admin API with compatibility aliases for the bespoke routes
 
-| Field       | Value                                                                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 1: foundation)                                                                                                                       |
-| Size        | 0.6–0.85 engineer-weeks                                                                                                                                                      |
-| Depends on  | [ST-04](ST-04-settings-resolver.md)                                                                                                                                          |
-| Unblocks    | [ST-07](ST-07-settings-row-v2.md), [ST-11](ST-11-sql-only-settings.md), [ST-27](ST-27-alert-destinations.md), [ST-21](ST-21-capability-gate.md), [CM-03](CM-03-merchants.md) |
-| Role        | `pkey-implementer`                                                                                                                                                           |
-| Plan mode   | no                                                                                                                                                                           |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                                                                                                                            |
-| Human input | none                                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
+| Field       | Value                                                                |
+| ----------- | -------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 1: foundation) |
+| Size        | 0.6–0.85 engineer-weeks                                              |
+| Depends on  | none                                                                 |
+| Unblocks    | none                                                                 |
+| Role        | `pkey-implementer`                                                   |
+| Plan mode   | no                                                                   |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                    |
+| Human input | none                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                            |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -31,6 +31,17 @@ Checked against `main` at `148439c4f`.
   `"off"` (a `switch`, L2 confirmation both ways, per its registry entry in
   `core/settings/platform.ts`), write the row under that key, reset by deleting it or writing the
   tombstone, and read it back in a test through `polarisKeyStorefrontEnabled`.
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): split into [ST-05a](ST-05a-one-settings-read-write-path.md) and [ST-05b](ST-05b-generic-settings-routes-bespoke-routes.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [ST-05a](ST-05a-one-settings-read-write-path.md) and [ST-05b](ST-05b-generic-settings-routes-bespoke-routes.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **split** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> ST-05a: one settings read/write path (fold the A-13 platform store into the registry resolver and writeSetting). ST-05b: the generic routes (S-18 §4.7 minus history, as-of and restore) with the bespoke routes as thin adapters in the same package.
+
+- Dependencies cleared on closing (they were ST-04), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

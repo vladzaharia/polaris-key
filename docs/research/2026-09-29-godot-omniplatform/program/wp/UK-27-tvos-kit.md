@@ -37,6 +37,17 @@ every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): device code first, so the card chooses the license (SIGN-IN.md D-82); the form shows the code, then Done. Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive if Diceroll or another product targets Apple TV; device-code sign-in already works in the iOS kit. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> tvOS kit. Revive if Diceroll or another product targets Apple TV; device-code sign-in already works in the iOS kit.
+
+- Optional now (was required).
+
 ## Goal
 
 The tvOS surface of the Swift kit exists, reuses the SwiftUI views and presentation core with no second implementation, and is baselined in both themes.

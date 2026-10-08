@@ -2,10 +2,10 @@
 
 | Field       | Value                                                                                                                                                                                                                                                           |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                                                                                                  |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                                                                                                                                                     |
 | Size        | 0.7–1 engineer-weeks                                                                                                                                                                                                                                            |
-| Depends on  | [CM-02](CM-02-provider-webhooks.md), [PS-01](PS-01-polaris-key-adapter.md), [ST-04](ST-04-settings-resolver.md), [ST-05](ST-05-settings-admin-api.md), [ST-21](ST-21-capability-gate.md)                                                                        |
-| Unblocks    | [CM-04](CM-04-offers-catalogue.md)                                                                                                                                                                                                                              |
+| Depends on  | none                                                                                                                                                                                                                                                            |
+| Unblocks    | none                                                                                                                                                                                                                                                            |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                              |
 | Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                                                                                |
 | Gates       | `migration`, `table-owners`, `rule-10`, `threat-model`, `console-csp-parity`, `docs-links`                                                                                                                                                                      |
@@ -16,6 +16,17 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [CM-02](CM-02-provider-webhooks.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [CM-02](CM-02-provider-webhooks.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Provider abstraction and merchant connection are one Store connection; commerce.enabled, commerce.mode and merchantCountries are facts, not keys.
+
+- Dependencies cleared on closing (they were CM-02, PS-01, ST-04, ST-05 and ST-21), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 
