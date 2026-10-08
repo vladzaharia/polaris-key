@@ -64,7 +64,12 @@
  * a deleted account's picture must be gone at once, not in 180 days.
  */
 
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import {
+  hashKey,
+  sha256Hex,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import {
   cappedStream,
   guardUrl,
@@ -274,11 +279,6 @@ async function encodeAll(
     }
   }
   return out;
-}
-
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const d = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-  return [...d].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export type AvatarOrigin = "provider" | "upload";

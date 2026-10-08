@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                                                                                                                    |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                                                                                         |
+| Phase       | P2: Release truth, publishing and release tracks                                                                                                                                                         |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                                     |
 | Depends on  | [P2-01](P2-01-blob-store.md), [P2-04](P2-04-release-descriptor.md)                                                                                                                                       |
 | Unblocks    | [P2-06](P2-06-publish-cli-action.md)                                                                                                                                                                     |

@@ -23,7 +23,7 @@
  */
 
 import { subjectFor } from "../../../core/accountSubjects.js";
-import type { Db } from "../../../core/platform.js";
+import { normalizeEmail, type Db } from "../../../core/platform.js";
 import { portalAudit } from "../portal/repo.js";
 import {
   EMAIL_ISSUER,
@@ -32,7 +32,6 @@ import {
   getAccountRow,
   insertAccount,
   insertLink,
-  normalizeEmail,
   resolveAccount,
   touchAccountSignIn,
   touchLink,

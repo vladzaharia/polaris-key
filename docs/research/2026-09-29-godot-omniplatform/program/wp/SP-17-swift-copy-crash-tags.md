@@ -12,6 +12,14 @@
 | Human input | none                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                           |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (b141fa858).
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 `PolarisKeyCore`'s copy API (`copy.message(code)`, `copy.title(code)`) reads `COPY_CODES`, `COPY_GATE`, `COPY_ACTIVATION` and `COPY_FALLBACK` from `Copy.generated.swift` with React's code-versus-activation table rule and placeholder fill, the hand-written `ErrorCopy` table is gone (host English overrides kept as a layer), and `crashTags()` returns release, build, outlet and channel tags.

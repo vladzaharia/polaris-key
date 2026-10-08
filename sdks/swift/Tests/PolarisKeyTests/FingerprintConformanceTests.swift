@@ -1,13 +1,12 @@
 // @pkey-feature devices.fingerprint
 // The Swift conformance runner for the fingerprint + device-id formulas. Mirrors
 // conformance/runners/node/fingerprint.test.ts and the Python runner against the SAME corpus,
-// bundled here as a test resource (the Swift test target can't reach up the monorepo at test
-// time — tools/sign-corpus.ts mirrors the file and `--check` guards the copy).
+// read from the checkout through `CorpusLocator`.
 //
-// Reads `Resources/v2/fingerprint.json`, which is byte-identical to v1's: `fingerprintVersion`
-// stays 1 and the `pkey-hw:`/`pkey-device:` hash prefixes are deliberately NOT rebranded. They
-// are hash DOMAINS baked into every enrolled digest, not user-visible identifiers — renaming
-// them would orphan every fingerprint on record for a cosmetic gain.
+// Reads `fingerprint.json`, which is byte-identical to v1's: `fingerprintVersion` stays 1 and the
+// `pkey-hw:`/`pkey-device:` hash prefixes are deliberately NOT rebranded. They are hash DOMAINS
+// baked into every enrolled digest, not user-visible identifiers — renaming them would orphan
+// every fingerprint on record for a cosmetic gain.
 //
 // P1b-09 added three SOURCE-rule sections (WIRE-CONTRACT-V3 §6.1). Swift reads no Windows or
 // Linux hardware, so of those it runs only `ramBuckets` (`windowsCim` and `linuxAnchor` apply to
@@ -51,7 +50,7 @@ private struct FingerprintCorpus: Decodable {
 
 final class FingerprintConformanceTests: XCTestCase {
     private func loadCorpus() throws -> FingerprintCorpus {
-        try CorpusBundleLoader.load(FingerprintCorpus.self, "fingerprint")
+        try CorpusLocator.load(FingerprintCorpus.self, "fingerprint")
     }
 
     func testCorpusHasVectors() throws {

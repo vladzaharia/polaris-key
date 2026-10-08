@@ -53,7 +53,6 @@ import {
 import { mutate } from "../../data/mutations.js";
 import { upcomingRunDate } from "../../data/overrideMigration.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { r } from "../../routes.js";
 import { Link } from "../../router.js";
 import { ManagedPayloadEditor } from "../../../ManagedPayloadEditor.js";
@@ -117,14 +116,18 @@ export function resolveInherited(
     for (const layer of layers) {
       const found = readLayer(entry, layer.payload);
       if (!found) continue;
+      // A lower `enforced`/`hidden` entry wins over a higher `default` one whole: its value and
+      // its source, not only its state (the Worker's `mergeMap`, `merge.ts`). Devices get the
+      // locked value, so the console shows it.
       const locked =
         current !== null &&
         current.state !== "default" &&
         found.state === "default";
+      if (locked) continue;
       current = {
         source: layer.source,
         value: found.value,
-        state: locked ? current!.state : found.state,
+        state: found.state,
       };
     }
     if (current) out[entry.key] = current;
@@ -297,10 +300,10 @@ function ConfigEditor({
   slug: string;
   license: LicenseDetail;
 }): React.ReactElement {
-  const catalogQ = useQuery(
-    { queryKey: qk.catalog(slug), queryFn: () => api.schema(slug) },
-    queryClient,
-  );
+  const catalogQ = useQuery({
+    queryKey: qk.catalog(slug),
+    queryFn: () => api.schema(slug),
+  });
   const tiers = useTiers(slug).data?.tiers;
   const [serverFields, setServerFields] = React.useState<
     string[] | undefined
@@ -318,23 +321,20 @@ function ConfigEditor({
   }, [tiers, license]);
   const stackKey = profileIds.join("|");
   // One query for the whole stack, so the hook count never depends on the profile count.
-  const stackQ = useQuery(
-    {
-      queryKey: qk.profileStack(slug, stackKey),
-      queryFn: () =>
-        stackKey === ""
-          ? Promise.resolve([])
-          : Promise.all(
-              profileIds.map((profileId) =>
-                api.profile(slug, profileId).then((profile) => ({
-                  source: `profile “${profile.name || profile.id}”`,
-                  payload: profile.payload,
-                })),
-              ),
+  const stackQ = useQuery({
+    queryKey: qk.profileStack(slug, stackKey),
+    queryFn: () =>
+      stackKey === ""
+        ? Promise.resolve([])
+        : Promise.all(
+            profileIds.map((profileId) =>
+              api.profile(slug, profileId).then((profile) => ({
+                source: `profile “${profile.name || profile.id}”`,
+                payload: profile.payload,
+              })),
             ),
-    },
-    queryClient,
-  );
+          ),
+  });
 
   const co = configOverridesOf(license);
   const scopedOnly = entitlementsOnly(co);

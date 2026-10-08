@@ -20,7 +20,7 @@ import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
 import { ProductIdentityCard } from "../components/product/ProductIdentityCard.js";
 import { RemoveLicenseDialog } from "../components/product/RemoveLicenseDialog.js";
 import { toast } from "../../ui/toast.js";
-import { consumeHeadingFocus } from "../focus.js";
+import { consumeHeadingFocus, focusSectionHeading } from "../focus.js";
 import { useLibrary } from "../library.js";
 import {
   quickAction,
@@ -204,13 +204,19 @@ function ProductBody({
       const t = slide > 0 ? Math.min(1, Math.max(0, 1 - left / slide)) : 0;
       let pick: ProductSection | null = null;
       let pickTop = -Infinity;
+      const rootPad =
+        parseFloat(
+          getComputedStyle(document.documentElement).scrollPaddingTop,
+        ) || 0;
       for (const s of sections) {
         const el = document.getElementById(`section-${s}`);
         if (!el) continue;
         const box = el.getBoundingClientRect();
         if (box.height === 0) continue; // not laid out
+        // Where a jump puts its top: the page's scroll padding (the sticky chrome) plus its own
+        // scroll margin (product/Card.tsx), and 8 px of slack.
         const base =
-          (parseFloat(getComputedStyle(el).scrollMarginTop) || 0) + 8;
+          rootPad + (parseFloat(getComputedStyle(el).scrollMarginTop) || 0) + 8;
         const line = base + Math.max(0, view - base) * t;
         if (box.top <= line && box.top >= pickTop)
           [pick, pickTop] = [s, box.top];
@@ -255,6 +261,9 @@ function ProductBody({
     document
       .getElementById(`section-${s}`)
       ?.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
+    // Focus follows the jump (PS-05 review M4): the next Tab starts in that section. Without
+    // scrolling, so the jump's own scroll is the one that runs.
+    focusSectionHeading(s);
     window.history.replaceState(
       null,
       "",

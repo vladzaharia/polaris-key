@@ -15,84 +15,71 @@ import {
   type StorefrontsResponse,
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 
 export function useStorefronts(
   slug: string,
 ): UseQueryResult<StorefrontsResponse> {
-  return useQuery(
-    { queryKey: qk.storefronts(slug), queryFn: () => api.storefronts(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.storefronts(slug),
+    queryFn: () => api.storefronts(slug),
+  });
 }
 
 export function useSlots(
   slug: string,
 ): UseQueryResult<{ slots: ListingSlotDto[] }> {
-  return useQuery(
-    {
-      queryKey: qk.storefrontSlots(slug),
-      queryFn: () => api.storefrontSlots(slug),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.storefrontSlots(slug),
+    queryFn: () => api.storefrontSlots(slug),
+  });
 }
 
 export function useListing(slug: string): UseQueryResult<ListingResponse> {
-  return useQuery(
-    { queryKey: qk.listing(slug), queryFn: () => api.listing(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.listing(slug),
+    queryFn: () => api.listing(slug),
+  });
 }
 
 export function useListingFit(
   slug: string,
   release: string | null = null,
 ): UseQueryResult<ListingFitResponse> {
-  return useQuery(
-    {
-      queryKey: qk.listingFit(slug, release),
-      queryFn: () => api.listingFit(slug, release),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.listingFit(slug, release),
+    queryFn: () => api.listingFit(slug, release),
+  });
 }
 
 export function useReleaseNotes(
   slug: string,
   release: string | null,
 ): UseQueryResult<ListingReleaseNotesResponse> {
-  return useQuery(
-    {
-      queryKey: qk.listingNotes(slug, release ?? ""),
-      queryFn: () => api.listingReleaseNotes(slug, release!),
-      enabled: release !== null && release !== "",
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.listingNotes(slug, release ?? ""),
+    queryFn: () => api.listingReleaseNotes(slug, release!),
+    enabled: release !== null && release !== "",
+  });
 }
 
 /** PS-06: the Polaris Key panel (the first-party `status` op). */
 export function usePolarisKey(
   slug: string,
 ): UseQueryResult<PolarisKeyStatusResponse> {
-  return useQuery(
-    { queryKey: qk.polarisKey(slug), queryFn: () => api.polarisKey(slug) },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.polarisKey(slug),
+    queryFn: () => api.polarisKey(slug),
+  });
 }
 
 /** PS-06: the Polaris Key analytics card (the last 28 days). */
 export function usePolarisKeyAnalytics(
   slug: string,
 ): UseQueryResult<PolarisKeyAnalyticsResponse> {
-  return useQuery(
-    {
-      queryKey: qk.polarisKeyAnalytics(slug),
-      queryFn: () => api.polarisKeyAnalytics(slug),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.polarisKeyAnalytics(slug),
+    queryFn: () => api.polarisKeyAnalytics(slug),
+  });
 }
 
 /** A per-intent key: random, never stored. One per opened dialog, so a retry replays. */

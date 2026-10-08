@@ -30,6 +30,9 @@ export function SectionNav({
   return (
     <nav
       aria-label={variant === "toc" ? "On this page" : "Sections"}
+      // The pills stick under the header below 1180 px ("tablet": past the desk breakpoint too):
+      // the page's scroll padding clears them (styles.css).
+      data-section-pills={variant === "pills" ? "tablet" : undefined}
       // pk-vt-chrome: a sticky nav holds still through a list transition (src/motion.css).
       className={cn(
         "pk-vt-chrome",

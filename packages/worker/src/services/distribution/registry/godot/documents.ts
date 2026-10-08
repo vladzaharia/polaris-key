@@ -31,6 +31,7 @@
  * HTML, so the 4.7 editor renders them as text (THREAT-MODEL §3, "Tenant-supplied text").
  */
 
+import { escapeHtmlDecimalApostrophe } from "../../../../core/platform.js";
 import type {
   PackageFile,
   PackageVersion,
@@ -273,17 +274,6 @@ function isoDate(epochSeconds: number): string {
 /** Text as BBCode that renders literally: `[` and `]` become `[lb]` and `[rb]`. */
 export function escapeBbcode(text: string): string {
   return text.replace(/[[\]]/g, (c) => (c === "[" ? "[lb]" : "[rb]"));
-}
-
-/** Text as HTML that renders literally. */
-export function escapeHtml(text: string): string {
-  return text.replace(
-    /[&<>"']/g,
-    (c) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-        c
-      ]!,
-  );
 }
 
 // ── Godot ≤ 4.6: the Asset Library API ───────────────────────────────────────────────────────
@@ -590,7 +580,7 @@ export function storeAsset(
   const text = note ? `${note}\n\n${p.description}`.trimEnd() : p.description;
   return {
     ...data,
-    body_html: text === "" ? "" : `<p>${escapeHtml(text)}</p>`,
+    body_html: text === "" ? "" : `<p>${escapeHtmlDecimalApostrophe(text)}</p>`,
     body_bbcode: escapeBbcode(text),
     donation_text: "",
     donation_url: "",

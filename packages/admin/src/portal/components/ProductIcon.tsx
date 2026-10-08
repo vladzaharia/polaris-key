@@ -26,7 +26,7 @@ const RADIUS: Record<number, string> = {
 
 /** The letter tile's own chrome: its radius and letter size, per size. */
 const TILE: Record<number, string> = {
-  20: "text-[0.625rem]",
+  20: "text-3xs",
   24: "text-xs",
   40: "text-base",
   48: "text-lg",

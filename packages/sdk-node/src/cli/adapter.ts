@@ -1,7 +1,7 @@
 // What the commander and yargs adapters share: run one verb's terminal flow with the flags every
-// verb takes (`--json`, `--no-color`, `--ascii`) and its own (`--yes`, `--device-code`), print
-// the `--json` envelope, and map the exit code. Both front ends call `runKitVerb`, so they render
-// the same screens and the same JSON.
+// verb takes (`--json`, `--no-color`, `--ascii`) and its own (`--yes`, `--device-code`,
+// `--allow-workflow-commands`), print the `--json` envelope, and map the exit code. Both front
+// ends call `runKitVerb`, so they render the same screens and the same JSON.
 
 import type { PolarisKeyClient } from "../client.js";
 import { createKitContext, type TerminalIO } from "./context.js";
@@ -40,6 +40,7 @@ export interface ParsedVerbFlags {
   ascii?: boolean;
   yes?: boolean;
   deviceCode?: boolean;
+  allowWorkflowCommands?: boolean;
 }
 
 /** A stream that hands each complete line to `print` (the adapters' legacy sink). */
@@ -133,6 +134,7 @@ export async function runKitVerb(
   const verbFlags: VerbFlags = {
     ...(flags.yes ? { yes: true } : {}),
     ...(flags.deviceCode ? { deviceCode: true } : {}),
+    ...(flags.allowWorkflowCommands ? { allowWorkflowCommands: true } : {}),
   };
   let r: FlowResult;
   try {

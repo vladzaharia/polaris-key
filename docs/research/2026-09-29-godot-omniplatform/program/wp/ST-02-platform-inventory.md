@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                        |
 | ----------- | -------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 0: stop the bleeding)                                |
+| Phase       | ST: Settings, access control and console shell (phase 0: stop the bleeding)                  |
 | Size        | 0.4–0.55 engineer-weeks                                                                      |
 | Depends on  | none                                                                                         |
 | Unblocks    | [ST-06](ST-06-settings-docs-coverage.md), [ST-09](ST-09-platform-settings-area.md)           |

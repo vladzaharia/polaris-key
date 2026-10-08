@@ -10,7 +10,8 @@ import { configureAxe } from "vitest-axe";
 import { expect } from "vitest";
 import { KitProviders } from "../src/kit/KitProviders.js";
 import { AppToaster } from "../src/ui/toast.js";
-import { queryClient } from "../src/console/data/queryClient.js";
+import type { QueryClient } from "@tanstack/react-query";
+import { createQueryClient } from "../src/console/data/queryClient.js";
 import { resetRouterForTests } from "../src/console/router.js";
 
 /** jsdom computes no layout or colour; `region` is off because a page renders without the shell. */
@@ -39,8 +40,19 @@ export function shimDom(): void {
     };
 }
 
+/**
+ * The current test's query client: `resetCore` makes a fresh one, and every `renderAt` in the test
+ * shares it, as the console's provider outlives the pages it mounts.
+ */
+let queryClient: QueryClient = createQueryClient();
+
+/** The query client the current test's pages read (to seed, inspect or refetch the cache). */
+export function testQueryClient(): QueryClient {
+  return queryClient;
+}
+
 export function resetCore(): void {
-  queryClient.clear();
+  queryClient = createQueryClient();
   resetRouterForTests();
   window.location.hash = "";
   shimDom();
@@ -50,7 +62,7 @@ export function resetCore(): void {
 export function renderAt(hash: string, page: React.ReactElement): RenderResult {
   window.location.hash = hash;
   return render(
-    <KitProviders>
+    <KitProviders queryClient={queryClient}>
       <div data-service="core">{page}</div>
       <AppToaster />
     </KitProviders>,

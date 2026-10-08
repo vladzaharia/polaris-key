@@ -18,7 +18,7 @@ import {
   type FingerprintComponent,
   type FingerprintMode,
 } from "@polaris-key/protocol";
-import { sha256B64url } from "./crypto.js";
+import { sha256B64url } from "./platform/hash.js";
 
 export type ComponentMap = Partial<Record<FingerprintComponent, string>>;
 

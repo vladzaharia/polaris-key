@@ -1,11 +1,11 @@
-# CM-05 Checkout and fulfilment for one-time purchases: checkout from a `buy` path, hosted Stripe Checkout (direct charge, Stripe Tax), fulfil-on-return and on-webhook through `issueFromPath`, grants with source `polaris-key`
+# CM-05 Checkout fulfilment and reversal (absorbs CM-06)
 
 | Field       | Value                                                                                                                                                                                                                                                                        |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                                                                                                               |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                                                                                                                                                                  |
 | Size        | 1.2–1.6 engineer-weeks                                                                                                                                                                                                                                                       |
 | Depends on  | [CM-04](CM-04-offers-catalogue.md), [PS-04](PS-04-storefront-portal-api.md), [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-12](LX-12-licence-lifecycle.md), [LX-13](LX-13-entitlements-backend.md)                                            |
-| Unblocks    | [CM-06](CM-06-refunds-disputes.md), [CM-09](CM-09-coupons.md), [CM-14](CM-14-device-checkout-wire.md), [CM-19](CM-19-own-account-mode.md)                                                                                                                                    |
+| Unblocks    | [CM-08](CM-08-subscriptions.md), [CM-10](CM-10-gifting.md), [CM-14](CM-14-device-checkout-wire.md), [CM-19](CM-19-own-account-mode.md)                                                                                                                                       |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                                                           |
 | Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                                                                                             |
 | Gates       | `migration`, `table-owners`, `rule-10`, `rule-6`, `threat-model`, `docs:privacy`, `portal-e2e`, `workerd`                                                                                                                                                                    |
@@ -16,6 +16,16 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Absorbs CM-06: one fulfil-and-reverse state machine. Fulfilment mints through core/licensing/issue.ts; Stripe refunds and disputes call CM-22's revokePurchase; partialRevokes and disputes.onOpen settings dropped; its emails on P0-21.
+
+- Title: was "Checkout and fulfilment for one-time purchases: checkout from a `buy` path, hosted Stripe Checkout (direct charge, Stripe Tax), fulfil-on-return and on-webhook through `issueFromPath`, grants with source `polaris-key`".
+- Absorbs CM-06: One fulfil-and-reverse state machine.
+- Absorbs CM-13: Emails ride with their events on P0-21: fulfilment, refund and ended in CM-05; renewal and dunning in CM-08.
 
 ## Goal
 

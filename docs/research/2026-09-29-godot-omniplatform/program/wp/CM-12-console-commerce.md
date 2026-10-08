@@ -1,21 +1,30 @@
-# CM-12 Console commerce: Product → Commerce (merchant, offers, orders with refund and re-fulfil, subscriptions, coupons, revenue, settings); platform merchants and webhook health
+# CM-12 Polaris Key Sales tab content
 
-| Field       | Value                                                                                                                                                                              |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                     |
-| Size        | 1.2–1.6 engineer-weeks                                                                                                                                                             |
-| Depends on  | [CM-07](CM-07-tier-upgrades.md), [CM-08](CM-08-subscriptions.md), [CM-09](CM-09-coupons.md), [LX-14](LX-14-console-licensing.md), [PS-06](PS-06-console-polaris-key-storefront.md) |
-| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                                                                                                |
-| Role        | `pkey-implementer`                                                                                                                                                                 |
-| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                   |
-| Gates       | `ui-snapshots`, `console-csp-parity`, `docs-links`, `rule-10`                                                                                                                      |
-| Human input | the owner's go signal (removes `deferred`)                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                          |
+| Field       | Value                                                                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                                                                                                           |
+| Size        | 1.2–1.6 engineer-weeks                                                                                                                                                                                                |
+| Depends on  | [CM-08](CM-08-subscriptions.md), [LX-14](LX-14-console-licensing.md), [PS-06](PS-06-console-polaris-key-storefront.md), [CM-23](CM-23-console-commerce-offers-purchases-sales.md), [CM-04](CM-04-offers-catalogue.md) |
+| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                                                                                                                                   |
+| Role        | `pkey-implementer`                                                                                                                                                                                                    |
+| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                                      |
+| Gates       | `ui-snapshots`, `console-csp-parity`, `docs-links`, `rule-10`                                                                                                                                                         |
+| Human input | the owner's go signal (removes `deferred`)                                                                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                             |
 
 > **Deferred. Do not dispatch.** This package is optional and carries `deferred` in
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> The Polaris Key channel page's Sales tab content (A-22, CM-23): merchant status, prices, Stripe refund and re-fulfil, revenue and webhook health; not a separate Commerce area.
+
+- Title: was "Console commerce: Product → Commerce (merchant, offers, orders with refund and re-fulfil, subscriptions, coupons, revenue, settings); platform merchants and webhook health".
+- Depends on: added CM-23 and CM-04; removed CM-07 and CM-09.
 
 ## Goal
 

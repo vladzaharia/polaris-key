@@ -50,7 +50,7 @@ import { docsUrl } from "../../../lib/docsLinks.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { confirmFor } from "../../../lib/actions.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";

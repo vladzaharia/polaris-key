@@ -1146,7 +1146,7 @@ export function platformsOnlyNote(
 
 export interface AttentionItem {
   product: LibraryProduct;
-  /** "Your Studio license ends on 13 Oct. Updates stop after that." */
+  /** "Your Studio license ends on 13 Oct. Renew with Lumen Labs to keep using it." */
   text: string;
   action: { label: string; href: string; external: boolean };
 }
@@ -1201,7 +1201,7 @@ export function attentionItems(
     if (p.status.kind === "expiresSoon" && p.best.expiresAt) {
       out.push({
         product: p,
-        text: `Your ${tier ? `${tier} ` : ""}license ends on ${unbroken(formatDay(p.best.expiresAt, false))}. Updates stop after that.`,
+        text: `Your ${tier ? `${tier} ` : ""}license ends on ${unbroken(formatDay(p.best.expiresAt, false))}. Renew with ${who} to keep using it.`,
         action: { label: `Renew with ${who}`, href: link, external: true },
       });
     } else if (p.status.kind === "expired") {

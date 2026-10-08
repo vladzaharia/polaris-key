@@ -43,7 +43,12 @@ import {
   type PackageEcosystem,
   type PackageReleaseDescriptor,
 } from "@polaris-key/manifest";
-import type { Db, DbStatement, Env } from "../../../core/platform.js";
+import {
+  sha256Hex,
+  type Db,
+  type DbStatement,
+  type Env,
+} from "../../../core/platform.js";
 import { ErrorCode } from "../../../core/errors.js";
 import type { PackageFeedSettings } from "../../../core/hooks.js";
 import {
@@ -185,16 +190,6 @@ function refuse(
     message,
     ...(extra.errors ? { errors: extra.errors } : {}),
   };
-}
-
-async function sha256Hex(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(text),
-  );
-  return [...new Uint8Array(buf)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 /** Is this submit body's descriptor a package release's? (Read defensively: unvalidated.) */

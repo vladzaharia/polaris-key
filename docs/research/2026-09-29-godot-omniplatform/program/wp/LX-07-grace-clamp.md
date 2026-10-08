@@ -29,6 +29,12 @@ Recorded by the builder where the code or a closer reading changed the approach.
 - **Behaviour change in an existing field's value, not a shape change.** No claim, no corpus case and no `PROTOCOL_VERSION` change; §3.6 gains the informative sentence plans/LX-01.md Q7 approved.
 - **Cost.** The setting is read only when the clamp would move the window, so a perpetual licence and a licence whose expiry lies past its window add no read to the document routes.
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Already stamped done on main (2eb10597c); the hygiene PR leaves it. Merged (884e5780e). LX-40 removes the opt-out: the grace clamp is always on (null for keepVersion licences, LX-41).
+
 ## Goal
 
 Offline grace is clamped to licence expiry on every product by default, after a report lists the affected licences, with a per-product opt-out (`licensing.clampGraceToExpiry`); grace is never clamped to a grant's expiry.

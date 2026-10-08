@@ -25,6 +25,7 @@
 
 import type { Db } from "../db/types.js";
 import { randomId } from "../crypto.js";
+import { sha256Hex } from "../platform/hash.js";
 
 /** How long a refusal row is kept: 30 days. The facet looks back 7, the spike rate 7 + today. */
 export const REFUSAL_RETENTION_SECONDS = 30 * 24 * 60 * 60;
@@ -43,20 +44,6 @@ export type RefusalReason =
   | "fingerprint_required"
   | "license_unusable"
   | "key_entry_limit";
-
-export const REFUSAL_REASONS: readonly RefusalReason[] = [
-  "device_limit",
-  "hardware_mismatch",
-  "fingerprint_required",
-  "license_unusable",
-  "key_entry_limit",
-];
-
-export function isRefusalReason(v: unknown): v is RefusalReason {
-  return (
-    typeof v === "string" && (REFUSAL_REASONS as readonly string[]).includes(v)
-  );
-}
 
 /** What the refusal site knows about the device it turned away. */
 export interface RefusalInput {
@@ -102,15 +89,7 @@ export function fallbackRefusalLabel(input: RefusalInput): string | null {
 
 /** SHA-256 of the device id, hex, first 32 characters. */
 export async function refusalDeviceHash(deviceId: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(deviceId),
-  );
-  return Array.from(new Uint8Array(digest), (b) =>
-    b.toString(16).padStart(2, "0"),
-  )
-    .join("")
-    .slice(0, 32);
+  return (await sha256Hex(deviceId)).slice(0, 32);
 }
 
 /**

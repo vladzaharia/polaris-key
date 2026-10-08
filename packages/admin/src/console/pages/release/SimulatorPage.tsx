@@ -21,7 +21,7 @@ import { Input } from "../../../ui/Input.js";
 import { Select } from "../../../ui/Select.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { useProduct } from "../../data/hooks.js";
 import { navigate, useLocation } from "../../router.js";

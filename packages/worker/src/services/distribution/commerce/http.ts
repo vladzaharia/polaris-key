@@ -69,32 +69,3 @@ export async function storeJson(
   }
   return { status: res.status, body };
 }
-
-/** base64url (no padding) → bytes, or null. */
-export function b64urlBytes(s: string): Uint8Array | null {
-  if (!/^[A-Za-z0-9_-]*$/.test(s)) return null;
-  const pad = s.length % 4;
-  if (pad === 1) return null;
-  const std =
-    s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - pad) % 4);
-  try {
-    const bin = atob(std);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
-  } catch {
-    return null;
-  }
-}
-
-/** Parse JSON into a plain object, or null. */
-export function jsonObject(text: string): Record<string, unknown> | null {
-  try {
-    const v = JSON.parse(text) as unknown;
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}

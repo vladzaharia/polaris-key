@@ -4,7 +4,7 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                               |
 | Size        | 0.2–0.4 engineer-weeks                                                                                                                                   |
-| Depends on  | [PX-W19](PX-W19-account-api-gaps.md), [PX-13](PX-13-account-v2.md)                                                                                       |
+| Depends on  | none                                                                                                                                                     |
 | Unblocks    | none                                                                                                                                                     |
 | Role        | `pkey-implementer`                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                       |
@@ -18,6 +18,17 @@ Filed on 2026-10-07 as "PX-13b". `check.mjs` (`ID_RE`) and `workpackages.schema.
 letter suffix only on Worker-addition ids (`PX-W9b`, `PX-W13b`), not on the front end's
 `PX-<nn>`. Rather than widen the pattern, this package takes the next free front-end id
 (README §8, phase PX).
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [PX-W19](PX-W19-account-api-gaps.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [PX-W19](PX-W19-account-api-gaps.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Same three account actions.
+
+- Dependencies cleared on closing (they were PX-W19 and PX-13), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

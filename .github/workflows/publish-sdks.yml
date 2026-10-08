@@ -20,6 +20,9 @@ name: Publish SDKs
 #
 # Feeds only: never npmjs, GitHub Packages, PyPI, Maven Central, the Swift Package Index, Docker
 # Hub, GHCR or a Godot store. Install: /docs/build/install-from-feeds/.
+#
+# After a stable tag's publish and drift check pass, the prune job deletes the builds of main the
+# release supersedes, through the Worker's feed-retention rule (a dry run first; see the job).
 
 on:
   push:
@@ -583,3 +586,76 @@ jobs:
         run: >-
           node tools/feed-drift.mjs --origin https://pkg.plrs.im --owner polaris-key
           --version "$VERSION" --pep440 "$PEP440" --channel "$CHANNEL" --timeout 600
+
+  # ── Retention: prune the builds of main a stable release supersedes ─────────────────────────
+  # The Worker already deletes each package's builds of main (semver X-main.N, PEP 440 X.devN,
+  # X <= the release) right after its stable publish; the system product's retention is locked on
+  # (services/release/packages/prune.ts; THREAT-MODEL and RUNBOOK "Feed retention"). This job is
+  # the backstop for a prune that failed there (audited package.prune.failed, never thrown at the
+  # publish): the same server-side rule, through `pkey feeds prune`, once every feed shows the
+  # stable version. It never chooses what goes, and it is conservative on top of the rule:
+  #   - only on a stable vX.Y.Z tag, and only after every publish job and the drift check passed;
+  #   - a dry run first, logged to the job summary, and its plan checked: a version that is not a
+  #     build of main stops the job before anything is deleted;
+  #   - the rule never touches a stable or beta version, and keeps (reports as `kept`) any version
+  #     a channel policy, a pin, a hold, a revocation or a download token names;
+  #   - the credential is PKEY_FEED_PRUNE_TOKEN, a static pkeyci_ token of the polaris-key product
+  #     with release:yank, held in the package-registry environment; without it the job warns and
+  #     stops. A prune problem never turns the release red (continue-on-error): the publish is done.
+  prune:
+    name: Prune builds of main (stable tag)
+    needs: [version, npm, python, swift, maven, godot, image, drift]
+    if: needs.version.outputs.channel == 'stable' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: package-registry
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: A stable vX.Y.Z tag
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || [ "$GITHUB_REF" != "refs/tags/v$VERSION" ]; then
+            echo "Refusing to prune: $GITHUB_REF ($VERSION) is not a stable vX.Y.Z tag." >&2
+            exit 1
+          fi
+      # The committed CLI bundle at this tag (the pkey the polaris-key/publish Action and the pkey
+      # image run), so the job needs no install. In a job, pkey prints the token's ::add-mask::
+      # line on stdout first; it reaches the log (the runner reads it) but never the job summary
+      # or the JSON plan.
+      - name: Dry run (deletes nothing)
+        id: plan
+        env:
+          PKEY_CI_TOKEN: ${{ secrets.PKEY_FEED_PRUNE_TOKEN }}
+        run: |
+          set -o pipefail
+          if [ -z "$PKEY_CI_TOKEN" ]; then
+            echo "::warning::PKEY_FEED_PRUNE_TOKEN is not set in the package-registry environment, so the backstop prune did not run. The Worker's automatic prune still ran on each stable publish."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node actions/publish/dist/index.js feeds prune --product polaris-key > "$RUNNER_TEMP/prune-dry-run.txt"
+          cat "$RUNNER_TEMP/prune-dry-run.txt"
+          { echo "### Feed retention: dry run"; echo '```'; grep -v '^::' "$RUNNER_TEMP/prune-dry-run.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          node actions/publish/dist/index.js feeds prune --product polaris-key --json | grep -v '^::' > "$RUNNER_TEMP/prune-plan.json"
+      - name: The plan holds builds of main only
+        if: steps.plan.outputs.skip != 'true'
+        run: |
+          jq -e '[.packages[].prune[].version
+                  | select(test("^v?[0-9]+(\\.[0-9]+)*-main\\.[0-9]+$|^[0-9]+(\\.[0-9]+)*\\.dev[0-9]+$") | not)]
+                 | if length == 0 then true else error("not a build of main: \(join(", "))") end' "$RUNNER_TEMP/prune-plan.json"
+      - name: Apply the prune
+        if: steps.plan.outputs.skip != 'true'
+        env:
+          PKEY_CI_TOKEN: ${{ secrets.PKEY_FEED_PRUNE_TOKEN }}
+        run: |
+          status=0
+          node actions/publish/dist/index.js feeds prune --product polaris-key --apply > "$RUNNER_TEMP/prune-applied.txt" || status=$?
+          cat "$RUNNER_TEMP/prune-applied.txt"
+          { echo "### Feed retention: applied"; echo '```'; grep -v '^::' "$RUNNER_TEMP/prune-applied.txt" || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"

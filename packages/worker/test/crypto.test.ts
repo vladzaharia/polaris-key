@@ -8,8 +8,8 @@ import {
   mintOpaqueToken,
   productFromKey,
   randomId,
-  sha256Hex,
 } from "../src/crypto.js";
+import { sha256Hex } from "../src/platform/hash.js";
 
 describe("mintLicenseKey", () => {
   it("is self-identifying: pkey_<product>_<base64url>", () => {

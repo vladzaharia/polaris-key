@@ -4,6 +4,9 @@ This folder turns the research ([`../README.md`](../README.md), [`../CONTENT.md`
 [`../PARITY.md`](../PARITY.md), [`../notes/`](../notes/)) into work that a **team of coding
 agents**, directed by a lead and supervised by a human, can execute.
 
+The [DX consolidation plan](../../2026-10-07-dx-consolidation/README.md) (2026-10-07) re-cut the
+open backlog into tracks A–K and a 1.0 readiness milestone (P0-51); its graph changes are recorded in §8.
+
 It is a plan, not a specification. [`AGENTS.md`](../../../../AGENTS.md) and the code stay
 authoritative. When a brief and the code disagree, the code is the fact and the brief is updated
 in the same pull request.
@@ -26,7 +29,7 @@ in the same pull request.
 cd docs/research/2026-09-29-godot-omniplatform/program
 node check.mjs              # validate the graph and the index (exit 1 on any problem)
 node check.mjs --ready      # what can start now, most-blocking first
-node check.mjs --ready --optional --deferred  # also optional work and packages waiting for the owner's go (CM-*)
+node check.mjs --ready --optional --deferred  # also optional work and deferred packages (the owner's go for CM-*, or parked 2026-10-07)
 node check.mjs --summary    # effort and status per phase
 node check.mjs --critical   # the longest remaining dependency chain
 node check.mjs --show P3-02 # one work package with its dependants
@@ -248,6 +251,18 @@ New packages take the next free id in their phase and a brief copied from `wp/_T
 Packages split from one row of a spike's breakdown keep that row's number plus a lower-case letter
 (phase A: A-17a…g from notes/S-14 §10, A-18a…m from notes/S-15 §11; I-10a and I-10b from notes/S-16 §8;
 U-11a…c, U-15a…c and U-24a…b from notes/S-17 §6); `check.mjs` accepts the suffix.
+
+**DX consolidation (2026-10-07).** One graph-hygiene PR applied the plan's
+[`backlog-changes.json`](../../2026-10-07-dx-consolidation/backlog-changes.json) (Track A, lead
+action 2 in [`tracks.md`](../../2026-10-07-dx-consolidation/tracks.md)). Its 140 new packages take
+free ids in existing phases (crosswalk at the end of `tracks.md`) and carry their track as `stage`;
+the lead added P0-50 (dependency alerts) and P0-51, the 1.0 readiness review that depends on every
+required package in tracks A–K ([README §12](../../2026-10-07-dx-consolidation/README.md#12-versions-09x-now-10-later)).
+A merged, split or dropped package has status `dropped`, no dependencies and no `planRef`, and its
+brief names its targets. A parked package keeps its status and gets `optional: true` and
+`deferred: "parked 2026-10-07: <revive condition>"`, so `--ready` and `--critical` skip it. Every
+touched brief has a `## Consolidation 2026-10-07` section that wins over its older text. LX-11
+executes CM-20's plan (`planRef`).
 
 Phase I (Identity) follows notes/S-16 §8 after its restructure around one Polaris Key account
 (owner decision 2026-10-04). I-01…I-03 keep their meaning; I-04 is the layer 1 account contract

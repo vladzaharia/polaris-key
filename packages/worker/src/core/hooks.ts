@@ -1128,6 +1128,13 @@ export interface CustomerDownloadsQuery {
   channel: string;
   /** How many of the channel's newest releases to read (yanked ones skipped, not counted). */
   limit: number;
+  /**
+   * Also answer `installSources` (P0-48): the package managers and sideloading sources the
+   * public download page offers (Homebrew, Scoop, AltStore, SideStore, AltStore PAL, F-Droid,
+   * Obtainium). It builds the page model, so only the portal's product page asks; Discover and
+   * the storefront's link targets read `stores` alone.
+   */
+  installSources?: boolean;
 }
 
 /**
@@ -1198,11 +1205,33 @@ export interface CustomerStoreLink {
   version: string | null;
 }
 
+/**
+ * One install source (P0-48): a package manager or sideloading source the download page offers,
+ * in a store link's shape plus what the page shows beside it. `deepLink` is the app's own link
+ * (`altstore://`, `fdroidrepos://`, `obtainium://`), the one that works on the phone; `url` is the
+ * source or repository URL to paste by hand, which a browser cannot open usefully.
+ */
+export interface CustomerInstallSource extends CustomerStoreLink {
+  /** F-Droid only: the repository's signing-certificate SHA-256, when the key inventory has
+   *  exactly one; `null` otherwise. */
+  fingerprint: string | null;
+  /** What a phone scans from a computer: a QR code of the deep link (else of the page's own QR
+   *  text), as a `data:image/svg+xml;base64,` URI the portal's `img-src 'self' data:` allows;
+   *  `null` for a command, or a link too long for the encoder. */
+  qr: string | null;
+}
+
 export interface CustomerDownloads {
   channel: string;
   /** Newest first, at most `limit`. */
   releases: CustomerRelease[];
   stores: CustomerStoreLink[];
+  /**
+   * Present when the query asked for it: the download page's install sources for the channel,
+   * in the page's order, each `live` (the page lists only what a feed serves) with
+   * `activateUrl: null`. Empty for a non-public deliverable, whose feeds do not exist.
+   */
+  installSources?: CustomerInstallSource[];
 }
 
 /** P6-02: the store identities a device attestation must match (`Delivery.attestationTargets`). */

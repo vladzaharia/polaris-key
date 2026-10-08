@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                                                                                                                              |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P2: Release truth and publishing                                                                                                                                                                                   |
+| Phase       | P2: Release truth, publishing and release tracks                                                                                                                                                                   |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                                               |
 | Depends on  | [P2-02](P2-02-trusted-publisher.md), [P2-04](P2-04-release-descriptor.md), [P2-05](P2-05-release-routes.md)                                                                                                        |
 | Unblocks    | [P2b-03](P2b-03-availability-keys.md), [P3-03](P3-03-feed-composition.md), [P4-03](P4-03-ci-patch-artifacts.md), [D-03](D-03-diceroll-after-p3.md), [A-18h](A-18h-ci-plane-adapters.md)                            |

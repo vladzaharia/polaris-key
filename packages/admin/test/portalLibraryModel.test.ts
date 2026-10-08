@@ -495,7 +495,7 @@ describe("Needs attention", () => {
     });
     // The date's spaces are non-breaking, so "10 Oct" never splits across lines.
     expect(items[0]!.text).toMatch(
-      /^Your Studio license ends on \d+\u00a0\w{3}\. Updates stop after that\.$/,
+      /^Your Studio license ends on \d+\u00a0\w{3}\. Renew with [^.]+ to keep using it\.$/,
     );
   });
 });

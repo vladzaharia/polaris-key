@@ -5,7 +5,8 @@ sidebar:
   order: 2
 ---
 
-For the browser (same origin as Polaris Key) and the Electron renderer over the desktop bridge.
+For the browser, on Polaris Key's origin or your own, and the Electron renderer over the desktop
+bridge.
 
 ```sh
 pnpm add @polaris-key/react react react-dom
@@ -28,16 +29,17 @@ export function App() {
 }
 ```
 
-`polarisConfig` holds the provider's product facts (`productSlug`, `baseUrl`, `expectServices`).
-The look is neutral by default and follows the host's colour scheme; `branding="polaris-key"`
-opts into the Polaris Key design system. The module also exports `pinnedKeys` and
-`pinnedReleaseKeys` for the Electron main process, whose `@polaris-key/node` client verifies.
+`polarisConfig` holds the provider's product facts (`productSlug`, `baseUrl`, `expectServices`)
+and the trust pins (`trust.pinnedKeys`). The look is neutral by default and follows the host's
+colour scheme; `branding="polaris-key"` opts into the Polaris Key design system. The module also
+exports `pinnedKeys` and `pinnedReleaseKeys` for the Electron main process, whose
+`@polaris-key/node` client verifies.
 
 :::note[Browser on another origin]
-The browser adapter runs on the Worker's first-party cookie session, which does not answer CORS.
-An app on its own domain or in a Tauri webview waits on bearer mode (see the
-[parity matrix](/docs/reference/parity/)); use the desktop bridge or a same-origin deployment
-until then.
+A page on Polaris Key's own origin uses the cookie session. An app on its own domain or in a Tauri
+webview uses bearer mode: a device token in IndexedDB, and every document verified in the page
+against `trust.pinnedKeys`, which `polarisConfig` carries. Without pins, bearer mode reports
+`invalid-options` and makes no request.
 :::
 
 Next: the full [React SDK reference](/docs/build/sdks/react/).

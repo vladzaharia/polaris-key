@@ -62,6 +62,7 @@ import {
   CI_TOKEN_PREFIX,
   type CiPrincipal,
 } from "./ciVocabulary.js";
+import { sha256Hex } from "../platform/hash.js";
 
 // ── Constants ───────────────────────────────────────────────────────────────────────────────
 
@@ -1194,13 +1195,7 @@ export async function mintUploadCredentials(
     exp: expiresAt,
   };
   const jwt = await signJwtHs256(claims, parent.secretAccessKey);
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(jwt),
-  );
-  const secretAccessKey = [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+  const secretAccessKey = await sha256Hex(jwt);
   return {
     endpoint,
     bucket: parent.bucket,

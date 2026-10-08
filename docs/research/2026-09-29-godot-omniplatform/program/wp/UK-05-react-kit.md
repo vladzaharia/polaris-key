@@ -5,7 +5,7 @@
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                   |
 | Size        | 3–4 engineer-weeks                                                                                                                                                                                             |
 | Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-03](UK-03-ui-core.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md), [UK-04](UK-04-web-components.md) |
-| Unblocks    | [UK-06](UK-06-electron-kit.md), [UK-20](UK-20-react-native-kit.md), [UK-22](UK-22-host-design-systems.md), [UK-41](UK-41-must-tier-closeout.md), [UK-42](UK-42-activation-holders-web.md)                      |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-06](UK-06-electron-kit.md), [UK-20](UK-20-react-native-kit.md), [UK-41](UK-41-must-tier-closeout.md), [UK-42](UK-42-activation-holders-web.md)                     |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                                              |
 | Plan mode   | no                                                                                                                                                                                                             |
 | Gates       | Playwright visual baselines; `pnpm ui:lint`; the React/elements cross-renderer pixel diff                                                                                                                      |
@@ -37,6 +37,14 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): `<SignIn presentation replace>` inside `<PolarisKeyGate>` or alone, the step parts, `useSignIn()`, and the motion of SIGN-IN.md §3.18 (View Transitions with the Web Animations fallback, CSP-safe). Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> PolarisKeyProvider config={polarisKey}; theme, branding and colorScheme collapse to theme; expectServices accepted as an alias of expectedServices.
+
+- Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break.
 
 ## Goal
 

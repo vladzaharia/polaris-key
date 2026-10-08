@@ -36,7 +36,6 @@ import { errorResponse, wireError } from "./errors.js";
 import type { ProductPublic } from "./products.js";
 
 export type TrustLevel = "basic" | "attested";
-export const TRUST_LEVELS: readonly TrustLevel[] = ["basic", "attested"];
 
 /** The operations a policy can gate. */
 export type TrustOperation = "mint" | "gatedDelivery" | "commerceClaim";

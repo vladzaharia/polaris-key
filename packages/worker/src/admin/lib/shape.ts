@@ -48,6 +48,7 @@ import {
   type ProductIconView,
   type ProductPresentationView,
 } from "./presentation.js";
+import { parseJsonStringList } from "../../platform/json.js";
 
 interface RequiredSecretStatus {
   name: string;
@@ -78,34 +79,6 @@ interface ReleaseSetupRow {
   artifact_policy_json: string | null;
 }
 
-/**
- * R11-06 — the ONE guarded reader for every `_json` column on the admin surface.
- *
- * No `_json` column has a `json_valid()` constraint behind it, and a truncated D1 write, a
- * manual `wrangler d1 execute` repair, or any future writer that forgets `JSON.stringify`
- * produces a value that is accepted silently and then throws a `SyntaxError` out of whatever
- * handler reads it next. A corrupt column has to DEGRADE, not 500 — most sharply for
- * `licenses.channels_json`, which `licenseSummary` reads for every row of the license list, so
- * one bad row used to take down the entire admin view including the one an operator would use
- * to repair it.
- */
-export function parseJsonColumn<T>(value: string | null | undefined): T | null {
-  if (!value) return null;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return null;
-  }
-}
-
-/** A `_json` column that must read back as an array of strings; anything else is dropped. */
-export function parseJsonList(value: string | null | undefined): string[] {
-  const parsed = parseJsonColumn<unknown>(value);
-  return Array.isArray(parsed)
-    ? parsed.filter((item): item is string => typeof item === "string")
-    : [];
-}
-
 function syncStateView(
   row: ProductSyncStateRow | null,
 ): Record<string, unknown> | null {
@@ -116,9 +89,9 @@ function syncStateView(
     lastCheckedAt: row.last_checked_at,
     lastSyncedAt: row.last_synced_at,
     commitSha: row.commit_sha,
-    changedPaths: parseJsonList(row.changed_paths_json),
-    updated: parseJsonList(row.updated_json),
-    errors: parseJsonList(row.errors_json),
+    changedPaths: parseJsonStringList(row.changed_paths_json),
+    updated: parseJsonStringList(row.updated_json),
+    errors: parseJsonStringList(row.errors_json),
     message: row.message,
   };
 }
@@ -128,12 +101,30 @@ export async function loadCatalog(
   db: Db,
   product: string,
 ): Promise<Catalog | null> {
+  const active = await readActiveCatalog(db, product);
+  return active.state === "ok" ? active.catalog : null;
+}
+
+/**
+ * A product's active catalog, or why there is none: `missing` (no catalog published) or
+ * `unreadable` (the stored JSON does not parse or compile). For a refusal that must say which
+ * (P0-48, a commerce mapping's flag); `loadCatalog` folds both into `null`.
+ */
+export type ActiveCatalog =
+  | { state: "ok"; catalog: Catalog }
+  | { state: "missing" }
+  | { state: "unreadable" };
+
+export async function readActiveCatalog(
+  db: Db,
+  product: string,
+): Promise<ActiveCatalog> {
   const row = await getActiveSchema(db, product);
-  if (!row) return null;
+  if (!row) return { state: "missing" };
   try {
-    return new Catalog(JSON.parse(row.catalog_json));
+    return { state: "ok", catalog: new Catalog(JSON.parse(row.catalog_json)) };
   } catch {
-    return null;
+    return { state: "unreadable" };
   }
 }
 
@@ -192,7 +183,7 @@ export async function licenseSummary(
     profiles: profiles.map((p) => p.profile_id),
     tier: row.tier_id,
     // R11-06: guarded — a single corrupt channels_json must not 500 the whole license list.
-    channels: parseJsonList(row.channels_json),
+    channels: parseJsonStringList(row.channels_json),
     minVersion: row.min_version,
     maxVersion: row.max_version,
     ownerSubject,

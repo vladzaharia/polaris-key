@@ -5,8 +5,8 @@
 
 import { vi } from "vitest";
 import { render } from "@testing-library/react";
+import type { QueryClient } from "@tanstack/react-query";
 import { App } from "../src/App.js";
-import { resetCache } from "../src/context.js";
 import { setLoginRedirectForTests, type Me } from "../src/api.js";
 import { resetRouterForTests } from "../src/console/router.js";
 
@@ -164,6 +164,8 @@ export interface BootOptions {
   perProduct?: Record<string, Enablement | undefined>;
   me?: Partial<Me>;
   extra?: Record<string, unknown>;
+  /** The query client to mount with (to share a cache with another tree); the app's own by default. */
+  queryClient?: QueryClient;
 }
 
 /** Mount the console at `hash` with a scripted backend. */
@@ -233,7 +235,7 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
     };
   }
   const log = mockFetch(routes);
-  render(<App />);
+  render(<App queryClient={opts.queryClient} />);
   return log;
 }
 
@@ -241,7 +243,6 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
 export function resetConsole(): void {
   window.location.hash = "";
   window.localStorage.clear();
-  resetCache();
   resetRouterForTests();
   setLoginRedirectForTests(() => undefined);
   document.title = "";

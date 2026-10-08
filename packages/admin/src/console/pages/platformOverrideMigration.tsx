@@ -56,12 +56,11 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { toast } from "../../ui/toast.js";
 import { EntityLink } from "../components/EntityLink.js";
-import { PageHeader } from "../components/PageHeader.js";
+import { PageHeader } from "../../ui/PageHeader.js";
 import { useProducts } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { useOverrideMigration } from "../data/overrideMigration.js";
 import { qk } from "../data/queries.js";
-import { queryClient } from "../data/queryClient.js";
 import { r } from "../routes.js";
 import { SettingsRow, SettingsSection } from "../templates/Settings.js";
 import { intentOf } from "./core/confirmGate.js";
@@ -1100,13 +1099,10 @@ function ReportSection({
 }): React.ReactElement {
   const [product, setProduct] = React.useState<string | null>(null);
   const [downloading, setDownloading] = React.useState(false);
-  const report = useQuery(
-    {
-      queryKey: qk.overrideMigrationReport(product ?? ""),
-      queryFn: () => api.overrideMigrationReport(product ?? undefined),
-    },
-    queryClient,
-  );
+  const report = useQuery({
+    queryKey: qk.overrideMigrationReport(product ?? ""),
+    queryFn: () => api.overrideMigrationReport(product ?? undefined),
+  });
   const columns = React.useMemo(
     () => reportColumns<OverrideMigrationStoredRow>(),
     [],

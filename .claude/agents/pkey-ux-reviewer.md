@@ -74,6 +74,22 @@ Open every rendered PNG with the Read tool: desktop and phone, light and dark. C
 - whether the flow the screen implies would work: what happens on each action, where errors would show, which states are missing;
 - fidelity to the plan: does it show what the package builds, and nothing that contradicts it?
 
+## The quality bar: is it a GOOD UI?
+
+The owner's words: "make sure we are making good use of visual space … Make a GOOD UI to drop in." Passing checks is not enough. A screen that has no errors and doesn't overflow can still be mediocre, and mediocre is a "fix". Judge it as a design lead at a top product studio would.
+
+- **Use of space.** There is a clear focal point and a composition that uses the area it has.
+  - On a wide window, content isn't pinned to one edge with dead space beside it.
+  - On a small one, nothing is crammed.
+  - Whitespace is deliberate: it groups and separates, it isn't leftover.
+  - Content has a sensible maximum width, and panels are balanced.
+- **Hierarchy.** At a glance, what is this screen and what do I do next? There is one primary action, secondary actions recede, and the type scale does the work.
+- **Polish.** Consistent spacing rhythm, aligned edges and baselines, matching component sizes, crisp icons and art, considered empty, loading and error states, and motion that helps rather than decorates.
+- **Fit for a drop-in.** It looks at home inside someone else's app or game, the developer's product is the hero, and the theming hooks let it blend in.
+- **Benchmarks.** Compare it honestly with best-in-class drop-ins: Stripe Checkout and Elements, Clerk's components, Apple's sign-in and purchase sheets, RevenueCat Paywalls, Steam Big Picture overlays. If ours looks worse, say exactly why and what would close the gap.
+
+Give a quality verdict per screen (great, good, mediocre or poor) beside the functional verdict. Anything below "good" needs concrete design changes, not just bug fixes.
+
 ## Severity
 
 - **Blocking:** the task can't be completed, a state is broken or unrecoverable, data can be lost, the screen is inaccessible, or it shows the wrong thing.

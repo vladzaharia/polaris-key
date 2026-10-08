@@ -5,7 +5,7 @@
 | Phase       | A: Admin: store provisioning (storefronts)                                                                                                           |
 | Size        | 2–3 engineer-weeks                                                                                                                                   |
 | Depends on  | [A-18a](A-18a-storefront-adapter-layer.md), [A-18b](A-18b-listing-model.md), [F-11](F-11-console-feeds.md)                                           |
-| Unblocks    | [ST-13](ST-13-listing-in-hub.md), [PS-06](PS-06-console-polaris-key-storefront.md)                                                                   |
+| Unblocks    | [PS-06](PS-06-console-polaris-key-storefront.md)                                                                                                     |
 | Role        | `pkey-implementer`                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                   |
 | Gates       | docs help-link drift gate; console CSP parity (`adminCspParity`, the CSP e2e); rule 10 (narrative-only admin routes); THREAT-MODEL (admin mutations) |

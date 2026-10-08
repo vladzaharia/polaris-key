@@ -144,7 +144,7 @@ export function ProductSwitcher({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-pk-md animate-pk-in"
+          className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-border bg-surface-overlay p-1 text-fg shadow-elevation-2 animate-pk-in"
         >
           <Command label="Find a product" shouldFilter={false} loop>
             <Command.Input
@@ -152,7 +152,7 @@ export function ProductSwitcher({
               onValueChange={setQuery}
               placeholder="Find a product…"
               aria-label="Find a product"
-              className="mb-1 w-full rounded-sm border border-input bg-transparent px-2 py-1.5 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+              className="mb-1 w-full rounded-sm border border-border-strong bg-transparent px-2 py-1.5 text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
             />
             <Command.List label="Products" className="max-h-72 overflow-y-auto">
               <Command.Empty className="px-2 py-3 text-sm text-fg-muted">

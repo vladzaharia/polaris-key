@@ -1,16 +1,27 @@
 # ST-24 Settings audit retention: latest row per setting kept beyond 180 days, NDJSON history export
 
-| Field       | Value                                                                   |
-| ----------- | ----------------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 5: governance and environments) |
-| Size        | 0.3–0.4 engineer-weeks                                                  |
-| Depends on  | [ST-04](ST-04-settings-resolver.md)                                     |
-| Unblocks    | none                                                                    |
-| Role        | `pkey-implementer`                                                      |
-| Plan mode   | no                                                                      |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`)                                     |
-| Human input | none                                                                    |
-| Repo        | `vladzaharia/polaris-key`                                               |
+| Field       | Value                                                                                 |
+| ----------- | ------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 5: governance and environments) |
+| Size        | 0.3–0.4 engineer-weeks                                                                |
+| Depends on  | none                                                                                  |
+| Unblocks    | none                                                                                  |
+| Role        | `pkey-implementer`                                                                    |
+| Plan mode   | no                                                                                    |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`)                                                   |
+| Human input | none                                                                                  |
+| Repo        | `vladzaharia/polaris-key`                                                             |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [P0-18](P0-18-table-ownership-owner-stores-one-audit.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [P0-18](P0-18-table-ownership-owner-stores-one-audit.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Keep-latest-per-setting retention and NDJSON export are properties of the one audit writer.
+
+- Dependencies cleared on closing (they were ST-04), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

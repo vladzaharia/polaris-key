@@ -44,11 +44,14 @@ import { errorResponse, json } from "../../../core/errors.js";
 import { ciActor } from "../../../core/ciScope.js";
 import type { CiTokenRecord } from "../../../core/publisher.js";
 import { appendAudit } from "../../../core/data.js";
-import type { Db, DbStatement } from "../../../core/platform.js";
-import { randomId } from "../../../core/platform.js";
+import {
+  randomId,
+  sha256Hex,
+  type Db,
+  type DbStatement,
+} from "../../../core/platform.js";
 import { bumpReleaseGeneration } from "../ghCache.js";
 import {
-  sha256HexOfAscii,
   type RecordRefusalReason,
   type VerifiedRecordJws,
 } from "../records.js";
@@ -285,7 +288,7 @@ export async function handleRevocationSubmit(
       "revocation-body",
       "the revocation's body is unusable: deliverable must be a pack id, revokes a record hash, replacement absent or {sha256 ≠ revokes, seq, version}, and reason 1–512 bytes (plans/P4-13.md §2.3).",
     );
-  const recordSha256 = await sha256HexOfAscii(shared.jws);
+  const recordSha256 = await sha256Hex(shared.jws);
   const version = shared.payload.version as string;
   const seq = shared.payload.seq as number;
 

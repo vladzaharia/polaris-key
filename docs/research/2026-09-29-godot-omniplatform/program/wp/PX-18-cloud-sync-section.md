@@ -1,16 +1,26 @@
-# PX-18 Cloud Sync section: `CloudSyncCard` on the product page, TOC entry, ⌘K action, export and delete; absent for products without the service
+# PX-18 Portal Cloud Sync section (absorbs PX-W11)
 
 | Field       | Value                                                                                                                                                                                    |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [PX-04](PX-04-product-page-today.md), [PX-W11](PX-W11-cloud-sync-api.md)                                                                                                                 |
-| Unblocks    | none                                                                                                                                                                                     |
+| Depends on  | [PX-04](PX-04-product-page-today.md), [U-05](U-05-cloud-sync-do.md), [U-12](U-12-privacy-settings-portal.md)                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                       |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track G, Managed config and Cloud Sync](../../../2026-10-07-dx-consolidation/tracks.md#g-managed-config-and-cloud-sync)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Absorbs PX-W11: the portal Cloud Sync section's API and CloudSyncCard; one card component shared with U-11a.
+
+- Title: was "Cloud Sync section: `CloudSyncCard` on the product page, TOC entry, ⌘K action, export and delete; absent for products without the service".
+- Depends on: added U-05 and U-12; removed PX-W11.
+- Absorbs PX-W11: One portal Cloud Sync package (API and card). Its 'not on Identity' note was wrong.
 
 ## Goal
 

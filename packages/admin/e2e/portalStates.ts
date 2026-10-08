@@ -5,6 +5,7 @@ import {
   identityOn,
   profileRoutes,
   samRoutes,
+  tidewaterInstallSources,
   type PortalScenario,
 } from "./portalFixtures.js";
 
@@ -739,6 +740,25 @@ export const SHIPPED: ShippedState[] = [
     ready: async (p) => {
       await h1(p, "Tidewater Studio");
       await p.getByRole("heading", { name: /Package access/ }).waitFor();
+    },
+  },
+  {
+    // P0-48: Get it with the download page's other ways to install, each under its platform:
+    // Homebrew (macOS), Scoop (Windows), AltStore (iPhone and iPad), F-Droid (Android), with the
+    // Worker's QR codes on a computer.
+    section: "4.20",
+    id: "product-install-sources",
+    title: "Product page, Get it with other ways to install (Tidewater Studio)",
+    scenario: "three",
+    path: "/#/p/tidewater",
+    routes: {
+      "/api/products/tidewater/downloads": { body: tidewaterInstallSources() },
+    },
+    ready: async (p) => {
+      await h1(p, "Tidewater Studio");
+      await p
+        .getByRole("list", { name: "Other ways to install on Android" })
+        .waitFor();
     },
   },
   {

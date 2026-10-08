@@ -4,13 +4,24 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                            |
 | Size        | 0.4–0.6 engineer-weeks                                                                                                                                             |
-| Depends on  | [PX-W13](PX-W13-passthrough-metadata.md), [I-08](I-08-app-passthrough.md), [I-07](I-07-login-card-email.md)                                                        |
-| Unblocks    | [UK-44](UK-44-sdk-signin-hints.md)                                                                                                                                 |
+| Depends on  | none                                                                                                                                                               |
+| Unblocks    | none                                                                                                                                                               |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                              |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/PX-W18.md` first; nothing is built before a human approves it                                                               |
 | Gates       | plan mode; rule 10 (OpenAPI + `routeCoverage`); transcripts (`gen:transcripts`, Swift and Godot mirrors); `features.json` + `gen:constants`; THREAT-MODEL; workerd |
 | Human input | approval of `plans/PX-W18.md`                                                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                          |
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [I-08](I-08-app-passthrough.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [I-08](I-08-app-passthrough.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Same pushed request and authorize route: hints become login_hint on the OAuth-shaped authorize, one wire event not two.
+
+- Dependencies cleared on closing (they were PX-W13, I-08 and I-07), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

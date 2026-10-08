@@ -1,16 +1,25 @@
-# PX-09 Get it, complete: server detection, Change platform, Extras, Also yours on, phone actions, Email me the download, public link-out, R2 downloads
+# PX-09 Get it: every channel action per platform
 
-| Field       | Value                                                                                                                                                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
-| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [PX-04](PX-04-product-page-today.md), [PX-W2](PX-W2-downloads-stores.md), [PX-W3](PX-W3-licensed-r2-downloads.md), [PX-W7](PX-W7-emails.md)                                              |
-| Unblocks    | [PX-19](PX-19-portal-docs.md)                                                                                                                                                            |
-| Role        | `pkey-implementer`                                                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                                                       |
-| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
-| Human input | none                                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                                                                                                                           |
+| Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                                                                                                               |
+| Depends on  | [PX-04](PX-04-product-page-today.md), [PX-W2](PX-W2-downloads-stores.md), [PX-W3](PX-W3-licensed-r2-downloads.md), [PX-W7](PX-W7-emails.md), [A-26](A-26-customer-channel-actions.md), [HA-09](HA-09-portal-mirrored-downloads.md), [P0-35](P0-35-vocabularies-as-data-platforms.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                                                                                                                               |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                                                                                                                                   |
+| Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components                                                                                             |
+| Human input | none                                                                                                                                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                            |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Every applicable channel per platform from A-26's customer channel actions: downloads, store links, install sources and step-by-step package-manager and package-feed setup. Shared platform vocabulary (P0-35).
+
+- Title: was "Get it, complete: server detection, Change platform, Extras, Also yours on, phone actions, Email me the download, public link-out, R2 downloads".
+- Depends on: added A-26, HA-09 and P0-35.
 
 ## Goal
 

@@ -4,6 +4,9 @@ import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { errorResponse, json } from "./core/errors.js";
 import { pk } from "./kv.js";
+import { hexDecode } from "./platform/bytes.js";
+import { constantTimeEqualBytes } from "./platform/compare.js";
+import { hmacSha256, importHmacKey } from "./platform/hash.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
 import { manifestIngestFor } from "./core/registry.js";
 import { systemResyncRefusal } from "./core/settingsClaims.js";
@@ -69,24 +72,6 @@ interface ReleaseEventResult {
   packSets?: { ok: boolean; reason?: string; message?: string; sets?: number };
 }
 
-function hexToBytes(hex: string): Uint8Array | null {
-  if (!/^[0-9a-f]+$/i.test(hex) || hex.length % 2 !== 0) return null;
-  const out = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < out.length; i++) {
-    const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-    if (!Number.isFinite(byte)) return null;
-    out[i] = byte;
-  }
-  return out;
-}
-
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
-  return diff === 0;
-}
-
 async function verifySignature(
   secret: string,
   body: Uint8Array,
@@ -94,18 +79,9 @@ async function verifySignature(
 ): Promise<boolean> {
   const m = header?.match(/^sha256=([0-9a-f]{64})$/i);
   if (!m || !m[1]) return false;
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signed = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, body as BufferSource),
-  );
-  const presented = hexToBytes(m[1]);
-  return presented ? timingSafeEqual(signed, presented) : false;
+  const signed = await hmacSha256(await importHmacKey(secret), body);
+  const presented = hexDecode(m[1]);
+  return presented ? constantTimeEqualBytes(signed, presented) : false;
 }
 
 function changedPaths(payload: PushPayload): string[] {

@@ -38,6 +38,8 @@
 import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
 import { notFound } from "./errors.js";
+import { base64Encode, hexDecode, hexEncode } from "../platform/bytes.js";
+import { sha256Hex } from "../platform/hash.js";
 import { isBytesHost } from "./bytesHostname.js";
 import { peekStream, sniffContentType, SNIFF_BYTES } from "./sniff.js";
 
@@ -59,7 +61,8 @@ export class BlobKeyError extends Error {
   }
 }
 
-function hex(value: string, what: string): string {
+/** `value`, when it is 64 lower-case hex characters (a SHA-256); else a `BlobKeyError`. */
+function checkHex64(value: string, what: string): string {
   if (!HEX64.test(value))
     throw new BlobKeyError(`${what} must be 64 lowercase hex characters`);
   return value;
@@ -76,12 +79,12 @@ function prefix(opts?: GatedOption): string {
 
 /** `blobs/sha256/<hex>` (or `gated/blobs/sha256/<hex>`). */
 export function blobKey(sha256: string, opts?: GatedOption): string {
-  return `${prefix(opts)}blobs/sha256/${hex(sha256, "sha256")}`;
+  return `${prefix(opts)}blobs/sha256/${checkHex64(sha256, "sha256")}`;
 }
 
 /** `bundles/sha256/<hex>` (or `gated/bundles/sha256/<hex>`). */
 export function bundleKey(sha256: string, opts?: GatedOption): string {
-  return `${prefix(opts)}bundles/sha256/${hex(sha256, "sha256")}`;
+  return `${prefix(opts)}bundles/sha256/${checkHex64(sha256, "sha256")}`;
 }
 
 /** `deltas/<from>/<to>.<method>` (or under `gated/`). */
@@ -93,7 +96,7 @@ export function deltaKey(
 ): string {
   if (!METHOD.test(method))
     throw new BlobKeyError("delta method must match [a-z0-9][a-z0-9-]{0,31}");
-  return `${prefix(opts)}deltas/${hex(fromSha256, "fromSha256")}/${hex(toSha256, "toSha256")}.${method}`;
+  return `${prefix(opts)}deltas/${checkHex64(fromSha256, "fromSha256")}/${checkHex64(toSha256, "toSha256")}.${method}`;
 }
 
 /** `staging/<product>/<ticketId>/<hex>` — the only prefix CI credentials can write (P2-02). */
@@ -106,7 +109,7 @@ export function stagingKey(
     throw new BlobKeyError("product must be a product slug");
   if (!TICKET.test(ticketId))
     throw new BlobKeyError("ticketId must match [A-Za-z0-9_-]{1,128}");
-  return `staging/${product}/${ticketId}/${hex(sha256, "sha256")}`;
+  return `staging/${product}/${ticketId}/${checkHex64(sha256, "sha256")}`;
 }
 
 export type BlobKind = "blob" | "bundle" | "delta";
@@ -168,22 +171,9 @@ export interface Expected {
   size: number;
 }
 
-function hexOf(buf: ArrayBuffer): string {
-  let out = "";
-  for (const b of new Uint8Array(buf)) out += b.toString(16).padStart(2, "0");
-  return out;
-}
-
-function base64OfHex(h: string): string {
-  let bin = "";
-  for (let i = 0; i < h.length; i += 2)
-    bin += String.fromCharCode(parseInt(h.slice(i, i + 2), 16));
-  return btoa(bin);
-}
-
 /** `Repr-Digest` (RFC 9530): a Structured Field byte sequence over the WHOLE representation. */
 export function reprDigest(sha256: string): string {
-  return `sha-256=:${base64OfHex(hex(sha256, "sha256"))}:`;
+  return `sha-256=:${base64Encode(hexDecode(checkHex64(sha256, "sha256"))!)}:`;
 }
 
 type DigestStreamCtor = new (algorithm: string) => WritableStream<
@@ -207,7 +197,7 @@ export async function streamSha256(
   const sink = new Ctor("SHA-256");
   await body.pipeTo(sink);
   return {
-    sha256: hexOf(await sink.digest),
+    sha256: hexEncode(await sink.digest),
     bytes: Number(sink.bytesWritten),
   };
 }
@@ -215,7 +205,7 @@ export async function streamSha256(
 /** The SHA-256 R2 stored for `obj` (`putVerified` writes it), as hex, or null without one. */
 export function checksumHex(obj: R2Object): string | null {
   const c = obj.checksums?.sha256;
-  return c ? hexOf(c) : null;
+  return c ? hexEncode(c) : null;
 }
 
 // ── Writes ──────────────────────────────────────────────────────────────────────────────────
@@ -500,18 +490,6 @@ export type LandUploadResult =
       reason: VerifyRefusal | "bad_key" | "changed" | "conflict" | "rejected";
     };
 
-async function bytesSha256(bytes: Uint8Array): Promise<string> {
-  return hexOf(
-    await crypto.subtle.digest(
-      "SHA-256",
-      bytes.buffer.slice(
-        bytes.byteOffset,
-        bytes.byteOffset + bytes.byteLength,
-      ) as ArrayBuffer,
-    ),
-  );
-}
-
 /**
  * Land bytes a product uploaded through a registry protocol at their locked key and record them
  * (F-23, OCI's blob upload and manifest PUT). The sibling of `promote` for an upload whose hash
@@ -585,7 +563,7 @@ export async function landUpload(
     if (staged === null) {
       const bytes = (source as { bytes: Uint8Array }).bytes;
       if (bytes.byteLength !== expected.size) return "size_mismatch";
-      return (await bytesSha256(bytes)) === expected.sha256
+      return (await sha256Hex(bytes)) === expected.sha256
         ? true
         : "digest_mismatch";
     }

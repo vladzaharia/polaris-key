@@ -33,6 +33,7 @@
  *     `X-Swift-Package-Signature` (§4.4), and in the metadata's `signing` (§4.2.1).
  */
 
+import { sha256Hex } from "../../../../core/platform.js";
 import { blobKey, blobResponse } from "../../../../core/blobs.js";
 import type { ReleaseCatalog } from "../../../../core/hooks.js";
 import {
@@ -498,13 +499,7 @@ const identifiers: SwiftEndpoint = {
     }
     if (found.length === 0) return registryNotFound("swift");
     const body = JSON.stringify({ identifiers: found.sort() });
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(body),
-    );
-    const sha256 = [...new Uint8Array(digest)]
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    const sha256 = await sha256Hex(body);
     return new Response(req.method === "HEAD" ? null : body, {
       status: 200,
       headers: {

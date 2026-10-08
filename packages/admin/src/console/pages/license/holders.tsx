@@ -25,7 +25,6 @@ import {
   type LicenseSummary,
 } from "../../../api.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { r } from "../../routes.js";
 import { Link } from "../../router.js";
 
@@ -227,39 +226,30 @@ export async function fetchLicenseBatches(
 }
 
 export function useLicenseBatches(slug: string) {
-  return useQuery(
-    {
-      queryKey: qk.licenseBatches(slug),
-      queryFn: () => fetchLicenseBatches(slug),
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.licenseBatches(slug),
+    queryFn: () => fetchLicenseBatches(slug),
+  });
 }
 
 /** One batch; `null` reads nothing (a licence created on its own). */
 export function useLicenseBatch(slug: string, id: string | null) {
-  return useQuery(
-    {
-      queryKey: qk.licenseBatch(slug, id ?? ""),
-      queryFn: () => api.licenseBatch(slug, id ?? ""),
-      enabled: id !== null,
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.licenseBatch(slug, id ?? ""),
+    queryFn: () => api.licenseBatch(slug, id ?? ""),
+    enabled: id !== null,
+  });
 }
 
 // ── Holder moves (I-12's relink tool, keyed by the licence) ─────────────────────────────────
 
 export function useLicenseHolderMoves(slug: string, id: string) {
-  return useQuery(
-    {
-      queryKey: qk.licenseHolderMoves(slug, id),
-      queryFn: () => api.licenseHolderMoves(slug, id),
-      // An older Worker has no such route: no moves to undo, nothing to retry.
-      retry: false,
-    },
-    queryClient,
-  );
+  return useQuery({
+    queryKey: qk.licenseHolderMoves(slug, id),
+    queryFn: () => api.licenseHolderMoves(slug, id),
+    // An older Worker has no such route: no moves to undo, nothing to retry.
+    retry: false,
+  });
 }
 
 /** The move an operator can still undo: the newest, while its window is open. */
@@ -267,16 +257,4 @@ export function undoableMove(
   moves: LicenseHolderMove[] | undefined,
 ): LicenseHolderMove | null {
   return moves?.find((m) => m.undoable) ?? null;
-}
-
-/** "Made floating", "Reassigned", "Relinked": a move in words. */
-export function moveVerb(kind: LicenseHolderMove["kind"]): string {
-  switch (kind) {
-    case "floating":
-      return "Made floating";
-    case "reassign":
-      return "Reassigned";
-    default:
-      return "Moved to another user";
-  }
 }

@@ -12,6 +12,17 @@
 | Human input | a code-signing certificate for MSIX test packages; test devices (Windows 10/11 and a Linux desktop with Flatpak)                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                           |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive when a product declares msix-optional or flatpak-ext. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> MSIX and Flatpak pack transports. Revive when a product declares msix-optional or flatpak-ext.
+
+- Optional now (was required).
+
 ## Goal
 
 A pack can ship as an MSIX optional package or a Flatpak extension: `pkey transport msix-optional` and `pkey transport flatpak-ext` generate the package manifests around a pack, and the Node and Python `msix-optional` and `flatpak-ext` transports find the installed package or extension, verify the pack marker and hand the payload to the pack engine.

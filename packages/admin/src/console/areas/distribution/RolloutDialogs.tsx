@@ -9,7 +9,11 @@
  *
  * **Halt everywhere…** (UX-08, EXPERIENCE.md O2) halts every rollout of one release in one L2
  * confirm. A rollout that cannot be halted here (already halted, complete, or a store's mirror) is
- * listed as a disabled row with the reason, never a checked box (EXPERIENCE.md §7.1).
+ * listed as a disabled row with the reason, never a checked box (EXPERIENCE.md §7.1). A store's
+ * row says what to do in the store under its channel: halt the staged rollout in Google Play,
+ * pause the phased release in App Store Connect (P0-47; copy only, A-24 halts them from here).
+ * When every live rollout is a store's, the dialog still opens, with only the store rows and the
+ * confirm disabled, so the operator learns where to stop each one.
  */
 
 import * as React from "react";
@@ -590,13 +594,30 @@ export function canHalt(r: Rollout | MatrixRolloutDto): boolean {
   return allowedVerbs(r).includes("halt");
 }
 
-/** Why a row is not offered: "Already halted", "Complete", "Halt it in Google Play". */
+/** What stopping a mirrored rollout is called in its store's own console (P0-47). */
+const STORE_HALT: Record<string, string> = {
+  play: "Halt the staged rollout in Google Play",
+  asc: "Pause the phased release in App Store Connect",
+};
+
+/**
+ * What to do in the store for a live rollout this console cannot halt (a store's mirror), or null.
+ * "Halt the staged rollout in Google Play", "Pause the phased release in App Store Connect".
+ */
+export function storeHalt(r: Rollout | MatrixRolloutDto): string | null {
+  if (canHalt(r) || !r.mirrored) return null;
+  if (r.state === "halted" || r.state === "complete") return null;
+  return (
+    STORE_HALT[r.source] ?? `Halt it in ${SOURCE_NAMES[r.source] ?? r.source}`
+  );
+}
+
+/** Why a row is not offered: "Already halted", "Complete", or what to do in the store. */
 export function haltBlocker(r: Rollout | MatrixRolloutDto): string | null {
   if (canHalt(r)) return null;
   if (r.state === "halted") return "Already halted";
   if (r.state === "complete") return "Complete";
-  if (r.mirrored) return `Halt it in ${SOURCE_NAMES[r.source] ?? r.source}`;
-  return "Can't be halted";
+  return storeHalt(r) ?? "Can't be halted";
 }
 
 /** The share a row shows on the right: "20 %", "5 % · paused". */
@@ -675,24 +696,44 @@ function HaltEverywhereConfirm({
   const where = (r: HaltRow): string =>
     `${r.outletName} · ${r.rollout.channel}`;
   const n = targets.length;
+  const inStores = rows.some((r) => storeHalt(r.rollout) !== null);
+  // Every live rollout is a store's: nothing halts here, so the dialog only says where to.
+  const storesOnly = inStores && !rows.some((r) => canHalt(r.rollout));
+  const shown = storesOnly
+    ? rows.filter((r) => storeHalt(r.rollout) !== null)
+    : rows;
   return (
     <ConfirmDialog
       open
       onOpenChange={(o) => !o && onClose()}
       intent="danger"
-      title={`Halt ${version} everywhere?`}
-      description={
-        previous
-          ? `Devices that haven't updated stay on ${previous}. Devices already on ${version} keep it.`
-          : `Devices already on ${version} keep it.`
+      title={
+        storesOnly
+          ? `Halt ${version} in its stores`
+          : `Halt ${version} everywhere?`
       }
-      consequences={[
-        "Takes effect on each device's next feed check.",
-        previous
-          ? `Resume per outlet from Rollouts, or roll back to ${previous}.`
-          : "Resume per outlet from Rollouts.",
-      ]}
+      description={
+        storesOnly
+          ? `No rollout of ${version} can be halted here. Stop each one in its store, as shown below.`
+          : previous
+            ? `Devices that haven't updated stay on ${previous}. Devices already on ${version} keep it.`
+            : `Devices already on ${version} keep it.`
+      }
+      consequences={
+        storesOnly
+          ? []
+          : [
+              "Takes effect on each device's next feed check.",
+              ...(inStores
+                ? ["Stop store rollouts in each store, as shown below."]
+                : []),
+              previous
+                ? `Resume per outlet from Rollouts, or roll back to ${previous}.`
+                : "Resume per outlet from Rollouts.",
+            ]
+      }
       confirmLabel={n === 1 ? "Halt 1 rollout" : `Halt ${n} rollouts`}
+      cancelLabel={storesOnly ? "Done" : undefined}
       confirmDisabled={n === 0}
       describeError={(e) => {
         if (e instanceof PartialHaltError) {
@@ -732,9 +773,32 @@ function HaltEverywhereConfirm({
         aria-label="Rollouts"
         className="divide-y divide-border overflow-hidden rounded-lg border border-border"
       >
-        {rows.map((row) => {
+        {shown.map((row) => {
           const r = row.rollout;
           const key = rowKey(r);
+          const inStore = storeHalt(r);
+          if (inStore)
+            // What to do in the store, as a second line under the channel.
+            return (
+              <li
+                key={key}
+                aria-disabled="true"
+                className="flex min-h-11 items-center justify-between gap-3 bg-surface-sunken px-3 py-2 text-fg-muted"
+              >
+                <span className="flex min-w-0 items-start gap-2">
+                  <Lock aria-hidden className="mt-0.5 size-4 shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block break-words">{where(row)}</span>
+                    <span className="block break-words text-xs text-fg">
+                      {inStore}
+                    </span>
+                  </span>
+                </span>
+                <span className="shrink-0 text-right tabular-nums">
+                  {rowShare(r)}
+                </span>
+              </li>
+            );
           const blocker = haltBlocker(r);
           if (blocker)
             return (

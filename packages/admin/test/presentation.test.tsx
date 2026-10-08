@@ -9,7 +9,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { AssetUsageDto, HostedAssetDto } from "../src/api.js";
-import { expectNoAxeViolations, renderAt, resetCore } from "./coreTestUtils.js";
+import {
+  expectNoAxeViolations,
+  renderAt,
+  resetCore,
+  testQueryClient,
+} from "./coreTestUtils.js";
 
 const fns = vi.hoisted(() => ({
   hostedAssets: vi.fn(),
@@ -38,7 +43,6 @@ vi.mock("../src/api.js", async () => {
 const { ApiError } = await import("../src/api.js");
 const { PresentationPage, slotLabel, statusOf } =
   await import("../src/console/pages/core/Presentation.js");
-const { queryClient } = await import("../src/console/data/queryClient.js");
 const { qk } = await import("../src/console/data/queries.js");
 
 const NOW = 1_800_000_000;
@@ -237,7 +241,7 @@ describe("Core → Presentation", () => {
   });
 
   it("uploads through mutate and refreshes the slots, the registry, the product and Home's summary", async () => {
-    const spy = vi.spyOn(queryClient, "invalidateQueries");
+    const spy = vi.spyOn(testQueryClient(), "invalidateQueries");
     fns.uploadHostedAsset.mockResolvedValue({
       asset: asset({ origin: "console" }),
     });
@@ -387,7 +391,7 @@ describe("Core → Presentation → Hosting and quotas (HA-10)", () => {
   });
 
   it("saves a quota through mutate, with the version it was read at, and Reset returns it to the platform", async () => {
-    const spy = vi.spyOn(queryClient, "invalidateQueries");
+    const spy = vi.spyOn(testQueryClient(), "invalidateQueries");
     fns.saveAssetSetting.mockResolvedValue(usage());
     fns.resetAssetSetting.mockResolvedValue(usage());
     mount();

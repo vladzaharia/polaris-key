@@ -100,7 +100,7 @@ export function ProductHeader({
           <h1
             ref={headingRef}
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit text-[1.75rem] font-bold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit text-headline font-bold leading-tight text-fg-strong outline-none desk:text-4xl"
           >
             {product.name}
           </h1>

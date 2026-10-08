@@ -12,6 +12,15 @@
 | Human input | none                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                     |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive with a product ask. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> WidgetKit, Live Activities and App Intents. Revive with a product ask.
+
 ## Goal
 
 The WidgetKit surface exists over the existing core, with no second state machine, and is baselined in both themes.

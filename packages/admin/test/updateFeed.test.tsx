@@ -10,7 +10,19 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import { resetConsole } from "./consoleHarness.js";
-import { apiError, bootWith, FEED, P, writes } from "./distributionFixture.js";
+import {
+  apiError,
+  bootWith,
+  FEED,
+  P,
+  RELEASES,
+  writes,
+} from "./distributionFixture.js";
+import {
+  endpointRows,
+  shippedPlatforms,
+  updaterNote,
+} from "../src/console/areas/update/FeedPage.js";
 
 const axe = configureAxe({
   rules: { "color-contrast": { enabled: false }, region: { enabled: false } },
@@ -344,6 +356,86 @@ describe("Update → Feed", () => {
     ).toBeTruthy();
   });
 
+  it("lists only the updaters of the platforms the releases ship (P0-47)", async () => {
+    // A Windows-only product: WinSparkle, never a Sparkle appcast.
+    const build = (platform: string) => ({
+      buildId: `b-${platform}`,
+      platform,
+      arch: "x86_64",
+      format: null,
+      buildNumber: null,
+      minOs: null,
+    });
+    bootWith(HASH, {
+      [P("/release/releases")]: {
+        ...RELEASES,
+        releases: RELEASES.releases.map((r) => ({
+          ...r,
+          builds: [build("windows")],
+        })),
+      },
+    });
+    const section = await screen.findByRole("region", { name: "Endpoints" });
+    const list = within(section).getByRole("list", { name: "Feed endpoints" });
+    expect(
+      await within(list).findByText(/\/djdl\/update\/beta\/winsparkle\.xml$/),
+    ).toBeTruthy();
+    expect(within(list).queryByText(/appcast\.xml$/)).toBeNull();
+    expect(
+      within(list).getByText(/\/djdl\/update\/beta\/feed\.jws$/),
+    ).toBeTruthy();
+    // It names only what is missing and when it appears (never "listed for the platforms").
+    expect(section.textContent).toContain(
+      "Point an app at discovery; it finds the rest. Sparkle appears once a release ships for macOS.",
+    );
+    expect(section.textContent).not.toMatch(/platforms your releases ship/);
+  });
+
+  it("shows skeleton rows under discovery while the releases load (P0-47)", async () => {
+    bootWith(HASH);
+    // Hold the release list: the section knows discovery and the version check, nothing else.
+    const answer = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input instanceof Request ? input.url : input).includes(
+        "/release/releases",
+      )
+        ? new Promise<Response>(() => {})
+        : answer(input, init),
+    );
+    const section = await screen.findByRole("region", { name: "Endpoints" });
+    const list = within(section).getByRole("list", { name: "Feed endpoints" });
+    expect(list.getAttribute("aria-busy")).toBe("true");
+    expect(within(list).getByText(/\.well-known\/polaris\.json$/)).toBeTruthy();
+    expect(within(list).getByText(/\/update\/version$/)).toBeTruthy();
+    expect(within(list).queryByText(/feed\.jws$|appcast\.xml$/)).toBeNull();
+    expect(list.querySelectorAll(".pk-skeleton").length).toBeGreaterThan(0);
+  });
+
+  it("says so in one line when the release list fails, and lists every updater (P0-47)", async () => {
+    let fail = true;
+    bootWith(HASH, {
+      [P("/release/releases")]: () =>
+        fail ? apiError(500, "internal") : RELEASES,
+    });
+    const section = await screen.findByRole("region", { name: "Endpoints" });
+    expect(
+      await within(section).findByText(
+        /Your releases didn.t load, so every updater feed is listed for the stable channel only\./,
+      ),
+    ).toBeTruthy();
+    const list = within(section).getByRole("list", { name: "Feed endpoints" });
+    expect(
+      within(list).getByText(/\/update\/stable\/winsparkle\.xml$/),
+    ).toBeTruthy();
+    fail = false;
+    await userEvent.click(
+      within(section).getByRole("button", { name: "Try again" }),
+    );
+    await waitFor(() =>
+      expect(within(section).queryByText(/didn.t load/)).toBeNull(),
+    );
+  });
+
   it("passes axe", async () => {
     bootWith(HASH);
     await section("Artifact policy");
@@ -353,5 +445,90 @@ describe("Update → Feed", () => {
         (v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`,
       ),
     ).toEqual([]);
+  });
+});
+
+describe("Update → Feed endpoints (P0-47)", () => {
+  const store = (platforms: (string | null)[], files: (string | null)[] = []) =>
+    ({
+      releases: [
+        {
+          ...RELEASES.releases[0]!,
+          builds: platforms.map((platform, i) => ({
+            buildId: `b${i}`,
+            platform,
+            arch: "arm64",
+            format: null,
+            buildNumber: null,
+            minOs: null,
+          })),
+          artifacts: files.map((platform, i) => ({
+            artifactId: `a${i}`,
+            name: `f${i}`,
+            kind: null,
+            platform,
+            arch: null,
+            sizeBytes: null,
+            access: null,
+            buildId: null,
+            role: null,
+            sha256: null,
+            locations: null,
+          })),
+        },
+      ],
+      channels: [],
+      floors: [],
+    }) as Parameters<typeof shippedPlatforms>[0];
+
+  it("reads the shipped platforms from builds and files, never a pack's null", () => {
+    expect(shippedPlatforms(store(["macos", null], ["windows", null]))).toEqual(
+      ["macos", "windows"],
+    );
+    expect(shippedPlatforms(undefined)).toEqual([]);
+  });
+
+  it("names only the updaters it leaves out, and when they appear", () => {
+    expect(updaterNote([])).toBeNull();
+    expect(updaterNote(["macos", "windows"])).toBeNull();
+    expect(updaterNote(["linux"])).toBe(
+      "Sparkle and WinSparkle appear once a release ships for macOS or Windows.",
+    );
+    expect(updaterNote(["macos"])).toBe(
+      "WinSparkle appears once a release ships for Windows.",
+    );
+    expect(updaterNote(["windows", "linux"])).toBe(
+      "Sparkle appears once a release ships for macOS.",
+    );
+  });
+
+  it("lists Sparkle for macOS and WinSparkle for Windows, and every updater while none is known", () => {
+    const paths = (platforms: string[]) =>
+      endpointRows(["stable"], platforms).map((r) => r.path);
+    const common = [
+      ".well-known/polaris.json",
+      "update/version",
+      "update/stable/feed.jws",
+    ];
+    expect(paths(["macos"])).toEqual([
+      ".well-known/polaris.json",
+      "update/version",
+      "update/appcast.xml",
+      "update/stable/feed.jws",
+      "update/stable/appcast.xml",
+    ]);
+    expect(paths(["windows"])).toEqual([
+      ...common,
+      "update/stable/winsparkle.xml",
+    ]);
+    expect(paths(["linux", "android"])).toEqual(common);
+    expect(paths([])).toEqual([
+      ".well-known/polaris.json",
+      "update/version",
+      "update/appcast.xml",
+      "update/stable/feed.jws",
+      "update/stable/appcast.xml",
+      "update/stable/winsparkle.xml",
+    ]);
   });
 });

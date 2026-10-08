@@ -35,11 +35,16 @@
  */
 
 import { ErrorCode } from "../../core/errors.js";
+import {
+  b64urlDecode,
+  b64urlEncode,
+  parseJsonColumn,
+} from "../../core/platform.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
 import { adminJson, err, readBody } from "../../core/adminApi.js";
 import { isRedirect, readCappedText } from "../../core/readCapped.js";
-import { listOutlets, parseJsonColumn } from "./outlets.js";
+import { listOutlets } from "./outlets.js";
 import {
   checked,
   credentialCheckAllowed,
@@ -375,22 +380,13 @@ const B64 = /^[A-Za-z0-9+/_-]*={0,2}$/;
 function b64decode(s: string): Uint8Array | null {
   const t = s.replace(/\s+/g, "");
   if (!B64.test(t)) return null;
-  const bare = t.replace(/=+$/, "").replace(/-/g, "+").replace(/_/g, "/");
+  const bare = t.replace(/=+$/, "");
   if (bare.length % 4 === 1) return null;
   try {
-    const bin = atob(bare + "=".repeat((4 - (bare.length % 4)) % 4));
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-    return out;
+    return b64urlDecode(bare);
   } catch {
     return null;
   }
-}
-
-function b64urlEncode(bytes: Uint8Array): string {
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 interface MacaroonPacket {

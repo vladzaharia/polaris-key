@@ -46,7 +46,7 @@ import { StatusPill } from "../../../ui/StatusPill.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { Link, useSearchParam } from "../../router.js";
 import { Panel } from "../../templates/Dashboard.js";

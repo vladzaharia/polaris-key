@@ -111,6 +111,7 @@ import {
   type FeedSettingsView,
   type VersionVerb,
 } from "../lib/feedModel.js";
+import { parseJsonArray, parseJsonObject } from "../../platform/json.js";
 
 /** Which console scope a request is in. */
 export type FeedScope =
@@ -142,28 +143,6 @@ interface PolicyRow {
   version: number;
   updated_at: number;
   updated_by: string | null;
-}
-
-function parseObject(json: string | null | undefined): Record<string, unknown> {
-  if (!json) return {};
-  try {
-    const v: unknown = JSON.parse(json);
-    return v && typeof v === "object" && !Array.isArray(v)
-      ? (v as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
-  }
-}
-
-function parseArray(json: string | null | undefined): unknown[] {
-  if (!json) return [];
-  try {
-    const v: unknown = JSON.parse(json);
-    return Array.isArray(v) ? v : [];
-  } catch {
-    return [];
-  }
 }
 
 function decode(raw: string): string | null {
@@ -299,10 +278,10 @@ function settingsView(
     )
       ? feed.access_mode
       : "entitled",
-    namespace: parseObject(feed.namespace_json),
+    namespace: parseJsonObject(feed.namespace_json) ?? {},
     maxPackageBytes: feed.max_package_bytes,
     upstream: "none",
-    ext: parseObject(feed.ext_json),
+    ext: parseJsonObject(feed.ext_json) ?? {},
     version: feed.version,
     updatedAt: feed.updated_at,
     updatedBy: feed.updated_by,
@@ -877,7 +856,7 @@ interface VersionRow {
 }
 
 function sourceView(json: string) {
-  const s = parseObject(json);
+  const s = parseJsonObject(json) ?? {};
   const kind =
     s.kind === "oidc" ||
     s.kind === "static" ||
@@ -956,7 +935,7 @@ async function packageRecord(
     capabilities: FEED_CAPABILITIES[eco],
     tags,
     versions: rows.map((r) => {
-      const files = parseArray(r.files_json)
+      const files = (parseJsonArray(r.files_json) ?? [])
         .map(fileView)
         .filter((f): f is Record<string, unknown> => f !== null);
       return {

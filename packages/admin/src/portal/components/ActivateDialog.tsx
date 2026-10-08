@@ -853,7 +853,7 @@ export function ConfirmStep({
           </div>
         ) : null}
         <div className="flex items-center gap-3 rounded-md border border-border bg-surface-sunken px-3 py-2.5">
-          <code className="min-w-0 flex-1 font-mono text-[0.8125rem] leading-5 [overflow-wrap:anywhere]">
+          <code className="min-w-0 flex-1 font-mono text-code leading-5 [overflow-wrap:anywhere]">
             <span className="text-fg-subtle">pkey_</span>
             <span className="font-bold text-accent-fg">{p.slug}</span>
             <span className="text-fg-subtle">_</span>
@@ -884,11 +884,22 @@ export function ConfirmStep({
         {notes}
       </DialogBody>
       <DialogFooter>
-        <Button variant="outline" className="font-bold" onClick={onBack}>
+        <Button
+          variant="outline"
+          className="shrink-0 font-bold"
+          onClick={onBack}
+        >
           Back
         </Button>
-        <Button className="font-bold" loading={adding} onClick={onAdd}>
-          {primaryLabel ?? `Add ${p.name}`}
+        {/* A long product name is cut short with an ellipsis rather than spilling out of the
+            button (PS-05 review M5); the name is read in full (the label, the heading above). */}
+        <Button
+          className="min-w-0 font-bold"
+          loading={adding}
+          onClick={onAdd}
+          aria-label={primaryLabel ?? `Add ${p.name}`}
+        >
+          <span className="truncate">{primaryLabel ?? `Add ${p.name}`}</span>
         </Button>
       </DialogFooter>
     </>

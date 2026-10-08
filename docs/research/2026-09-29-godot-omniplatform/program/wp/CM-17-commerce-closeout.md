@@ -2,9 +2,9 @@
 
 | Field       | Value                                                                                                                                                                                                                            |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                                                                                                                   |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)                                                                                                                                                      |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                                                           |
-| Depends on  | [CM-11](CM-11-portal-billing.md), [CM-12](CM-12-console-commerce.md), [CM-13](CM-13-commerce-emails.md), [CM-15](CM-15-sdk-purchase-handoff.md), [CM-16](CM-16-storefront-integration.md)                                        |
+| Depends on  | [CM-11](CM-11-portal-billing.md), [CM-12](CM-12-console-commerce.md), [CM-15](CM-15-sdk-purchase-handoff.md)                                                                                                                     |
 | Unblocks    | [CM-18](CM-18-store-link-out-programmes.md), [CM-19](CM-19-own-account-mode.md)                                                                                                                                                  |
 | Role        | `pkey-implementer`                                                                                                                                                                                                               |
 | Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                                                                                                                                 |
@@ -16,6 +16,14 @@
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Commerce close-out (THREAT-MODEL CM-T1..T11, PRIVACY, PCI SAQ A); developer pages use generated SDK tabs.
+
+- Depends on: removed CM-13 and CM-16.
 
 ## Goal
 

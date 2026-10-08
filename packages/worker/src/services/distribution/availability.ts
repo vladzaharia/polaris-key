@@ -53,6 +53,12 @@
  * and every CI observation is audited.
  */
 
+import {
+  parseJsonColumn,
+  randomId,
+  type Db,
+  type DbStatement,
+} from "../../core/platform.js";
 import { createHash } from "node:crypto";
 import {
   APP_DELIVERABLE_ID,
@@ -61,8 +67,6 @@ import {
   releaseKeyBytes,
   type ParsedManifest,
 } from "@polaris-key/manifest";
-import type { Db, DbStatement } from "../../core/platform.js";
-import { randomId } from "../../core/platform.js";
 import { appendAudit } from "../../core/data.js";
 import { ciActor, type CiPrincipal } from "../../core/ciScope.js";
 import {
@@ -82,7 +86,6 @@ import {
   getOutlet,
   listOutlets,
   listTransports,
-  parseJsonColumn,
   type DistOutletRow,
   type DistTransportRow,
 } from "./outlets.js";

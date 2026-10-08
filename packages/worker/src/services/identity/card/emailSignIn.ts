@@ -42,7 +42,16 @@
  * an hour and 20 a day per recipient, per-IP and per-network hourly caps.
  */
 
-import { hashKey, type Db, type Env } from "../../../core/platform.js";
+import {
+  CARD_RETURN_TO,
+  escapeHtml,
+  hashKey,
+  parseJsonColumn,
+  randomToken,
+  safeReturnTo,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
@@ -68,21 +77,20 @@ import {
   clearAccountRealmCookie,
   readCookie,
 } from "../../../core/accountCookies.js";
-import { escapeHtml } from "../../../core/brandHtml.js";
 import { signIn } from "../accounts/signIn.js";
 import { EMAIL_ISSUER } from "../accounts/repo.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
 import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
-import { randomSecret } from "../portal/accountSessions.js";
 import { finishSignIn } from "./finish.js";
 import {
   cardJson,
+  ACCOUNT_DISABLED_MESSAGE,
+  accountDisabledPage,
   cardPage,
   cardRedirect,
   parseEmail,
   readJsonObject,
   requestPlace,
-  safeReturnTo,
   signInAgainAction,
   utcLabel,
   wrongCodeMessage,
@@ -146,15 +154,6 @@ export async function portalMagicKey(
   return artefactRef("portal-magic", await hashKey(token, env.KEY_HASH_PEPPER));
 }
 
-function parse<T>(raw: string | null): T | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
 /** This browser's live flow, if any. */
 async function currentFlow(
   env: Env,
@@ -163,7 +162,7 @@ async function currentFlow(
   const secret = readCookie(req.headers.get("cookie"), SIGNIN_FLOW_COOKIE);
   if (!secret) return null;
   const ref = await signinFlowRef(env, secret);
-  const record = parse<FlowRecord>(await getArtefact(env, ref));
+  const record = parseJsonColumn<FlowRecord>(await getArtefact(env, ref));
   return record ? { ref, record } : null;
 }
 
@@ -218,7 +217,7 @@ export async function handleSigninEmailStart(
       422,
     );
   }
-  const returnTo = safeReturnTo(req, body.returnTo);
+  const returnTo = safeReturnTo(req, body.returnTo, CARD_RETURN_TO);
   if (body.returnTo !== undefined && body.returnTo !== null && !returnTo) {
     return cardJson(
       { error: "bad_request", message: "invalid return URL" },
@@ -251,11 +250,11 @@ async function openFlow(
   now: number,
 ): Promise<Response> {
   const { email, returnTo } = input;
-  const secret = randomSecret(32);
+  const secret = randomToken(32);
   const ref = await signinFlowRef(env, secret);
   const place = requestPlace(req);
   // The link's address is minted first so the flow can name it: a resend retires it.
-  const token = randomSecret(24);
+  const token = randomToken(24);
   const magicRef = await portalMagicKey(env, token);
   const record: FlowRecord = {
     v: 1,
@@ -510,7 +509,7 @@ async function completeEmailSignIn(
     const inUse = result.status === "join_offer";
     const message = inUse
       ? "A Polaris Key account already uses this email address, but not as a way to sign in. Sign in with the method you used before; you can add this email to that account afterwards."
-      : "This account can't sign in. Contact Polaris Key support.";
+      : ACCOUNT_DISABLED_MESSAGE;
     return answer === "json"
       ? cardJson(
           inUse
@@ -519,17 +518,9 @@ async function completeEmailSignIn(
           inUse ? 409 : 403,
           [clearFlow()],
         )
-      : cardPage(
-          inUse ? 409 : 403,
-          inUse
-            ? { title: "Sign in", heading: message }
-            : {
-                title: "Sign in",
-                heading: "This account can't sign in",
-                body: "<p>Contact Polaris Key support.</p>",
-              },
-          [clearFlow()],
-        );
+      : inUse
+        ? cardPage(409, { title: "Sign in", heading: message }, [clearFlow()])
+        : accountDisabledPage({ signInHref: record.returnTo }, [clearFlow()]);
   }
   const finished = await finishSignIn(
     env,
@@ -598,7 +589,7 @@ export async function handleMagicLanding(
   if (!caps.portalEnabled || !caps.magicEnabled) {
     return signInOffPage();
   }
-  const record = parse<MagicRecord>(
+  const record = parseJsonColumn<MagicRecord>(
     await getArtefact(env, await portalMagicKey(env, token)),
   );
   if (!record) return expiredLinkPage();
@@ -646,7 +637,7 @@ export async function handleMagicConfirm(
   }
   if (!token) return expiredLinkPage();
   // Atomic and single-use: two submissions (or a code and a link) cannot both complete.
-  const record = parse<MagicRecord>(
+  const record = parseJsonColumn<MagicRecord>(
     await consumeArtefact(env, await portalMagicKey(env, token)),
   );
   if (!record) return expiredLinkPage();

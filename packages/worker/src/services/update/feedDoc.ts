@@ -54,13 +54,16 @@ import {
 import { scanStrictJson } from "@polaris-key/jws";
 import { feedClaims, feedContent } from "@polaris-key/client-core/feed";
 import type { ServiceContext } from "../../core/registry.js";
-import type { Db } from "../../core/platform.js";
-import { appSecurityHeaders } from "../../core/platform.js";
+import {
+  appSecurityHeaders,
+  randomId,
+  sha256Hex,
+  type Db,
+} from "../../core/platform.js";
 import { errorResponse, wireError } from "../../core/errors.js";
 import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
 import { signDoc } from "../../core/signing.js";
 import { appendAudit } from "../../core/data.js";
-import { randomId } from "../../core/platform.js";
 import {
   accessModeFor,
   artifactPolicy,
@@ -92,13 +95,6 @@ const PUBLIC_FEED_CACHE = "public, max-age=60, no-transform";
 const GATED_FEED_CACHE = "private, no-store, no-transform";
 
 const enc = new TextEncoder();
-
-async function sha256Hex(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", enc.encode(text));
-  return [...new Uint8Array(buf)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 function harden(res: Response): Response {
   return new Response(res.body, {

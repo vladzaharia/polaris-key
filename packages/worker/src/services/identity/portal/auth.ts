@@ -5,8 +5,15 @@ import {
   ID_TOKEN_MAX_AGE,
 } from "../idToken.js";
 import {
+  brandedHtmlSecurityHeaders,
+  escapeHtml,
   hashKey,
+  isSameOriginNavigation,
+  pkcePair,
   platformOidcConfig,
+  PORTAL_SIGNIN_RETURN_TO,
+  randomToken,
+  safeReturnTo,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -33,6 +40,7 @@ import {
   PLATFORM_SIGNIN_ENDED,
 } from "../accounts/platformMigration.js";
 import { beginProviderSignIn } from "../card/gate.js";
+import { accountDisabledPage } from "../card/http.js";
 import { buildPortalClearCookie, portalSessionFromRequest } from "./session.js";
 import {
   revokeSessionByHash,
@@ -47,11 +55,7 @@ import {
 
 export { portalMagicKey } from "../card/emailSignIn.js";
 import { portalSecurityHeaders } from "./headers.js";
-import {
-  brandedHtmlSecurityHeaders,
-  isSameOriginNavigation,
-} from "../../../core/platform.js";
-import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
+import { renderBrandPage } from "../../../core/brandHtml.js";
 import {
   LINK_FLOW_COOKIE,
   PORTAL_SSO_COOKIE,
@@ -156,11 +160,10 @@ export const signInPage = {
   /** The identity could not be verified. */
   unverified: (): Response =>
     htmlError(401, "We couldn't confirm that sign-in"),
-  /** The account is disabled. */
-  accountDisabled: (): Response =>
-    htmlError(403, "This account can't sign in", {
-      body: "<p>Contact Polaris Key support.</p>",
-    }),
+  /** The account is disabled: **Sign in with another account**, back to where the sign-in was
+   *  headed (`returnTo`, already checked) or the sign-in page (`card/http.ts`). */
+  accountDisabled: (returnTo?: string | null): Response =>
+    accountDisabledPage({ signInHref: returnTo }),
   /** I-17: the platform IdP no longer signs this person in (past the sunset, or
    *  `operators-only` for a subject that never moved). **Sign in again** goes to the card. */
   platformEnded: (): Response =>
@@ -180,50 +183,6 @@ function authJson(body: unknown, status = 200): Response {
       }),
     ),
   });
-}
-
-function b64url(bytes: Uint8Array): string {
-  let s = "";
-  for (const b of bytes) s += String.fromCharCode(b);
-  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function toAB(b: Uint8Array): ArrayBuffer {
-  return b.buffer.slice(
-    b.byteOffset,
-    b.byteOffset + b.byteLength,
-  ) as ArrayBuffer;
-}
-
-function randomBytes(n: number): Uint8Array {
-  const a = new Uint8Array(n);
-  crypto.getRandomValues(a);
-  return a;
-}
-
-async function pkce(): Promise<{ verifier: string; challenge: string }> {
-  const verifier = b64url(randomBytes(32));
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    toAB(new TextEncoder().encode(verifier)),
-  );
-  return { verifier, challenge: b64url(new Uint8Array(digest)) };
-}
-
-export function safeReturnTo(
-  req: Request,
-  raw: string | null,
-): string | undefined {
-  if (!raw) return undefined;
-  try {
-    const parsed = new URL(raw);
-    const here = new URL(req.url);
-    if (parsed.origin !== here.origin) return undefined;
-    if (parsed.pathname.startsWith("/manage")) return undefined;
-    return parsed.toString();
-  } catch {
-    return undefined;
-  }
 }
 
 function mapClaims(payload: Record<string, unknown>): {
@@ -317,16 +276,16 @@ export async function handlePortalLogin(
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
-  const returnTo = safeReturnTo(req, rawReturnTo);
+  const returnTo = safeReturnTo(req, rawReturnTo, PORTAL_SIGNIN_RETURN_TO);
   if (rawReturnTo && !returnTo) return htmlError(400, "Invalid return URL.");
 
-  const state = b64url(randomBytes(16));
-  const nonce = b64url(randomBytes(16));
-  const { verifier, challenge } = await pkce();
+  const state = randomToken(16);
+  const nonce = randomToken(16);
+  const { verifier, challenge } = await pkcePair();
   const redirectUri = `${url.origin}/callback`;
   // I-17: the flow is bound to this browser. Pocket ID returns by a top-level GET, which carries a
   // `SameSite=Lax` cookie, so the callback can require it (login CSRF, and a planted join offer).
-  const binding = b64url(randomBytes(32));
+  const binding = randomToken(32);
   const flow: FlowRecord = {
     verifier,
     nonce,
@@ -529,7 +488,7 @@ async function completePortalCallback(
     default:
       result = claim.result;
   }
-  const refused = signInRefusal(result);
+  const refused = signInRefusal(result, flow.returnTo);
   if (refused) return refused;
   const signedIn = result as Extract<SignInResult, { status: "signed_in" }>;
   const account = signedIn.account;
@@ -567,17 +526,21 @@ function emailInUsePage(): Response {
  * offers to join once the person proves the other account; until it lands, the page says so and
  * names nobody.
  */
-export function signInRefusal(result: SignInResult): Response | null {
+export function signInRefusal(
+  result: SignInResult,
+  /** Where the sign-in was headed (already checked): the disabled page's way on. */
+  returnTo?: string | null,
+): Response | null {
   switch (result.status) {
     case "signed_in":
       return result.account.status === "active"
         ? null
-        : signInPage.accountDisabled();
+        : signInPage.accountDisabled(returnTo);
     case "join_offer":
       return emailInUsePage();
     case "refused":
       return result.reason === "account_disabled"
-        ? signInPage.accountDisabled()
+        ? signInPage.accountDisabled(returnTo)
         : signInPage.unverified();
   }
 }

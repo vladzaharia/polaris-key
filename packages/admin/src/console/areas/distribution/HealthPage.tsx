@@ -43,7 +43,7 @@ import { Timeline } from "../../../ui/Timeline.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { toast } from "../../../ui/toast.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { PageTabs, TabPanel } from "../../components/PageTabs.js";
 import { mutate } from "../../data/mutations.js";
 import { Link, useSearchParam } from "../../router.js";

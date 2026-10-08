@@ -57,6 +57,7 @@ import {
   BLOB_LOCK_AGE_SECONDS,
   MIN_GC_GRACE_SECONDS,
 } from "../../core/blobGc.js";
+import { tryParseJson } from "../../platform/json.js";
 
 /**
  * Secrets the page reports as present or absent. Presence only. ST-02: every `Env` member tagged
@@ -299,15 +300,6 @@ async function storedRow(db: Db, key: string) {
   );
 }
 
-function parseStored(raw: string | undefined): unknown {
-  if (raw === undefined) return undefined;
-  try {
-    return JSON.parse(raw) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
 /** The audit snapshot of one side of a change: the stored value and what took effect. */
 function snapshot(r: ResolvedSetting) {
   return {
@@ -461,7 +453,7 @@ async function resolvedNow(
     env[def.varName],
     row
       ? {
-          value: parseStored(row.value_json),
+          value: tryParseJson(row.value_json),
           deleted: row.value_json === TOMBSTONE_JSON,
           version: row.version,
           updatedAt: row.updated_at,

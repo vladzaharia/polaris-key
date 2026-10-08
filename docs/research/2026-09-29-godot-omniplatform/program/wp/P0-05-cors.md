@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                                                                                                |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | P0: Hygiene and unblockers                                                                                                                                                           |
+| Phase       | P0: Hygiene, unblockers and code quality                                                                                                                                             |
 | Size        | 0.5–0.75 engineer-weeks                                                                                                                                                              |
 | Depends on  | none                                                                                                                                                                                 |
 | Unblocks    | [P1-12](P1-12-godot-release.md), [P3-09](P3-09-updater-feeds.md), [P6-04](P6-04-hosted-web.md), [D-02](D-02-diceroll-after-p1.md)                                                    |

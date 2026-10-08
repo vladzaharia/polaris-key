@@ -38,8 +38,7 @@ import { Timestamp } from "../../../ui/Timestamp.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import { toast } from "../../../ui/toast.js";
 import { EntityLink } from "../../components/EntityLink.js";
-import { PageHeader } from "../../components/PageHeader.js";
-import { queryClient } from "../../data/queryClient.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { qk } from "../../data/queries.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
@@ -87,16 +86,13 @@ function serverFilters(
  * the unfiltered feed through this too, so both share one cache entry.
  */
 export function useActivityFeed(slug: string, filters: ActivityFilters) {
-  return useInfiniteQuery(
-    {
-      queryKey: [...qk.activity(slug), JSON.stringify(filters)],
-      queryFn: ({ pageParam }) =>
-        api.activity(slug, pageParam, PAGE_SIZE, filters),
-      initialPageParam: null as ActivityPage["nextCursor"],
-      getNextPageParam: (last: ActivityPage) => last.nextCursor ?? undefined,
-    },
-    queryClient,
-  );
+  return useInfiniteQuery({
+    queryKey: [...qk.activity(slug), JSON.stringify(filters)],
+    queryFn: ({ pageParam }) =>
+      api.activity(slug, pageParam, PAGE_SIZE, filters),
+    initialPageParam: null as ActivityPage["nextCursor"],
+    getNextPageParam: (last: ActivityPage) => last.nextCursor ?? undefined,
+  });
 }
 
 export function actorName(item: ActivityItem): string {

@@ -18,7 +18,7 @@ import { mutate } from "../../data/mutations.js";
 import { r } from "../../routes.js";
 import { Link, navigate } from "../../router.js";
 import { useTableUrlState } from "../../useTableUrlState.js";
-import { PageHeader } from "../../components/PageHeader.js";
+import { PageHeader } from "../../../ui/PageHeader.js";
 import { CollectionTemplate } from "../../templates/Collection.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
 import { fromSeconds } from "../../../lib/format.js";

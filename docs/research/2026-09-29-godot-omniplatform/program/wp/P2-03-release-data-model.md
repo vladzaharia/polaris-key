@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                                                             |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                                  |
+| Phase       | P2: Release truth, publishing and release tracks                                                                                                  |
 | Size        | 1–1.5 engineer-weeks                                                                                                                              |
 | Depends on  | [P0-01](P0-01-operator-ownership.md), [P0-02](P0-02-release-resolution.md)                                                                        |
 | Unblocks    | [P2-04](P2-04-release-descriptor.md), [P2-05](P2-05-release-routes.md), [P2b-01](P2b-01-distribution-service.md), [P3-01](P3-01-wire-v4-plan.md)  |

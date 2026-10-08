@@ -545,10 +545,12 @@ export type CliGroup =
   | "packs"
   | "core";
 
-/** The per-verb flags the terminal kit reads (`--yes`, `--device-code`). */
+/** The per-verb flags the terminal kit reads (`--yes`, `--device-code`,
+ *  `--allow-workflow-commands`). */
 export interface VerbFlags {
   yes?: boolean;
   deviceCode?: boolean;
+  allowWorkflowCommands?: boolean;
 }
 
 /** One verb, as both adapters declare it. */
@@ -759,7 +761,7 @@ export const CLI_VERBS: readonly CliVerb[] = [
     describe: "Print a client-scoped secret",
     describeKey: "cli.verb.secret",
     run: (c, a) => secret(c, one(a[0])),
-    flow: (ctx, c, a) => secretFlow(ctx, need(c), one(a[0])),
+    flow: (ctx, c, a, f) => secretFlow(ctx, need(c), one(a[0]), f),
   },
   {
     group: "config",
@@ -768,7 +770,7 @@ export const CLI_VERBS: readonly CliVerb[] = [
     describe: "Mint a short-lived token from an edge-mint recipe",
     describeKey: "cli.verb.mint",
     run: (c, a) => mint(c, one(a[0])),
-    flow: (ctx, c, a) => mintFlow(ctx, need(c), one(a[0])),
+    flow: (ctx, c, a, f) => mintFlow(ctx, need(c), one(a[0]), f),
   },
   {
     group: "update",
