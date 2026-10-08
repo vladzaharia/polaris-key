@@ -300,8 +300,9 @@ hosts and light game themes. _Evidence:_ `compose.accent`, `react.system-on-ligh
 **DL14. QR codes and links fail closed.**
 
 - **Where:** a QR appears only where the device cannot browse: TV, console and pad-only screens,
-  and an offline-activation request. Never on a phone or a desktop surface (SIGN-IN.md D-67); a
-  phone leads with Open browser, then the code with Copy.
+  and an offline-activation request. Never on a phone, and never on a desktop surface (SIGN-IN.md
+  D-67), which retires §4.3's web QR beside the code. A phone leads with Open browser, then the code
+  with Copy.
 - **Size:** at least 160 physical px and at most 42 % of the short side, one size per kit, on a
   92 % white tile with an 8 px quiet zone (and a hairline in light), its modules scaled by a whole
   factor, always beside the URL and the code in text.
