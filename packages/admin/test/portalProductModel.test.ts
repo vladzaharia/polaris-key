@@ -168,6 +168,51 @@ describe("not_hosted reads where to get it (§0.6 P3, §11.2)", () => {
     expect(newer.elsewhere).toBeNull();
     expect(newer.notIncluded).toBe("Your license doesn't include this version");
   });
+
+  it("lists the install sources after the stores, and never as 'where else' (P0-48)", () => {
+    const d = {
+      ...downloadsView(
+        "x",
+        [
+          dlFile({
+            artifactId: "pack",
+            platform: null,
+            canDownload: false,
+            reason: "not_hosted",
+          }),
+          dlFile({ artifactId: "m", platform: "macos" }),
+        ],
+        { stores: [storeLink({ kind: "steam", label: "Steam" })] },
+      ),
+      installSources: [
+        storeLink({
+          kind: "homebrew",
+          label: "Homebrew",
+          url: null,
+          command: "brew install --cask x",
+          platforms: ["macos"],
+        }),
+        storeLink({ kind: "fdroid", label: "Add to F-Droid" }),
+      ],
+    };
+    const m = getItFromDownloads(d, MAC)!;
+    expect(m.stores.map((s) => s.label)).toEqual([
+      "Steam",
+      "Homebrew",
+      "Add to F-Droid",
+    ]);
+    const pack = m.groups
+      .flatMap((g) => g.rows)
+      .find((r) => r.artifact.artifactId === "pack")!;
+    expect(pack.elsewhere!.label).toBe("Get it from Steam");
+    // Without a store, the developer answers, not an install source.
+    const bare = getItFromDownloads({ ...d, stores: [] }, MAC)!;
+    expect(
+      bare.groups
+        .flatMap((g) => g.rows)
+        .find((r) => r.artifact.artifactId === "pack")!.elsewhere!.label,
+    ).toBe("Get it from the developer");
+  });
 });
 
 describe("the quick action never points at the page you are on (§0.6 P3)", () => {

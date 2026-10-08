@@ -377,6 +377,9 @@ export interface PortalDownloads {
   }>;
   extras: PortalDownloadFile[];
   stores: PortalStoreLink[];
+  /** The download page's install sources (Homebrew, Scoop, AltStore, F-Droid, Obtainium…),
+   *  shown beside the stores so an owner sees every channel (P0-48). An older Worker omits it. */
+  installSources?: PortalStoreLink[];
 }
 
 // ── Package access (F-21; PORTAL.md §4.20, §4.21, G13) ───────────────────────────────────

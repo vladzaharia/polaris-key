@@ -24,7 +24,9 @@
  *   - the store links (`storeLink`: every URL built from a re-validated identity) and their
  *     liveness (`storeState`: reported live for a non-yanked channel release that no rollout
  *     holds back). A store that is not live is still returned, flagged, so the portal can say
- *     "coming soon" rather than nothing; the page omits it.
+ *     "coming soon" rather than nothing; the page omits it;
+ *   - on request (`installSources`, P0-48), the page's own install sources (Homebrew, Scoop,
+ *     AltStore, SideStore, F-Droid, Obtainium), read from the page model itself.
  *
  * Read-only, like every hook.
  */
@@ -52,8 +54,10 @@ import { listOutlets } from "../outlets.js";
 import { feedOutlet, MAX_FEED_SCAN } from "../feeds/select.js";
 import {
   ARCH_PREFERENCE,
+  buildDownloadModel,
   FINGERPRINT_RE,
   formatOf,
+  INSTALL_SOURCE_KINDS,
   lineOf,
   minOsOf,
   STORE_KINDS,
@@ -61,6 +65,7 @@ import {
   storeState,
   type StoreKind,
 } from "./model.js";
+import { consoleOriginOf } from "./index.js";
 
 /** The most releases one answer reads (each costs a builds and an artifacts read). */
 export const CUSTOMER_MAX_RELEASES = 20;
@@ -274,5 +279,50 @@ export async function customerDownloads(
     );
   }
 
-  return { channel: history.channel, releases, stores };
+  return {
+    channel: history.channel,
+    releases,
+    stores,
+    ...(q.installSources
+      ? { installSources: await installSources(ctx, history.channel) }
+      : {}),
+  };
+}
+
+/**
+ * The download page's install sources for one channel (P0-48): what a stranger is offered there
+ * beyond the stores and the files, so an owner signed in to the portal sees every channel too.
+ * Taken from the page model itself, not rebuilt: the same feed liveness, the same validated
+ * identities, the same URLs. Empty when the page has no model (a non-public deliverable has no
+ * feeds), and the feed-served sources are left out when the console origin is unknown.
+ */
+async function installSources(
+  ctx: HookContext,
+  channel: string,
+): Promise<CustomerStoreLink[]> {
+  const model = await buildDownloadModel({
+    db: ctx.db,
+    env: ctx.env,
+    product: { slug: ctx.product.slug, name: ctx.product.name },
+    hooks: ctx.hooks,
+    consoleOrigin: consoleOriginOf(ctx.env),
+    bytesOrigin: null,
+    channel,
+  });
+  const kinds: readonly string[] = INSTALL_SOURCE_KINDS;
+  return (model?.actions ?? [])
+    .filter((a) => kinds.includes(a.kind))
+    .map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      outletId: a.outletId,
+      platforms: [...a.platforms],
+      label: a.label,
+      url: a.url,
+      deepLink: a.deepLink,
+      command: a.command,
+      activateUrl: null,
+      live: true,
+      version: a.version,
+    }));
 }

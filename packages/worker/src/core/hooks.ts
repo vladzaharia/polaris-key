@@ -1128,6 +1128,13 @@ export interface CustomerDownloadsQuery {
   channel: string;
   /** How many of the channel's newest releases to read (yanked ones skipped, not counted). */
   limit: number;
+  /**
+   * Also answer `installSources` (P0-48): the package managers and sideloading sources the
+   * public download page offers (Homebrew, Scoop, AltStore, SideStore, AltStore PAL, F-Droid,
+   * Obtainium). It builds the page model, so only the portal's product page asks; Discover and
+   * the storefront's link targets read `stores` alone.
+   */
+  installSources?: boolean;
 }
 
 /**
@@ -1203,6 +1210,12 @@ export interface CustomerDownloads {
   /** Newest first, at most `limit`. */
   releases: CustomerRelease[];
   stores: CustomerStoreLink[];
+  /**
+   * Present when the query asked for it: the download page's install sources for the channel,
+   * in the page's order, each `live` (the page lists only what a feed serves) with
+   * `activateUrl: null`. Empty for a non-public deliverable, whose feeds do not exist.
+   */
+  installSources?: CustomerStoreLink[];
 }
 
 /** P6-02: the store identities a device attestation must match (`Delivery.attestationTargets`). */

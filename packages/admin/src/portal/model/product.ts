@@ -283,7 +283,8 @@ export interface GetItModel {
   /** Covered builds for `os` (Universal or Apple silicon first); empty when there's no match. */
   recommended: FileRowModel[];
   groups: PlatformGroup[];
-  /** Store outlets reporting a live release (G2, "Also yours on"); empty without PX-W2. */
+  /** Store outlets reporting a live release (G2, "Also yours on"), then the install sources the
+   *  download page offers (P0-48); empty without PX-W2. */
   stores: PortalStoreLink[];
 }
 
@@ -400,7 +401,13 @@ export function getItFromDownloads(
     os,
     recommended,
     groups,
-    stores: d.stores.filter((s) => s.live && (s.url || s.command)),
+    // "Also yours on": the live stores, then the download page's install sources (P0-48). Only
+    // a store answers "where else" for a file not hosted here (`where` above): an install source
+    // serves the very files listed.
+    stores: [
+      ...d.stores.filter((s) => s.live && (s.url || s.command)),
+      ...(d.installSources ?? []).filter((s) => s.url || s.command),
+    ],
   };
 }
 

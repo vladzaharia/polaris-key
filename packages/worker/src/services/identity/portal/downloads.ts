@@ -149,6 +149,9 @@ export interface PortalDownloads {
   extras: PortalFile[];
   /** Every store outlet, `live` or not (§4.20 "Also yours on"). */
   stores: CustomerStoreLink[];
+  /** The download page's install sources for the channel (Homebrew, Scoop, AltStore, F-Droid,
+   *  Obtainium…), so an owner sees every channel a stranger does (P0-48); empty when none. */
+  installSources: CustomerStoreLink[];
 }
 
 function emptyDownloads(
@@ -167,6 +170,7 @@ function emptyDownloads(
     platforms: [],
     extras: [],
     stores: [],
+    installSources: [],
   };
 }
 
@@ -203,6 +207,7 @@ export async function productDownloads(
     ? await gate.delivery.customerDownloads({
         channel: q.channel,
         limit: PORTAL_DOWNLOAD_RELEASES,
+        installSources: true,
       })
     : null;
   if (!shaped) return emptyDownloads(productName, q.channel, detected);
@@ -346,6 +351,7 @@ export async function productDownloads(
     platforms,
     extras: withExtras?.files.filter((f) => f.platform === null) ?? [],
     stores: shaped.stores,
+    installSources: shaped.installSources ?? [],
   };
 }
 

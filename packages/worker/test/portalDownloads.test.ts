@@ -34,6 +34,7 @@ import {
   STEAM_ACTIVATE_URL,
   picksOf,
 } from "../src/services/distribution/page/customer.js";
+import { INSTALL_SOURCE_KINDS } from "../src/services/distribution/page/model.js";
 import type { CustomerFile } from "../src/core/hooks.js";
 import { detectPlatform as coreDetect } from "../src/core/platformDetect.js";
 import { detectPlatform as pageDetect } from "../src/services/distribution/page/detect.js";
@@ -51,6 +52,7 @@ import {
   CONSOLE,
   SLUG,
   UA,
+  model,
   setup,
   type World,
 } from "./downloadWorld.js";
@@ -277,6 +279,52 @@ describe("Distribution's customerDownloads hook (through Core)", () => {
     expect(pageDetect).toBe(coreDetect);
   });
 
+  it("offers the download page's install sources on request, read from the page model (P0-48)", async () => {
+    const w = await setup();
+    const delivery = (await hooks(w)).delivery()!;
+    // Not asked: the answer is the stores alone (Discover and the storefront's link targets).
+    const plain = await delivery.customerDownloads!({
+      channel: "stable",
+      limit: 1,
+    });
+    expect(plain!.installSources).toBeUndefined();
+    const d = await delivery.customerDownloads!({
+      channel: "stable",
+      limit: 1,
+      installSources: true,
+    });
+    const kinds: readonly string[] = INSTALL_SOURCE_KINDS;
+    const page = (await model(w)).actions.filter((a) => kinds.includes(a.kind));
+    // Exactly the page's actions of those kinds, with the page's URLs and commands.
+    expect(
+      d!.installSources!.map((s) => [s.id, s.label, s.url, s.command]),
+    ).toEqual(page.map((a) => [a.id, a.label, a.url, a.command]));
+    expect(d!.installSources!.map((s) => s.kind)).toEqual(
+      expect.arrayContaining(["homebrew", "scoop", "fdroid", "obtainium"]),
+    );
+    for (const s of d!.installSources!)
+      expect(s).toMatchObject({ live: true, activateUrl: null });
+    expect(d!.installSources!.find((s) => s.kind === "homebrew")!.command).toBe(
+      "brew install --cask diceroll",
+    );
+    expect(
+      d!.installSources!.find((s) => s.kind === "scoop")!.command,
+    ).toContain(`${CONSOLE}/${SLUG}/distribution/scoop/stable.json`);
+    // The stores are unchanged by the request.
+    expect(d!.stores).toEqual(plain!.stores);
+  });
+
+  it("offers no install sources for a non-public deliverable, which has no feeds", async () => {
+    const w = await setup({ access: "licensed" });
+    const d = await (await hooks(w)).delivery()!.customerDownloads!({
+      channel: "stable",
+      limit: 1,
+      installSources: true,
+    });
+    expect(d!.installSources).toEqual([]);
+    expect(d!.stores.length).toBeGreaterThan(0);
+  });
+
   it("drops an invalid store identity instead of building a link from it", async () => {
     const w = await setup();
     await w.db.run(
@@ -340,6 +388,10 @@ describe("GET /api/products/<p>/downloads", () => {
       "ms-store",
       "steam",
     ]);
+    // P0-48: an owner sees the page's install sources too, not only the stores.
+    expect(body.installSources.map((s) => s.kind)).toEqual(
+      expect.arrayContaining(["homebrew", "scoop", "fdroid", "obtainium"]),
+    );
   });
 
   it("detection: an Arm Windows visitor gets the Arm build first; a Mac the universal build alone", async () => {
@@ -571,6 +623,7 @@ describe("GET /api/products/<p>/downloads", () => {
       platforms: [],
       extras: [],
       stores: [],
+      installSources: [],
     });
     expect(body.detected.platform).toBe("windows");
   });

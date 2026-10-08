@@ -198,6 +198,9 @@ export interface PageContext {
   consoleOrigin: string | null;
   /** The bytes host's origin, or `null`. */
   bytesOrigin: string | null;
+  /** The channel to model; the page itself is always `PAGE_CHANNEL`. The customer portal's
+   *  `customerDownloads` asks for the channel it shows (its install sources, P0-48). */
+  channel?: string;
 }
 
 // ── Memoised readers ─────────────────────────────────────────────────────────────────────────
@@ -377,6 +380,31 @@ export const STORE_KINDS = [
   "winget",
 ] as const;
 export type StoreKind = (typeof STORE_KINDS)[number];
+
+/**
+ * The actions that are neither a store page nor a file download: package managers and
+ * sideloading sources, each served from this product's feeds or its own tap. The customer
+ * portal offers them to an owner beside the store links (`customer.ts`, P0-48), so an owner sees
+ * every channel a stranger sees here.
+ */
+export const INSTALL_SOURCE_KINDS = [
+  "homebrew",
+  "scoop",
+  "altstore",
+  "sidestore",
+  "altstore-pal",
+  "obtainium",
+  "fdroid",
+] as const satisfies readonly ActionKind[];
+export type InstallSourceKind = (typeof INSTALL_SOURCE_KINDS)[number];
+
+/** Every action kind is a store, an install source or the download (a compile-time check). */
+const EVERY_ACTION_KIND_SORTED: [
+  Exclude<ActionKind, StoreKind | InstallSourceKind | "download">,
+] extends [never]
+  ? true
+  : false = true;
+void EVERY_ACTION_KIND_SORTED;
 
 /** The order actions are offered in, per platform: the first present is the primary. */
 const PRIORITY: Readonly<Record<PagePlatform, readonly ActionKind[]>> = {
@@ -692,7 +720,7 @@ export async function buildDownloadModel(
   const { catalog, delivery, notesPublic } = readers;
   const history = await catalog.channelReleases(
     APP_DELIVERABLE_ID,
-    PAGE_CHANNEL,
+    ctx.channel ?? PAGE_CHANNEL,
   );
   if (!history) return null;
   const slug = ctx.product.slug;
