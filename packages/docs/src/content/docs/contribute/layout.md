@@ -30,7 +30,7 @@ sdks/
   godot/             Godot addon               pure-GDScript verify and a headless runner
   kotlin/            Gradle build              :core + the service modules + :update + :packs + :sdk (JVM), the :conformance runner; :platform, :android (Android)
 conformance/          corpus/v2 ONLY (one signer's golden vectors) + the Node runner
-tools/                sign-corpus.ts · gen-mirrors.ts
+tools/                sign-corpus.ts (+ corpus/<family>.ts, corpus/reference/) · gen-mirrors.ts
 products/             per-product data (catalog.json + product.json) + gen-seed
 docs/                 repo-only operator material — RUNBOOK, DEPLOYMENT, PRIVACY — plus
                       security/ and superpowers/ (historical); the adopter/config/concepts

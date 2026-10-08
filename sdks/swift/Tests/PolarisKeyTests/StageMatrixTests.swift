@@ -1,6 +1,6 @@
 // @pkey-feature ui.stages packs.state update.bootguard ui.boot
 // Cross-SDK boot stage machine conformance, driven off `conformance/corpus/v2`'s
-// `stage-matrix.json`, mirrored into this bundle's `Resources/v2/` by `pnpm gen:corpus`.
+// `stage-matrix.json`, read from the checkout through `CorpusLocator`.
 //
 // The Node runner (`conformance/runners/node/stageMatrix.test.ts`) and the Python runner
 // (`sdks/python/tests/test_stage_matrix.py`) replay the SAME rows through their own
@@ -105,7 +105,7 @@ final class StageMatrixTests: XCTestCase {
     }
 
     private func loadMatrix() throws -> StageMatrix {
-        try CorpusBundleLoader.load(
+        try CorpusLocator.load(
             StageMatrix.self, (stageMatrixFile as NSString).deletingPathExtension)
     }
 

@@ -9,7 +9,7 @@
 //   feedDeltaCases the feed's delta menu merged (plans/P4-29.md §4.3) → withFeedDeltas, then
 //                 planTarget and plan
 //
-// Read from the generator-owned `Resources/v2` mirror through `Bundle.module`.
+// Read from the checkout through `CorpusLocator`.
 
 import Foundation
 import PolarisKeyCore
@@ -18,7 +18,7 @@ import XCTest
 
 final class PlanMatrixTests: XCTestCase {
     private func matrix() throws -> [String: JSONValue] {
-        try XCTUnwrap(CorpusBundleLoader.load(JSONValue.self, "plan-matrix").objectValue)
+        try XCTUnwrap(CorpusLocator.load(JSONValue.self, "plan-matrix").objectValue)
     }
 
     func testHasEveryRowAndCase() throws {

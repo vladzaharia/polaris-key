@@ -98,7 +98,7 @@ section, gated to platform admins (sign in at `/manage`; see the [README](README
   catalog → corpus → SDKs, the six-language walkthrough for a wire-visible field, and the full
   drift-gate inventory.
 - [The conformance corpus](https://key.plrs.im/docs/contribute/corpus/) — the generator, the
-  language runners, the generator-owned mirrors (Swift, Godot), and how to add a case.
+  language runners, the generator-owned Godot mirror (Swift reads the corpus in place), and how to add a case.
 - [Releasing](https://key.plrs.im/docs/contribute/releasing/) — every SDK published to its feed
   automatically, in lockstep with the server (each push to `main`, each `v*` tag), and how the
   worker deploys.

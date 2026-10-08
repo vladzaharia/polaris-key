@@ -1,13 +1,13 @@
 // Where transcripts live and how they are serialized (P1b-03).
 //
-//   conformance/transcripts/<id>.json                          the canonical files
-//   sdks/swift/Tests/PolarisKeyTests/Resources/transcripts/    the generator-owned Swift mirror
-//   sdks/godot/tests/transcripts/                              the generator-owned Godot mirror
+//   conformance/transcripts/<id>.json   the canonical files (the Node, Python, Swift and Kotlin
+//                                       replayers read them in place)
+//   sdks/godot/tests/transcripts/       the generator-owned Godot mirror
 //
-// Neither the Swift test target nor an exported Godot pack (which reads only `res://`) can reach
-// up the monorepo at test time, so — exactly as `tools/sign-corpus.ts` does for the corpus — the
-// generator writes a byte-identical copy into each and the drift check covers the copies like
-// the source.
+// An exported Godot pack reads only `res://` and cannot reach up the monorepo, so — exactly as
+// `tools/sign-corpus.ts` does for the corpus — the generator writes a byte-identical copy there
+// and the drift check covers the copy like the source. The Swift mirror is retired (P0-44): the
+// Swift replayer reads the canonical files through `CorpusLocator`.
 //
 // Serialization is `JSON.stringify` (with invisible and bidi code points escaped) then Prettier's
 // JSON printer with the repo's (default) options, the same pipeline the corpus uses, so
@@ -30,20 +30,23 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = join(HERE, "..", "..", "..", "..");
 
 export const TRANSCRIPTS_DIR = join(REPO_ROOT, "conformance", "transcripts");
-export const SWIFT_TRANSCRIPTS_DIR = join(
+export const GODOT_TRANSCRIPTS_DIR = join(
+  REPO_ROOT,
+  "sdks",
+  "godot",
+  "tests",
+  "transcripts",
+);
+
+/** The Swift test bundle's former mirror (P0-44). A branch cut before its retirement can merge a
+ *  file back into it, so a check reports it and a write deletes it. */
+export const RETIRED_SWIFT_TRANSCRIPTS_DIR = join(
   REPO_ROOT,
   "sdks",
   "swift",
   "Tests",
   "PolarisKeyTests",
   "Resources",
-  "transcripts",
-);
-export const GODOT_TRANSCRIPTS_DIR = join(
-  REPO_ROOT,
-  "sdks",
-  "godot",
-  "tests",
   "transcripts",
 );
 
@@ -80,11 +83,16 @@ export function reconcile(
   write: boolean,
 ): Drift[] {
   const drift: Drift[] = [];
-  for (const dir of [
-    TRANSCRIPTS_DIR,
-    SWIFT_TRANSCRIPTS_DIR,
-    GODOT_TRANSCRIPTS_DIR,
-  ]) {
+  if (existsSync(RETIRED_SWIFT_TRANSCRIPTS_DIR)) {
+    if (write)
+      rmSync(RETIRED_SWIFT_TRANSCRIPTS_DIR, { recursive: true, force: true });
+    else
+      drift.push({
+        file: RETIRED_SWIFT_TRANSCRIPTS_DIR,
+        problem: "unexpected",
+      });
+  }
+  for (const dir of [TRANSCRIPTS_DIR, GODOT_TRANSCRIPTS_DIR]) {
     if (write) mkdirSync(dir, { recursive: true });
     const present = existsSync(dir)
       ? readdirSync(dir).filter((f) => f.endsWith(".json"))

@@ -1,6 +1,6 @@
 // @pkey-feature update.decide
 // The Swift runner for `conformance/corpus/v2/update-matrix.json` (plans/P3-01.md §4.6), read
-// from the generator-owned mirror in `Resources/v2/`. Every section, with the same names as the
+// from the checkout through `CorpusLocator`. Every section, with the same names as the
 // Node runner (`conformance/runners/node/corpusV2.test.ts`) and the Python and Godot runners:
 //
 //   vocabulary       the version and §2.8's lists         → the generated constants
@@ -158,7 +158,7 @@ extension JSONValue {
 
 final class UpdateMatrixTests: XCTestCase {
     private func matrix() throws -> MatrixFile {
-        try CorpusBundleLoader.load(MatrixFile.self, "update-matrix")
+        try CorpusLocator.load(MatrixFile.self, "update-matrix")
     }
 
     func testVersionAndVocabulary() throws {
@@ -174,7 +174,7 @@ final class UpdateMatrixTests: XCTestCase {
     }
 
     func testCompiledTablesEqualTheOutletMatrix() throws {
-        let o = try CorpusBundleLoader.load(OutletMatrixFile.self, "outlet-matrix")
+        let o = try CorpusLocator.load(OutletMatrixFile.self, "outlet-matrix")
         XCTAssertEqual(o.outletMatrixVersion, OUTLET_MATRIX_VERSION)
         var kinds: [String: JSONValue] = [:]
         for (kind, caps) in OUTLET_CAPABILITY_DEFAULTS {

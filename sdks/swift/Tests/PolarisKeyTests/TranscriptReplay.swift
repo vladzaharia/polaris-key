@@ -2,8 +2,9 @@
 //
 // A port of `conformance/runners/node/transcriptReplay.ts` — the same rules, so every SDK is held
 // to one recording in one way. The format is documented once, in
-// `packages/worker/test/transcripts/format.ts`; the files are read from the generator-owned
-// mirror in `Resources/transcripts/` (written by `pnpm gen:transcripts`, never by hand).
+// `packages/worker/test/transcripts/format.ts`; the files are read from the checkout's
+// `conformance/transcripts/` through `CorpusLocator` (written by `pnpm gen:transcripts`, never by
+// hand).
 //
 // The server never throws out of the transport: an SDK is entitled to swallow a transport error
 // (a best-effort report does exactly that), so a thrown mismatch could vanish. Every problem is
@@ -101,11 +102,12 @@ struct Transcript: Decodable, Sendable {
 }
 
 enum TranscriptFiles {
-    /// Every mirrored transcript, in file-name order.
+    /// Every transcript in `conformance/transcripts/`, in file-name order.
     static func load() throws -> [Transcript] {
-        guard
-            let dir = Bundle.module.url(forResource: "transcripts", withExtension: nil)
-        else { throw ReplayError("Resources/transcripts is missing from the test bundle") }
+        let dir = CorpusLocator.transcriptsDir
+        guard FileManager.default.fileExists(atPath: dir.path) else {
+            throw ReplayError("\(dir.path) is missing: run `swift test` from a monorepo checkout")
+        }
         let files = try FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: nil
         )
