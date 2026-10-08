@@ -49,7 +49,11 @@ import { sendSecurityNotice } from "../portal/email.js";
 import { signInMethodAddedNotice } from "../portal/notices.js";
 import { browserLabel, randomSecret } from "../portal/accountSessions.js";
 import { finishSignIn } from "../card/finish.js";
-import { cardJson, safeReturnTo } from "../card/http.js";
+import {
+  ACCOUNT_DISABLED_MESSAGE,
+  cardJson,
+  safeReturnTo,
+} from "../card/http.js";
 import {
   MAX_PASSKEYS_PER_ACCOUNT,
   accountUserHandle,
@@ -299,7 +303,7 @@ export async function handlePasskeySignInVerify(
     return cardJson(
       {
         error: "forbidden",
-        message: "This account can't sign in. Contact Polaris Key support.",
+        message: ACCOUNT_DISABLED_MESSAGE,
       },
       403,
       [clearPasskeyFlow()],

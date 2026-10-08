@@ -376,9 +376,13 @@ describe("claim at next sign-in through a provider: platform product", () => {
     sub = SUB,
     /** Runs between the start and the callback (e.g. the sunset passing meanwhile). */
     meanwhile: () => void = () => {},
+    /** The app page the flow returns to (`return_to`), if any. */
+    returnTo?: string,
   ): Promise<Response> {
     const start = await handleAuthStart(
-      new Request(`${ORIGIN}/djdl/identity/auth/start`) as unknown as Request,
+      new Request(
+        `${ORIGIN}/djdl/identity/auth/start${returnTo ? `?return_to=${encodeURIComponent(returnTo)}` : ""}`,
+      ) as unknown as Request,
       env,
       db,
       product,
@@ -820,12 +824,26 @@ describe("claim at next sign-in through a provider: platform product", () => {
       };
     }
 
-    async function expectRefusedPage(res: Response): Promise<void> {
+    /** SIGN-IN.md §3.13's Account disabled page: never a dead end. **Sign in with another
+     *  account** goes to Polaris Key's sign-in (not back into the IdP that just signed the same
+     *  subject in); **Back to <Product>** only when the flow came from an app page. */
+    async function expectRefusedPage(
+      res: Response,
+      back?: { href: string; name: string },
+    ): Promise<void> {
       expect(res.status).toBe(403);
       expect(res.headers.get("location")).toBeNull();
       const html = await res.text();
       expect(html).toMatch(/This account can(&#39;|&#x27;|')t sign in/);
-      expect(html).toContain("Contact Polaris Key support.");
+      expect(html).not.toContain("Polaris Key support");
+      expect(html).toContain(
+        '<a class="button" href="/">Sign in with another account</a>',
+      );
+      if (back)
+        expect(html).toContain(
+          `<a class="button secondary" href="${back.href}">Back to ${back.name}</a>`,
+        );
+      else expect(html).not.toContain("Back to ");
     }
 
     /** A device-code flow up to its callback; `poll` is then the device-code holder's poll. */
@@ -937,6 +955,17 @@ describe("claim at next sign-in through a provider: platform product", () => {
       );
       const before = await snapshot();
       await expectRefusedPage(await browserSignIn());
+      expect(await snapshot()).toEqual(before);
+    });
+
+    it("a sign-in from an app page offers the way back to it", async () => {
+      const account = await platformLinkedAccount(db, SUB);
+      expect(await disableAccount(ctx(), account)).toEqual({ ok: true });
+      const before = await snapshot();
+      await expectRefusedPage(
+        await browserSignIn(undefined, SUB, undefined, `${ORIGIN}/djdl/app`),
+        { href: `${ORIGIN}/djdl/app`, name: product.name },
+      );
       expect(await snapshot()).toEqual(before);
     });
 
