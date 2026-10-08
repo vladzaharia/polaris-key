@@ -86,18 +86,40 @@ export const ECOSYSTEM_ICONS: Record<FeedEcosystem, LucideIcon> = {
   go: Package,
 };
 
-/** Access modes as the Feeds pages name them (a registry client presents a token, not a device). */
+/**
+ * The stored modes the Feeds pages offer as one choice (P0-47). `authenticated` and `licensed`
+ * are one strictness for a feed (the Worker's `access.ts`; `admin/feeds.md`), so both read as
+ * **Customers** over the value already stored. Collapsing the stored values is F-34's migration.
+ */
+const CUSTOMER_MODES: readonly string[] = ["authenticated", "licensed"];
+
+/** The choice a stored mode is shown as: `customers` for Token and Licensed, else the mode. */
+export function feedAccessChoice(mode: string): string {
+  return CUSTOMER_MODES.includes(mode) ? "customers" : mode;
+}
+
+/**
+ * The mode to store for a choice: the stored mode when it already means that choice (an
+ * `authenticated` feed stays `authenticated`), `licensed` for a feed newly opened to customers.
+ */
+export function feedAccessMode(choice: string, stored: string): string {
+  if (choice !== "customers") return choice;
+  return CUSTOMER_MODES.includes(stored) ? stored : "licensed";
+}
+
+/** Access modes and choices as the Feeds pages name them (a registry client presents a token). */
 export const FEED_ACCESS_LABELS: Record<string, string> = {
   public: "Public",
-  authenticated: "Token",
-  licensed: "Licensed",
+  customers: "Customers",
+  authenticated: "Customers",
+  licensed: "Customers",
   entitled: "Entitled",
 };
 
 export const FEED_ACCESS_DESCRIPTIONS: Record<string, string> = {
   public: "Any client can install, with no credentials.",
-  authenticated: "Clients presenting a registry token.",
-  licensed: "Clients presenting a token tied to an active license.",
+  customers:
+    "Clients with a registry token: yours, your CI's, or a customer's while their license is active.",
   entitled: "Clients whose license grants the package's entitlement flag.",
 };
 

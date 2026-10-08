@@ -21,6 +21,8 @@ import {
 } from "@polaris-key/manifest";
 import {
   ECOSYSTEM_LABELS,
+  feedAccessChoice,
+  feedAccessMode,
   feedSetupSnippets,
 } from "../src/console/areas/feeds/model.js";
 
@@ -114,6 +116,88 @@ describe("registry auth (F-21)", () => {
         accessMode: "entitled",
       }),
     );
+  });
+
+  it("Token and Licensed are one choice, Customers, over the stored value (P0-47)", async () => {
+    // A feed stored as `authenticated` (the old Token) reads Customers and keeps its value.
+    const routes = feedRoutes();
+    const npm = "/manage/api/products/djdl/distribution/feeds/npm";
+    const stored = feedDetail("product", "npm");
+    routes[npm] = {
+      ...stored,
+      settings: { ...stored.settings, accessMode: "authenticated" },
+    };
+    const log = boot("#/p/djdl/distribution/feeds/npm/settings", {
+      extra: {
+        ...routes,
+        ...product(true),
+        [`PUT ${npm}/settings`]: { ok: true, settings: stored.settings },
+      },
+    });
+    const access = await within(await mainReady()).findByRole("form", {
+      name: "Access",
+    });
+    const names = within(access)
+      .getAllByRole("radio")
+      .map((r) => r.getAttribute("aria-label") ?? r.textContent ?? "");
+    expect(names.some((n) => /Customers/.test(n))).toBe(true);
+    expect(names.some((n) => /^Token|Licensed/.test(n))).toBe(false);
+    const customers = within(access).getByRole("radio", { name: /Customers/ });
+    expect(customers.getAttribute("aria-checked")).toBe("true");
+    // Nothing to save while the choice is the stored one.
+    expect(within(access).queryByRole("button", { name: /^Save/ })).toBeNull();
+    // Entitled, then back: still nothing to save, and no write.
+    await userEvent.click(
+      within(access).getByRole("radio", { name: /Entitled/ }),
+    );
+    await userEvent.click(customers);
+    expect(within(access).queryByRole("button", { name: /^Save/ })).toBeNull();
+    expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
+  });
+
+  it("opening a public feed to Customers stores licensed, after the L1 confirm (P0-47)", async () => {
+    const log = boot("#/p/djdl/distribution/feeds/npm/settings", {
+      extra: {
+        ...feedRoutes(),
+        ...product(true),
+        "PUT /manage/api/products/djdl/distribution/feeds/npm/settings": {
+          ok: true,
+          settings: feedDetail("product", "npm").settings,
+        },
+      },
+    });
+    const access = await within(await mainReady()).findByRole("form", {
+      name: "Access",
+    });
+    await userEvent.click(
+      within(access).getByRole("radio", { name: /Customers/ }),
+    );
+    await userEvent.click(
+      within(access).getByRole("button", { name: /^Save/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Switch to Customers" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "PUT")?.json).toEqual({
+        expectedVersion: 3,
+        accessMode: "licensed",
+      }),
+    );
+  });
+
+  it("maps stored modes to choices and back without changing a stored Customers mode", () => {
+    expect(feedAccessChoice("authenticated")).toBe("customers");
+    expect(feedAccessChoice("licensed")).toBe("customers");
+    expect(feedAccessChoice("public")).toBe("public");
+    expect(feedAccessChoice("entitled")).toBe("entitled");
+    expect(feedAccessMode("customers", "authenticated")).toBe("authenticated");
+    expect(feedAccessMode("customers", "licensed")).toBe("licensed");
+    expect(feedAccessMode("customers", "public")).toBe("licensed");
+    expect(feedAccessMode("customers", "entitled")).toBe("licensed");
+    expect(feedAccessMode("entitled", "authenticated")).toBe("entitled");
+    expect(feedAccessMode("public", "licensed")).toBe("public");
   });
 
   it("the Tokens page lists tokens, mints one and shows it once with every client's setup", async () => {
@@ -668,13 +752,14 @@ describe("a feed page", () => {
       name: "Access",
     });
     const radios = within(access).getAllByRole("radio");
+    // Public, Customers (Token and Licensed are one choice, P0-47) and Entitled.
     expect(
       radios.map(
         (r) =>
           r.hasAttribute("disabled") ||
           r.getAttribute("data-disabled") !== null,
       ),
-    ).toEqual([false, false, false, false]);
+    ).toEqual([false, false, false]);
     expect(access.textContent).not.toContain("Unavailable");
     expect(access.textContent).not.toMatch(/coming soon|ships/i);
     // The platform policy is the platform's: not in product scope.
@@ -801,6 +886,12 @@ describe("a feed page", () => {
           "Platform policy",
         ].filter(Boolean),
       );
+      // P0-47: Upstream had one option (none) and is gone; the feed still never proxies.
+      expect(within(main()).queryByText("Upstream registry"), eco).toBeNull();
+      expect(
+        within(main()).queryByRole("region", { name: "Upstream" }),
+        eco,
+      ).toBeNull();
     }
     const godot = within(main()).getByRole("form", { name: "Asset listing" });
     expect(
