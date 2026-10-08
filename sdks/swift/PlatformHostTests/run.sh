@@ -11,7 +11,9 @@
 #                created on the newest installed iOS runtime and reused; it is erased first,
 #                because storekitd keeps a StoreKit configuration per bundle id across runs)
 #   BUILD_DIR    where the generated project, derived data and logs go (default: ./build)
-#   SETTLE_MAX   the longest wait, in seconds, for the simulator to go quiet (default 300)
+#   SETTLE_MAX   the longest wait, in seconds, for the simulator to go quiet (default 300). The
+#                settle wait runs twice (after the boot and after the StoreKit warm-up), so the
+#                worst case is twice this: 600 s at the default
 #
 #   XCODEGEN     the xcodegen binary (default: xcodegen on PATH; CI pins 2.45.4 by SHA-256)
 #
