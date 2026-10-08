@@ -28,17 +28,49 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+import { SPACE } from "@polaris-key/brand";
 import { Button, type ButtonVariant } from "./buttons.js";
-import { fullWindow, messageCard, mutedText, titleText } from "./card.js";
+import {
+  FullWindow,
+  cardInWindow,
+  messageCard,
+  mutedText,
+  titleText,
+} from "./card.js";
+import {
+  WindowLayoutContext,
+  useWindowLayout,
+  type WindowLayout,
+} from "./layout.js";
 
-/** The centred, wrapping row a screen's actions sit in. */
-const actionRow: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  justifyContent: "center",
-  gap: "8px",
-  marginTop: "20px",
-};
+/**
+ * The row a screen's actions sit in: equal widths, the main action first (on the start side, or
+ * on top once they stack). Two actions share a row while each gets 9rem; on a full-bleed window
+ * they need 12rem each, so a phone stacks them, and the row docks to the bottom of the screen,
+ * where a thumb reaches it, staying in view while the text above scrolls.
+ */
+function actionRowStyle(layout: WindowLayout | null): CSSProperties {
+  const bleed = layout?.bleed === true;
+  return {
+    display: "grid",
+    gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${bleed ? "12rem" : "9rem"}), 1fr))`,
+    justifyItems: "stretch",
+    gap: SPACE["2"],
+    marginTop: SPACE["6"],
+    ...(bleed
+      ? {
+          position: "sticky",
+          bottom: 0,
+          paddingTop: SPACE["4"],
+          paddingBottom: `max(${SPACE["5"]}, env(safe-area-inset-bottom))`,
+          background: "var(--pk-surface)",
+        }
+      : null),
+  };
+}
+
+/** Every button in the row fills its cell, so a pair is the same width. */
+const actionCell: CSSProperties = { width: "100%", margin: 0 };
 
 export interface MessageScreenProps {
   title: string;
@@ -48,8 +80,8 @@ export interface MessageScreenProps {
   logo?: ReactNode;
   /** Extra content between the body and the retry action. */
   extra?: ReactNode;
-  /** A second action rendered after the retry action, in the same centred row (a dialog's
-   *  "Not now"). */
+  /** A second action rendered after the retry action, in the same row and at the same width
+   *  (a dialog's "Not now"). */
   secondaryAction?: ReactNode;
   /** The retry action's weight: "quiet" (default) for a recovery, "primary" when it is the
    *  screen's main action (an update dialog's "Get the update"). */
@@ -70,6 +102,38 @@ export interface MessageScreenProps {
 export function MessageScreen(props: MessageScreenProps): JSX.Element {
   const {
     title,
+    body,
+    logo,
+    extra,
+    secondaryAction,
+    retryVariant,
+    onRetry,
+    retryLabel,
+    transient,
+    className,
+    style,
+    ...markers
+  } = props;
+  return (
+    <FullWindow className={className} style={style} {...markers}>
+      <MessageCard
+        title={title}
+        body={body}
+        logo={logo}
+        extra={extra}
+        secondaryAction={secondaryAction}
+        retryVariant={retryVariant}
+        onRetry={onRetry}
+        retryLabel={retryLabel}
+        transient={transient}
+      />
+    </FullWindow>
+  );
+}
+
+function MessageCard(props: MessageScreenProps): JSX.Element {
+  const {
+    title,
     body = "",
     logo,
     extra,
@@ -78,14 +142,12 @@ export function MessageScreen(props: MessageScreenProps): JSX.Element {
     onRetry,
     retryLabel = "Try again",
     transient,
-    className,
-    style,
-    ...rest
   } = props;
   const titleId = useId();
   const bodyId = useId();
   const retryRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const layout = useWindowLayout();
 
   // Focus management (WCAG 2.4.3): move focus into the screen on mount so keyboard/SR users
   // land on the actionable control (retry) or, failing that, the panel itself.
@@ -96,30 +158,38 @@ export function MessageScreen(props: MessageScreenProps): JSX.Element {
   }, [transient]);
 
   const hasBody = body.length > 0;
+  const hasActions = Boolean(onRetry || secondaryAction);
+  const bleed = layout?.bleed === true;
   return (
-    <div className={className} style={{ ...fullWindow, ...style }} {...rest}>
-      <div
-        ref={dialogRef}
-        style={messageCard}
-        role={transient ? "status" : "alertdialog"}
-        aria-modal={transient ? undefined : true}
-        aria-live={transient ? "polite" : undefined}
-        aria-labelledby={titleId}
-        aria-describedby={hasBody ? bodyId : undefined}
-        tabIndex={transient ? undefined : -1}
-      >
+    <div
+      ref={dialogRef}
+      style={{
+        ...messageCard,
+        ...cardInWindow(layout),
+        // A docked action row carries the bottom inset itself.
+        ...(bleed && hasActions ? { paddingBlockEnd: 0 } : null),
+      }}
+      role={transient ? "status" : "alertdialog"}
+      aria-modal={transient ? undefined : true}
+      aria-live={transient ? "polite" : undefined}
+      aria-labelledby={titleId}
+      aria-describedby={hasBody ? bodyId : undefined}
+      tabIndex={transient ? undefined : -1}
+    >
+      {/* On a full-bleed window the text centres in the space above the docked actions. */}
+      <div style={bleed ? { marginBlock: "auto" } : undefined}>
         {logo ? (
           <div
             style={{
               display: "flex",
               justifyContent: "center",
-              marginBottom: "12px",
+              marginBottom: SPACE["3"],
             }}
           >
             {logo}
           </div>
         ) : null}
-        <h2 id={titleId} style={{ ...titleText, margin: "0 0 8px" }}>
+        <h2 id={titleId} style={{ ...titleText, margin: `0 0 ${SPACE["2"]}` }}>
           {title}
         </h2>
         {hasBody ? (
@@ -127,24 +197,27 @@ export function MessageScreen(props: MessageScreenProps): JSX.Element {
             {body}
           </p>
         ) : null}
-        {extra}
-        {onRetry || secondaryAction ? (
-          <div style={actionRow}>
-            {onRetry ? (
-              <Button
-                ref={retryRef}
-                variant={retryVariant}
-                label={retryLabel}
-                onClick={onRetry}
-                style={{ marginTop: 0 }}
-              >
-                {retryLabel}
-              </Button>
-            ) : null}
-            {secondaryAction}
-          </div>
-        ) : null}
+        {/* Content nested in the card is not the window's card. */}
+        <WindowLayoutContext.Provider value={null}>
+          {extra}
+        </WindowLayoutContext.Provider>
       </div>
+      {hasActions ? (
+        <div style={actionRowStyle(layout)} data-polaris-actions="">
+          {onRetry ? (
+            <Button
+              ref={retryRef}
+              variant={retryVariant}
+              label={retryLabel}
+              onClick={onRetry}
+              style={actionCell}
+            >
+              {retryLabel}
+            </Button>
+          ) : null}
+          {secondaryAction}
+        </div>
+      ) : null}
     </div>
   );
 }

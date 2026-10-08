@@ -10,23 +10,29 @@
 // shows one error for the whole form, not one per input.
 
 import type { CSSProperties } from "react";
+import { SPACE } from "@polaris-key/brand";
+import { typeStep } from "./card.js";
 import { useFocusRing } from "./focus.js";
 
 export const inputStyle: CSSProperties = {
-  padding: "10px 12px",
+  padding: SPACE["3"],
   boxSizing: "border-box",
+  width: "100%",
+  minWidth: 0,
   // A control's boundary needs 3:1 (WCAG 1.4.11; BRAND.md §4.3 `border-strong`); an input on a
   // card sits in the sunken surface.
   borderRadius: "var(--pk-control-radius, var(--pk-radius))",
   border: "1px solid var(--pk-border-strong, var(--pk-border))",
   background: "var(--pk-surface-sunken, transparent)",
   color: "var(--pk-text)",
-  fontSize: "14px",
+  // 1rem, never less: iOS zooms the page into a field whose text is under 16 px.
+  fontSize: "1rem",
+  lineHeight: "1.25rem",
   fontFamily: "var(--pk-font-family)",
 };
 
 export const labelStyle: CSSProperties = {
-  fontSize: "14px",
+  ...typeStep("sm"),
   color: "var(--pk-text-muted)",
 };
 

@@ -7,7 +7,7 @@
 // question with an actual answer.
 
 import { usePolarisAuth, usePolarisTheme } from "../react/hooks.js";
-import { Button } from "./primitives/buttons.js";
+import { Button, quietStyle } from "./primitives/buttons.js";
 
 export interface PolarisLogoutProps {
   /** Extra className on the button. */
@@ -27,7 +27,7 @@ export function PolarisLogout(props: PolarisLogoutProps): JSX.Element {
     <Button
       className={props.className}
       variant={props.variant === "ghost" ? "ghost" : "secondary"}
-      style={{ padding: "10px 16px", fontSize: "14px" }}
+      style={{ padding: quietStyle.padding, fontSize: quietStyle.fontSize }}
       disabled={auth.busy}
       busy={auth.busy}
       label={label}

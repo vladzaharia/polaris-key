@@ -12,17 +12,23 @@
 // Extracted from the copies in PolarisLogin / LicenseGate / PolarisLogout.
 
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
+import { SPACE } from "@polaris-key/brand";
+import { typeStep } from "./card.js";
 import { useFocusRing } from "./focus.js";
 
+// rem throughout, so a button grows with the person's default font: 44 px tall at a 16 px root.
 const base: CSSProperties = {
   appearance: "none",
   cursor: "pointer",
-  padding: "12px 16px",
+  boxSizing: "border-box",
+  padding: `${SPACE["3"]} ${SPACE["4"]}`,
   borderRadius: "var(--pk-control-radius, var(--pk-radius))",
   fontWeight: 700,
-  fontSize: "15px",
-  lineHeight: "20px",
+  fontSize: "1rem",
+  lineHeight: "1.25rem",
   fontFamily: "var(--pk-font-family)",
+  // A long label wraps inside the button rather than pushing it past its container.
+  overflowWrap: "anywhere",
 };
 
 export const primaryStyle: CSSProperties = {
@@ -42,10 +48,15 @@ export const secondaryStyle: CSSProperties = {
 /** The smaller, quieter button a message screen's retry uses. */
 export const quietStyle: CSSProperties = {
   ...secondaryStyle,
-  marginTop: "16px",
-  padding: "10px 16px",
-  fontSize: "14px",
+  padding: `${SPACE["2"]} ${SPACE["4"]}`,
+  ...typeStep("sm"),
   fontWeight: 400,
+};
+
+/** The smaller button a banner and a list row carry: 36 px tall at a 16 px root. */
+export const compactStyle: CSSProperties = {
+  padding: `${SPACE["2"]} ${SPACE["3"]}`,
+  ...typeStep("sm"),
 };
 
 export type ButtonVariant = "primary" | "secondary" | "quiet" | "ghost";

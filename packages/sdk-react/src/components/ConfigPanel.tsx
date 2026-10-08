@@ -23,9 +23,16 @@ import { useId, useState, type ReactNode } from "react";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ConfigSource } from "@polaris-key/client-core";
 import { useManagedConfig, usePolarisTheme } from "../react/hooks.js";
-import { Button } from "./primitives/buttons.js";
-import { FONT } from "@polaris-key/brand";
-import { Panel, chipStyle, mutedText, titleText } from "./primitives/card.js";
+import { Button, compactStyle } from "./primitives/buttons.js";
+import { FONT, SPACE } from "@polaris-key/brand";
+import {
+  Panel,
+  chipStyle,
+  dangerText,
+  mutedText,
+  titleText,
+  typeStep,
+} from "./primitives/card.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
 import { TextField } from "./primitives/input.js";
 import { describeError } from "../core/copy.js";
@@ -81,8 +88,8 @@ const badgeStyle = { ...chipStyle, display: "inline-block" } as const;
 const rowStyle = {
   display: "flex",
   flexDirection: "column" as const,
-  gap: "6px",
-  padding: "12px 0",
+  gap: SPACE["2"],
+  paddingBlock: SPACE["3"],
   borderBottom: "1px solid var(--pk-border)",
 };
 
@@ -198,8 +205,17 @@ function ConfigEntryRow(props: {
 
   return (
     <>
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <span style={{ fontSize: "14px", fontWeight: 700 }}>{row.key}</span>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: SPACE["2"],
+          alignItems: "center",
+        }}
+      >
+        <span style={{ ...typeStep("sm"), fontWeight: 700, minWidth: 0 }}>
+          {row.key}
+        </span>
         <span
           style={badgeStyle}
           data-polaris-config-source={row.source}
@@ -212,7 +228,7 @@ function ConfigEntryRow(props: {
       </div>
       {showOverride ? (
         <form
-          style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+          style={{ display: "flex", flexDirection: "column", gap: SPACE["2"] }}
           onSubmit={(e) => {
             e.preventDefault();
             if (props.onOverride) {
@@ -239,25 +255,21 @@ function ConfigEntryRow(props: {
             <span
               id={errorId}
               role="alert"
-              style={{ fontSize: "14px", color: "var(--pk-danger)" }}
+              style={dangerText}
               data-polaris-config-error={row.key}
             >
               {error}
             </span>
           ) : null}
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            <Button
-              variant="secondary"
-              type="submit"
-              style={{ fontSize: "14px" }}
-            >
+          <div style={{ display: "flex", gap: SPACE["2"], flexWrap: "wrap" }}>
+            <Button variant="secondary" type="submit" style={compactStyle}>
               {theme.copy.configOverrideLabel}
             </Button>
             {ownSave && row.source === "local" ? (
               <Button
                 variant="secondary"
                 type="button"
-                style={{ fontSize: "14px" }}
+                style={compactStyle}
                 data-polaris-config-reset={row.key}
                 onClick={() => {
                   setError(null);
@@ -274,7 +286,7 @@ function ConfigEntryRow(props: {
         </form>
       ) : (
         <span
-          style={{ ...mutedText, fontSize: "14px", fontFamily: FONT.mono }}
+          style={{ ...mutedText, fontFamily: FONT.mono }}
           data-polaris-config-value={row.key}
         >
           {stringify(row.value)}

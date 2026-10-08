@@ -137,7 +137,7 @@ describe("PolarisLogin — key card visibility", () => {
     // The card is a narrow, centred column.
     const card = container.querySelector("[data-polaris-login]") as HTMLElement;
     expect(card.style.margin).toBe("auto");
-    expect(card.style.width).toBe("min(440px, 100%)");
+    expect(card.style.width).toBe("min(27.5rem, 100%)");
     adapter.dispose();
   });
 

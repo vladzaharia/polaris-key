@@ -80,8 +80,12 @@ export interface PolarisThemeTokens {
 
 /** Copy overrides for the built-in screens (everything user-visible is overridable). */
 export interface PolarisThemeCopy {
+  /** The product's name, used in copy that names it ("Sign in to use Tidewater."). The base
+   *  themes carry a placeholder ("This app"), which no copy treats as a name. */
   productName: string;
   signInTitle: string;
+  /** The line under the sign-in title. Empty (the default) derives it from the sign-in methods
+   *  shown and, when `productName` is set, names the product. */
   signInSubtitle: string;
   oidcButtonLabel: string;
   keyEntryLabel: string;
@@ -147,8 +151,12 @@ export interface PolarisThemeCopy {
   devicesSubtitle: string;
   devicesEmpty: string;
   deviceCurrentBadge: string;
+  /** The row action that opens the inline rename field. */
+  deviceRenameActionLabel: string;
   deviceRenameLabel: string;
   deviceRenameSubmitLabel: string;
+  /** Closes the inline rename field without saving. */
+  deviceRenameCancelLabel: string;
   deviceDisconnectLabel: string;
   devicesUnsupportedTitle: string;
   devicesUnsupportedBody: string;
@@ -288,7 +296,7 @@ export const defaultTheme: PolarisTheme = {
   copy: {
     productName: "This app",
     signInTitle: "Sign in",
-    signInSubtitle: "Authenticate to unlock this app.",
+    signInSubtitle: "",
     // Neutral: the host's sign-in, not ours (no Polaris Key name on a neutral screen).
     oidcButtonLabel: "Continue to sign in",
     keyEntryLabel: "Have a license key?",
@@ -354,8 +362,10 @@ export const defaultTheme: PolarisTheme = {
     devicesSubtitle: "Devices signed in with this license.",
     devicesEmpty: "No devices are registered to this license yet.",
     deviceCurrentBadge: "This device",
+    deviceRenameActionLabel: "Rename",
     deviceRenameLabel: "Device name",
     deviceRenameSubmitLabel: "Save",
+    deviceRenameCancelLabel: "Cancel",
     deviceDisconnectLabel: "Disconnect",
     devicesUnsupportedTitle: "Device management is unavailable",
     devicesUnsupportedBody:
@@ -391,6 +401,20 @@ const POLARIS_KEY_COPY: Partial<PolarisThemeCopy> = {
   oidcButtonLabel: "Continue with Polaris Key",
 };
 
+/** The product's name when the integrator gave one (`copy.productName`), or `null` while it is
+ *  a base theme's placeholder: "This app", or "Polaris Key", which names the platform rather
+ *  than the product behind the gate. */
+export function knownProductName(theme: PolarisTheme): string | null {
+  const name = theme.copy.productName.trim();
+  if (
+    name === "" ||
+    name === defaultTheme.copy.productName ||
+    name === POLARIS_KEY_COPY.productName
+  )
+    return null;
+  return name;
+}
+
 /** The one-option preset for the Polaris Key brand: `theme={polarisKeyTheme}`. */
 export const polarisKeyTheme: PartialTheme = { branding: "polaris-key" };
 
@@ -424,6 +448,23 @@ export function mergeTheme(
     logo: partial.logo,
     poweredBy: partial.poweredBy ?? base.poweredBy,
   };
+}
+
+/**
+ * The font the kit falls back to when its font token is `inherit` and the host page sets no font
+ * of its own: the platform's UI face, never the browser's default serif.
+ */
+export const SYSTEM_FONT_STACK =
+  'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+/** The computed `font-family` a page gets when it sets none: Times or plain `serif` in every
+ *  engine (WebKit names it `-webkit-standard`). */
+const BROWSER_DEFAULT_FONT =
+  /^\s*(?:"?times new roman"?|"?times"?|serif|-webkit-standard)\s*$/i;
+
+/** Whether a computed `font-family` is the browser's default rather than one the host set. */
+export function isBrowserDefaultFont(fontFamily: string): boolean {
+  return BROWSER_DEFAULT_FONT.test(fontFamily);
 }
 
 /** Serialize tokens to a `--pk-*` CSS custom-property style object. */

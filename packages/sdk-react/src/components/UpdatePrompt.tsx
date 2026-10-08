@@ -44,10 +44,17 @@ import {
   type UseUpdateDecision,
   type UseUpdateDecisionOptions,
 } from "../update/useUpdateDecision.js";
-import { Button } from "./primitives/buttons.js";
+import { SPACE } from "@polaris-key/brand";
+import { Button, compactStyle } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
 import { bannerStyle, mutedText } from "./primitives/card.js";
 import { screenLogo } from "./brand.js";
+
+/** The "You're up to date." line: the banner's inset, without its strip. */
+const currentLine = {
+  ...mutedText,
+  padding: `${SPACE["2"]} ${SPACE["4"]}`,
+} as const;
 
 export interface UpdatePromptSlots {
   /** Replace the whole prompt. Receives the live check plus a dismiss callback. */
@@ -125,7 +132,7 @@ function VersionPrompt(
         className={className}
         role="status"
         aria-live="polite"
-        style={{ ...mutedText, padding: "8px 16px" }}
+        style={currentLine}
         data-polaris-update="current"
       >
         {theme.copy.updateUpToDateLabel}
@@ -181,7 +188,7 @@ function VersionPrompt(
       </span>
       <Button
         variant="secondary"
-        style={{ padding: "6px 12px", fontSize: "14px" }}
+        style={compactStyle}
         onClick={act}
         data-polaris-update-action=""
       >
@@ -189,7 +196,7 @@ function VersionPrompt(
       </Button>
       <Button
         variant="ghost"
-        style={{ padding: "6px 12px", fontSize: "14px" }}
+        style={compactStyle}
         onClick={dismiss}
         data-polaris-update-dismiss=""
       >
@@ -246,7 +253,7 @@ function DecisionPrompt(
         className={className}
         role="status"
         aria-live="polite"
-        style={{ ...mutedText, padding: "8px 16px" }}
+        style={currentLine}
         data-polaris-update="current"
       >
         {theme.copy.updateUpToDateLabel}
@@ -377,7 +384,7 @@ function DecisionPrompt(
       {act ? (
         <Button
           variant="secondary"
-          style={{ padding: "6px 12px", fontSize: "14px" }}
+          style={compactStyle}
           onClick={act}
           data-polaris-update-action=""
         >
@@ -387,7 +394,7 @@ function DecisionPrompt(
       {locked ? null : (
         <Button
           variant="ghost"
-          style={{ padding: "6px 12px", fontSize: "14px" }}
+          style={compactStyle}
           onClick={dismiss}
           data-polaris-update-dismiss=""
         >

@@ -9,16 +9,26 @@
 // explanation of where the user can manage devices instead. An unsupported capability rendered
 // as a red "something went wrong" trains people to ignore real failures.
 
-import { useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { SPACE } from "@polaris-key/brand";
 import { useAdapterState, useCtx, usePolarisTheme } from "../react/hooks.js";
 import type { DeviceInfo } from "../core/index.js";
-import { Button } from "./primitives/buttons.js";
+import { Button, compactStyle } from "./primitives/buttons.js";
 import {
   Panel,
   chipStyle,
   dangerText,
   mutedText,
   titleText,
+  typeStep,
 } from "./primitives/card.js";
 import { themePoweredBy } from "./brand.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
@@ -43,15 +53,48 @@ export interface DeviceManagerProps {
   readOnly?: boolean;
 }
 
-const rowStyle = {
+const rowStyle: CSSProperties = {
   display: "flex",
-  flexDirection: "column" as const,
-  gap: "6px",
-  padding: "12px 0",
+  flexDirection: "column",
+  gap: SPACE["3"],
+  paddingBlock: SPACE["3"],
   borderBottom: "1px solid var(--pk-border)",
 };
 
-const badgeStyle = { ...chipStyle, display: "inline-block" } as const;
+/** A row: the name and its meta on the start side, the actions on the end. When the row is too
+ *  narrow for both (a phone, a sidebar), the actions wrap under the name as a row of their own,
+ *  so nothing is pushed out of the card. */
+const rowMain: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: `${SPACE["2"]} ${SPACE["4"]}`,
+};
+
+const rowInfo: CSSProperties = {
+  flex: "1 1 14rem",
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+  gap: SPACE["1"],
+};
+
+const rowName: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: SPACE["2"],
+  minWidth: 0,
+};
+
+const rowActions: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: SPACE["2"],
+};
+
+const badgeStyle: CSSProperties = { ...chipStyle, display: "inline-block" };
 
 export function DeviceManager(props: DeviceManagerProps): JSX.Element {
   const theme = usePolarisTheme();
@@ -195,83 +238,140 @@ function DeviceRow(props: {
   onError: (message: string) => void;
 }): JSX.Element {
   const { device, theme } = props;
+  const name = device.label || device.id;
   const inputId = useId();
+  const [renaming, setRenaming] = useState(false);
   const [label, setLabel] = useState(device.label ?? "");
   const [busy, setBusy] = useState(false);
+  const renameRef = useRef<HTMLButtonElement>(null);
+  const refocusRename = useRef(false);
 
-  const run = async (fn: () => Promise<void>): Promise<void> => {
+  // Closing the rename field puts focus back on the Rename button that opened it (WCAG 2.4.3).
+  useEffect(() => {
+    if (renaming || !refocusRename.current) return;
+    refocusRename.current = false;
+    renameRef.current?.focus();
+  }, [renaming]);
+
+  const run = async (fn: () => Promise<void>): Promise<boolean> => {
     setBusy(true);
     try {
       await fn();
+      return true;
     } catch (e) {
       props.onError((e as Error).message);
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
+  const close = (): void => {
+    refocusRename.current = true;
+    setRenaming(false);
+  };
+
   return (
     <>
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <span style={{ fontSize: "14px", fontWeight: 700 }}>
-          {device.label || device.id}
-        </span>
-        {device.current ? (
-          <span style={badgeStyle} data-polaris-device-current="">
-            {theme.copy.deviceCurrentBadge}
+      <div style={rowMain}>
+        <div style={rowInfo}>
+          <div style={rowName}>
+            <span style={{ ...typeStep("sm"), fontWeight: 700, minWidth: 0 }}>
+              {name}
+            </span>
+            {device.current ? (
+              <span style={badgeStyle} data-polaris-device-current="">
+                {theme.copy.deviceCurrentBadge}
+              </span>
+            ) : null}
+          </div>
+          <span style={mutedText}>
+            {[device.platform, device.arch, device.appVersion]
+              .filter(Boolean)
+              .join(" · ") || device.status}
           </span>
-        ) : null}
-      </div>
-      <span style={{ ...mutedText, fontSize: "14px" }}>
-        {[device.platform, device.arch, device.appVersion]
-          .filter(Boolean)
-          .join(" · ") || device.status}
-      </span>
-      <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
-        {props.readOnly ? null : (
-          <form
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px",
-              flex: 1,
-            }}
-            onSubmit={(e) => {
-              e.preventDefault();
-              void run(() => props.onRename(label.trim() || null));
-            }}
-          >
-            <TextField
-              id={inputId}
-              label={`${theme.copy.deviceRenameLabel} (${device.label || device.id})`}
-              value={label}
-              onChange={setLabel}
-              disabled={busy}
-              data-polaris-device-input={device.id}
-            />
+        </div>
+        <div style={rowActions}>
+          {props.readOnly || renaming ? null : (
             <Button
+              ref={renameRef}
               variant="secondary"
+              style={compactStyle}
+              label={`${theme.copy.deviceRenameActionLabel} ${name}`}
+              disabled={busy}
+              onClick={() => {
+                setLabel(device.label ?? "");
+                setRenaming(true);
+              }}
+              data-polaris-device-rename={device.id}
+            >
+              {theme.copy.deviceRenameActionLabel}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            busy={busy}
+            disabled={busy}
+            style={{ ...compactStyle, color: "var(--pk-danger)" }}
+            label={`${theme.copy.deviceDisconnectLabel} ${name}`}
+            onClick={() => void run(props.onDisconnect)}
+            data-polaris-device-disconnect={device.id}
+          >
+            {theme.copy.deviceDisconnectLabel}
+          </Button>
+        </div>
+      </div>
+      {renaming && !props.readOnly ? (
+        // Opened on request only, inline under the row it renames. Escape closes it.
+        <form
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: SPACE["2"],
+          }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void run(() => props.onRename(label.trim() || null)).then((ok) => {
+              if (ok) close();
+            });
+          }}
+          onKeyDown={(e) => {
+            if (e.key !== "Escape") return;
+            e.preventDefault();
+            close();
+          }}
+          data-polaris-device-rename-form={device.id}
+        >
+          <TextField
+            id={inputId}
+            label={theme.copy.deviceRenameLabel}
+            value={label}
+            onChange={setLabel}
+            disabled={busy}
+            autoFocus
+            data-polaris-device-input={device.id}
+          />
+          <div style={rowActions}>
+            <Button
+              variant="primary"
               type="submit"
               busy={busy}
               disabled={busy}
-              style={{ fontSize: "14px" }}
+              style={compactStyle}
             >
               {theme.copy.deviceRenameSubmitLabel}
             </Button>
-          </form>
-        )}
-        <Button
-          variant="ghost"
-          busy={busy}
-          disabled={busy}
-          style={{ fontSize: "14px", color: "var(--pk-danger)" }}
-          label={`${theme.copy.deviceDisconnectLabel} ${device.label || device.id}`}
-          onClick={() => void run(props.onDisconnect)}
-          data-polaris-device-disconnect={device.id}
-        >
-          {theme.copy.deviceDisconnectLabel}
-        </Button>
-      </div>
+            <Button
+              variant="ghost"
+              disabled={busy}
+              style={compactStyle}
+              onClick={close}
+            >
+              {theme.copy.deviceRenameCancelLabel}
+            </Button>
+          </div>
+        </form>
+      ) : null}
     </>
   );
 }

@@ -14,10 +14,13 @@ import {
   type GateScreen,
   type UseLicenseGate,
 } from "../react/hooks.js";
-import { PolarisLogin } from "./PolarisLogin.js";
+import { SPACE } from "@polaris-key/brand";
+import { PolarisLogin, openManageUrl } from "./PolarisLogin.js";
+import { Button } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
-import { bannerStyle, fullWindow } from "./primitives/card.js";
+import { FullWindow, bannerStyle } from "./primitives/card.js";
 import { screenLogo } from "./brand.js";
+import { copyTitle, describeError } from "../core/copy.js";
 import type { PolarisTheme } from "./theme.js";
 
 /** Render-prop slots — each receives the headless gate context so a product can fully
@@ -40,7 +43,8 @@ export interface LicenseGateProps {
   /** When in `grace`, render children behind a dismissible banner instead of blocking. */
   allowGrace?: boolean;
   className?: string;
-  /** Passed to the sign-in card's "Replace a device" link as `return=` (PX-W8). */
+  /** Passed to the "Replace a device" link (the sign-in card's, and the error screen's) as
+   *  `return=` (PX-W8). */
   returnUrl?: string;
 }
 
@@ -134,9 +138,10 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
         slots.login(ctx)
       ) : (
         // The login card owns its own focus (auto-focuses the OIDC button) and is the
-        // accessible-named dialog here.
-        <div
-          style={fullWindow}
+        // accessible-named dialog here. A refused key or sign-in stays on this card (see
+        // `screenFor`): the error shows under the field the person just used, with "Replace a
+        // device" when the refusal was the device limit.
+        <FullWindow
           data-polaris-gate="login"
           role="alertdialog"
           aria-modal
@@ -145,7 +150,7 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
           <PolarisLogin
             {...(props.returnUrl ? { returnUrl: props.returnUrl } : {})}
           />
-        </div>
+        </FullWindow>
       );
       break;
     case "revoked":
@@ -169,7 +174,7 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
           logo={screenLogo(theme)}
           // The dialog manages focus → don't let the embedded login card steal it.
           extra={
-            <div style={{ marginTop: "24px" }}>
+            <div style={{ marginTop: SPACE["6"] }}>
               <PolarisLogin
                 autoFocus={false}
                 logo={null}
@@ -202,9 +207,36 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       break;
     }
     case "error":
-    default:
+    default: {
+      // PX-W8: a refusal that names the portal page freeing a seat gets "Replace a device" as
+      // the screen's main action, beside Try again, so a full device limit never dead-ends.
+      const manageUrl = ctx.error?.manageUrl;
       content = slots.error ? (
         slots.error(ctx)
+      ) : manageUrl && ctx.error ? (
+        // The copy catalog's title and sentence for the refusal ("Device limit reached").
+        <MessageScreen
+          title={copyTitle(ctx.error.wireCode ?? ctx.error.code)}
+          body={describeError(ctx.error)}
+          logo={screenLogo(theme)}
+          onRetry={() => {
+            openManageUrl(manageUrl, {
+              ...(props.returnUrl ? { returnUrl: props.returnUrl } : {}),
+            });
+          }}
+          retryLabel={theme.copy.freeDeviceLabel}
+          retryVariant="primary"
+          secondaryAction={
+            <Button
+              variant="secondary"
+              label={theme.copy.retryLabel}
+              onClick={() => void ctx.retry()}
+              data-polaris-gate-retry=""
+            >
+              {theme.copy.retryLabel}
+            </Button>
+          }
+        />
       ) : (
         <MessageScreen
           title="Something went wrong"
@@ -215,6 +247,7 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
         />
       );
       break;
+    }
   }
 
   // The root carries `aria-live="polite"` so a state transition (e.g. loading → revoked,

@@ -14,12 +14,15 @@
 // `aria-busy`. The whole card carries an accessible name (`aria-labelledby` → the title).
 
 import {
+  useEffect,
   useId,
+  useRef,
   useState,
   type CSSProperties,
   type FormEvent,
   type ReactNode,
 } from "react";
+import { SPACE } from "@polaris-key/brand";
 import { usePolarisAuth, usePolarisTheme } from "../react/hooks.js";
 import { Button } from "./primitives/buttons.js";
 import {
@@ -28,9 +31,12 @@ import {
   dangerText,
   mutedText,
   titleText,
+  typeStep,
 } from "./primitives/card.js";
 import { TextField } from "./primitives/input.js";
+import { useWindowLayout } from "./primitives/layout.js";
 import { screenLogo, themePoweredBy } from "./brand.js";
+import { knownProductName, type PolarisTheme } from "./theme.js";
 import { withManageKey, withManageReturn } from "@polaris-key/client-core";
 import { describeError } from "../core/copy.js";
 
@@ -82,8 +88,31 @@ function describeAuthError(err: unknown): string {
   );
 }
 
+/**
+ * The line under the sign-in title: the integrator's `signInSubtitle` when set, otherwise one
+ * that says what the card offers and, when the product's name is known, names it.
+ */
+export function signInLede(
+  theme: PolarisTheme,
+  methods: { signIn: boolean; key: boolean },
+): string {
+  if (theme.copy.signInSubtitle !== "") return theme.copy.signInSubtitle;
+  const product = knownProductName(theme);
+  if (methods.signIn && methods.key)
+    return product
+      ? `Sign in or enter a license key to use ${product}.`
+      : "Sign in or use a license key to continue.";
+  if (methods.signIn)
+    return product ? `Sign in to use ${product}.` : "Sign in to continue.";
+  if (methods.key)
+    return product
+      ? `Enter a license key to use ${product}.`
+      : "Enter a license key to continue.";
+  return product ? `Sign in to use ${product}.` : "Sign in to continue.";
+}
+
 /** The sign-in card: narrow, so the form reads as one centred column. */
-const loginCard: CSSProperties = { width: "min(440px, 100%)" };
+const loginCard: CSSProperties = { width: "min(27.5rem, 100%)" };
 
 const bareCard: CSSProperties = {
   width: "100%",
@@ -96,9 +125,9 @@ const bareCard: CSSProperties = {
 const divider: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: "12px",
+  gap: SPACE["3"],
   color: "var(--pk-text-muted)",
-  fontSize: "14px",
+  ...typeStep("sm"),
 };
 
 const dividerRule: CSSProperties = {
@@ -123,6 +152,10 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
   const showNoMethods = !showOidcLogin && !showKeyEntry;
   const logo = props.logo !== undefined ? props.logo : screenLogo(theme);
   const autoFocus = props.autoFocus ?? true;
+  // Full-bleed on a narrow window (the gate on a phone): the title sits in the middle of the
+  // space above the sign-in methods, and the methods dock at the bottom, where a thumb is.
+  const bleed = useWindowLayout()?.bleed === true;
+  const docked: CSSProperties | null = bleed ? { marginTop: "auto" } : null;
 
   async function onSubmitKey(e: FormEvent): Promise<void> {
     e.preventDefault();
@@ -149,6 +182,17 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
     : ((auth.error as { manageUrl?: string } | null | undefined)?.manageUrl ??
       null);
 
+  // A refusal lands under the form, which on a short window (a phone on its side) is below the
+  // fold: bring it, and "Replace a device" with it, into view.
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  const replaceRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!errorText) return;
+    (replaceRef.current ?? errorRef.current)?.scrollIntoView?.({
+      block: "nearest",
+    });
+  }, [errorText, manageUrl]);
+
   return (
     <Panel
       className={props.className}
@@ -156,17 +200,30 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
       data-polaris-login=""
       aria-labelledby={titleId}
     >
-      {logo ? (
-        <div style={{ display: "flex", justifyContent: "center" }}>{logo}</div>
-      ) : null}
-      <div style={{ textAlign: "center" }}>
-        <h2 id={titleId} style={titleText}>
-          {theme.copy.signInTitle}
-        </h2>
-        <p style={mutedText}>{theme.copy.signInSubtitle}</p>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: SPACE["5"],
+          ...docked,
+        }}
+      >
+        {logo ? (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            {logo}
+          </div>
+        ) : null}
+        <div style={{ textAlign: "center" }}>
+          <h2 id={titleId} style={titleText}>
+            {theme.copy.signInTitle}
+          </h2>
+          <p style={mutedText} data-polaris-login-lede="">
+            {signInLede(theme, { signIn: showOidcLogin, key: showKeyEntry })}
+          </p>
+        </div>
       </div>
 
-      <div style={{ ...actionPanel, gap: "16px" }}>
+      <div style={{ ...actionPanel, gap: SPACE["4"], ...docked }}>
         {showOidcLogin ? (
           <div style={actionPanel}>
             <Button
@@ -225,13 +282,14 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
       </div>
 
       {errorText ? (
-        <p id={errorId} style={dangerText} role="alert">
+        <p id={errorId} ref={errorRef} style={dangerText} role="alert">
           {errorText}
         </p>
       ) : null}
 
       {errorText && manageUrl ? (
         <Button
+          ref={replaceRef}
           variant="secondary"
           label={theme.copy.freeDeviceLabel}
           onClick={() => {

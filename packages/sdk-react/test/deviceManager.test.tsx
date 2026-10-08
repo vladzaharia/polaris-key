@@ -44,6 +44,22 @@ async function findEl<T extends Element>(
   })) as T;
 }
 
+/** Press a row's Rename and return the field it opens. */
+async function openRename(
+  container: HTMLElement,
+  deviceId: string,
+): Promise<HTMLInputElement> {
+  const rename = await findEl<HTMLButtonElement>(
+    container,
+    `[data-polaris-device-rename="${deviceId}"]`,
+  );
+  fireEvent.click(rename);
+  return findEl<HTMLInputElement>(
+    container,
+    `[data-polaris-device-input="${deviceId}"]`,
+  );
+}
+
 const roster = [
   { id: "dev-1", current: true, status: "ok" as const, label: "Laptop" },
   {
@@ -104,10 +120,7 @@ describe("DeviceManager — the roster", () => {
     );
     const adapter = desktopWithInvoke(invoke as PolarisBridge["invoke"]);
     const { container } = renderManager(adapter);
-    const input = await findEl<HTMLInputElement>(
-      container,
-      '[data-polaris-device-input="dev-2"]',
-    );
+    const input = await openRename(container, "dev-2");
     fireEvent.change(input, { target: { value: "Studio" } });
     fireEvent.submit(input.closest("form") as HTMLFormElement);
     await waitFor(() =>
@@ -115,6 +128,49 @@ describe("DeviceManager — the roster", () => {
         deviceId: "dev-2",
         label: "Studio",
       }),
+    );
+    // A saved name closes the field.
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-polaris-device-input="dev-2"]'),
+      ).toBeNull(),
+    );
+    adapter.dispose();
+  });
+
+  it("opens the rename field only when asked, and Escape closes it back onto Rename", async () => {
+    const invoke = vi.fn(async (_service: string, method: string) =>
+      method === "list" ? roster : undefined,
+    );
+    const adapter = desktopWithInvoke(invoke as PolarisBridge["invoke"]);
+    const { container } = renderManager(adapter);
+    await findEl(container, '[data-polaris-device-rename="dev-1"]');
+    // No row carries an open form until its Rename is pressed.
+    expect(container.querySelector("[data-polaris-device-input]")).toBeNull();
+    const rename = container.querySelector(
+      '[data-polaris-device-rename="dev-2"]',
+    ) as HTMLButtonElement;
+    // The action names its device, like Disconnect.
+    expect(rename.getAttribute("aria-label")).toBe("Rename dev-2");
+    const input = await openRename(container, "dev-2");
+    expect(document.activeElement).toBe(input);
+    // Only that row opened.
+    expect(
+      container.querySelectorAll("[data-polaris-device-input]"),
+    ).toHaveLength(1);
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitFor(() =>
+      expect(container.querySelector("[data-polaris-device-input]")).toBeNull(),
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        container.querySelector('[data-polaris-device-rename="dev-2"]'),
+      ),
+    );
+    expect(invoke).not.toHaveBeenCalledWith(
+      "devices",
+      "rename",
+      expect.anything(),
     );
     adapter.dispose();
   });
@@ -125,10 +181,7 @@ describe("DeviceManager — the roster", () => {
     );
     const adapter = desktopWithInvoke(invoke as PolarisBridge["invoke"]);
     const { container } = renderManager(adapter);
-    const input = await findEl<HTMLInputElement>(
-      container,
-      '[data-polaris-device-input="dev-1"]',
-    );
+    const input = await openRename(container, "dev-1");
     fireEvent.change(input, { target: { value: "   " } });
     fireEvent.submit(input.closest("form") as HTMLFormElement);
     await waitFor(() =>
@@ -162,7 +215,7 @@ describe("DeviceManager — the roster", () => {
     adapter.dispose();
   });
 
-  it("readOnly hides the rename form but keeps disconnect", async () => {
+  it("readOnly hides rename but keeps disconnect", async () => {
     const adapter = desktopWithInvoke((async (_s, m) =>
       m === "list" ? roster : undefined) as PolarisBridge["invoke"]);
     const { container } = renderManager(adapter, true);
@@ -171,6 +224,7 @@ describe("DeviceManager — the roster", () => {
         container.querySelector('[data-polaris-devices="rows"]'),
       ).toBeTruthy(),
     );
+    expect(container.querySelector("[data-polaris-device-rename]")).toBeNull();
     expect(container.querySelector("[data-polaris-device-input]")).toBeNull();
     expect(
       container.querySelector("[data-polaris-device-disconnect]"),
@@ -247,6 +301,7 @@ describe("DeviceManager — device-management-unsupported", () => {
     );
     expect(container.textContent).toMatch(/does not expose that capability/i);
     // The rename affordance is withdrawn along with the capability.
+    expect(container.querySelector("[data-polaris-device-rename]")).toBeNull();
     expect(container.querySelector("[data-polaris-device-input]")).toBeNull();
     adapter.dispose();
   });

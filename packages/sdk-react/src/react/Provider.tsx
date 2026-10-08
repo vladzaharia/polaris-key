@@ -7,6 +7,8 @@
 import {
   useEffect,
   useMemo,
+  useRef,
+  useState,
   useSyncExternalStore,
   type CSSProperties,
   type ReactNode,
@@ -27,6 +29,8 @@ import {
   type ServicesMap,
 } from "../core/services.js";
 import {
+  SYSTEM_FONT_STACK,
+  isBrowserDefaultFont,
   mergeTheme,
   themeVars,
   type PartialTheme,
@@ -34,6 +38,7 @@ import {
   type PolarisColorScheme,
   type PolarisResolvedScheme,
 } from "../components/theme.js";
+import { useIsomorphicLayoutEffect } from "../components/primitives/layout.js";
 import { PolarisContext } from "./context.js";
 
 export interface PolarisKeyProviderProps {
@@ -97,6 +102,32 @@ export interface PolarisKeyProviderProps {
 }
 
 const LIGHT_QUERY = "(prefers-color-scheme: light)";
+
+/**
+ * Whether the host page set no font where the provider sits, so a theme whose font token is
+ * `inherit` (the neutral theme, high contrast) would inherit the browser's default serif. Read
+ * once mounted and again once the page has loaded, in case the host's stylesheet arrives late.
+ */
+function useNoHostFont(
+  root: { current: HTMLElement | null },
+  enabled: boolean,
+): boolean {
+  const [none, setNone] = useState(false);
+  useIsomorphicLayoutEffect(() => {
+    const el = root.current;
+    if (!enabled || !el || typeof getComputedStyle !== "function") {
+      setNone(false);
+      return;
+    }
+    const check = (): void =>
+      setNone(isBrowserDefaultFont(getComputedStyle(el).fontFamily));
+    check();
+    if (document.readyState === "complete") return;
+    window.addEventListener("load", check, { once: true });
+    return () => window.removeEventListener("load", check);
+  }, [root, enabled]);
+  return none;
+}
 
 function lightQuery(): MediaQueryList | null {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function")
@@ -260,7 +291,16 @@ export function PolarisKeyProvider(
   }, [adapter, refreshIntervalSeconds]);
 
   const value = useMemo(() => ({ adapter, theme }), [adapter, theme]);
-  const vars = useMemo(() => themeVars(theme), [theme]);
+  // `inherit` takes the host's font; on a page that sets none, that would be Times, so the kit
+  // uses the platform's UI font there instead.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inheritsFont = theme.tokens.fontFamily.trim() === "inherit";
+  const noHostFont = useNoHostFont(rootRef, inheritsFont);
+  const vars = useMemo(() => {
+    const v = themeVars(theme);
+    if (inheritsFont && noHostFont) v["--pk-font-family"] = SYSTEM_FONT_STACK;
+    return v;
+  }, [theme, inheritsFont, noHostFont]);
   const rootStyle = useMemo<CSSProperties>(
     () => ({ ...(vars as CSSProperties), colorScheme: scheme }),
     [vars, scheme],
@@ -288,6 +328,7 @@ export function PolarisKeyProvider(
   return (
     <PolarisContext.Provider value={value}>
       <div
+        ref={rootRef}
         data-polaris-key-root=""
         data-theme={scheme}
         data-branding={theme.branding ?? "neutral"}
