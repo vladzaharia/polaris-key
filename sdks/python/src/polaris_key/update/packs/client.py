@@ -31,6 +31,7 @@ from urllib.parse import quote, urljoin, urlsplit
 
 from ...constants_generated import MAX_RECORD_JWS_BYTES, ErrorCode, Feature
 from ...core.dirs import exclude_from_backup
+from ...core.events import listener_failed
 from ...discovery import service_endpoint
 from .boot import boot_pack_options, run_boot_fetch
 from .engine import (
@@ -475,7 +476,7 @@ class PacksClient:
             try:
                 listener(e)
             except Exception:
-                pass  # A listener never fails an install.
+                listener_failed("packs progress listener")  # never fails an install
 
     def _stamp_bytes(self) -> bytes:
         src = self._opts.content_stamp

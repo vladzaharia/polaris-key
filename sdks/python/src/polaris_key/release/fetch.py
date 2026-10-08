@@ -31,6 +31,7 @@ import httpx
 
 from ..core.context import CoreContext, server_error
 from ..core.errors import PolarisError
+from ..core.events import listener_failed
 
 __all__ = ["FetchedFile", "MAX_REDIRECTS", "fetch_verified"]
 
@@ -215,7 +216,7 @@ def fetch_verified(
                                 try:
                                     on_progress(have, expected_size)
                                 except Exception:
-                                    pass
+                                    listener_failed("on_progress")
                     except httpx.HTTPError as e:
                         raise PolarisError(
                             "network-error", f"The download was interrupted ({e}); the next call resumes."
