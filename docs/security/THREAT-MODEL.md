@@ -1440,6 +1440,29 @@ main, which are disposable by design. Nothing a client sends selects a version t
 candidates are computed from D1. The backfill routes take only `apply` and an optional
 deliverable id.
 
+**The standing prune token (P0-48).** The backstop after each stable tag (`publish-sdks.yml`'s
+`prune` job) authenticates with `PKEY_FEED_PRUNE_TOKEN`, a static `pkeyci_` token of
+`polaris-key` whose only scope is `release:yank`.
+
+- **Blast radius.** The scope is not prune-only. It also authorises
+  `POST /polaris-key/release/releases/<id>/yank` (`services/release/routes.ts` `handleCiYank`),
+  so a leaked token can yank any polaris-key release as well as run the prune, which deletes only
+  what the rule above selects. It cannot publish, promote or pin, and it cannot reach another
+  product (401). Every use is audited under `ci:<subject>`, and a yank is undone with an unyank.
+- **Where it lives.** It is a secret of the `package-registry` environment. GitHub gives an
+  environment's secrets to every job that declares the environment, so it is not confined to
+  the prune job: `swift-sign` and every publish leg (`publish-package.yml`, on pushes to main as
+  well as on tags) can read it by naming it, which takes a change to that workflow on main. The
+  environment's deployment policy admits only `main` and `v*` tags, so a pull-request branch
+  cannot.
+- **Lifetime.** A static token expires at most 90 days after issue
+  (`STATIC_CI_TOKEN_MAX_TTL_SECONDS`). It is rotated before then: issue the new one, replace the
+  secret, revoke the old one (RUNBOOK "Feed retention", the backstop).
+- **Why not OIDC.** The product has one trusted-publisher policy, and its scopes go to every
+  token it mints. Granting it `release:yank` would put the scope in every publish leg's token,
+  on every push to main, with no change to any workflow. The standing secret reaches only a job
+  that names it, which today is the prune job alone.
+
 **What it can never touch.** A stable or beta version, a prerelease of a version newer than V,
 another package, another product, or a version that a channel policy points at or that any
 other row names (a revocation, a pack pin or hold, a download token). Those are reported as
@@ -5164,7 +5187,7 @@ group-assignment mistake on that client crossed from customer to operator (notes
   the pre-I-03 exposure stands: the residual this package closes only once the secrets are set
   and `/manage/callback` is removed from the platform client (DEPLOYMENT §2).
 - **Authorisation is unchanged.** Console access is still `PLATFORM_ADMIN_GROUP` in the ID
-  token's `groups` (§5); there is no per-product admin group. A separate client narrows who can obtain a token
+  token's `groups` (§5); a product's `adminGroup` grants no console access. A separate client narrows who can obtain a token
   for the console's audience; it does not change what the token grants. Where Pocket ID can
   restrict a client to user groups, allowing only the admin group on the console client adds a
   second check at the IdP.
