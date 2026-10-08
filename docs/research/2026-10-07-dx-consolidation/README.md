@@ -16,9 +16,10 @@ settled their disagreements, and three critiques (coverage, feasibility, simplic
 | [`integration.md`](integration.md)             | the decision record (concept model, 58 conflict resolutions, glossary)                      |
 | [`audits/`](audits/)                           | the evidence, with file and line references                                                 |
 
-**In one paragraph.** Polaris Key keeps its seven services and its wire, but the console stops
-showing them as seven switches and six setup surfaces. A product becomes **five features**
-(Licensing, Managed config, Ship builds, Sign-in, Cloud Sync) created by a two-or-three-step
+**In one paragraph.** Polaris Key keeps its seven services, adds an eighth (`commerce`, which requires
+Licensing) and keeps its wire version, but the console stops showing them as switches and six setup
+surfaces. A product becomes **six features** (Licensing, Managed config, Ship builds, Sign-in, Cloud
+Sync, Commerce) created by a two-or-three-step
 wizard that lands on one **Integration** page with code generated for that product and a
 per-platform **Verified** tick read from the SDK headers every SDK already sends. A licence is
 **in an account, waiting or floating**; every licence has a **tier**, its template; **add-ons**
@@ -72,15 +73,18 @@ Five further rules the plan imposes on itself:
   the one source for the sign-in header, consent, emails, portal, kits and Discover), its
   enabled services, its recorded setup choices (`core.setup`, one audited setting) and its
   members' roles.
-- **Five features** over the seven unchanged service slugs: **Licensing**; **Managed config**;
-  **Ship builds** (release and distribution, with In-app updates on by default); **Sign-in**;
-  **Cloud Sync** (turns on config and identity with it). Each feature's row holds its own
-  switches (Package feeds, Customer portal, Polaris Key storefront visibility, Minted tokens) and
-  shows its facts as status (Commerce is a fact: a storefront is ready). Raw slugs are read-only
+- **Six features** over the seven existing service slugs plus `commerce` (owner, 2026-10-07;
+  CM-29): **Licensing**; **Managed config**; **Ship builds** (release and distribution, with
+  In-app updates on by default); **Sign-in**; **Cloud Sync** (requires config and identity);
+  **Commerce** (requires Licensing). A service can be on only when everything it requires is on,
+  and turning a requirement off turns its dependents off in the same audited batch (ST-38's
+  requirement rule). Each feature's row holds its own switches (Package feeds, Customer portal,
+  Polaris Key storefront visibility, Minted tokens) and shows its facts as status (a storefront
+  is ready). Raw slugs are read-only
   under Advanced and the registration policy is always derived. Discovery and the SDK constants
   are byte-identical (ST-38).
 - **Creating a product** takes two or three steps: pick a repository (checked) or type a name,
-  say what it is for (the same five features, platforms, a Free tier), Create. One database batch
+  say what it is for (the same six features, platforms, a Free tier), Create. One database batch
   makes the key, a Default config profile, catalog v1, the Free tier, the services, the release
   trust policy and the planned platforms, then lands on Integration (ST-42, ST-43).
 - **Integration** is one page and one Overview card. For each enabled feature it shows what the
@@ -241,9 +245,11 @@ Five further rules the plan imposes on itself:
 
 ### 2.7 Commerce
 
-- **A fact, not a service.** The Commerce group (one Storefronts overview, Offers,
-  Purchases) appears when Licensing is on and a storefront can connect. No new service slug: that
-  would be an all-SDK wire event.
+- **A service that requires Licensing** (owner, 2026-10-07: C-17 reversed; CM-29). The Commerce
+  group (one Storefronts overview, Offers, Purchases) shows when the `commerce` service is on.
+  Each store storefront still needs its channel set up (a per-storefront readiness fact, not a
+  service requirement), so manual, external and later Polaris Key checkout sales work with
+  Distribution off. The slug is an all-SDK event, so it rides the W-LX train.
 - **A storefront** is the selling side of a channel (App Store, Google Play, Steam, Microsoft
   Store, itch.io, Polaris Key). It activates with its channel when one credential serves both
   (A-33); its row in the Storefronts overview opens the same channel page on Sales.
@@ -406,7 +412,7 @@ but never built):
 | Manifest fields   | `licensing.entitlements[]`, `licensing.addons[]`, `licensing.access`, `identity.{methods, connections, claims, terms, keyEntry, redirectPaths}`, tier `entitlements`/`fingerprintMode`/`onExpiry`, the catalog `mint` block, the short `.pkey/distribution` form | Removed (owner, 2026-10-07): each is a validator error naming its replacement, and the package that removes it migrates the repo-root `.pkey/` and `products/djdl/*` in the same change; adopters' repos are owner steps: `product.adminGroup`, `dist_listing`, `defaultDeviceLimit`, `defaultMaxOfflineDays`, `oidc.*`, `groupRoleMap`, `autoIssue.mode`, provisioning entitlements, `secret: true`, `delivery: serverOnly`, `ui.scopes: device`, `userGrant`, `grantLabel`, `edgeMint[]`, a declared registration policy. `modules` is kept (no `services` rename) |
 
 **Planned work that will not be built**: a second authorization server, I-22's product-IdP
-kinds, I-23, SP-10's signed browser-session document, a `commerce` service slug, automatic
+kinds, I-23, SP-10's signed browser-session document, automatic
 production store submission (DX-08), console access requests as a workflow (ST-33), a test
 sign-in mode, the SDK verbs `setConfig`/`clearConfig`/`settingState`, four constructor dialects,
 Cloud Sync `onAttach` and three extra conflict vocabularies, MD5.
@@ -463,7 +469,7 @@ two-release contract pairs.
 | **E.** Licensing model                     | as batch 6 lands (LX-32) | 27       | 19.6–28   | holder states, tiers, add-ons, access policy, durations, subscriptions              |
 | **F.** Identity                            | week 0 plan, wave 7      | 23       | 19.1–28.8 | connections, product connections, profile v2, consent                               |
 | **G.** Managed config and Cloud Sync       | week 0 plan, wave 7      | 22       | 18.1–25.6 | three types, one chain, synced settings, saves                                      |
-| **H.** Channels, storefronts, commerce     | wave 7                   | 40       | 23.1–34.5 | one catalogue, channel page, auto-activation, offers, one ledger                    |
+| **H.** Channels, storefronts, commerce     | wave 7                   | 41       | 24.6–37   | one catalogue, channel page, auto-activation, offers, one ledger                    |
 | **I.** Packages, updates and packs         | wave 7                   | 17       | 14.2–21.3 | personal tokens, self-provisioning feeds, release tracks, Access page, Updates page |
 
 **Week 0** (as batch 6 lands on main). Track A in full; the plans dispatched in parallel so no
@@ -543,7 +549,7 @@ recommended, with the reason), **defer** (later, with the condition).
 
 | Brief item                                                                             | Stance | Why, and where                                                                                                                         |
 | -------------------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Consolidate similar features                                                           | adopt  | Five features, one Integration page, one channel page, one token, one access policy, one Access page (§1)                              |
+| Consolidate similar features                                                           | adopt  | Six features, one Integration page, one channel page, one token, one access policy, one Access page (§1)                               |
 | Flexibility, to an extent                                                              | adapt  | Keep outcome choices (limits, duration, access, visibility, offers); drop internal tuning knobs (LX-40, ST-38)                         |
 | Reduce configuration surface                                                           | adopt  | Licensing 7 → 1, commerce 26 → 4, four portal toggles → 0; the ledger in §3 counts what is added too                                   |
 | Wizards, instructions, example code, auto-configuration                                | adopt  | ST-39 kit, ST-43, ST-41, SP-33a generator, SP-36 examples, A-23 channel wizards                                                        |
@@ -554,7 +560,7 @@ recommended, with the reason), **defer** (later, with the condition).
 
 | Brief item                                                        | Stance | Why, and where                                                                                                                                                                                                                         |
 | ----------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Easy to add; core plus optional features                          | adapt  | Five features over the unchanged service slugs, each with its own switches; no new slug, so no SDK churn (ST-38)                                                                                                                       |
+| Easy to add; core plus optional features                          | adapt  | Six features over the service slugs, each with its own switches; the one new slug, `commerce`, requires Licensing (CM-29, owner 2026-10-07) and every requirement follows one generic rule (ST-38)                                     |
 | Step-by-step product wizard                                       | adopt  | Two or three steps, one batch, lands on Integration (ST-42, ST-43)                                                                                                                                                                     |
 | In-app Integration section with per-service instructions and code | adopt  | One page, generated snippets per feature and SDK (ST-40, ST-41, SP-33a)                                                                                                                                                                |
 | Dismiss after an end-to-end handshake, as a user choice           | adapt  | Unlocks at the first Verified feature (an SDK 2xx, a CI publish or an updater check), keeps per-platform progress, recorded in `core.setup`, never hidden automatically (the backfill only marks Verified), re-openable (ST-40, ST-41) |
@@ -642,7 +648,7 @@ recommended, with the reason), **defer** (later, with the condition).
 
 | Brief item                                                                                   | Stance | Why, and where                                                                                                                                                                                                                                                |
 | -------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Commerce owns storefronts, payments, transactions, grants                                    | adapt  | A Commerce group (Storefronts overview, Offers, Purchases) shown when a storefront can connect. Pushback on a commerce service: a new slug is an all-SDK wire event for no customer gain (A-21, CM-23)                                                        |
+| Commerce owns storefronts, payments, transactions, grants                                    | adapt  | Commerce is a service that requires Licensing (owner, 2026-10-07; CM-29); its group (Storefronts overview, Offers, Purchases) shows when the service is on (A-21, CM-23)                                                                                      |
 | Prices and regional availability                                                             | adapt  | One base price converted with each store's tools (Apple price points, Play `convertRegionPrices`) under a typed confirmation; territory availability per SKU; Steam and itch.io get copy cards (no price API); no store prices on the storefront page (CM-23) |
 | Steps for unconfigured storefronts; clear status; global and per-storefront settings; parity | adopt  | Storefront wizard, Sales tab, 4 settings, parity spike (CM-21, CM-23, CM-27)                                                                                                                                                                                  |
 | Standardise setup, expose store-specific fields; Stripe for Polaris Key                      | adopt  | Catalogue facets (A-19, P0-27); Stripe on owner decision 5 (CM-02)                                                                                                                                                                                            |
@@ -740,6 +746,13 @@ recommendation. Each stays open to the owner's veto; a veto takes the "If the an
 - **8: narrow the client-core plan-mode rule after SP-34** proves the move with unchanged
   transcripts and corpus. CLAUDE.md and AGENTS.md change in SP-34, not before.
 
+**Owner, 2026-10-07: Commerce is a service (CM-29); generic requirement rule (ST-38).** C-17 is
+reversed: `commerce` joins `tools/services.json` and requires `license`. For every service, the
+requirements in `services.json` decide: a service can be enabled only when all its requirements
+are (otherwise `<slug>_requires_<req>`); disabling a requirement disables its dependents,
+transitively, in one audited batch whose confirmation names them; re-enabling it does not
+re-enable them; a manifest that turns a dependent on with a requirement off is a validator error.
+
 **Decided under the brief, with the security details flagged for review:**
 
 - **D2, operators become Polaris Key accounts under RBAC, Pocket ID seeded as a connection** (the
@@ -758,8 +771,7 @@ recommendation. Each stays open to the owner's veto; a veto takes the "If the an
 **Also decided under the brief and recorded, not asked:** licences in an account need sign-in by
 default (LX-39, LX-31); consumables and redemption status in the licensing train (LX-42); trials
 as a duration (LX-41); "Automatic grant" in sentence case; the tier pill in License Details; new
-tenant feeds default to Customers; feed cleanup on by default after a dry run; no new service
-slug; the vocabulary in `integration.md` §2; Home merged with Products; MD5 refused; no automatic
+tenant feeds default to Customers; feed cleanup on by default after a dry run; the vocabulary in `integration.md` §2; Home merged with Products; MD5 refused; no automatic
 production store submission.
 
 **Owner steps** (actions, tracked in `~/Downloads/polaris-key-owner-steps.md`): create the npm
@@ -774,16 +786,16 @@ settings backfill so P0-24 can delete it.
 `PROTOCOL_VERSION` stays 4. Every wire event is additive with the corpus appended, plan mode,
 and serial in the corpus lane (Track K):
 
-| Train                  | Members                                                                                                                                                                                                     | SDK follow-up                       |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| HA-12 (done, batch 6)  | `core.presentation` in discovery                                                                                                                                                                            | HA-13, HA-14                        |
-| W-ID                   | I-27's plan; I-09; I-08 OAuth-shaped (absorbs PX-W18). No signed shape changes; redirect transcripts re-recorded. Tail: LX-39's contract text and the key-entry-refusals transcript                         | I-10a, I-10b (absorb PX-W9b, UK-44) |
-| W-SYNC (contract text) | U-01b's §13 text and appended `sync-scenarios.json`, then U-05's `sync-*` transcripts                                                                                                                       | via U-06/07/20/21                   |
-| W-LX                   | LX-18: the duration member `term` (trials, keeps the last version), add-on grants, consumables (LX-42), refusal reasons, CM-20's `offers[]`, the `app` claim kind, `transferred`, W4; optional LX-25, P2-14 | LX-19 + LX-20, one wave             |
-| W-UP                   | P2-12, one update resolver; transcripts byte-identical, no corpus file changes                                                                                                                              | none                                |
-| Contract text only     | P2-08 (dev listed as built in; the predicate unchanged)                                                                                                                                                     | none                                |
+| Train                  | Members                                                                                                                                                                                                                                          | SDK follow-up                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
+| HA-12 (done, batch 6)  | `core.presentation` in discovery                                                                                                                                                                                                                 | HA-13, HA-14                        |
+| W-ID                   | I-27's plan; I-09; I-08 OAuth-shaped (absorbs PX-W18). No signed shape changes; redirect transcripts re-recorded. Tail: LX-39's contract text and the key-entry-refusals transcript                                                              | I-10a, I-10b (absorb PX-W9b, UK-44) |
+| W-SYNC (contract text) | U-01b's §13 text and appended `sync-scenarios.json`, then U-05's `sync-*` transcripts                                                                                                                                                            | via U-06/07/20/21                   |
+| W-LX                   | LX-18: the duration member `term` (trials, keeps the last version), add-on grants, consumables (LX-42), refusal reasons, CM-20's `offers[]`, the `app` claim kind, `transferred`, W4, the `commerce` service slug (CM-29); optional LX-25, P2-14 | LX-19 + LX-20, one wave             |
+| W-UP                   | P2-12, one update resolver; transcripts byte-identical, no corpus file changes                                                                                                                                                                   | none                                |
+| Contract text only     | P2-08 (dev listed as built in; the predicate unchanged)                                                                                                                                                                                          | none                                |
 
-Avoided on purpose: a `commerce` service slug; removing `flag` rows from `/config/schema`;
+Avoided on purpose: removing `flag` rows from `/config/schema`;
 SP-10's W10 document; I-24a's licensing members; new outlet kinds; a changed channels predicate
 ("dev includes beta" is stored by the editors); an SDK-reported "integration verified" flag
 (Integration uses existing headers and server facts).

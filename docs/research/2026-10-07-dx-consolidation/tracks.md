@@ -31,7 +31,7 @@ owner steps and two-release contract pairs. "Depends on" lists only open package
 | [E. Licensing model](#e-licensing-model)                                                                             | as batch 6 lands (LX-32)            | 27       | 19.6–28          | F, K        |
 | [F. Identity](#f-identity)                                                                                           | week 0 (plan), wave 7               | 23       | 19.1–28.8        | E, K        |
 | [G. Managed config and Cloud Sync](#g-managed-config-and-cloud-sync)                                                 | week 0 (plan), wave 7               | 22       | 18.1–25.6        | H, I        |
-| [H. Distribution channels, storefronts and commerce](#h-distribution-channels-storefronts-and-commerce)              | wave 7                              | 40       | 23.1–34.5        | G, I        |
+| [H. Distribution channels, storefronts and commerce](#h-distribution-channels-storefronts-and-commerce)              | wave 7                              | 41       | 24.6–37          | G, I        |
 | [I. Packages, updates and packs](#i-packages-updates-and-packs)                                                      | wave 7                              | 17       | 14.2–21.3        | G, H        |
 | [J. SDK and UI-kit consolidation](#j-sdk-and-ui-kit-consolidation)                                                   | week 0 (plans)                      | 26       | 43–61.1          | C, K        |
 | [K. Corpus lane (wire trains, serial)](#k-corpus-lane-wire-trains-serial)                                            | as batch 6 lands (P0-44)            | 15       | 11–15.7          | all tracks  |
@@ -220,23 +220,23 @@ PS-12, CM-21 and P0-28.
 console exactly how to connect each feature with code generated for the product, see per
 platform when it works, and hide the section by choice.
 
-| #   | Id     | Origin  | Title                                                                               | Depends on (open)     | Weeks   | Flags |
-| --- | ------ | ------- | ----------------------------------------------------------------------------------- | --------------------- | ------- | ----- |
-| 1   | ST-38  | OB-02   | Service table: five features; one service-off state (absorbs DC-12)                 | —                     | 0.8–1.1 |       |
-| 2   | ST-40  | OB-04   | Integration facts and SDK sightings                                                 | P0-19, ST-38, ST-39   | 1–1.5   | mig   |
-| 3   | SP-32a | SDX-01  | polaris-key.json: plan, schema, fromConfig() and doctor() in Node, React and Python | SP-35, SP-34          | 1.2–1.6 | plan  |
-| 4   | SP-32b | SDX-01b | polaris-key.json, fromConfig() and doctor() in Swift, Kotlin and Godot              | SP-32a                | 1–1.4   |       |
-| 5   | SP-33a | SDX-02  | One integration content generator on today's names, and pkey sdk add --expect       | P0-42                 | 1.2–1.5 |       |
-| 6   | SP-33b | SDX-02b | Integration content on polaris-key.json in every SDK, the docs and the Godot dock   | SP-33a, SP-32b, SP-35 | 1–1.2   |       |
-| 7   | ST-41  | OB-05   | Integration page and Overview card                                                  | ST-40, SP-33a, ST-39  | 1.2–1.6 |       |
-| 8   | ST-42  | OB-06   | Create with defaults                                                                | ST-38                 | 0.6–0.9 |       |
-| 9   | ST-43  | OB-07   | New Product wizard                                                                  | ST-39, ST-42, P0-26   | 1–1.5   |       |
-| 10  | ST-44  | OB-08   | One Home; delete GET /manage/api/summary; slim product list                         | ST-38                 | 0.8–1.2 |       |
-| 11  | ST-45  | OB-09   | Platform and Product sidebar contexts                                               | ST-08, ST-29          | 0.6–0.9 |       |
-| 12  | ST-46  | OB-10   | Interactive pkey init                                                               | ST-38, P0-45          | 0.4–0.6 |       |
-| 13  | ST-47  | OB-11   | Legacy setup retirement                                                             | ST-40, ST-41, ST-44   | 0.5–0.8 |       |
-| 14  | SP-36  | SDX-05  | Examples in one tree, built in CI                                                   | SP-32b, SP-33b, P0-43 | 1–1.5   |       |
-| 15  | SP-37  | SDX-06  | Developer docs reshape                                                              | SP-33b                | 1–1.5   |       |
+| #   | Id     | Origin  | Title                                                                                    | Depends on (open)     | Weeks   | Flags |
+| --- | ------ | ------- | ---------------------------------------------------------------------------------------- | --------------------- | ------- | ----- |
+| 1   | ST-38  | OB-02   | Service table: six features, one requirement rule, one service-off state (absorbs DC-12) | —                     | 0.8–1.1 |       |
+| 2   | ST-40  | OB-04   | Integration facts and SDK sightings                                                      | P0-19, ST-38, ST-39   | 1–1.5   | mig   |
+| 3   | SP-32a | SDX-01  | polaris-key.json: plan, schema, fromConfig() and doctor() in Node, React and Python      | SP-35, SP-34          | 1.2–1.6 | plan  |
+| 4   | SP-32b | SDX-01b | polaris-key.json, fromConfig() and doctor() in Swift, Kotlin and Godot                   | SP-32a                | 1–1.4   |       |
+| 5   | SP-33a | SDX-02  | One integration content generator on today's names, and pkey sdk add --expect            | P0-42                 | 1.2–1.5 |       |
+| 6   | SP-33b | SDX-02b | Integration content on polaris-key.json in every SDK, the docs and the Godot dock        | SP-33a, SP-32b, SP-35 | 1–1.2   |       |
+| 7   | ST-41  | OB-05   | Integration page and Overview card                                                       | ST-40, SP-33a, ST-39  | 1.2–1.6 |       |
+| 8   | ST-42  | OB-06   | Create with defaults                                                                     | ST-38                 | 0.6–0.9 |       |
+| 9   | ST-43  | OB-07   | New Product wizard                                                                       | ST-39, ST-42, P0-26   | 1–1.5   |       |
+| 10  | ST-44  | OB-08   | One Home; delete GET /manage/api/summary; slim product list                              | ST-38                 | 0.8–1.2 |       |
+| 11  | ST-45  | OB-09   | Platform and Product sidebar contexts                                                    | ST-08, ST-29          | 0.6–0.9 |       |
+| 12  | ST-46  | OB-10   | Interactive pkey init                                                                    | ST-38, P0-45          | 0.4–0.6 |       |
+| 13  | ST-47  | OB-11   | Legacy setup retirement                                                                  | ST-40, ST-41, ST-44   | 0.5–0.8 |       |
+| 14  | SP-36  | SDX-05  | Examples in one tree, built in CI                                                        | SP-32b, SP-33b, P0-43 | 1–1.5   |       |
+| 15  | SP-37  | SDX-06  | Developer docs reshape                                                                   | SP-33b                | 1–1.5   |       |
 
 **Dependencies:** ST-40 needs P0-19 (descriptor contributions). ST-41 needs only SP-33a, which
 registers today's `pkey sdk` renderer as the one generator on the names SDKs ship now; SP-33b
@@ -539,22 +539,23 @@ Purchase model across storefronts; subscriptions and refunds that keep licences 
 | 22  | CM-25  | new     | App purchase as a licence source                                              | CM-20, LX-11, LX-10, CM-22        | 1–1.5   | plan, sec                |
 | 23  | CM-27  | new     | Spike: store purchase parity (Microsoft Store, itch.io, consumables)          | —                                 | 0.3–0.5 |                          |
 | 24  | CM-28  | new     | Consumables and quantity grants from store purchases                          | CM-27, CM-22, LX-42               | 0.8–1.2 | plan, sec                |
-| 25  | PS-12  | new     | Discover visibility: one setting                                              | LX-36, P0-49                      | 0.3–0.5 |                          |
-| 26  | P0-27  | CQW-13  | One adapter per store (delivery and commerce facets)                          | A-19, P0-17                       | 1.2–1.8 |                          |
-| 27  | P0-28  | CQW-14  | One sealed credential store and resolver                                      | P0-18, P0-27, P0-49               | 1.5–2   | plan, sec, mig           |
-| 28  | P0-28b | CQW-14b | Drop the old credential stores (release N+1)                                  | P0-28                             | 0.1–0.2 | sec, mig                 |
-| 29  | PX-09  | edit    | Get it: every channel action per platform                                     | A-26, HA-09, P0-35                | 0.4–0.8 |                          |
-| 30  | PS-05b | edit    | Storefront library entries                                                    | A-26                              | 0.4–0.8 |                          |
-| 31  | PS-11  | edit    | Storefront close-out                                                          | PS-12                             | 0.4–0.6 |                          |
-| 32  | HA-09  | keep    | Portal licensed downloads prefer the mirrored R2 copy with PX-W3's download … | —                                 | 0.2–0.4 |                          |
-| 33  | CM-01  | edit    | Polaris Key checkout plan, reduced (deferred)                                 | —                                 | 0.6–0.9 | plan, deferred, optional |
-| 34  | CM-02  | edit    | Stripe as the Polaris Key storefront's commerce facet (absorbs CM-03)         | CM-01, P0-27, P0-28               | 1–1.4   | deferred, optional       |
-| 35  | CM-04  | edit    | Polaris Key prices and coupons on offers (absorbs CM-09, CM-16)               | CM-02                             | 1–1.4   | deferred, optional       |
-| 36  | CM-05  | edit    | Checkout fulfilment and reversal (absorbs CM-06)                              | CM-04, LX-09, LX-10, LX-12, LX-13 | 1.2–1.6 | deferred, optional       |
-| 37  | CM-08  | edit    | Polaris Key subscriptions on Core subscriptions (absorbs CM-07)               | LX-23, CM-05, LX-41               | 1.4–1.9 | deferred, optional       |
-| 38  | CM-11  | edit    | Portal Polaris Key orders on Account -> Purchases                             | CM-08, LX-15, CM-26               | 1.2–1.6 | deferred, optional       |
-| 39  | CM-12  | edit    | Polaris Key Sales tab content                                                 | CM-08, LX-14, CM-23, CM-04        | 1.2–1.6 | deferred, optional       |
-| 40  | CM-17  | keep    | Commerce close-out                                                            | CM-11, CM-12, CM-15               | 0.8–1.2 | deferred, optional       |
+| 25  | CM-29  | new     | Commerce service: the `commerce` slug, requires License                       | ST-38, CM-20                      | 1.5–2.5 | plan, corpus lane, W-LX  |
+| 26  | PS-12  | new     | Discover visibility: one setting                                              | LX-36, P0-49                      | 0.3–0.5 |                          |
+| 27  | P0-27  | CQW-13  | One adapter per store (delivery and commerce facets)                          | A-19, P0-17                       | 1.2–1.8 |                          |
+| 28  | P0-28  | CQW-14  | One sealed credential store and resolver                                      | P0-18, P0-27, P0-49               | 1.5–2   | plan, sec, mig           |
+| 29  | P0-28b | CQW-14b | Drop the old credential stores (release N+1)                                  | P0-28                             | 0.1–0.2 | sec, mig                 |
+| 30  | PX-09  | edit    | Get it: every channel action per platform                                     | A-26, HA-09, P0-35                | 0.4–0.8 |                          |
+| 31  | PS-05b | edit    | Storefront library entries                                                    | A-26                              | 0.4–0.8 |                          |
+| 32  | PS-11  | edit    | Storefront close-out                                                          | PS-12                             | 0.4–0.6 |                          |
+| 33  | HA-09  | keep    | Portal licensed downloads prefer the mirrored R2 copy with PX-W3's download … | —                                 | 0.2–0.4 |                          |
+| 34  | CM-01  | edit    | Polaris Key checkout plan, reduced (deferred)                                 | —                                 | 0.6–0.9 | plan, deferred, optional |
+| 35  | CM-02  | edit    | Stripe as the Polaris Key storefront's commerce facet (absorbs CM-03)         | CM-01, P0-27, P0-28               | 1–1.4   | deferred, optional       |
+| 36  | CM-04  | edit    | Polaris Key prices and coupons on offers (absorbs CM-09, CM-16)               | CM-02                             | 1–1.4   | deferred, optional       |
+| 37  | CM-05  | edit    | Checkout fulfilment and reversal (absorbs CM-06)                              | CM-04, LX-09, LX-10, LX-12, LX-13 | 1.2–1.6 | deferred, optional       |
+| 38  | CM-08  | edit    | Polaris Key subscriptions on Core subscriptions (absorbs CM-07)               | LX-23, CM-05, LX-41               | 1.4–1.9 | deferred, optional       |
+| 39  | CM-11  | edit    | Portal Polaris Key orders on Account -> Purchases                             | CM-08, LX-15, CM-26               | 1.2–1.6 | deferred, optional       |
+| 40  | CM-12  | edit    | Polaris Key Sales tab content                                                 | CM-08, LX-14, CM-23, CM-04        | 1.2–1.6 | deferred, optional       |
+| 41  | CM-17  | keep    | Commerce close-out                                                            | CM-11, CM-12, CM-15               | 0.8–1.2 | deferred, optional       |
 
 **Dependencies:** A-19 needs ST-37's vocabulary; A-20 reads ST-42's `intendedPlatforms`. A-23
 needs ST-39 (wizard kit) and P0-27 (each adapter's `requirements()`), not A-18k: non-store
@@ -565,7 +566,9 @@ CM-20 (plan, Track K) gates LX-11 and CM-21; CM-22 needs LX-11 and LX-12 (Track 
 LX-35. P0-27 needs A-19; P0-28 lands before CM-02 and P0-28b drops the old stores a release
 later; A-27b drops `dist_listing` a release after A-27. CM-01..CM-19 (Polaris Key checkout) stay
 deferred until owner decision 5; on a "go", the reduced v1 (CM-01, 02, 04, 05, 08, 11, 12, 14,
-15, 17) re-plans on CM-20.
+15, 17) re-plans on CM-20. CM-29 (plan, corpus lane, W-LX; owner, 2026-10-07) makes Commerce a
+service that requires Licensing, after ST-38's requirement rule and CM-20's plan; LX-18 waits for
+it.
 
 **Exit criteria:**
 
@@ -727,10 +730,11 @@ on SP-35's names.
    the `keyentry-refusals-off` transcript once I-10a/b exist.
 3. **W-SYNC:** U-01b's appended `sync-scenarios.json` rows, then U-05's `sync-*` transcripts
    (Track G).
-4. **W-LX:** its prerequisites (LX-41, LX-35, CM-20) go ahead of everything else queued; then
-   LX-18 with required members: the duration member `term` (onExpiry stop, keepVersion or a trial's
-   `tier:<id>`), add-on grants, the consumable rows that LX-42 implements, refusal reasons,
-   `offers[]`, the `app` claim kind, `transferred`, W4; optional appended members only if ready:
+4. **W-LX:** its prerequisites (LX-41, LX-35, CM-20, CM-29) go ahead of everything else queued;
+   then LX-18 with required members: the duration member `term` (onExpiry stop, keepVersion or a
+   trial's `tier:<id>`), add-on grants, the consumable rows that LX-42 implements, refusal reasons,
+   `offers[]`, the `app` claim kind, `transferred`, W4, the `commerce` service slug and its routes
+   (CM-29; owner, 2026-10-07); optional appended members only if ready:
    LX-25, P2-14 → LX-19 and LX-20 as one SDK wave (consume and acknowledge verbs included).
 5. **W-UP:** P2-12, one update resolver; transcripts byte-identical, so it changes no corpus file
    and holds the lane only for its golden check at merge; it interleaves.
@@ -753,7 +757,7 @@ the licensing chain through P0-49 and LX-33 is.
 
 - `PROTOCOL_VERSION` is still 4; every corpus change is appended; every train's transcripts
   replay in all six SDKs.
-- Avoided on purpose: a `commerce` service slug, removing `flag` rows from `/config/schema`,
+- Avoided on purpose: removing `flag` rows from `/config/schema`,
   SP-10's W10 document, I-24a's members, new outlet kinds, a changed channels predicate, and an
   SDK-reported verification flag.
 
