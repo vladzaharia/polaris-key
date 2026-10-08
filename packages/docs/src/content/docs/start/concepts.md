@@ -132,8 +132,9 @@ signed settings without taking licensing, and another take a release feed withou
 - **service** — one of exactly seven opt-in units, each addressed by a singular **slug**. The slug
   is the worker directory (`packages/worker/src/services/<slug>/`), the route namespace
   (`/<product>/<slug>/…`), the SDK sub-client (where one exists), and the console section, so
-  there is one word per unit everywhere. The services are declared once, as rows of
-  `tools/services.json`:
+  there is one word per unit in code. The console groups the services into **Features**
+  ([UI words](#ui-words-and-the-identifiers-they-keep); planned, ST-38). The services are declared
+  once, as rows of `tools/services.json`:
   - **[license](/docs/services/license/)** — activation and enrollment, the license document,
     licenses and keys, tiers, fingerprint and auto-issue policy.
   - **[config](/docs/services/config/)** — the catalog (schema), the config document, profiles,
