@@ -122,11 +122,21 @@ public class LicenseClient(
         return doc()?.entitlements?.get(name)?.value.boolValue == true
     }
 
-    /** The raw value of the named entitlement (any JSON type), or null when absent. Not gated: a read. */
-    public suspend fun entitlementValue(name: String): JsonElement? = doc()?.entitlements?.get(name)?.value
+    /**
+     * The raw value of the named entitlement (any JSON type), or null when absent OR when the gate is
+     * not usable (SP-51): a revoked, expired, blocked or never-activated install is entitled to
+     * nothing, as [isEntitled] says. [licenseInfo] stays the ungated diagnostic.
+     */
+    public suspend fun entitlementValue(name: String, now: Long? = null): JsonElement? {
+        if (!isUsable(status(now))) return null
+        return doc()?.entitlements?.get(name)?.value
+    }
 
-    /** Every entitlement's value, from the verified licence document. */
-    public suspend fun entitlements(): Map<String, JsonElement> = doc()?.entitlements?.mapValues { it.value.value } ?: emptyMap()
+    /** Every entitlement's value; empty whenever the gate is not usable (SP-51), like [entitlementValue]. */
+    public suspend fun entitlements(now: Long? = null): Map<String, JsonElement> {
+        if (!isUsable(status(now))) return emptyMap()
+        return doc()?.entitlements?.mapValues { it.value.value } ?: emptyMap()
+    }
 
     /**
      * The licence summary an account screen shows (notes/SDK-PARITY-PASS.md §3.3), read from the

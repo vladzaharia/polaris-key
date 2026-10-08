@@ -80,6 +80,23 @@ class UpdateClientTest {
     }
 
     @Test
+    fun checkKeepsTheServersCodesInsteadOfCollapsingThemToNotFound() = runBlocking {
+        // SP-51: 401, 429 and 5xx used to read `not_found`.
+        val cases = listOf(
+            Triple(401, """{"error":{"code":"unauthorized"}}""", "unauthorized"),
+            Triple(429, """{"error":{"code":"rate_limited"}}""", "rate_limited"),
+            Triple(500, "", "server-error"),
+            Triple(503, """{"error":"upstream_rate_limited"}""", "upstream_rate_limited"),
+            Triple(404, "", "not_found"),
+        )
+        for ((status, body, code) in cases) {
+            val c = core(ScriptedTransport { ScriptedTransport.respond(status, body) })
+            c.start()
+            refused(code) { UpdateClient(c).check() }
+        }
+    }
+
+    @Test
     fun optionsAreValidatedAtConstruction() = runBlocking {
         val c = core(ScriptedTransport { ScriptedTransport.respond(404) })
         refused(ErrorCode.invalidOptions) { UpdateClient(c, UpdateClientOptions(pinnedReleaseKeys = mapOf("pkd1-" + "a".repeat(64) to release.publicKey))) }

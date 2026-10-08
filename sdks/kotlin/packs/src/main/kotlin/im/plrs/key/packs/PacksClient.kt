@@ -511,6 +511,8 @@ public class PacksClient(
     /** The licence's granted boolean flags, or null when the product runs no License service. */
     private suspend fun entitlements(): Set<String>? {
         if (!core.enabled(ServiceSlug.license)) return null
+        // SP-51: a revoked, expired or never-activated install is entitled to nothing.
+        if (!im.plrs.key.core.isUsable(core.licenseStatus().status)) return emptySet()
         val ent = core.cache().license?.doc?.entitlements ?: return emptySet()
         return ent.filterValues { it.value.boolValue == true }.keys
     }

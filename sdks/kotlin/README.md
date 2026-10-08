@@ -172,6 +172,15 @@ client.identity.waitForSignIn(prompt)
   `setting(key)` is a live `StateFlow` of the key's effective value and `changes` a
   `SharedFlow<ConfigChange>` of every change (a local override or a new document). `fetchCatalog()` / `catalog` type the served catalog (label, description, schema,
   widget) for a settings screen.
+- **Live licence state** (SP-51): `licenseChanges`, `events` and the `licenseState` StateFlow emit on
+  every transition (activate, deactivate, wipe, a server revoke or block seen by a sync, grace and
+  expiry as the floor moves), not only when a document's ETag moved; an unchanged state is not
+  repeated. `entitlementValue()` and `entitlements()` answer nothing while the gate is not usable
+  (`licenseInfo()` stays the diagnostic). A 401 on `/license/token` is final for that token and at
+  most 5 token requests go out a minute; boot retries back off from 1 s to 30 s; concurrent `sync()`
+  calls share one pass; `close()` cancels the client's scope and shuts OkHttp down so a JVM `main`
+  ends; `listDevices()` marks a roster it could not fetch `offline`; `update.check()` keeps the
+  server's code; `PolarisPlayBilling` gives Play 10 s to connect.
 - **`client.events`**: one multi-subscriber `SharedFlow<PolarisEvent>`: `License` (a sync that
   changed the documents, an activation), `Config` (a key's value moved), `UpdateAvailable` (a
   decision offered a newer build; also `update.offers`) and `Packs` (pack progress).

@@ -75,6 +75,8 @@ class PolarisKeyLifecycleTest {
         assertEquals(1, syncs)
         lifecycle.onActivityStopped(a)
         now += 60
+        // Syncs are de-duplicated while one runs (SP-51): let the first foreground pass finish.
+        Thread.sleep(500)
         lifecycle.onActivityStarted(a)
         assertEquals(2, syncs)
         lifecycle.onActivityDestroyed(a)

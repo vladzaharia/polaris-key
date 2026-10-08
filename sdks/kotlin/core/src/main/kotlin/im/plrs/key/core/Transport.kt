@@ -90,8 +90,19 @@ public object NoNetworkTransport : PolarisTransport {
 }
 
 /** The production transport, over OkHttp. Main-safe: every byte is read on `Dispatchers.IO`. */
-public class OkHttpTransport(client: OkHttpClient = OkHttpClient()) : PolarisTransport {
+public class OkHttpTransport(client: OkHttpClient = OkHttpClient()) : PolarisTransport, AutoCloseable {
     private val base: OkHttpClient = client.newBuilder().followRedirects(false).followSslRedirects(false).build()
+
+    /**
+     * Cancel in-flight calls and shut OkHttp's dispatcher and connection pool down (SP-51), so a JVM
+     * `main` exits. A client the host passed in shares both: close it yourself if it is not otherwise
+     * needed.
+     */
+    override fun close() {
+        base.dispatcher.cancelAll()
+        base.dispatcher.executorService.shutdown()
+        base.connectionPool.evictAll()
+    }
 
     override suspend fun send(request: PolarisRequest): PolarisResponse = withContext(Dispatchers.IO) { exchange(request) }
 

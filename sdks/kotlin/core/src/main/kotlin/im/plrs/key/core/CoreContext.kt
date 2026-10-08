@@ -867,6 +867,11 @@ public class CoreContext(options: CoreOptions) {
         JsonObject(loaded.license?.doc?.entitlements?.mapValues { it.value.value } ?: emptyMap())
     }
 
+    /** Release the transport's threads and connections (SP-51); the context is not used after. */
+    public fun close() {
+        (transport as? AutoCloseable)?.close()
+    }
+
     public companion object {
         /**
          * The store a client gets when [CoreOptions.store] is unset: a [FileStore] on a JVM desktop.
