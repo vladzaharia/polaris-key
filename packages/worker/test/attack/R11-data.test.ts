@@ -689,6 +689,7 @@ describe("R11-05 product scoping", () => {
       "account_links",
       "account_product_subjects",
       "account_tombstones",
+      "account_erasures",
       "account_sessions",
       "account_product_grants",
       "account_passkeys",
