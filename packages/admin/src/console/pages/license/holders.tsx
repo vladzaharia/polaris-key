@@ -258,15 +258,3 @@ export function undoableMove(
 ): LicenseHolderMove | null {
   return moves?.find((m) => m.undoable) ?? null;
 }
-
-/** "Made floating", "Reassigned", "Relinked": a move in words. */
-export function moveVerb(kind: LicenseHolderMove["kind"]): string {
-  switch (kind) {
-    case "floating":
-      return "Made floating";
-    case "reassign":
-      return "Reassigned";
-    default:
-      return "Moved to another user";
-  }
-}

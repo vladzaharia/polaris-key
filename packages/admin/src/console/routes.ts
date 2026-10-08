@@ -536,23 +536,6 @@ export const codecs = {
   },
 };
 
-/** The query keys pages use, with their meaning (ADMIN.md §5.7). */
-export const QUERY_KEYS = {
-  q: "search",
-  sort: "sort (`-` prefix for descending)",
-  status: "facet",
-  tier: "facet",
-  channel: "facet",
-  signin: "facet",
-  platform: "facet",
-  cursor: "pagination",
-  offset: "pagination",
-  view: "page state",
-  deliverable: "page state",
-  window: "page state",
-  cell: "page state",
-} as const;
-
 /** A copy of `query` with `name` set to `codec.format(value)` (or removed). */
 export function withParam<T>(
   query: URLSearchParams,
