@@ -1153,6 +1153,16 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
   release that a feed still lists (`::warning::`). It never fails the job. A warning means the
   automatic prune did not run or failed: check the audit for `package.prune.failed`, then run the
   backfill.
+- **The backstop after each stable tag (P0-48).** `publish-sdks.yml`'s `prune` job runs the same
+  backfill for `polaris-key` once a stable `vX.Y.Z` tag's publish jobs and drift check have all
+  passed. It dry-runs first (the output goes to the log and the job summary), refuses to go on if
+  the plan holds anything but builds of main (`X-main.N`, `X.devN`), and only then runs
+  `pkey feeds prune --product polaris-key --apply`. Its token is `PKEY_FEED_PRUNE_TOKEN`, a static
+  `pkeyci_` token of `polaris-key` with `release:yank` only, stored as a secret of the
+  `package-registry` environment. Issue it as above with `"expiresInDays": 90` (the longest a
+  static token lives) and replace it before it expires. Without the secret the job warns and
+  stops. A failure in the job never fails the release run (`continue-on-error`): look for the
+  job's annotation, then run the backfill by hand.
 
 ### Do not roll back across feed retention (0090)
 

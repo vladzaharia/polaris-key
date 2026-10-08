@@ -43,6 +43,8 @@ interface Step {
   uses?: string;
   run?: string;
   if?: string;
+  id?: string;
+  name?: string;
   with?: Record<string, unknown>;
   env?: Record<string, string>;
 }
@@ -57,6 +59,7 @@ interface Job {
   strategy?: { matrix?: Record<string, unknown> };
   with?: Record<string, unknown>;
   steps?: Step[];
+  "continue-on-error"?: boolean;
 }
 interface Workflow {
   on: Record<string, unknown>;
@@ -383,6 +386,81 @@ describe("publish-package.yml (the trusted publisher)", () => {
         for (const s of job.steps ?? [])
           expect(s.uses ?? "", `${file}`).not.toMatch(/actions\/publish/);
     }
+  });
+});
+
+describe("the backstop prune after a stable tag (P0-48, feed retention)", () => {
+  const wf = workflow(PUBLISH_SDKS);
+  const job = wf.jobs.prune!;
+  const steps = job.steps ?? [];
+  const at = (name: string) => steps.findIndex((s) => s.name === name);
+
+  it("runs only on a stable tag, after every publish and the drift check passed", () => {
+    expect([...(job.needs as string[])].sort()).toEqual(
+      [
+        "drift",
+        "godot",
+        "image",
+        "maven",
+        "npm",
+        "python",
+        "swift",
+        "version",
+      ].sort(),
+    );
+    // No status function: GitHub ANDs success(), so a failed publish or drift skips it.
+    expect(job.if).toBe(
+      "needs.version.outputs.channel == 'stable' && startsWith(github.ref, 'refs/tags/v')",
+    );
+    const guard = steps[at("A stable vX.Y.Z tag")]!;
+    expect(guard.run).toContain("^[0-9]+\\.[0-9]+\\.[0-9]+$");
+    expect(guard.run).toContain('"refs/tags/v$VERSION"');
+    expect(guard.run).toContain("exit 1");
+    // The publish is done: a prune problem must not turn the release red.
+    expect(job["continue-on-error"]).toBe(true);
+    expect(job.environment).toBe("package-registry");
+    expect(job.permissions).toEqual({ contents: "read" });
+  });
+
+  it("dry-runs and checks the plan before it applies, with the existing rule only", () => {
+    const dry = at("Dry run (deletes nothing)");
+    const check = at("The plan holds builds of main only");
+    const apply = at("Apply the prune");
+    expect(at("A stable vX.Y.Z tag")).toBeLessThan(dry);
+    expect(dry).toBeLessThan(check);
+    expect(check).toBeLessThan(apply);
+    expect(steps[dry]!.run).not.toContain("--apply");
+    expect(steps[dry]!.run).toContain(
+      "node actions/publish/dist/index.js feeds prune --product polaris-key",
+    );
+    expect(steps[check]!.run).toContain("-main");
+    expect(steps[check]!.run).toContain(".dev");
+    for (const i of [check, apply])
+      expect(steps[i]!.if).toBe("steps.plan.outputs.skip != 'true'");
+    expect(steps[dry]!.id).toBe("plan");
+    // Only the apply step deletes, and it names no deliverable or version of its own: the
+    // Worker's rule decides what goes (builds of main below each package's newest stable).
+    const applies = steps.filter((s) => s.run?.includes("--apply"));
+    expect(applies).toEqual([steps[apply]]);
+    expect(steps[apply]!.run).toContain(
+      "feeds prune --product polaris-key --apply",
+    );
+    expect(steps[apply]!.run).not.toMatch(/--deliverable|--base-url/);
+    // A token never reaches the job summary: the mask line is filtered out of it.
+    for (const i of [dry, apply])
+      expect(steps[i]!.run).toContain("grep -v '^::'");
+    for (const i of [dry, apply])
+      expect(steps[i]!.env).toEqual({
+        PKEY_CI_TOKEN: "${{ secrets.PKEY_FEED_PRUNE_TOKEN }}",
+      });
+  });
+
+  it("is the only workflow that applies a prune", () => {
+    for (const file of workflowFiles)
+      for (const [id, j] of Object.entries(workflow(file).jobs ?? {}))
+        for (const s of j.steps ?? [])
+          if (/feeds prune[^\n]*--apply/.test(s.run ?? ""))
+            expect(`${file} ${id}`).toBe(`${PUBLISH_SDKS} prune`);
   });
 });
 
