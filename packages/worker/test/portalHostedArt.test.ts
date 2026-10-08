@@ -215,6 +215,55 @@ describe("the portal's presentation on hosted copies", () => {
     }
   });
 
+  it("the key previews, signed in and signed out, carry the same hosted art (HA-07)", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await tidewater(db);
+    await seedHosted(db, "tidewater", "presentation.icon", {
+      sha256: A,
+      widths: [64, 128, 256, 512],
+    });
+    await seedHosted(db, "tidewater", "listing.header", {
+      sha256: H,
+      widths: [640, 1280],
+    });
+    const s = await signedIn(env, db);
+    const { key } = await seedLicenseWithKey(db, "tidewater", {
+      id: "lic_new",
+    });
+    const preview = async (path: string, session: boolean) => {
+      const res = await handlePortalApi(
+        new Request(`https://key.plrs.im${path}`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            ...(session
+              ? { cookie: s.cookie, [PORTAL_CSRF_HEADER]: s.csrf }
+              : {}),
+          },
+          body: JSON.stringify({ key }),
+        }),
+        env,
+        db,
+        path,
+        NOW,
+      );
+      expect(res.status, await res.clone().text()).toBe(200);
+      return ((await res.json()) as { product: Record<string, unknown> })
+        .product;
+    };
+    // The confirm step draws the art at a library tile's size.
+    const art = {
+      slug: "tidewater",
+      iconUrl: `${IMG}/tidewater/a/${A}/${PRESENTATION_WIDTHS.library.icon}.webp`,
+      headerUrl: `${IMG}/tidewater/a/${H}/${PRESENTATION_WIDTHS.library.header}.webp`,
+    };
+    const signedInPreview = await preview("/api/activate/preview", true);
+    expect(signedInPreview).toMatchObject(art);
+    expect(await preview("/api/key/preview", false)).toMatchObject(art);
+    expect(JSON.stringify(signedInPreview)).not.toContain("githubusercontent");
+  });
+
   it("chooses the slot as the image host's /icon alias does, and only a copy the host serves", async () => {
     const db = makeTestDb();
     const env = portalEnv();
