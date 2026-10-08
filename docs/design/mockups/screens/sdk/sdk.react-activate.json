@@ -14,15 +14,16 @@
   "summary": "Activation with a license key in the React kit's one form, in an Electron window labelled as a DJDL fixture: the key field, the not-a-key error, Activating…, key not found and every other answer in the same place, Replace a device with the catalog heading and the inline confirm, and DJDL is ready with the once-only Keep DJDL in your account recommendation.",
   "compare": [
     "The key field is a step of the same form: the DJDL header and art persist, and Back returns to Sign in.",
-    "Copy comes from the kit catalog: 'Enter your license key', 'You'll find it in your purchase email.', 'License key', 'Paste', 'Activate license', 'Activating…'. The format error 'That doesn't look like a license key. Keys start with pkey_.' shows under the field with an icon and tints the field, without sending anything. Server answers (not found, another product, another account, revoked, refunded) take the same place; offline is a row with Try again.",
+    "Copy comes from the kit catalog: 'Enter your license key', 'You'll find it in your purchase email.', 'License key', 'Paste', 'Activate license', 'Activating…'. The format error 'That doesn't look like a license key. Keys start with pkey_.' (pkey_ in mono) shows under the field with its ⊗ icon; the field is tinted and bordered in danger, so an error never reads as DJDL's accent. Nothing is sent. Every server answer (not found, another product, another account, revoked, refunded) takes the format error's place, in the portal's words (PORTAL §4.19); offline is a row above the actions with Try again; none is a toast.",
     "The field is filled (no box outline); focus is one 2px outline in DJDL's accent, with no glow.",
-    "Replace a device: heading 'Your license is on 5 of 5 devices' and lede 'To use it on this computer, replace one. You can add it back later.' The license's devices are listed with OS and last use, with 'Last used' once above the list, the least recently used preselected, and a device used today in amber. The confirm 'Replace Mara's MacBook Air?' / 'Mara's MacBook Air stops using this license now. You can add it back when a device is free.' sits inline under the list, with a destructive 'Replace and continue' and 'Back'. The web kit never opens a dialog on the form.",
-    "DJDL is ready shows the success check and 'Standard · Lifetime · this computer is device 5 of 5.' Below is a quiet Keep DJDL in your account card, with Recommended above its title and only the reasons DJDL has (Cloud Sync, Get your license back, Move it to a new device), and 'Add your name and email' as its secondary.",
-    "'Start using DJDL' stays the primary, with 'Or continue without an account. Your license works the same.' under it. The recommendation shows once, and the license stays floating until the person adds an account.",
+    "Replace a device: heading 'Your license is on 5 of 5 devices' and lede 'To use it on this computer, replace one.' The license's devices are listed with OS and last use, with 'Last used' once above the list, the least recently used preselected, and a device used today in amber. The confirm 'Replace Mara's MacBook Air?' / 'It stops using this license now. You can add it back when a device is free.' (the add-back promise said only here) sits inline under the list, with a destructive 'Replace and continue' and 'Back': a web form has no dialog, and 'Replacing…' locks the list as in 1c.",
+    "DJDL is ready shows the success check in the icon's place and 'Standard · Lifetime · this computer is device 5 of 5.' Below is a quiet 'Keep it in your account' card, with a neutral 'Recommended' pill (a fill and a dot, never the accent) above its title and only the reasons DJDL has (Cloud Sync, Get your license back, Move it to a new device), and 'Add your name and email' as its secondary.",
+    "'Start using DJDL' stays the primary, with 'Your license works the same without an account.' under it. The recommendation shows once, and the license stays floating until the person adds an account.",
     "Accent, type and radii match sdk.react-sign-in: Polaris look by default, DJDL's coral accent, no Polaris Key mark.",
-    "Phone render: each window is the desktop window scaled down.",
+    "Four sizes: the six windows fill 3×2 at wide and 2×3 at desktop and tablet, one a row on phone (the art takes a third of a window under 720px, so the form keeps about 360px; under 560px of window the art becomes a band above the form). Windows keep their own height, tops aligned. Other answers closes the board across every column: five up at wide, one row per answer (label, message, actions) at desktop and tablet, stacked on phone.",
     "While a request runs, the primary says what is happening ('Activating…', 'Replacing…') and the form locks until Polaris Key answers.",
-    "A visible 'Kit preview · fixture product' callout, as on sdk.react-sign-in."
+    "A visible 'Kit preview · fixture product' callout, as on sdk.react-sign-in.",
+    "Board copy: the lede is 'The key path, from Have a license key? to DJDL is ready.'; each caption is the state name plus one sentence; the floating license and the once-only recommendation are said here, not on the board. In another account reads 'This DJDL license is in another Polaris Key account.' with Sign in to that account and Use a different key."
   ],
   "status": "mockup",
   "designReview": {
@@ -50,6 +51,89 @@
         "severity": "minor",
         "issue": "The confirm says 'can sign in again later if a seat is free' (a device doesn't sign in, and 'seat' appears nowhere else), only the first row says 'last used', and picking a device used today gives no warning.",
         "resolution": "The confirm now reads 'Mara's MacBook Air stops using this license now. You can add it back when a device is free.' The catalog's deviceLimit.consequence still says 'seat', so it is flagged for the lead. 'Last used' appears once, as a column hint above the list, so every row is one line. The device used today shows 'today' in amber, and the caption gives the line the confirm adds when it is picked: 'Mara's MacBook Pro was used today.'"
+      },
+      {
+        "severity": "major",
+        "issue": "'DJDL is ready' sat alone, with about 1,250×520 empty at wide and 650×600 at desktop, and the Other answers card left a hole of about 280px under itself.",
+        "resolution": "Other answers left the window flow: it is a full-width card (.span-all) closing the board, built on the new kit .card-answers rows: five up at wide (label over message), one row per answer at desktop and tablet (label column, message, actions), stacked on phone. The six windows fill 3×2 at wide and 2×3 at desktop and tablet with no hole.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "DJDL's accent and the danger red are about 9° of hue apart in light theme, so 1b and 1d read as brand colour; the accent-tinted 'Recommended' read as a warning; 'pkey_.' looked like an ellipsis.",
+        "resolution": "Errors carry shape as well as colour (kit): an errored field has a 1.5px inset danger border over its tint and keeps its ⊗ message row. 'Recommended' is a neutral pill with a dot (.kit-pill.neutral). 'pkey_' in 1b's error is set in mono.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'Every answer lands under the field' appeared three times; 'floating' and 'once' were in both the lede and caption 3; 'You can add it back' appeared twice in one view; 'A license never moves by its key' was mechanism; DJDL was named three times on Ready.",
+        "resolution": "Lede 'The key path, from Have a license key? to DJDL is ready.' Captions are one sentence each (1d 'An O typed for a 0.'; 1e 'Offline is a row above the actions, with Try again; none is a toast.'; 3 'Lists only DJDL's reasons; Start using DJDL stays the primary.'); PORTAL §4.19 moved to compare. Catalog, both kits: the Replace lede is 'To use it on this computer, replace one.' and the add-back promise stays only in the confirm. 'In another account' drops 'A license never moves by its key.' The Ready card title is 'Keep it in your account'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "issue": "When the product accent is within about 30° of the danger hue, derive the light-theme accent by shifting it toward orange, and put a warning-triangle icon on the destructive button (ux1, kit theming).",
+        "resolution": "declined: the product's accent comes from its icon and is its identity, and the kits keep the product as the hero, so the kit must not recolour a brand. State is carried by shape instead: a bordered error field, the ⊗ row and the message. The inline confirm's title already names the consequence, so an icon on its button adds noise.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "Wide grid staggered with 200-280px holes; windows more than half empty; the Activate button jumps about 26px between states.",
+        "resolution": "Windows are sized to content (min 380) with the actions at the bottom; the key field is 56px in every state and the form starts 32px under the bar; at wide the happy path is in column 1, errors 1b and 1d in column 2, the device list spans two rows in column 3, then Other answers beside state 3; art column clamp(120px,28%,175px) from 560px of window and a 56px strip at tablet and below; captions share a two-line strip.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Kit preview callout and captions narrate the picture.",
+        "resolution": "One-line chip callout; no subtitle; captions are a state label plus one clause, keeping the ones that explain behavior that is not visible (focus outline, lock, Back target); ready meta reads \"Standard · Lifetime · device 5 of 5\".",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Hide states behind chips or a segmented control, or use a scroll-snap strip on phone.",
+        "resolution": "declined: this removes content and adds interaction a static board does not have; the 56px art strip and content-sized windows shorten the phone page instead.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "d1",
+          "ux2"
+        ]
+      },
+      {
+        "issue": "Make the 3-up grid 12 columns with one large main state and a strip below.",
+        "resolution": "declined: it invents a hierarchy between states that are equal peers.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Add states for This device is already activated and Too many attempts.",
+        "resolution": "declined: new states are outside a spacing pass; recorded as a follow-up for the product plan.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
       }
     ]
   }

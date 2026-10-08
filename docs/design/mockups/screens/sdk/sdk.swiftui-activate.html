@@ -1,680 +1,190 @@
 <style>
-  /* sdk.swiftui-activate: activation with a license key in the SwiftUI kit's one form on iPhone. */
-  /* Diceroll's accent, from its icon's red die (toward rose, so it never reads as an error). */
+  /* sdk.swiftui-activate: Diceroll's accent, from its icon's red die (toward rose, so it never reads as an error). */
   [data-screen="sdk.swiftui-activate"] {
-    --pd: color-mix(in oklab, var(--pk-danger) 68%, var(--pk-brand-rose));
-    --pd-on: var(--pk-text-on-accent);
-    --pd-subtle: color-mix(in oklab, var(--pd) 14%, var(--pk-surface-raised));
-    --pd-fg: var(--pd);
-  }
-  [data-screen="sdk.swiftui-activate"] .frames {
-    flex-basis: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 40px 48px;
-    align-items: flex-start;
-    min-width: 0;
-  }
-  [data-screen="sdk.swiftui-activate"] .board-item > figcaption {
-    max-width: 414px;
-    line-height: 19px;
-  }
-  [data-screen="sdk.swiftui-activate"] .board-item > figcaption strong {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .device-screen {
-    font-family: var(--pk-font-sans);
-    color: var(--pk-text-default);
-  }
-  [data-screen="sdk.swiftui-activate"] .device-status {
-    position: relative;
-    z-index: 2;
-  }
-  /* Product art behind the glass: blurred, faded into the page, never clipped bright. */
-  [data-screen="sdk.swiftui-activate"] .ios-art {
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 420px;
-    overflow: hidden;
-    opacity: 0.45;
-    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent);
-    mask-image: linear-gradient(to bottom, black 30%, transparent);
-  }
-  [data-screen="sdk.swiftui-activate"] .ios-art > .art {
-    position: absolute;
-    inset: -40px;
-    aspect-ratio: auto;
-    border-radius: 0;
-    filter: blur(36px) saturate(1.5);
-  }
-  [data-screen="sdk.swiftui-activate"] .ib {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: 6px 20px 34px;
-    font-size: 17px;
-    line-height: 22px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ihero {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    text-align: center;
-  }
-  [data-screen="sdk.swiftui-activate"] .ihero .logo.xl {
-    margin-bottom: 20px;
-    box-shadow: 0 10px 30px rgb(0 0 0 / 0.18), inset 0 0 0 1px rgb(255 255 255 / 0.1);
-  }
-  [data-screen="sdk.swiftui-activate"] h2.ititle {
-    font-size: 28px;
-    line-height: 34px;
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .ilede {
-    margin-top: 6px;
-    font-size: 17px;
-    line-height: 22px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.swiftui-activate"] .ihead {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    margin: 6px 0 14px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ihead .logo.lg {
-    border-radius: 13px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ihead b {
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .istack {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ibtn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: var(--pk-kit-control-height);
-    padding: 0 22px;
-    border: 0;
-    border-radius: var(--pk-kit-radius-control);
-    font: 500 17px/22px var(--pk-font-sans);
-    color: var(--pk-text-strong);
-    white-space: nowrap;
-  }
-  [data-screen="sdk.swiftui-activate"] .ibtn .ic {
-    width: 19px;
-    height: 19px;
-  }
-  /* .glassProminent: the accent through the glass. */
-  [data-screen="sdk.swiftui-activate"] .ibtn.primary {
-    background: var(--pd);
-    color: var(--pd-on);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.28), 0 6px 18px color-mix(in oklab, var(--pd) 28%, transparent);
-  }
-  [data-screen="sdk.swiftui-activate"] .ibtn.glass {
-    background: color-mix(in oklab, var(--pk-surface-raised) 64%, transparent);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
-    backdrop-filter: blur(24px) saturate(1.6);
-    box-shadow: inset 0 1px 0 var(--pk-kit-highlight), inset 0 0 0 1px color-mix(in oklab, var(--pk-text-strong) 13%, transparent), 0 1px 2px color-mix(in oklab, var(--pk-text-strong) 8%, transparent);
-  }
-  /* Sign in with Apple, logo only: black in light, white in dark (Apple's rules). */
-  [data-screen="sdk.swiftui-activate"] .ibtn.apple {
-    background: var(--pk-text-strong);
-    color: var(--pk-surface-page);
-  }
-  [data-screen="sdk.swiftui-activate"] .ibtn.sm {
-    height: 38px;
-    padding: 0 16px;
-    font-size: 15px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ibtn.block {
-    width: 100%;
-  }
-  [data-screen="sdk.swiftui-activate"] .iprov {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-  [data-screen="sdk.swiftui-activate"] .iprov .ic {
-    width: 22px;
-    height: 22px;
-  }
-  [data-screen="sdk.swiftui-activate"] .iquiet {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--pd-fg);
-  }
-  [data-screen="sdk.swiftui-activate"] .iquiet .ic {
-    width: 16px;
-    height: 16px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ilinks {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin-top: 6px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ifoot {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-top: 14px;
-    font-size: 13px;
-    line-height: 18px;
-    text-align: center;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.swiftui-activate"] .ifoot .ic {
-    flex: none;
-    width: 13px;
-    height: 13px;
-    margin-top: 2px;
-  }
-  [data-screen="sdk.swiftui-activate"] .iperson {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 10px;
-    font-size: 15px;
-    line-height: 20px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.swiftui-activate"] .ispacer {
-    flex: 1;
-  }
-  [data-screen="sdk.swiftui-activate"] .ilrows {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 16px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ilrow {
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr) auto;
-    gap: 3px 12px;
-    padding: 14px 16px;
-    border-radius: var(--pk-kit-radius-group, 16px);
-    background: color-mix(in oklab, var(--pk-surface-raised) 80%, transparent);
-    box-shadow: inset 0 0 0 1px var(--mk-line);
-  }
-  [data-screen="sdk.swiftui-activate"] .ilrow.on {
-    background: var(--pd-subtle);
-  }
-  [data-screen="sdk.swiftui-activate"] .ilrow > :not(.lmark):not(.ltag) {
-    grid-column: 2 / -1;
-  }
-  [data-screen="sdk.swiftui-activate"] .lmark {
-    grid-row: 1;
-    margin-top: 1px;
-  }
-  [data-screen="sdk.swiftui-activate"] .radio-k {
-    display: block;
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 1.5px var(--pk-border-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .on .radio-k {
-    box-shadow: inset 0 0 0 1.5px var(--pd), inset 0 0 0 6px var(--pk-surface-raised), inset 0 0 0 11px var(--pd);
-  }
-  [data-screen="sdk.swiftui-activate"] .lmark > .ic {
-    width: 21px;
-    height: 21px;
-    color: var(--pk-warning);
-  }
-  [data-screen="sdk.swiftui-activate"] .ltitle {
-    grid-column: 2 !important;
-    grid-row: 1;
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .ltag {
-    grid-column: 3;
-    grid-row: 1;
-  }
-  [data-screen="sdk.swiftui-activate"] .kpill {
-    display: inline-flex;
-    align-items: center;
-    height: 22px;
-    padding: 0 9px;
-    border-radius: var(--pk-radius-full);
-    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .kpill.warn {
-    box-shadow: none;
-    background: var(--pk-warning-subtle);
-    color: var(--pk-warning);
-  }
-  [data-screen="sdk.swiftui-activate"] .kpill.new {
-    box-shadow: none;
-    background: var(--pd-subtle);
-    color: var(--pd-fg);
-  }
-  [data-screen="sdk.swiftui-activate"] .lline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 15px;
-    line-height: 20px;
-  }
-  [data-screen="sdk.swiftui-activate"] .lmeta {
-    font-size: 15px;
-    line-height: 20px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.swiftui-activate"] .seats {
-    display: flex;
-    gap: 4px;
-    margin-top: 8px;
-  }
-  [data-screen="sdk.swiftui-activate"] .seats > i {
-    flex: 1;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--mk-line);
-  }
-  [data-screen="sdk.swiftui-activate"] .seats > i.u {
-    background: var(--pk-text-muted);
-  }
-  [data-screen="sdk.swiftui-activate"] .seats.full > i {
-    background: var(--pk-warning);
-  }
-  [data-screen="sdk.swiftui-activate"] .ilrow .ibtn.sm {
-    justify-self: start;
-    margin-top: 10px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ifield {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 22px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ifield label {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .iinput {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 52px;
-    padding: 0 8px 0 16px;
-    border-radius: 14px;
-    background: var(--mk-fill);
-    font: 400 16px/22px var(--pk-font-mono);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .iinput.bad {
-    background: var(--pk-danger-subtle);
-  }
-  [data-screen="sdk.swiftui-activate"] .iinput > span {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="sdk.swiftui-activate"] .iinput .caret {
-    flex: none;
-    width: 2px;
-    height: 22px;
-    margin-left: -6px;
-    background: var(--pd);
-  }
-  [data-screen="sdk.swiftui-activate"] .ierr {
-    display: flex;
-    gap: 6px;
-    font-size: 15px;
-    line-height: 20px;
-    color: var(--pk-danger);
-  }
-  [data-screen="sdk.swiftui-activate"] .ierr .ic {
-    flex: none;
-    width: 16px;
-    height: 16px;
-    margin-top: 2px;
-  }
-  [data-screen="sdk.swiftui-activate"] .done-check {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    margin-bottom: 14px;
-    border-radius: 50%;
-    background: var(--pk-success-subtle);
-    color: var(--pk-success);
-  }
-  [data-screen="sdk.swiftui-activate"] .done-check .ic {
-    width: 26px;
-    height: 26px;
-  }
-  [data-screen="sdk.swiftui-activate"] .keep {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 20px;
-    padding: 16px;
-    border-radius: 22px;
-    background: color-mix(in oklab, var(--pk-surface-raised) 80%, transparent);
-    box-shadow: inset 0 0 0 1px var(--mk-line);
-  }
-  [data-screen="sdk.swiftui-activate"] .keep-head {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .reason {
-    display: grid;
-    grid-template-columns: 20px minmax(0, 1fr);
-    gap: 10px;
-    font-size: 15px;
-    line-height: 20px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.swiftui-activate"] .reason .ic {
-    width: 18px;
-    height: 18px;
-    margin-top: 1px;
-    color: var(--pd-fg);
-  }
-  [data-screen="sdk.swiftui-activate"] .reason strong {
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .orfoot {
-    margin-top: 12px;
-    font-size: 13px;
-    line-height: 18px;
-    text-align: center;
-    color: var(--pk-text-subtle);
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="sdk.swiftui-activate"] .frames {
-      gap: 28px;
-    }
-    [data-screen="sdk.swiftui-activate"] .device {
-      zoom: 0.86;
-    }
-    [data-screen="sdk.swiftui-activate"] .board-item {
-      width: 100%;
-    }
-  }
-
-  [data-screen="sdk.swiftui-activate"] .iinput > .ipaste {
-    flex: none;
-    display: inline-flex;
-    align-items: center;
-    height: 36px;
-    padding: 0 14px;
-    border-radius: 999px;
-    background: var(--pk-surface-raised);
-    font: 500 15px/20px var(--pk-font-sans);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .ihint {
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-subtle);
-  }
-  /* Recommended sits above the card's title, as in the React kit. */
-  [data-screen="sdk.swiftui-activate"] .keep-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-  }
-  /* A long key wraps to a second line instead of hiding its end. */
-  [data-screen="sdk.swiftui-activate"] .iinput.wrap {
-    height: auto;
-    min-height: 52px;
-    padding-block: 12px;
-    align-items: center;
-  }
-  [data-screen="sdk.swiftui-activate"] .iinput.wrap > span:first-child {
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-  [data-screen="sdk.swiftui-activate"] .ibtn.busy {
-    gap: 12px;
-    opacity: 0.85;
-  }
-  [data-screen="sdk.swiftui-activate"] .ibtn.busy .spin {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    border: 2px solid color-mix(in oklab, currentColor 35%, transparent);
-    border-top-color: currentColor;
-  }
-  [data-screen="sdk.swiftui-activate"] .locked {
-    opacity: 0.55;
-  }
-  /* The software keyboard: the primary rides above it and the error stays in view. */
-  [data-screen="sdk.swiftui-activate"] .kb-up .ib {
-    padding-bottom: 300px;
-  }
-  [data-screen="sdk.swiftui-activate"] .kb-up .ib > .ibtn.primary {
-    margin-bottom: 10px;
-  }
-  [data-screen="sdk.swiftui-activate"] .skbd {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 4;
-    display: flex;
-    flex-direction: column;
-    gap: 11px;
-    height: 290px;
-    padding: 10px 3px 0;
-    background: color-mix(in oklab, var(--pk-surface-sunken) 82%, var(--pk-text-subtle));
-    -webkit-backdrop-filter: blur(30px);
-    backdrop-filter: blur(30px);
-  }
-  [data-screen="sdk.swiftui-activate"] .kr {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-  }
-  [data-screen="sdk.swiftui-activate"] .kr.inset {
-    padding: 0 19px;
-  }
-  [data-screen="sdk.swiftui-activate"] .k {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 43px;
-    border-radius: 7px;
-    background: var(--pk-surface-raised);
-    box-shadow: 0 1px 0 color-mix(in oklab, var(--pk-text-strong) 30%, transparent);
-    font-size: 22px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.swiftui-activate"] .k.fn {
-    flex: 1.35;
-    background: color-mix(in oklab, var(--pk-surface-raised) 55%, var(--pk-text-subtle));
-    font-size: 16px;
-  }
-  [data-screen="sdk.swiftui-activate"] .k.space {
-    flex: 5;
-    font-size: 16px;
-  }
-  [data-screen="sdk.swiftui-activate"] .k.go {
-    flex: 2;
-    background: var(--pd);
-    color: var(--pd-on);
-    font-size: 16px;
-  }
-  [data-screen="sdk.swiftui-activate"] .k .ic {
-    width: 20px;
-    height: 20px;
-  }
-  [data-screen="sdk.swiftui-activate"] .fixture {
-    max-width: 760px;
-    margin-top: 12px;
-  }
-  [data-screen="sdk.swiftui-activate"] .ireco {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    height: 22px;
-    padding: 0 9px;
-    border-radius: 999px;
-    background: var(--pd-subtle);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--pd-fg);
+    --kit-accent: color-mix(in oklab, var(--pk-danger) 68%, var(--pk-brand-rose));
+    --kit-accent-on: var(--pk-text-on-accent);
+    --kit-accent-subtle: color-mix(in oklab, var(--kit-accent) 14%, var(--pk-surface-raised));
   }
 </style>
 
 <div class="board" data-service="release">
-  <div class="board-title">
-    <h1>Diceroll activates with a key in the SwiftUI kit</h1>
-    <p><em>Have a license key?</em> morphs the gate’s form into the key field, with the header unchanged. Every answer lands under the field. A key keeps the license floating; afterwards the form recommends keeping Diceroll in an account, once, listing only the reasons Diceroll has.</p>
-    <div class="callout info fixture"><i class="ic ic-info"></i><div class="grow"><div class="callout-title">Kit preview · fixture product</div><div class="callout-text">As on sdk.swiftui-sign-in: Diceroll really ships with the Godot kit and has Sign-in off. It is drawn as an iPhone app only to show the SwiftUI kit; with Sign-in off, as Diceroll really is, the card reads “Keep your license safe in Polaris Key” and opens the portal instead.</div></div></div>
-  </div>
-  <div class="frames">
-    <figure class="board-item">
-      <div class="device"><div class="device-screen" data-pk-platform="ios">
-          <div class="ios-art"><div class="art" data-product="diceroll"></div></div>
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>Diceroll activates with a key in the SwiftUI kit</h1>
+      <div class="callout info one-line"><i class="ic ic-info"></i><div class="grow"><div class="callout-text"><strong>Kit preview:</strong> SwiftUI kit with Diceroll’s facts. Sign-in is on here; the real product has it off.</div></div></div>
+    </header>
+
+    <div class="frame-grid devices cap-strip">
+      <figure class="board-item">
+        <div class="device"><div class="device-screen" data-pk-platform="ios">
+          <div class="kit-backdrop"><div class="art" data-product="diceroll"></div></div>
           <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
           <div class="device-body">
-            <div class="ib">
-              <div class="ihead"><span class="logo lg" data-product="diceroll"></span><b>Diceroll</b></div>
-              <h2 class="ititle">Enter your license key</h2>
-              <p class="ilede">You’ll find it in your purchase email.</p>
-              <div class="ifield">
-                <label>License key</label>
-                <div class="iinput wrap"><span>pkey_diceroll_4TQ8MZ2KWR9PX7HD3NVB6C</span><span class="ipaste">Paste</span></div>
-              </div>
-              <span class="ispacer"></span>
-              <button class="ibtn primary block">Activate license</button>
-              <div class="ilinks" style="margin-top: 14px"><a class="iquiet" href="#">Back</a></div>
+            <div class="kit-form safe-bottom">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="diceroll"></span>
+                  <h2 class="kit-title">Enter your license key</h2>
+                  <p class="kit-lede">You’ll find it in your purchase email.</p>
+                </div>
+                <div class="kit-field">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input wrap"><span>pkey_diceroll_4TQ8MZ2KWR9PX7HD3NVB60</span><button class="kit-btn sm">Paste</button></div>
+                </div>
+                <div class="kit-end">
+                  <button class="kit-btn primary block">Activate license</button>
+                  <div class="kit-links center"><a class="kit-link" href="#">Back</a></div>
+                </div>
             </div>
           </div>
         </div></div>
-      <figcaption><strong>1 · Enter your license key.</strong> A filled field with the system Paste; no outline, no glow. A long key wraps to a second line, so every character can be checked against the email. The primary sits at the bottom within thumb reach; Back returns to Sign in.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="device"><div class="device-screen kb-up" data-pk-platform="ios">
-          <div class="ios-art"><div class="art" data-product="diceroll"></div></div>
+        <figcaption><strong>1 · Enter your license key.</strong> A long key wraps, so each character can be checked.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="device"><div class="device-screen" data-pk-platform="ios">
+          <div class="kit-backdrop"><div class="art" data-product="diceroll"></div></div>
           <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
           <div class="device-body">
-            <div class="ib">
-              <div class="ihead"><span class="logo lg" data-product="diceroll"></span><b>Diceroll</b></div>
-              <h2 class="ititle">Enter your license key</h2>
-              <p class="ilede">You’ll find it in your purchase email.</p>
-              <div class="ifield">
-                <label>License key</label>
-                <div class="iinput bad"><span>XQ7T-2MRK-HW4P</span><span class="ipaste">Paste</span></div>
-                <span class="ierr" role="alert"><i class="ic ic-circle-x"></i><span>That doesn’t look like a license key. Keys start with pkey_.</span></span>
-              </div>
-              <span class="ispacer"></span>
-              <button class="ibtn primary block">Activate license</button>
+            <div class="kit-form above-keyboard">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="diceroll"></span>
+                  <h2 class="kit-title">Enter your license key</h2>
+                  <p class="kit-lede">You’ll find it in your purchase email.</p>
+                </div>
+                <div class="kit-field">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input bad"><span>XQ7T-2MRK-HW4P</span><button class="kit-btn sm">Paste</button></div>
+                  <span class="kit-error" role="alert"><i class="ic ic-circle-x"></i><span>That doesn’t look like a license key. Keys start with <code>pkey_</code>.</span></span>
+                </div>
+                <div class="kit-end">
+                  <button class="kit-btn primary block">Activate license</button>
+                </div>
             </div>
-            <div class="skbd" aria-hidden="true">
-              <div class="kr"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
-              <div class="kr inset"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
-              <div class="kr"><span class="k fn"><i class="ic ic-arrow-up"></i></span><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span><span class="k fn"><i class="ic ic-arrow-left"></i></span></div>
-              <div class="kr"><span class="k fn">123</span><span class="k space">space</span><span class="k go">go</span></div>
+            <div class="kit-keyboard" aria-hidden="true">
+              <div class="kit-keys"><span class="kit-key">q</span><span class="kit-key">w</span><span class="kit-key">e</span><span class="kit-key">r</span><span class="kit-key">t</span><span class="kit-key">y</span><span class="kit-key">u</span><span class="kit-key">i</span><span class="kit-key">o</span><span class="kit-key">p</span></div>
+              <div class="kit-keys inset"><span class="kit-key">a</span><span class="kit-key">s</span><span class="kit-key">d</span><span class="kit-key">f</span><span class="kit-key">g</span><span class="kit-key">h</span><span class="kit-key">j</span><span class="kit-key">k</span><span class="kit-key">l</span></div>
+              <div class="kit-keys"><span class="kit-key fn"><i class="ic ic-arrow-up"></i></span><span class="kit-key">z</span><span class="kit-key">x</span><span class="kit-key">c</span><span class="kit-key">v</span><span class="kit-key">b</span><span class="kit-key">n</span><span class="kit-key">m</span><span class="kit-key fn"><i class="ic ic-arrow-left"></i></span></div>
+              <div class="kit-keys"><span class="kit-key fn">123</span><span class="kit-key space">space</span><span class="kit-key go">go</span></div>
             </div>
           </div>
         </div></div>
-      <figcaption><strong>1b · Not a key, keyboard up.</strong> A promo code typed in. The keyboard covers the bottom of the screen, so the primary rides just above it and the error sits between the field and the capsule, always in view. The keyboard’s <em>go</em> is the same action. Nothing is sent.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="device"><div class="device-screen" data-pk-platform="ios">
-          <div class="ios-art"><div class="art" data-product="diceroll"></div></div>
+        <figcaption><strong>1b · Not a key, keyboard up.</strong> Keyboard <em>go</em> = Activate license.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="device"><div class="device-screen" data-pk-platform="ios">
+          <div class="kit-backdrop"><div class="art" data-product="diceroll"></div></div>
           <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
           <div class="device-body">
-            <div class="ib">
-              <div class="ihead"><span class="logo lg" data-product="diceroll"></span><b>Diceroll</b></div>
-              <h2 class="ititle">Enter your license key</h2>
-              <p class="ilede">You’ll find it in your purchase email.</p>
-              <div class="ifield locked">
-                <label>License key</label>
-                <div class="iinput wrap"><span>pkey_diceroll_4TQ8MZ2KWR9PX7HD3NVB6C</span><span class="ipaste">Paste</span></div>
-              </div>
-              <span class="ispacer"></span>
-              <button class="ibtn primary block busy" aria-busy="true"><span class="spin"></span>Activating…</button>
-              <div class="ilinks locked" style="margin-top: 14px"><a class="iquiet" href="#">Back</a></div>
+            <div class="kit-form safe-bottom">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="diceroll"></span>
+                  <h2 class="kit-title">Enter your license key</h2>
+                  <p class="kit-lede">You’ll find it in your purchase email.</p>
+                </div>
+                <div class="kit-field kit-locked">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input wrap"><span>pkey_diceroll_4TQ8MZ2KWR9PX7HD3NVB60</span><button class="kit-btn sm" disabled>Paste</button></div>
+                </div>
+                <div class="kit-end">
+                  <button class="kit-btn primary block busy" aria-busy="true"><span class="kit-spin"></span>Activating…</button>
+                  <div class="kit-links center kit-locked"><a class="kit-link" href="#">Back</a></div>
+                </div>
             </div>
           </div>
         </div></div>
-      <figcaption><strong>1c · Activating.</strong> The keyboard drops, the capsule reads <em>Activating…</em> with the platform’s progress, and the field and Back lock until Polaris Key answers.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="device"><div class="device-screen" data-pk-platform="ios">
-          <div class="ios-art"><div class="art" data-product="diceroll"></div></div>
+        <figcaption><strong>1c · Activating.</strong> The keyboard drops; field and Back lock.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="device"><div class="device-screen" data-pk-platform="ios">
+          <div class="kit-backdrop"><div class="art" data-product="diceroll"></div></div>
           <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
           <div class="device-body">
-            <div class="ib">
-              <div class="ihead"><span class="logo lg" data-product="diceroll"></span><b>Diceroll</b></div>
-              <h2 class="ititle">Enter your license key</h2>
-              <p class="ilede">You’ll find it in your purchase email.</p>
-              <div class="ifield">
-                <label>License key</label>
-                <div class="iinput wrap bad"><span>pkey_diceroll_4TQ8MZ2KWR9PX7HD3NV86C</span><span class="ipaste">Paste</span></div>
-                <span class="ierr" role="alert"><i class="ic ic-circle-x"></i><span>We couldn’t find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.</span></span>
-              </div>
-              <span class="ispacer"></span>
-              <button class="ibtn primary block">Activate license</button>
-              <div class="ilinks" style="margin-top: 14px"><a class="iquiet" href="#">Back</a></div>
+            <div class="kit-form safe-bottom">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="diceroll"></span>
+                  <h2 class="kit-title">Enter your license key</h2>
+                  <p class="kit-lede">You’ll find it in your purchase email.</p>
+                </div>
+                <div class="kit-field">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input wrap bad"><span>pkey_diceroll_4TQ8MZ2KWR9PX7HD3NVB6O</span><button class="kit-btn sm">Paste</button></div>
+                  <span class="kit-error" role="alert"><i class="ic ic-circle-x"></i><span>We couldn’t find that key. Paste it rather than typing it: l, 1, O and 0 are easy to mix up.</span></span>
+                </div>
+                <div class="kit-end">
+                  <button class="kit-btn primary block">Activate license</button>
+                  <div class="kit-links center"><a class="kit-link" href="#">Back</a></div>
+                </div>
             </div>
           </div>
         </div></div>
-      <figcaption><strong>1d · Key not found.</strong> Polaris Key answered: no such key (a B typed as 8). Every server answer takes this place: “That key is for DJDL, not Diceroll.”, a license already in another account, revoked, refunded, and offline (“Can’t reach Polaris Key” with Try again), in the words drawn on sdk.react-activate 1e.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="device"><div class="device-screen" data-pk-platform="ios">
-          <div class="ios-art"><div class="art" data-product="diceroll"></div></div>
+        <figcaption><strong>1d · Key not found.</strong> An O typed for a 0.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="device"><div class="device-screen" data-pk-platform="ios">
+          <div class="kit-backdrop"><div class="art" data-product="diceroll"></div></div>
           <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
           <div class="device-body">
-            <div class="ib">
-              <div class="ihead"><span class="logo lg" data-product="diceroll"></span><b>Diceroll</b></div>
-              <span class="done-check"><i class="ic ic-check"></i></span>
-              <h2 class="ititle">Diceroll is ready</h2>
-              <p class="ilede">Standard · Lifetime · this iPhone is device&nbsp;1&nbsp;of&nbsp;3.</p>
-              <div class="keep">
-                <div class="keep-head"><span class="ireco">Recommended</span>Keep Diceroll in your account</div>
-                <div class="reason"><i class="ic ic-key-round"></i><span><strong>Get your license back</strong> if you lose the key or this iPhone</span></div>
-                <div class="reason"><i class="ic ic-smartphone"></i><span><strong>Move it to a new device</strong> yourself</span></div>
-                <button class="ibtn glass block" style="margin-top: 4px">Add your name and email</button>
-              </div>
-              <span class="ispacer"></span>
-              <button class="ibtn primary block">Start using Diceroll</button>
-              <p class="orfoot">Or continue without an account. Your license works the same.</p>
+            <div class="kit-form safe-bottom">
+                <div class="kit-head">
+                  <span class="kit-done"><i class="ic ic-check"></i></span>
+                  <h2 class="kit-title">Diceroll is ready</h2>
+                  <p class="kit-lede">Standard · Lifetime · this iPhone is device&nbsp;1&nbsp;of&nbsp;3.</p>
+                </div>
+                <div class="kit-keep">
+                  <div class="kit-keep-head"><span class="kit-pill neutral">Recommended</span>Keep it in your account</div>
+                  <div class="kit-reason"><i class="ic ic-key-round"></i><span><strong>Get your license back</strong> if you lose the key or this iPhone</span></div>
+                  <div class="kit-reason"><i class="ic ic-smartphone"></i><span><strong>Move it to a new device</strong> yourself</span></div>
+                  <button class="kit-btn glass block">Add your name and email</button>
+                </div>
+                <div class="kit-end">
+                  <button class="kit-btn primary block">Start using Diceroll</button>
+                  <p class="kit-foot center">Your license works the same without an account.</p>
+                </div>
             </div>
           </div>
         </div></div>
-      <figcaption><strong>2 · Diceroll is ready.</strong> The license stays floating. Diceroll has no Cloud Sync, so the card gives two reasons, not three. Start using Diceroll stays the primary; the recommendation shows once, and Recommended sits above the title as in the React kit.</figcaption>
-    </figure>
+        <figcaption><strong>2 · Diceroll is ready.</strong> No Cloud Sync, so two reasons.</figcaption>
+      </figure>
+      <div class="frame-stack span-2 span-3-wide">
+        <figure class="board-item hide-phone land">
+          <div class="device landscape land-safe"><div class="device-screen" data-pk-platform="ios">
+            <div class="kit-backdrop"><div class="art" data-product="diceroll"></div></div>
+            <div class="device-body">
+              <div class="kit-form safe-bottom">
+                  <div class="kit-split">
+                  <div class="kit-head">
+                    <span class="logo lg" data-product="diceroll"></span>
+                    <h2 class="kit-title">Enter your license key</h2>
+                    <p class="kit-lede">You’ll find it in your purchase email.</p>
+                  </div>
+                  <div class="kit-stack">
+                  <div class="kit-field">
+                    <label class="kit-label">License key</label>
+                    <div class="kit-input wrap"><span>pkey_diceroll_4TQ8MZ2KWR9PX7HD3NVB60</span><button class="kit-btn sm">Paste</button></div>
+                  </div>
+                    <button class="kit-btn primary block">Activate license</button>
+                    <div class="kit-links center"><a class="kit-link" href="#">Back</a></div>
+                  </div>
+                  </div>
+              </div>
+            </div>
+          </div></div>
+          <figcaption><strong>1 · Enter your license key, landscape.</strong></figcaption>
+        </figure>
+
+        <figure class="board-item">
+        <section class="card" data-pk-platform="ios">
+          <div class="card-head"><h3>Other answers</h3></div>
+          <div class="card-answers">
+            <div class="card-answer"><span class="card-answer-label">For another product</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>That key is for DJDL, not Diceroll.</span></span></div>
+            <div class="card-answer"><span class="card-answer-label">In another account</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>This Diceroll license is in another Polaris Key account.</span></span><div class="kit-links"><a class="kit-link" href="#">Sign in to that account</a><a class="kit-link" href="#">Use a different key</a></div></div>
+            <div class="card-answer"><span class="card-answer-label">Revoked</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>That key’s license was revoked. Pipwork Games can tell you why.</span></span></div>
+            <div class="card-answer"><span class="card-answer-label">Refunded</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>That key’s purchase was refunded, so its license has ended.</span></span></div>
+            <div class="card-answer"><span class="card-answer-label">Offline</span><div class="kit-state" role="alert"><i class="ic ic-wifi-off"></i><span><b>Can’t reach Polaris Key</b>Check this iPhone’s internet connection, then try again.</span><button class="kit-btn sm">Try again</button></div></div>
+          </div>
+        </section>
+        <figcaption><strong>1e · Other answers.</strong> Each takes 1d’s place; offline is a row with <em>Try again</em>.</figcaption>
+      </figure>
+      </div>
+    </div>
   </div>
 </div>

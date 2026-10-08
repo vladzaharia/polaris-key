@@ -10,17 +10,18 @@
     "UK-02b"
   ],
   "uxRows": [],
-  "summary": "Activation with a license key in the SwiftUI kit's gate on iPhone, shown on Diceroll as a labelled fixture: the key field with Paste and the full key, the not-a-key error with the keyboard up, Activating…, key not found, and Diceroll is ready with the once-only Keep Diceroll in your account recommendation (two reasons, since Diceroll has no Cloud Sync).",
+  "summary": "Activation with a license key in the SwiftUI kit's gate on iPhone, shown on Diceroll as a labelled fixture: the key field with Paste and the full key, the not-a-key error with the keyboard up, Activating…, key not found, the other answers as an iOS grouped list, and Diceroll is ready with the once-only Keep it in your account recommendation (two reasons, since Diceroll has no Cloud Sync).",
   "compare": [
-    "The key field is a step of the same form: Diceroll's icon and name stay at the top, the art stays behind the glass, and Back returns to Sign in.",
-    "Copy from the kit catalog: 'Enter your license key', 'You'll find it in your purchase email.', 'License key', 'Paste', 'Activate license', 'Activating…'. The error 'That doesn't look like a license key. Keys start with pkey_.' sits under the field with an icon and tints the field. Server answers take the same place.",
+    "The key field is a step of the same form: Diceroll's icon stays at the top with no name label under it (as on React and this kit's sign-in step 1), the art stays behind the glass, and Back returns to Sign in.",
+    "Copy from the kit catalog: 'Enter your license key', 'You'll find it in your purchase email.', 'License key', 'Paste', 'Activate license', 'Activating…'. The error 'That doesn't look like a license key. Keys start with pkey_.' (pkey_ in mono) sits under the field with an icon; the field is tinted and bordered in danger. Server answers take the same place: 1d draws key not found (an O typed for a 0: the key ends …B60, typed …B6O), and Other answers draws the rest, offline as a row above the primary with Try again.",
     "The field is filled with no outline (iOS draws no focus ring). The key is in the mono face and wraps to a second line rather than truncating. Paste is a capsule inside the field.",
     "The primary is a bottom-anchored 52pt accent capsule; nothing else competes with it. With the keyboard up it rides just above the keyboard, and the error stays visible between the field and the capsule.",
-    "Diceroll is ready: the success check and 'Standard · Lifetime · this iPhone is device 1 of 3.' with non-breaking spaces. The Keep Diceroll in your account card has Recommended above its title, only Get your license back and Move it to a new device (no Cloud Sync line, because Cloud Sync is off for Diceroll), and 'Add your name and email' as a glass secondary.",
-    "'Start using Diceroll' stays the primary, with 'Or continue without an account. Your license works the same.' under it; the license stays floating.",
+    "Diceroll is ready: the success check in the icon's place (the product is not named again above the title) and 'Standard · Lifetime · this iPhone is device 1 of 3.' with non-breaking spaces. The 'Keep it in your account' card has a neutral 'Recommended' pill (a fill and a dot) above its title, only Get your license back and Move it to a new device (no Cloud Sync line, because Cloud Sync is off for Diceroll), and 'Add your name and email' as a glass secondary.",
+    "'Start using Diceroll' stays the primary, with 'Your license works the same without an account.' under it; the license stays floating.",
     "Accent, type, radii and glass match sdk.swiftui-sign-in.",
     "A visible 'Kit preview · fixture product' callout, as on sdk.swiftui-sign-in. With Sign-in off, as Diceroll really is, the card would read 'Keep your license safe in Polaris Key' and open the portal instead.",
-    "Phone render: the iPhone frames scale down to fit; nothing reflows."
+    "Four sizes: the two landscape phones (the key field, and Diceroll is ready, side by side as .kit-split draws them) share one cell beside the portrait key field; Other answers, an iOS grouped list, spans two cells beside Ready at desktop (3×3) and takes one cell at wide (4×2) and tablet (2×4); tablet backfills the row beside the first phone; phone shows the portrait frames one by one (the landscapes hide).",
+    "Board copy: the lede is 'The key path, from Have a license key? to Diceroll is ready.'; each caption is the state name plus one sentence; the landscape captions are '1 · Enter your license key, landscape' and '2 · Diceroll is ready, landscape'. 'Floating' and 'shows once' are said in the compare list, not on the board."
   ],
   "status": "mockup",
   "designReview": {
@@ -43,6 +44,78 @@
         "severity": "minor",
         "issue": "The pasted key is cut with an ellipsis, 'device 1 of 3.' breaks across lines, and the Recommended pill drops onto its own line here but sits inline in the React kit.",
         "resolution": "The key field grows to two lines and shows the full key (22 characters after pkey_diceroll_). '1 of 3' uses non-breaking spaces. Recommended now sits above the card's title in both kits, so it never wraps under the title. The line under the primary reads 'Your license works the same.'"
+      },
+      {
+        "severity": "major",
+        "issue": "Ready sat alone, with about 850×600 empty at desktop and an empty cell at wide; iOS's offline row was only referred to ('the words on sdk.react-activate 1e'), never drawn; the B/8 typo wasn't one of the characters the error lists.",
+        "resolution": "An iOS 'Other answers' card in grouped-list style (the four answers and the offline row with Try again, on the kit's .card-answers): two cells beside Ready at desktop (.span-2-desktop), one cell at wide and tablet. Rendered: 3×3 at desktop, 4×2 at wide, 2×4 at tablet, no holes. The 1d fixture is an O typed for a 0 (the key now ends …B60, typed …B6O), captioned 'An O typed for a 0.'",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Ready stacked icon, name, check and title, naming the product four times; '2 · Landscape' appeared long before step 2; the lede and captions repeated 'floating' and 'shows once'.",
+        "resolution": "The 'Diceroll' label under the icon is removed on every step; on Ready the check takes the icon's place; the card title is 'Keep it in your account'. Landscape captions '1 · Enter your license key, landscape' and '2 · Diceroll is ready, landscape'. Lede 'The key path, from Have a license key? to Diceroll is ready.' 'pkey_' is in mono, 'Recommended' is neutral and the errored field has a border (kit). Captions are trimmed to one sentence.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "issue": "Keep the B/8 fixture and caption 1d 'A B typed as 8.' (ux1).",
+        "resolution": "declined: the error message names l, 1, O and 0, so a B/8 typo doesn't fit it. The fixture changes to an O typed for a 0 (d2), which matches React.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Add justify-content: center to .frame-grid.devices so the left and right gutters are equal (d2).",
+        "resolution": "declined: centring moves the frames off the left edge they share with the board title, lede and callout. Aligned edges come first. The ragged right is open space, not a misalignment.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The wide mosaic has holes and captions at six different y positions; landscape frames repeat states and the notch touches the icon.",
+        "resolution": "One order: row 1 is states 1, 1b, 1c, 1d; row 2 is state 2 beside a stack of the landscape key-entry frame (the only landscape) over Other answers, which spans the rest of the row so no cell is left empty; landscape content is inset 24px more from the notch (.land-safe); the last action sits 24px above the frame bottom (.safe-bottom). Other answers shares a column with the landscape frame rather than owning a row, to avoid a 400px hole.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Boilerplate callout and narrating captions.",
+        "resolution": "One-line chip callout; no subtitle; captions shortened as triaged.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Stack frames one per row at full width on phone.",
+        "resolution": "declined: full-width frames make the page taller; the current scale stays.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Hide states behind chips or use a scroll-snap strip on phone.",
+        "resolution": "declined: this removes content and adds interaction.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "d1",
+          "ux2"
+        ]
       }
     ]
   }

@@ -1,70 +1,36 @@
 <style>
-  /* sdk.pkey-help: the overview beside one command's help and its completion; narrow re-wraps on phone. */
-  [data-screen="sdk.pkey-help"] .lay {
-    flex-basis: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 24px;
-    align-items: flex-start;
-    min-width: 0;
+  /* sdk.pkey-help: from 1280, the overview beside everything else: one command's help, then
+     completion and the first run (two up where the column has the room, stacked at desktop),
+     then the run outside a repository. One column below 1280. */
+  [data-screen="sdk.pkey-help"] .board-grid {
+    --cols-desktop: auto minmax(0, 1fr);
   }
-  [data-screen="sdk.pkey-help"] .side {
-    flex: 1 1 0;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    min-width: 0;
+  /* The run outside a repository at desktop, where its column is narrower than 80 columns. */
+  [data-screen="sdk.pkey-help"] .run-mid {
+    display: none;
   }
-  [data-screen="sdk.pkey-help"] .term.full {
-    width: 100%;
-  }
-  [data-screen="sdk.pkey-help"] .registry {
-    padding: 16px 18px;
-  }
-  [data-screen="sdk.pkey-help"] .registry h2 {
-    margin-bottom: 10px;
-    font-size: 15px;
-    line-height: 22px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.pkey-help"] .registry ul {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 0;
-    padding-left: 18px;
-    list-style: disc;
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.pkey-help"] .registry code {
-    white-space: normal;
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="sdk.pkey-help"] .side {
-      flex-basis: 100%;
+  @container screen (min-width: 1280px) and (max-width: 1599px) {
+    [data-screen="sdk.pkey-help"] .run-mid {
+      display: block;
     }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="sdk.pkey-help"] .term .term-body {
-      font-size: 12px;
-      line-height: 18px;
-      padding: 12px 14px 14px;
+    [data-screen="sdk.pkey-help"] .run-80 {
+      display: none;
     }
   }
 </style>
 
 <div class="board" data-service="release">
-  <div class="board-title">
-    <h1>pkey help</h1>
-    <p>One command table drives the parser, this help, shell completion and the CLI reference in the docs, so none of them can drift. Run in DJDL’s repository, the product and base URL come from the folder, and the words are the console’s: a channel is where builds reach people, a release track is stable, beta or dev.</p>
-  </div>
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>pkey help</h1>
+    </header>
 
-  <div class="lay">
-    <div class="term cols-80 hide-phone">
-      <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×64</span></div>
+    <div class="board-grid">
+      <div class="board-col">
+      <figure class="board-item cap-top">
+        <figcaption><strong>The overview</strong></figcaption>
+      <div class="term cols-80 hide-phone">
+        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×64</span></div>
 <pre class="term-body"><span class="c-prompt">❯</span> pkey help
 <span class="c-b">pkey</span><span class="c-dim"> · Polaris Key from the command line</span>                                   <span class="c-dim">0.9.0</span>
 
@@ -118,21 +84,20 @@
   help [command]               This help, or one command's
 
 <span class="c-b">Options</span>
-  --product &lt;slug&gt;             Default: .pkey/product here (djdl)
+  --product &lt;slug&gt;             Default: from .pkey/product
   --base-url &lt;url&gt;             Default: $PKEY_BASE_URL or https://key.plrs.im
   --json                       JSON for scripts, on every command
   --no-color, --ascii          Plain text, or ASCII symbols only
   -h, --help                   Help for a command
 
-<span class="c-dim">Run pkey help &lt;command&gt; for its options. Every command and flag:</span>
-<span class="c-dim">key.plrs.im/docs/reference/cli</span>
+<span class="c-dim">Every command and flag: key.plrs.im/docs/reference/cli</span>
 <span class="c-prompt">❯</span> <span class="cursor"></span></pre>
-    </div>
-    <div class="term full show-phone">
-      <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×110</span></div>
+      </div>
+      <div class="term show-phone">
+        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×106</span></div>
 <pre class="term-body"><span class="c-prompt">❯</span> pkey help
-<span class="c-b">pkey</span><span class="c-dim"> · Polaris Key from the command line</span>
-                                       <span class="c-dim">0.9.0</span>
+<span class="c-b">pkey</span> <span class="c-dim">0.9.0</span>
+<span class="c-dim">Polaris Key from the command line</span>
 
 <span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
 <span class="c-dim">Here </span>  DJDL (djdl) <span class="c-dim">from .pkey/product ·</span>
@@ -238,7 +203,7 @@
 
 <span class="c-b">Options</span>
   --product &lt;slug&gt;
-<span class="c-dim">    Default: .pkey/product here (djdl)</span>
+<span class="c-dim">    Default: from .pkey/product</span>
   --base-url &lt;url&gt;
 <span class="c-dim">    Default: $PKEY_BASE_URL or</span>
 <span class="c-dim">    https://key.plrs.im</span>
@@ -249,15 +214,18 @@
   -h, --help
 <span class="c-dim">    Help for a command</span>
 
-<span class="c-dim">Run pkey help &lt;command&gt; for its options.</span>
 <span class="c-dim">Every command and flag:</span>
 <span class="c-dim">key.plrs.im/docs/reference/cli</span>
 <span class="c-prompt">❯</span> <span class="cursor"></span></pre>
-    </div>
+      </div>
+      </figure>
+      </div>
 
-    <div class="side">
-      <div class="term full hide-phone">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 68×38</span></div>
+      <div class="board-col">
+        <figure class="board-item cap-top">
+          <figcaption><strong>One command’s help</strong></figcaption>
+        <div class="term hide-phone">
+          <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 68×32</span></div>
 <pre class="term-body"><span class="c-prompt">❯</span> pkey help sdk add
 <span class="c-b">pkey sdk add</span><span class="c-dim"> · Add an SDK to an app and pin the product&#x27;s keys</span>
 
@@ -270,21 +238,16 @@
 
 <span class="c-b">Options</span>
   --expect &lt;fp&gt;     Required the first time in a folder: the
-                    signing key fingerprint Integration shows,
-                    as &lt;kid&gt;@sha256:&lt;hex&gt;. pkey pins a key only
-                    when it matches; it never trusts a key on
-                    first use. Later runs trust keys signed by
-                    the pinned key.
+                    fingerprint Integration shows.
   --dir &lt;path&gt;      The app&#x27;s folder. Default: this folder
-  --product &lt;slug&gt;  Default: .pkey/product here (djdl)
+  --product &lt;slug&gt;  Default: from .pkey/product
   --dry-run         Show what would change and write nothing
 
 <span class="c-b">What it does</span><span class="c-dim">, for swift in macos/</span>
   1  Adds PolarisKey from pkg.plrs.im to DJDL.xcodeproj
   2  Writes macos/polaris-key.json for djdl on key.plrs.im
-  3  Pins djdl-2026 once it matches --expect, the staged
-     djdl-2026b it signed, and the release key
-     djdl-rk-2026 from .pkey/release
+  3  Pins djdl-2026, the staged djdl-2026b and the release key
+     djdl-rk-2026
 
 <span class="c-b">Examples</span>
   pkey sdk add swift --dir macos/ \
@@ -293,9 +256,9 @@
       --expect <span class="c-accent">djdl-2026@sha256:3f9a0c…e41b</span>
 
 <span class="c-dim">See also  pkey doctor · key.plrs.im/docs/start/first-product</span></pre>
-      </div>
-      <div class="term full show-phone">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×58</span></div>
+        </div>
+        <div class="term show-phone">
+          <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×48</span></div>
 <pre class="term-body"><span class="c-prompt">❯</span> pkey help sdk add
 <span class="c-b">pkey sdk add</span><span class="c-dim"> · Add an SDK to an app and
 pin the product&#x27;s keys</span>
@@ -314,16 +277,11 @@ pin the product&#x27;s keys</span>
 <span class="c-b">Options</span>
   --expect &lt;fp&gt;
 <span class="c-dim">    Required the first time in a folder:
-    the signing key fingerprint
-    Integration shows, as
-    &lt;kid&gt;@sha256:&lt;hex&gt;. pkey pins a key
-    only when it matches; it never trusts
-    a key on first use. Later runs trust
-    keys signed by the pinned key.</span>
+    the fingerprint Integration shows.</span>
   --dir &lt;path&gt;
 <span class="c-dim">    The app&#x27;s folder. Default: this folder</span>
   --product &lt;slug&gt;
-<span class="c-dim">    Default: .pkey/product here (djdl)</span>
+<span class="c-dim">    Default: from .pkey/product</span>
   --dry-run
 <span class="c-dim">    Show what would change and write
     nothing</span>
@@ -333,10 +291,8 @@ pin the product&#x27;s keys</span>
      DJDL.xcodeproj
   2  Writes macos/polaris-key.json for
      djdl on key.plrs.im
-  3  Pins djdl-2026 once it matches
-     --expect, the staged djdl-2026b it
-     signed, and the release key
-     djdl-rk-2026 from .pkey/release
+  3  Pins djdl-2026, the staged djdl-2026b
+     and the release key djdl-rk-2026
 
 <span class="c-b">Examples</span>
   pkey sdk add swift --dir macos/ \
@@ -347,10 +303,14 @@ pin the product&#x27;s keys</span>
 <span class="c-dim">See also
   pkey doctor
   key.plrs.im/docs/start/first-product</span></pre>
-      </div>
+        </div>
+        </figure>
 
-      <div class="term full">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — completion</span></div>
+        <div class="frame-grid">
+          <figure class="board-item cap-top">
+            <figcaption><strong>Completion</strong></figcaption>
+            <div class="term">
+              <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 56×10</span></div>
 <pre class="term-body"><span class="c-prompt">❯</span> pkey sdk add <span class="cursor"></span>
 <span class="c-b">node</span>    <span class="c-dim">-- Node.js and Electron</span>
 <span class="c-b">react</span>   <span class="c-dim">-- React, in a browser or Electron</span>
@@ -358,10 +318,12 @@ pin the product&#x27;s keys</span>
 <span class="c-b">swift</span>   <span class="c-dim">-- iOS, iPadOS and macOS</span>
 <span class="c-b">kotlin</span>  <span class="c-dim">-- Android and JVM desktop</span>
 <span class="c-b">godot</span>   <span class="c-dim">-- Godot 4 games</span></pre>
-      </div>
-
-      <div class="term full">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — a first run without --expect</span></div>
+            </div>
+          </figure>
+          <figure class="board-item cap-top">
+            <figcaption><strong>First run without --expect</strong></figcaption>
+            <div class="term">
+              <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 56×10</span></div>
 <pre class="term-body"><span class="c-prompt">❯</span> pkey sdk add swift --dir macos/
 <span class="c-err">✗</span> No pin in macos/ yet. Run it again
   with --expect, copied from Integration:
@@ -369,29 +331,46 @@ pin the product&#x27;s keys</span>
       --expect <span class="c-accent">&lt;fingerprint&gt;</span>
 <span class="c-dim">  Nothing was written.</span>
 <span class="c-err">❯</span> <span class="cursor"></span></pre>
-      </div>
+            </div>
+          </figure>
+        </div>
 
-      <div class="term full">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/Downloads — outside a repository</span></div>
-<pre class="term-body"><span class="c-prompt">❯</span> pkey help
-<span class="c-b">pkey</span><span class="c-dim"> · Polaris Key from the command line</span>
+        <figure class="board-item cap-top">
+          <figcaption><strong>Outside a repository</strong></figcaption>
+          <div class="term">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/Downloads — 80×9</span></div>
+<pre class="term-body hide-phone run-80"><span class="c-prompt">❯</span> pkey help
+<span class="c-b">pkey</span><span class="c-dim"> · Polaris Key from the command line</span>                                   <span class="c-dim">0.9.0</span>
 
 <span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
-<span class="c-dim">Here </span>  <span class="c-dim">no product: no .pkey/product in this
-       folder or above; pass --product ·
-       key.plrs.im</span>
-<span class="c-dim">…</span></pre>
-      </div>
+<span class="c-dim">Here </span>  <span class="c-dim">no product: no .pkey/product here or above; pass --product · key.plrs.im</span>
 
-      <section class="card flat registry">
-        <h2>One command table</h2>
-        <ul>
-          <li>Each command is declared once: its group, words, usage, flags, environment and what it says. Parsing, help and completion all read it.</li>
-          <li>The docs’ CLI reference is generated from the same table and checked in CI.</li>
-          <li><code>--product</code> and <code>--base-url</code> default from <code>.pkey/product</code> and <code>PKEY_BASE_URL</code> for every command that takes them.</li>
-          <li>Removed commands are gone from the table, so they are gone from help and completion: no <code>pkey trust</code>, no <code>pkey sdk --lang</code>, no <code>PKEY_ADMIN_COOKIE</code>, and no <code>pkey storefront</code>: delivery commands are <code>channel</code> commands, and “storefront” is kept for selling.</li>
-        </ul>
-      </section>
+<span class="c-b">Start</span>
+  init                         Scaffold .pkey/ in this folder</pre>
+<pre class="term-body hide-phone run-mid"><span class="c-prompt">❯</span> pkey help
+<span class="c-b">pkey</span><span class="c-dim"> · Polaris Key from the command line</span>                    <span class="c-dim">0.9.0</span>
+
+<span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
+<span class="c-dim">Here </span>  <span class="c-dim">no product: no .pkey/product here or above; pass --product ·
+       key.plrs.im</span>
+
+<span class="c-b">Start</span>
+  init                         Scaffold .pkey/ in this folder</pre>
+<pre class="term-body show-phone"><span class="c-prompt">❯</span> pkey help
+<span class="c-b">pkey</span> <span class="c-dim">0.9.0</span>
+<span class="c-dim">Polaris Key from the command line</span>
+
+<span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
+<span class="c-dim">Here </span>  <span class="c-dim">no product: no .pkey/product here
+       or above; pass --product ·
+       key.plrs.im</span>
+
+<span class="c-b">Start</span>
+  init
+<span class="c-dim">    Scaffold .pkey/ in this folder</span></pre>
+          </div>
+        </figure>
+      </div>
     </div>
   </div>
 </div>

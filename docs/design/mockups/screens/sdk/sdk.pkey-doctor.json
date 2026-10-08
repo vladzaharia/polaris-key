@@ -12,16 +12,16 @@
   "uxRows": [],
   "summary": "pkey doctor run in DJDL's repository: the product from .pkey/product, then Manifest, Keys, Integration (Verified per feature on macOS and Windows, CI under Ship builds) and Left to do, each problem with the command or console page that fixes it; it re-wraps to 44 columns on a narrow terminal.",
   "compare": [
-    "No --product or --base-url typed: the header says the product came from .pkey/product and shows the base URL (PKEY_BASE_URL or key.plrs.im).",
-    "The Integration block matches products.integration exactly: Licensing and Managed config Verified on macOS, Ship builds Waiting for the update check with CI Verified (first release 4.2.0, Oct 6), Sign-in Waiting, Cloud Sync Not seen yet, Windows Not seen yet everywhere, Commerce off and needing Licensing.",
+    "No --product or --base-url typed: the header shows the product and the base URL (PKEY_BASE_URL or key.plrs.im).",
+    "The Integration block matches products.integration exactly: Licensing and Managed config Verified on macOS, Ship builds Waiting for the update check with CI Verified (first release 4.2.0, Oct 6), Sign-in '● Waiting', Cloud Sync Not seen yet, and Commerce off. Windows, where every feature is Not seen yet, is one line ('Windows ○ Not seen yet'), as Integration and Overview show it once. The summary reads the same facts as Integration.",
     "Left to do lists the same open console steps as the Integration cards (Sparkle signing key; Storage per account), each followed by its fix: a command, or a console deep link on /manage built from the base URL.",
     "Symbols and words match Integration's three Verified looks: ✓ Verified (green), ● Waiting (accent), ○ Not seen yet (dim); ✗ for to do and ! for a warning with a date.",
     "The staged signing key djdl-2026b is a warning with its date and one fix line per app folder (swift for macos/, kotlin for windows/), not a problem. Keys also lists the release key djdl-rk-2026 as pinned.",
     "Signed in uses pkey login (a personal token), never PKEY_ADMIN_COOKIE.",
-    "The summary chip counts to-do items and warnings and says it reads the same facts as Integration. It is red while anything is to do, amber for warnings alone and green when clear. The exit code is 1 while anything is left to do, and the prompt turns red.",
-    "Layout is UK-14's terminal kit: 80 columns, bold section headings, two-column terms, dim details, and Integration columns at 2, 29 and 56. At 44 columns the same facts re-wrap: one block per platform, then CI and Off, with every detail and fix line kept and long links wrapped.",
+    "The summary chip counts to-do items and warnings, then the run time: '2 to do · 1 warning · 1.2 s' in both runs, the same counts Integration shows. It is red while anything is to do, amber for warnings alone and green when clear. The exit code is 1 while anything is left to do, and the prompt turns red.",
+    "Layout is UK-14's terminal kit: 80 columns, bold section headings, two-column terms and dim details; Integration, CI and Commerce are their own groups. At 44 columns (phone only) the same facts re-wrap, every detail and fix line kept and long links wrapped. One terminal is drawn per size, with Symbols and How it behaves beside it (one card on phone).",
     "No 'outlet', 'grant', 'capability' or programme id appears in the output.",
-    "Commerce, off and needing Licensing, carries a dim link to Features, as Integration offers 'Open Features'."
+    "Commerce prints 'off' on its own line; 'needs Licensing' shows only while Licensing is off (here it is Verified). Console links appear only on the two to-do rows."
   ],
   "status": "mockup",
   "designReview": {
@@ -54,6 +54,98 @@
         "severity": "minor",
         "issue": "The summary chip looks the same at '2 to do' and '0 to do', exit 1 isn't visible, Keys has no release key row, and the Commerce row offers no way forward.",
         "resolution": "The chip is red while anything is to do. The legend explains amber for warnings alone, green when clear, and the same words under --no-color; the docs' step 5 chip is green at 0. The prompt after the run is red, with a dim 'exit 1' at the right. Keys adds '✓ Release key djdl-rk-2026, pinned'. The Commerce row has a dim '→ key.plrs.im/manage/#/p/djdl/features' line."
+      },
+      {
+        "severity": "major",
+        "issue": "Factual error: Commerce printed 'needs Licensing' while Licensing is Verified two rows above (Commerce requires Licensing, plan §2.1; products.integration says 'Commerce is off').",
+        "resolution": "Both runs print Commerce as 'Commerce   off' with the dim '→ key.plrs.im/manage/#/p/djdl/features' line; 'needs Licensing' shows only while Licensing is off. Compare items 2 and 10 updated.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Windows repeated 'Not seen yet' in five identical cells, and five lines at 44 columns; Integration and Overview show it once.",
+        "resolution": "80 columns: the Windows column is dropped and '  Windows   ○ Not seen yet' closes the Integration block. 44 columns: one line, 'Integration on Windows  ○ Not seen yet'. Compare items 2 and 8 updated.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The summary carried a mechanism clause that wrapped on phone; 'Waiting: sign-in' repeated the row name; the legend described the layout; How it behaves bullet 3 repeated the frame; the lede repeated what the terminal shows.",
+        "resolution": "Summary '2 to do · 1 warning · 1.2 s' in both runs (the Integration parity stays in compare items 2 and 7); Sign-in reads '● Waiting'; the To do legend reads 'a missing console step or key.'; bullet 3 (one fix line per folder) is deleted; lede 'DJDL's setup, checked from its repository.'",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Wide left about 960×380 empty under two 16px-titled cards, and the 44-column wrap of compare item 8 was drawn only on phone.",
+        "resolution": "At wide three tracks, tops aligned: the 80-column run | the 44-column run | the aside (at least 400px, the row's remaining width) with Symbols over How it behaves. Desktop, tablet and phone are unchanged. Cards in a board aside now title at the 18/24 block step (kit). Rendered: the aside stays the shorter column.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      },
+      {
+        "issue": "Move the 'same facts as Integration' parity claim into the Symbols card's Summary row (ux1).",
+        "resolution": "declined: it is a build requirement, already in compare item 2. Moving it into the card would add a sentence to a legend that readers don't need.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Move 'Signed in' out of Manifest into the header line (d2).",
+        "resolution": "declined: it is a check that can fail and has a fix (pkey login, compare item 6). The header carries context, not checks.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Delete How it behaves bullet 2, 'Console links follow the base URL…' (d2).",
+        "resolution": "declined: the frame can't show this behaviour, because it only ever shows key.plrs.im. Bullet 3, which the terminal does show, is cut instead.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The same report is drawn twice at wide, leaving a dead band beside the terminal.",
+        "resolution": "One terminal per size: 80 columns at wide, desktop and tablet, 44 only on phone. Symbols and How it behaves stack beside it (top-aligned, two-column key at tablet and wide) and join into one card on phone (.board-aside.stack.join-phone).",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Copy duplicated the terminal (subtitle, header, Summary, --json, long symbol text, Commerce link, Windows/CI under the macOS block).",
+        "resolution": "Dropped the subtitle and the header note, gave CI and Commerce their own groups, shortened Symbols to a label plus about four words, folded Summary into one exit-code line, cut --json, merged --product and --base-url, and kept links only on the two to-do rows.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Keep both terminals but label them 80 and 44 columns.",
+        "resolution": "declined: a fallback only; the primary fix shows one terminal per size.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Delete or trim the checks table / fill spare width at 1920 with a sticky note.",
+        "resolution": "declined: this adds or removes content; the single terminal and a stacked aside are enough.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2"
+        ]
       }
     ]
   }

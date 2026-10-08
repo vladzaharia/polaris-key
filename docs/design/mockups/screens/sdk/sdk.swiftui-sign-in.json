@@ -16,14 +16,15 @@
     "The product is the hero: Diceroll's icon (88pt), name and an accent from its icon lead every step; its art is blurred behind the glass and never clipped bright under a panel; no Polaris Key mark appears.",
     "iOS measures from the kit's ios preset: 52pt capsule controls, 28pt titles at weight 600, 17pt body, 20pt side margins; primary is a .glassProminent capsule in the accent, secondaries are glass.",
     "The chooser: a logo-only provider row (Sign in with Apple drawn to Apple's logo-only rules, white in dark and black in light; Steam), 'Sign in with a passkey', 'Continue with email', 'Have a license key?', 'Sign in with another device', and the footnote with Pipwork Games as the developer. The lede is 'Use the account you bought Diceroll with.' because the product sells through stores.",
-    "One form: the header (icon and name) persists and only the body morphs; the only thing over the form is the system confirmation for a destructive Replace.",
-    "Choose a license: 'Signed in with Apple as Mara Fennick · Not you?', 'Choose a license for this device', 'Diceroll will use it on Mara's iPhone.', the Steam license preselected with a tint and one radio (no accent border), the full Family license with no radio, 'No free devices', its 5-of-5 meter in warning and 'Replace a device'; 'Use a license key instead · Cancel'; primary 'Use this license and continue' at the bottom.",
-    "Replace a device: heading 'Your license is on 5 of 5 devices' and lede 'To use it on this iPhone, replace one. You can add it back later.' The devices show OS (and store) and last use, with 'Last used' once above the list and the least recent preselected. The primary is 'Replace…', and the confirmationDialog 'Replace Leo's iPad?' reads 'Leo's iPad stops using Diceroll Family now. You can add it back when a device is free.', with a destructive 'Replace and continue' and 'Cancel'. The capsule under the sheet is hidden.",
+    "One form: the header (icon and name) persists and only the body morphs; Sign in with Apple, the browser sheet and the confirmation stay native, and the only thing over the form is the system confirmation for a destructive Replace.",
+    "Choose a license: 'Signed in with Apple as Mara Fennick · Not you?', 'Choose a license', 'Diceroll will use it on Mara's iPhone.' Rows use the React kit's anatomy: the title is where the license came from ('Steam purchase', 'Gift') and never wraps, the tier is a pill (Standard, Family), and the meta line is devices · duration ('1 of 3 devices · Lifetime'; 'No free devices · Until Oct 31, 2027', the first part in the warning colour). The Steam purchase has a free device and is preselected with a tint and one radio (no accent border); the full Gift has no radio, its 5-of-5 meter in warning and 'Replace a device'. 'Use a license key instead' is the one accent link; the primary 'Use this license and continue' sits at the bottom with 'Cancel' as a glass secondary under it.",
+    "Replace a device: heading 'Your license is on 5 of 5 devices' and lede 'To use it on this iPhone, replace one.' The devices show OS (and store) and last use, with 'Last used' once above the list and the least recent preselected. The primary is 'Replace…', and the confirmationDialog 'Replace Leo's iPad?' reads 'It stops using Diceroll Family now. You can add it back when a device is free.', with a destructive 'Replace and continue' and 'Cancel'. The capsule under the sheet is hidden.",
     "After keeping an existing license there is no Done step: the gate opens the game (no free-tier line) and the toast reads 'Signed in as Mara Fennick' over 'Standard license', hugging its content.",
     "Dates and units are US style ('Until Oct 31, 2027', '1 of 3 devices').",
     "A visible 'Kit preview · fixture product' callout says Diceroll is drawn as an iPhone SwiftUI app with Sign-in on only to show the kit (it ships the Godot kit, Sign-in off). The code panel is a generic iOS app's ContentView, not Diceroll's.",
-    "Phone render: the iPhone frames scale down to fit; nothing reflows.",
-    "Glass secondaries keep a visible hairline edge on the light page."
+    "Four sizes: at wide the four portraits in story order (1, 2, 2b, 3), then the landscape sign-in (two cells) beside the code (two cells); at desktop the landscape phone and the code share one cell beside the portrait sign-in, three frames a row; tablet backfills the row beside the first phone; phone shows the portrait frames one by one (the landscape hides).",
+    "Glass secondaries keep a visible hairline edge on the light page.",
+    "Board copy: the lede is '.polarisKeyGate(pk) on iPhone.'; each caption is the state name plus one sentence ('1 · Sign in, landscape' has none); the code note reads 'No theme set: the Polaris look in Diceroll's accent. The native preset switches to the system look.' The glossary word is 'a free device', never 'seat'."
   ],
   "status": "mockup",
   "designReview": {
@@ -56,6 +57,74 @@
         "severity": "minor",
         "issue": "In light mode the glass secondaries have no visible edge. The Replace list mixes OS and store as the platform, the dialog says 'if a seat is free', the toast orphans 'license', and the licensed title screen still shows '20 free rolls a day'.",
         "resolution": "Glass capsules have a 13% hairline plus a soft shadow in both themes. The platforms read 'Windows · Steam' and 'SteamOS'. The dialog reads 'Leo's iPad stops using Diceroll Family now. You can add it back when a device is free.' The toast hugs its content up to the safe area. The pair can't fit on one line at 15pt, so the toast has two deliberate lines, who and then which license, and orphans no word. The free-tier tagline is removed. The Replace step also takes the catalog heading 'Your license is on 5 of 5 devices' and shows 'Last used' once above the list, as in the React kit."
+      },
+      {
+        "severity": "major",
+        "issue": "At wide, row 2 held only 2b and 3, leaving about 850×830 empty.",
+        "resolution": "At 1600 and up row 1 is the four portraits in story order (1, 2, 2b, 3) and row 2 is the landscape frame (two cells) beside the code (two cells). Desktop and tablet are unchanged. Rendered: both wide rows full.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Row 1's title repeated the product name above it, row 2 said 'Family' twice, the title and lede repeated each other, and Cancel competed with the real alternative as a second accent link.",
+        "resolution": "Choose a license rows use the React kit's anatomy: titles 'Steam purchase' and 'Gift', tier pills Standard and Family, meta '1 of 3 devices · Lifetime' and 'No free devices · Until Oct 31, 2027' (in warning). The title is 'Choose a license' (catalog). Cancel moved under the primary as a glass secondary, so 'Use a license key instead' is the only accent link.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'Hero / Diceroll leads' and 'Apple … native' were in both the lede and caption 1; 'seat' isn't the glossary word; caption numbers collided ('1 · Landscape'); the code note had no verb.",
+        "resolution": "Lede '.polarisKeyGate(pk) on iPhone.' Caption 1 'Steam, passkey and email open the system browser sheet; the lede asks for the account because Diceroll sells through stores.'; 2b 'Least recent preselected; each device shows its OS and store.'; 'a free seat' is now 'a free device'; the landscape caption is '1 · Sign in, landscape'; the code note 'No theme set: the Polaris look in Diceroll's accent. The native preset switches to the system look.' The 2b Replace lede drops 'You can add it back later' (catalog).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "issue": "Add justify-content: center to .frame-grid.devices so the left and right gutters are equal (d2).",
+        "resolution": "declined: centring moves the frames off the left edge they share with the board title, lede and callout. Aligned edges come first. The ragged right is open space, not a misalignment.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "At wide, add a wide-only stack of two new landscape frames ('Choose a license' and 'Signed in') to fill row 2 (ux1).",
+        "resolution": "declined: it would add frames that only one size shows. Reordering the existing frames at wide fills both rows with no new content. Landscape for list steps is a separate kit decision.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "Row-2 bottoms differ by about 70px, the code card moves between sizes, the 3-line callout sits in a very wide row, 2b dims too heavily and its sheet cuts off the last row.",
+        "resolution": "One order at all sizes (phones 1, 2, 2b, 3, then the landscape frame, then the code, which stretches to the landscape frame at wide and is full width below); the callout is a one-line chip; 2b has all five device rows (tighter row padding) and a 30% dim (.kit-scrim.soft); landscape inset and 24px bottom padding as in swiftui-activate.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Captions narrate mechanism and layout in three lines.",
+        "resolution": "Captions: state 1 \"Asks for the account because Diceroll sells through stores.\", 2b \"Least recently used is preselected.\", 3 \"The toast names the account and license.\", code \"One modifier runs the whole flow.\"; \"No theme set: Polaris look in Diceroll's accent.\"; privacy footer on the first screen only.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Stack frames one per row at full width on phone.",
+        "resolution": "declined: full-width frames make the page taller.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
       }
     ]
   }

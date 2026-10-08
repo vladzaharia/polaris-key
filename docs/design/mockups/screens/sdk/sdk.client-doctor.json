@@ -10,17 +10,17 @@
     "SP-35"
   ],
   "uxRows": [],
-  "summary": "client.doctor(): the call in a tab per SDK (Godot active), the checks it runs, and the report a Diceroll debug run prints once in the Godot editor's Output dock after packs.ensure is refused, with each problem's fix and console link.",
+  "summary": "client.doctor(): what a Diceroll debug run prints once in the Godot editor's Output dock after packs.ensure is refused, with each problem's fix and console link; the call in a tab per SDK (Godot active); the checks it runs; and the run when key.plrs.im can't be reached.",
   "compare": [
     "The report prints once per run, in debug builds only, right after the first refusal, and names that refusal first (packs.ensure(\"neon\") was refused).",
-    "The header line names product, app version, OS and arch, SDK and version, and debug run. Each check is one row with ✓, ✗, ! or – (not compared, when the server can't be reached) and a short plain-words detail.",
+    "The header line names product, app version, OS and arch, and SDK and version. Each check is one row with ✓, ✗, ! or – ('not checked', when the server can't be reached) and a short plain-words detail.",
     "Every problem has a Fix line that says what to do (Import file… in the dock, pkey sdk add godot, download polaris-key.json again, or turn on Sign-in, then Cloud Sync) and a console deep link on /manage (key.plrs.im/manage/#/p/diceroll/…).",
-    "The checks are the plan's set plus Server: the server answers, polaris-key.json, version, signing key (staged included), release key, features expected against advertised, store, clock, and web origin for React and the elements.",
+    "The checks are the plan's set plus Server: the server answers, polaris-key.json, version, signing key (staged included), release key, features expected against advertised, store, clock, and web origin for React and the elements. The table's columns are 'Check' and 'What it checks'.",
     "Diceroll facts hold: Cloud Sync is off for Diceroll (as on Home), the build isn't under Steam, the signing kid is diceroll-2026.",
-    "pk.doctor() returns the same checks typed (id, ok, severity todo or warning, title, detail, fix, console link), with ids identical across SDKs. The report never contains a license key, device token or secret.",
+    "pk.doctor() returns the same checks typed (id, ok, severity todo or warning, title, detail, fix, console link), the same in every SDK; the code's one comment says why an app calls it (a support screen). The report never contains a license key, device token or secret.",
     "The summary line counts the same way pkey doctor does: '2 to do · 1 warning'. A debug run with no refusal prints nothing.",
-    "Phone: the output comes first and re-wraps to 44 columns, with details, Fix lines and links indented under each check. The editor's menu and dock tabs drop to their first items, and the call and table follow.",
-    "The offline run: '✗ Server couldn't reach key.plrs.im (timed out after 10 s)' with its Fix, and the checks that need the server marked '–' with what they compared instead; never a pass or fail on a guess."
+    "From 1280: What a debug run prints over The call, beside The checks over When key.plrs.im can't be reached; the columns end within about 100px, and the Godot frame has no empty viewport strip (its menu bar with 'Running · main.tscn' and the Output dock tabs stay). Below 1280 one column, the debug run first. Phone: the output re-wraps to 44 columns, with details, Fix lines and links indented under each check, and the editor's menu and dock tabs drop to their first items.",
+    "The offline run: '✗ Server couldn't reach key.plrs.im (timed out after 10 s)' with its Fix; the checks that need the server read '– Signing key not checked; pins read from the file', '– Features not checked' and '– Clock not checked', and the summary is '1 to do · 3 not checked'. A check never passes or fails on a guess."
   ],
   "status": "mockup",
   "designReview": {
@@ -53,6 +53,77 @@
         "severity": "minor",
         "issue": "doctor() ends with '2 problems · 1 warning' while pkey doctor ends with '2 to do · 1 warning'.",
         "resolution": "Both summaries now read '2 to do · 1 warning'. The typed severity is documented as todo or warning, printed as 'to do' and 'warning'."
+      },
+      {
+        "severity": "major",
+        "issue": "An empty quadrant of about 606×380 at desktop and 860×380 at wide: the call and checks ended far above the two runs.",
+        "resolution": "From 1280 the left column is What a debug run prints, then The call; the right is The checks, then When key.plrs.im can't be reached. The 88px empty viewport-grid strip in the Godot frame is deleted at every size (menu bar and Output tabs stay). Below 1280 the hero leads one column. Rendered: the columns end within about 60px at desktop and 20px at wide.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "'Returns the same checks, typed' appeared three or four times and 'the same in every SDK' twice; the lede, code note and footnote overlapped.",
+        "resolution": "Lede: 'A debug build prints what's missing on the first refusal, with the console page that fixes it.' Call foot: '…fix and a console link, the same in every SDK.' Output caption: 'Also in Xcode's console, Logcat, the terminal and the browser console.' Table foot: 'Release builds, and debug runs with no refusal, print nothing. The report holds no license key, device token or secret.' The code comment '# For a support screen, ask for the report yourself:' stays as the one place that says why an app calls doctor().",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Output lines repeated the line next to them; 'not compared' and 'not checked' named one state with two words; 'Compares' didn't fit half the rows.",
+        "resolution": "Refusal line 'Polaris Key: packs.ensure(\"neon\") was refused.' (the ✗ Release key row gives the reason); Features fix 'download polaris-key.json again, or turn on Sign-in, then Cloud Sync, in Features.'; '· debug run' dropped from both headers; the offline rows say 'not checked' and the summary '1 to do · 3 not checked'; the note under the offline run is deleted ('never passes or fails on a guess' is in compare item 9); the table header is 'What it checks'. Long desktop lines are re-wrapped to the column so nothing scrolls.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d2"
+        ]
+      },
+      {
+        "issue": "ux1's regroup: the hero alone on the left, the call and the offline run on the right, and the checks full width below, split into two side-by-side tables.",
+        "resolution": "declined: splitting nine rows into two tables means two headers and an uneven row count. Once the 88px viewport strip goes, d2's grouping lands within about 100px with the table kept whole and the hero still top left.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Cut the code comment '# For a support screen, ask for the report yourself:' and rename the column header to 'Checks' (d2).",
+        "resolution": "declined: with the lede's second sentence gone, the comment is the only place that says why an app calls doctor(). 'Check | Checks' would collide, so the header becomes 'What it checks' instead.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "Columns end at different heights, H2s misalign, the checks table stretches at tablet, and the two terminals end up about 1500px apart on phone.",
+        "resolution": "Two top-aligned columns from 1280 (debug run over the call, no-network run over the checks); one column below in the order debug run, no-network run, the call, the checks; the table is capped at 720px at tablet; the page is capped at 1600px; phone table header is small caps with 12px type and 12px row padding, code wraps at 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "\"When it prints\" appears four times and the table repeats the terminal.",
+        "resolution": "No subtitle; \"printed once per run\" and the Xcode note are gone; one line says \"Release builds print nothing. The report holds no license key or secret.\"; the code note is \"Each check has id, ok, severity, title, detail, fix and a console link.\"; the checks gloss is shorter without leading \"The\" and Web origin reads \"React only\"; the footer reads \"2 to do · 1 warning\".",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Delete the checks table or cut it to the checks the terminal does not show.",
+        "resolution": "declined: the table is the reference for what each check means; it keeps shorter wording and a compact row height.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux3"
+        ]
       }
     ]
   }

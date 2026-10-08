@@ -11,18 +11,19 @@
     "SP-33b"
   ],
   "uxRows": [],
-  "summary": "DJDL's polaris-key.json with the flat names SDKs already ship, where each SDK reads it, how it gets into a project, and the start call fromConfig() then boot() as one tab per SDK (Swift active) with the other five goldens beside it.",
+  "summary": "DJDL's polaris-key.json with the flat names SDKs already ship beside where each SDK reads it; the start call fromConfig() then boot() in all six SDKs, once each (Swift first, ringed); then how the file gets into a project beside what happens when start fails.",
   "compare": [
     "The file has exactly $schema, configVersion, productSlug, baseUrl, pinnedKeys, pinnedReleaseKeys and expectedServices (C-24's flat names); no nested product/pins/services shape, no secret, no version field.",
     "DJDL's real signing kid and key (djdl-2026, P0nMyA9Q…_6E) appear; the release kid is djdl-rk-2026; expectedServices lists DJDL's enabled service slugs and not commerce, which is off.",
-    "Every tab starts with fromConfig() (Python from_config) then boot(); React's provider takes config={polarisKey} and runs both; Godot's autoload reads res://polaris-key.json with boot() alone; Kotlin names the Android entry point in a comment.",
-    "No tab passes a product slug, base URL, key or service list by hand, and no tab calls discover(); create(options) is mentioned once, as the low-level call.",
+    "Every start call (one card per SDK, Swift first) begins with fromConfig() (Python from_config) then boot(); React's provider takes config={polarisKey} and runs both, as its one comment says; Godot's autoload reads res://polaris-key.json with boot() alone, as its comment says; Kotlin's one comment names the Android entry point. No comment repeats a cell of the reading table.",
+    "No card passes a product slug, base URL, key or service list by hand, and none calls discover(); create(options) is mentioned once, in the note under the cards, as the low-level call.",
     "The reading table matches the SDKs: Node beside package.json, React a bundled JSON import, Python a path or package data with version= required, Swift the bundle, Kotlin assets/ or the classpath, Godot res:// kept by the export filter; nothing is fetched from the network.",
     "The three sources are pkey sdk add swift --dir macos/ with --expect (no trust on first use), on one unbroken line that scrolls in its row, with the note that outside the repository it takes --product djdl as Integration's copied command does; Download on Integration (active and staged keys); and the Godot dock's Import file…, which needs no Node.",
-    "Canonical names come from api.json: isLicensed / is_licensed, boot, fromConfig; no deprecated alias spelling (getConfig, expectServices, pinned_trust_keys) appears anywhere.",
-    "Phone: the two columns stack (file, sources, then the start call and table). The start call's tabs show Swift with '5 more', like the other pages. The reading table becomes one block per SDK with 'Reads from' and 'App version' lines. The five goldens become one column, and each code block scrolls sideways inside itself.",
-    "Section headings use one treatment, uppercase eyebrows: The file, The start call, How it gets into the project, The other five SDKs.",
-    "Code blocks take the core accent for the active tab and highlighted lines, as on the docs page and Integration. Every golden names the client pk."
+    "Canonical names come from api.json, cased for the language: isLicensed / is_licensed, boot, fromConfig; no deprecated alias spelling (getConfig, expectServices, pinned_trust_keys) appears anywhere. Each start call is compiled in that SDK's CI.",
+    "Phone: the rows stack (the file, the reading table, the start call, the sources, When start fails). The start call is one tabbed block, Swift with '5 more', like the other pages, and no cards. The reading table becomes one block per SDK with 'Reads from' and 'App version' lines, flush with the card's edge. Each code block scrolls sideways inside itself.",
+    "Section titles are the sentence-case 18/24 block step: The file, Where each SDK reads it, The start call, How it gets into the project, When start fails. No uppercase eyebrows, and no board lede (the title and the section titles say it). The reading table's columns are 'Reads from' and 'App version' at every size.",
+    "Code blocks take the core accent for Swift's ring, its two highlighted lines and the phone's active tab, as on the docs page and Integration. Every golden names the client pk.",
+    "Three rows from 1280: The file | Where each SDK reads it (about level); the start call as six code cards, three up at wide and desktop and two at tablet, with the boot()/create(options) note once under them; How it gets into the project | When start fails, the two cards sharing the row's height. At wide the first column hugs the JSON at 640px. The doctor fact is said once: the table's foot is 'Never fetched from the network.' and the card is one sentence with See doctor() →."
   ],
   "status": "mockup",
   "designReview": {
@@ -45,6 +46,108 @@
         "severity": "minor",
         "issue": "The 'The other five tabs' heading names cards that are not tabs, and the page mixes uppercase eyebrows with a sentence-case h2.",
         "resolution": "Renamed it to 'The other five SDKs' and made it an eyebrow like The file, The start call and How it gets into the project, with its line of explanation under it."
+      },
+      {
+        "severity": "major",
+        "issue": "Five SDK start calls were drawn twice, as tabs and again as cards: about 620px of repeat at desktop and 1,900px on phone.",
+        "resolution": "At 640px and up The start call is a grid of six code cards (3×2 at wide and desktop, 2×3 at tablet), Swift first with an accent ring and its two highlighted lines; the boot()/create(options) note sits once under the grid. The tab block shows on phone only ('Swift · 5 more'). The 'The other five SDKs' section and its subtitle are gone; the api.json casing and CI rule moved to compare item 7. Compare items 3, 4 and 8 now say 'card'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "With the tabs out of the right column the two-column grid would end about 370px apart, and wide stretched the JSON card to 860px around 600px of code.",
+        "resolution": "Three rows: The file | Where each SDK reads it; the start-call grid full width; How it gets into the project | When start fails, sharing the row's height. Rows 1 and 3 use --cols-wide: minmax(0, 640px) minmax(0, 1fr). Rendered: row 1 ends within about 40px at desktop, and the JSON card hugs its code at wide.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Round-1 regression: the --expect command split as 'djdl-' / '2026@sha256…' at desktop and took three lines on phone, with '$' centred on the middle line.",
+        "resolution": "The command uses the new kit variant .cmd.one-line: one 40px row at every size, '$' on the line, the command scrolling inside its box under a 24px fade at the right edge.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The doctor fact was said twice ('doctor() says which' in the table foot, and the card title), and the board lede repeated the title and section titles.",
+        "resolution": "Table foot: 'Never fetched from the network.' The card is retitled 'When start fails' with one sentence ('A debug build prints which pin, feature or clock is wrong, with the console page that fixes it.') and See doctor() →; 'pk.doctor() returns the same checks, typed' is cut (sdk.client-doctor owns it). The board lede is dropped.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Code comments repeated reading-table cells; the table used two names for one column; compare item 9 described uppercase eyebrows that no longer exist.",
+        "resolution": "Deleted Node's '// polaris-key.json beside package.json.' and Python's '# Python has no app version to read.'; Kotlin keeps only '// Android: PolarisKeyAndroid.client(context)'; React's provider comment and Godot's autoload comment stay. The headers are 'Reads from' | 'App version' at desktop too, and compare item 9 now describes the sentence-case 18/24 block step.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "issue": "Keep only the tabbed 'The start call' block and delete the five cards (ux1's recommended option); also delete the Godot comment and the Kotlin comment's Android entry point (d2).",
+        "resolution": "declined: it would remove five start calls that compare item 3 checks per SDK, and the owner's brief is to keep the content. The six-card grid shows each one once instead. The Godot comment explains why Godot calls boot() with no fromConfig(), for the same reason d2 kept React's. Kotlin's entry point isn't in the reading table.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Scope a nowrap override to [data-screen=\"sdk.start-call\"] .cmd.",
+        "resolution": "declined: the kit-first rule applies: a .cmd.one-line variant in mockup.css does the same job, other screens can reuse it, and it leaves the packages pass's wrapping commands working.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "A 290px card holds one sentence, dead space between the JSON and table cards, and an unlabeled purple outline on the Swift tile.",
+        "resolution": "Both grids top-align; \"When start fails\" is now a sentence with a See doctor() link in the footnote under the call; the outline is gone; the call grid is 2 columns at tablet and desktop, 3 only at wide, rows sized to content.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Phone: JSON and the install command clip with no scroll cue, Copy crowds the command, six stacked SDK cards repeat their labels.",
+        "resolution": "JSON and the command wrap (pre-wrap, 12px, anywhere) via .wrap-phone, Copy takes its own 32px row, and the SDK table is one compact three-column table with Reads from and App version labelled once in its header; \"on a plain JVM\" moved out of the table.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Two footers and the --expect note repeat each other; create(options) describes an API this page does not show.",
+        "resolution": "No subtitle; the create(options) sentence is deleted; pkey sdk add reads \"Adds the SDK and writes the file; pins keys that match Integration's fingerprint.\"; one --product note; the footers merge into \"Public keys only; safe to commit. Never fetched.\"",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Replace the six-snippet grid with one tabbed block at every size.",
+        "resolution": "declined: the six samples are the content; the fix is layout. The phone already has a Swift tab with 5 more.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2"
+        ]
       }
     ]
   }

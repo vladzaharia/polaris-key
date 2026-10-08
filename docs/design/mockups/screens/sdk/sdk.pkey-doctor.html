@@ -1,126 +1,23 @@
 <style>
-  /* sdk.pkey-doctor: an 80-column run beside its legend; at phone width the run re-wraps to 44. */
-  [data-screen="sdk.pkey-doctor"] .lay {
-    flex-basis: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 32px;
-    align-items: flex-start;
-    min-width: 0;
-  }
-  [data-screen="sdk.pkey-doctor"] .side {
-    flex: 1 1 360px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    min-width: 0;
-  }
-  [data-screen="sdk.pkey-doctor"] .legend {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr);
-    gap: 10px 12px;
-    padding: 16px 18px;
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.pkey-doctor"] .legend .sym {
-    font: 700 15px/19px var(--pk-font-mono);
-    text-align: center;
-  }
-  [data-screen="sdk.pkey-doctor"] .chip-key {
-    display: inline-block;
-    width: 22px;
-    height: 12px;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--pk-danger) 0 33%, var(--pk-warning) 33% 66%, var(--pk-success) 66%);
-    vertical-align: middle;
-  }
-  [data-screen="sdk.pkey-doctor"] .legend code {
-    white-space: nowrap;
-  }
-  [data-screen="sdk.pkey-doctor"] .legend strong {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.pkey-doctor"] .sym.s-ok {
-    color: var(--pk-success);
-  }
-  [data-screen="sdk.pkey-doctor"] .sym.s-wait {
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="sdk.pkey-doctor"] .sym.s-unseen,
-  [data-screen="sdk.pkey-doctor"] .sym.s-off {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.pkey-doctor"] .sym.s-err {
-    color: var(--pk-danger);
-  }
-  [data-screen="sdk.pkey-doctor"] .sym.s-warn {
-    color: var(--pk-warning);
-  }
-  [data-screen="sdk.pkey-doctor"] .facts {
-    padding: 16px 18px;
-  }
-  [data-screen="sdk.pkey-doctor"] .facts ul {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 0;
-    padding-left: 18px;
-    list-style: disc;
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.pkey-doctor"] .facts h2 {
-    margin-bottom: 10px;
-    font-size: 15px;
-    line-height: 22px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.pkey-doctor"] .facts code {
-    white-space: normal;
-  }
-  /* Terminals draw these symbols one cell wide; the fallback face doesn't, so pin them. */
-  [data-screen="sdk.pkey-doctor"] .g {
-    display: inline-block;
-    width: 1ch;
-    text-align: center;
-  }
-  [data-screen="sdk.pkey-doctor"] .term.narrow {
-    width: 100%;
-  }
-  /* The summary chip takes the run's state: red while anything is to do, amber for warnings
-     alone, green when clear. --no-color prints the same words, uncoloured. */
-  [data-screen="sdk.pkey-doctor"] .c-chip.todo {
-    background: var(--mk-term-red);
-    color: var(--mk-term-bg);
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="sdk.pkey-doctor"] .term.narrow .term-body {
-      font-size: 12px;
-      line-height: 18px;
-      padding: 12px 14px 14px;
-    }
-    [data-screen="sdk.pkey-doctor"] .side {
-      flex-basis: 100%;
-    }
+  /* sdk.pkey-doctor: one terminal per size (80 columns; the phone gets 44), the key and notes
+     beside it from 1280 and under it below. */
+  [data-screen="sdk.pkey-doctor"] .board-grid {
+    --cols-desktop: auto minmax(0, 1fr);
   }
 </style>
 
 <div class="board" data-service="release">
-  <div class="board-title">
-    <h1>pkey doctor</h1>
-    <p>The command-line twin of Integration: the manifest, the keys, Verified for each feature on each platform, and what’s left, each with the command or page that fixes it. Run in DJDL’s repository, so the product comes from <code>.pkey/product</code> and the base URL from <code>PKEY_BASE_URL</code> or key.plrs.im.</p>
-  </div>
+  <div class="board-page">
+    <header class="board-head">
+      <h1>pkey doctor</h1>
+    </header>
 
-  <div class="lay">
+    <div class="board-grid">
     <!-- 80 columns, as UK-14's terminal kit draws it. -->
     <div class="term cols-80 hide-phone">
       <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×40</span></div>
 <pre class="term-body"><span class="c-prompt">❯</span> pkey doctor
-<span class="c-b">DJDL</span> <span class="c-dim">(djdl) · key.plrs.im · product from .pkey/product</span>
+<span class="c-b">DJDL</span> <span class="c-dim">(djdl) · key.plrs.im</span>
 
 <span class="c-b">Manifest</span>
   <span class="c-ok"><span class="g">✓</span></span> .pkey/ is valid          <span class="c-dim">product, schema and release · no warnings</span>
@@ -135,15 +32,19 @@
       <span class="c-accent">→</span> pkey sdk add kotlin --dir windows/
         <span class="c-dim">pins djdl-2026b beside djdl-2026 in each folder</span>
 
-<span class="c-b">Integration</span>                  <span class="c-b">macOS</span>                      <span class="c-b">Windows</span>
-  Licensing                  <span class="c-ok"><span class="g">✓</span> Verified</span>                 <span class="c-dim"><span class="g">○</span> Not seen yet</span>
-  Managed config             <span class="c-ok"><span class="g">✓</span> Verified</span>                 <span class="c-dim"><span class="g">○</span> Not seen yet</span>
-  Ship builds                <span class="c-accent"><span class="g">●</span> Waiting: update check</span>    <span class="c-dim"><span class="g">○</span> Not seen yet</span>
-                             <span class="c-dim">CI</span> <span class="c-ok"><span class="g">✓</span></span> <span class="c-dim">first release 4.2.0, Oct 6</span>
-  Sign-in                    <span class="c-accent"><span class="g">●</span> Waiting: sign-in</span>         <span class="c-dim"><span class="g">○</span> Not seen yet</span>
-  Cloud Sync                 <span class="c-dim"><span class="g">○</span> Not seen yet</span>             <span class="c-dim"><span class="g">○</span> Not seen yet</span>
-  <span class="c-dim">Commerce                   off · needs Licensing, which is on</span>
-                             <span class="c-dim">→ <span class="c-u">key.plrs.im/manage/#/p/djdl/features</span></span>
+<span class="c-b">Integration on macOS</span>
+  Licensing                  <span class="c-ok"><span class="g">✓</span> Verified</span>
+  Managed config             <span class="c-ok"><span class="g">✓</span> Verified</span>
+  Ship builds                <span class="c-accent"><span class="g">●</span> Waiting: update check</span>
+  Sign-in                    <span class="c-accent"><span class="g">●</span> Waiting</span>
+  Cloud Sync                 <span class="c-dim"><span class="g">○</span> Not seen yet</span>
+
+<span class="c-b">Integration on Windows</span>       <span class="c-dim"><span class="g">○</span> Not seen yet</span>
+
+<span class="c-b">CI</span>
+  <span class="c-ok"><span class="g">✓</span></span> <span class="c-dim">First release 4.2.0, Oct 6</span>
+
+<span class="c-dim">Commerce                   off</span>
 
 <span class="c-b">Left to do</span>
   <span class="c-err"><span class="g">✗</span></span> Sparkle signing key      macOS updates need one
@@ -151,16 +52,15 @@
   <span class="c-err"><span class="g">✗</span></span> Storage per account      Standard has no Cloud Sync storage yet
       <span class="c-accent">→</span> <span class="c-u">key.plrs.im/manage/#/p/djdl/integration</span>
 
-<span class="c-chip todo">2 to do</span> <span class="c-dim">· 1 warning · the same facts as Integration · 1.2 s</span>
+<span class="c-chip todo">2 to do</span> <span class="c-dim">· 1 warning · 1.2 s</span>
 <span class="c-err">❯</span> <span class="cursor"></span>                                                                       <span class="c-dim">exit 1</span></pre>
     </div>
 
     <!-- Narrow: the same run at 44 columns; the platform columns become one block per platform. -->
-    <div class="term narrow show-phone">
-      <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×64</span></div>
+    <div class="term show-phone run-44">
+      <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×52</span></div>
 <pre class="term-body"><span class="c-prompt">❯</span> pkey doctor
-<span class="c-b">DJDL</span> <span class="c-dim">(djdl) · key.plrs.im
-product from .pkey/product</span>
+<span class="c-b">DJDL</span> <span class="c-dim">(djdl) · key.plrs.im</span>
 
 <span class="c-b">Manifest</span>
   <span class="c-ok"><span class="g">✓</span></span> .pkey/ is valid
@@ -190,23 +90,15 @@ product from .pkey/product</span>
   <span class="c-ok"><span class="g">✓</span></span> Licensing        <span class="c-ok">Verified</span>
   <span class="c-ok"><span class="g">✓</span></span> Managed config   <span class="c-ok">Verified</span>
   <span class="c-accent"><span class="g">●</span></span> Ship builds      <span class="c-accent">Waiting: update check</span>
-  <span class="c-accent"><span class="g">●</span></span> Sign-in          <span class="c-accent">Waiting: sign-in</span>
+  <span class="c-accent"><span class="g">●</span></span> Sign-in          <span class="c-accent">Waiting</span>
   <span class="c-dim"><span class="g">○</span> Cloud Sync       Not seen yet</span>
 
-<span class="c-b">Integration on Windows</span>
-  <span class="c-dim"><span class="g">○</span> Licensing        Not seen yet</span>
-  <span class="c-dim"><span class="g">○</span> Managed config   Not seen yet</span>
-  <span class="c-dim"><span class="g">○</span> Ship builds      Not seen yet</span>
-  <span class="c-dim"><span class="g">○</span> Sign-in          Not seen yet</span>
-  <span class="c-dim"><span class="g">○</span> Cloud Sync       Not seen yet</span>
+<span class="c-b">Integration on Windows</span>  <span class="c-dim"><span class="g">○</span> Not seen yet</span>
 
 <span class="c-b">CI</span>
   <span class="c-ok"><span class="g">✓</span></span> <span class="c-dim">First release 4.2.0, Oct 6</span>
 
-<span class="c-b">Off</span>
-  <span class="c-dim">Commerce  needs Licensing, which is on
-    → <span class="c-u">key.plrs.im/manage/#/p/djdl/</span>
-      <span class="c-u">features</span></span>
+<span class="c-dim">Commerce  off</span>
 
 <span class="c-b">Left to do</span>
   <span class="c-err"><span class="g">✗</span></span> Sparkle signing key
@@ -219,34 +111,35 @@ product from .pkey/product</span>
       <span class="c-accent">→</span> <span class="c-u">key.plrs.im/manage/#/p/djdl/</span>
         <span class="c-u">integration</span>
 
-<span class="c-chip todo">2 to do</span> <span class="c-dim">· 1 warning · the same facts
-as Integration · 1.2 s</span>
+<span class="c-chip todo">2 to do</span> <span class="c-dim">· 1 warning · 1.2 s</span>
 <span class="c-err">❯</span> <span class="cursor"></span>                                   <span class="c-dim">exit 1</span></pre>
     </div>
 
-    <div class="side">
-      <section class="card flat">
-        <div class="legend">
-          <span class="sym s-ok">✓</span><span><strong>Verified</strong>: an SDK got a 2xx from that feature on that platform, or CI published a release.</span>
-          <span class="sym s-wait">●</span><span><strong>Waiting</strong>: the console steps are done; the first call from the app hasn’t come yet.</span>
-          <span class="sym s-unseen">○</span><span><strong>Not seen yet</strong>: no SDK has reached Polaris Key from that platform.</span>
-          <span class="sym s-err">✗</span><span><strong>To do</strong>: a console step or a key that is missing, with the fix on the next line.</span>
-          <span class="sym s-warn">!</span><span><strong>Warning</strong>: works today, needs action before a date.</span>
-          <span class="sym"><span class="chip-key"></span></span><span><strong>The summary</strong>: red while anything is to do (exit 1, and the prompt turns red), amber for warnings alone, green when clear (exit 0). With <code>--no-color</code> the words are the same.</span>
-        </div>
-      </section>
-      <section class="card flat facts">
-        <h2>How it behaves</h2>
-        <ul>
-          <li>Reads the same facts as the Integration page, so the two never disagree.</li>
-          <li><code>--product</code> and <code>--base-url</code> come from <code>.pkey/product</code> and <code>PKEY_BASE_URL</code>; pass them to check another product.</li>
-          <li>Exits 1 while anything is left to do; warnings alone exit 0.</li>
-          <li>Console links are built from the base URL, so a deployment set by <code>PKEY_BASE_URL</code> gets links to its own console (<code>/manage</code>).</li>
-          <li>A staged signing key gets one fix line per app folder, each with that folder’s SDK.</li>
-          <li><code>--json</code> prints the same checks for CI, with the shared envelope every command uses.</li>
-          <li>Outside a repository it checks only what it can: sign-in, the base URL and polaris-key.json in this folder.</li>
-        </ul>
-      </section>
+
+      <div class="board-aside stack join-phone">
+        <section class="card">
+          <div class="card-head"><h2>Symbols</h2></div>
+          <div class="card-body">
+            <dl class="symbol-key two-col">
+              <dt class="symbol-key-sym s-ok">✓</dt><dd><strong>Verified</strong>: SDK answered or CI published</dd>
+              <dt class="symbol-key-sym s-wait">●</dt><dd><strong>Waiting</strong>: console done, app hasn’t called</dd>
+              <dt class="symbol-key-sym s-unseen">○</dt><dd><strong>Not seen yet</strong>: no SDK has reached us</dd>
+              <dt class="symbol-key-sym s-err">✗</dt><dd><strong>To do</strong>: a missing console step or key</dd>
+              <dt class="symbol-key-sym s-warn">!</dt><dd><strong>Warning</strong>: works today, act before a date</dd>
+            </dl>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>How it behaves</h2></div>
+          <div class="card-body">
+            <ul class="bullet-list">
+              <li>Exit 1 while anything is to do; <code>--no-color</code> keeps the words.</li>
+              <li><code>--product</code> and <code>--base-url</code> default to <code>.pkey/product</code> and <code>PKEY_BASE_URL</code>; console links follow the base URL.</li>
+              <li>Outside a repository it checks sign-in, the base URL and <code>polaris-key.json</code> in this folder.</li>
+            </ul>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 </div>

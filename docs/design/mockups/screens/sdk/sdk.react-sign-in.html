@@ -1,832 +1,250 @@
 <style>
-  /* sdk.react-sign-in: the React kit's one sign-in form in DJDL's Electron window on Windows. */
-  /* DJDL's accent, derived from its icon (coral between the brand's orange and rose); no product mark is Polaris Key's. */
+  /* sdk.react-sign-in: DJDL's accent, from its icon (coral between the brand's orange and rose). */
   [data-screen="sdk.react-sign-in"] {
-    --pd: color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose));
-    --pd-on: var(--pk-text-on-accent);
-    --pd-subtle: color-mix(in oklab, var(--pd) 13%, var(--pk-surface-raised));
-    --pd-fg: var(--pd);
+    --kit-accent: color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose));
+    --kit-accent-on: var(--pk-text-on-accent);
+    --kit-accent-subtle: color-mix(in oklab, var(--kit-accent) 13%, var(--pk-surface-raised));
   }
-  [data-screen="sdk.react-sign-in"] .frames {
-    flex-basis: 100%;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 40px 48px;
-    align-items: flex-start;
-    min-width: 0;
+  /* From 1600: four windows to a row, then the code across the board. */
+  @container screen (min-width: 1600px) {
+    [data-screen="sdk.react-sign-in"] .frame-grid.windows {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
   }
-  [data-screen="sdk.react-sign-in"] .frame {
-    width: 640px;
-    max-width: none;
-  }
-  [data-screen="sdk.react-sign-in"] .codeframe {
-    width: 640px;
-    max-width: 100%;
-  }
-  [data-screen="sdk.react-sign-in"] .board-item > figcaption {
-    max-width: 640px;
-    line-height: 19px;
-  }
-  [data-screen="sdk.react-sign-in"] .board-item > figcaption strong {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .window-bar .logo {
-    margin-right: 8px;
-  }
-  [data-screen="sdk.react-sign-in"] .window.win .window-bar {
-    padding-left: 12px;
-    font-weight: 400;
-    color: var(--pk-text-default);
-  }
-  [data-screen="sdk.react-sign-in"] .welcome {
-    display: grid;
-    grid-template-columns: 236px minmax(0, 1fr);
-    height: 640px;
-  }
-  [data-screen="sdk.react-sign-in"] .welcome > .art {
-    aspect-ratio: auto;
-    height: 100%;
-    border-radius: 0;
-  }
-  /* The one sign-in form: app header, then a body that morphs in place. */
-  [data-screen="sdk.react-sign-in"] .kf {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 0;
-    min-width: 0;
-    padding: 44px 36px 28px;
-    font-size: 14px;
-    line-height: 21px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="sdk.react-sign-in"] .kf .logo.lg {
-    flex: none;
-    margin-bottom: 16px;
-    border-radius: 14px;
-  }
-  [data-screen="sdk.react-sign-in"] .kf h2 {
-    font-size: 24px;
-    line-height: 30px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .kf .lede {
-    margin-top: 6px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .kbtn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    height: 40px;
-    padding: 0 18px;
-    border: 0;
-    border-radius: 10px;
-    font: 500 14px/20px var(--pk-font-sans);
-    white-space: nowrap;
-  }
-  [data-screen="sdk.react-sign-in"] .kbtn.primary {
-    background: var(--pd);
-    color: var(--pd-on);
-  }
-  [data-screen="sdk.react-sign-in"] .kbtn.secondary {
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .keep .kbtn.secondary,
-  [data-screen="sdk.react-sign-in"] .confirm .kbtn.secondary {
-    background: var(--pk-surface-page);
-  }
-  [data-screen="sdk.react-sign-in"] .kbtn.sm {
-    height: 32px;
-    padding: 0 12px;
-    font-size: 13px;
-    border-radius: 8px;
-  }
-  [data-screen="sdk.react-sign-in"] .kbtn.block {
-    width: 100%;
-  }
-  [data-screen="sdk.react-sign-in"] .kbtn .ic {
-    width: 15px;
-    height: 15px;
-  }
-  [data-screen="sdk.react-sign-in"] .quiet {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 500;
-    color: var(--pd-fg);
-  }
-  [data-screen="sdk.react-sign-in"] .quiet .ic {
-    width: 14px;
-    height: 14px;
-  }
-  [data-screen="sdk.react-sign-in"] .kfoot {
-    display: flex;
-    gap: 8px;
-    margin-top: 20px;
-    font-size: 12px;
-    line-height: 17px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.react-sign-in"] .kfoot .ic {
-    flex: none;
-    width: 13px;
-    height: 13px;
-    margin-top: 2px;
-  }
-  [data-screen="sdk.react-sign-in"] .krule {
-    height: 1px;
-    margin: 18px 0;
-    background: var(--mk-line);
-  }
-  [data-screen="sdk.react-sign-in"] .krow {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  [data-screen="sdk.react-sign-in"] .kactions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 18px;
-  }
-  [data-screen="sdk.react-sign-in"] .kactions .grow {
-    flex: 1;
-  }
-  [data-screen="sdk.react-sign-in"] .person {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .person .avatar {
-    width: 22px;
-    height: 22px;
-    font-size: 10px;
-  }
-  /* Waiting: a breathing dot, never a spinner. */
-  [data-screen="sdk.react-sign-in"] .waiting {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 20px;
-    padding: 16px;
-    border-radius: 12px;
-    background: var(--pd-subtle);
-    font-weight: 500;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .waiting small {
-    display: block;
-    font-size: 12px;
-    font-weight: 400;
-    line-height: 17px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .kbtn.ghost {
-    background: transparent;
-    color: var(--pk-text-strong);
-  }
-  /* A state row in the body: offline, or a request that ended. */
-  [data-screen="sdk.react-sign-in"] .kstate {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr);
-    gap: 10px;
-    margin-top: 18px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: var(--mk-fill);
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .kstate .ic {
-    width: 16px;
-    height: 16px;
-    margin-top: 2px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .kstate b {
-    display: block;
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  /* The code view: the user code, its Copy, the countdown. */
-  [data-screen="sdk.react-sign-in"] .ucode {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-top: 18px;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: var(--mk-fill);
-  }
-  [data-screen="sdk.react-sign-in"] .ucode b {
-    flex: 1;
-    font: 600 26px/32px var(--pk-font-mono);
-    letter-spacing: 0.08em;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .ring {
-    flex: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: conic-gradient(var(--pd) 0 42%, var(--mk-line) 42% 100%);
-  }
-  [data-screen="sdk.react-sign-in"] .kcount {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 12px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .fixture {
-    max-width: 760px;
-    margin-top: 12px;
-  }
-  [data-screen="sdk.react-sign-in"] .breath {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--pd);
-    box-shadow: 0 0 0 5px color-mix(in oklab, var(--pd) 22%, transparent);
-  }
-  /* License rows: title; tier pill and devices; origin and duration; the seat meter. */
-  [data-screen="sdk.react-sign-in"] .lrows {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 14px;
-  }
-  [data-screen="sdk.react-sign-in"] .lrow {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr) auto;
-    gap: 2px 12px;
-    padding: 11px 14px 12px;
-    border: 1px solid var(--mk-line);
-    border-radius: 12px;
-    background: var(--pk-surface-raised);
-  }
-  [data-screen="sdk.react-sign-in"] .lrow.on {
-    background: var(--pd-subtle);
-  }
-  [data-screen="sdk.react-sign-in"] .lrow > :not(.lmark):not(.ltag) {
-    grid-column: 2 / -1;
-  }
-  [data-screen="sdk.react-sign-in"] .lmark {
-    grid-row: 1;
-    margin-top: 2px;
-  }
-  [data-screen="sdk.react-sign-in"] .radio-k {
-    display: block;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    box-shadow: inset 0 0 0 1.5px var(--pk-border-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .on .radio-k {
-    box-shadow: inset 0 0 0 1.5px var(--pd), inset 0 0 0 5px var(--pk-surface-raised), inset 0 0 0 9px var(--pd);
-  }
-  [data-screen="sdk.react-sign-in"] .lmark > .ic {
-    width: 18px;
-    height: 18px;
-    color: var(--pk-warning);
-  }
-  [data-screen="sdk.react-sign-in"] .ltitle {
-    grid-column: 2 !important;
-    grid-row: 1;
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .ltag {
-    grid-column: 3;
-    grid-row: 1;
+  [data-screen="sdk.react-sign-in"] .code-end {
     align-self: start;
-  }
-  [data-screen="sdk.react-sign-in"] .kpill {
-    display: inline-flex;
-    align-items: center;
-    height: 20px;
-    padding: 0 8px;
-    border-radius: var(--pk-radius-full);
-    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .kinput .ph {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.react-sign-in"] .kpill.warn {
-    box-shadow: none;
-    background: var(--pk-warning-subtle);
-    color: var(--pk-warning);
-  }
-  [data-screen="sdk.react-sign-in"] .kpill.new {
-    box-shadow: none;
-    background: var(--pd-subtle);
-    color: var(--pd-fg);
-  }
-  [data-screen="sdk.react-sign-in"] .lline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="sdk.react-sign-in"] .lmeta {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .seats {
-    display: flex;
-    gap: 3px;
-    margin-top: 6px;
-  }
-  [data-screen="sdk.react-sign-in"] .seats > i {
-    flex: 1;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--mk-line);
-  }
-  [data-screen="sdk.react-sign-in"] .seats > i.u {
-    background: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .seats.full > i {
-    background: var(--pk-warning);
-  }
-  [data-screen="sdk.react-sign-in"] .lrow .kbtn.sm {
-    justify-self: start;
-    margin-top: 8px;
-  }
-  /* Fields are filled, never boxed; the label sits above. */
-  [data-screen="sdk.react-sign-in"] .kfield {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-top: 16px;
-  }
-  [data-screen="sdk.react-sign-in"] .kfield label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .kinput {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    height: 40px;
-    padding: 0 6px 0 12px;
-    border-radius: 10px;
-    background: var(--mk-fill);
-    font: 400 14px/20px var(--pk-font-mono);
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .kinput.focus {
-    outline: 2px solid var(--pd);
-    outline-offset: 0;
-  }
-  [data-screen="sdk.react-sign-in"] .kinput.bad {
-    background: var(--pk-danger-subtle);
-  }
-  [data-screen="sdk.react-sign-in"] .kinput > span {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="sdk.react-sign-in"] .khint {
-    font-size: 12px;
-    line-height: 17px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.react-sign-in"] .kerr {
-    display: flex;
-    gap: 6px;
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-danger);
-  }
-  [data-screen="sdk.react-sign-in"] .kerr .ic {
-    flex: none;
-    width: 14px;
-    height: 14px;
-    margin-top: 2px;
-  }
-  [data-screen="sdk.react-sign-in"] .done-check {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    margin-bottom: 14px;
-    border-radius: 50%;
-    background: var(--pk-success-subtle);
-    color: var(--pk-success);
-  }
-  [data-screen="sdk.react-sign-in"] .done-check .ic {
-    width: 22px;
-    height: 22px;
-  }
-  [data-screen="sdk.react-sign-in"] .keep {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 16px;
-    padding: 14px 16px;
-    border-radius: 14px;
-    background: var(--mk-fill);
-  }
-  [data-screen="sdk.react-sign-in"] .keep-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .reason {
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr);
-    gap: 10px;
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .reason .ic {
-    width: 16px;
-    height: 16px;
-    margin-top: 2px;
-    color: var(--pd-fg);
-  }
-  [data-screen="sdk.react-sign-in"] .reason strong {
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .code.small pre {
-    font-size: 12px;
-    line-height: 19px;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="sdk.react-sign-in"] .frames {
-      gap: 28px;
-    }
-    [data-screen="sdk.react-sign-in"] .frame {
-      zoom: 0.555;
-    }
-    [data-screen="sdk.react-sign-in"] .board-item {
-      width: 100%;
-    }
-    [data-screen="sdk.react-sign-in"] .codeframe {
-      width: auto;
-    }
-  }
-
-  /* DJDL's own library window (the app, not the kit) for the frame after sign-in. */
-  [data-screen="sdk.react-sign-in"] .app {
-    display: grid;
-    grid-template-columns: 168px minmax(0, 1fr);
-    height: 640px;
-    position: relative;
-  }
-  [data-screen="sdk.react-sign-in"] .app-side {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 14px 10px;
-    border-right: 1px solid var(--mk-line);
-    background: var(--pk-surface-sunken);
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.react-sign-in"] .app-side .nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 8px;
-    border-radius: 7px;
-  }
-  [data-screen="sdk.react-sign-in"] .app-side .nav.on {
-    background: var(--mk-fill);
-    color: var(--pk-text-strong);
-    font-weight: 600;
-  }
-  [data-screen="sdk.react-sign-in"] .app-side .nav .ic {
-    width: 15px;
-    height: 15px;
-  }
-  [data-screen="sdk.react-sign-in"] .app-brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0 4px 12px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .acct {
-    margin-top: auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px;
-    border-radius: 8px;
-    background: var(--mk-fill);
-  }
-  [data-screen="sdk.react-sign-in"] .acct .avatar {
-    width: 26px;
-    height: 26px;
-    font-size: 11px;
-  }
-  [data-screen="sdk.react-sign-in"] .acct b {
-    display: block;
-    font-weight: 600;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .acct small {
-    display: block;
-    font-size: 11px;
-    line-height: 15px;
-  }
-  [data-screen="sdk.react-sign-in"] .app-main {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    padding: 16px 18px;
-  }
-  [data-screen="sdk.react-sign-in"] .app-head {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-  [data-screen="sdk.react-sign-in"] .app-head h3 {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .app-head span {
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.react-sign-in"] .tracks {
-    display: flex;
-    flex-direction: column;
-    font-size: 12.5px;
-  }
-  [data-screen="sdk.react-sign-in"] .tr {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 40px 34px;
-    gap: 10px;
-    padding: 7px 6px;
-    border-bottom: 1px solid var(--mk-line);
-    color: var(--pk-text-default);
-  }
-  [data-screen="sdk.react-sign-in"] .tr.th {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.react-sign-in"] .tr > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  [data-screen="sdk.react-sign-in"] .tr > span:nth-child(n + 3) {
-    font-family: var(--pk-font-mono);
-    font-size: 11.5px;
-    color: var(--pk-text-muted);
-  }
-  /* The kit's Toast, in the Polaris look and DJDL's accent. */
-  [data-screen="sdk.react-sign-in"] .ktoast {
-    position: absolute;
-    right: 16px;
-    bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    max-width: 340px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: var(--pk-surface-overlay);
-    box-shadow: var(--mk-pop-shadow);
-    font-size: 13px;
-    line-height: 18px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.react-sign-in"] .ktoast .ic {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    color: var(--pk-success);
   }
 </style>
 
 <div class="board" data-service="release">
-  <div class="board-title">
-    <h1>DJDL signs in with the React kit</h1>
-    <p><code>&lt;PolarisKeyGate&gt;</code> in an Electron window on Windows: the one sign-in form, inline in the Welcome window. The product is the hero, in an accent taken from DJDL’s icon, with no Polaris Key mark. Each step’s body morphs in place under a header that never moves; nothing stacks on the form.</p>
-    <div class="callout info fixture"><i class="ic ic-info"></i><div class="grow"><div class="callout-title">Kit preview · fixture product</div><div class="callout-text">DJDL really ships Swift on macOS and Kotlin on Windows (its Integration page). It is drawn here as an Electron build only to show the React kit inside the Electron kit (UK-06), with DJDL’s facts: Sign-in on, licenses through its groups, sold on its own site.</div></div></div>
-  </div>
-  <div class="frames">
-    <figure class="board-item">
-      <div class="window win frame">
-        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
-        <div class="window-body welcome">
-          <div class="art" data-product="djdl"></div>
-          <div class="kf">
-            <span class="logo lg" data-product="djdl"></span>
-            <h2>Sign in to DJDL</h2>
-            <p class="lede">Use the email you bought DJDL with.</p>
-            <button class="kbtn primary block" style="margin-top: 22px">Continue in browser<i class="ic ic-arrow-up-right"></i></button>
-            <div class="krule"></div>
-            <a class="quiet" href="#" style="align-self: center"><i class="ic ic-key-round"></i>Have a license key?</a>
-            <p class="kfoot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
-          </div>
-        </div>
-      </div>
-      <figcaption><strong>1 · Sign in.</strong> Continue in browser leads. DJDL sells on its own site, so the line asks for the email used there; DJDL has no provider connections, so there is no logo row and no “or”. <em>Have a license key?</em> morphs the body into the key field.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="window win frame">
-        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
-        <div class="window-body welcome">
-          <div class="art" data-product="djdl"></div>
-          <div class="kf">
-            <span class="logo lg" data-product="djdl"></span>
-            <h2>Sign in to DJDL</h2>
-            <p class="lede">Use the email you bought DJDL with.</p>
-            <div class="kstate" role="alert"><i class="ic ic-wifi-off"></i><span><b>Can’t reach Polaris Key</b>Check this computer’s internet connection, then try again. Nothing was sent.</span></div>
-            <button class="kbtn primary block" style="margin-top: 16px">Try again<i class="ic ic-arrow-up-right"></i></button>
-            <div class="krule"></div>
-            <a class="quiet" href="#" style="align-self: center"><i class="ic ic-key-round"></i>Have a license key?</a>
-            <p class="kfoot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
-          </div>
-        </div>
-      </div>
-      <figcaption><strong>1b · Offline.</strong> Continue in browser was pressed with no connection, or key.plrs.im answered 5xx. The row says what went wrong and what to do, the primary becomes <em>Try again</em>, and the browser never opens on a request that can’t finish.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="window win frame">
-        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
-        <div class="window-body welcome">
-          <div class="art" data-product="djdl"></div>
-          <div class="kf">
-            <span class="logo lg" data-product="djdl"></span>
-            <h2>Finish in your browser</h2>
-            <p class="lede">We opened Polaris Key in your browser. Sign in there and DJDL continues by itself.</p>
-            <div class="waiting" role="status"><span class="breath"></span>Waiting for your browser…</div>
-            <div class="kactions"><button class="kbtn secondary">Open browser again</button><button class="kbtn ghost">Cancel</button></div>
-            <a class="quiet" href="#" style="margin-top: 18px">Use a code instead</a>
-            <p class="kfoot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
-          </div>
-        </div>
-      </div>
-      <figcaption><strong>2 · Finish in your browser.</strong> The Polaris Key card opened in the default browser over loopback. The waiting row is the focus: a polite live region with a breathing dot, never a spinner, that reads “Finishing sign-in…” while DJDL redeems the code. <em>Open browser again</em> is a recovery action, so it is tonal, not the accent; Windows puts it first.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="window win frame">
-        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
-        <div class="window-body welcome">
-          <div class="art" data-product="djdl"></div>
-          <div class="kf">
-            <span class="logo lg" data-product="djdl"></span>
-            <h2>This sign-in took too long</h2>
-            <p class="lede">A sign-in link works for 10 minutes. Start again for a new one; nothing changed on this PC.</p>
-            <div class="kactions"><button class="kbtn primary">Sign in again<i class="ic ic-arrow-up-right"></i></button><button class="kbtn secondary">Cancel</button></div>
-            <a class="quiet" href="#" style="margin-top: 18px">Use a code instead</a>
-            <p class="kfoot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
-          </div>
-        </div>
-      </div>
-      <figcaption><strong>2b · Sign-in didn’t finish.</strong> Drawn: the flow expired. The same body says the other endings in their own words: cancelled on the card, “Sign-in was cancelled” with <em>Sign in again</em>; the browser didn’t open, “We couldn’t open your browser” with <em>Copy link</em> and <em>Use a code instead</em> as the primary.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="window win frame">
-        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
-        <div class="window-body welcome">
-          <div class="art" data-product="djdl"></div>
-          <div class="kf">
-            <span class="logo lg" data-product="djdl"></span>
-            <h2>Sign in with a code</h2>
-            <p class="lede">On any phone or computer, go to <strong>key.plrs.im/device</strong> and enter this code.</p>
-            <div class="ucode"><b>WDJB-MJHT</b><button class="kbtn secondary sm"><i class="ic ic-copy"></i>Copy</button></div>
-            <div class="kcount" role="status"><span class="ring"></span>Waiting · code expires in 4:12</div>
-            <p class="lede" style="margin-top: 6px; font-size: 13px">Check the code there matches this one.</p>
-            <div class="kactions"><button class="kbtn secondary">Open browser<i class="ic ic-arrow-up-right"></i></button><button class="kbtn ghost">Cancel</button></div>
-            <a class="quiet" href="#" style="margin-top: 18px">Use browser sign-in</a>
-            <p class="kfoot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
-          </div>
-        </div>
-      </div>
-      <figcaption><strong>2c · Use a code instead.</strong> The body morphs into the code view: the code in mono with Copy, the countdown, and <em>Open browser</em>, which opens key.plrs.im/device with the code filled in. No QR on a desktop surface. The license is chosen on the card where the code is entered.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="window win frame">
-        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
-        <div class="window-body welcome">
-          <div class="art" data-product="djdl"></div>
-          <div class="kf">
-            <span class="logo lg" data-product="djdl"></span>
-            <div class="person"><span class="avatar">MF</span>Signed in as Mara Fennick ·<a class="quiet" href="#">Not you?</a></div>
-            <h2>Choose a license for this device</h2>
-            <p class="lede">DJDL will use it on Mara’s PC.</p>
-            <div class="lrows" role="radiogroup" aria-label="Licenses for DJDL">
-              <div class="lrow on">
-                <span class="lmark"><span class="radio-k"></span></span>
-                <span class="ltitle">Automatic grant</span>
-                <span class="lline"><span class="kpill">Standard</span>2 of 5 devices</span>
-                <span class="lmeta">Lifetime</span>
-                <span class="seats"><i class="u"></i><i class="u"></i><i></i><i></i><i></i></span>
-              </div>
-              <div class="lrow">
-                <span class="lmark"><i class="ic ic-ban"></i></span>
-                <span class="ltitle">Key ending Q2KD7H</span>
-                <span class="ltag"><span class="kpill warn">No free devices</span></span>
-                <span class="lline"><span class="kpill">Standard</span></span>
-                <span class="lmeta">Lifetime</span>
-                <button class="kbtn secondary sm">Replace a device</button>
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>DJDL signs in with the React kit</h1>
+      <div class="callout info one-line"><i class="ic ic-info"></i><div class="grow"><div class="callout-text"><strong>Kit preview:</strong> React kit with DJDL’s facts (Sign-in on, licenses by group, own site).</div></div></div>
+    </header>
+
+    <div class="frame-grid windows top fit-rows cap-strip">
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Sign in to DJDL</h2>
+                  <p class="kit-lede">Use the email you bought DJDL with.</p>
+                </div>
+                <button class="kit-btn primary block">Continue in browser<i class="ic ic-arrow-up-right"></i></button>
+                <div class="kit-rule"></div>
+                <div class="kit-links center"><a class="kit-link" href="#"><i class="ic ic-key-round"></i>Have a license key?</a></div>
+                <p class="kit-foot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
               </div>
             </div>
-            <a class="quiet" href="#" style="margin-top: 14px"><i class="ic ic-key-round"></i>Use a license key instead</a>
-            <div class="kactions" style="margin-top: 14px"><button class="kbtn primary">Use this license and continue</button><button class="kbtn secondary">Cancel</button></div>
           </div>
         </div>
-      </div>
-      <figcaption><strong>3 · Choose a license.</strong> Both licenses are DJDL Standard, so each row leads with what tells them apart: where it came from (the access policy’s <em>Automatic grant</em>, or the key). The Automatic grant row is preselected. The key license is full: no radio, <em>No free devices</em> and Replace a device; because the account also holds a sign-in license, it hides its counter and meter (D-54). The primary comes first, as on step 2.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="window win frame">
-        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
-        <div class="window-body welcome">
-          <div class="art" data-product="djdl"></div>
-          <div class="kf">
-            <span class="logo lg" data-product="djdl"></span>
-            <div class="person"><span class="avatar">MF</span>Signed in as mara@example.com ·<a class="quiet" href="#">Not you?</a></div>
-            <h2>No DJDL license in this account</h2>
-            <p class="lede">Bought it with another email? Sign in with that account instead.</p>
-            <div class="kfield">
-              <label>License key</label>
-              <div class="kinput"><span class="ph">pkey_djdl_…</span><button class="kbtn secondary sm">Paste</button></div>
+        <figcaption><strong>1 · Sign in.</strong> No provider logos (DJDL has no connections).</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Sign in to DJDL</h2>
+                  <p class="kit-lede">Use the email you bought DJDL with.</p>
+                </div>
+                <div class="kit-stack">
+                  <div class="kit-state" role="alert"><i class="ic ic-wifi-off"></i><span><b>Can’t reach Polaris Key</b>Check this computer’s internet connection, then try again.</span></div>
+                  <button class="kit-btn primary block">Try again<i class="ic ic-arrow-up-right"></i></button>
+                </div>
+                <div class="kit-rule"></div>
+                <div class="kit-links center"><a class="kit-link" href="#"><i class="ic ic-key-round"></i>Have a license key?</a></div>
+              </div>
             </div>
-            <div class="kactions"><button class="kbtn primary">Add and use on this device</button><button class="kbtn secondary">Cancel</button></div>
-            <div class="krow" style="margin-top: 18px; gap: 18px"><a class="quiet" href="#">Use another account</a><a class="quiet" href="#">Get DJDL<i class="ic ic-arrow-up-right"></i></a></div>
           </div>
         </div>
-      </div>
-      <figcaption><strong>3b · No license on this account.</strong> The most common dead end, signing in with the wrong email, is never one: another account, a key, or buying DJDL on its site. DJDL’s access policy gives a license only to its groups, so nothing is created here.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="window win frame">
-        <div class="window-bar"><span class="logo xs" data-product="djdl"></span>DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
-        <div class="window-body app">
-          <aside class="app-side">
-            <div class="app-brand"><span class="logo sm" data-product="djdl"></span>DJDL</div>
-            <span class="nav on"><i class="ic ic-music"></i>Library</span>
-            <span class="nav"><i class="ic ic-archive"></i>Crates</span>
-            <span class="nav"><i class="ic ic-download"></i>Downloads</span>
-            <span class="nav"><i class="ic ic-globe"></i>Sources</span>
-            <span class="nav"><i class="ic ic-settings"></i>Settings</span>
-            <div class="acct"><span class="avatar">MF</span><span><b>Mara Fennick</b><small>Standard license</small></span></div>
-          </aside>
-          <section class="app-main">
-            <div class="app-head"><h3>Library</h3><span>1,284 tracks · 38 crates</span></div>
-            <div class="tracks">
-              <div class="tr th"><span>Title</span><span>Artist</span><span>BPM</span><span>Key</span></div>
-              <div class="tr"><span>Low Orbit</span><span>Kessa Vale</span><span>124</span><span>8A</span></div>
-              <div class="tr"><span>Night Ferry (Extended Mix)</span><span>The Harbor Lights</span><span>118</span><span>5A</span></div>
-              <div class="tr"><span>Glasswork</span><span>Ondine</span><span>126</span><span>11B</span></div>
-              <div class="tr"><span>Tidal Lock</span><span>Marlowe &amp; Finch</span><span>122</span><span>2A</span></div>
-              <div class="tr"><span>Paper Lanterns</span><span>Juno Reyes</span><span>120</span><span>4B</span></div>
-              <div class="tr"><span>Static Bloom</span><span>Okafor Twins</span><span>128</span><span>9A</span></div>
-              <div class="tr"><span>Coastline Radio</span><span>Mirela Dunn</span><span>116</span><span>7B</span></div>
-              <div class="tr"><span>Second Wind</span><span>Kessa Vale</span><span>124</span><span>8B</span></div>
-              <div class="tr"><span>Afterhours, Lisbon</span><span>Tavi Moreno</span><span>122</span><span>1A</span></div>
-              <div class="tr"><span>Northbound</span><span>Ondine</span><span>125</span><span>6A</span></div>
-              <div class="tr"><span>Harbor Static</span><span>Lio Brandt</span><span>121</span><span>3A</span></div>
+        <figcaption><strong>1b · Offline.</strong> No browser opens until Polaris Key answers.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Finish in your browser</h2>
+                  <p class="kit-lede">We opened Polaris Key in your browser. Sign in there and DJDL continues by itself.</p>
+                </div>
+                <div class="kit-stack">
+                  <div class="kit-waiting" role="status"><span class="kit-breath"></span>Waiting for your browser…</div>
+                  <div class="kit-actions"><button class="kit-btn">Open browser again</button><button class="kit-btn ghost">Cancel</button></div>
+                </div>
+                <div class="kit-links"><a class="kit-link" href="#">Use a code instead</a></div>
+              </div>
             </div>
-          </section>
-          <div class="ktoast" role="status"><i class="ic ic-circle-check"></i><span>Signed in as Mara Fennick · Standard license</span></div>
+          </div>
         </div>
-      </div>
-      <figcaption><strong>4 · Signed in.</strong> Mara picked a license she already had, so the form closes as soon as the activation lands and DJDL shows the kit’s toast. The account row in DJDL’s sidebar is the kit’s AccountAndLicense part.</figcaption>
-    </figure>
-    <figure class="board-item">
-      <div class="code small codeframe" data-service="core">
-        <div class="code-head">
-          <div class="code-tabs"><span>main.ts</span><span class="active">renderer.tsx</span></div>
-          <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+        <figcaption><strong>2 · Finish in your browser.</strong> Reads “Finishing sign-in…” while DJDL redeems the code.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">This sign-in took too long</h2>
+                  <p class="kit-lede">A sign-in link works for 10 minutes.</p>
+                </div>
+                <div class="kit-actions"><button class="kit-btn primary">Sign in again<i class="ic ic-arrow-up-right"></i></button><button class="kit-btn">Cancel</button></div>
+                <div class="kit-links"><a class="kit-link" href="#">Use a code instead</a></div>
+              </div>
+            </div>
+          </div>
         </div>
+        <figcaption><strong>2b · Sign-in didn’t finish.</strong> Shows cancelled or couldn’t open your browser.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Sign in with a code</h2>
+                  <p class="kit-lede">On any phone or computer, go to <strong>key.plrs.im/device</strong> and enter this code.</p>
+                </div>
+                <div class="kit-stack">
+                  <div class="kit-code"><b>WDJB-MJHT</b><button class="kit-btn sm"><i class="ic ic-copy"></i>Copy</button></div>
+                  <div class="kit-count" role="status"><span class="kit-ring"></span>Waiting · code expires in 4:12</div>
+                  <p class="kit-hint">Check the code there matches this one.</p>
+                </div>
+                <div class="kit-actions"><button class="kit-btn">Open browser<i class="ic ic-arrow-up-right"></i></button><button class="kit-btn ghost">Cancel</button></div>
+                <div class="kit-links"><a class="kit-link" href="#">Use browser sign-in</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>2c · Use a code instead.</strong> <em>Open browser</em> fills in the code at key.plrs.im/device.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <div class="kit-person"><span class="avatar">MF</span>Signed in as Mara Fennick<a class="kit-link" href="#">Not you?</a></div>
+                  <h2 class="kit-title">Choose a license</h2>
+                  <p class="kit-lede">DJDL will use it on Mara’s PC.</p>
+                </div>
+                <div class="kit-options" role="radiogroup" aria-label="Licenses for DJDL">
+                  <div class="kit-option on">
+                    <span class="kit-radio"></span>
+                    <div class="kit-option-text">
+                      <span class="kit-option-title">Automatic grant</span>
+                      <span class="kit-line"><span class="kit-pill">Standard</span>2 of 5 devices · Lifetime</span>
+                      <span class="kit-seats"><i class="u"></i><i class="u"></i><i></i><i></i><i></i></span>
+                    </div>
+                  </div>
+                  <div class="kit-option">
+                    <i class="ic ic-ban"></i>
+                    <div class="kit-option-text">
+                      <span class="kit-option-title">Key ending Q2KD7H</span>
+                      <span class="kit-line"><span class="kit-pill">Standard</span><span><span class="warn">No free devices</span> · Lifetime</span></span>
+                      <button class="kit-btn sm">Replace a device</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="kit-links"><a class="kit-link" href="#"><i class="ic ic-key-round"></i>Use a license key instead</a></div>
+                <div class="kit-actions"><button class="kit-btn primary">Use this license and continue</button><button class="kit-btn">Cancel</button></div>
+                <p class="kit-foot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>3 · Choose a license.</strong> The first license with a free device is preselected.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <div class="kit-person"><span class="avatar">MF</span>Signed in as mara@example.com<a class="kit-link" href="#">Not you?</a></div>
+                  <h2 class="kit-title">No DJDL license in this account</h2>
+                  <p class="kit-lede">Bought it with another email? Sign in with that account instead.</p>
+                </div>
+                <div class="kit-field">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input"><span class="ph">pkey_djdl_…</span><button class="kit-btn sm">Paste</button></div>
+                </div>
+                <div class="kit-actions"><button class="kit-btn primary">Add and use on this device</button><button class="kit-btn">Cancel</button></div>
+                <div class="kit-links"><a class="kit-link" href="#">Use another account</a><a class="kit-link" href="#">Get DJDL<i class="ic ic-arrow-up-right"></i></a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>3b · No license in this account.</strong> Never a dead end.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="host-app">
+              <aside class="host-side">
+                <div class="host-brand"><span class="logo sm" data-product="djdl"></span>DJDL</div>
+                <span class="host-nav on"><i class="ic ic-music"></i>Library</span>
+                <span class="host-nav"><i class="ic ic-archive"></i>Crates</span>
+                <span class="host-nav"><i class="ic ic-download"></i>Downloads</span>
+                <span class="host-nav"><i class="ic ic-globe"></i>Sources</span>
+                <span class="host-nav"><i class="ic ic-settings"></i>Settings</span>
+                <div class="host-account"><span class="avatar sm">MF</span><span><b>Mara Fennick</b>Standard license</span></div>
+              </aside>
+              <section class="host-main">
+                <div class="host-head"><h3>Library</h3><span>1,284 tracks · 38 crates</span></div>
+                <div class="host-rows">
+                  <div class="th"><span>Title</span><span>Artist</span><span>BPM</span><span>Key</span></div>
+                  <div><span>Low Orbit</span><span>Kessa Vale</span><span>124</span><span>8A</span></div>
+                  <div><span>Night Ferry (Extended Mix)</span><span>The Harbor Lights</span><span>118</span><span>5A</span></div>
+                  <div><span>Glasswork</span><span>Ondine</span><span>126</span><span>11B</span></div>
+                  <div><span>Tidal Lock</span><span>Marlowe &amp; Finch</span><span>122</span><span>2A</span></div>
+                  <div><span>Paper Lanterns</span><span>Juno Reyes</span><span>120</span><span>4B</span></div>
+                  <div><span>Static Bloom</span><span>Okafor Twins</span><span>128</span><span>9A</span></div>
+                  <div><span>Coastline Radio</span><span>Mirela Dunn</span><span>116</span><span>7B</span></div>
+                  <div><span>Second Wind</span><span>Kessa Vale</span><span>124</span><span>8B</span></div>
+                  <div><span>Afterhours, Lisbon</span><span>Tavi Moreno</span><span>122</span><span>1A</span></div>
+                  <div><span>Northbound</span><span>Ondine</span><span>125</span><span>6A</span></div>
+                </div>
+              </section>
+              <div class="kit-toast" role="status"><i class="ic ic-circle-check"></i><span>Signed in as Mara Fennick · Standard license</span></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>4 · Signed in.</strong> The account row is the kit’s AccountAndLicense part.</figcaption>
+      </figure>
+      <figure class="board-item span-all code-end cap-top">
+        <div class="code" data-service="core">
+          <div class="code-head">
+            <div class="code-tabs"><span>main.ts</span><span class="active">renderer.tsx</span></div>
+            <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+          </div>
 <pre><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
 <span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> } <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
 <span class="t-k">import</span> <span class="t-s">"@polaris-key/react/styles.css"</span>;
@@ -840,9 +258,10 @@
     &lt;/<span class="t-t">PolarisKeyGate</span>&gt;
   &lt;/<span class="t-t">PolarisKeyProvider</span>&gt;,
 );</pre>
-        <div class="code-foot"><i class="ic ic-info sm"></i><span>No theme set, so the kit draws the Polaris look in DJDL’s accent. <code>theme</code> is the one prop that restyles it.</span></div>
-      </div>
-      <figcaption><strong>What the Electron build writes.</strong> The provider reads polaris-key.json and runs fromConfig() and boot(); the gate shows the form until the app is licensed.</figcaption>
-    </figure>
+          <div class="code-foot"><i class="ic ic-info sm"></i><span>No theme set: the Polaris look in DJDL’s accent. <code>theme</code> restyles it.</span></div>
+        </div>
+        <figcaption><strong>What the Electron build writes.</strong></figcaption>
+      </figure>
+    </div>
   </div>
 </div>

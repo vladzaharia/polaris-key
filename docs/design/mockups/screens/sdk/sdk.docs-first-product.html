@@ -1,677 +1,212 @@
-<style>
-  /* sdk.docs-first-product: the docs site (Starlight, Polaris brand) drawn with kit tokens. */
-  [data-screen="sdk.docs-first-product"] .docs {
-    min-height: 100vh;
-    background: var(--pk-surface-page);
-    color: var(--pk-text-default);
-  }
-  [data-screen="sdk.docs-first-product"] .d-top {
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    height: 64px;
-    padding: 0 24px;
-    border-bottom: 1px solid var(--mk-line);
-    background: var(--pk-surface-page);
-  }
-  [data-screen="sdk.docs-first-product"] .d-brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    width: 248px;
-    font-weight: 700;
-    font-size: 17px;
-    color: var(--pk-text-strong);
-    text-decoration: none;
-  }
-  [data-screen="sdk.docs-first-product"] .d-brand .tag {
-    padding: 2px 8px;
-    border-radius: var(--pk-radius-full);
-    background: var(--mk-fill);
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.docs-first-product"] .d-search {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 340px;
-    height: 38px;
-    padding: 0 8px 0 12px;
-    border-radius: 10px;
-    background: var(--mk-fill);
-    font-size: 14px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.docs-first-product"] .d-search kbd {
-    margin-left: auto;
-  }
-  [data-screen="sdk.docs-first-product"] .d-links {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    font-size: 14px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.docs-first-product"] .d-links a {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: inherit;
-    text-decoration: none;
-  }
-  [data-screen="sdk.docs-first-product"] .d-body {
-    display: grid;
-    grid-template-columns: 272px minmax(0, 1fr);
-  }
-  [data-screen="sdk.docs-first-product"] .d-side {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-    padding: 28px 16px 40px 24px;
-    border-right: 1px solid var(--mk-line);
-    font-size: 14px;
-  }
-  [data-screen="sdk.docs-first-product"] .d-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  [data-screen="sdk.docs-first-product"] .d-label {
-    margin: 0 0 6px 10px;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.docs-first-product"] .d-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    color: var(--pk-text-muted);
-    text-decoration: none;
-  }
-  [data-screen="sdk.docs-first-product"] .d-item .ic {
-    margin-left: auto;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.docs-first-product"] .d-item.on {
-    background: var(--pk-accent-subtle);
-    color: var(--pk-accent-fg);
-    font-weight: 700;
-  }
-  [data-screen="sdk.docs-first-product"] .d-item.sub {
-    padding-left: 24px;
-  }
-  [data-screen="sdk.docs-first-product"] .d-item .svc {
-    width: 14px;
-    height: 14px;
-    margin: 0;
-  }
-  [data-screen="sdk.docs-first-product"] .d-content {
-    display: grid;
-    grid-template-columns: minmax(0, 760px) 220px;
-    justify-content: center;
-    gap: 48px;
-    padding: 36px 48px 64px;
-  }
-  [data-screen="sdk.docs-first-product"] .d-main {
-    min-width: 0;
-  }
-  [data-screen="sdk.docs-first-product"] .d-crumb {
-    font-size: 14px;
-    color: var(--pk-accent-fg);
-    font-weight: 700;
-  }
-  [data-screen="sdk.docs-first-product"] .d-main h1 {
-    margin-top: 6px;
-    font-size: 36px;
-    line-height: 44px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.docs-first-product"] .d-lede {
-    margin-top: 12px;
-    font-size: 17px;
-    line-height: 27px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.docs-first-product"] .d-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 18px;
-    margin-top: 14px;
-    font-size: 13px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.docs-first-product"] .d-meta span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  [data-screen="sdk.docs-first-product"] .d-main p,
-  [data-screen="sdk.docs-first-product"] .d-main li {
-    font-size: 15px;
-    line-height: 25px;
-  }
-  [data-screen="sdk.docs-first-product"] .d-main p code,
-  [data-screen="sdk.docs-first-product"] .d-main li code {
-    white-space: normal;
-  }
-  [data-screen="sdk.docs-first-product"] .dsteps {
-    display: flex;
-    flex-direction: column;
-    margin: 32px 0 0;
-    padding: 0;
-    list-style: none;
-  }
-  [data-screen="sdk.docs-first-product"] .dstep {
-    position: relative;
-    display: grid;
-    grid-template-columns: 32px minmax(0, 1fr);
-    gap: 0 20px;
-    padding-bottom: 36px;
-  }
-  [data-screen="sdk.docs-first-product"] .dstep::before {
-    content: "";
-    position: absolute;
-    top: 38px;
-    bottom: 6px;
-    left: 15px;
-    width: 2px;
-    border-radius: 1px;
-    background: var(--mk-line);
-  }
-  [data-screen="sdk.docs-first-product"] .dstep:last-child::before {
-    display: none;
-  }
-  [data-screen="sdk.docs-first-product"] .num {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--pk-accent-subtle);
-    color: var(--pk-accent-fg);
-    font-weight: 700;
-    font-size: 15px;
-  }
-  [data-screen="sdk.docs-first-product"] .dstep-body {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    min-width: 0;
-  }
-  [data-screen="sdk.docs-first-product"] .dstep-body h2 {
-    font-size: 22px;
-    line-height: 32px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.docs-first-product"] .choose {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    overflow: hidden;
-  }
-  [data-screen="sdk.docs-first-product"] .choose > div {
-    display: grid;
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 16px;
-    padding: 12px 16px;
-    font-size: 14px;
-    line-height: 22px;
-  }
-  [data-screen="sdk.docs-first-product"] .choose > div + div {
-    border-top: 1px solid var(--mk-line);
-  }
-  [data-screen="sdk.docs-first-product"] .choose strong {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.docs-first-product"] .disclose {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.docs-first-product"] .disclose code {
-    white-space: nowrap;
-  }
-  [data-screen="sdk.docs-first-product"] .feats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-  }
-  [data-screen="sdk.docs-first-product"] .feat {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding: 14px;
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    background: var(--pk-surface-raised);
-    text-decoration: none;
-  }
-  [data-screen="sdk.docs-first-product"] .feat .row {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.docs-first-product"] .feat .row > .ic-arrow-right {
-    margin-left: auto;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.docs-first-product"] .feat:hover,
-  [data-screen="sdk.docs-first-product"] .feat.hover {
-    border-color: var(--pk-border-strong);
-    background: var(--mk-fill);
-  }
-  [data-screen="sdk.docs-first-product"] .feat:hover .row > .ic-arrow-right,
-  [data-screen="sdk.docs-first-product"] .feat.hover .row > .ic-arrow-right {
-    color: var(--pk-accent-fg);
-  }
-  [data-screen="sdk.docs-first-product"] .feat span.d {
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="sdk.docs-first-product"] .code pre .ph {
-    color: var(--pk-text-subtle);
-    font-style: italic;
-  }
-  [data-screen="sdk.docs-first-product"] .c-chip.clear {
-    background: var(--mk-term-green);
-    color: var(--mk-term-bg);
-  }
-  [data-screen="sdk.docs-first-product"] .g {
-    display: inline-block;
-    width: 1ch;
-    text-align: center;
-  }
-  [data-screen="sdk.docs-first-product"] .missing {
-    display: grid;
-    grid-template-columns: 170px minmax(0, 1fr);
-    gap: 12px 20px;
-    margin-top: 14px;
-    font-size: 15px;
-    line-height: 24px;
-  }
-  [data-screen="sdk.docs-first-product"] .missing dt {
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.docs-first-product"] .missing dd {
-    margin: 0;
-    color: var(--pk-text-default);
-  }
-  [data-screen="sdk.docs-first-product"] .d-h2 {
-    margin-top: 8px;
-    font-size: 24px;
-    line-height: 32px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.docs-first-product"] .gen-note {
-    display: flex;
-    gap: 8px;
-    margin-top: 36px;
-    padding-top: 16px;
-    border-top: 1px solid var(--mk-line);
-    font-size: 13px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.docs-first-product"] .pager {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    margin-top: 20px;
-  }
-  [data-screen="sdk.docs-first-product"] .pager a {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 14px 18px;
-    border: 1px solid var(--mk-line);
-    border-radius: 14px;
-    text-decoration: none;
-    font-size: 13px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="sdk.docs-first-product"] .pager a strong {
-    font-size: 16px;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="sdk.docs-first-product"] .pager a.next {
-    text-align: right;
-  }
-  [data-screen="sdk.docs-first-product"] .d-toc {
-    position: sticky;
-    top: 100px;
-    align-self: start;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 13px;
-  }
-  [data-screen="sdk.docs-first-product"] .d-toc .d-label {
-    margin-left: 0;
-  }
-  [data-screen="sdk.docs-first-product"] .d-toc a {
-    padding: 4px 0 4px 12px;
-    border-left: 2px solid var(--mk-line);
-    color: var(--pk-text-muted);
-    text-decoration: none;
-  }
-  [data-screen="sdk.docs-first-product"] .d-toc a.on {
-    border-left-color: var(--pk-accent);
-    color: var(--pk-accent-fg);
-    font-weight: 700;
-  }
-  [data-screen="sdk.docs-first-product"] .d-tocbar,
-  [data-screen="sdk.docs-first-product"] .d-menu {
-    display: none;
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="sdk.docs-first-product"] .d-content {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="sdk.docs-first-product"] .d-toc {
-      display: none;
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="sdk.docs-first-product"] .d-top {
-      gap: 12px;
-      height: 56px;
-      padding: 0 12px;
-    }
-    [data-screen="sdk.docs-first-product"] .d-menu {
-      display: inline-flex;
-    }
-    [data-screen="sdk.docs-first-product"] .code-tabs > .more.show-phone {
-      display: inline-flex !important;
-    }
-    [data-screen="sdk.docs-first-product"] .d-brand {
-      width: auto;
-    }
-    [data-screen="sdk.docs-first-product"] .d-search {
-      width: 38px;
-      padding: 0;
-      justify-content: center;
-      margin-left: auto;
-    }
-    [data-screen="sdk.docs-first-product"] .d-search > span,
-    [data-screen="sdk.docs-first-product"] .d-search kbd,
-    [data-screen="sdk.docs-first-product"] .d-links {
-      display: none;
-    }
-    [data-screen="sdk.docs-first-product"] .d-body {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="sdk.docs-first-product"] .d-side {
-      display: none;
-    }
-    [data-screen="sdk.docs-first-product"] .d-tocbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      height: 44px;
-      padding: 0 16px;
-      border-bottom: 1px solid var(--mk-line);
-      font-size: 14px;
-      color: var(--pk-text-muted);
-    }
-    [data-screen="sdk.docs-first-product"] .d-tocbar strong {
-      color: var(--pk-text-strong);
-    }
-    [data-screen="sdk.docs-first-product"] .d-tocbar .ic:last-child {
-      margin-left: auto;
-    }
-    [data-screen="sdk.docs-first-product"] .d-content {
-      padding: 24px 16px 48px;
-    }
-    [data-screen="sdk.docs-first-product"] .d-main h1 {
-      font-size: 30px;
-      line-height: 36px;
-    }
-    [data-screen="sdk.docs-first-product"] .dstep {
-      grid-template-columns: 28px minmax(0, 1fr);
-      gap: 0 12px;
-    }
-    [data-screen="sdk.docs-first-product"] .num {
-      width: 28px;
-      height: 28px;
-      font-size: 14px;
-    }
-    [data-screen="sdk.docs-first-product"] .dstep::before {
-      left: 13px;
-      top: 34px;
-    }
-    [data-screen="sdk.docs-first-product"] .dstep-body h2 {
-      font-size: 19px;
-      line-height: 28px;
-    }
-    [data-screen="sdk.docs-first-product"] .choose > div {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 2px;
-    }
-    [data-screen="sdk.docs-first-product"] .feats {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="sdk.docs-first-product"] .missing {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 2px;
-    }
-    [data-screen="sdk.docs-first-product"] .missing dd {
-      margin-bottom: 10px;
-    }
-    [data-screen="sdk.docs-first-product"] .pager {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    [data-screen="sdk.docs-first-product"] .term .term-body {
-      font-size: 11px;
-      line-height: 17px;
-      padding: 12px;
-    }
-  }
-</style>
-
 <div class="docs" data-service="core">
-  <header class="d-top">
-    <button class="btn ghost icon d-menu" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
-    <a class="d-brand" href="#"><i class="pk-mark"></i>Polaris Key<span class="tag">Docs</span></a>
-    <div class="d-search"><i class="ic ic-search"></i><span>Search the docs</span><kbd>⌘K</kbd></div>
-    <nav class="d-links">
+  <header class="docs-top">
+    <button class="btn ghost icon docs-menu" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="docs-brand" href="#"><i class="pk-mark"></i>Polaris Key<span class="docs-tag">Docs</span></a>
+    <div class="docs-search"><i class="ic ic-search"></i><span>Search the docs</span><kbd>⌘K</kbd></div>
+    <nav class="docs-links">
       <a href="#"><i class="ic ic-history"></i>Developer changelog</a>
       <a href="#">Console<i class="ic ic-arrow-up-right"></i></a>
       <button class="btn ghost icon" aria-label="Theme"><i class="ic ic-moon"></i></button>
     </nav>
   </header>
-  <div class="d-tocbar"><strong>On this page</strong><span>Your first product</span><i class="ic ic-chevron-down"></i></div>
+  <div class="docs-tocbar"><strong>On this page</strong><span>Overview</span><i class="ic ic-chevron-down"></i></div>
 
-  <div class="d-body">
-    <nav class="d-side" aria-label="Docs">
-      <div class="d-group">
-        <span class="d-label">Start here</span>
-        <a class="d-item" href="#">Concepts</a>
-        <a class="d-item on" href="#">Your first product</a>
-        <a class="d-item" href="#">How Polaris Key works</a>
+  <div class="docs-body">
+    <nav class="docs-side" aria-label="Docs">
+      <div class="docs-group">
+        <span class="docs-label">Start here</span>
+        <a class="docs-item" href="#">Concepts</a>
+        <a class="docs-item on" href="#">Your first product</a>
+        <a class="docs-item" href="#">How Polaris Key works</a>
       </div>
-      <div class="d-group">
-        <span class="d-label">Build</span>
-        <a class="d-item" href="#">Quick starts<i class="ic ic-chevron-down sm"></i></a>
-        <a class="d-item sub" href="#">Node</a>
-        <a class="d-item sub" href="#">React</a>
-        <a class="d-item sub" href="#">Python</a>
-        <a class="d-item sub" href="#">Swift</a>
-        <a class="d-item sub" href="#">Kotlin</a>
-        <a class="d-item sub" href="#">Godot</a>
-        <a class="d-item" href="#">SDK reference<i class="ic ic-chevron-right sm"></i></a>
-        <a class="d-item" href="#">UI kits<i class="ic ic-chevron-right sm"></i></a>
-        <a class="d-item" href="#">The .pkey/ manifest<i class="ic ic-chevron-right sm"></i></a>
-        <a class="d-item" href="#">Releases from CI</a>
-        <a class="d-item" href="#">Developer changelog</a>
+      <div class="docs-group">
+        <span class="docs-label">Build</span>
+        <a class="docs-item" href="#">Quick starts<i class="ic ic-chevron-down sm"></i></a>
+        <a class="docs-item sub" href="#">Node</a>
+        <a class="docs-item sub" href="#">React</a>
+        <a class="docs-item sub" href="#">Python</a>
+        <a class="docs-item sub" href="#">Swift</a>
+        <a class="docs-item sub" href="#">Kotlin</a>
+        <a class="docs-item sub" href="#">Godot</a>
+        <a class="docs-item" href="#">SDK reference<i class="ic ic-chevron-right sm"></i></a>
+        <a class="docs-item" href="#">UI kits<i class="ic ic-chevron-right sm"></i></a>
+        <a class="docs-item" href="#">The .pkey/ manifest<i class="ic ic-chevron-right sm"></i></a>
+        <a class="docs-item" href="#">Releases from CI</a>
+        <a class="docs-item" href="#">Developer changelog</a>
       </div>
-      <div class="d-group">
-        <span class="d-label">Features</span>
-        <a class="d-item" href="#" data-service="license"><i class="svc"></i>Licensing</a>
-        <a class="d-item" href="#" data-service="config"><i class="svc"></i>Managed config</a>
-        <a class="d-item" href="#" data-service="release"><i class="svc"></i>Ship builds</a>
-        <a class="d-item" href="#" data-service="identity"><i class="svc"></i>Sign-in</a>
-        <a class="d-item" href="#" data-service="sync"><i class="svc"></i>Cloud Sync</a>
-        <a class="d-item" href="#" data-service="commerce"><i class="svc"></i>Commerce</a>
+      <div class="docs-group">
+        <span class="docs-label">Features</span>
+        <a class="docs-item" href="#" data-service="license"><i class="svc"></i>Licensing</a>
+        <a class="docs-item" href="#" data-service="config"><i class="svc"></i>Managed config</a>
+        <a class="docs-item" href="#" data-service="release"><i class="svc"></i>Ship builds</a>
+        <a class="docs-item" href="#" data-service="identity"><i class="svc"></i>Sign-in</a>
+        <a class="docs-item" href="#" data-service="sync"><i class="svc"></i>Cloud Sync</a>
+        <a class="docs-item" href="#" data-service="commerce"><i class="svc"></i>Commerce</a>
       </div>
-      <div class="d-group">
-        <span class="d-label">Reference</span>
-        <a class="d-item" href="#">CLI</a>
-        <a class="d-item" href="#">API names by SDK</a>
-        <a class="d-item" href="#">What each SDK supports</a>
+      <div class="docs-group">
+        <span class="docs-label">Reference</span>
+        <a class="docs-item" href="#">CLI</a>
+        <a class="docs-item" href="#">API names by SDK</a>
+        <a class="docs-item" href="#">What each SDK supports</a>
       </div>
     </nav>
 
-    <div class="d-content">
-      <article class="d-main">
-        <div class="d-crumb">Start here</div>
-        <h1>Your first product</h1>
-        <p class="d-lede">Create a product, add the SDK to your app, and watch each feature turn Verified: the same steps the console walks you through. The examples use Tidewater Studio, a macOS and Windows app; put in your own product’s slug.</p>
-        <div class="d-meta"><span><i class="ic ic-clock sm"></i>About 15 minutes</span><span><i class="ic ic-calendar sm"></i>Updated Oct 7, 2026</span><span><i class="ic ic-tag sm"></i>Polaris Key 0.9</span></div>
+    <div class="docs-content">
+      <article class="docs-main">
+        <header class="docs-header">
+          <div class="docs-crumb">Start here</div>
+          <h1>Your first product</h1>
+          <p class="docs-lede">Create a product, add the SDK, see each feature Verified. Examples use Tidewater Studio.</p>
+          <div class="docs-meta"><span><i class="ic ic-clock sm"></i>About 15 minutes</span><span><i class="ic ic-calendar sm"></i>Updated Oct 7, 2026</span></div>
+        </header>
 
-        <ol class="dsteps">
-          <li class="dstep">
-            <span class="num">1</span>
-            <div class="dstep-body">
+        <ol class="docs-steps">
+          <li class="docs-step">
+            <span class="docs-num">1</span>
+            <div class="docs-step-body">
               <h2>Create the product</h2>
-              <p>In the console, choose <strong>New product</strong>. It asks three things, then creates everything in one go and opens the product’s Integration page.</p>
-              <div class="choose">
+              <p>Choose <strong>New product</strong> in the console. Its Integration page opens.</p>
+              <div class="docs-facts">
                 <div><strong>Name and slug</strong><span>Tidewater Studio, <code>tidewater</code>. The slug is in every URL and can’t change later.</span></div>
-                <div><strong>What it’s for</strong><span>Pick the features you need from Licensing, Managed config, Ship builds, Sign-in, Cloud Sync and Commerce. Tidewater starts with <strong>Licensing</strong> and <strong>Managed config</strong>; add the rest later. A feature turns on only after the ones it needs: Cloud Sync needs Managed config and Sign-in, Commerce needs Licensing, and turning Licensing off later turns Commerce off with it.</span></div>
-                <div><strong>Platforms</strong><span>macOS and Windows. Integration picks the SDK that fits each one.</span></div>
+                <div><strong>What it’s for</strong><span><strong>Licensing</strong> and <strong>Managed config</strong> to start. Cloud Sync needs Sign-in; Commerce needs Licensing.</span></div>
+                <div><strong>Platforms</strong><span>macOS and Windows. Integration picks the SDK for each.</span></div>
               </div>
-              <p>Polaris Key makes the signing key, the package feeds and a test license for you. There is nothing to configure per platform.</p>
-              <div class="callout info"><i class="ic ic-git-branch"></i><div class="grow"><div class="callout-title">Keep the product in your repository?</div><div class="callout-text">Run <code>pkey init</code>, push, and link the repository on the product’s Settings. The console then reads <code>.pkey/</code> on every push.</div></div></div>
+              <p>Polaris Key creates the signing key, the package feeds and a test license.</p>
+              <p class="board-note"><i class="ic ic-git-branch"></i><span>Keep the product in your repository? Run <code>pkey init</code>, push, and link the repository on the product’s Settings. The console then reads <code>.pkey/</code> on every push.</span></p>
             </div>
           </li>
 
-          <li class="dstep">
-            <span class="num">2</span>
-            <div class="dstep-body">
+          <li class="docs-step">
+            <span class="docs-num">2</span>
+            <div class="docs-step-body">
               <h2>Add the SDK</h2>
-              <p>Run the command Integration shows, in your app’s folder. It adds the SDK from <code>pkg.plrs.im</code>, writes <code>polaris-key.json</code> and pins Tidewater’s keys, but only after checking them against the fingerprint the console shows.</p>
-              <div class="code">
+              <p>In your app’s folder, run the command Integration shows. It adds the SDK, writes <code>polaris-key.json</code> and pins Tidewater’s keys.</p>
+              <div class="code wrap-phone">
                 <div class="code-head">
                   <div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
                 </div>
 <pre><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> --product tidewater \
     --expect <span class="ph">&lt;fingerprint from Integration&gt;</span></pre>
-                <div class="code-foot"><i class="ic ic-info sm"></i><span>Copy the full command from your product’s Integration page; it has your fingerprint.</span></div>
               </div>
-              <div class="disclose"><i class="ic ic-chevron-right sm"></i>What <code>polaris-key.json</code> holds</div>
-              <p>No terminal? Choose <strong>Download polaris-key.json</strong> on Integration, add it to your app, and add the SDK with your package manager: <a class="link" href="#">Install from the package feeds</a></p>
+              <div class="docs-disclose"><i class="ic ic-chevron-right sm"></i>What <code>polaris-key.json</code> holds</div>
+              <p>No terminal? Download <code>polaris-key.json</code> from Integration and add the SDK with your package manager: <a class="link" href="#">Install from the package feeds</a></p>
             </div>
           </li>
 
-          <li class="dstep">
-            <span class="num">3</span>
-            <div class="dstep-body">
+          <li class="docs-step">
+            <span class="docs-num">3</span>
+            <div class="docs-step-body">
               <h2>Start the SDK</h2>
-              <p>Every SDK starts the same way. <code>fromConfig()</code> reads <code>polaris-key.json</code> from your app’s own files, and <code>boot()</code> checks the license, syncs managed config and registers the device.</p>
-              <div class="code">
-                <div class="code-head">
-                  <div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
-                  <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+              <p><code>fromConfig()</code> reads <code>polaris-key.json</code>; <code>boot()</code> checks the license, syncs managed config and registers the device.</p>
+              <div class="lanes">
+                <div class="lanes-head"><div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div></div>
+                <div class="lane">
+                  <div class="lane-title"><span class="icon-tile sm"><i class="ic ic-layout-grid"></i></span>Drop-in UI kit</div>
+                  <p class="lane-desc">Sign-in, activation and device limits as ready screens, in your product’s look.</p>
+                  <div class="code wrap-phone">
+                    <div class="code-head"><span class="code-file">ContentView.swift</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+
+<span class="t-k">let</span> pk = <span class="t-k">try await</span>
+  <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
+
+<span class="t-c">// boot(), sign-in and activation</span>
+<span class="t-t">ContentView</span>()
+  .<span class="t-f">polarisKeyGate</span>(pk)</pre>
+                  </div>
+                  <a class="link" href="#">The SwiftUI kit<i class="ic ic-arrow-right"></i></a>
                 </div>
+                <div class="lane">
+                  <div class="lane-title"><span class="icon-tile sm"><i class="ic ic-code-xml"></i></span>Your own UI on the library</div>
+                  <p class="lane-desc">Call the SDK and draw every screen yourself.</p>
+                  <div class="code wrap-phone">
+                    <div class="code-head"><span class="code-file">App.swift</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
 <pre><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
 
-<span class="t-k">let</span> pk = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
+<span class="t-k">let</span> pk = <span class="t-k">try await</span>
+  <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
 <span class="t-k">await</span> pk.<span class="t-f">boot</span>()
 
 <span class="t-k">if await</span> pk.<span class="t-f">isLicensed</span>() {
   <span class="t-f">openProject</span>()
 } <span class="t-k">else</span> {
-  <span class="t-f">showSignIn</span>()   <span class="t-c">// or .polarisKeyGate(pk) from PolarisKeyUI</span>
+  <span class="t-f">showSignIn</span>()  <span class="t-c">// your screen</span>
 }</pre>
+                  </div>
+                  <a class="link" href="#">Swift SDK reference<i class="ic ic-arrow-right"></i></a>
+                </div>
               </div>
-              <p>Want the screens too? Each UI kit’s gate does sign-in, activation and device limits in your product’s look: <a class="link" href="#">UI kits</a></p>
             </div>
           </li>
 
-          <li class="dstep">
-            <span class="num">4</span>
-            <div class="dstep-body">
+          <li class="docs-step">
+            <span class="docs-num">4</span>
+            <div class="docs-step-body">
               <h2>Use each feature</h2>
-              <p>Integration shows the code for each feature you turned on, written with your product’s own names: its entitlements, settings and packs. Each feature’s guide has the same code, with a tab for every SDK.</p>
-              <div class="feats">
-                <a class="feat" href="#" data-service="license"><span class="row gap-2"><i class="svc"></i>Licensing<i class="ic ic-arrow-right sm"></i></span><span class="d">Gate on a license and read what it entitles.</span></a>
-                <a class="feat hover" href="#" data-service="config"><span class="row gap-2"><i class="svc"></i>Managed config<i class="ic ic-arrow-right sm"></i></span><span class="d">Read settings, secrets and minted tokens.</span></a>
-                <a class="feat" href="#" data-service="release"><span class="row gap-2"><i class="svc"></i>Ship builds<i class="ic ic-arrow-right sm"></i></span><span class="d">Publish from CI and update installed copies.</span></a>
-                <a class="feat" href="#" data-service="identity"><span class="row gap-2"><i class="svc"></i>Sign-in<i class="ic ic-arrow-right sm"></i></span><span class="d">Let people sign in with their account.</span></a>
-                <a class="feat" href="#" data-service="sync"><span class="row gap-2"><i class="svc"></i>Cloud Sync<i class="ic ic-arrow-right sm"></i></span><span class="d">Keep settings the same on every device.</span></a>
-                <a class="feat" href="#" data-service="commerce"><span class="row gap-2"><i class="svc"></i>Commerce<i class="ic ic-arrow-right sm"></i></span><span class="d">Sell tiers and add-ons on storefronts.</span></a>
+              <p>Each feature’s code, with your product’s entitlements, settings and packs.</p>
+              <div class="docs-cards">
+                <a class="docs-card" href="#" data-service="license"><span class="docs-card-title"><i class="svc"></i>Licensing<i class="ic ic-arrow-right sm"></i></span>Gate on a license.</a>
+                <a class="docs-card" href="#" data-service="config"><span class="docs-card-title"><i class="svc"></i>Managed config<i class="ic ic-arrow-right sm"></i></span>Read settings and secrets.</a>
+                <a class="docs-card" href="#" data-service="release"><span class="docs-card-title"><i class="svc"></i>Ship builds<i class="ic ic-arrow-right sm"></i></span>Publish and update builds.</a>
+                <a class="docs-card" href="#" data-service="identity"><span class="docs-card-title"><i class="svc"></i>Sign-in<i class="ic ic-arrow-right sm"></i></span>Let people sign in.</a>
+                <a class="docs-card" href="#" data-service="sync"><span class="docs-card-title"><i class="svc"></i>Cloud Sync<i class="ic ic-arrow-right sm"></i></span>Same settings everywhere.</a>
+                <a class="docs-card" href="#" data-service="commerce"><span class="docs-card-title"><i class="svc"></i>Commerce<i class="ic ic-arrow-right sm"></i></span>Sell tiers and add-ons.</a>
               </div>
             </div>
           </li>
 
-          <li class="dstep">
-            <span class="num">5</span>
-            <div class="dstep-body">
+          <li class="docs-step">
+            <span class="docs-num">5</span>
+            <div class="docs-step-body">
               <h2>Check it’s Verified</h2>
-              <p>Run your app. Integration marks a feature <strong>Verified</strong> on a platform as soon as the SDK gets an answer from it there. From a terminal, <code>pkey doctor</code> reports the same, with what’s left to do:</p>
+              <p>Run your app. A feature shows <strong>Verified</strong> once the SDK gets an answer on that platform; <code>pkey doctor</code> shows the same.</p>
               <div class="term">
                 <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — tidewater</span></div>
 <pre class="term-body hide-phone"><span class="c-prompt">❯</span> pkey doctor
 <span class="c-b">Tidewater Studio</span> <span class="c-dim">(tidewater) · key.plrs.im</span>
 
-<span class="c-b">Integration</span>        <span class="c-b">macOS</span>          <span class="c-b">Windows</span>
-  Licensing        <span class="c-ok"><span class="g">✓</span> Verified</span>     <span class="c-dim"><span class="g">○</span> Not seen yet</span>
-  Managed config   <span class="c-ok"><span class="g">✓</span> Verified</span>     <span class="c-dim"><span class="g">○</span> Not seen yet</span>
+<span class="c-b">Integration</span>        <span class="c-b">macOS</span>
+  Licensing        <span class="c-ok"><span class="g">✓</span> Verified</span>
+  Managed config   <span class="c-ok"><span class="g">✓</span> Verified</span>
+  Windows          <span class="c-dim"><span class="g">○</span> Not seen yet</span>
 
 <span class="c-chip clear">0 to do</span> <span class="c-dim">· run it on Windows next · 0.9 s</span></pre>
 <pre class="term-body show-phone"><span class="c-prompt">❯</span> pkey doctor
-<span class="c-b">Tidewater Studio</span> <span class="c-dim">(tidewater) · key.plrs.im</span>
+<span class="c-b">Tidewater Studio</span> <span class="c-dim">(tidewater)
+key.plrs.im</span>
 
 <span class="c-b">Integration on macOS</span>
   <span class="c-ok"><span class="g">✓</span></span> Licensing        <span class="c-ok">Verified</span>
   <span class="c-ok"><span class="g">✓</span></span> Managed config   <span class="c-ok">Verified</span>
 
-<span class="c-b">Integration on Windows</span>
-  <span class="c-dim"><span class="g">○</span> Licensing        Not seen yet</span>
-  <span class="c-dim"><span class="g">○</span> Managed config   Not seen yet</span>
+<span class="c-b">Integration on Windows</span>  <span class="c-dim"><span class="g">○</span> Not seen yet</span>
 
-<span class="c-chip clear">0 to do</span> <span class="c-dim">· run it on Windows next · 0.9 s</span></pre>
+<span class="c-chip clear">0 to do</span> <span class="c-dim">· 0.9 s
+run it on Windows next</span></pre>
               </div>
             </div>
           </li>
         </ol>
 
-        <h2 class="d-h2" id="missing">If something’s missing</h2>
-        <dl class="missing">
-          <dt>Not seen yet</dt><dd>No SDK has reached Polaris Key from that platform. Run the app there once.</dd>
-          <dt>Waiting</dt><dd>The console steps are done. Use the feature once in the app: sign in, or check for updates.</dd>
-          <dt>A key doesn’t match</dt><dd>Run <code>pkey sdk add</code> again, or download <code>polaris-key.json</code> again from Integration.</dd>
-          <dt>Still stuck</dt><dd>Run a debug build. On the first refusal the SDK prints <code>doctor()</code> once: what is missing and the console page that fixes it.</dd>
-        </dl>
+        <section class="docs-section on-edge" id="missing">
+          <h2>If something’s missing</h2>
+          <dl class="docs-dl">
+            <dt>Waiting</dt><dd>The console steps are done. Use the feature once in the app: sign in, or check for updates.</dd>
+            <dt>A key doesn’t match</dt><dd>Run <code>pkey sdk add</code> again, or download <code>polaris-key.json</code> again from Integration.</dd>
+            <dt>Still stuck</dt><dd>Run a debug build: on the first refusal the SDK prints <code>doctor()</code>, with what’s missing and the console page that fixes it.</dd>
+          </dl>
+        </section>
 
-        <p class="gen-note"><i class="ic ic-info sm"></i><span>The code on this page comes from the same source as Integration and is compiled in each SDK’s CI.</span></p>
-        <nav class="pager">
-          <a href="#">Previous<strong>Concepts</strong></a>
-          <a class="next" href="#">Next<strong>Quick start: Swift</strong></a>
-        </nav>
+        <footer class="docs-foot on-edge">
+          <nav class="docs-pager">
+            <a href="#">Previous<strong>Concepts</strong></a>
+            <a class="next" href="#">Next<strong>Quick start: Swift</strong></a>
+          </nav>
+        </footer>
       </article>
 
-      <aside class="d-toc" aria-label="On this page">
-        <span class="d-label">On this page</span>
+      <aside class="docs-toc" aria-label="On this page">
+        <span class="docs-label">On this page</span>
         <a class="on" href="#">Overview</a>
         <a href="#">1 · Create the product</a>
         <a href="#">2 · Add the SDK</a>

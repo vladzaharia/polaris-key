@@ -16,15 +16,16 @@
   "compare": [
     "The product is the hero on every step: DJDL's icon and name lead, the accent comes from the icon (coral), and no Polaris Key mark or Powered-by appears; the only Polaris Key words are the footnote's.",
     "With an empty theme the kit draws the Polaris look: Rubik at 400/500/600, filled fields and buttons with no outlines, hairlines only, 10px control radius; theme is the one prop that restyles it.",
-    "One form: the window header and art persist, and the icon and title sit at the same offset on every step; only the body below them morphs. No sheet, dialog or popup stacks on it.",
+    "One form: the window header and art persist, and the icon and title sit at the same offset on every step; each step morphs in place under a header that never moves. No sheet, dialog or popup stacks on it.",
     "Step 1 copy: 'Sign in to DJDL', 'Use the email you bought DJDL with.', primary 'Continue in browser' with an outbound glyph, 'Have a license key?', and the footnote 'Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.' No passkey or device-code row on desktop; no logo row when the product has no provider connections.",
     "Step 2: 'Finish in your browser', the body copy from signin.handoff.browserBody, and a 'Waiting for your browser…' status row as the focus: accent-tinted, with a breathing dot, a polite live region, reading 'Finishing sign-in…' while redeeming. 'Open browser again' is a tonal secondary, first on Windows, then 'Cancel' and the quiet 'Use a code instead'.",
-    "Step 3 row anatomy: the title says what tells the rows apart (the origin here, 'Automatic grant' and 'Key ending Q2KD7H', since both are DJDL Standard), then the tier pill with '{used} of {limit} devices', the term, and the seat meter. The Automatic grant row is preselected with a tint and one radio indicator (no accent border). The full key row has no radio, the 'No free devices' tag and 'Replace a device', and hides its counter and meter because the account holds a sign-in license (D-54).",
+    "Step 3: 'Choose a license' over 'DJDL will use it on Mara's PC.' Row anatomy, the same in every kit: the title is where the license came from ('Automatic grant', 'Key ending Q2KD7H') and never wraps, the tier is a pill, and the meta line is devices · duration ('2 of 5 devices · Lifetime'). The first license with a free device is preselected with a tint and one radio (no accent border). The full key row has no radio, 'No free devices · Lifetime' in the warning colour in the meta line's device slot (no tag on the title line) and 'Replace a device', and hides its counter and meter because the account holds a sign-in license (D-54).",
     "Step 3 actions: 'Use a license key instead' as a quiet link, then 'Use this license and continue' and 'Cancel', primary first as on Windows.",
     "After choosing an existing license there is no Done step: the form closes and the toast reads 'Signed in as Mara Fennick · Standard license'.",
     "A visible 'Kit preview · fixture product' callout says DJDL really ships Swift and Kotlin and is drawn as an Electron build only to show the React kit inside the Electron kit (UK-06). The kit is product-agnostic.",
-    "Phone render: each window is the same desktop window scaled down, not a reflowed layout.",
-    "Failure states use the catalog's words in the same body: 'Can't reach Polaris Key' with Try again; 'This sign-in took too long' with Sign in again; 'Sign in with a code' with WDJB-MJHT, Copy, the countdown and no QR on desktop; and 'No DJDL license in this account', with the key field, Use another account and Get DJDL."
+    "Four sizes, and every window on the board takes one height, the tallest step's at that size, so a row's windows end and its captions start on one line. Wide draws three windows a row and the code completes the 3×3 (the art takes a third of a window under 720px, so the form keeps about 360px and the code never breaks); desktop puts the code in the head beside the lede and callout, so the eight windows fill four rows of two; tablet and phone put the code full width under the head; under 560px of window the art becomes a band above the form.",
+    "Failure states use the catalog's words in the same body: 'Can't reach Polaris Key' with Try again; 'This sign-in took too long' with Sign in again; 'Sign in with a code' with WDJB-MJHT, Copy, the countdown and no QR on desktop; and 'No DJDL license in this account', with the key field, Use another account and Get DJDL.",
+    "Board copy: the lede names what is drawn ('<PolarisKeyGate> in DJDL's Electron app on Windows.'); each caption is the state name plus at most one sentence the frame can't show; the fixture facts (sold on its own site, licenses through its groups, so nothing is created on 3b) are only in the callout; the code foot reads 'No theme set: the Polaris look in DJDL's accent. theme restyles it.' Step 1b opens no browser until Polaris Key answers, then Try again continues there; 2c draws no QR on a desktop."
   ],
   "status": "mockup",
   "designReview": {
@@ -62,6 +63,97 @@
         "severity": "minor",
         "issue": "The header moves between steps because each body is vertically centred, and the full key row hides its device counter, so 'No free devices' has no evidence.",
         "resolution": "Applied: every body starts at a fixed 44px offset in a 640px window, so the icon and title sit at the same height on every step. Declined showing '5 of 5 devices' on the full key row: D-54 (SIGN-IN.md §3.6, carried in EXPERIENCE.md) hides a key license's counter and meter when the account also holds a sign-in license, and the 'No free devices' tag carries the fact. The SwiftUI Family row shows 5 of 5 because that account's other license is a Steam license, not a sign-in one. The step 3 caption says why."
+      },
+      {
+        "severity": "major",
+        "issue": "Row 1's windows ended 20px apart at desktop and 16px at wide, because each window absorbed its caption's length.",
+        "resolution": "Every window on the board takes one height, the tallest step's at that size, and each figure is a two-row subgrid, so window bottoms and caption tops line up in every row (kit .frame-grid.windows). The Choose a license cuts shorten that tallest step. Rendered: all eight windows equal at each size.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "At desktop the code panel sat alone in the last row beside about 650×430 of nothing, and about 580px beside the callout was empty too.",
+        "resolution": "1280–1599: the board head is two columns (.board-head.split), the lede and fixture callout | 'What the Electron build writes', and the eight windows fill four rows of two. Tablet and phone: the code full width under the head. Wide: unchanged, the code completes the 3×3 (a .wide-only twin; the head's figure is .hide-wide).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Choose a license's title and lede both said 'this device'; the 'No free devices' tag forced 'Key ending / Q2KD7H' onto two lines at wide and phone.",
+        "resolution": "Title 'Choose a license' (lede 'DJDL will use it on Mara's PC.' stays). Row titles never wrap. On the full key row 'No free devices' moved to the meta line's device slot: 'No free devices · Lifetime' beside the Standard pill, in the warning colour. Catalog copy, so both kits follow it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The lede, callout, captions and code foot repeated each other; captions ran two or three sentences of rationale with programme references; caption 4 pointed at a sidebar not drawn at tablet or phone; 1b's caption seemed to contradict Try again's ↗; 2b's second sentence repeated its button.",
+        "resolution": "Lede '<PolarisKeyGate> in DJDL's Electron app on Windows.' Each caption is the bold state name plus at most one sentence (1 'No logo row: DJDL has no provider connections. Have a license key? opens the key field in place.'; 1b 'No browser opens until Polaris Key answers; Try again then continues there.'; 3b 'Never a dead end: another account, a key, or buying DJDL.'; 4 'The account row is the kit's AccountAndLicense part.'). 'Morphs in place under a header that never moves', the live-region and breathing-dot rule, 'tonal' and D-54 are in the compare list; fixture facts only in the callout. 2b lede 'A sign-in link works for 10 minutes.' Code foot 'No theme set: the Polaris look in DJDL's accent. theme restyles it.'",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "issue": "Lower .kit-welcome's min-height to 480 so each window is sized to its content, and re-pair frames by height ([1,1b,2] [2b,2c,3b] [3,4,code] at wide) (ux1).",
+        "resolution": "declined: the app window doesn't resize between steps, and the kit's sign-in frames keep one header position with the foot at the bottom, so per-step heights would misdraw the product. The re-pairing also puts 3b before 3, out of story order. The empty band is reduced instead by one board-wide window height, taken from a shorter tallest step.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "In 3b, order the actions as primary, then Use another account · Get DJDL, then Cancel last (d2).",
+        "resolution": "declined: the primary plus Cancel pair is the kit's button pair on every step (2, 2b, 2c, 3). Alternatives follow the pair, as 'Use a code instead' does on step 2. Splitting the pair in one step would break that consistency.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The desktop render opens on an unlabelled code block; windows have about 250px of dead space above the footer.",
+        "resolution": "One DOM order at every size (states 1 to 4, then the code card, full width, top-aligned, caption above it); windows take their row's tallest content height with the foot at the bottom (.windows.fit-rows); four windows per row at wide.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The privacy footer repeats in six windows; the code caption repeats the code's own comment.",
+        "resolution": "Footer only on the first sign-in window and the choose-a-license window; captions shortened as triaged; the code caption is \"What the Electron build writes.\"; no subtitle; one-line kit-preview chip.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Hide states behind chips or use a scroll-snap strip on phone.",
+        "resolution": "declined: this removes content and adds interaction; windows are content-sized instead.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "d1",
+          "ux2"
+        ]
+      },
+      {
+        "issue": "Delete the Signed in as toasts or shorten them to Signed in · Standard license.",
+        "resolution": "declined: the toast is a real product string, and the toast naming the account and license is the caption's point.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
       }
     ]
   }
