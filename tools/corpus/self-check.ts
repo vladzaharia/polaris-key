@@ -40,6 +40,8 @@ import {
 } from "./reference/tokens.js";
 import { refParseVersion } from "./reference/versions.js";
 
+// ── §4.9 self-checks over the assembled corpus ───────────────────────────────────────────────
+
 /** The seven JWS families of §4.1 and plans/P4-01.md §4.6's two: where each keeps its JWS, its
  *  keys, its `typ` and its cap. */
 const JWS_FAMILIES: Record<

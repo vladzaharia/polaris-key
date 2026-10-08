@@ -51,6 +51,17 @@ import {
 import { refRecordClaims } from "./reference/record.js";
 import { payloadTextOf, refNonWire } from "./reference/tokens.js";
 
+// ── plans/P4-01.md §4.6: packs on the wire — `packRecordCases` and `markerCases` (P4-21) ─────
+//
+// Two new JWS families after `releaseRecordCases`, which the v4 record runners of P3-04 to P3-08
+// never read. P4-21 signs them over the FIXED object-ref table (§4.2): every `sha256` is
+// the SHA-256 of the blob's name and every size is §4.3's figure, because the content set does
+// not exist yet and no claim fetches an object, so every verdict holds. P4-04 then re-signs the
+// valid records, their twins, the markers and the two rewritten P3-02 cases over the content
+// set's real refs: their bytes change, never their ids or `expect`.
+
+// ── `packRecordCases` (159) ──────────────────────────────────────────────────────────────────
+
 /** A structure case's generator-only facts: its check, its twin and the property it breaks. */
 interface StructureCase {
   check: PackCheck;
@@ -1537,6 +1548,8 @@ export async function buildPackRecordCases(): Promise<PackRecordCase[]> {
   }
   return cases;
 }
+
+// ── `markerCases` (17), V4 §3.7 ──────────────────────────────────────────────────────────────
 
 /** The marker's `release` when the marker text is a JSON object holding a string there. */
 export function markerRelease(text: string): string | null {

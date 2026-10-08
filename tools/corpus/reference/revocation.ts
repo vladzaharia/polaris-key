@@ -10,8 +10,6 @@ import { refRevocationOf } from "./content.js";
 import { refVerifyJws } from "./jws.js";
 import { refRecordClaims } from "./record.js";
 
-// ── `revocationCases` (plans/P4-13.md §4.2) ──────────────────────────────────────────────────
-
 export interface RevocationCase {
   id: string;
   description: string;

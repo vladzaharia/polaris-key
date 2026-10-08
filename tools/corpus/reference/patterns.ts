@@ -5,8 +5,6 @@
 
 import { utf8Bytes } from "../common.js";
 
-// ── The feed's and the record's claims (V4 §2.3, §2.4), the generator's own ──────────────────
-
 export const REF_CHANNEL_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 export const REF_FEED_PLATFORM_RE = /^[a-z][a-z0-9-]{0,63}$/;
 export const REF_BUILD_ID_RE = /^[a-z0-9][a-z0-9._-]{0,63}$/;

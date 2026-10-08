@@ -277,6 +277,10 @@ export async function buildConfigDocCases(): Promise<DocCaseV2[]> {
   ];
 }
 
+// ── §4.3 the 28 v3 claim cases ───────────────────────────────────────────────────────────────
+// Each is its family's control case with the one change named, re-signed by the control's key,
+// and appended after the family's last case so every existing case stays byte-identical.
+
 async function buildLicenseDocCasesV4(): Promise<WithNonWire<DocCaseV2>[]> {
   const typ: TypV3 = "pkey-license+jws";
   const common = {

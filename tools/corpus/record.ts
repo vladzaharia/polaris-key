@@ -28,6 +28,8 @@ import { refVerifyJws } from "./reference/jws.js";
 import { type RecordCase, refVerifyRecordCase } from "./reference/record.js";
 import { refNonWire } from "./reference/tokens.js";
 
+// ── §4.5 `releaseRecordCases` ────────────────────────────────────────────────────────────────
+
 export async function buildReleaseRecordCases(
   records: Map<string, RecordVector>,
 ): Promise<RecordCase[]> {

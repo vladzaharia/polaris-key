@@ -3,13 +3,6 @@
 // The generator's independent reference implementation, restated from the spec rather than
 // taken from client-core or an SDK: the family modules recompute every verdict through it.
 
-// ── Config resolution (config-matrix.json) ───────────────────────────────────
-// WIRE-CONTRACT-V3 §2.2.1: the precedence, the variable name (rule 1), the strict environment
-// value (rule 2), the host without an environment (rule 3, `expectNoEnv`) and the user-visible
-// list (rule 4). Every expectation is checked against the generator-local reference below, which
-// imports nothing from client-core or shared-jws for the reason the fingerprint section gives: a
-// golden corpus that shares code with the implementation it checks cannot catch a bug in it.
-
 export type Json =
   | null
   | boolean

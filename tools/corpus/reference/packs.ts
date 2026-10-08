@@ -11,8 +11,6 @@ import { refVerifyJws } from "./jws.js";
 import { REF_RECORD_VERSION_RE, refPackIdShape } from "./patterns.js";
 import { refRecordClaims } from "./record.js";
 
-// ── `packRecordCases` (159) ──────────────────────────────────────────────────────────────────
-
 export interface PackPin {
   kind?: string;
   deliverable: string;
@@ -90,8 +88,6 @@ export function refVerifyPackCase(c: PackRecordCase): PackRecordCase["expect"] {
   }
   return { verify: "ok", kind: d.kind as string };
 }
-
-// ── `markerCases` (17), V4 §3.7 ──────────────────────────────────────────────────────────────
 
 export interface MarkerCase {
   id: string;

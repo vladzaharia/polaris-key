@@ -3,8 +3,6 @@
 // The generator's independent reference implementation, restated from the spec rather than
 // taken from client-core or an SDK: the family modules recompute every verdict through it.
 
-// ── Ed25519 constructions (V4 §1.1), on @noble/curves — vectors only, never a verifier ────────
-
 export const ED_L = 2n ** 252n + 27742317777372353535851937790883648493n;
 export const ED_P = 2n ** 255n - 19n;
 

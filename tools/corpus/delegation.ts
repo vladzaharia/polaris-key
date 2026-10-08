@@ -55,8 +55,8 @@ import { payloadTextOf, refNonWire } from "./reference/tokens.js";
 // ── `delegationCases` (plans/P4-19.md §4.2) ──────────────────────────────────────────────────
 // Content-key delegation: a CI-signed `kind: delegation` record lets one content key sign
 // tree-layout pack records of the data-only types under a pack-id scope, inside a signing window.
-// The reference below restates §2.2's `delegationOf`, §2.3's delegated path of steps 12–16 and
-// `recordRevoked` from first principles; every case is checked against it at its exact step.
+// The reference in `reference/delegation.ts` restates §2.2's `delegationOf`, §2.3's delegated
+// path of steps 12–16 and `recordRevoked` from first principles; every case is checked against it at its exact step.
 
 /** The content keys: deterministic TEST keys from fixed seeds (never a real key). Their public
  *  halves appear only inside the cases' delegations, so the top-level `keys` array is unchanged. */

@@ -25,6 +25,8 @@ import {
 } from "./reference/revocation.js";
 import { refNonWire } from "./reference/tokens.js";
 
+// ── `revocationCases` (plans/P4-13.md §4.2) ──────────────────────────────────────────────────
+
 export async function buildRevocationCases(): Promise<RevocationCase[]> {
   const packs = await packRecords();
   const target = packs.get("djdl.levels@1.0.0")!;

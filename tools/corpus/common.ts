@@ -329,12 +329,13 @@ export function asciiJson(value: unknown): string {
 // Wire contract v4 (docs/security/WIRE-CONTRACT-V4.md, plans/P3-01.md §2–§4)
 // ══════════════════════════════════════════════════════════════════════════════════════════
 //
-// Everything below restates the v4 rules as literals and reference implementations, written
-// from the plan and importing nothing it checks: the strict verifier's vectors, the feed and
-// record families, the per-claim integer cases, `update-matrix.json`, `outlet-matrix.json`
-// and the stage matrix's confirmation cases. Each builder recomputes its own expectations and
-// throws when a hand-written expectation disagrees, so a row that contradicts the plan fails
-// `gen:corpus` instead of shipping.
+// The v4 families restate the v4 rules as literals and reference implementations (`reference/`),
+// written from the plan and importing nothing they check: the strict verifier's vectors, the
+// feed and record families, the per-claim integer cases, `update-matrix.json`,
+// `outlet-matrix.json` and the stage matrix's confirmation cases. Each builder recomputes its own
+// expectations and throws when a hand-written expectation disagrees, so a row that contradicts
+// the plan fails `gen:corpus` instead of shipping. The constants and signing helpers they share
+// follow.
 
 /** V4 §3: the largest integer claim, 2^53 − 1. */
 export const MAX_WIRE_INTEGER_REF = 9007199254740991;
@@ -386,7 +387,5 @@ export const signText = (
 ): Promise<string> => signRawSegments(headerText(typ, kid), text, kid);
 export const sha256Hex = (input: string | Uint8Array): string =>
   createHash("sha256").update(input).digest("hex");
-
-// ── §4.9 self-checks over the assembled corpus ───────────────────────────────────────────────
 
 export type AnyCase = Record<string, any>;

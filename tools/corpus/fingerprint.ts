@@ -104,8 +104,8 @@ const MAC_RAW: Record<FingerprintComponentName, string> = {
 // The three source rules every native SDK must follow when it READS a component, pinned as
 // pure input → output cases: the Windows CIM parser (rule 1), the Linux anchor selection
 // (rule 2) and the RAM bucket (rule 3). Each case states its expected output literally; the
-// generator-local reference functions below re-derive every one and generation fails on any
-// disagreement, so a typo in a hand-written expectation cannot ship.
+// generator-local reference functions in `reference/fingerprint.ts` re-derive every one and
+// generation fails on any disagreement, so a typo in a hand-written expectation cannot ship.
 
 /** One line with no double quotes (Windows argument quoting cannot mangle it), emitting pure
  *  ASCII (a console code page or a missing console cannot corrupt a value). `[-1]` takes the

@@ -6,9 +6,9 @@ import { refDeviceLabel } from "./reference/device-label.js";
 // ── Device labels (device-label.json) ────────────────────────────────────────
 // WIRE-CONTRACT-V4 §12.7.1 (plans/PX-W13.md §2.1, §4): the one normalisation every SDK applies to
 // the label it sends as `deviceName`, and the Worker applies on receipt. Every row's `expect` is
-// checked against the generator-local reference below, which imports nothing from client-core or
-// shared-protocol (a golden corpus that shares code with the implementation it checks cannot
-// catch a bug in it). Strings are written with every non-ASCII code point escaped, so no bidi
+// checked against the generator-local reference in `reference/device-label.ts`, which imports
+// nothing from client-core or shared-protocol (a golden corpus that shares code with the
+// implementation it checks cannot catch a bug in it). Strings are written with every non-ASCII code point escaped, so no bidi
 // override or zero-width character sits literally in a committed file.
 
 interface DeviceLabelCase {

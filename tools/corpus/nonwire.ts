@@ -3,10 +3,6 @@
 
 import { payloadTextOf, refNonWire } from "./reference/tokens.js";
 
-// ── §4.3 the 28 v3 claim cases ───────────────────────────────────────────────────────────────
-// Each is its family's control case with the one change named, re-signed by the control's key,
-// and appended after the family's last case so every existing case stays byte-identical.
-
 export type WithNonWire<T> = T & { nonWireIntegers?: string[] };
 
 /** Attach the payload's non-wire pointers when the case is built to pass `verifyJws`. */

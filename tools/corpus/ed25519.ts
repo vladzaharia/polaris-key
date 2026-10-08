@@ -15,6 +15,8 @@ import {
   SMALL_ORDER_REF,
 } from "./reference/ed25519.js";
 
+// ── Ed25519 constructions (V4 §1.1), on @noble/curves — vectors only, never a verifier ────────
+
 export const EdPoint = ed25519.Point;
 function sha512(...parts: Uint8Array[]): Uint8Array {
   const h = createHash("sha512");

@@ -19,15 +19,6 @@ import {
   refVocab,
 } from "./patterns.js";
 
-// ── plans/P4-01.md §4.6: packs on the wire — `packRecordCases` and `markerCases` (P4-21) ─────
-//
-// Two new JWS families after `releaseRecordCases`, which the v4 record runners of P3-04 to P3-08
-// never read. P4-21 signs them over the FIXED object-ref table below (§4.2): every `sha256` is
-// the SHA-256 of the blob's name and every size is §4.3's figure, because the content set does
-// not exist yet and no claim fetches an object, so every verdict holds. P4-04 then re-signs the
-// valid records, their twins, the markers and the two rewritten P3-02 cases over the content
-// set's real refs: their bytes change, never their ids or `expect`.
-
 /** The generator's registry of the 83 claim checks (§4.6's table, and plans/P4-10.md §2.2's
  *  81–83). A check id outside it throws; the per-check self-check proves each has a case its
  *  check alone refuses. */

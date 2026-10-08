@@ -108,8 +108,6 @@ export function refRecordClaims(
   return true;
 }
 
-// ── §4.5 `releaseRecordCases` ────────────────────────────────────────────────────────────────
-
 export interface RecordCase {
   id: string;
   description: string;

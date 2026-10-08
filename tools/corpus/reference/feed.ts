@@ -32,6 +32,8 @@ import {
   refParseVersion,
 } from "./versions.js";
 
+// ── The feed's and the record's claims (V4 §2.3, §2.4), the generator's own ──────────────────
+
 const REF_CHANNEL_ALIASES: Record<string, string> = {
   staging: "beta",
   latest: "stable",
