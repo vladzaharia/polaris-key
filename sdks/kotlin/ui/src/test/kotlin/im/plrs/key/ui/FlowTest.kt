@@ -128,7 +128,8 @@ class FlowTest {
     @Test
     fun inlineSignInComesBackToTheKeyField() {
         val scope = TestScope(UnconfinedTestDispatcher())
-        val signIn = PolarisSignInState(Counting(), scope, clock = { NOW })
+        val actions = Counting()
+        val signIn = PolarisSignInState(actions, scope, clock = { NOW })
         rule.setContent {
             StockHost(false) {
                 PolarisTheme(copy = sampleCopy, darkTheme = false) {
@@ -143,6 +144,43 @@ class FlowTest {
         rule.onNodeWithText(sampleCopy.cancel).performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction()).assertExists()
+        // Sign in again: a fresh code is asked for and polled, not the old one frozen.
+        rule.onNodeWithText(sampleCopy.signIn).performClick()
+        rule.waitForIdle()
+        assertEquals(2, actions.begins)
+        assertEquals(2, actions.waits)
+    }
+
+    @Test
+    fun cancelThenStartAsksForAFreshCode() {
+        val actions = Counting()
+        val state = PolarisSignInState(actions, TestScope(UnconfinedTestDispatcher()), clock = { NOW })
+        state.start()
+        state.cancel()
+        state.start()
+        assertEquals(2, actions.begins)
+        assertEquals(2, actions.waits)
+        // The fresh code was polled (the second poll answers Ready), not left frozen.
+        assertEquals(PolarisSignInUi.Done, state.ui.value)
+    }
+
+    @Test
+    fun aNonHttpsLinkIsNeverOpenedEncodedOrCopied() {
+        var opened = false
+        val bad = PolarisSignInUi.Showing(samplePrompt.copy(verificationUriComplete = "javascript:alert(1)"), NOW)
+        rule.setContent {
+            StockHost(false) {
+                PolarisTheme(copy = sampleCopy, darkTheme = false) {
+                    PolarisSignInScreen(bad, onOpenBrowser = { opened = true })
+                }
+            }
+        }
+        rule.onNodeWithText(sampleCopy.signInOpenBrowser).performClick()
+        rule.waitForIdle()
+        assertTrue(!opened)
+        rule.onNodeWithText(sampleCopy.signInNoBrowser).assertExists()
+        rule.onNodeWithText(samplePrompt.userCode, useUnmergedTree = true).assertExists()
+        assertEquals(0, rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(sampleCopy.signInCopyLink), useUnmergedTree = true).fetchSemanticsNodes().size)
     }
 
     @Test

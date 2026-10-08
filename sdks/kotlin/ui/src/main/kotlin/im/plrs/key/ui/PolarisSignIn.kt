@@ -181,6 +181,9 @@ public class PolarisSignInState(
         job?.cancel()
         job = null
         prompt = null
+        expiredOnScreen = false
+        // Back to the start, so the next start() asks for a fresh code (never the old frozen one).
+        _ui.value = PolarisSignInUi.Starting
     }
 
     /** Stop polling while the screen is away; [start] resumes the same code. Never changes [ui]. */
@@ -347,8 +350,10 @@ private fun PolarisCodeView(
     val link = ui.prompt.verificationUriComplete
     val address = theme.deviceCodeUrl?.let(::displayHost) ?: displayHost(ui.prompt.verificationUri)
     var noBrowser by rememberSaveable(link) { mutableStateOf(false) }
+    // The link comes from the server: only a plain https link is opened, shown as a QR or copied.
+    val linkOk = isSafeSignInLink(link)
     val open: () -> Unit = {
-        val opened = runCatching { (onOpenBrowser ?: uriHandler::openUri)(link) }.isSuccess
+        val opened = linkOk && runCatching { (onOpenBrowser ?: uriHandler::openUri)(link) }.isSuccess
         noBrowser = !opened
     }
     // TalkBack hears the code once, spelled out, when it first appears.
@@ -402,16 +407,16 @@ private fun PolarisCodeView(
         },
         detail = {
             if (showQr) {
-                PolarisQrCode(link, copy.signInQrDescription, Modifier.size(polarisWindow.qrSize))
+                if (linkOk) PolarisQrCode(link, copy.signInQrDescription, Modifier.size(polarisWindow.qrSize))
                 deviceLine()
             } else {
-                PolarisUserCode(ui.prompt.userCode, Modifier.fillMaxWidth(), onCopy = link to onCopyLink)
+                PolarisUserCode(ui.prompt.userCode, Modifier.fillMaxWidth(), onCopy = if (linkOk) link to onCopyLink else null)
                 countdown()
                 deviceLine()
             }
         },
         actions = {
-            if (noBrowser) {
+            if (noBrowser || !linkOk) {
                 PolarisInlineNotice(copy.signInNoBrowser)
                 Spacer(Modifier.height(PolarisSpace.controls))
             }
@@ -429,6 +434,14 @@ private fun PolarisCodeView(
             }
         },
     )
+}
+
+/** An https link with a host and no userinfo: the only kind the sign-in screen opens, encodes or copies. */
+internal fun isSafeSignInLink(raw: String): Boolean = try {
+    val u = URI(raw)
+    u.scheme.equals("https", ignoreCase = true) && !u.host.isNullOrEmpty() && u.userInfo == null
+} catch (e: Exception) {
+    false
 }
 
 /** A lede template (`%1$s` for the address) with the address set inline at 600 weight, unbroken. */
