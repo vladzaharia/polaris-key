@@ -56,6 +56,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Four toggles and releases_enabled unread and never registered (ST-14)
 - [ ] A product that had magic link off keeps SSO-only sign-in through an enforced domain (test)
 - [ ] One App sign-in page
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

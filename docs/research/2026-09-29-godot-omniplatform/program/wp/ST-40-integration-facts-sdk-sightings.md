@@ -59,6 +59,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Writes at most once per key per isolate per 5 minutes (test)
 - [ ] Verified flips per feature and platform in a fixture
 - [ ] No product is hidden without an operator setup choice (test over the backfill)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/integration`; Verified in every **Check it works**; "Not seen yet" links `build/troubleshooting`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

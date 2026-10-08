@@ -157,6 +157,7 @@ S-16 re-estimated the SDK work and split it by toolchain so the two halves run i
 - [ ] React completes a web redirect sign-in against the exchange transcript (test).
 - [ ] UI component screenshots for both refusals.
 - [ ] `parity.json` manifests updated for all three SDKs.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

@@ -66,6 +66,7 @@ The consolidation replaced U-01's licence layer, save routes and per-store vocab
 - [ ] No signed corpus file changes; `sync-scenarios.json` is v2 with its Godot mirror.
 - [ ] Every §3.2 row has its rule-9 mutation entry and schema change.
 - [ ] The §7 precondition result is recorded in the PR.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

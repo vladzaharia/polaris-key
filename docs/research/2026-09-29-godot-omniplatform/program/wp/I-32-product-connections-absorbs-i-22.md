@@ -68,6 +68,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Custom issuers migrate without losing licences
 - [ ] THREAT-MODEL row for tenant-minted identities
 - [ ] Plan approved before code
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

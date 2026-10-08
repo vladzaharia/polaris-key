@@ -345,6 +345,12 @@ and UK-16 (docs scaffold), then UK-03 (ui-core) and the kits. Kits read the prod
 only through HA-13/HA-14 via a seam, so they do not wait for them; UK-41 verifies it at the end of
 the must tier. UK-30 (Tk) is dropped.
 
+Phase DOC (documentation) follows [`docs/research/2026-10-08-docs/`](../../2026-10-08-docs/README.md)
+§6.1. Its 28 packages keep the plan's own `DOC-<nn>[a-z]` ids, which `check.mjs` accepts; the plan
+suggested registering them under ST, PX and SP, but a package's id must start with its phase.
+DOC-03a lands first and ships the contracts every other DOC package builds on. The docs pages
+each consolidation package writes are acceptance lines on that package (the plan's §10).
+
 Phase MO (motion) follows [`notes/S-23-motion-system.md`](../notes/S-23-motion-system.md) §10, with
 the owner decisions delegated to the lead on 2026-10-05 (D1–D10 in the note). It adds motion to
 the existing portal and console through one system shared with the kits and the sign-in card.

@@ -75,6 +75,7 @@ Decision 22 defers subscriptions until a product needs them; the model is ready 
 ## Acceptance criteria
 
 - [ ] Commerce tests and transcripts cover each source.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/durations`; `help/subscriptions`, `help/license-status`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

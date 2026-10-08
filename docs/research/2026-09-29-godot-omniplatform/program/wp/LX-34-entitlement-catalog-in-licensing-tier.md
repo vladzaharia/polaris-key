@@ -67,6 +67,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] /config/schema byte-identical except the additive kind member
 - [ ] SDK transcripts unchanged
 - [ ] Validator warns, then refuses, flags in profiles
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/{entitlements, add-ons}`; `features/managed-config/catalog` (flags leave); `help/library` (add-ons).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

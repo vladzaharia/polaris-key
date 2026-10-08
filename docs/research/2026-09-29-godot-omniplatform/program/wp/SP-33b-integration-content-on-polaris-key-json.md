@@ -21,6 +21,7 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 These approved plans change this package. Where they differ from the text below, they win.
 
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: canonical names; the goldens are in the removed-name scan.
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 3: `renderUsage(feature, lang, lane)`, with `lane` = `kit` or `library`, and goldens for both lanes.
 
 ## Owner direction (2026-10-08)
 
@@ -66,6 +67,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] Goldens compile in all six SDK lanes
 - [ ] The docs site renders the same output
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `reference/api-names`; every quickstart regenerated; snippets included from `examples/` (the SDK docs-snippets targets retire); `build/sdks/*` reference-only.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

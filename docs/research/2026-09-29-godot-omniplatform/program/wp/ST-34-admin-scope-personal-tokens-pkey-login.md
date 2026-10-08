@@ -67,6 +67,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] A token never exceeds its holder's roles at use time (test)
 - [ ] An admin-scope token is refused by the registry and a packages token by the admin API (test)
 - [ ] No `PKEY_ADMIN_COOKIE` in the CLI, the Action bundle or the docs in the release that ships `pkey login`
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text; `PKEY_ADMIN_COOKIE` removed from `start/first-product`, `features/licensing/offline`, `reference/protocol/bundles`, `features/ship-builds/channels/polaris-key` and `contribute/agents/recipes`; `reference/cli` (`pkey login`).
+- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

@@ -68,6 +68,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] PR 2 merges under §6.5's switch rule, recorded in the P0-24 ledger
 - [ ] The freshness bound of §6.7 holds (test)
 - [ ] Every command in `plans/P2-12.md` §11 up to the P2-12b line passes
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

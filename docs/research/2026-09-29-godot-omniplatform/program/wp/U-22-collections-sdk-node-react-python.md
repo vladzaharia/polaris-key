@@ -58,6 +58,7 @@ Node, React and Python expose collections: `collection`, `put`, `update` with th
 ## Acceptance criteria
 
 - [ ] Three SDKs replay the records transcripts and scenarios.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

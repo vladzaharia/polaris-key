@@ -39,7 +39,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- pkey storefronts sync, pkey channel add and renderOutletBlock (UX-56); the Action's channels: auto covers CI and PR channels and implied transport steps; thin inputs (command, args, secrets, base-url, working-directory, dry-run; the product from .pkey/), old inputs accepted for the Action's deprecation window (at least 30 days and one minor, P0-24) with a deprecation annotation; storefront, itch-platform and storefront-outlet inputs deprecated; bundle regenerated. Absorbs UX-56.
+- pkey storefronts sync, pkey channel add and renderOutletBlock (UX-56); the Action's channels: auto covers CI and PR channels and implied transport steps; thin inputs (command, args, secrets, base-url, working-directory, dry-run; the product from .pkey/), old inputs, and the storefront, itch-platform and storefront-outlet inputs, removed in the same release, each refused with a message naming its replacement (docs plan §10 amendment 6); bundle regenerated. Absorbs UX-56.
 
 **Out** (and where it belongs instead):
 
@@ -59,6 +59,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] A product's workflow needs no per-channel step
 - [ ] Old inputs warn through the window
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/ship-builds/channels/*`, rewritten in place (one page per channel; the matrix section at A-21); `reference/channels`.
+- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

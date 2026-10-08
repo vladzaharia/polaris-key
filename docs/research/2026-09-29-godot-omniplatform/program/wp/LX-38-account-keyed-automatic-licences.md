@@ -64,6 +64,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Automatic paths create no key row (test); an admin can add one later
 - [ ] Two concurrent sign-ins, or a sign-in racing a Discover self-mint, create one licence (test)
 - [ ] Discover self-mint and use-time mint call the same function
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/access` (enrollment and policy merged; automatic licences); `help/activate`, `help/library`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

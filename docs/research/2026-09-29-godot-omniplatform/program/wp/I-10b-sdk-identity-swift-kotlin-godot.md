@@ -151,6 +151,7 @@ The game program needs Godot first, and this half is the estimate most likely to
 - [ ] Neither refusal clears stored licence state (test per SDK).
 - [ ] UI kit screenshots for both refusals in all three kits.
 - [ ] `parity.json` manifests updated for all three SDKs; macOS and Android CI green.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/sign-in/*`; `operate/platform/connections`; `help/work-account`, `help/account`, `help/connected-apps`; the React cookie note removed.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

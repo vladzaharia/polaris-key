@@ -61,6 +61,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] Grants are licence-held and reference an add-on (no account or store holder writes, no add-on-less grant)
 - [ ] Comps, codes and store grants all call grantAddOn (grep test)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/{entitlements, add-ons}`; `features/managed-config/catalog` (flags leave); `help/library` (add-ons).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

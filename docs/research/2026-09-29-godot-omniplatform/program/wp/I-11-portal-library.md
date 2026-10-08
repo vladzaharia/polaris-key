@@ -103,6 +103,7 @@ The owner chose a Steam-like account home ([S-16 owner decisions](../../notes/S-
 - [ ] Per-product removal deletes account × product data and the subject but keeps the licence unless chosen (test).
 - [ ] Account deletion cascades as above and survives a simulated restore through the tombstone list (test).
 - [ ] Detaching a licence revokes F-20 licence-bound tokens through the one hook (test).
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): `help/your-data` (self-serve export); the export task in `operate/console/help-a-customer`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

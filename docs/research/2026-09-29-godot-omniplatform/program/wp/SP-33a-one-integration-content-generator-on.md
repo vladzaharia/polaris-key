@@ -23,6 +23,7 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 These approved plans change this package. Where they differ from the text below, they win.
 
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: canonical names; the goldens are in the removed-name scan.
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 3: `renderUsage(feature, lang, lane)`, with `lane` = `kit` or `library`, and goldens for both lanes. SP-33a also writes the docs' generated blocks.
 
 ## Owner direction (2026-10-08)
 

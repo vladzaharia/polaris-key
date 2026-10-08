@@ -69,6 +69,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] An email-code-only session is refused console access
 - [ ] No route treats a non-null session as authorisation (ST-29's grep test still passes)
 - [ ] Break-glass documented in the RUNBOOK with its exit facts; security review signed
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

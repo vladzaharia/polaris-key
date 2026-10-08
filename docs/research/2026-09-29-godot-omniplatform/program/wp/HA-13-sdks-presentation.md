@@ -96,6 +96,7 @@ It completes "zero integrator work" for every non-Godot SDK ([S-20 §6.9](../../
 - [ ] Every SDK in scope runs `presentation-matrix.json` (`parseCases`, `pickCases`, `verifyCases`) green and replays `discovery-presentation.json`.
 - [ ] Transcript replayers pass in every SDK.
 - [ ] UI snapshots show the product icon for a fixture with presentation, and today's output without it.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/ui/theming` (presentation).
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

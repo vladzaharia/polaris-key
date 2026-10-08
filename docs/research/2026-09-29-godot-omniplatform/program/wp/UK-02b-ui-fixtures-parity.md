@@ -104,6 +104,7 @@ Layer (c) must be the same state machine in every language (§1.3); without fixt
 
 - [ ] `pnpm parity:check -- --check` passes with every new id `planned` in every SDK.
 - [ ] Every §4.1 must component has at least one fixture per listed state.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

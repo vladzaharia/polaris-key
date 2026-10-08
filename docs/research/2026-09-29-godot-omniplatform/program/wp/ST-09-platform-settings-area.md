@@ -69,6 +69,7 @@ ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.
 - [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 5 lower, and `settings-coverage.test.ts` passes.
 - [ ] Limits match the inventory (test).
 - [ ] Console CSP parity passes.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/platform/settings`; `operate/console/tour` regenerated.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

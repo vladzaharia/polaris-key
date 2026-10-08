@@ -84,6 +84,7 @@ Godot is the program's primary engine. Its kit today shows only bundled marks ([
 
 - [ ] The Godot runner passes `presentation-matrix.json` with the Godot `decodable` set.
 - [ ] The Godot transcript runner passes, and kit snapshots show the icon.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `build/ui/theming` (presentation).
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

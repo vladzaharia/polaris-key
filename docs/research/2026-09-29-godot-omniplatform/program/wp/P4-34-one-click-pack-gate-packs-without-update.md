@@ -55,6 +55,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] A gated pack needs one approval, no retyping
 - [ ] Packs with updates off raise an attention item
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

@@ -63,6 +63,7 @@ These are could rows of §5.1: recipes, not kits. The spec is [`docs/design/UI-K
 ## Acceptance criteria
 
 - [ ] Each example renders the gate in both themes and passes `pnpm ui:lint`.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify

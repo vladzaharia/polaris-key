@@ -62,6 +62,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] A demoted release leaves the stable feed and stays on beta
 - [ ] Audited
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `releases/release-tracks`, `updates/*`, `packs/*`; `help/beta`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

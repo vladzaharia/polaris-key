@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation J: SDK and UI-kit consolidation)                                                                |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                                           |
 | Depends on  | [SP-34](SP-34-client-core-takes-neutral-typescript.md), [P0-42](P0-42-generator-registry-pnpm-gen.md), [SP-32b](SP-32b-polaris-key-json-fromconfig-doctor-in.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                           |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [DOC-06c](DOC-06c-kits-get-help.md)                                                                                      |
 | Role        | `pkey-sdk-porter`                                                                                                                                                |
 | Plan mode   | no                                                                                                                                                               |
 | Gates       | none beyond the green gate                                                                                                                                       |

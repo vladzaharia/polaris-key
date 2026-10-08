@@ -68,6 +68,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Rules evaluate identically in preview and at sign-in (test)
 - [ ] An address confirmed only by email code never matches a console domain rule (test)
 - [ ] Every product with an adminGroup gets a one-click conversion offer
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

@@ -55,6 +55,7 @@ console's sixth feature row; the RBAC `commerce` area; the automatic catch-up wh
 - [ ] Every acceptance item in the approved `plans/CM-29.md`.
 - [ ] No store notification route changes URL; a notification sent while the deploy rolls out is processed.
 - [ ] Turning License off turns Commerce off in the same audited change, and the confirmation names it.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/commerce/*` (with `features/ship-builds/commerce` and `channels/storefronts` moved in); `help/restore-purchase`, `help/refunds`.
 
 ## Verify
 

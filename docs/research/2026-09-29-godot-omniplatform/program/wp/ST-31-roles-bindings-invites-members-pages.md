@@ -67,6 +67,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Console access alone shows NoAccessPage with the scope's admins to contact
 - [ ] A product admin sees only their products; an area-narrowed one sees only those areas
 - [ ] Roles matrix is generated and drift-gated; security review before merge
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

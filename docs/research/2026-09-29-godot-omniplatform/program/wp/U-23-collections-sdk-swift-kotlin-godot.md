@@ -58,6 +58,7 @@ Swift, Kotlin and Godot expose collections like U-22, with `Codable`, `@Serializ
 ## Acceptance criteria
 
 - [ ] Three SDKs replay the records transcripts and scenarios; macOS and Android CI green.
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

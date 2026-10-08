@@ -59,6 +59,8 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] P0-49 report lists every effective-value change before the switch (expected none)
 - [ ] Signed licence and update documents byte-identical across the switch (channels never rewritten)
 - [ ] No tierless licence remains; precedence tests per field
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/model` (holder states, tiers, limits); `help/license-status`, `help/messages/license-status`; `reference/settings`.
+- [ ] **Upgrade to 0.9:** a changelog entry whose `replaces` rows name every SDK name, manifest field, CLI form or Action input this package removes and its replacement, so the upgrade table regenerates in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10 item 7).
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

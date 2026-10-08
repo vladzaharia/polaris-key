@@ -24,6 +24,7 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/ST-28.md`](../plans/ST-28.md) §10: `can()` and `resolvePrincipal` live in `W/core/rbac/`, and `can()` is re-exported by `admin/authz.ts`. It uses the 13 areas of §2.1, `rbacArea` in place of `capability` with the security-widening mapping, and the `rbacRouteAreas`/`rbacAreas` drift tests with suffix-named `AREA_MOVES`. It fixes THREAT-MODEL `:5166`.
 - [`plans/CM-29.md`](../plans/CM-29.md) §10: the `commerce` row names PS-06's `storefronts/*` explicitly, as a Core route; `distribution/storefronts/**` stays `ship`. CM-29's admin routes are declared `commerce` and keep that area across the move.
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 2: the docs gate is tiered (§3.1). Help needs no session; the developer tier admits any console member, and anyone else reaches the public access page. DOC-03b's split lands before ST-30 issues non-admin sessions, so Product admins arriving from Integration never meet NoAccessPage.
 
 ## Goal
 
@@ -69,6 +70,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] sessionFromRequest() is called only by the deny-by-default dispatcher (grep test)
 - [ ] docs.ts gates on can('platform.docs'), not on a session existing
 - [ ] THREAT-MODEL §9 trigger reviewed; no behaviour change for platform admins
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/console/members`, `reference/roles`, the runbook's lockout recovery and the rule 11 text.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

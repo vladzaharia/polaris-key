@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CQT-01** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 8: it registers the docs generators: help messages, install steps, CLI, Action, console tour, integration docs, changelog and the upgrade table.
+
 ## Goal
 
 Generator registry and pnpm gen, as scoped below. Done when every acceptance criterion holds and the green gate passes.

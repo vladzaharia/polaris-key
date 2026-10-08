@@ -61,6 +61,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] One D1 batch, rolled back whole on failure (test)
 - [ ] A created product is ready for an SDK in one call
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `start/first-product` (the wizard steps); `operate/console/products`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

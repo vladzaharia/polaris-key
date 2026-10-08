@@ -70,6 +70,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] P0-49 report for djdl and polaris-key shows identical outcomes, provisioned keys included
 - [ ] accessFor() is the only evaluator (grep test)
 - [ ] Unverified emails never match a domain rule (test)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/access` (enrollment and policy merged; automatic licences); `help/activate`, `help/library`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

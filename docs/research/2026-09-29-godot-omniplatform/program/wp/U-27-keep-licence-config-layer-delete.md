@@ -58,6 +58,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Licence overrides apply to floating and in-account licences (test)
 - [ ] No code reads override_migration (grep) and the old Worker keeps serving during the deploy
 - [ ] Owner decision 1 recorded
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/managed-config/{catalog, visibility, minted-tokens, profiles}`; `reference/config-entry`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

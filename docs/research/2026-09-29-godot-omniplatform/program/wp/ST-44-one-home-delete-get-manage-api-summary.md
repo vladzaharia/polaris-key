@@ -65,6 +65,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Summary route and hooks deleted (OpenAPI, routeCoverage); ADMIN.md A-8 marked dropped
 - [ ] One Home for cards and table; attention comes from one server read
 - [ ] The card stays ST-36's name/slug header plus service icons, pips on phones (no added facts)
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `operate/platform/settings`; `operate/console/tour` regenerated.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

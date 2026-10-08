@@ -68,6 +68,7 @@ Saves are the Godot path's goal ([S-17 §6](../../notes/S-17-user-data-sync.md#6
 
 - [ ] Begin, upload and finalize, including a hash mismatch, are recorded as transcripts and pass.
 - [ ] Unreferenced objects are collected (test); unlicensed limits enforced (test).
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/cloud-sync/*` (the skeleton arrives); `help/sync`; synced data in `help/remove-from-library`.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

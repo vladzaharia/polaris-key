@@ -69,6 +69,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - [ ] Trial fixture: 14 days of Pro, then the licence runs on Free with no operator step
 - [ ] Works with no storefront configured
 - [ ] Every command in `plans/LX-41.md` §12 passes
+- [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `features/licensing/durations`; `help/subscriptions`, `help/license-status`.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
