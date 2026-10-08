@@ -72,7 +72,9 @@ public class BillingClientPort(
                     }
 
                     override fun onBillingServiceDisconnected() {
-                        // The next connect() starts the connection again.
+                        // A connection lost before setup finished answers false now (SP-51); the
+                        // next connect() starts the connection again.
+                        if (cont.isActive) cont.resume(false)
                     }
                 },
             )

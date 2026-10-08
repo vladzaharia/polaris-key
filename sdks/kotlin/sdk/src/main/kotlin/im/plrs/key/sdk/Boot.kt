@@ -104,6 +104,9 @@ private inline fun <T> quietly(block: () -> T): T? = try {
     null
 }
 
+/** The wait before boot's attempt number [failures] + 1: 1 s doubling to a 30 s cap (SP-51). */
+internal fun bootBackoffMillis(failures: Int): Long = minOf(30_000L, 1_000L shl (failures - 1).coerceIn(0, 5))
+
 /**
  * The default update slots: `<stateDirectory>/update-slots` when the host has created it (a host that
  * stages its own payloads there), else null (an installer- or store-updated app stages nothing). It
@@ -135,6 +138,10 @@ public fun PolarisKeyClient.bootHost(
     suspend fun registrationOpen(): Boolean =
         registration && client.core.discoveryDocument()?.core?.registration == RegistrationPolicy.`open`
 
+    // SP-51: a sync that failed or went offline is retried with exponential backoff (1 s, 2 s, 4 s,
+    // up to 30 s), so a boot that keeps failing never becomes a request storm.
+    var failedSyncs = 0
+
     return object : PolarisBootHost {
         override suspend fun shell() {
             val fresh = client.core.token() == null
@@ -159,9 +166,12 @@ public fun PolarisKeyClient.bootHost(
         }
 
         override suspend fun sync(): BootEvent.SyncResult {
-            val result = quietly { client.sync() } ?: return BootEvent.SyncResult.offline
-            val ran = result.documents.values.filter { it != DocOutcome.Skipped }
-            return if (ran.isNotEmpty() && ran.all { it == DocOutcome.Error }) BootEvent.SyncResult.offline else BootEvent.SyncResult.ok
+            if (failedSyncs > 0) delay(bootBackoffMillis(failedSyncs))
+            val result = quietly { client.sync() }
+            val ran = result?.documents?.values?.filter { it != DocOutcome.Skipped }.orEmpty()
+            val offline = result == null || (ran.isNotEmpty() && ran.all { it == DocOutcome.Error })
+            failedSyncs = if (offline || result?.unauthorized == true) failedSyncs + 1 else 0
+            return if (offline) BootEvent.SyncResult.offline else BootEvent.SyncResult.ok
         }
 
         override suspend fun gate(): LicenseStatus {

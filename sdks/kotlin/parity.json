@@ -39,7 +39,7 @@
     },
     "core.sync": {
       "status": "implemented",
-      "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) StateFlows and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency)."
+      "note": "client.events (license, config, updateAvailable, packs) as one SharedFlow, config.setting(key) StateFlows and config.changes; on Android PolarisKeyLifecycle syncs on foreground (throttled; ETags and backoff apply). A periodic background sync is the host's WorkManager worker (no WorkManager dependency). SP-51: every licence transition emits (LiveStateTest), a revoked foreground licence shows the activation screen (RevokedInForegroundTest), and close() ends a JVM main (CloseTest)."
     },
     "core.local": {
       "status": "implemented"

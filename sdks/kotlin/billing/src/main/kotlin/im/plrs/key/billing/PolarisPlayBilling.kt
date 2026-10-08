@@ -101,17 +101,23 @@ public sealed interface PlayRestoreOutcome {
 }
 
 /** One-call Play Billing purchases and restores that become licence flags. */
-public class PolarisPlayBilling(
+public class PolarisPlayBilling @JvmOverloads constructor(
     private val client: PolarisKeyClient,
     private val billing: PlayBillingPort,
+    /** How long `connect()` may take before Billing counts as unavailable (SP-51); default 10 s. */
+    private val connectTimeoutMillis: Long = CONNECT_TIMEOUT_MILLIS,
 ) {
+    /** `connect()` within the timeout: a Play that never answers is `unsupported`, not a hang. */
+    private suspend fun connected(): Boolean =
+        kotlinx.coroutines.withTimeoutOrNull(connectTimeoutMillis) { billing.connect() } == true
+
     /**
      * Buy [productId] (a Play product the operator mapped to a licence flag) and claim it. [productType]
      * is [PRODUCT_INAPP] or [PRODUCT_SUBS]. Throws [PolarisException] only when the binding cannot be
      * fetched (no licence: enrol first, `not_entitled` + `no_license`).
      */
     public suspend fun purchase(activity: Activity, productId: String, productType: String = PRODUCT_INAPP): PlayPurchaseOutcome {
-        if (!billing.connect()) return PlayPurchaseOutcome.BillingFailed(ErrorCode.unsupported, null, "Play Billing is unavailable on this device")
+        if (!connected()) return PlayPurchaseOutcome.BillingFailed(ErrorCode.unsupported, null, "Play Billing is unavailable on this device")
         val binding = client.commerce.binding()
         return when (val flow = billing.purchase(activity, productId, productType, binding.bindingId)) {
             PlayFlowResult.Cancelled -> PlayPurchaseOutcome.Cancelled
@@ -145,7 +151,7 @@ public class PolarisPlayBilling(
      * unavailable, [PlayRestoreOutcome.BillingFailed] with `unsupported`, as [purchase] does.
      */
     public suspend fun restore(productTypes: List<String> = listOf(PRODUCT_INAPP, PRODUCT_SUBS)): PlayRestoreOutcome {
-        if (!billing.connect()) return PlayRestoreOutcome.BillingFailed(ErrorCode.unsupported, null, "Play Billing is unavailable on this device")
+        if (!connected()) return PlayRestoreOutcome.BillingFailed(ErrorCode.unsupported, null, "Play Billing is unavailable on this device")
         val out = ArrayList<Pair<PlayPurchase, ClaimResult>>()
         val unlisted = LinkedHashMap<String, String?>()
         for (type in productTypes) {
@@ -220,6 +226,9 @@ public class PolarisPlayBilling(
     }
 
     public companion object {
+        /** The longest a Billing connection may take (SP-51). */
+        public const val CONNECT_TIMEOUT_MILLIS: Long = 10_000
+
         /** Play's `ProductType.INAPP` (a one-time product). */
         public const val PRODUCT_INAPP: String = "inapp"
 

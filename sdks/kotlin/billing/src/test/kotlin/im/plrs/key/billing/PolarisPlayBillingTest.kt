@@ -103,6 +103,23 @@ class PolarisPlayBillingTest {
     }
 
     @Test
+    fun aPlayThatNeverConnectsIsUnsupportedWithinTheTimeoutNotAHang() = runBlocking {
+        // SP-51: purchase() and restore() without Play answer BillingFailed(unsupported) in at most 10 s.
+        assertTrue(PolarisPlayBilling.CONNECT_TIMEOUT_MILLIS <= 10_000)
+        val silent = object : PlayBillingPort by FakePlay(PlayFlowResult.Cancelled) {
+            override suspend fun connect(): Boolean = kotlinx.coroutines.awaitCancellation()
+        }
+        val (client, _) = client { ok }
+        val helper = PolarisPlayBilling(client, silent, connectTimeoutMillis = 200)
+        val started = System.nanoTime()
+        val purchase = helper.purchase(activity, "skins")
+        val restore = helper.restore()
+        assertTrue(purchase is PlayPurchaseOutcome.BillingFailed && purchase.code == "unsupported")
+        assertTrue(restore is PlayRestoreOutcome.BillingFailed && restore.code == "unsupported")
+        assertTrue((System.nanoTime() - started) / 1_000_000 < 5_000)
+    }
+
+    @Test
     fun pendingAndCancelledFlowsClaimNothing() = runBlocking {
         val (client, transport) = client { ok }
         assertEquals(PlayPurchaseOutcome.Pending, PolarisPlayBilling(client, FakePlay(PlayFlowResult.Purchased(listOf(purchased().copy(state = PlayPurchase.PENDING))))).purchase(activity, "skins"))

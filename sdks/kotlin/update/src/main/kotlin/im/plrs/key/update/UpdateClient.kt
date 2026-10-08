@@ -333,7 +333,17 @@ public class UpdateClient private constructor(
         if (response.status == 403) {
             throw PolarisException(wireErrorCode(response.body) ?: "forbidden", "This build is not entitled to that update channel.")
         }
-        if (!response.isOk) throw PolarisException("not_found", "update/version failed with status ${response.status}.")
+        if (!response.isOk) {
+            // SP-51: the server's own code survives (a 401 `unauthorized`, a 429 `rate_limited`, a
+            // 5xx `server-error`); only an unreadable answer falls back to the status's class.
+            val code = wireErrorCode(response.body) ?: when {
+                response.status == 401 -> "unauthorized"
+                response.status == 429 -> "rate_limited"
+                response.status >= 500 -> "server-error"
+                else -> "not_found"
+            }
+            throw PolarisException(code, "update/version failed with status ${response.status}.")
+        }
         val o = JsonText.parseOrNull(response.text).objectValue ?: throw PolarisException("bad_request", "malformed update/version response")
         val version = o["version"].stringValue ?: throw PolarisException("bad_request", "malformed update/version response")
         val tag = o["tag"].stringValue ?: throw PolarisException("bad_request", "malformed update/version response")

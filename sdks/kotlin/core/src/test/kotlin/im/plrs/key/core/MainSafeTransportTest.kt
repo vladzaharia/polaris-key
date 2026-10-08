@@ -54,3 +54,19 @@ class MainSafeTransportTest {
         }
     }
 }
+
+class TransportCloseTest {
+    @org.junit.Test
+    fun closeLeavesAHostSuppliedClientAlone() {
+        val host = okhttp3.OkHttpClient()
+        OkHttpTransport(host).close()
+        org.junit.Assert.assertFalse(host.dispatcher.executorService.isShutdown)
+        // Its own client is shut down.
+        val own = OkHttpTransport()
+        val field = OkHttpTransport::class.java.getDeclaredField("base").apply { isAccessible = true }
+        val ownClient = field.get(own) as okhttp3.OkHttpClient
+        own.close()
+        own.close()
+        org.junit.Assert.assertTrue(ownClient.dispatcher.executorService.isShutdown)
+    }
+}
