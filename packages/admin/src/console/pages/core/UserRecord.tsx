@@ -46,7 +46,6 @@ import { PageTabs } from "../../components/PageTabs.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { navigate } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
@@ -116,13 +115,10 @@ export function UserRecord({
   subject: string;
   tab?: string;
 }): React.ReactElement {
-  const q = useQuery(
-    {
-      queryKey: qk.user(slug, subject),
-      queryFn: () => api.productUser(slug, subject),
-    },
-    queryClient,
-  );
+  const q = useQuery({
+    queryKey: qk.user(slug, subject),
+    queryFn: () => api.productUser(slug, subject),
+  });
   const mergedInto = q.data?.mergedInto;
   // D21: an absorbed subject resolves to the survivor's row, which lists it under "Merged from".
   React.useEffect(() => {

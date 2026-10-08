@@ -38,7 +38,6 @@ import { DeviceTable, type DeviceRow } from "../../components/DeviceTable.js";
 import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { navigate, useLocation } from "../../router.js";
 import { r } from "../../routes.js";
 import { CollectionTemplate } from "../../templates/Collection.js";
@@ -89,24 +88,17 @@ export function DevicesPage({
   const query = deviceQuery(status, platform, license, state.q);
   const queryKey = JSON.stringify(query);
 
-  const summary = useQuery(
-    {
-      queryKey: qk.devicesSummary(slug),
-      queryFn: () => fetchDeviceSummary(slug),
-    },
-    queryClient,
-  );
-  const list = useInfiniteQuery(
-    {
-      queryKey: [...qk.devices(slug), "list", queryKey],
-      queryFn: ({ pageParam }) =>
-        api.productDevices(slug, { ...query, cursor: pageParam }),
-      initialPageParam: null as string | null,
-      getNextPageParam: (last: ProductDevicePage) =>
-        last.nextCursor ?? undefined,
-    },
-    queryClient,
-  );
+  const summary = useQuery({
+    queryKey: qk.devicesSummary(slug),
+    queryFn: () => fetchDeviceSummary(slug),
+  });
+  const list = useInfiniteQuery({
+    queryKey: [...qk.devices(slug), "list", queryKey],
+    queryFn: ({ pageParam }) =>
+      api.productDevices(slug, { ...query, cursor: pageParam }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last: ProductDevicePage) => last.nextCursor ?? undefined,
+  });
   useLoadingAnnouncement("devices", list.isPending);
 
   const rows = React.useMemo(

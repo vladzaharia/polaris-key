@@ -29,7 +29,6 @@ import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
@@ -65,14 +64,11 @@ const mono = (text: string): React.ReactElement => (
 
 export function SyncDataPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
-  const catalog = useQuery(
-    {
-      queryKey: qk.catalog(slug),
-      queryFn: () => api.schema(slug),
-      retry: false,
-    },
-    queryClient,
-  );
+  const catalog = useQuery({
+    queryKey: qk.catalog(slug),
+    queryFn: () => api.schema(slug),
+    retry: false,
+  });
 
   const header = (
     <PageHeader

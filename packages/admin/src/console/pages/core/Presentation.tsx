@@ -24,7 +24,7 @@
  */
 
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
 import {
   ApiError,
@@ -50,7 +50,6 @@ import type { Tone } from "../../../lib/status.js";
 import { PageHeader } from "../../../ui/PageHeader.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import {
   SettingsRow,
   SettingsSection,
@@ -195,14 +194,14 @@ export function PresentationPage({
 }: {
   slug: string;
 }): React.ReactElement {
-  const assets = useQuery(
-    { queryKey: qk.hostedAssets(slug), queryFn: () => fetchHostedAssets(slug) },
-    queryClient,
-  );
-  const usage = useQuery(
-    { queryKey: qk.assetUsage(slug), queryFn: () => api.assetUsage(slug) },
-    queryClient,
-  );
+  const assets = useQuery({
+    queryKey: qk.hostedAssets(slug),
+    queryFn: () => fetchHostedAssets(slug),
+  });
+  const usage = useQuery({
+    queryKey: qk.assetUsage(slug),
+    queryFn: () => api.assetUsage(slug),
+  });
   useLoadingAnnouncement("presentation", assets.isPending);
   const header = (
     <PageHeader
@@ -604,6 +603,7 @@ function SlotRow({
   locale: string;
   asset: HostedAssetDto | null;
 }): React.ReactElement {
+  const queryClient = useQueryClient();
   const [busy, setBusy] = React.useState(false);
   const [confirm, setConfirm] = React.useState<"revert" | "delete" | null>(
     null,

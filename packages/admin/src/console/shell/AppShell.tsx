@@ -2,7 +2,6 @@ import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { type Me } from "../../api.js";
-import { AdminProvider } from "../../context.js";
 import { PageSkeleton, type SkeletonTemplate } from "../../ui/Skeleton.js";
 import { TooltipProvider } from "../../ui/Tooltip.js";
 import { usePlatformVersion, useProduct, useProducts } from "../data/hooks.js";
@@ -289,13 +288,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <AdminProvider
-        value={{
-          me,
-          product: slug ?? "",
-          setProduct: (s) => navigate(r.overview(s)),
-        }}
-      >
+      <>
         <div
           data-service={accent}
           style={
@@ -392,13 +385,14 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
         </DialogPrimitive.Root>
 
         <CommandPalette
+          me={me}
           open={paletteOpen}
           onOpenChange={setPaletteOpen}
           items={paletteItems}
         />
         <ShortcutSheet open={sheetOpen} onOpenChange={setSheetOpen} />
         <LiveRegion message={announcement} id="route-announcer" />
-      </AdminProvider>
+      </>
     </TooltipProvider>
   );
 }

@@ -76,7 +76,6 @@ import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { Link, navigate } from "../../router.js";
 import { r } from "../../routes.js";
 import {
@@ -650,10 +649,10 @@ function ManifestAuthorityRow({
 }
 
 function StorageSection({ slug }: { slug: string }): React.ReactElement {
-  const gc = useQuery(
-    { queryKey: qk.blobGc(slug), queryFn: () => api.blobGc(slug) },
-    queryClient,
-  );
+  const gc = useQuery({
+    queryKey: qk.blobGc(slug),
+    queryFn: () => api.blobGc(slug),
+  });
   return (
     <SettingsSection
       id="settings-storage"

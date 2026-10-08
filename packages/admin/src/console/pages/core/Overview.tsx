@@ -68,7 +68,6 @@ import {
 import { PageHeader } from "../../../ui/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { qk } from "../../data/queries.js";
-import { queryClient } from "../../data/queryClient.js";
 import { Link, navigate } from "../../router.js";
 import { r } from "../../routes.js";
 import {
@@ -159,14 +158,11 @@ function OverviewBody({
   placeholder?: boolean;
 }): React.ReactElement {
   const enabled = SERVICE_ORDER.filter((s) => on(p, s));
-  const licenses = useQuery(
-    {
-      queryKey: qk.licenses(slug),
-      queryFn: () => api.licenses(slug),
-      enabled: on(p, "license"),
-    },
-    queryClient,
-  );
+  const licenses = useQuery({
+    queryKey: qk.licenses(slug),
+    queryFn: () => api.licenses(slug),
+    enabled: on(p, "license"),
+  });
   const { items: checklist, settled } = useChecklist(
     slug,
     p,
@@ -409,32 +405,23 @@ function OverviewMoments({
   product: ProductDetail;
   launched: MomentObservation;
 }): React.ReactElement {
-  const catalog = useQuery(
-    {
-      queryKey: qk.catalog(slug),
-      queryFn: () => api.schema(slug),
-      enabled: on(p, "config"),
-      retry: false,
-    },
-    queryClient,
-  );
-  const store = useQuery(
-    {
-      queryKey: qk.releases(slug),
-      queryFn: () => api.releases(slug),
-      enabled: on(p, "release"),
-    },
-    queryClient,
-  );
-  const stores = useQuery(
-    {
-      queryKey: qk.storefronts(slug),
-      queryFn: () => api.storefronts(slug),
-      enabled: on(p, "distribution"),
-      retry: false,
-    },
-    queryClient,
-  );
+  const catalog = useQuery({
+    queryKey: qk.catalog(slug),
+    queryFn: () => api.schema(slug),
+    enabled: on(p, "config"),
+    retry: false,
+  });
+  const store = useQuery({
+    queryKey: qk.releases(slug),
+    queryFn: () => api.releases(slug),
+    enabled: on(p, "release"),
+  });
+  const stores = useQuery({
+    queryKey: qk.storefronts(slug),
+    queryFn: () => api.storefronts(slug),
+    enabled: on(p, "distribution"),
+    retry: false,
+  });
   const connected = stores.data?.stores?.find(
     (s) => s.connection.state === "connected",
   );
@@ -635,15 +622,12 @@ function useChecklist(
   /** Every query the items read has answered (a 404 catalog is an answer: unpublished). */
   settled: boolean;
 } {
-  const catalog = useQuery(
-    {
-      queryKey: qk.catalog(slug),
-      queryFn: () => api.schema(slug),
-      enabled: on(p, "config"),
-      retry: false,
-    },
-    queryClient,
-  );
+  const catalog = useQuery({
+    queryKey: qk.catalog(slug),
+    queryFn: () => api.schema(slug),
+    enabled: on(p, "config"),
+    retry: false,
+  });
   const items: ChecklistItem[] = [];
   const signing = Boolean(p.signing?.publicKey);
   items.push({
@@ -934,13 +918,10 @@ function LicenseTile({
   slug: string;
   licenses: LicensesQuery;
 }): React.ReactElement {
-  const devices = useQuery(
-    {
-      queryKey: qk.devicesSummary(slug),
-      queryFn: () => fetchDeviceSummary(slug),
-    },
-    queryClient,
-  );
+  const devices = useQuery({
+    queryKey: qk.devicesSummary(slug),
+    queryFn: () => fetchDeviceSummary(slug),
+  });
   const list = licenses.data?.licenses ?? [];
   const now = Date.now() / 1000;
   const active = list.filter(
@@ -975,18 +956,15 @@ function LicenseTile({
 }
 
 function ConfigTile({ slug }: { slug: string }): React.ReactElement {
-  const catalog = useQuery(
-    {
-      queryKey: qk.catalog(slug),
-      queryFn: () => api.schema(slug),
-      retry: false,
-    },
-    queryClient,
-  );
-  const profiles = useQuery(
-    { queryKey: qk.profiles(slug), queryFn: () => api.profiles(slug) },
-    queryClient,
-  );
+  const catalog = useQuery({
+    queryKey: qk.catalog(slug),
+    queryFn: () => api.schema(slug),
+    retry: false,
+  });
+  const profiles = useQuery({
+    queryKey: qk.profiles(slug),
+    queryFn: () => api.profiles(slug),
+  });
   const missing =
     catalog.error instanceof ApiError && catalog.error.status === 404;
   return (
@@ -1023,17 +1001,14 @@ function ConfigTile({ slug }: { slug: string }): React.ReactElement {
 }
 
 function ReleaseTile({ slug }: { slug: string }): React.ReactElement {
-  const store = useQuery(
-    { queryKey: qk.releases(slug), queryFn: () => api.releases(slug) },
-    queryClient,
-  );
-  const health = useQuery(
-    {
-      queryKey: qk.releaseHealth(slug),
-      queryFn: () => api.releaseHealth(slug).then((r) => r.health),
-    },
-    queryClient,
-  );
+  const store = useQuery({
+    queryKey: qk.releases(slug),
+    queryFn: () => api.releases(slug),
+  });
+  const health = useQuery({
+    queryKey: qk.releaseHealth(slug),
+    queryFn: () => api.releaseHealth(slug).then((r) => r.health),
+  });
   const latest = latestAppRelease(store.data?.releases);
   const stable = store.data?.channels.find((c) => c.channel === "stable");
   const stableVersion = stable
@@ -1086,10 +1061,10 @@ function latestAppRelease<
 }
 
 function DistributionTile({ slug }: { slug: string }): React.ReactElement {
-  const rollouts = useQuery(
-    { queryKey: qk.rollouts(slug), queryFn: () => api.rollouts(slug) },
-    queryClient,
-  );
+  const rollouts = useQuery({
+    queryKey: qk.rollouts(slug),
+    queryFn: () => api.rollouts(slug),
+  });
   const list = rollouts.data?.rollouts ?? [];
   const count = (s: string) => list.filter((x) => x.state === s).length;
   const active = list.filter((x) => x.state === "active");
@@ -1115,10 +1090,10 @@ function DistributionTile({ slug }: { slug: string }): React.ReactElement {
 }
 
 function UpdateTile({ slug }: { slug: string }): React.ReactElement {
-  const feed = useQuery(
-    { queryKey: qk.feed(slug), queryFn: () => api.updateSettings(slug) },
-    queryClient,
-  );
+  const feed = useQuery({
+    queryKey: qk.feed(slug),
+    queryFn: () => api.updateSettings(slug),
+  });
   return (
     <TileFrame
       service="update"
@@ -1145,13 +1120,10 @@ function UpdateTile({ slug }: { slug: string }): React.ReactElement {
 }
 
 function IdentityTile({ slug }: { slug: string }): React.ReactElement {
-  const portal = useQuery(
-    {
-      queryKey: qk.portal(slug),
-      queryFn: () => api.portalSettings(slug).then((r) => r.settings),
-    },
-    queryClient,
-  );
+  const portal = useQuery({
+    queryKey: qk.portal(slug),
+    queryFn: () => api.portalSettings(slug).then((r) => r.settings),
+  });
   const s = portal.data;
   const methods = s
     ? [
@@ -1183,14 +1155,11 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
 }
 
 function SyncTile({ slug }: { slug: string }): React.ReactElement {
-  const catalog = useQuery(
-    {
-      queryKey: qk.catalog(slug),
-      queryFn: () => api.schema(slug),
-      retry: false,
-    },
-    queryClient,
-  );
+  const catalog = useQuery({
+    queryKey: qk.catalog(slug),
+    queryFn: () => api.schema(slug),
+    retry: false,
+  });
   const empty = noCatalog(catalog.error);
   const data = empty ? null : catalog.data;
   const settings = userSettings(data ?? null).length;
@@ -1232,10 +1201,10 @@ function TrustPanel({
 }): React.ReactElement {
   const [sdk, setSdk] = React.useState<SdkId>("node");
   // Every key an app pins: active plus staged, from the authenticated admin API (D16).
-  const keys = useQuery(
-    { queryKey: qk.keys(slug), queryFn: () => fetchSigningKeys(slug) },
-    queryClient,
-  );
+  const keys = useQuery({
+    queryKey: qk.keys(slug),
+    queryFn: () => fetchSigningKeys(slug),
+  });
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const jwks = p.jwksUrl ? `${origin}${p.jwksUrl}` : undefined;
   const kid = p.signing?.kid ?? p.signingKid;

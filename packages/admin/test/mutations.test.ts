@@ -13,13 +13,14 @@ import type { QueryKey } from "@tanstack/react-query";
 import { api, setLoginRedirectForTests } from "../src/api.js";
 import {
   MUTATIONS,
+  bindWriteInvalidation,
   invalidateAfter,
   invalidationFor,
   mutate,
   type WriteMethod,
 } from "../src/console/data/mutations.js";
 import { qk } from "../src/console/data/queries.js";
-import { queryClient } from "../src/console/data/queryClient.js";
+import { createQueryClient } from "../src/console/data/queryClient.js";
 
 /**
  * The mutation → invalidation table (docs/design/ADMIN.md §5.4; fixes CC-1 to CC-4).
@@ -60,12 +61,18 @@ async function httpMethods(): Promise<Record<string, string>> {
   return seen;
 }
 
+/** This suite's cache, bound to the write path the way a mounted console tree binds its own. */
+const queryClient = createQueryClient();
+let unbind: () => void = () => undefined;
+
 beforeEach(() => {
   queryClient.clear();
+  unbind = bindWriteInvalidation(queryClient);
   setLoginRedirectForTests(() => undefined);
 });
 
 afterEach(() => {
+  unbind();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });

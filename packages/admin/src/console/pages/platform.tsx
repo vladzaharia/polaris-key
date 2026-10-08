@@ -39,7 +39,6 @@ import { PageHeader } from "../../ui/PageHeader.js";
 import { PlatformSettingsPage } from "./platformSettings.js";
 import { qk } from "../data/queries.js";
 import { StoreConnections } from "./platformStores.js";
-import { queryClient } from "../data/queryClient.js";
 import type { GlobalPageId } from "../nav.js";
 import type { Route } from "../routes.js";
 import { FeedsArea } from "../areas/feeds/FeedsArea.js";
@@ -300,13 +299,10 @@ function useMorePages<T>(
  * required indexes and the bindings (presence only), and the platform activity log.
  */
 export function Deployment(): React.ReactElement {
-  const deployment = useQuery(
-    {
-      queryKey: qk.platformDeployment(),
-      queryFn: fetchPlatformDeployment,
-    },
-    queryClient,
-  );
+  const deployment = useQuery({
+    queryKey: qk.platformDeployment(),
+    queryFn: fetchPlatformDeployment,
+  });
   const d = deployment.data;
   const deploys = useMorePages<PlatformDeploy>(
     (cursor) => api.platformDeployment(cursor).then((r) => r.deploys),
@@ -638,10 +634,10 @@ const ACTION_VERBS: Record<string, string> = {
  * re-seal sweep, a platform settings write). Newest first, with Load more.
  */
 export function ActivityPanel(): React.ReactElement {
-  const activity = useQuery(
-    { queryKey: qk.platformActivity(), queryFn: fetchPlatformActivity },
-    queryClient,
-  );
+  const activity = useQuery({
+    queryKey: qk.platformActivity(),
+    queryFn: fetchPlatformActivity,
+  });
   const more = useMorePages<PlatformActivityItem>(
     (cursor) => api.platformActivity(cursor),
     activity.data,

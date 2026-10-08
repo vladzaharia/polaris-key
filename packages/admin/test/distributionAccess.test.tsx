@@ -10,7 +10,6 @@ import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { configureAxe } from "vitest-axe";
 import { resetConsole } from "./consoleHarness.js";
-import { queryClient } from "../src/console/data/queryClient.js";
 import { qk } from "../src/console/data/queries.js";
 import {
   ACCESS,
@@ -147,7 +146,7 @@ describe("Distribution → Access", () => {
   });
 
   it("keeps an edit through a background refetch (UPS-2)", async () => {
-    bootWith(HASH);
+    const { queryClient } = bootWith(HASH);
     const app = await section("App");
     await userEvent.click(within(app).getByRole("radio", { name: /Public/ }));
     await queryClient.invalidateQueries({ queryKey: qk.access("djdl") });

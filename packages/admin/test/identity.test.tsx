@@ -18,7 +18,6 @@ import type {
   SignInSettings,
   UpdatePortalSettingsBody,
 } from "../src/api.js";
-import { resetCache } from "../src/context.js";
 import { KitProviders } from "../src/kit/KitProviders.js";
 import { AppToaster } from "../src/ui/toast.js";
 
@@ -181,7 +180,6 @@ async function axeViolations(container: HTMLElement): Promise<string[]> {
 }
 
 beforeEach(() => {
-  resetCache();
   portalSettings.mockReset();
   updatePortalSettings.mockReset();
   product.mockReset();
@@ -321,7 +319,6 @@ describe("Identity → Portal", () => {
     renderPortal();
     expect(await screen.findByText(/^Edited/)).toBeTruthy();
     cleanup();
-    resetCache();
     portalSettings.mockResolvedValue({
       settings: { ...PORTAL, modifiedAt: 0 },
     });
@@ -519,7 +516,6 @@ describe("Identity → Portal", () => {
       ),
     ).toBeTruthy();
     cleanup();
-    resetCache();
     portalSettings.mockResolvedValue({
       settings: { ...PORTAL, branding: { accent: "#7c3aed" } },
     });
@@ -611,7 +607,6 @@ describe("Identity → Sign-in", () => {
     renderSignIn();
     expect(await screen.findByText(/is refused \(not entitled\)/)).toBeTruthy();
     cleanup();
-    resetCache();
     edgeMintRecipes.mockResolvedValue(mintResponse(CUSTOM, true));
     renderSignIn();
     expect(

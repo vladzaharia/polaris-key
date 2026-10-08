@@ -39,7 +39,6 @@ import { toast } from "../../ui/toast.js";
 import { useProduct } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
-import { queryClient } from "../data/queryClient.js";
 import { SettingsRow, SettingsSection } from "../templates/Settings.js";
 
 /** Per-setting copy a page supplies: value labels, and what a change to a value means. */
@@ -118,13 +117,10 @@ export function ProductSettingsSection({
   keys?: readonly string[];
   copy?: Record<string, SettingCopy>;
 }): React.ReactElement | null {
-  const q = useQuery(
-    {
-      queryKey: qk.productSettings(slug, area),
-      queryFn: () => api.productSettings(slug, area),
-    },
-    queryClient,
-  );
+  const q = useQuery({
+    queryKey: qk.productSettings(slug, area),
+    queryFn: () => api.productSettings(slug, area),
+  });
   const product = useProduct(slug).data;
   const linked = product?.releaseSource === "github";
 

@@ -2,7 +2,7 @@ import * as React from "react";
 import { Command } from "cmdk";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { Search } from "lucide-react";
-import { useAdmin } from "../../context.js";
+import type { Me } from "../../api.js";
 import { cn } from "../../lib/cn.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { useProduct, useProducts } from "../data/hooks.js";
@@ -27,11 +27,10 @@ import type {
 
 /**
  * What the palette's sources read: the product on screen (when the session has it), what it runs,
- * and every product but the system one. Read here rather than passed in, so a source can be added
- * without touching the shell.
+ * and every product but the system one. Read here from the session rather than passed in piece by
+ * piece, so a source can be added without touching the shell.
  */
-function usePaletteContext(): PaletteContext {
-  const { me } = useAdmin();
+function usePaletteContext(me: Me): PaletteContext {
   const { route } = useLocation();
   const routeSlug = slugOfRoute(route);
   const slug =
@@ -82,15 +81,18 @@ function openInNewTab(href: string): void {
  * dropped, so the shell's navigation and product rows never show twice.
  */
 export function CommandPalette({
+  me,
   open,
   onOpenChange,
   items: extra,
 }: {
+  /** The session: which products the palette may offer. */
+  me: Me;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   items?: PaletteItem[];
 }): React.ReactElement {
-  const ctx = usePaletteContext();
+  const ctx = usePaletteContext(me);
   const { route } = useLocation();
   useRecordRecents(route, route.kind !== "product" || ctx.slug !== null);
 

@@ -43,7 +43,6 @@ import { StatusPill } from "../../ui/StatusPill.js";
 import { Timestamp } from "../../ui/Timestamp.js";
 import { PageHeader } from "../../ui/PageHeader.js";
 import { qk } from "../data/queries.js";
-import { queryClient } from "../data/queryClient.js";
 import {
   AttentionList,
   DashboardTemplate,
@@ -1042,16 +1041,13 @@ export function Operations(): React.ReactElement {
       true,
     ),
   );
-  const ops = useQuery(
-    {
-      queryKey: qk.platformOperations(),
-      queryFn: fetchPlatformOperations,
-      // Pauses by itself while the tab is hidden (TanStack's default), and on the operator's switch.
-      refetchInterval: auto ? OPERATIONS_REFRESH_MS : false,
-      staleTime: 0,
-    },
-    queryClient,
-  );
+  const ops = useQuery({
+    queryKey: qk.platformOperations(),
+    queryFn: fetchPlatformOperations,
+    // Pauses by itself while the tab is hidden (TanStack's default), and on the operator's switch.
+    refetchInterval: auto ? OPERATIONS_REFRESH_MS : false,
+    staleTime: 0,
+  });
   const op = ops.data;
   const assessment = React.useMemo(
     () => (op ? assessOperations(op) : null),
