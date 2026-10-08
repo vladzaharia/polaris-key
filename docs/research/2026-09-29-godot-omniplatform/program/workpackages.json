@@ -2199,13 +2199,16 @@
       "lane": "worker",
       "role": "pkey-implementer",
       "estimateWeeks": [1, 1.5],
-      "deps": ["P0-26"],
+      "deps": ["P0-26", "P0-49"],
       "planMode": true,
       "gates": ["plan-mode", "rule-9"],
-      "humanInputs": [],
+      "humanInputs": [
+        "before PR 2, djdl's channel workflow publishes beta builds as GitHub prereleases or with descriptor `channel: beta`, and PR builds with `channel: pr-<n>`; right after PR 2 deploys, djdl's repository drops `channelWorkflow` and `betaBranch` (plans/P2-12.md Q2)"
+      ],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/P2-12.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track K",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -4604,6 +4607,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/I-27.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track K",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -4611,7 +4615,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/I-27-plan-identity-consolidation.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "I-28",
@@ -5640,19 +5644,27 @@
     },
     {
       "id": "U-01b",
-      "title": "Cloud Sync plan amendment: two stores, one conflict vocabulary, quota as an entitlement",
+      "title": "Cloud Sync amendment: two stores, one conflict vocabulary, quota as an entitlement",
       "phase": "U",
       "stage": "DX consolidation G: Managed config and Cloud Sync",
       "lane": "corpus",
-      "role": "pkey-wire-planner",
-      "estimateWeeks": [0.4, 0.6],
-      "deps": [],
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.4, 1.9],
+      "deps": ["P0-44"],
       "planMode": true,
-      "gates": ["plan-mode"],
+      "gates": [
+        "plan-mode",
+        "rule-9",
+        "corpus",
+        "drift-gate",
+        "docs-generated",
+        "cli-bundle"
+      ],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/U-01b.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track G",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -9201,6 +9213,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/ST-28.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track D",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -9210,7 +9223,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/rbac-admin.md"
       ],
       "brief": "wp/ST-28-plan-console-rbac-console-identity-on.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-29",
@@ -11025,14 +11038,15 @@
       "stage": "DX consolidation J: SDK and UI-kit consolidation",
       "lane": "parity",
       "role": "pkey-sdk-porter",
-      "estimateWeeks": [2, 3],
-      "deps": ["P0-42", "HA-13", "HA-14"],
+      "estimateWeeks": [1.5, 2],
+      "deps": ["P0-42", "HA-13", "HA-14", "P0-39"],
       "planMode": true,
       "gates": ["plan-mode"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/SP-35.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track J",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -11635,7 +11649,7 @@
       "lane": "parity",
       "role": "pkey-sdk-porter",
       "estimateWeeks": [1, 1.5],
-      "deps": ["UK-02", "SP-00"],
+      "deps": ["UK-02", "SP-00", "UK-02a"],
       "planMode": true,
       "gates": [
         "plan-mode",
@@ -11648,13 +11662,13 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/UK-02b.md (approved 2026-10-08)",
         "docs/design/UI-KITS.md §4.6, §5.2",
         "plans/UK-02.md",
         "DX consolidation 2026-10-07: keep (docs/research/2026-10-07-dx-consolidation/backlog-changes.json)"
       ],
       "brief": "wp/UK-02b-ui-fixtures-parity.md",
-      "status": "todo",
-      "planRef": "UK-02"
+      "status": "todo"
     },
     {
       "id": "UK-03",
@@ -13686,6 +13700,7 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/CM-20.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track K",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",
@@ -13693,7 +13708,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/commerce.md"
       ],
       "brief": "wp/CM-20-commerce-consolidation-plan-lx-11-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CM-21",
@@ -13905,13 +13920,13 @@
       "repo": "polaris-key",
       "optional": false,
       "refs": [
-        "plans/CM-29.md",
+        "plans/CM-29.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/integration.md C-17 (reversed by the owner, 2026-10-07)",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track H, Track K (W-LX)",
         "consolidation alias CQW-14"
       ],
       "brief": "wp/CM-29-commerce-service.md",
-      "status": "planning"
+      "status": "todo"
     },
     {
       "id": "LX-26",
@@ -14286,14 +14301,15 @@
       "stage": "DX consolidation E: Licensing model",
       "lane": "worker",
       "role": "pkey-implementer",
-      "estimateWeeks": [2, 2.8],
-      "deps": ["LX-33", "LX-12"],
+      "estimateWeeks": [1.5, 2.1],
+      "deps": ["LX-33", "LX-12", "P0-21"],
       "planMode": true,
       "gates": ["plan-mode", "migration", "table-owners", "threat-model"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
+        "plans/LX-41.md (approved 2026-10-08)",
         "docs/research/2026-10-07-dx-consolidation/README.md §6",
         "docs/research/2026-10-07-dx-consolidation/tracks.md Track E",
         "docs/research/2026-10-07-dx-consolidation/integration.md (decision record)",

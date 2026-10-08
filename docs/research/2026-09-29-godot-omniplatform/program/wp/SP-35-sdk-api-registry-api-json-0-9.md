@@ -3,13 +3,13 @@
 | Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (DX consolidation J: SDK and UI-kit consolidation)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Size        | 2–3 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Depends on  | [P0-42](P0-42-generator-registry-pnpm-gen.md), [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Depends on  | [P0-42](P0-42-generator-registry-pnpm-gen.md), [HA-13](HA-13-sdks-presentation.md), [HA-14](HA-14-godot-presentation.md), [P0-39](P0-39-console-sections-move-page-budget-lead.md)                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [I-10a](I-10a-sdk-identity-node-react-python.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-21](U-21-sdk-settings-godot.md), [LX-19](LX-19-sdks-licensing.md), [LX-20](LX-20-commerce-clients.md), [SP-32a](SP-32a-polaris-key-json-plan-schema-fromconfig.md), [SP-33b](SP-33b-integration-content-on-polaris-key-json.md), [SP-34](SP-34-client-core-takes-neutral-typescript.md), [SP-40](SP-40-retire-react-cookie-mode-browser.md) |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-35.md` first; no code before a human approves it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Plan mode   | yes: executes the approved [`plans/SP-35.md`](../plans/SP-35.md) (2026-10-08) §7 slice 1; SP-35b takes Godot, Swift and Kotlin                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Gates       | `plan-mode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Human input | plan approval (`plans/SP-35.md`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Human input | none                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ## Consolidation 2026-10-07
@@ -17,6 +17,14 @@
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **SDX-04** in [Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation).
 
 - Owner 2026-10-07: removal, not deprecation. No aliases; the 0.9 release notes list the break.
+
+## Approved plan (2026-10-08)
+
+[`plans/SP-35.md`](../plans/SP-35.md) is the scope: its §7 slice 1. It wins over the text below where they differ.
+
+- The registry, the generator and all six surface files, the lint, the enums and `reference/api-names.mdx`; Appendix A's renames in Node, React and Python, with every consumer moved in the same change.
+- Removal, not deprecation (D6): a renamed name becomes a `removed` row, with no alias and no window. Kotlin is not flattened (D4).
+- Swift, Kotlin and Godot stay `planned: SP-35b` at their current spellings; [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) renames them.
 
 ## Goal
 
@@ -53,23 +61,18 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
-2. Wait for the approved `plans/SP-35.md` (written by `pkey-wire-planner`).
-3. Implement the scope; run the green gate; hand off.
+2. Implement `plans/SP-35.md` §7 slice 1; run the green gate; hand off.
 
 ## Acceptance criteria
 
 - [ ] Each SDK's surface test asserts every canonical symbol
 - [ ] No new SDK verb outside api.json (lint)
-- [ ] Plan approved (all-SDK public API)
+- [ ] Every command in `plans/SP-35.md` §13 above the SP-35b line passes
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
 
-```sh
-mise exec node@22 -- pnpm parity:check
-```
-
-Then the full green gate in `AGENTS.md`.
+`plans/SP-35.md` §13 (the lines above `# SP-35b`), then the full green gate in `AGENTS.md`.
 
 ## Hand-off
 

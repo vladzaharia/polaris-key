@@ -7,7 +7,7 @@
 | Depends on  | [ST-38](ST-38-service-table-five-features-one-service.md), [CM-20](CM-20-commerce-consolidation-plan-lx-11-plan.md), [P0-17](P0-17-layering-move-lead-codemod-at-batch-6.md), [P0-27](P0-27-one-adapter-store-delivery-commerce.md) |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-18](LX-18-licensing-wire.md)                                                                                                                                                            |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                               |
-| Plan mode   | yes: [`plans/CM-29.md`](../plans/CM-29.md) (under revision after its critique)                                                                                                                                                      |
+| Plan mode   | yes: executes the approved [`plans/CM-29.md`](../plans/CM-29.md) (2026-10-08); CM-29b runs on the same branch                                                                                                                       |
 | Gates       | `plan-mode`, `corpus`, `drift-gate`, `docs-generated`                                                                                                                                                                               |
 | Human input | none                                                                                                                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                           |
@@ -15,7 +15,7 @@
 ## Consolidation 2026-10-07
 
 Registered by the lead (owner-approved, 2026-10-08) after the owner reversed conflict resolution C-17: Commerce
-is a service. The design is [`plans/CM-29.md`](../plans/CM-29.md) (plan mode; under revision after its critique).
+is a service. The design is the approved [`plans/CM-29.md`](../plans/CM-29.md).
 
 - Owner 2026-10-07/08: **Commerce is a service** (`commerce`, `requires: ["license"]`, CM-29), the sixth feature. The generic requirement rule, derived from `requires` in `tools/services.json`, applies to every service: a service can be enabled only while all its requirements are on (stable code `<slug>_requires_<req>`); disabling a requirement disables its dependents transitively in the same audited batch, with a confirmation naming every dependent; re-enabling a requirement does not re-enable dependents; a manifest that declares a dependent on with a requirement off is a validator error. This replaces the hand-written coherence edges in `core/services.ts` (Cloud Sync's refusal becomes a cascade).
 
@@ -42,7 +42,7 @@ discovery and the corpus mirror; the device routes to `/<p>/commerce/*` together
 aliases); the store hook URLs kept as Commerce's canonical routes; the code move to `services/commerce/`; the
 console's sixth feature row; the RBAC `commerce` area; the automatic catch-up when Commerce is turned back on.
 
-**Out:** Polaris Key's own checkout (behind the owner's "commerce: go"); the brand accent (its own package).
+**Out:** Polaris Key's own checkout (behind the owner's "commerce: go"); the brand accent ([CM-29b](CM-29b-commerce-accent.md), on this branch); the store-client move ([P0-27a](P0-27a-store-clients-core-stores.md)).
 
 ## Acceptance
 
