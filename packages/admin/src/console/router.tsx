@@ -3,7 +3,7 @@
  * navigation blocker (docs/design/ADMIN.md §2.6). No router dependency: the route table is
  * `nav.ts` + `routes.ts`, and this file only watches the hash.
  *
- * - **Redirects.** When the hash is an old or not-ready URL, the canonical hash replaces it with
+ * - **Redirects.** When the hash is a section root, the canonical hash replaces it with
  *   `history.replaceState`, so Back does not loop through the redirect.
  * - **Links** are real `<a href>` (fixes SH-5): middle-click and open-in-new-tab work.
  * - **Query state.** `useSearchParam(name, codec)` reads and writes one hash-query parameter.
@@ -257,7 +257,7 @@ export interface Location {
   route: Route;
 }
 
-/** The current location. Applies a pending redirect (old or not-ready URL) after commit. */
+/** The current location. Applies a pending redirect (a section root) after commit. */
 export function useLocation(): Location {
   const hash = React.useSyncExternalStore(subscribe, snapshot, () => "");
   const { route, redirect } = parsed(hash);
