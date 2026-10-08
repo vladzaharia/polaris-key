@@ -864,15 +864,22 @@ function ReviewDrawer({
             const row = draft[u.key]!;
             const below = inherited?.[u.key];
             const fallback = entryDefault(entry);
+            // A row left at Default under a lower lock is ignored (the Worker's `mergeMap`).
+            const lockedBelow =
+              below !== undefined &&
+              below.state !== "default" &&
+              row.state === "default";
             const effective = !row.set
               ? below
-                ? `${formatValue(below.value)} (from ${below.source})`
+                ? `${formatValue(below.value)} (from ${below.source}${lockedBelow ? ", locked" : ""})`
                 : fallback !== undefined
                   ? `${formatValue(fallback)} (the catalog default)`
                   : "nothing: no layer sets this key"
-              : isSecretEntry(entry)
-                ? "the secret (write-only)"
-                : formatValue(row.value);
+              : lockedBelow
+                ? `${formatValue(below.value)} (enforced by ${below.source})`
+                : isSecretEntry(entry)
+                  ? "the secret (write-only)"
+                  : formatValue(row.value);
             return (
               <li
                 key={u.key}
