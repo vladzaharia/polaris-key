@@ -4,5 +4,8 @@
   "offline-request": "┌   Tidewater Studio  · offline-request\n│\n◆  Offline activation\n│  Send this request code to whoever gave you your license.\n│\n│      dev_9fK2Lw7QmZ\n│\n│       █▀▀▀▀▀█  ▄▄▀█ █▀▀▀▀▀█\n│       █ ███ █  █▄▀▀ █ ███ █\n│       █ ▀▀▀ █ ▄▀▄ ▀ █ ▀▀▀ █\n│       ▀▀▀▀▀▀▀ ▀ █▄█ ▀▀▀▀▀▀▀\n│       █  ▀ █▀ █▄█▀ █ ▀▄  ▄▄\n│       █▀█▄▄▄▀█ ███▀▀▄ ▄█▀▄█\n│       ▀▀▀▀ ▀▀▀█ ██▄▄█▄▄▀ ▀█\n│       █▀▀▀▀▀█ ▄▄▀ ▀  ██▀ █▄\n│       █ ███ █ ▄▄█▄▀ ▄█▄██▄▄\n│       █ ▀▀▀ █  ▄█▀█▀ ▀██  ▀\n│       ▀▀▀▀▀▀▀ ▀▀  ▀▀▀    ▀\n│\n└  tidewater import-bundle <file>   Activate from an offline activation file",
   "login-code": "┌   Tidewater Studio  · login\n│\n◆  Sign in with a code\n│  On any phone or computer, go to key.plrs.im/device and enter this code.\n│\n│      WDJB-MJHT\n│\n│  Check the code there matches this one.\n│  Code expires in 4:12\n│\n⠋  Waiting for you to sign in…\n└  c copy the code · Esc cancel",
   "device-limit": "┌   Tidewater Studio  · activate\n│\n◇  License key · pkey_tidewater_••••••\n▲  Your license is on 3 of 3 devices\n│  ●●●\n│  Replace a device in your browser, then try again here.\n│  key.plrs.im/portal/tidewater/devices\n└  Enter open in browser · Esc cancel",
-  "login-cancelled": "┌   Tidewater Studio  · login\n│\n✗  Sign-in cancelled\n│\n└  tidewater login   Sign in again"
+  "login-cancelled": "┌   Tidewater Studio  · login\n│\n✗  Sign-in cancelled\n│\n└  tidewater login   Sign in again",
+  "status-active": "┌   Tidewater Studio  · status\n│\n✓  License   Pro · mara@fennick.studio\n✓  Offline   until Oct 19\n✓  Version   2.4.1 · stable",
+  "status-none": "┌   Tidewater Studio  · status\n│\n◆  Activate\n│\n│  tidewater activate   Use a license key\n└  tidewater login      Sign in",
+  "update-check": "┌   Tidewater Studio  · update check\n│\n◆  2.5.0 is available · 61 MB\n│  You have 2.4.1\n│\n│  tidewater update apply   Install\n└  tidewater changelog      What's new"
 }

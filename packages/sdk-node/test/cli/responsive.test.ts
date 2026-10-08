@@ -24,6 +24,7 @@ import {
   offlineRequestFlow,
   statusFlow,
   updateApplyFlow,
+  updateCheckFlow,
 } from "../../src/cli/flows.js";
 import { renderHelp } from "../../src/cli/help.js";
 import { CLI_VERBS } from "../../src/cli/kit.js";
@@ -1164,6 +1165,35 @@ const parityCases: Record<string, (h: Harness) => Promise<unknown>> = {
   "status-revoked": (h) =>
     statusFlow(h.ctx, stubClient({ status: () => ({ status: "revoked" }) })),
   "offline-request": async (h) => offlineRequestFlow(h.ctx, stubClient()),
+  // The licence is active: the tier it carries ("Pro"), the holder and the version.
+  "status-active": (h) => statusFlow(h.ctx, stubClient()),
+  // No licence yet.
+  "status-none": (h) =>
+    statusFlow(
+      h.ctx,
+      stubClient({ status: () => ({ status: "needs-activation" }) }),
+    ),
+  // A newer version with its download size ("61 MB").
+  "update-check": (h) =>
+    updateCheckFlow(
+      h.ctx,
+      stubClient({
+        update: {
+          decide: async () => ({
+            decision: {
+              action: "binary",
+              method: "full",
+              release: { version: "2.5.0", seq: 7, size: 61_000_000 },
+              build: "b",
+              mandatory: false,
+              critical: false,
+              prestage: [],
+              discardStaged: false,
+            },
+          }),
+        },
+      }),
+    ),
   "devices-one": (h) =>
     devicesListFlow(
       h.ctx,
