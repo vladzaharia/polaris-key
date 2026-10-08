@@ -12,6 +12,15 @@
 | Human input | none                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                 |
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; the web browses, so no QR).
+- **In this kit:** These are the React fix round's rules applied before UK-05: the neutral device-limit callout with Replace a device as the primary, revoked with actions (DL6), errors in their slots and no false empty state (DL7), the scheme resolved against the host and an opaque Sign out (DL2, DL13), and hard-coded strings moved into the copy defaults (DL8).
+- **Minimum check:** The React browser suite's sizes in both schemes and both presets, for every changed screen.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 React kit and gate fixes before UK-05, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -52,6 +61,7 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 - [ ] `onConfigChange` fires under StrictMode.
 - [ ] The corpus and transcripts are unchanged.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

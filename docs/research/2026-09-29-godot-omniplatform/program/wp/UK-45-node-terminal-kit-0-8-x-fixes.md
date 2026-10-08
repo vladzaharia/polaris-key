@@ -12,6 +12,15 @@
 | Human input | none                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                 |
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL16 and DL18 in the [terminal form](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#terminal-form); DL17 does not apply.
+- **In this kit:** The fixes in this package are language fixes: product-first strings (DL5, DL8), refusals with their fix (DL6), errors that end in the next step (DL7), catalog labels for tiers, platforms and settings (DL8), and OSC 11 skipped once the theme is decided (DL13).
+- **Minimum check:** The terminal rows for each changed screen, plus a resize sequence; cross-kit text parity with the Python kit at 80×24.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 Node terminal kit 0.8.x fixes, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -50,6 +59,7 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 - [ ] `update apply` goldens for npm, pnpm, brew, npx, no driver and not-configured each end in an actionable line.
 - [ ] A lint finds no kit string naming Polaris Key where the product fits.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

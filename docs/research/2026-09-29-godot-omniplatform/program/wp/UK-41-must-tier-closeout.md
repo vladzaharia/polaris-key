@@ -35,6 +35,15 @@ These approved plans change this package. Where they differ from the text below,
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **For this package.** Confirm each must-tier kit meets the five rules above, with its matrix renders in the close-out report.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18.
+- **In this kit:** None: this package checks the must kits against the language.
+- **Minimum check:** Each must kit's matrix renders in the close-out report, with its UK-55 debt at zero if UK-55 has landed.
+- **Acceptance:** every must kit's matrix rows pass, and a UX review of each must kit's gate, sign-in, device-limit, update and settings flows gives each screen a quality verdict of good or better.
+
 ## Goal
 
 The must tier is done as one system: every must kit takes the product's registered accent and icon with zero integrator code against a real discovery document, the side-by-side report is reviewed, and the parity rows say so.
@@ -76,6 +85,7 @@ Kits were built against the presentation seam before HA-13 and HA-14 landed; thi
 - [ ] Every must kit has the end-to-end presentation test and it passes.
 - [ ] `pnpm parity:check -- --check` passes with the `ui.*` rows proven for the must kits.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify

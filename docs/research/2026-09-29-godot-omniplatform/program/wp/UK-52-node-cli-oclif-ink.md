@@ -12,6 +12,15 @@
 | Human input | none                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                               |
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL16 and DL18 in the [terminal form](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#terminal-form); DL17 does not apply.
+- **In this kit:** The oclif plugin gates a command with one static field (DL18) and prints the kit's refusal line (DL6). Ink's `<PolarisGate>` prints the terminal kit's frames: the shape from `useStdout()`, the same compaction order, rail and glyphs.
+- **Minimum check:** Ink goldens equal to the Node kit's at the terminal rows; the oclif refusal output at 80×24 and 40×24.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 Node CLI frameworks, should tier: the `@polaris-key/oclif` plugin and Ink components, as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -46,6 +55,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 - [ ] An oclif host gates a command through the plugin and a refusal exits 4.
 - [ ] An Ink `<PolarisGate>` renders the kit's states.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

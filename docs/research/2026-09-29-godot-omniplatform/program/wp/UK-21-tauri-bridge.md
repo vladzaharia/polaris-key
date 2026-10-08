@@ -1,16 +1,16 @@
 # UK-21 Tauri v2 bridge: `tauri-plugin-polaris-key`, a thin Rust plugin running a `@polaris-key/node` sidecar and forwarding the bridge over `invoke`/events, so the web kits render unchanged
 
-| Field       | Value                                                                                                |
-| ----------- | ---------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                       |
-| Size        | 1.5–2.5 engineer-weeks                                                                               |
-| Depends on  | [UK-04](UK-04-web-components.md), [UK-06](UK-06-electron-kit.md), [UK-16](UK-16-ui-docs-scaffold.md) |
-| Unblocks    | none                                                                                                 |
-| Role        | `pkey-sdk-porter`                                                                                    |
-| Plan mode   | no                                                                                                   |
-| Gates       | screenshots of the Tauri sample on Windows, macOS and Linux; `cargo test` for the plugin             |
-| Human input | none                                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                            |
+| Field       | Value                                                                                                                                       |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                                                              |
+| Size        | 1.5–2.5 engineer-weeks                                                                                                                      |
+| Depends on  | [UK-04](UK-04-web-components.md), [UK-06](UK-06-electron-kit.md), [UK-16](UK-16-ui-docs-scaffold.md), [UK-56](UK-56-kit-mockups-refresh.md) |
+| Unblocks    | none                                                                                                                                        |
+| Role        | `pkey-sdk-porter`                                                                                                                           |
+| Plan mode   | no                                                                                                                                          |
+| Gates       | screenshots of the Tauri sample on Windows, macOS and Linux; `cargo test` for the plugin                                                    |
+| Human input | none                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                   |
 
 ## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
 
@@ -43,6 +43,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 ## Owner direction (2026-10-08)
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only).
+- **In this kit:** As UK-06, in the system webview: WebView2 on Windows, WKWebView on macOS and WebKitGTK on Linux. Evaluate WebKitGTK's support for `@starting-style`, View Transitions and container-query units; where one is missing the step is instant, as under reduced motion, and the layout still holds. Links open through the plugin's opener, behind its https check.
+- **Minimum check:** The sample's screenshots on the three OSes at the phone, desktop and wide rows as window sizes, both schemes.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
 ## Goal
 
@@ -95,6 +104,7 @@ The owner kept UK-21 as a should and X-02 (the native Rust plugin) optional (202
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (`windows.html`, `linux.html`, `desktop.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

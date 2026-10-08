@@ -4,7 +4,7 @@
 | ----------- | ---------------------------------------------------------------------------------------------------------- |
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                             |
 | Size        | 1.5–2 engineer-weeks                                                                                       |
-| Depends on  | [UK-08](UK-08-swiftui-macos.md)                                                                            |
+| Depends on  | [UK-08](UK-08-swiftui-macos.md), [UK-56](UK-56-kit-mockups-refresh.md)                                     |
 | Unblocks    | none                                                                                                       |
 | Role        | `pkey-sdk-porter`                                                                                          |
 | Plan mode   | no                                                                                                         |
@@ -42,6 +42,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 ## Owner direction (2026-10-08)
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18, inherited from UK-08 (see [hosted surfaces](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#hosted-surfaces)).
+- **In this kit:** Hosts UK-08's views in `NSHostingController`. `beginGateSheet(for:)` uses the inset Mac sheet; the Preferences window names its pane in its title; Return, Escape and ⌘, behave as in UK-08.
+- **Minimum check:** Pixel equality with UK-08's baselines at the Mac rows; a keyboard-only walk of the sample.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
 ## Goal
 
@@ -93,6 +102,7 @@ AppKit document apps need sheet presenters and a Preferences controller over the
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (the Apple boards (`ios.html`, `desktop.html`) and the UK-01 additions) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

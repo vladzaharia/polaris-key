@@ -36,6 +36,15 @@ These approved plans change this package. Where they differ from the text below,
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; the web browses, so no QR).
+- **In this kit:** Done after a key and Add your name and email are steps of the one form, so they take its arrangement (DL1) and keep its product header (DL5). Start using <Product> is the one primary, with the recommendation as a quiet card (DL4). Focus goes to the primary when Done appears and to the name field when Add your name and email opens (DL9). The card lists only the reasons the product has (DL8).
+- **Minimum check:** Every UK-42 fixture state at the web rows of UK-04 and UK-05, both schemes and both presets.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 After a key activates, the kit's form shows a Done step that gently recommends keeping the product
@@ -107,6 +116,7 @@ nameHint, purpose: "attach", licenseChoice: "app"})`, then `choice.complete({kin
 - [ ] Add your name and email ends with the same `licenseId`, the device signed in, and the licence
       in the account (integration test against the Worker).
 - [ ] Cloud Sync is listed only when the product has it (test).
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] `gen:brand -- --check` and the green gate pass (AGENTS.md).
 
 ## Verify

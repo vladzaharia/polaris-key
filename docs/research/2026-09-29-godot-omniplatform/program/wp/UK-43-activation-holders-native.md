@@ -33,6 +33,15 @@ These approved plans change this package. Where they differ from the text below,
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** As each kit's own row (UK-07, UK-08, UK-09, UK-10, UK-11, UK-12, and the [terminal form](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#terminal-form)).
+- **In this kit:** Each kit renders UK-42's states with its own adaptation from the application matrix. Native fields carry the name and email content types; macOS uses title case; the terminals print one recommendation line with the portal URL.
+- **Minimum check:** Each kit's minimum rows from its own row, for every UK-42 state.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 SwiftUI (iOS, iPadOS, macOS), Compose (Android and desktop), Godot, Qt and the terminal kits show
@@ -78,6 +87,7 @@ as the hero and keeps native controls. The states are defined once in UK-42's fi
 - [ ] Every UK-42 fixture state renders in each kit in both themes (snapshots).
 - [ ] Add your name and email ends with the same licence id and a signed-in device in each kit's
       sample (manual run recorded in the PR, or the kit's integration test).
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including each touched SDK's suite.
 
 ## Verify

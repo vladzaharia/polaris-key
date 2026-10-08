@@ -27,6 +27,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL2, DL3, DL5, DL8, DL12, DL13 and DL18 checked in each recipe; the rest come with the elements.
+- **In this kit:** Each recipe uses the elements as shipped. The bring-your-own-design-system recipe maps the host's tokens onto `--pk-*` and keeps the spacing scale, the three weights and the contrast the resolver guarantees. No recipe styles into a shadow root.
+- **Minimum check:** Each example at phone portrait and desktop in both schemes passes `pnpm ui:lint` (with UK-55's rules once they land); one UX review across the recipes.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 Docs recipes show the elements in SolidJS, Preact, Qwik, htmx and plain pages, each verified by a tiny runnable example.
@@ -64,6 +73,7 @@ These are could rows of §5.1: recipes, not kits. The spec is [`docs/design/UI-K
 
 - [ ] Each example renders the gate in both themes and passes `pnpm ui:lint`.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify

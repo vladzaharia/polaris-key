@@ -1,16 +1,16 @@
 # UK-06 Electron kit inside @polaris-key/node/electron
 
-| Field       | Value                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                 |
-| Size        | 1.5–2 engineer-weeks                                                                                                         |
-| Depends on  | [UK-03](UK-03-ui-core.md), [UK-05](UK-05-react-kit.md), [UK-16](UK-16-ui-docs-scaffold.md), [SP-31](SP-31-node-bridge-v4.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-21](UK-21-tauri-bridge.md), [UK-41](UK-41-must-tier-closeout.md)                 |
-| Role        | `pkey-sdk-porter`                                                                                                            |
-| Plan mode   | no                                                                                                                           |
-| Gates       | Playwright Electron screenshots on Windows, macOS and Linux chrome; `pnpm ui:lint` on the renderer                           |
-| Human input | none                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                    |
+| Field       | Value                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                        |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                |
+| Depends on  | [UK-03](UK-03-ui-core.md), [UK-05](UK-05-react-kit.md), [UK-16](UK-16-ui-docs-scaffold.md), [SP-31](SP-31-node-bridge-v4.md), [UK-56](UK-56-kit-mockups-refresh.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-21](UK-21-tauri-bridge.md), [UK-41](UK-41-must-tier-closeout.md)                                                        |
+| Role        | `pkey-sdk-porter`                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                  |
+| Gates       | Playwright Electron screenshots on Windows, macOS and Linux chrome; `pnpm ui:lint` on the renderer                                                                  |
+| Human input | none                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                           |
 
 ## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
 
@@ -57,6 +57,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; desktops browse).
+- **In this kit:** The renderer is the React kit in the [desktop chrome](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#desktop-chrome) that `theme.platform: "auto"` picks. Windows resize, so DL1 applies at window sizes. Menu items use title case on macOS, notifications use catalog strings, and `shell.openExternal` runs only behind the main process's https check.
+- **Minimum check:** Playwright Electron on the three chromes at the phone, tablet, desktop and wide rows as window sizes, both schemes and both presets, at 100 % and 200 % zoom.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
 ## Goal
 
@@ -113,6 +122,7 @@ Node's largest UI gap (GA): every Electron integrator writes the IPC bridge by h
 - [ ] A design review against the mockups (`windows.html`, `linux.html`, `desktop.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

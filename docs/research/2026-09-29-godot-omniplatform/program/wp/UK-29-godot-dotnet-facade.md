@@ -27,6 +27,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18, inherited from UK-11 (see [hosted surfaces](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#hosted-surfaces)).
+- **In this kit:** Typed C# wrappers over UK-11's scenes and controllers: no C# scene, theme or layout, so nothing to adapt. Signals keep the busy and focus semantics.
+- **Minimum check:** The C# demo pixel-equal to the GDScript baselines at the Godot rows in both schemes; a gamepad walk of the demo.
+- **Acceptance:** the matrix rows above pass; UK-11's UX review covers the screens, and this package's review covers the demo's gamepad walk.
+
 ## Goal
 
 A Godot C# project uses the same kit with typed C# APIs, with no second implementation of any scene.
@@ -66,6 +75,7 @@ Godot .NET is a should row of §5.1. It is a facade over the GDScript kit and do
 
 - [ ] The C# demo renders the same baselines as the GDScript demo in both themes.
 - [ ] The wrapper generator has a `--check` mode in the Godot lane.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify

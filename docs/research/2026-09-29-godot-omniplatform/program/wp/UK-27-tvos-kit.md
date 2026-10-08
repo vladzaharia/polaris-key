@@ -1,16 +1,16 @@
 # UK-27 tvOS kit: focus-engine layouts, device-code sign-in first, `systemGroupedBackground` fix; `.tvOS(.v18)` declared; CI and snapshots
 
-| Field       | Value                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                             |
-| Size        | 1.5–2 engineer-weeks                                                                                       |
-| Depends on  | [UK-07](UK-07-swiftui-ios.md), [SP-08](SP-08-apple-platform-values.md)                                     |
-| Unblocks    | none                                                                                                       |
-| Role        | `pkey-sdk-porter`                                                                                          |
-| Plan mode   | no                                                                                                         |
-| Gates       | swift-snapshot-testing baselines in both themes; the SwiftUI lint equivalents; `swift build && swift test` |
-| Human input | none                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                  |
+| Field       | Value                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                                |
+| Size        | 1.5–2 engineer-weeks                                                                                          |
+| Depends on  | [UK-07](UK-07-swiftui-ios.md), [SP-08](SP-08-apple-platform-values.md), [UK-56](UK-56-kit-mockups-refresh.md) |
+| Unblocks    | none                                                                                                          |
+| Role        | `pkey-sdk-porter`                                                                                             |
+| Plan mode   | no                                                                                                            |
+| Gates       | swift-snapshot-testing baselines in both themes; the SwiftUI lint equivalents; `swift build && swift test`    |
+| Human input | none                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                     |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -51,6 +51,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 ## Owner direction (2026-10-08)
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: a QR on every sign-in; tvOS cannot browse).
+- **In this kit:** The focus engine replaces the kit ring: the system focus effects (lift on the card button style) are DL9's ring, and `prefersDefaultFocus` puts first focus on the first real control (after the code arrives, Use a license key instead; never an opener). Menu backs out. The screen is always landscape at 1920×1080: the start pane holds identity, title, the instruction, the URL on its own line, the code and the countdown; the end pane holds the QR, the device line and the controls, as in the Compose TV screens. Dark by default, inside the system's TV safe area, at §1.5's TV type floor; the email is masked until focused.
+- **Minimum check:** The TV row in both schemes and both presets; a focus pass per screen (on appear, after the code arrives, after each async result); reduced motion. The UX review judges at TV distance.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
 ## Goal
 
@@ -102,6 +111,7 @@ tvOS is a should row of §5.1; TV opens on the device-code path (§4.3) and SP-0
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (the Apple boards (`ios.html`, `desktop.html`) and the UK-01 additions) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

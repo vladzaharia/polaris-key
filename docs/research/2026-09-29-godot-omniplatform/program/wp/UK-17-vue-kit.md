@@ -27,6 +27,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; the web browses, so no QR), inherited from UK-04.
+- **In this kit:** Vue and Nuxt wrappers over the elements, adding no layout. Parts, slots and focus pass through: no wrapper element breaks the container query or `delegatesFocus`. Nuxt renders nothing until hydration, so DL7's loading delay holds and nothing flashes. Router transitions never take focus from the kit. `providePolarisKey` maps onto the elements' theme.
+- **Minimum check:** Phone portrait, phone landscape and desktop in both schemes and both presets, pixel-equal to UK-04's baselines for the same states.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 A Vue 3 / Nuxt app gates itself in its framework's idiom, with every element's parts and slots passed through and typed.
@@ -78,6 +87,7 @@ Vue 3 / Nuxt is a should row of §5.1: the elements already work there, and this
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (`web.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

@@ -1,16 +1,16 @@
 # UK-12 Qt Quick kit on polaris_key.ui.core
 
-| Field       | Value                                                                                                                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                 |
-| Size        | 3–4 engineer-weeks                                                                                                                                                                                                           |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md), [UK-13](UK-13-python-terminal.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-38](UK-38-python-wx-kivy.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md)                                |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                                                            |
-| Plan mode   | no                                                                                                                                                                                                                           |
-| Gates       | pytest-qt `grab()` baselines (offscreen); the Qt lint equivalent; Python `pytest -q`                                                                                                                                         |
-| Human input | none                                                                                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                        |
+| Size        | 3–4 engineer-weeks                                                                                                                                                                                                                                                  |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md), [UK-13](UK-13-python-terminal.md), [UK-56](UK-56-kit-mockups-refresh.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-38](UK-38-python-wx-kivy.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md)                                                                       |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                                                                                                                  |
+| Gates       | pytest-qt `grab()` baselines (offscreen); the Qt lint equivalent; Python `pytest -q`                                                                                                                                                                                |
+| Human input | none                                                                                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                           |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -67,6 +67,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: a QR only for the offline-activation request).
+- **In this kit:** Qt Quick in the [desktop chrome](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#desktop-chrome). DL1 reads the root item's width and height, with the elements' thresholds in logical px. Dialogs dim the window with a `MultiEffect` scrim. Spacing comes from the space tokens in the generated `Theme.qml`. The kit draws its ring only on `visualFocus` (keyboard), and `forceActiveFocus()` puts initial focus on the primary. Type uses point sizes, never `pixelSize`, so the font scale applies. `native` is the platform `QStyle` or the Qt Quick native style with only spacing and hierarchy applied. `QDesktopServices.openUrl` runs only behind the https check.
+- **Minimum check:** pytest-qt `grab()` offscreen at the GUI rows as window sizes in the Windows, macOS and Linux variants, both schemes and both presets, and at font scale 2; the Qt lint.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
 ## Goal
 
@@ -131,6 +140,7 @@ Python has no UI kit today and its `ui.kit` row hid the gap (GA). The owner fixe
 - [ ] A design review against the mockups (the desktop, Windows and Linux boards (the Qt boards drawn in UK-01)) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

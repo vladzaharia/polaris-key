@@ -27,6 +27,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18, inherited from UK-09 (see [hosted surfaces](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#hosted-surfaces)).
+- **In this kit:** Hosts UK-09's composables in `ComposeView`. The Activity is edge-to-edge, so DL17's insets reach the content; it handles predictive back and maps its theme attributes onto the kit theme without fixing sizes.
+- **Minimum check:** Pixel equality with UK-09's baselines for the hosted states at the phone and tablet rows.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 An XML/Fragment Android app (and the Godot Android plugin) uses the Compose kit without writing Compose.
@@ -77,6 +86,7 @@ Many Android apps and the Godot Android plugin are not Compose hosts (§5.1). Th
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (`android.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

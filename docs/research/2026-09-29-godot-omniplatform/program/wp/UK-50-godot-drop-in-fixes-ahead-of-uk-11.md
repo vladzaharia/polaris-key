@@ -12,6 +12,15 @@
 | Human input | none                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                 |
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: a QR only on pad-only, TV and console screens).
+- **In this kit:** Registers the `fix/godot-ui-responsive` work, which carries DL1, DL3, DL10 and DL15, and adds initial focus on every screen (DL9), one update prompt that always has an action (DL4, DL6), and no Pinned K on any product screen (DL5). Drop the QR behind Use another device on phones (DL14).
+- **Minimum check:** `suite_ui_matrix` at 1280×720, 1280×800, 640×360 and 1080×2400 in the brand and native looks, with the cold-start focus pass.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 Godot drop-in fixes ahead of UK-11, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -53,6 +62,7 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 - [ ] No product screen shows the Pinned K.
 - [ ] No leak warning at exit.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

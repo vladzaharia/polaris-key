@@ -65,6 +65,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: a QR only on pad-only, TV and console screens).
+- **In this kit:** Game UI. Two columns when the panel is landscape, at least 680 layout px wide and at least 1.5:1, for identity-plus-form screens; 4:3 gets one centred column; phone portrait (under 560 layout px, or `OS.has_feature("mobile")`) goes full-bleed, top-aligned, with the actions docked and stacked, primary on top. Dialogs over a running game sit on the 0.42 (dark) or 0.2 (light) scrim; the gate and boot keep their opaque ground. Densities derive from `PKeyKitTokens`. The last input decides focus: after a pad or keyboard, grab the initial control; after a pointer, nothing until the first D-pad press. Busy controls keep focus, and the ring is 3 px at a 2 px offset plus a fill step. On phones the scale ladder takes a floor from the screen's density (16 dp body, 48 dp controls). The CJK fallback has a 600 face. `ui_branding` defaults to the brand look, the accent comes from `PKeyAccent`, and the native look borrows the ancestor or project theme with a kit ring and a ground where the game's panel is empty. Links pass `PKeyOutletAdapter.is_https`. Title-safe 5 % and the toast anchor keep play visible.
+- **Minimum check:** `suite_ui_matrix` at §7.1's Godot rows plus 640×360, 1080×2400, 1170×2532 at 3×, 1536×2048 and 3440×1440, in the brand, native, custom, default and accent looks; the focus pass and the stretch setups to PNG; `de` and `ja`. The UX review compares with the fix round's `godot.*` renders.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 A game gates itself with `await PolarisKey.boot()` and every screen looks like modern game UI: glass panels, the game's wordmark, a console focus ring, input glyphs, themed engine controls, at console and Steam Deck sizes.
@@ -130,6 +139,7 @@ The Godot kit has solid plumbing but dated pixels: about 4/10 for polish (§0, G
 - [ ] A design review against the mockups (`godot.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

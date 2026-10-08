@@ -27,6 +27,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL2, DL4–DL9, DL12, DL13, DL15, DL16 and DL18; StoreKit's views own their layout, scaling and safe areas.
+- **In this kit:** StoreKit draws the store; the kit supplies the marketing header (the product's icon and name, DL5) and the theme: `.tint` from the resolved accent under `polaris-key`, the host's tint under `native`. StoreKit's purchase button is the one primary, and restore is a secondary (`.storeButton(.visible, for: .restorePurchases)`). Prices and terms are StoreKit's own localised strings, the one exception to DL8.
+- **Minimum check:** iPhone, iPad and Mac rows in both schemes, with a StoreKit configuration for loading, offers, purchasing, purchased, restore and unavailable.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 The StoreKit 2 surface of the Swift kit exists, reuses the SwiftUI views and presentation core with no second implementation, and is baselined in both themes.
@@ -77,6 +86,7 @@ On Apple platforms the Paywall must use StoreKit's own views (§4.1 Paywall, §5
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (the Apple boards (`ios.html`, `desktop.html`) and the UK-01 additions) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

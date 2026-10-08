@@ -1,16 +1,16 @@
 # UK-26 visionOS kit: glass windows, ornaments for banners, hover effects; `.visionOS(.v2)` declared; CI and snapshots
 
-| Field       | Value                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                             |
-| Size        | 1.5–2 engineer-weeks                                                                                       |
-| Depends on  | [UK-07](UK-07-swiftui-ios.md), [SP-08](SP-08-apple-platform-values.md)                                     |
-| Unblocks    | none                                                                                                       |
-| Role        | `pkey-sdk-porter`                                                                                          |
-| Plan mode   | no                                                                                                         |
-| Gates       | swift-snapshot-testing baselines in both themes; the SwiftUI lint equivalents; `swift build && swift test` |
-| Human input | none                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                  |
+| Field       | Value                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (should)                                |
+| Size        | 1.5–2 engineer-weeks                                                                                          |
+| Depends on  | [UK-07](UK-07-swiftui-ios.md), [SP-08](SP-08-apple-platform-values.md), [UK-56](UK-56-kit-mockups-refresh.md) |
+| Unblocks    | none                                                                                                          |
+| Role        | `pkey-sdk-porter`                                                                                             |
+| Plan mode   | no                                                                                                            |
+| Gates       | swift-snapshot-testing baselines in both themes; the SwiftUI lint equivalents; `swift build && swift test`    |
+| Human input | none                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                     |
 
 ## Consolidation 2026-10-07
 
@@ -26,6 +26,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 ## Owner direction (2026-10-08)
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL16 and DL18 (DL14: links only; DL17: ornaments sit outside the window instead of insets).
+- **In this kit:** No built precedent: evaluate on the simulator before committing to a look. Starting points: the window's glass is always the system material (`glassBackgroundEffect`), so the ambient is off and `polaris-key` shows only in the accent, type and identity; banners (grace, update) are ornaments on the window's bottom edge; gaze hover (`.hoverEffect`) is the DL9 focus signal; targets are at least 60 pt; the default window is landscape, so DL1's two panes apply to the gate. Evaluate whether Rubik at 400 reads on glass, where system text is heavier, and record what "both schemes" means without a light and dark switch (for example two simulated environments).
+- **Minimum check:** Simulator snapshots at the default window size and a narrow, tall window, in a light and a dark environment.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
 ## Goal
 
@@ -77,6 +86,7 @@ visionOS is a should row of §5.1; SP-08 adds the canonical `visionos` platform 
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (the Apple boards (`ios.html`, `desktop.html`) and the UK-01 additions) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

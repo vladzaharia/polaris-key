@@ -12,6 +12,15 @@
 | Human input | none                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                 |
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only).
+- **In this kit:** The SwiftUI fix round's rules on today's kit: every blocking state gets an action that can change it (DL6), the accent goes through `PolarisAccent.resolve` (DL13), Return submits and refusals are announced (DL7, DL9), and a licensed launch never flashes the activation card (DL7). The device-limit callout turns neutral, replacing the round's danger-subtle ground.
+- **Minimum check:** The `KitLayoutTests` rows (iPhone, SE, iPad and Mac, at L, AX3 and AX5) in both schemes and both presets, for every changed screen.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 SwiftUI kit and Swift SDK 0.8.x correctness pass, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -51,6 +60,7 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 - [ ] A licensed cold launch never renders the activation card (first-frame snapshot).
 - [ ] The README blocks compile in SP-45b's lane.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
