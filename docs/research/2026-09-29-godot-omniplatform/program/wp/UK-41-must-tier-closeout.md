@@ -20,10 +20,16 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "UI kits must-tier close-out: presentation accent and icon verified end to end in every must kit, `pnpm ui:report` review, `ui.*` parity rows proven, docs complete".
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: retires `ui.kit`, `ui.kit.manage` and `ui.kit.keyentry` once the ten rows are implemented, on the reduced matrix; checks the two terminal kits against `ui.cli` and the states their verbs reach (D12).
+
 ## Owner direction (2026-10-08)
 
 - **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
-- **Resolution matrix.** Tested at the committed matrix: phone portrait and landscape, small landscape 640 × 360, tablet, desktop 1440 and 1920, and TV where relevant, each also at 200% text or zoom.
+- **Resolution matrix.** Tested at every size in [UI-KITS.md](../../../../design/UI-KITS.md) §7.1, including 200% text or zoom.
 - **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
 - **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.

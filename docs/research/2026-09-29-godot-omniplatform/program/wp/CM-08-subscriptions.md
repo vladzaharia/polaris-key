@@ -27,6 +27,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added CM-05 and LX-41; removed CM-06.
 - Absorbs CM-07: One-time and subscription tier changes share pricing and reversal rules.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: writes through `core/licensing/subscriptions.ts`; a store's billing grace is `pastDue`'s `storeGraceEnd`.
+
 ## Goal
 
 Subscription offers sell through Checkout; a base subscription keeps one licence alive (`expires_at` = period end + buffer), an add-on subscription a grant; trials, failed renewals (`past_due`, `dunningGraceDays`), cancellation at period end, resume, resubscription reusing the same licence, and prorated tier changes all behave as S-22 §7.6 specifies.

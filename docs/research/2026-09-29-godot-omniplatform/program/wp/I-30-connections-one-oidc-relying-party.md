@@ -18,6 +18,13 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Owner 2026-10-07: no compatibility window. The Pocket ID env override goes in the same release that seeds Pocket ID as a platform connection (`tracks.md` rule 6).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: connections carry `audience: customers | operators | both`. It refuses `operators` and `both` from a console write until ST-32 adds the Superadmin-only gate; its `source: env` seed is exempt. A platform-connection link created through an operator connection gets `strong_at` (SM-3(b)). Its `/callback` writes `groups_json`, `claims_json` and `asserted_at` in one `UPDATE`.
+- [`plans/I-27.md`](../plans/I-27.md) §12: §2.3 in full: `/callback` through `platformSignInPolicy` and `beginProviderSignIn`; the vouch rule on the gate paths only, with the legacy engine unchanged; `amr` and `claims_json` (access-rule claims only), with no birth date on links; `createLocalJWKSet`, the DNS-over-HTTPS host and exact domains; the seed job and secret custody; the seeded row as the only source, with no env-override window (its backlog scope's "at least 30 days … 14 days" goes); only platform connections can be operator connections; auto-link per Q1 (owner, 2026-10-08: a platform connection on a DNS-verified domain, an exact match on an address verified on exactly one account, an email to that account and an audit row), and the join offer for every other case.
+
 ## Goal
 
 Connections: one OIDC relying-party client, verified domains, identifier routing, as scoped below. Done when every acceptance criterion holds and the green gate passes.

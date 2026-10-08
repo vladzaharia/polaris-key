@@ -21,6 +21,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Collections SDK in Swift, Kotlin and Godot: the same with `Codable`, `@Serializable` and GDScript dictionaries".
 - Absorbs U-25: As U-13 for Swift, Kotlin and Godot.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: `cloudSync.saves` on records and files; `collection()` reserved. [`plans/SP-35.md`](../plans/SP-35.md) §12: `cloudSync.saves` as recorded.
+
 ## Goal
 
 Swift, Kotlin and Godot expose collections like U-22, with `Codable`, `@Serializable` and GDScript dictionaries.

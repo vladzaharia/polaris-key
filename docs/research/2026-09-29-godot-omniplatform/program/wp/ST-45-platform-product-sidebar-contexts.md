@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-09, UX-13, UX-14, UX-26.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: filtering through `useCan`.
+
 ## Goal
 
 Platform and Product sidebar contexts, as scoped below. Done when every acceptance criterion holds and the green gate passes.

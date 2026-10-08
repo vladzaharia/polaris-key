@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **IX-04** in [Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the built-in connection rows with `seed-builtin-connections`, and the `SIGNIN_*` names removed in the same release (its scope's "env `SIGNIN_*` as overrides" goes). Operator audiences stay refused until ST-32.
+
 ## Goal
 
 Platform -> Connections and setup wizards, as scoped below. Done when every acceptance criterion holds and the green gate passes.

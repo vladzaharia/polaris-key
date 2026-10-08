@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **IX-08** in [Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: §2.4: the birth date accepted from the gate record only; terms URLs, with privacy linked and not accepted; one `ALTER` per file. Acceptance (Q2): terms acceptance is recorded for every new account once `identity.platformTerms` is set; none is shown or recorded while it is unset.
+
 ## Goal
 
 Profile v2: screen name, birth date, platform terms, as scoped below. Done when every acceptance criterion holds and the green gate passes.

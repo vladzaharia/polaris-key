@@ -38,6 +38,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Email gate UI: `EmailGate` with `ProfileImport` in the login card, all §4.29 variants, plain and under the app header, join hand-off".
 - Depends on: added I-33 and P0-38.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the D4 flow and ConsentStep's toggles; FinishStep per §2.4.
+
 ## Goal
 
 The login card's `/signin/confirm-email` step renders `EmailGate` with `ProfileImport` in every §4.29 variant (verified, code, Steam empty, terms), plain and under the app header, with the `email_in_use` join hand-off and no skip path.

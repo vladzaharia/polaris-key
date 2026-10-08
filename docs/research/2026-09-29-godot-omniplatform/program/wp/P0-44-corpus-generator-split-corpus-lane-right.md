@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CQT-03** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: moves `tools/ui-matrix.ts` if UK-02b lands first (D11).
+
 ## Goal
 
 Corpus generator split (corpus lane, right after HA-12), as scoped below. Done when every acceptance criterion holds and the green gate passes.

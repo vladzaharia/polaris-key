@@ -28,6 +28,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: removed U-05.
 - UX rows that name this package: UX-28 (dropped: merged into ST-07 (pre-save diff) and ST-16 (fan-out confirm)).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: only `cloudSync.ceiling.bytes` and `writesPaused`.
+
 ## Goal
 
 Platform defaults and policies apply to product settings: platform values inherit live with a fan-out preview and an L2 confirm, entries offer enforce or delegate where they allow a lock, and clamped values are displayed. Covers licence defaults, the key-entry maximum and the Cloud Sync ceilings.

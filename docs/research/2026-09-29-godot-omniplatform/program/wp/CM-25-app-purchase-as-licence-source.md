@@ -1,20 +1,27 @@
 # CM-25 App purchase as a licence source
 
-| Field       | Value                                                                                                                                                                                |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                                    |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                 |
-| Depends on  | [CM-20](CM-20-commerce-consolidation-plan-lx-11-plan.md), [LX-11](LX-11-commerce-rework.md), [LX-10](LX-10-anchor-choice.md), [CM-22](CM-22-purchases-ledger-one-revocation-path.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                               |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                |
-| Plan mode   | yes: `pkey-wire-planner` writes `plans/CM-25.md` first; no code before a human approves it                                                                                           |
-| Gates       | `plan-mode`, `threat-model`                                                                                                                                                          |
-| Human input | plan approval (`plans/CM-25.md`)                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                            |
+| Field       | Value                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                             |
+| Depends on  | [CM-20](CM-20-commerce-consolidation-plan-lx-11-plan.md), [LX-11](LX-11-commerce-rework.md), [LX-10](LX-10-anchor-choice.md), [CM-29](CM-29-commerce-service.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-20](LX-20-commerce-clients.md), [CM-24](CM-24-one-steam-ownership-engine-absorbs-ps-07.md)                           |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                            |
+| Plan mode   | yes: `pkey-wire-planner` writes `plans/CM-25.md` first; no code before a human approves it                                                                       |
+| Gates       | `plan-mode`, `threat-model`                                                                                                                                      |
+| Human input | plan approval (`plans/CM-25.md`)                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                        |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CM-25** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: its plan keeps §3.2's names.
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: its code goes in `services/commerce/`, after CM-29.
 
 ## Goal
 

@@ -97,6 +97,14 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Absorbs PX-W9b: Same six-SDK activation surface as identity v2 (C-47): one pass instead of two.
 - Absorbs UK-44: Hints are an argument of the same signIn.start call I-10a/b introduce.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: §5.
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: the `identity.signIn` and `subject` rows from I-27's plan; `beginSignIn`, `pollSignIn`, `waitForSignIn` and `signInWithBrowser` are removed, not aliased. It implements Kotlin `signOut`.
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: the D3 mapping into the sign-in session vocabulary, and the `account` family appended to `ui-matrix.json`.
+
 ## Goal
 
 Swift, Kotlin and Godot (Godot first) handle layer 1 identity with the same calls and refusals as I-10a, using device-code passthrough with a QR code; `PolarisKeyUI`, the Kotlin activation component and Godot's `addons/polaris_key/ui` show the refusals and the "add to your Library" prompt.

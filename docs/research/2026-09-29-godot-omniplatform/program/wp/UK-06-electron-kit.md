@@ -37,10 +37,16 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "`@polaris-key/electron`: `registerPolarisKey` (main) and `exposePolarisKey` (preload) replacing the hand-written bridge, menu items, notifications, autoUpdater progress into UpdateProgress".
 - Depends on: added SP-31.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/UK-02b.md`](../plans/UK-02b.md) §8: owns Node's ten `ui.*` rows. The family run is UK-03's ui-core runner under Node's `testRoots`; the render is a test under `packages/sdk-node/test/` that drives the main-process half of `@polaris-key/node/electron` and snapshots the view each family sends over the bridge (D9).
+
 ## Owner direction (2026-10-08)
 
 - **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
-- **Resolution matrix.** Tested at the committed matrix: phone portrait and landscape, small landscape 640 × 360, tablet, desktop 1440 and 1920, and TV where relevant, each also at 200% text or zoom.
+- **Resolution matrix.** Tested at every size in [UI-KITS.md](../../../../design/UI-KITS.md) §7.1, including 200% text or zoom.
 - **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
 - **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.

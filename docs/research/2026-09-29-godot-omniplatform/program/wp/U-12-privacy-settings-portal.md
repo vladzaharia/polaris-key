@@ -20,6 +20,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "Privacy (settings half) and the portal Cloud Sync section: settings and account overrides in I-11's and I-12's exports, delete cascade on account and per-product deletion, tombstone re-apply after restore, the product-page section".
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: one quota number per tier, shown read-only with a link to Tiers, plus the ceiling and the pause state. Labels are read server-side.
+
 ## Goal
 
 Settings and account overrides are covered by export and deletion from day one, and the portal's product page shows a Cloud Sync section for products with the service on: usage, last sync per device, export of that product's data, and "remove my data from this product".

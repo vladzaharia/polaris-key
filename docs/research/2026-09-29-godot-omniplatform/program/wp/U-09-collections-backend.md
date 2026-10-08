@@ -1,16 +1,16 @@
 # U-09 Records store with the saves template (absorbs U-24b)
 
-| Field       | Value                                                                                                                                                                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                                                                                                                                                                        |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                                                       |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-19](U-19-security-review.md), [U-01b](U-01b-cloud-sync-plan-amendment-two-stores-one.md)                                                                                                  |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-11a](U-11a-console-data-settings.md), [U-10](U-10-saves-backend.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md), [U-16](U-16-developer-backend-api.md) |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                        |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                            |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                                                                                                                       |
-| Human input | none                                                                                                                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                                                                                                                                                                                                      |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                                                                                     |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-19](U-19-security-review.md), [U-01b](U-01b-cloud-sync-plan-amendment-two-stores-one.md)                                                                                                                                |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-11a](U-11a-console-data-settings.md), [U-08](U-08-merge-prompt.md), [U-10](U-10-saves-backend.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md), [U-16](U-16-developer-backend-api.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                      |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                                          |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                                                                                                                                                     |
+| Human input | none                                                                                                                                                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                  |
 
 ## Consolidation 2026-10-07
 
@@ -21,6 +21,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Collections backend: records with CAS and `*`, `inc`, `record_fields` merge, `set_elements` OR-set, wildcard collections, `ownerRead` and `server` classes with console writes, unlicensed limits".
 - Depends on: added U-01b.
 - Absorbs U-24b: Records export and delete land with the store.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: templates (`saves` slots pinned at 16), `conflictField`, `requires`, `entitlement_required`, parking, export and delete, T4, T19 and the PRIVACY row.
 
 ## Goal
 

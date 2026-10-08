@@ -18,6 +18,13 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Owner 2026-10-07: no compatibility window. `PKEY_ADMIN_COOKIE` goes from the CLI and the docs in the same release as the admin-scope tokens (`tracks.md` rule 6).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: the token principal comes from `resolvePrincipal`, and SM-1 applies to minting. It removes `PKEY_ADMIN_COOKIE` from the CLI, the Action bundle and the docs in the same release as `pkey login`.
+- [`plans/I-27.md`](../plans/I-27.md) §12: §2.5's lifetimes, device login with `purpose: "cli"`, and the phishing row.
+
 ## Goal
 
 Admin-scope personal tokens and pkey login, as scoped below. Done when every acceptance criterion holds and the green gate passes.
@@ -59,7 +66,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - [ ] A token never exceeds its holder's roles at use time (test)
 - [ ] An admin-scope token is refused by the registry and a packages token by the admin API (test)
-- [ ] No PKEY_ADMIN_COOKIE in the CLI or docs after the window
+- [ ] No `PKEY_ADMIN_COOKIE` in the CLI, the Action bundle or the docs in the release that ships `pkey login`
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

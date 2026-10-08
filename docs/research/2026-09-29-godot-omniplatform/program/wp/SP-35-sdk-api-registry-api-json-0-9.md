@@ -25,6 +25,7 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - The registry, the generator and all six surface files, the lint, the enums and `reference/api-names.mdx`; Appendix A's renames in Node, React and Python, with every consumer moved in the same change.
 - Removal, not deprecation (D6): a renamed name becomes a `removed` row, with no alias and no window. Kotlin is not flattened (D4).
 - Swift, Kotlin and Godot stay `planned: SP-35b` at their current spellings; [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) renames them.
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: record D8's names in `api.json`, including `setting(key).sync()`.
 
 ## Goal
 
@@ -46,7 +47,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- conformance/parity/api.json: canonical concept -> per-SDK symbol with deprecated rows and removal versions; the canonical name is the one most SDKs ship (config.get, getSecret, mintToken, set, clear, clearAll, setting(key) with visibility and sync, onConfigChange; entitlements.has/value/grants with quantity reserved; identity.signIn/subject/signOut; one events stream with a cloudSync kind; collection() reserved); renames only where SDKs disagree (React expectedServices, Godot product_slug, Python pinned_keys, Kotlin options flattened) with language-native deprecated aliases kept for the published deprecation window (P0-24); HA-13 and HA-14's presentation readers land first and are recorded; React cookie mode marked deprecated for SP-40; generated per-SDK surface tests; reference/api-names.mdx; samples, docs and console snippets regenerated. Two slices: TypeScript and Python, then Swift, Kotlin and Godot. Heads the serial SDK lane (SP-35 -> SP-34 -> SP-32a -> SP-32b -> SP-39); lands before I-10a/b, LX-19, U-06 and CM-15.
+- conformance/parity/api.json: canonical concept -> per-SDK symbol with `removed` rows (no aliases); the canonical name is the one most SDKs ship (config.get, getSecret, mintToken, set, clear, clearAll, setting(key) with visibility and sync, onConfigChange; entitlements.has/value/grants with quantity reserved; identity.signIn/subject/signOut; one events stream with a cloudSync kind; collection() reserved); renames only where SDKs disagree (React expectedServices, Godot product_slug and pinned_keys, Python pinned_keys; Kotlin is not flattened); HA-13 and HA-14's presentation readers land first and are recorded; React's `auth` row for SP-40's removal of cookie mode; generated per-SDK surface tests; reference/api-names.mdx; samples, docs and console snippets regenerated. Two slices: TypeScript and Python, then Swift, Kotlin and Godot. Heads the serial SDK lane (SP-35 -> SP-34 -> SP-32a -> SP-32b -> SP-39); lands before I-10a/b, LX-19, U-06 and CM-15.
 
 **Out** (and where it belongs instead):
 

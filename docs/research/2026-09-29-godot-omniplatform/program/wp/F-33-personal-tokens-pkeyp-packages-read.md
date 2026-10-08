@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **FX-01** in [Track I, Packages, updates and packs](../../../2026-10-07-dx-consolidation/tracks.md#i-packages-updates-and-packs).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: §2.5's lifetimes, device login with `purpose: "cli"`, and the phishing row.
+
 ## Goal
 
 Personal tokens (`pkeyp_`, `packages:read`) and portal Packages, as scoped below. Done when every acceptance criterion holds and the green gate passes.

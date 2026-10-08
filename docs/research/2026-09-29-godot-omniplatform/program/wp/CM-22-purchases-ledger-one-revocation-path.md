@@ -1,20 +1,27 @@
 # CM-22 Purchases ledger and one revocation path
 
-| Field       | Value                                                                                                                                                                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                                                                                                                |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                                                                                           |
-| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md)                                                                                                                                                                                           |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-23](CM-23-console-commerce-offers-purchases-sales.md), [CM-25](CM-25-app-purchase-as-licence-source.md), [CM-26](CM-26-portal-account-purchases-across.md), [CM-28](CM-28-consumables-quantity-grants-from-store.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                                               |
-| Plan mode   | no                                                                                                                                                                                                                                                               |
-| Gates       | none beyond the green gate                                                                                                                                                                                                                                       |
-| Human input | none                                                                                                                                                                                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                        |
+| Field       | Value                                                                                                                                                                                                          |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                                                              |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                                         |
+| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md)                                                                                                                                         |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-23](CM-23-console-commerce-offers-purchases-sales.md), [CM-26](CM-26-portal-account-purchases-across.md), [CM-28](CM-28-consumables-quantity-grants-from-store.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                             |
+| Plan mode   | no                                                                                                                                                                                                             |
+| Gates       | none beyond the green gate                                                                                                                                                                                     |
+| Human input | none                                                                                                                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                      |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CM-22** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: without `revokePurchase` (D9 moved to LX-11).
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: the catch-up. Commerce's first tick after an off-to-on change (its last-tick marker is older than two intervals) polls Play's voided purchases at once (30-day lookback); beyond it, it re-verifies active Play purchases. For the App Store it reads Apple's notification history first (six months) and re-verifies active purchases only beyond it (Q6).
 
 ## Goal
 

@@ -21,6 +21,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Collections SDK in Node, React and Python: `collection`, `put`, `update` with the CAS loop, `add` and `remove`, `onConflict`, records attach merge".
 - Absorbs U-13: Saves are the template of the one records store; the saves SDK is U-22's v1 surface.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: `cloudSync.saves` on records and files; `collection()` reserved. [`plans/SP-35.md`](../plans/SP-35.md) §12: `cloudSync.saves` as recorded.
+
 ## Goal
 
 Node, React and Python expose collections: `collection`, `put`, `update` with the CAS loop, `add` and `remove`, `onConflict`, and the records branch of the attach merge.

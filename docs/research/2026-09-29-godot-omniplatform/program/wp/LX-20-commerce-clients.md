@@ -1,16 +1,16 @@
 # LX-20 Store commerce client parity (one wave with LX-19)
 
-| Field       | Value                                                                                                                                                                        |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire)                                                                                               |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                         |
-| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-18](LX-18-licensing-wire.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-14](CM-14-device-checkout-wire.md)                                                                                               |
-| Role        | `pkey-sdk-porter`                                                                                                                                                            |
-| Plan mode   | no                                                                                                                                                                           |
-| Gates       | all six SDKs (`parity:check`); macOS CI; Android CI                                                                                                                          |
-| Human input | none                                                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                    |
+| Field       | Value                                                                                                                                                                                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire)                                                                                                                                                                                     |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                               |
+| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-18](LX-18-licensing-wire.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md), [CM-25](CM-25-app-purchase-as-licence-source.md), [CM-29](CM-29-commerce-service.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-14](CM-14-device-checkout-wire.md)                                                                                                                                                                                     |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                  |
+| Plan mode   | no                                                                                                                                                                                                                                                                 |
+| Gates       | all six SDKs (`parity:check`); macOS CI; Android CI                                                                                                                                                                                                                |
+| Human input | none                                                                                                                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                          |
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -28,6 +28,13 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added LX-18 and SP-35.
 
 - Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: all six SDKs, Godot included; the §5.2 surface, with the "holder bindings" item dropped (D5) and the binding re-read after a licence change added. Removed with no alias, each with its `api.json` `removed` row: the SDK helpers that read `products[]`. The Worker half drops `products[]` from the binding answer and re-records the three commerce transcripts without it (Q4). No route move, no gate move and no Worker path change: CM-29's release moved them. The `allowedNa` web row for `commerce.appPurchase`, with its `why`.
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: the `entitlements.*` names, `license.term()` and the `entitlement` kind.
 
 ## Goal
 

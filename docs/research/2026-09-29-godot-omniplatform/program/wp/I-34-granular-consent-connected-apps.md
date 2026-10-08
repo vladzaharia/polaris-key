@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **IX-09** in [Track F, Identity](../../../2026-10-07-dx-consolidation/tracks.md#f-identity).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the §12.7.3 text; `scopeHash` unchanged.
+
 ## Goal
 
 Granular consent and Connected apps, as scoped below. Done when every acceptance criterion holds and the green gate passes.

@@ -41,6 +41,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "`resolveDeviceEntitlements`: `legacy` (byte-identical) and `combined` modes, contributors under `entitlementHolder: device`, combine and state rules, holder report, caching by holder versions, every caller switched".
 - Depends on: added LX-34.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: no `syncAccess` swap.
+
 ## Goal
 
 `resolveDeviceEntitlements` computes every device's entitlements in `legacy` mode (byte-identical to today) and `combined` mode (contributors under `entitlementHolder: device`, combine and state rules), produces the holder report, caches by holder versions, and every caller uses it.

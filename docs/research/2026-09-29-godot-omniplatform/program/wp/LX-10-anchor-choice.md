@@ -55,6 +55,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Depends on: added P0-20.
 - Absorbs LX-21: The reanchor: onRefresh setting goes; the useful behaviour is LX-10's fixed re-home rule and a portal device action.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: "covers the running build" uses the capped window; a lapsed licence ranks as usable.
+
 ## Goal
 
 Activation chooses the anchor by `anchorPolicy` (default `rank-first`) for sign-in, attach, Discover and base claims, handles licence-less devices, supersedes an enrolled free licence on attach and re-homes its grants; I-09's inline rule is replaced by `chooseAnchor`.

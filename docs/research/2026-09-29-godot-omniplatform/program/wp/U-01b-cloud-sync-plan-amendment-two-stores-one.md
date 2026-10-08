@@ -1,16 +1,16 @@
 # U-01b Cloud Sync amendment: two stores, one conflict vocabulary, quota as an entitlement
 
-| Field       | Value                                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (DX consolidation G: Managed config and Cloud Sync)                                                                  |
-| Size        | 1.4–1.9 engineer-weeks                                                                                                                    |
-| Depends on  | [P0-44](P0-44-corpus-generator-split-corpus-lane-right.md)                                                                                |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-05](U-05-cloud-sync-do.md), [U-10](U-10-saves-backend.md), [U-09](U-09-collections-backend.md) |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                     |
-| Plan mode   | yes: executes the approved [`plans/U-01b.md`](../plans/U-01b.md) (2026-10-08) §2–§4 and its §6.1 items                                    |
-| Gates       | `plan-mode`, `rule-9`, `corpus`, `drift-gate`, `docs-generated`, `cli-bundle`                                                             |
-| Human input | none                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                 |
+| Field       | Value                                                                                                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | U: Cloud Sync (S-17) (DX consolidation G: Managed config and Cloud Sync)                                                                                                                         |
+| Size        | 1.4–1.9 engineer-weeks                                                                                                                                                                           |
+| Depends on  | [P0-44](P0-44-corpus-generator-split-corpus-lane-right.md)                                                                                                                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-05](U-05-cloud-sync-do.md), [U-10](U-10-saves-backend.md), [U-09](U-09-collections-backend.md), [U-30](U-30-config-types-in-app-visibility-in-one.md) |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                            |
+| Plan mode   | yes: executes the approved [`plans/U-01b.md`](../plans/U-01b.md) (2026-10-08) §2–§4 and its §6.1 items                                                                                           |
+| Gates       | `plan-mode`, `rule-9`, `corpus`, `drift-gate`, `docs-generated`, `cli-bundle`                                                                                                                    |
+| Human input | none                                                                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                        |
 
 ## Consolidation 2026-10-07
 

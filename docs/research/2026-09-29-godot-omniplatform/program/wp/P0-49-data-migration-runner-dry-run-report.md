@@ -16,6 +16,13 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CQW-17** in [Track B, Foundations (code quality the feature tracks build on)](../../../2026-10-07-dx-consolidation/tracks.md#b-foundations-code-quality-the-feature-tracks-build-on).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the seven jobs in §6.
+- [`plans/P2-12.md`](../plans/P2-12.md) §7: P2-12's `update-resolver` job, with its classes, its pacing and its down steps. [`plans/CM-29.md`](../plans/CM-29.md) §10: no CM-29 consumer (a pre-deploy check replaces the job).
+
 ## Goal
 
 Data-migration runner (dry run, report, apply), as scoped below. Done when every acceptance criterion holds and the green gate passes.

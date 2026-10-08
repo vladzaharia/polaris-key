@@ -27,6 +27,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Licensing contract step: stop dual-writing, final reconciliation, drop or retire the old objects".
 - Depends on: added U-28, LX-36, LX-38, LX-40 and PS-12.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: §6.1's contract step, including the two empty binding tables.
+
 ## Goal
 
 The old licensing objects are retired: dual-writing stops, a final reconciliation shows zero drift, and old columns are dropped where D1 allows without a rebuild (else left dead); `license_store_grants` is dropped last.

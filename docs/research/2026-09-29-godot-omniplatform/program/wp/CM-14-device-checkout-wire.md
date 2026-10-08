@@ -25,6 +25,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "Device checkout hand-off (wire): `POST /<p>/distribution/commerce/checkout`, `offers[]` on the binding response, `store_billing_required`, grant source `polaris-key` in the enums".
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: W1 becomes `POST /<p>/commerce/checkout`.
+
 ## Goal
 
 Exactly the approved W1–W4 of `plans/CM-01.md` ship on the Worker: the device route returns a single-use checkout ticket URL for desktop and web builds and `403 store_billing_required` for store builds; the binding response carries `offers[]` for non-store builds only; `errors.json` and `enums.json` gain the code and the `polaris-key` source; transcripts and constants are regenerated.

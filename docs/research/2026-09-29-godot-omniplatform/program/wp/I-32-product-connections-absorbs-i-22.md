@@ -19,6 +19,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - Owner 2026-10-07: no compatibility window. What this package replaces (a route, mode, shape, Action input or CLI form) is removed in the same release; the one exception is a path that native app binaries already on end-user machines call (DJDL's desktop builds, the permanent alias routes), removed once DJDL has shipped a build on 0.9 (`tracks.md` rule 6).
 - Absorbs I-22: Bring-your-own-auth becomes a product connection with exchange: true; firebase is an oidc connection with a JWKS override.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: product connections. The `302` only if its dry run is non-empty and the owner grants it (Q5). I-32b and I-32c take the retirement and the drops.
+
 ## Goal
 
 Product connections (absorbs I-22), as scoped below. Done when every acceptance criterion holds and the green gate passes.

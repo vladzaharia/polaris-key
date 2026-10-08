@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **LX-16b** in [Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: also drops `dist_store_products`, `dist_holder_bindings` and `dist_binding_aliases` (§6.1).
+
 ## Goal
 
 Licensing contract drops (release N+1), as scoped below. Done when every acceptance criterion holds and the green gate passes.

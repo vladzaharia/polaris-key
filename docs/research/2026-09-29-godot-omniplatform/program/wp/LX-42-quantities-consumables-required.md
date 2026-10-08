@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **LX-42** in [Track K, Corpus lane (wire trains, serial)](../../../2026-10-07-dx-consolidation/tracks.md#k-corpus-lane-wire-trains-serial).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: adds the quantity argument to `grantAddOn` and lifts LX-11's refusal of quantities above 1.
+
 ## Goal
 
 Quantities and consumables (required licensing-train member), as scoped below. Done when every acceptance criterion holds and the green gate passes.

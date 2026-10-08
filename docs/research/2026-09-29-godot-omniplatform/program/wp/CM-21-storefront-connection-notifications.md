@@ -1,20 +1,27 @@
 # CM-21 Storefront connection: notifications automation and one test-purchase switch
 
-| Field       | Value                                                                                                                                                                    |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                        |
-| Size        | 0.6–0.9 engineer-weeks                                                                                                                                                   |
-| Depends on  | [CM-20](CM-20-commerce-consolidation-plan-lx-11-plan.md), [A-28](A-28-one-store-app-binding-derived-identity.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-23](CM-23-console-commerce-offers-purchases-sales.md)                                                                        |
-| Role        | `pkey-implementer`                                                                                                                                                       |
-| Plan mode   | no                                                                                                                                                                       |
-| Gates       | `threat-model`                                                                                                                                                           |
-| Human input | none                                                                                                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                |
+| Field       | Value                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                                                            |
+| Size        | 0.6–0.9 engineer-weeks                                                                                                                                                                                       |
+| Depends on  | [CM-20](CM-20-commerce-consolidation-plan-lx-11-plan.md), [A-28](A-28-one-store-app-binding-derived-identity.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md), [CM-29](CM-29-commerce-service.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-23](CM-23-console-commerce-offers-purchases-sales.md)                                                                                                            |
+| Role        | `pkey-implementer`                                                                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                                                                           |
+| Gates       | `threat-model`                                                                                                                                                                                               |
+| Human input | none                                                                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                    |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CM-21** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: the D13 states on CM-29's readiness, so Ready includes the channel, and what counts as unresolved. The ASC notifications URL and the Play push-audience default use CM-29's `storeHookPath` (`/<p>/distribution/hooks/{app-store,play-rtdn}`). It brings a narrowing-only job. `commerce.acceptTestPurchases` is `securityWidening` with an L2 confirm, in Commerce's settings slice.
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: the URL builder, the ASC write gate and the Play `pushAudience` default read `storeHookPath`. Claims wait for Ready, which includes the channel. It narrows CM-29's Distribution-off test to non-store sources.
 
 ## Goal
 

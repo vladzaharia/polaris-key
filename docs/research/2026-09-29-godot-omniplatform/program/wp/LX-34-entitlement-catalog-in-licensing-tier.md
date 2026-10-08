@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: `pkey.cloudSync.bytes` becomes a platform `quantity` entitlement (default 256 MiB, shown while Cloud Sync is on).
+
 ## Goal
 
 Entitlement catalog in Licensing; tier entitlements; platform entitlements (absorbs CFG-06), as scoped below. Done when every acceptance criterion holds and the green gate passes.

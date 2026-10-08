@@ -1,16 +1,16 @@
 # UK-02b UI state fixtures and parity rows: shared component/state/copy-key fixtures, `features.json` `ui.*` rows, every SDK's `parity.json` at `planned`
 
-| Field       | Value                                                                                                                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                  |
-| Size        | 1–1.5 engineer-weeks                                                                                                                                                                          |
-| Depends on  | [UK-02](UK-02-copy-fixtures-parity-plan.md), [SP-00](SP-00-parity-registry-plan.md), [UK-02a](UK-02a-kit-copy-catalog.md)                                                                     |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-03](UK-03-ui-core.md), [UK-07](UK-07-swiftui-ios.md), [UK-09](UK-09-compose-android.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md) |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                          |
-| Plan mode   | yes: executes the approved [`plans/UK-02b.md`](../plans/UK-02b.md) (2026-10-08), which carries [`plans/UK-02.md`](../plans/UK-02.md) §3.5 and §4                                              |
-| Gates       | plan mode (executes `plans/UK-02b.md`); `pnpm parity:check -- --check`; `gen:constants -- --check` (feature ids); the generated parity docs page                                              |
-| Human input | none                                                                                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                     |
+| Field       | Value                                                                                                                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                      |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                                              |
+| Depends on  | [UK-02](UK-02-copy-fixtures-parity-plan.md), [SP-00](SP-00-parity-registry-plan.md), [UK-02a](UK-02a-kit-copy-catalog.md)                                                                         |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-03](UK-03-ui-core.md), [UK-07](UK-07-swiftui-ios.md), [UK-09](UK-09-compose-android.md), [UK-11](UK-11-godot-kit.md), [UK-12](UK-12-python-qt.md)     |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                              |
+| Plan mode   | yes: executes the approved [`plans/UK-02b.md`](../plans/UK-02b.md) (2026-10-08), which carries [`plans/UK-02.md`](../plans/UK-02.md) §3.5 and §4                                                  |
+| Gates       | plan mode (executes `plans/UK-02b.md`); `pnpm parity:check -- --check`; `gen:constants -- --check` (feature ids); `gen:corpus -- --check`; `gen:brand -- --check`; the generated parity docs page |
+| Human input | none                                                                                                                                                                                              |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                         |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -35,7 +35,7 @@ D-78–D-93. Where this brief differs, they win. **No device-wire version change
 the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
 every row, no "Account-wide"). For this package:
 
-- Add the `signin-form` fixtures: every step and state of the one form (methods, handoff, no browser, code, finishing, choose and its §6.2 states, replace, replace confirm, key, done, grant expired, cancelled) in the `inline` and `sheet` presentations, and the parity row `ui.kit.signin` (`allowedNa` `headless` for Node).
+- Add the `signin-form` fixtures: every step and state of the one form (methods, handoff, no browser, code, finishing, choose and its §6.2 states, replace, replace confirm, key, done, grant expired, cancelled) in the `inline` and `sheet` presentations. They are the `signIn` family of `ui.signin` (D1).
 
 ## Consolidation 2026-10-07
 
@@ -50,11 +50,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - `ui.signin` covers the whole sign-in form; no `ui.kit.signin` row (D1).
 - Service-off rows come from one dependency map; Paywall and EntitlementGate depend on `license`, and CM-29 appends the `commerce` pairs (D5, Q4).
 - No runner is added; every SDK suite keeps its verdicts (§5).
+- Node's `ui.*` owner is UK-06 (§8).
 
 ## Owner direction (2026-10-08)
 
 - **Responsive.** Every kit screen adapts to its window, with landscape layouts where the window is landscape.
-- **Resolution matrix.** Tested at the committed matrix: phone portrait and landscape, small landscape 640 × 360, tablet, desktop 1440 and 1920, and TV where relevant, each also at 200% text or zoom.
+- **Resolution matrix.** Tested at every size in [UI-KITS.md](../../../../design/UI-KITS.md) §7.1, including 200% text or zoom.
 - **Spacing and theming.** One spacing rhythm, and themable with `preset: "polaris-key" | "native"`, where `native` matches the platform.
 - **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.

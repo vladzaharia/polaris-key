@@ -22,6 +22,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: the Commerce group shows while the service is on.
+
 ## Goal
 
 Console IA: Distribution and Commerce groups, as scoped below. Done when every acceptance criterion holds and the green gate passes.

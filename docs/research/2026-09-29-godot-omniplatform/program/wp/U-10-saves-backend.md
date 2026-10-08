@@ -9,7 +9,7 @@
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                            |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                |
 | Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; `wrangler.toml`                                          |
-| Human input | a dedicated R2 bucket for save blobs per environment, binding `SYNC_SAVES`, no bucket lock (plans/U-01.md Q4), plus an EU twin if U-24 offers residency                                          |
+| Human input | the R2 buckets `polaris-key-sync-files-{prod,staging,dev}`, binding `SYNC_FILES`, no bucket lock (plans/U-01.md Q4), plus an EU twin if U-24 offers residency                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                        |
 
 ## Amendments from approved plans (2026-10-05)
@@ -27,6 +27,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "Saves backend: begin, streamed upload with sha256, finalize, revisions, metadata policies, R2 GC alarm, per-principal data keys, `requiresFlag`, unlicensed saves limits".
 - Depends on: added U-09 and U-01b.
 - Absorbs U-24a: Export and delete land with each store; shredding and prefix delete with files.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: files on records, the routes in §2.3, `SYNC_FILES`, files refused for licence-less quota, T9, T11 and the PRIVACY row.
 
 ## Goal
 

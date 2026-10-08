@@ -16,6 +16,13 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **OB-01** in [Track A, Ground truth, decisions and quick wins](../../../2026-10-07-dx-consolidation/tracks.md#a-ground-truth-decisions-and-quick-wins).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the glossary rows, "Account profile" included.
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: six features; the glossary's "Commerce (a fact, not a switch)" becomes a service.
+
 ## Goal
 
 Vocabulary: one word per concept (rule 4), as scoped below. Done when every acceptance criterion holds and the green gate passes.

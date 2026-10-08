@@ -27,6 +27,13 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "SDK user settings in Godot: `PKeyUserSettingsStore`, journal in `user://` (IndexedDB on web export), autoload flush, `PKeySettingsPanel`, first-sign-in upload, GDScript scenario runner".
 - Depends on: added SP-35.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: D8's names and codes, `setting(key).sync()`, routes from `syncedSettings` (with `deviceLocal` on the existing `config.local` store), `importLocal` at the HLC floor, the v2 runner plus `settingCases`, and the `setting-*` codes dropped.
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: `setting(key).sync` and the `cloudSync` kind as recorded in `api.json`.
+
 ## Goal
 
 Godot persists and syncs user settings: `PKeyUserSettingsStore` (journal in `user://`, IndexedDB on web export) becomes the default store, an autoload flushes on pause and close, `PKeySettingsPanel` edits settings, first sign-in uploads local values, and a GDScript runner replays the scenario corpus.

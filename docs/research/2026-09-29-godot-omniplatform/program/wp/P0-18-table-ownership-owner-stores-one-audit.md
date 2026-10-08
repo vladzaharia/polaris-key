@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Absorbs ST-24: Keep-latest-per-setting retention and NDJSON export are properties of the one audit writer.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: the `console_role_bindings` owner row.
+
 ## Goal
 
 Table ownership, owner stores and one audit writer (absorbs ST-24), as scoped below. Done when every acceptance criterion holds and the green gate passes.

@@ -20,6 +20,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: renames the dunning key to `license.dunningGraceDays` (C-11) and updates `DUNNING_GRACE_SETTING`, with no alias. The old manifest key is a validator error that names the new one, and the in-repo manifests move in the same change.
+
 ## Goal
 
 Retire the licensing-model settings (7 to 1), as scoped below. Done when every acceptance criterion holds and the green gate passes.

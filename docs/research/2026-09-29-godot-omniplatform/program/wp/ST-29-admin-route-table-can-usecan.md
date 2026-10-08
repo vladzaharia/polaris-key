@@ -18,6 +18,13 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Absorbs ST-21: can() belongs on every admin route, not only settings writes; the registry capability becomes the settings routes' capability.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: `can()` and `resolvePrincipal` live in `W/core/rbac/`, and `can()` is re-exported by `admin/authz.ts`. It uses the 13 areas of §2.1, `rbacArea` in place of `capability` with the security-widening mapping, and the `rbacRouteAreas`/`rbacAreas` drift tests with suffix-named `AREA_MOVES`. It fixes THREAT-MODEL `:5166`.
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: the `commerce` row names PS-06's `storefronts/*` explicitly, as a Core route; `distribution/storefronts/**` stays `ship`. CM-29's admin routes are declared `commerce` and keep that area across the move.
+
 ## Goal
 
 Admin route table, can(), useCan and NoAccessPage (absorbs ST-21), as scoped below. Done when every acceptance criterion holds and the green gate passes.

@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - Clears its entries in `packages/admin/test/copy.debt.json` (ST-37's console copy ledger).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/P2-12.md`](../plans/P2-12.md) §7: legacy surfaces get `dev` only after P2-12's switch, and only if P2-08 teaches `classifyChannel` (`channels.ts:58-84`) and `policyChannelOf` the `dev` selector.
+
 ## Goal
 
 Built-in dev release track and default store track maps, as scoped below. Done when every acceptance criterion holds and the green gate passes.

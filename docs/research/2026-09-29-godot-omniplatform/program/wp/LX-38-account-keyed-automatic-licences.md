@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **LX-38** in [Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the §2.2 swap; delete `"license-mint"`; `previewIdentityIssue`'s would-be row.
+
 ## Goal
 
 Account-keyed automatic licences; Discover for every account, as scoped below. Done when every acceptance criterion holds and the green gate passes.

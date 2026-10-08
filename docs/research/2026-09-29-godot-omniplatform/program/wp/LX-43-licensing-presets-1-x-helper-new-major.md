@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **LX-43** in [Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: presets write `onExpiry`; "Trial then paid" creates a trial tier with `tier:<paid or free>`, through LX-41b's "When it ends" control.
+
 ## Goal
 
 Licensing presets, the 1.x helper, the new-major callout and the Integration Licensing card, as scoped below. Done when every acceptance criterion holds and the green gate passes.

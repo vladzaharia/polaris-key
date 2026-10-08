@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-73, UX-74, UX-76.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: six features; Commerce is a service.
+
 ## Goal
 
 New Product wizard, as scoped below. Done when every acceptance criterion holds and the green gate passes.

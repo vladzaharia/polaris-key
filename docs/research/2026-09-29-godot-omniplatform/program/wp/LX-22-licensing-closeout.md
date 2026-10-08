@@ -26,6 +26,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "Licensing close-out: docs, glossary (rule 4), THREAT-MODEL T1–T10 and P1–P3, migration runbook, djdl and system-product verification".
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: the fallback-freeze and upsert THREAT-MODEL rows are LX-41's.
+
 ## Goal
 
 The licensing model is documented and verified: docs, glossary (licence, unowned (floating), grant, anchor), THREAT-MODEL T1–T10 and P1–P3, the migration runbook, and production verification of `djdl` and `polaris-key`.

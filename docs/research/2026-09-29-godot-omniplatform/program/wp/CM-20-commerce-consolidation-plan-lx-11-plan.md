@@ -57,7 +57,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 ## Acceptance criteria
 
 - [ ] Plan approved; names the corpus regeneration and LX-19/LX-20
-- [ ] No commerce service slug (C-17)
+- [ ] Commerce is the `commerce` service, which requires License (CM-29). This plan's routes, settings and tables are CM-29's
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

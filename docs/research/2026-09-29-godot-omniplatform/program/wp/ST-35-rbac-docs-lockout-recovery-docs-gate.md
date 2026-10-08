@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **AC-08** in [Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: it consolidates the AT-2 rows, the rule 11 text and the lockout rehearsal, and records the decisions: S-16 decision 3 and §5.6 (operators are accounts); S-18 D10 (the roles are these four); S-13 §8.2 (`console.access` is the one grant mechanism, strictly below a deploy-time root).
+
 ## Goal
 
 RBAC docs, lockout recovery, docs-gate split and adminGroup contract, as scoped below. Done when every acceptance criterion holds and the green gate passes.

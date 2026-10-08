@@ -18,6 +18,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-12, UX-67.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: the server attention read gains one kind: a `license:subscriptions` token that expires within 14 days while the product has a live `external` subscription.
+
 ## Goal
 
 One Home; delete GET /manage/api/summary; slim product list, as scoped below. Done when every acceptance criterion holds and the green gate passes.

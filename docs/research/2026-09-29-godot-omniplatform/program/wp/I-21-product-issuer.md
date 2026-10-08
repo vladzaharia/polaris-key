@@ -39,6 +39,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "`Sign in with <Product>`: per-product OIDC issuer with a separate RS256 keyring, `sub` = pairwise subject, `pkey:*` scopes, static clients".
 - Estimate: 1.9–2.6 engineer-weeks (was 2.8–3.9).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/I-27.md`](../plans/I-27.md) §12: the same endpoints; `openid`; clients extend `ClientRecord`; the §12.8 sentence.
+
 ## Goal
 
 "Sign in with <Product>": a per-product OIDC issuer at `https://key.plrs.im/<p>/identity` that passes OIDF Basic OP and Config OP conformance, with a separate RS256 keyring, `sub` = the product's pairwise subject, `pkey:*` scopes and static clients.

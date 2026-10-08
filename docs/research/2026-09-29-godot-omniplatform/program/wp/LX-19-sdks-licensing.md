@@ -23,6 +23,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Owner 2026-10-07/08: Commerce is a service (CM-29, `plans/CM-29.md`). Its code lives in `services/commerce/`, device routes move to `/<p>/commerce/*` in CM-29's release with the SDK path strings (no aliases), and the store hook URLs stay as Commerce's canonical routes. Reconcile this package with CM-29's approved plan before building.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: the `entitlements.*` names, `license.term()` and the `entitlement` kind. [`plans/UK-02b.md`](../plans/UK-02b.md) §8: appends its rows to `ui-matrix.json` (§4.8).
+
 ## Goal
 
 All six SDKs and four UI kits implement the licensing wire: `isEntitled` false unless the gate is usable and unexpired, `entitlement()`, `grants()`, `licenseExpiresAt()`, status reasons, the LX-17 fixes, plus a migration guide and release notes.

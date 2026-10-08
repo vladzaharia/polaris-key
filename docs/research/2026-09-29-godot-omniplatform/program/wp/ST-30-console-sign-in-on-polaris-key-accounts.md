@@ -4,7 +4,7 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | ST: Settings, access control and console shell (DX consolidation D: Administration, access control and console identity)                                 |
 | Size        | 1.2–1.8 engineer-weeks                                                                                                                                   |
-| Depends on  | [ST-29](ST-29-admin-route-table-can-usecan.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md)                                                              |
+| Depends on  | [ST-29](ST-29-admin-route-table-can-usecan.md), [P0-38](P0-38-authcard-in-ui-auth-ux-40.md), [P0-21](P0-21-notification-substrate-core-notify.md)        |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-31](ST-31-roles-bindings-invites-members-pages.md), [ST-34](ST-34-admin-scope-personal-tokens-pkey-login.md) |
 | Role        | `pkey-implementer`                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                       |
@@ -17,6 +17,13 @@
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **AC-03** in [Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity).
 
 - UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-02, UX-42.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/ST-28.md`](../plans/ST-28.md) §10: it owns `strong_at`, `asserted_at`, the `consoleSubject` hook, `operatorIssuerAllowed`, SM-1 to SM-5, the console step-up for SM-3(a), the browser-bound flow, cookie v2 with `memberId`, `console.signin`, and break-glass as an explicit link with the exit facts in §2.6. Its membership is root only until ST-31.
+- [`plans/I-27.md`](../plans/I-27.md) §12: `SignInFacts`; `connection:<id>` in `amr`; one Pocket ID connection with audience `both`.
 
 ## Goal
 

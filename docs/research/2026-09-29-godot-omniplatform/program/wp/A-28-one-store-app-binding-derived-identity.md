@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **DC-11** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-20.md`](../plans/CM-20.md) §14: the identity precedence and the optional identity fields (D12). The binding-alias line is dropped: the alias path stays the existing table (D5).
+
 ## Goal
 
 One store-app binding with derived identity, as scoped below. Done when every acceptance criterion holds and the green gate passes.

@@ -27,6 +27,13 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 - Title: was "SDK user settings in Swift and Kotlin: the same as U-06 plus `@PolarisSetting`, `rememberSetting`, WorkManager retry, `scenePhase` flush, first-sign-in upload, scenario runners".
 - Depends on: added SP-35.
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: D8's names and codes, `setting(key).sync()`, routes from `syncedSettings` (with `deviceLocal` on the existing `config.local` store), `importLocal` at the HLC floor, the v2 runner plus `settingCases`, and the `setting-*` codes dropped.
+- [`plans/SP-35.md`](../plans/SP-35.md) §12: `setting(key).sync` and the `cloudSync` kind as recorded in `api.json`. U-07 gives Kotlin the D9 setting handle.
+
 ## Goal
 
 Swift and Kotlin persist and sync user settings like U-06, plus `@PolarisSetting`, `rememberSetting` (optional `:compose`), Android WorkManager retry, Swift `scenePhase` flush, first-sign-in upload and scenario runners.

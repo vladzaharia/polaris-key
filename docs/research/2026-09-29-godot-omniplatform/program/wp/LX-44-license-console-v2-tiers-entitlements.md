@@ -16,6 +16,12 @@
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **LX-44** in [Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model).
 
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/LX-41.md`](../plans/LX-41.md) §13: the Duration group's "When it ends" is LX-41b's.
+
 ## Goal
 
 License console v2: Tiers and Entitlements pages, as scoped below. Done when every acceptance criterion holds and the green gate passes.

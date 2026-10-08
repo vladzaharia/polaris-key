@@ -1,22 +1,28 @@
 # CM-24 One Steam ownership engine (absorbs PS-07)
 
-| Field       | Value                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce) |
-| Size        | 0.7–1.1 engineer-weeks                                                                                                                            |
-| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-35](LX-35-add-on-definitions-grantaddon.md)                                                                |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                            |
-| Role        | `pkey-implementer`                                                                                                                                |
-| Plan mode   | no                                                                                                                                                |
-| Gates       | none beyond the green gate                                                                                                                        |
-| Human input | none                                                                                                                                              |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                         |
+| Field       | Value                                                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred) (DX consolidation H: Distribution channels, storefronts and commerce)                        |
+| Size        | 0.7–1.1 engineer-weeks                                                                                                                                                   |
+| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-35](LX-35-add-on-definitions-grantaddon.md), [CM-29](CM-29-commerce-service.md), [CM-25](CM-25-app-purchase-as-licence-source.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                   |
+| Role        | `pkey-implementer`                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                       |
+| Gates       | none beyond the green gate                                                                                                                                               |
+| Human input | none                                                                                                                                                                     |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                |
 
 ## Consolidation 2026-10-07
 
 Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) as **CM-24** in [Track H, Distribution channels, storefronts and commerce](../../../2026-10-07-dx-consolidation/tracks.md#h-distribution-channels-storefronts-and-commerce).
 
 - Absorbs PS-07: store_owned becomes one trigger of the one Steam ownership engine.
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/CM-29.md`](../plans/CM-29.md) §10: its code goes in `services/commerce/`, after CM-29. The base app comes through CM-25's SKU.
 
 ## Goal
 

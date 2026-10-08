@@ -1,16 +1,16 @@
 # U-08 One conflict vocabulary and MergeRequest in six SDKs
 
-| Field       | Value                                                                                                                                                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                                                                                                   |
-| Size        | 0.4–0.55 engineer-weeks                                                                                                                                                                                                                     |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-06](U-06-sdk-settings-node-python.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-20](U-20-sdk-settings-react.md), [U-21](U-21-sdk-settings-godot.md), [I-05](I-05-accounts-core.md)                 |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md)                                                                                               |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                        |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                           |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); UI kit screenshots; transcripts and scenarios for empty and non-empty clouds and for a merged account with parked units |
-| Human input | none                                                                                                                                                                                                                                        |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                   |
+| Field       | Value                                                                                                                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U2 merge and saves)                                                                                                                                                                                                                        |
+| Size        | 0.4–0.55 engineer-weeks                                                                                                                                                                                                                                          |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-06](U-06-sdk-settings-node-python.md), [U-07](U-07-sdk-settings-swift-kotlin.md), [U-20](U-20-sdk-settings-react.md), [U-21](U-21-sdk-settings-godot.md), [I-05](I-05-accounts-core.md), [U-09](U-09-collections-backend.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-22](U-22-collections-sdk-node-react-python.md), [U-23](U-23-collections-sdk-swift-kotlin-godot.md)                                                                                                                    |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                             |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                                                                |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); UI kit screenshots; transcripts and scenarios for empty and non-empty clouds and for a merged account with parked units                      |
+| Human input | none                                                                                                                                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                        |
 
 ## Consolidation 2026-10-07
 
@@ -19,6 +19,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 > One conflict vocabulary (lastWrite, max, min, merge, union, revision) and one MergeRequest with keep(...) across six SDKs; no onAttach (first sign-in is an ordinary sync). Prompt renders in the rebuilt kits only.
 
 - Title: was "Merge prompt framework for collections and saves: `empty` flag, `MergeRequest` in six SDKs, merge prompt components in the four UI kits, parking added to U-05's account-merge hook".
+
+## Approved plans (2026-10-08)
+
+These approved plans change this package. Where they differ from the text below, they win.
+
+- [`plans/U-01b.md`](../plans/U-01b.md) §11: §2.2, with `revision` the only case that prompts. The server side moves to U-09.
 
 ## Goal
 
