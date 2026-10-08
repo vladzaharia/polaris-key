@@ -97,6 +97,7 @@
     "signIn.methodError": "L'accesso con {method} non è stato completato. Prova in un altro modo.",
     "signInHandoff.starting": "Richiesta di un codice di accesso…",
     "signInHandoff.scan": "Scansiona il codice con il telefono oppure vai su {url} e inserisci questo codice.",
+    "signInHandoff.scanTv": "Inquadra il codice con il telefono, oppure inserisci questo codice all'indirizzo qui sotto.",
     "signInHandoff.linkCopied": "Link copiato",
     "signInHandoff.confirm": "Per finire, scegli Continua su {product} nella pagina di accesso.",
     "signInHandoff.ok": "Accesso effettuato",

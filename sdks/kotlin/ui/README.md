@@ -1,7 +1,7 @@
 # Polaris Key UI for Jetpack Compose
 
 `polaris-key-ui` (`im.plrs.key:polaris-key-ui`, the Kotlin SDK's `:ui` module) is a set of
-Material 3 screens over the Kotlin SDK: a boot shell, the licence gate, activation, sign-in with a
+Material 3 screens over the Kotlin SDK: a boot shell, the license gate, activation, sign-in with a
 QR code, settings, devices, an update banner and prompt, and pack progress. It is Android only and
 needs Compose with Material 3. It depends on `polaris-key-sdk` and renders the state the SDK
 resolves. It never calls the network itself, and it never depends on the platform module or the
@@ -69,8 +69,8 @@ compose your own flow from the same parts.
 `PolarisBoot` drives the shared stage machine from `:core` (`ui.stages`): idle, shell, guard, sync,
 gate, decide, fetch, mount and ready, plus the offline, blocked and error stops. It renders each
 stage in place and cross-fades between screens rather than navigating. While a stage works, you see
-a labelled progress view. While the licence waits, you see the gate or activation screen, and the
-boot retries by itself once the gate reports a usable licence. A fetch shows the consent card and
+a labelled progress view. While the license waits, you see the gate or activation screen, and the
+boot retries by itself once the gate reports a usable license. A fetch shows the consent card and
 pack progress, and a stop shows a message with Try again (and Play offline at a playable offline
 stop). At `ready`, your content renders. `PolarisKeyClient.bootHost()` does each stage's work over
 the umbrella client. Pass `fetch` and `mount` to do your own content work there, or send
@@ -111,7 +111,7 @@ The settings screen still renders the read-only summary, and the activation scre
 free", "Buy", "Activate offline" or "Manage devices" buttons yet: drawing those belongs to the UI-kit
 program (`docs/design/UI-KITS.md`), which rebuilds the kit's look.
 
-The gate renders your content when the licence is `ok` or `not-applicable`. When it is `grace`, it
+The gate renders your content when the license is `ok` or `not-applicable`. When it is `grace`, it
 renders your content under an offline-grace banner. It shows the activation screen for
 `needs-activation`, and for `revoked` with the revocation notice on top. It shows a full-screen
 message, with Reconnect or Try again, for `expired`, `version-too-old`, `version-too-new` and
@@ -136,7 +136,7 @@ cutouts, the keyboard) and picks the layout from the space it is given:
   or more. The content sits on the start side and the controls on the end side, each pane
   scrolling on its own, so the primary action never falls below the fold. Pass your own screen's
   controls as `PolarisScreen`'s `actions` to get the same behaviour.
-- **Message screens** (an expired licence, a boot stop) never split: a centred column on a phone,
+- **Message screens** (an expired license, a boot stop) never split: a centred column on a phone,
   and elsewhere one start-aligned block with its actions in a trailing row, on a card on TV and in
   wide windows.
 
@@ -155,7 +155,7 @@ set inline in the lede (your `deviceCodeUrl` when you pass one to `PolarisTheme`
 hero size in a monospace face with no letter spacing and a copy button for the pre-filled link,
 and a countdown ring. On Android TV it leads with a QR code instead and offers no "Open sign-in
 page", since a TV may have no browser; pass `showQr` to `PolarisSignInScreen` to override that.
-When no browser can open a link, the screen says so and stays put. The licence key field is the
+When no browser can open a link, the screen says so and stays put. The license key field is the
 Material 3 filled field.
 
 Hold `PolarisSignInState` in a ViewModel (with `viewModelScope`), so a rotation or a trip through
@@ -176,7 +176,7 @@ ways to change the copy:
   reads them.
 
 The mapping from state to copy is pure and unit-tested without rendering. It decides which title a
-revoked licence shows, how an activation error reads, and how a version window is phrased
+revoked license shows, how an activation error reads, and how a version window is phrased
 (`gateMessage`, `activationMessage`, `blockedMessage`, `bootStageLabel`).
 
 ## Accessibility

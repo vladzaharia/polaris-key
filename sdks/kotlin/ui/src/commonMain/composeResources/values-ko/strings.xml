@@ -232,6 +232,8 @@
     <string name="signInHandoff_starting">로그인 코드를 받는 중…</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signInHandoff_scan">휴대폰으로 코드를 스캔하거나 %1$s에 접속해 이 코드를 입력하세요.</string>
+    <!-- SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it. -->
+    <string name="signInHandoff_scanTv">휴대전화로 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">링크 복사됨</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

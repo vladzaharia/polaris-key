@@ -115,8 +115,8 @@ public data class PolarisCopy(
     // ── Sign-in with a code (RFC 8628) ───────────────────────────────────────────────────────
     val signInTitle: String = "Sign in with a code",
     val signInStarting: String = "Getting a sign-in code…",
-    /** On Android TV, beside the QR code; %1$s is the address. */
-    val signInInstructions: String = "Scan the code with your phone, or go to %1\$s and enter this code.",
+    /** On Android TV, beside the QR code; the address follows on its own line. */
+    val signInInstructions: String = "Scan the code with your phone, or enter this code at the address below.",
     /** Everywhere else; %1$s is the address, set inline. */
     val signInCodeBody: String = "On any phone or computer, go to %1\$s and enter this code.",
     val signInCopyLink: String = "Copy link",
@@ -187,8 +187,8 @@ public data class PolarisCopy(
     val updateCritical: String = "This update includes an important security fix.",
     val updateAction: String = "Update",
     val updateDismiss: String = "Dismiss",
-    val updatePromptTitle: String = "Update available",
-    val updatePromptBody: String = "Version %1\$s is ready to install.",
+    /** The offer's title: %1$s the product, %2$s the version (update.title). */
+    val updatePromptTitle: String = "%1\$s %2\$s",
     val updateRequiredTitle: String = "Update required",
     val updateRequiredBody: String = "Version %1\$s is required to keep using this app.",
     val updateNow: String = "Update now",

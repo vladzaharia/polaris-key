@@ -650,6 +650,11 @@ msgstr "Richiesta di un codice di accesso…"
 msgid "signInHandoff.scan"
 msgstr "Scansiona il codice con il telefono oppure vai su {url} e inserisci questo codice."
 
+#. Scan the code with your phone, or enter this code at the address below.
+#. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
+msgid "signInHandoff.scanTv"
+msgstr "Inquadra il codice con il telefono, oppure inserisci questo codice all'indirizzo qui sotto."
+
 #. Link copied
 #. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
 msgid "signInHandoff.linkCopied"

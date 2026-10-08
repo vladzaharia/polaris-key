@@ -31,17 +31,37 @@ import androidx.compose.ui.text.font.FontWeight
  * the platform monospace instead.
  */
 @OptIn(ExperimentalTextApi::class)
-public val PolarisKitMono: FontFamily = FontFamily(
-    Font(R.font.polaris_jetbrains_mono_variable, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-)
+public val PolarisKitMono: FontFamily = if (android.os.Build.VERSION.SDK_INT >= 26) {
+    FontFamily(
+        Font(R.font.polaris_jetbrains_mono_variable, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    )
+} else {
+    // No static mono file ships: the platform monospace beats a light-weight variable default.
+    FontFamily.Monospace
+}
 
 /** Rubik at 400, 500 and 600, from the kit's variable font: each weight sets the font's wght axis. */
+public val PolarisRubik: FontFamily = polarisRubikFor(android.os.Build.VERSION.SDK_INT)
+
+/**
+ * Rubik for an API level. FontVariation needs API 26: below it a variable font renders at its
+ * default instance (weight 300, so all text would be light), so there the kit falls back to the
+ * static regular (400 and 500) and bold (600) files.
+ */
 @OptIn(ExperimentalTextApi::class)
-public val PolarisRubik: FontFamily = FontFamily(
-    Font(R.font.polaris_rubik_variable, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
-    Font(R.font.polaris_rubik_variable, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
-    Font(R.font.polaris_rubik_variable, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
-)
+internal fun polarisRubikFor(sdkInt: Int): FontFamily = if (sdkInt >= 26) {
+    FontFamily(
+        Font(R.font.polaris_rubik_variable, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+        Font(R.font.polaris_rubik_variable, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+        Font(R.font.polaris_rubik_variable, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    )
+} else {
+    FontFamily(
+        Font(R.font.polaris_rubik_regular, FontWeight.Normal),
+        Font(R.font.polaris_rubik_regular, FontWeight.Medium),
+        Font(R.font.polaris_rubik_bold, FontWeight.SemiBold),
+    )
+}
 
 /** [base] re-set in Rubik: 600 for display, headline and title roles, 500 for labels, 400 for body. */
 public fun polarisBrandTypography(base: Typography): Typography {

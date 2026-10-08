@@ -90,6 +90,7 @@
   "signIn.methodError": "El inicio de sesión con {method} no terminó. Prueba de otra forma.",
   "signInHandoff.starting": "Obteniendo un código de inicio de sesión…",
   "signInHandoff.scan": "Escanea el código con tu teléfono, o ve a {url} y escribe este código.",
+  "signInHandoff.scanTv": "Escanea el código con tu teléfono o introduce este código en la dirección de abajo.",
   "signInHandoff.linkCopied": "Enlace copiado",
   "signInHandoff.confirm": "Elige Continuar a {product} en la página de inicio de sesión para terminar.",
   "signInHandoff.ok": "Sesión iniciada",

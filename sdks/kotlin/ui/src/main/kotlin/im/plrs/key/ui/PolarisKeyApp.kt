@@ -101,8 +101,11 @@ public fun PolarisKeyApp(
     val gate = remember(client) { PolarisGateState(client.gateActions(), scope) }
     val packState = remember(client, packs) { if (packs) PolarisPackProgressState(client.packProgressSource()) else null }
     // Inline sign-in re-reads the licence when it completes (the SDK has already synced).
-    val signInState = remember(client, signIn) {
-        if (signIn && onSignIn == null) PolarisSignInState(client.signInActions(), scope, onSignedIn = { scope.launch { gate.reload() } }) else null
+    // Held outside the composition (keyed to the client), so an activity recreation keeps the code.
+    val signInState = if (signIn && onSignIn == null) {
+        rememberHeldSignIn(client, client.signInActions()) { scope.launch { gate.reload() } }
+    } else {
+        null
     }
     LaunchedEffect(client, bootOptions) {
         gate.start()

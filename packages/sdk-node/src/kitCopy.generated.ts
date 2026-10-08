@@ -132,6 +132,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.starting": "Getting a sign-in code…",
     "signInHandoff.scan":
       "Scan the code with your phone, or go to {url} and enter this code.",
+    "signInHandoff.scanTv":
+      "Scan the code with your phone, or enter this code at the address below.",
     "signInHandoff.linkCopied": "Link copied",
     "signInHandoff.confirm":
       "Choose Continue to {product} on the sign-in page to finish.",
@@ -1304,6 +1306,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.starting": "Anmeldecode wird abgerufen…",
     "signInHandoff.scan":
       "Scannen Sie den Code mit Ihrem Telefon oder öffnen Sie {url} und geben Sie diesen Code ein.",
+    "signInHandoff.scanTv":
+      "Scannen Sie den Code mit Ihrem Telefon oder geben Sie diesen Code unter der Adresse unten ein.",
     "signInHandoff.linkCopied": "Link kopiert",
     "signInHandoff.confirm":
       "Wählen Sie auf der Anmeldeseite „Weiter zu {product}“, um den Vorgang abzuschließen.",
@@ -2549,6 +2553,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.starting": "Obtention d’un code de connexion…",
     "signInHandoff.scan":
       "Scannez le code avec votre téléphone, ou rendez-vous sur {url} et saisissez ce code.",
+    "signInHandoff.scanTv":
+      "Scannez le code avec votre téléphone, ou saisissez ce code à l’adresse ci-dessous.",
     "signInHandoff.linkCopied": "Lien copié",
     "signInHandoff.confirm":
       "Choisissez Continuer vers {product} sur la page de connexion pour terminer.",
@@ -3760,6 +3766,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.starting": "Obteniendo un código de inicio de sesión…",
     "signInHandoff.scan":
       "Escanea el código con tu teléfono, o ve a {url} y escribe este código.",
+    "signInHandoff.scanTv":
+      "Escanea el código con tu teléfono o introduce este código en la dirección de abajo.",
     "signInHandoff.linkCopied": "Enlace copiado",
     "signInHandoff.confirm":
       "Elige Continuar a {product} en la página de inicio de sesión para terminar.",
@@ -4986,6 +4994,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.starting": "Obtendo um código de acesso…",
     "signInHandoff.scan":
       "Escaneie o código com o celular ou acesse {url} e digite este código.",
+    "signInHandoff.scanTv":
+      "Escaneie o código com o celular ou digite este código no endereço abaixo.",
     "signInHandoff.linkCopied": "Link copiado",
     "signInHandoff.confirm":
       "Escolha Continuar para {product} na página de acesso para concluir.",
@@ -6196,6 +6206,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.starting": "Richiesta di un codice di accesso…",
     "signInHandoff.scan":
       "Scansiona il codice con il telefono oppure vai su {url} e inserisci questo codice.",
+    "signInHandoff.scanTv":
+      "Inquadra il codice con il telefono, oppure inserisci questo codice all'indirizzo qui sotto.",
     "signInHandoff.linkCopied": "Link copiato",
     "signInHandoff.confirm":
       "Per finire, scegli Continua su {product} nella pagina di accesso.",
@@ -7413,6 +7425,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.starting": "サインインコードを取得しています…",
     "signInHandoff.scan":
       "スマートフォンでコードをスキャンするか、{url}にアクセスしてこのコードを入力してください。",
+    "signInHandoff.scanTv":
+      "スマートフォンでコードを読み取るか、下のアドレスでこのコードを入力してください。",
     "signInHandoff.linkCopied": "リンクをコピーしました",
     "signInHandoff.confirm":
       "完了するには、サインインページで「{product}に進む」を選択してください。",
@@ -8641,6 +8655,8 @@ export const KIT_COPY: Readonly<
     "signInHandoff.starting": "로그인 코드를 받는 중…",
     "signInHandoff.scan":
       "휴대폰으로 코드를 스캔하거나 {url}에 접속해 이 코드를 입력하세요.",
+    "signInHandoff.scanTv":
+      "휴대전화로 코드를 스캔하거나 아래 주소에서 이 코드를 입력하세요.",
     "signInHandoff.linkCopied": "링크 복사됨",
     "signInHandoff.confirm":
       "로그인 페이지에서 “{product}에서 계속”을 선택해 완료하세요.",
@@ -9811,6 +9827,7 @@ export const KIT_COPY: Readonly<
     "signIn.methodError": "{method}登录未完成。请换一种方式。",
     "signInHandoff.starting": "正在获取登录码…",
     "signInHandoff.scan": "用手机扫描二维码，或前往{url}并输入此代码。",
+    "signInHandoff.scanTv": "用手机扫描二维码，或在下方地址输入此代码。",
     "signInHandoff.linkCopied": "链接已复制",
     "signInHandoff.confirm": "在登录页面上选择“继续使用{product}”以完成登录。",
     "signInHandoff.ok": "已登录",

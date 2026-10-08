@@ -281,6 +281,9 @@ internal fun PolarisScaffold(
             }
             return@PolarisSurface
         }
+        // On a tablet-sized window a docked action group would sit far from its content: the
+        // whole column, actions included, is centred instead.
+        val place = if (actions != null && window.width >= 600.dp && window.height >= 600.dp) PolarisAnchor.Center else anchor
         val width = if (maxContentWidth == Dp.Unspecified) window.columnWidth else maxContentWidth
         val horizontal = if (contentAlign == TextAlign.Start) Alignment.Start else Alignment.CenterHorizontally
         CompositionLocalProvider(LocalPolarisTextAlign provides contentAlign) {
@@ -297,12 +300,12 @@ internal fun PolarisScaffold(
                         .fillMaxWidth()
                         .heightIn(min = maxHeight)
                         .padding(
-                            top = if (anchor == PolarisAnchor.Center) window.verticalPadding else window.topInset,
+                            top = if (place == PolarisAnchor.Center) window.verticalPadding else window.topInset,
                             bottom = window.verticalPadding,
                         ),
                     horizontalAlignment = horizontal,
                 ) {
-                    if (anchor != PolarisAnchor.Top) Spacer(Modifier.weight(1f))
+                    if (place != PolarisAnchor.Top) Spacer(Modifier.weight(1f))
                     navigationIcon?.let {
                         it()
                         Spacer(Modifier.height(PolarisSpace.tight))
@@ -316,7 +319,7 @@ internal fun PolarisScaffold(
                         Spacer(Modifier.height(window.section))
                         detail()
                     }
-                    if (anchor == PolarisAnchor.Center) {
+                    if (place == PolarisAnchor.Center) {
                         if (actions != null) {
                             Spacer(Modifier.height(window.section))
                             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, content = actions)

@@ -82,7 +82,9 @@ import im.plrs.key.identity.SignInResult
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -248,6 +250,35 @@ public class PolarisSignInState(
     }
 }
 
+/**
+ * Sign-in states that outlive the composition, by key (an activity recreation, a rotation, keeps
+ * the same code: a new one would kill the code the person is typing on their phone). The state's
+ * scope is its own, never the composition's; [PolarisSignInState.cancel] clears the code.
+ */
+internal object HeldSignIn {
+    private class Entry(val state: PolarisSignInState, var onSignedIn: () -> Unit)
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val held = java.util.WeakHashMap<Any, Entry>()
+
+    /** The state held for [key], created with [actions] on first use; [onSignedIn] is always the latest. */
+    @Synchronized
+    fun get(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState {
+        val entry = held.getOrPut(key) {
+            lateinit var e: Entry
+            e = Entry(PolarisSignInState(actions, scope, onSignedIn = { e.onSignedIn() }), onSignedIn)
+            e
+        }
+        entry.onSignedIn = onSignedIn
+        return entry.state
+    }
+}
+
+/** The sign-in state held for [key] (see [HeldSignIn]); survives the activity being recreated. */
+@Composable
+internal fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState =
+    HeldSignIn.get(key, actions, onSignedIn)
+
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -263,19 +294,25 @@ public fun PolarisSignIn(
     onCancel: () -> Unit = {},
     onUseKey: (() -> Unit)? = null,
 ) {
-    val ui by state.ui.collectAsState()
+    val live by state.ui.collectAsState()
+    // After Cancel the state resets to Starting at once; the screen keeps showing what it showed
+    // while it fades out, so "Getting a sign-in code…" never flashes.
+    var leaving by remember { mutableStateOf<PolarisSignInUi?>(null) }
+    val ui = leaving ?: live
     LaunchedEffect(state) { state.start() }
     DisposableEffect(state) { onDispose { state.pause() } }
     PolarisSignInScreen(
         ui = ui,
         modifier = modifier,
         onCancel = {
+            leaving = live
             state.cancel()
             onCancel()
         },
         onRestart = state::restart,
         onUseKey = onUseKey?.let { useKey ->
             {
+                leaving = live
                 state.cancel()
                 useKey()
             }
@@ -389,7 +426,8 @@ private fun PolarisCodeView(
             PolarisTitle(copy.signInTitle)
             Spacer(Modifier.height(PolarisSpace.tight))
             if (showQr) {
-                PolarisLede(copy.signInInstructions, address)
+                // The address follows on its own line, so the instruction does not repeat it.
+                PolarisBody(copy.signInInstructions)
                 Spacer(Modifier.height(PolarisSpace.controls))
                 // The address on its own line, large enough to read from the sofa.
                 Text(
@@ -428,7 +466,9 @@ private fun PolarisCodeView(
                 }
                 PolarisTextButton(copy.cancel, onCancel, initialFocus = onUseKey == null)
             } else {
-                PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
+                // After a failed open the code and Copy link lead: the opener steps down to tonal.
+                if (noBrowser) PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
+                else PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
                 Spacer(Modifier.height(PolarisSpace.controls))
                 PolarisTextButton(copy.cancel, onCancel)
             }

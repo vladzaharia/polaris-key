@@ -289,11 +289,14 @@ public fun PolarisUpdatePrompt(
 }
 
 /** The prompt's title and body for [ui]: the kit-copy "ready" pair once it can restart. */
-internal fun PolarisCopy.updatePromptText(ui: PolarisUpdateUi): Pair<String, String> = when {
+internal fun PolarisCopy.updatePromptText(ui: PolarisUpdateUi): Pair<String, String?> = when {
     ui.kind == PolarisUpdateUi.Kind.Restart ->
         format(updateReadyTitle, productName, ui.version ?: "").replace("  ", " ").trim() to format(updateReadyBody, productName)
     ui.mandatory -> updateRequiredTitle to format(updateRequiredBody, ui.version ?: "")
-    else -> updatePromptTitle to (ui.version?.let { format(updatePromptBody, it) } ?: updateAvailableGeneric)
+    // An offer says what it is, not that it is downloaded: "{product} {version}" and Update now.
+    ui.version == null -> updateAvailableGeneric to null
+    productName(this) == null -> format(updateAvailable, ui.version) to null
+    else -> format(updatePromptTitle, productName, ui.version) to null
 }
 
 @Composable
@@ -311,7 +314,8 @@ private fun PolarisUpdatePromptCard(
     Surface(
         modifier = modifier.widthIn(max = PolarisMaxContentWidth).fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
-        color = scheme.surfaceContainerHigh,
+        // One step lower than the tonal Later button's container, so Later stays visible.
+        color = scheme.surfaceContainerLow,
         contentColor = scheme.onSurface,
         tonalElevation = 6.dp,
     ) {
@@ -332,7 +336,7 @@ private fun PolarisUpdatePromptCard(
                         modifier = Modifier.fillMaxWidth().semantics { heading() },
                     )
                     Spacer(Modifier.height(8.dp))
-                    PolarisBody(body, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    if (body != null) PolarisBody(body, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     if (ui.critical) {
                         Spacer(Modifier.height(8.dp))
                         PolarisBody(copy.updateCritical, textAlign = androidx.compose.ui.text.style.TextAlign.Center)

@@ -236,6 +236,8 @@
     <string name="signInHandoff_starting">Richiesta di un codice di accesso…</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signInHandoff_scan">Scansiona il codice con il telefono oppure vai su %1$s e inserisci questo codice.</string>
+    <!-- SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it. -->
+    <string name="signInHandoff_scanTv">Inquadra il codice con il telefono, oppure inserisci questo codice all'indirizzo qui sotto.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">Link copiato</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

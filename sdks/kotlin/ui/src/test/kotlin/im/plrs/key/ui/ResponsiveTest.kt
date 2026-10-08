@@ -98,6 +98,7 @@ internal val layoutOnlySizes = listOf(
     ResponsiveSize("tablet-1280x800", 1280, 800, nativeDark = true),
     ResponsiveSize("laptop-1366x768", 1366, 768, nativeDark = false),
     ResponsiveSize("split-411x440", 411, 440, nativeDark = true),
+    ResponsiveSize("tablet-portrait-800x1280", 800, 1280, nativeDark = false),
     ResponsiveSize("landscape-891x411-font150", 891, 411, fontScale = 1.5f, nativeDark = false),
     ResponsiveSize("landscape-891x411-font200", 891, 411, fontScale = 2f, nativeDark = true),
     ResponsiveSize("small-landscape-640x360-font150", 640, 360, fontScale = 1.5f, nativeDark = false),

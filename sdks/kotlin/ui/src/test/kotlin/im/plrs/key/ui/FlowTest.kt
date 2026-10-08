@@ -11,6 +11,7 @@
 package im.plrs.key.ui
 
 import android.app.Application
+import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -203,5 +204,43 @@ class FlowTest {
         rule.waitForIdle()
         val field = rule.onNode(hasSetTextAction()).fetchSemanticsNode()
         assertEquals("the key field has focus", true, field.config.getOrElse(SemanticsProperties.Focused) { false })
+    }
+
+    @Test
+    fun heldSignInKeepsTheSameCodeAcrossAnActivityRecreation() {
+        val actions = object : PolarisSignInActions {
+            var begins = 0
+            override suspend fun begin(): SignInPrompt { begins++; return samplePrompt }
+            override suspend fun wait(prompt: SignInPrompt): SignInResult = awaitCancellation()
+        }
+        val key = Any()
+        val scenario = androidx.test.core.app.ActivityScenario.launch(androidx.activity.ComponentActivity::class.java)
+        fun show() = scenario.onActivity { a ->
+            a.setContent {
+                StockHost(false) {
+                    PolarisTheme(copy = sampleCopy, darkTheme = false) {
+                        PolarisSignIn(rememberHeldSignIn(key, actions) {})
+                    }
+                }
+            }
+        }
+        show()
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        scenario.recreate()
+        show()
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+        assertEquals("one code across the recreation", 1, actions.begins)
+        scenario.close()
+    }
+
+    @Test
+    fun belowApi26RubikFallsBackToTheStaticFiles() {
+        val modern = polarisRubikFor(26)
+        val legacy = polarisRubikFor(25)
+        assertTrue(modern != legacy)
+        // Static regular for 400 and 500, static bold for 600: nothing renders at the variable default (300).
+        assertEquals(3, (legacy as androidx.compose.ui.text.font.FontListFontFamily).fonts.size)
+        assertTrue((legacy as androidx.compose.ui.text.font.FontListFontFamily).fonts.none { it is androidx.compose.ui.text.font.ResourceFont && it.variationSettings.settings.isNotEmpty() })
     }
 }

@@ -457,6 +457,8 @@ public fun PolarisActivationScreen(
         listOfNotNull(reason, seats)
     }
     val keyField: @Composable () -> Unit = {
+        // In two panes the reason leads the start pane; the field keeps only its own text.
+        val aside = polarisWindow.twoPane && limit != null
         PolarisTextField(
             value = ui.key,
             onValueChange = onKeyChange,
@@ -464,7 +466,7 @@ public fun PolarisActivationScreen(
             placeholder = copy.keyPlaceholder,
             enabled = !ui.busy,
             error = errorText,
-            supporting = supporting,
+            supporting = if (aside) emptyList() else supporting,
             focusRequester = keyFocus,
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -484,6 +486,13 @@ public fun PolarisActivationScreen(
                 // A focused step: the product header, then the stop's own title.
                 PolarisProductHeader()
                 PolarisTitle(Copy.activationTitle(im.plrs.key.core.ErrorCode.deviceLimit, coreLocale()))
+                if (polarisWindow.twoPane) {
+                    // Reason and seat caption as the lede, at body size, beside the field and actions.
+                    for (line in supporting) {
+                        Spacer(Modifier.height(PolarisSpace.tight))
+                        PolarisBody(line)
+                    }
+                }
                 if (manageAsQr && manage != null) {
                     Spacer(Modifier.height(polarisWindow.section))
                     // The QR and its caption are one group, set apart from the next.
@@ -528,18 +537,19 @@ public fun PolarisActivationScreen(
                 Spacer(Modifier.height(PolarisSpace.controls))
             }
             if (replace) {
-                PolarisPrimaryButton(
+                val openManage = {
+                    val opened = runCatching { (onOpenManage ?: uriHandler::openUri)(manage!!) }.isSuccess
+                    noBrowser = !opened
+                }
+                if (noBrowser) PolarisSecondaryButton(text = copy.freeDevice, onClick = openManage, enabled = !ui.busy) else PolarisPrimaryButton(
                     text = copy.freeDevice,
-                    onClick = {
-                        val opened = runCatching { (onOpenManage ?: uriHandler::openUri)(manage!!) }.isSuccess
-                        noBrowser = !opened
-                    },
+                    onClick = openManage,
                     enabled = !ui.busy,
                     initialFocus = true,
                 )
                 Spacer(Modifier.height(PolarisSpace.controls))
                 if (noBrowser) {
-                    PolarisSecondaryButton(
+                    PolarisPrimaryButton(
                         text = copy.signInCopyLink,
                         onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, manage))) } },
                     )

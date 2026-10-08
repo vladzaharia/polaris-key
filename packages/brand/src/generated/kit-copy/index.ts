@@ -104,6 +104,7 @@ export type KitCopyKey =
   | "signIn.methodError"
   | "signInHandoff.starting"
   | "signInHandoff.scan"
+  | "signInHandoff.scanTv"
   | "signInHandoff.linkCopied"
   | "signInHandoff.confirm"
   | "signInHandoff.ok"
