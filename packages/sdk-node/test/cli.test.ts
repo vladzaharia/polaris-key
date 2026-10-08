@@ -490,12 +490,12 @@ describe("cli/commander adapter smoke", () => {
       exit: number;
       status: string;
       usable: boolean;
-      tokenStore: string;
+      tokenStore: { backend: string; degraded: unknown };
     };
     expect(out.exit).toBe(1);
     expect(out.status).toBe("needs-activation");
     expect(out.usable).toBe(false);
-    expect(out.tokenStore).toBe("memory");
+    expect(out.tokenStore).toEqual({ backend: "memory", degraded: null });
     expect(seen.client).toBeInstanceOf(PolarisKeyClient);
 
     // Every v3 verb is attached, in its service group. `register` in particular: a config-only
