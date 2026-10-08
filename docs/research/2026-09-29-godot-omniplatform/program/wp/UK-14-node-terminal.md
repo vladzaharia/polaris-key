@@ -102,5 +102,15 @@ mise exec node@22 -- pnpm --filter @polaris-key/cli test
 
 `ui.cli` for Node is proven by these goldens; UK-32 reuses the commands.
 
+Follow-ups from the review (2026-10-07):
+
+- `secretFlow` and `mintFlow` print the raw value (a secret, a minted token) on stdout when stdout
+  is not a terminal, by design, for a script that pipes it. Consider the `::` workflow-command
+  guard there too when `GITHUB_ACTIONS` is set.
+- The `--json` envelope is written once in UI-KITS.md §1.4 ("Terminal output for scripts").
+  `terminal-python.mdx` lands with UK-13 and is not on this branch, so the pointer to that rule
+  goes in with UK-13 (or in the integration that merges both), rather than as an add/add conflict
+  here.
+
 The role agent sets `--set UK-14 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-14 done`.
