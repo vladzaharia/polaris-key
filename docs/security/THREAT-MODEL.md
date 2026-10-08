@@ -1281,8 +1281,10 @@ symbol); review catches the rest.
   the configured one, and the publisher's numeric ids come from the configuration, never the
   manifest), cannot touch another product (the slug must be the system product's, checked before
   anything is written), cannot re-enable a service, `packageFeeds` or a feed an operator switched
-  off (the bootstrap only creates), and cannot overwrite an operator-claimed publisher or claimed
-  access modes. Since ST-20 it is the system product's only manifest writer (a webhook or console
+  off (the bootstrap only creates), cannot overwrite claimed access modes, and replaces any claimed
+  publisher with the manifest's while revoking the product's static CI tokens (SEC-WP-05: the
+  console refuses `PUT …/ci-publisher` and `POST …/ci-tokens` on the system product, audited as
+  `ci.publisher.claim.refused` and `ci.token.issue.refused`). Since ST-20 it is the system product's only manifest writer (a webhook or console
   resync of it is refused), it ends a break-glass claim whose field the deployed `.pkey/` changes
   or whose 7 days ran out, writing the manifest's value for that field only, and its answer lists
   the live break-glass claims by key and expiry (§3 "Manifest-authoritative mode"). A per-IP limit

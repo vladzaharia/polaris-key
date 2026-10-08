@@ -195,9 +195,11 @@ export type LinkSystemProduct =
       packages: string[];
       /** What the manifest-owned trusted publisher now is (`null`: none declared). */
       publisher: { workflow: string; environment: string } | null;
-      /** An operator claimed the publisher (`source = 'admin'`): it was left exactly as set. */
+      /** SEC-WP-05: a claim (`source = 'admin'`) was found and replaced by the manifest's policy. */
       publisherClaimed: boolean;
-      /** Whether this run changed the manifest-owned publisher. */
+      /** SEC-WP-05: live static CI tokens this run revoked (none can be issued any more). */
+      staticTokensRevoked: number;
+      /** Whether this run changed the publisher (a replaced claim counts). */
       publisherChanged: boolean;
       /**
        * ST-20 (S-18 §4.5 item 7): the live break-glass claims after this apply. The deploy
@@ -374,12 +376,43 @@ export async function linkSystemProduct(
         environment: declared.environment,
       }
     : null;
-  const publisherChanged = !claimed && manifestPublisherChanged(current, next);
-  if (!claimed)
+  // SEC-WP-05: the system product's policy is manifest-authoritative and the console can no longer
+  // claim it. A claim found here (a pre-fix one, or a direct D1 write) is replaced by the
+  // manifest's policy, and every live static CI token on the product is revoked with its open
+  // tickets: the platform publishes through GitHub OIDC only.
+  const publisherChanged = manifestPublisherChanged(current, next);
+  if (claimed)
+    stmts.push({
+      sql: "DELETE FROM ci_publishers WHERE product = ? AND source = 'admin'",
+      params: [slug],
+    });
+  stmts.push(
+    next
+      ? stmtUpsertManifestPublisher({ product: slug, ...next, now })
+      : stmtDeleteManifestPublisher(slug),
+  );
+  const staticTokensRevoked =
+    (
+      await db.first<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM ci_tokens
+          WHERE product = ? AND kind = 'static' AND revoked_at IS NULL`,
+        slug,
+      )
+    )?.n ?? 0;
+  if (staticTokensRevoked > 0)
     stmts.push(
-      next
-        ? stmtUpsertManifestPublisher({ product: slug, ...next, now })
-        : stmtDeleteManifestPublisher(slug),
+      {
+        sql: `UPDATE ci_upload_tickets SET expires_at = MIN(expires_at, ?)
+               WHERE redeemed_at IS NULL AND token_hash IN
+                 (SELECT token_hash FROM ci_tokens
+                   WHERE product = ? AND kind = 'static' AND revoked_at IS NULL)`,
+        params: [now, slug],
+      },
+      {
+        sql: `UPDATE ci_tokens SET revoked_at = ?
+               WHERE product = ? AND kind = 'static' AND revoked_at IS NULL`,
+        params: [now, slug],
+      },
     );
 
   if (ingest) {
@@ -424,7 +457,8 @@ export async function linkSystemProduct(
       ? { workflow: declared.workflow, environment: declared.environment }
       : null,
     publisherClaimed: claimed,
-    publisherChanged,
+    publisherChanged: publisherChanged || claimed,
+    staticTokensRevoked,
     breakGlass: claims.live,
     breakGlassEnded: claims.ended.map((e) => ({ key: e.key, why: e.why })),
   };

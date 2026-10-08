@@ -39,6 +39,7 @@ import { dispatchWith } from "../src/dispatch.js";
 import { matchRoute } from "../src/router.js";
 import {
   claimPublisherPolicy,
+  issueStaticCiToken,
   getPublisherPolicy,
   GITHUB_OIDC_ISSUER,
 } from "../src/core/publisher.js";
@@ -385,7 +386,7 @@ describe("the deploy hook (F-10 automation)", () => {
     expect((await packageIds()).length).toBeGreaterThan(20);
   });
 
-  it("leaves an operator-claimed trusted publisher exactly as set", async () => {
+  it("replaces a claimed trusted publisher with the manifest's and revokes static CI tokens (SEC-WP-05)", async () => {
     expect((await hook(await token())).status).toBe(200);
     await claimPublisherPolicy(
       db,
@@ -394,16 +395,30 @@ describe("the deploy hook (F-10 automation)", () => {
       "u1",
       NOW,
     );
+    const minted = await issueStaticCiToken(env, db, {
+      product: SYSTEM_PRODUCT_SLUG,
+      scopes: ["release:publish"],
+      expiresAt: NOW + 86400,
+      label: null,
+      createdBy: "u1",
+      now: NOW,
+    });
     const res = await hook(await token());
     expect(await res.json()).toMatchObject({
       publisherClaimed: true,
-      publisherChanged: false,
+      publisherChanged: true,
+      staticTokensRevoked: 1,
     });
     expect(await getPublisherPolicy(db, SYSTEM_PRODUCT_SLUG)).toMatchObject({
-      workflow: ".github/workflows/other.yml",
-      environment: "elsewhere",
-      source: "admin",
+      workflow: ".github/workflows/publish-package.yml",
+      environment: "package-registry",
+      source: "manifest",
     });
+    const row = await db.first<{ revoked_at: number | null }>(
+      "SELECT revoked_at FROM ci_tokens WHERE token_id = ?",
+      minted.tokenId,
+    );
+    expect(row?.revoked_at).not.toBeNull();
   });
 
   it("refuses a replayed token", async () => {
