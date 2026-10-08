@@ -174,7 +174,7 @@ async function main() {
     `${r.created ? "Created" : "Re-asserted"} the system product ${r.slug}, linked to ${r.repository}: ` +
       `${r.packages.length} packages; trusted publisher ` +
       (r.publisherClaimed
-        ? "claimed by an operator (left as set)"
+        ? "claimed by an operator (replaced by the manifest's)"
         : r.publisher
           ? `${r.publisher.workflow} in ${r.publisher.environment}${r.publisherChanged ? " (changed)" : ""}`
           : "none") +

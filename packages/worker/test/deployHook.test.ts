@@ -39,6 +39,10 @@ import { dispatchWith } from "../src/dispatch.js";
 import { matchRoute } from "../src/router.js";
 import {
   claimPublisherPolicy,
+  issueStaticCiToken,
+  issueUploadTicket,
+  findUploadTicket,
+  lookupCiToken,
   getPublisherPolicy,
   GITHUB_OIDC_ISSUER,
 } from "../src/core/publisher.js";
@@ -385,7 +389,7 @@ describe("the deploy hook (F-10 automation)", () => {
     expect((await packageIds()).length).toBeGreaterThan(20);
   });
 
-  it("leaves an operator-claimed trusted publisher exactly as set", async () => {
+  it("replaces a claimed trusted publisher with the manifest's and revokes static CI tokens (SEC-WP-05)", async () => {
     expect((await hook(await token())).status).toBe(200);
     await claimPublisherPolicy(
       db,
@@ -394,16 +398,73 @@ describe("the deploy hook (F-10 automation)", () => {
       "u1",
       NOW,
     );
+    const minted = await issueStaticCiToken(env, db, {
+      product: SYSTEM_PRODUCT_SLUG,
+      scopes: ["release:publish"],
+      expiresAt: NOW + 86400,
+      label: null,
+      createdBy: "u1",
+      now: NOW,
+    });
     const res = await hook(await token());
     expect(await res.json()).toMatchObject({
       publisherClaimed: true,
-      publisherChanged: false,
+      publisherChanged: true,
+      staticTokensRevoked: 1,
     });
     expect(await getPublisherPolicy(db, SYSTEM_PRODUCT_SLUG)).toMatchObject({
-      workflow: ".github/workflows/other.yml",
-      environment: "elsewhere",
-      source: "admin",
+      workflow: ".github/workflows/publish-package.yml",
+      environment: "package-registry",
+      source: "manifest",
     });
+    const row = await db.first<{ revoked_at: number | null }>(
+      "SELECT revoked_at FROM ci_tokens WHERE token_id = ?",
+      minted.tokenId,
+    );
+    expect(row?.revoked_at).not.toBeNull();
+    // Forensics: the platform audit row keeps the replaced claim's old values.
+    const aud = await db.first<{ before_json: string | null }>(
+      "SELECT before_json FROM platform_audit WHERE action = 'feed.bootstrap' ORDER BY at DESC, rowid DESC LIMIT 1",
+    );
+    expect(JSON.parse(aud!.before_json!)).toMatchObject({
+      replacedPublisherClaim: {
+        source: "admin",
+        workflow: ".github/workflows/other.yml",
+        environment: "elsewhere",
+        modifiedBy: "u1",
+      },
+    });
+  });
+
+  it("a static token and its open ticket are dead after the deploy (SEC-WP-05)", async () => {
+    expect((await hook(await token())).status).toBe(200);
+    const minted = await issueStaticCiToken(env, db, {
+      product: SYSTEM_PRODUCT_SLUG,
+      scopes: ["release:publish"],
+      expiresAt: NOW + 86400,
+      label: null,
+      createdBy: "u1",
+      now: NOW,
+    });
+    const holder = (await lookupCiToken(env, db, minted.token, NOW))!;
+    expect(holder).not.toBeNull();
+    const t = await issueUploadTicket(env, db, {
+      product: SYSTEM_PRODUCT_SLUG,
+      holder,
+      objects: [],
+      now: NOW,
+    });
+    const find = () =>
+      findUploadTicket(env, db, {
+        ticket: t.ticket,
+        product: SYSTEM_PRODUCT_SLUG,
+        holder,
+        now: NOW,
+      });
+    expect((await find()).ok).toBe(true);
+    expect((await hook(await token())).status).toBe(200);
+    expect(await lookupCiToken(env, db, minted.token, NOW)).toBeNull();
+    expect(await find()).toMatchObject({ ok: false, reason: "ticket_expired" });
   });
 
   it("refuses a replayed token", async () => {

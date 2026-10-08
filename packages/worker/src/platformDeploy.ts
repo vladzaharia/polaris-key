@@ -388,19 +388,22 @@ export async function handleDeployHook(
       `linked it to ${policy.repository} and applied its .pkey/ ` +
       `(${linked.packages.length} packages` +
       (linked.publisherClaimed
-        ? "; the operator-claimed trusted publisher was left as set)"
+        ? "; an operator-claimed trusted publisher was replaced by the manifest's)"
         : linked.publisher
           ? `; trusted publisher ${linked.publisher.workflow} in ${linked.publisher.environment})`
           : "; no trusted publisher)") +
       breakGlassNote +
       endedNote,
-    before_json: null,
+    before_json: linked.replacedClaim
+      ? JSON.stringify({ replacedPublisherClaim: linked.replacedClaim })
+      : null,
     after_json: JSON.stringify({
       created: ensured.created,
       repository: policy.repository,
       packages: linked.packages,
       publisher: linked.publisher,
       publisherClaimed: linked.publisherClaimed,
+      staticTokensRevoked: linked.staticTokensRevoked,
       ref: claims.ref,
       breakGlass: linked.breakGlass,
       breakGlassEnded: linked.breakGlassEnded,
@@ -432,6 +435,7 @@ export async function handleDeployHook(
     publisher: linked.publisher,
     publisherClaimed: linked.publisherClaimed,
     publisherChanged: linked.publisherChanged,
+    staticTokensRevoked: linked.staticTokensRevoked,
     // ST-20: the live break-glass claims (key and expiry only) and the ones this deploy ended.
     breakGlass: linked.breakGlass.map((b) => ({
       key: b.key,

@@ -12,6 +12,13 @@
  * touches it (`core/publisher.ts`). It is also the only way to grant `release:yank`. A static
  * token is for a CI that is not GitHub; it expires at most 90 days out and only its peppered hash
  * is stored. Every write is audited with the session's actor.
+ *
+ * SEC-WP-05 (SEC-ADM-1): the SYSTEM product (`polaris-key`) feeds the platform's own package
+ * feeds, so its publisher policy is manifest-authoritative: `PUT …/ci-publisher` and
+ * `POST …/ci-tokens` are refused for it, for every console session (a platform admin is one
+ * group, not a second factor), and the refusal is audited. Reading and revoking still work. The
+ * deploy hook (`linkSystemProduct`) is the only writer of its policy, and it also revokes any
+ * static token found on the product.
  */
 
 import type { Env } from "../../env.js";
@@ -31,6 +38,8 @@ import {
   STATIC_CI_TOKEN_MAX_TTL_SECONDS,
   type PublisherClaim,
 } from "../../core/publisher.js";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import { getProduct } from "../../repo.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
@@ -110,6 +119,39 @@ function parseClaim(body: Record<string, unknown>): PublisherClaim | Response {
   return claim;
 }
 
+/** True for the platform's own product: the reserved slug, or a row marked `system`. */
+async function isSystemProduct(db: Db, slug: string): Promise<boolean> {
+  if (slug === SYSTEM_PRODUCT_SLUG) return true;
+  return (await getProduct(db, slug))?.system === 1;
+}
+
+/** The audited 403 for a policy change or token mint the system product does not accept. */
+async function refuseSystem(
+  db: Db,
+  session: AdminSession,
+  slug: string,
+  now: number,
+  action: string,
+  target: { kind: string; id: string },
+  what: string,
+): Promise<Response> {
+  await audit(
+    db,
+    slug,
+    session,
+    now,
+    action,
+    target,
+    `Refused: ${what} on the system product ${slug} (manifest-authoritative; changed by the deploy only)`,
+  );
+  return err(
+    403,
+    ErrorCode.Forbidden,
+    `${slug} is the platform's own product: its trusted publisher and CI tokens are set by the deploy, not the console`,
+    { reason: "system_product_manifest_only" },
+  );
+}
+
 export async function handleCiPublisher(
   req: Request,
   env: Env,
@@ -125,6 +167,16 @@ export async function handleCiPublisher(
     return adminJson({ ok: true, policy: await getPublisherPolicy(db, slug) });
   if (req.method !== "PUT")
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  if (await isSystemProduct(db, slug))
+    return refuseSystem(
+      db,
+      session,
+      slug,
+      now,
+      "ci.publisher.claim.refused",
+      { kind: "ci_publisher", id: slug },
+      "a claim or edit of the trusted publisher",
+    );
   const claim = parseClaim(await readBody(req));
   if (claim instanceof Response) return claim;
   const res = await claimPublisherPolicy(db, slug, claim, session.sub, now);
@@ -157,6 +209,16 @@ export async function handleCiTokens(
       return adminJson({ ok: true, tokens: await listCiTokens(db, slug) });
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (await isSystemProduct(db, slug))
+      return refuseSystem(
+        db,
+        session,
+        slug,
+        now,
+        "ci.token.issue.refused",
+        { kind: "ci_token", id: slug },
+        "issuing a static CI token",
+      );
     const body = await readBody(req);
     const scopes = normalizeScopes(body.scopes);
     if (!scopes || scopes.length === 0)

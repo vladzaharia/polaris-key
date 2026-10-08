@@ -337,7 +337,9 @@ id are resolved from GitHub at link/resync with the installation token, never re
 manifest, so a manifest cannot name another repository as its publisher. The protected-ref,
 GitHub-hosted-runner and allowed-event checks are platform-fixed. A manifest-owned policy follows
 the manifest (and every change is audited as `ci.publisher.manifest`); once an operator claims it
-(`PUT …/ci-publisher`, `source = 'admin'`), resync skips it. Scopes are never manifest-settable:
+(`PUT …/ci-publisher`, `source = 'admin'`), resync skips it. The system product is the exception:
+the console cannot claim its policy or mint its static tokens (SEC-WP-05), and the deploy hook
+replaces any claim and revokes its static tokens. Scopes are never manifest-settable:
 the default grant is `release:publish`, `release:promote`, `distribution:report`, and
 `release:yank` exists only if an operator adds it.
 
@@ -1281,8 +1283,10 @@ symbol); review catches the rest.
   the configured one, and the publisher's numeric ids come from the configuration, never the
   manifest), cannot touch another product (the slug must be the system product's, checked before
   anything is written), cannot re-enable a service, `packageFeeds` or a feed an operator switched
-  off (the bootstrap only creates), and cannot overwrite an operator-claimed publisher or claimed
-  access modes. Since ST-20 it is the system product's only manifest writer (a webhook or console
+  off (the bootstrap only creates), cannot overwrite claimed access modes, and replaces any claimed
+  publisher with the manifest's while revoking the product's static CI tokens (SEC-WP-05: the
+  console refuses `PUT …/ci-publisher` and `POST …/ci-tokens` on the system product, audited as
+  `ci.publisher.claim.refused` and `ci.token.issue.refused`). Since ST-20 it is the system product's only manifest writer (a webhook or console
   resync of it is refused), it ends a break-glass claim whose field the deployed `.pkey/` changes
   or whose 7 days ran out, writing the manifest's value for that field only, and its answer lists
   the live break-glass claims by key and expiry (§3 "Manifest-authoritative mode"). A per-IP limit
@@ -4249,7 +4253,7 @@ write path. Five are flagged security-widening, so any later generic write needs
 least L1: `release.github` (whose releases are served and published; set by Link, never by a
 resync), `release.publishing.trustedPublisher` (which workflow and environment can mint a
 `pkeyci_` token; the console's `PUT …/ci-publisher` also sets the repository and the scopes,
-`release:yank` included), `release.keys` (who can sign an accepted release record),
+`release:yank` included, except on the system product, where it is refused), `release.keys` (who can sign an accepted release record),
 `core.registration` (`open` lets any client mint a device token) and `identity.provisioning`
 (what a verified claim grants). All five are in `SECURITY_WIDENING_KEYS`. `core.secrets` is
 `secret`: it names secrets, never holds a value, and stays pending until ST-08 wires it.
