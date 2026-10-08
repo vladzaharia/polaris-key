@@ -89,7 +89,7 @@ export function AccountPage({
           {/* Focus lands here after a navigation (the router, MO-05): no ring on a heading. */}
           <h1
             tabIndex={-1}
-            className="text-[1.875rem] font-bold leading-tight text-fg-strong outline-none desk:text-[2.5rem]"
+            className="text-3xl font-bold leading-tight text-fg-strong outline-none desk:text-display"
           >
             Account
           </h1>

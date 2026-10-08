@@ -95,6 +95,15 @@
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
   --text-display: 2.5rem;
   --text-display--line-height: 1.1;
+  /* Steps the brand scale (xs 12 … 5xl 48) does not have, named so no view writes an arbitrary
+     `text-[…]` size (EXPERIENCE.md §3). Each sets the font size only, as the arbitrary values it
+     replaced did. The type-scale pass maps them onto display / title / section / row. */
+  --text-3xs: 0.625rem; /* 10 px: the letter on the 20 px product tile */
+  --text-2xs: 0.6875rem; /* 11 px: keyboard hints */
+  --text-code: 0.8125rem; /* 13 px: code in the portal's prose and key rows */
+  --text-md: 0.9375rem; /* 15 px: the portal's body and control text */
+  --text-headline: 1.75rem; /* 28 px: portal page titles on phones */
+  --text-headline-lg: 2rem; /* 32 px: portal flow titles from desk up */
   --animate-pk-in: pk-in var(--pk-duration-fast) var(--pk-ease-enter);
   /* The motion layer's keyframes (src/motion.css, notes/S-23 §6.1; MO-10), as Tailwind utilities
      on the same tokens and fills, so a component can say `animate-pk-enter` instead of a rule.

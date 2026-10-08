@@ -113,9 +113,7 @@ export function GetItPanel({
           ))}
         </div>
       ) : null}
-      <h3 className="mb-2 text-[0.9375rem] font-bold text-fg-strong">
-        All platforms
-      </h3>
+      <h3 className="mb-2 text-md font-bold text-fg-strong">All platforms</h3>
       <div className="divide-y divide-border border-t border-border">
         {model.groups.map((g) => (
           <div key={g.label} className="py-2">
@@ -188,9 +186,7 @@ export function GetItPanel({
       </div>
       {model.stores.length ? (
         <div className="mt-5 space-y-2">
-          <h3 className="text-[0.9375rem] font-bold text-fg-strong">
-            Also yours on
-          </h3>
+          <h3 className="text-md font-bold text-fg-strong">Also yours on</h3>
           <ul className="flex flex-wrap gap-2">
             {model.stores.map((s) => (
               <li key={s.id}>

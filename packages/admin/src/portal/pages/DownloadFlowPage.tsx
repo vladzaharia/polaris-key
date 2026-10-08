@@ -142,7 +142,7 @@ function DownloadBody({
       headerUrl={pres.headerUrl}
     >
       <div className="mt-2 space-y-5">
-        <h1 className="text-[1.75rem] font-bold leading-tight text-fg-strong desk:text-[2rem]">
+        <h1 className="text-headline font-bold leading-tight text-fg-strong desk:text-headline-lg">
           {where
             ? `Download ${product.name} for ${where}`
             : `Download ${product.name}`}

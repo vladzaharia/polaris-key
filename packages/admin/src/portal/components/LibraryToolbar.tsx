@@ -85,7 +85,7 @@ export function LibraryToolbar({
             placeholder={label}
             value={q}
             onChange={(e) => onChange({ q: e.target.value })}
-            className="h-full w-full min-w-0 bg-transparent pl-10 pr-10 text-[0.9375rem] text-fg-strong outline-none placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-full w-full min-w-0 bg-transparent pl-10 pr-10 text-md text-fg-strong outline-none placeholder:text-fg-subtle focus-visible:ring-0 focus-visible:ring-offset-0"
           />
           <Kbd keys="/" className="absolute right-3 hidden desk:flex" />
         </label>
@@ -129,7 +129,7 @@ export function LibraryToolbar({
                   aria-pressed={on}
                   onClick={() => onChange({ filter: c.id })}
                   className={cn(
-                    "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[0.9375rem]",
+                    "inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-md",
                     on
                       ? "border-fg-strong bg-fg-strong font-bold text-surface-page"
                       : "border-border-strong text-fg-strong hover:bg-hover",
@@ -154,7 +154,7 @@ export function LibraryToolbar({
           <select
             value={sort}
             onChange={(e) => onChange({ sort: e.target.value as LibrarySort })}
-            className="h-10 rounded-md border border-border-strong bg-surface-page px-3 text-[0.9375rem] text-fg-strong"
+            className="h-10 rounded-md border border-border-strong bg-surface-page px-3 text-md text-fg-strong"
           >
             <option value="recent">Recently added</option>
             <option value="name">Name</option>

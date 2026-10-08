@@ -58,7 +58,7 @@ const PALETTE_COLORS = new Set(["black", "white"]);
  * until it is listed here, which is the point: every value is classified on purpose.
  */
 const NOT_COLOR: Record<string, RegExp> = {
-  text: /^(xs|sm|base|lg|[2-9]?xl|display|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|clip|ellipsis)$/,
+  text: /^([23]?xs|sm|md|base|lg|[2-9]?xl|display|code|headline|headline-lg|left|center|right|justify|start|end|wrap|nowrap|balance|pretty|clip|ellipsis)$/,
   border: /^(\d+|collapse|separate|solid|dashed|dotted|double|none|hidden)$/,
   divide: /^(x|y|\d+|x-\d+|y-\d+|solid|dashed|dotted|none)$/,
   outline: /^(hidden|none|\d+|solid|dashed|dotted|double|offset-\d+)$/,
@@ -139,6 +139,21 @@ describe("the admin's tokens on the brand", () => {
   it("no admin token shadows a brand token with a different meaning", () => {
     for (const name of aliasColors.keys())
       expect(brandColors.has(name), `--color-${name}`).toBe(false);
+  });
+
+  it("every type size is a named step, never an arbitrary text-[…] size (EXPERIENCE.md §3)", () => {
+    const sizes = new Set(themeDecls(styles, "text").keys());
+    for (const step of ["3xs", "2xs", "code", "md", "headline", "headline-lg"])
+      expect(sizes.has(step), `--text-${step}`).toBe(true);
+    const arbitrary: string[] = [];
+    for (const file of sourceFiles(join(pkg, "src"))) {
+      const text = readFileSync(file, "utf8");
+      for (const m of text.matchAll(
+        /\btext-\[(?:length:)?[\d.]+(?:rem|px|em)\]/g,
+      ))
+        arbitrary.push(`${m[0]} (${file.slice(pkg.length + 1)})`);
+    }
+    expect(arbitrary).toEqual([]);
   });
 
   it("every colour utility used in src resolves to a defined token", () => {
