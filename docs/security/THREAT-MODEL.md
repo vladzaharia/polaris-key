@@ -5229,11 +5229,18 @@ directory holds operators only, which closes G5 (operator and customer in one di
   again before it shows the identity, activates or mints, because an account can be disabled
   while the flow waits, and answers the generic `error` (D8). A subject that holds no method (a
   floating licence only, an erased account, which leaves no link, or a custom-issuer product's
-  subject) signs in as before. Residual: a device or browser session signed in before the
-  disable keeps its token (disabling clears the device's account binding, `devices.subject`, not
-  its licence seat), and on a `requires-identity` product a live browser session can still
-  register devices; this closes new sign-ins only. Ending those is a product decision about
-  licence seats (follow-up).
+  subject) signs in as before. A product browser session signed in before the disable ends too:
+  the OIDC return path records, on the session's KV record, the account that holds the subject's
+  platform-IdP method (`browserSessionAccount`; none for a custom issuer or a subject with no
+  account), and `loadBrowserSession` deletes the record and answers "no session" once that
+  account is disabled, being deleted or erased (an absorbed account follows its join for 30 days,
+  as `signIn` reads it). So the page reads signed out at its next request, a `requires-identity`
+  product refuses to register a device on it, and sign-out finds nothing to end. Residual, by
+  decision: device seats and device tokens are kept, the browser device's included. They belong
+  to the licence, not the account; disabling clears each device's account binding
+  (`devices.subject`) and nothing else, and the operator deauthorizes a seat or disables the
+  licence when that is wanted. A browser session opened before this binding existed carries no
+  account and lives out its 30 days.
 - **The switch is deploy-time (AT-2).** `PLATFORM_OIDC_MIGRATION` and `PLATFORM_OIDC_SUNSET` are
   `[vars]`, explained in `NOT_A_SETTING`, never console values: a console session cannot move
   people between sign-in paths or end anyone's sign-in. Off by default; an unrecognised mode reads

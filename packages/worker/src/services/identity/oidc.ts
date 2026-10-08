@@ -116,6 +116,7 @@ import {
   claimPlatformSubject,
   platformSignInEnded,
   platformSubjectAccountRefused,
+  platformSubjectLink,
   PLATFORM_SIGNIN_ENDED,
 } from "./accounts/platformMigration.js";
 import {
@@ -2342,6 +2343,7 @@ export async function handleAuthCallback(
     stateKey,
     flow,
     result.licenseId,
+    identity.sub,
     now,
     [],
     migration.notice,
@@ -2469,6 +2471,28 @@ function joinOfferNotice(email: string): string {
 }
 
 /**
+ * The account a browser session opened by this sign-in is bound to: on a `provider: platform`
+ * product, the account holding the subject's platform-IdP method (the one N9's refusal reads),
+ * otherwise none. The session then ends when that account is disabled or erased
+ * (`loadBrowserSession`); a custom issuer's subject, or a subject with no account, opens a
+ * session bound to nothing, as before. Read-only, and like {@link pollAccountRefused} it reads
+ * the provider from the product's row and the issuer from the Worker's secrets.
+ */
+async function browserSessionAccount(
+  env: Env,
+  db: Db,
+  product: Product,
+  sub: string,
+): Promise<string | null> {
+  const row = await getOidcConfig(db, product.slug);
+  if ((row?.provider ?? "platform") !== "platform") return null;
+  const platform = platformOidcConfig(env);
+  if (!platform) return null;
+  const link = await platformSubjectLink(db, platform.issuer, sub);
+  return link?.account_id ?? null;
+}
+
+/**
  * The end of a browser-redirect flow once its licence is known: a `returnTo` flow gets the
  * browser session and a redirect back; any other gets `licenseId` recorded for the poll and the
  * "signed in" page. Shared by the callback and the licence chooser's choice (I-26).
@@ -2481,6 +2505,9 @@ async function completeBrowserFlow(
   stateKey: ArtefactRef,
   flow: FlowRecord,
   licenseId: string,
+  /** The verified subject that signed in: a `returnTo` flow's browser session is bound to its
+   *  account, if it has one ({@link browserSessionAccount}). */
+  sub: string,
   now: number,
   extraCookies: string[] = [],
   /** I-17: TRUSTED markup the "signed in" page adds (the join offer); a `returnTo` flow has no
@@ -2501,6 +2528,7 @@ async function completeBrowserFlow(
       license,
       now,
       req,
+      { accountId: await browserSessionAccount(env, db, product, sub) },
     );
     await deleteArtefact(env, stateKey);
     if (!session.ok) {
@@ -3028,6 +3056,7 @@ async function completeChoice(
     c.stateKey,
     flow,
     licenseId,
+    identity.sub,
     now,
     cookies,
   );

@@ -72,6 +72,7 @@ import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
 import type { SettingsRegistry } from "../../core/settings/registry.js";
 import { graceClampFor } from "../../core/graceClamp.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
+import { resolveAccount } from "./accounts/repo.js";
 
 interface BrowserSessionRecord {
   token: string;
@@ -79,6 +80,12 @@ interface BrowserSessionRecord {
   licenseId: string;
   deviceId: string;
   createdAt: number;
+  /** The Polaris Key account the signed-in subject belonged to when a `provider: platform`
+   *  sign-in opened this session (the OIDC return path). Absent on a key session and on a
+   *  subject with no account. While it is set, the session lives only as long as that account
+   *  can sign in: {@link loadBrowserSession} ends it once the account is disabled, being
+   *  deleted or gone (the N9 residual). */
+  accountId?: string;
 }
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
@@ -120,8 +127,10 @@ export async function createBrowserSession(
    *  headers are all the honest signal there is. */
   req?: Request,
   /** PX-W9 (WIRE-CONTRACT-V4 §12.2): a browser KEY session on an Identity product records its
-   *  key entry with the seat claim. The OIDC return path never passes it. */
-  opts: { keyEntry?: { surface: "browser" } } = {},
+   *  key entry with the seat claim. The OIDC return path never passes it. `accountId` is the
+   *  other way round: only the OIDC return path passes it, for a `provider: platform` subject
+   *  that belongs to an account (see `BrowserSessionRecord.accountId`). */
+  opts: { keyEntry?: { surface: "browser" }; accountId?: string | null } = {},
 ): Promise<
   | { ok: true; cookie: string; record: BrowserSessionRecord }
   | {
@@ -171,6 +180,7 @@ export async function createBrowserSession(
     licenseId: license.id,
     deviceId,
     createdAt: now,
+    ...(opts.accountId ? { accountId: opts.accountId } : {}),
   };
   await env.HOT.put(
     sessionKey(product.slug, sessionHash),
@@ -200,16 +210,27 @@ export async function createBrowserSession(
  * escape as a 500. That mattered less when only `GET /session` read this; it matters now that
  * the registration policy does, because a 500 there is a mint path failing open-endedly rather
  * than refusing.
+ *
+ * The one thing it does besides reading: a session a `provider: platform` sign-in opened for a
+ * subject with an account (`record.accountId`) ends once that account can no longer sign in
+ * (disabled, being deleted, or erased; an absorbed account follows its join as `signIn` does).
+ * The record is deleted and the answer is "no session", so the page reads signed out, a
+ * `requires-identity` product refuses to register a device on it, and sign-out has nothing to
+ * end. The browser device's seat and token are left alone: they belong to the licence, not the
+ * account (the N9 residual's decision).
  */
 export async function loadBrowserSession(
   req: Request,
   env: Env,
+  db: Db,
   product: Product,
+  now: number,
 ): Promise<{ tokenHash: string; record: BrowserSessionRecord } | null> {
   const token = readCookie(req, cookieName(product.slug));
   if (!token) return null;
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  const raw = await env.HOT.get(sessionKey(product.slug, tokenHash));
+  const key = sessionKey(product.slug, tokenHash);
+  const raw = await env.HOT.get(key);
   if (!raw) return null;
   let parsed: unknown;
   try {
@@ -218,7 +239,15 @@ export async function loadBrowserSession(
     return null;
   }
   if (!parsed || typeof parsed !== "object") return null;
-  return { tokenHash, record: parsed as BrowserSessionRecord };
+  const record = parsed as BrowserSessionRecord;
+  if (typeof record.accountId === "string") {
+    const account = await resolveAccount(db, record.accountId, now);
+    if (!account || account.status !== "active") {
+      await env.HOT.delete(key);
+      return null;
+    }
+  }
+  return { tokenHash, record };
 }
 
 async function browserDoc(
@@ -333,7 +362,7 @@ export async function handleBrowserSession(
   settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
-  const session = await loadBrowserSession(req, env, product);
+  const session = await loadBrowserSession(req, env, db, product, now);
   if (!session) return json({ authenticated: false, doc: null });
   const result = await browserDoc(
     req,
@@ -480,9 +509,10 @@ export async function handleBrowserLogout(
   env: Env,
   db: Db,
   product: Product,
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
-  const session = await loadBrowserSession(req, env, product);
+  const session = await loadBrowserSession(req, env, db, product, now);
   if (session) {
     const csrf = req.headers.get("x-csrf-token");
     if (!csrf || csrf !== session.record.csrf)

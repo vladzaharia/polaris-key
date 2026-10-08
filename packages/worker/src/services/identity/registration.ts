@@ -23,11 +23,14 @@
  *
  * The product browser session (`browserSession.ts`): the `pkey_<slug>_session` cookie, resolved
  * through the peppered hash to a KV record scoped to THIS product, whose device token must
- * still validate as a live device. Both halves matter:
+ * still validate as a live device. All three matter:
  *
  *   - the cookie alone proves nothing — a record can outlive the device it was minted for
  *     (logout deauthorizes the device row and deletes the token record, and an operator can
  *     deauthorize it from the console), so a stale cookie must not keep minting credentials;
+ *   - a session a `provider: platform` sign-in opened ends with its account: once the account
+ *     is disabled or erased, `loadBrowserSession` answers no session, so it registers nothing
+ *     (the N9 residual), while the browser device's licence seat is left as it is;
  *   - `validateDeviceToken` and not `requireLicensedDevice`, because `requires-identity` is
  *     precisely the policy a product picks when it does NOT run License (D-08). Demanding a
  *     usable licence here would make the policy unsatisfiable for its own audience.
@@ -46,7 +49,7 @@ export async function authorizeRegistration(
   ctx: RegistrationAuthContext,
 ): Promise<boolean> {
   const { req, env, db, product, now } = ctx;
-  const session = await loadBrowserSession(req, env, product);
+  const session = await loadBrowserSession(req, env, db, product, now);
   if (!session) return false;
   const valid = await validateDeviceToken(
     env,

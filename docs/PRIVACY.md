@@ -157,6 +157,12 @@ that provider's
 sign-ins created join the account. Nothing new is collected from the device. The operator's count
 of who would lose single sign-on at the sunset holds numbers only.
 
+Whatever that switch says, a product browser session opened through single sign-on (the web page
+of an app of a `provider: platform` product) keeps on its record the id of the Polaris Key
+account that holds the person's single sign-on, if one does, and nothing else about them. It is
+there so the session ends when that account is disabled or erased; the record expires with the
+session, after 30 days at most.
+
 For each passkey a person adds (I-16), the Worker keeps the credential's public key and id, its
 signature counter, the transports the browser reported, the relying party (`key.plrs.im`), the
 account's random WebAuthn user handle (never the account id), when it was added and last used, and
