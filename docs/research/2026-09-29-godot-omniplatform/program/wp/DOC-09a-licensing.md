@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                        |
 | Repo        | `vladzaharia/polaris-key`                                                                                                   |
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- The Licensing feature carries the server lane (`features/<f>/add-<f>/` gains a **Your server** lane); `features/licensing/server-verification` becomes the concepts page that links the server pages (§10).
+
 ## Goal
 
 The pages and parts below ship and meet the docs plan's common definition of done (§6.3) and this package's own checks.

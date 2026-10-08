@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK usability review (2026-10-08)) |
 | Size        | 0.5–0.8 engineer-weeks                                                             |
 | Depends on  | none                                                                               |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-62](SP-62-swift-server-vapor.md)       |
 | Role        | `pkey-sdk-porter`                                                                  |
 | Plan mode   | no                                                                                 |
 | Gates       | `ci:macos`                                                                         |

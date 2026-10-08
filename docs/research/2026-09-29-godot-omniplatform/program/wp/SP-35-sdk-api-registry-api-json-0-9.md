@@ -27,6 +27,12 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - Swift, Kotlin and Godot stay `planned: SP-35b` at their current spellings; [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md) renames them.
 - [`plans/U-01b.md`](../plans/U-01b.md) §11: record D8's names in `api.json`, including `setting(key).sync()`.
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- Adds `api.json` rows with `layer: server` or `cli` for every name in the plan's §5–§7, and the `requireLicense` family across servers and CLIs.
+
 ## SDK usability review (2026-10-08)
 
 Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.

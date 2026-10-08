@@ -12,6 +12,12 @@
 | Human input | none                                                                                                                        |
 | Repo        | `vladzaharia/polaris-key`                                                                                                   |
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- Managed config carries the server lane.
+
 ## Goal
 
 The pages and parts below ship and meet the docs plan's common definition of done (§6.3) and this package's own checks.

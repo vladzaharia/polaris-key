@@ -20,6 +20,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - Title: was "Node Electron host speaks PolarisBridge v4: `exposePolarisBridge` reports version 4 and answers every v4 `invoke` verb, sign-in field and activation kind over the Node client; `bridge.ts` documents the v4 contract".
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- Bridge v4 gains `backendHeaders()`, so `usePolarisFetch()` works in Electron.
+
 ## Goal
 
 `@polaris-key/node/electron`'s `exposePolarisBridge` speaks PolarisBridge v4: `subscribe` answers

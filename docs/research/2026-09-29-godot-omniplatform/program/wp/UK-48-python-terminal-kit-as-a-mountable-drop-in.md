@@ -1,16 +1,22 @@
 # UK-48 Python terminal kit as a mountable drop-in
 
-| Field       | Value                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (SDK usability review (2026-10-08)) |
-| Size        | 0.8–1.2 engineer-weeks                                                                                    |
-| Depends on  | none                                                                                                      |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                    |
-| Role        | `pkey-implementer`                                                                                        |
-| Plan mode   | no                                                                                                        |
-| Gates       | `ui-snapshots`                                                                                            |
-| Human input | none                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                 |
+| Field       | Value                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (SDK usability review (2026-10-08))                            |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                               |
+| Depends on  | none                                                                                                                                 |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-64](SP-64-framework-drop-ins-integration-and-docs.md), [UK-53](UK-53-textual-screens.md) |
+| Role        | `pkey-implementer`                                                                                                                   |
+| Plan mode   | no                                                                                                                                   |
+| Gates       | `ui-snapshots`                                                                                                                       |
+| Human input | none                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                            |
+
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- Adds `namespace` and `onCollision`, and accepts the host's `rich.Console`. Follows UK-51's `cli` rows and exit 4.
 
 ## Goal
 

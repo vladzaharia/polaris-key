@@ -24,6 +24,12 @@ These approved plans change this package. Where they differ from the text below,
 
 - [`plans/SP-35.md`](../plans/SP-35.md) §12: its schema properties, except `$schema` and `configVersion`, equal the `configFile` rows of `api.json` (test).
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- Adds `backend.origins` to the `polaris-key.json` schema and to `fromConfig()`.
+
 ## SDK usability review (2026-10-08)
 
 Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.

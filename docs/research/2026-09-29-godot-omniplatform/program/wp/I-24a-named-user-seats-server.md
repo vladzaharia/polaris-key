@@ -31,6 +31,12 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 > Named-user seats: not an owner ask and would add licensing-train members (C-45). Revive when a product asks; its wire rows then join the next licensing train.
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- `profile.user` is SP-54's; I-24a adds only its policy keys.
+
 ## Goal
 
 A licence can hold named-user seats: the Worker signs `profile.user = {"subject":"ps_…"}` into the

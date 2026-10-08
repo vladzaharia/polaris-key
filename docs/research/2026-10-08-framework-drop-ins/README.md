@@ -926,7 +926,10 @@ Totals by tier:
 
 ## 13. Open questions
 
-Each question has a recommendation.
+Each question has a recommendation. **The owner decided all eleven on 2026-10-08 (lead authority):**
+1 the header is `X-PKey-License`; 2 default freshness is one hour (the document's `expiresAt`); 3 the one-hour replay window is accepted in v1 and documented; 4 `profile.user` is added now, via SP-54; 5 one `@polaris-key/server` with a subpath per framework; 6 `apple/swift-crypto` is added for Linux builds; 7 no online checks in v1; 8 a server is a device with its own licence; 9 Next.js is header-only in v1 (route handlers); 10 a refused CLI gate exits 4; 11 webhooks come later (SP-66 is a held plan, deferred until the owner's go).
+
+The recommendations below stand as decided.
 
 1. **Header or `Authorization`?** Recommend `X-PKey-License`. It follows the `X-PKey-*` family,
    leaves the app's own `Authorization` alone, and matches today's example.

@@ -30,6 +30,12 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 
 - Renders the review's §4.1–4.2: one drop-in per host, two links, the preconditions. HA-13 and HA-14 land before it shows kit snippets.
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- Renders the server and CLI cards (§10): the server card's snippet, two links and Verified, the app card's `client.backend` line, and the CLI card's mount and gate.
+
 ## Owner direction (2026-10-08)
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.

@@ -12,6 +12,12 @@
 | Human input | the owner approves the `package-registry` run that publishes `jws@0.8.28` and `protocol@0.8.29` from their tags (approved 2026-10-08) |
 | Repo        | `vladzaharia/polaris-key`                                                                                                             |
 
+## Framework drop-ins (2026-10-08)
+
+The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
+
+- The lockstep set gains `@polaris-key/server` and `@polaris-key/oclif`.
+
 ## Goal
 
 Feed coherence: atomic lockstep publishing and a closure check, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.

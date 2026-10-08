@@ -1606,7 +1606,16 @@
         "UK-47",
         "UK-48",
         "UK-49",
-        "UK-50"
+        "UK-50",
+        "SP-53",
+        "SP-55",
+        "SP-56",
+        "SP-57",
+        "SP-58",
+        "SP-59",
+        "SP-64",
+        "SP-65",
+        "UK-51"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -11697,6 +11706,329 @@
       "status": "todo"
     },
     {
+      "id": "SP-53",
+      "title": "Backend credential contract: `X-PKey-License`, the verdict, `backend` codes and copy, `backend-matrix.json`, client-core `backend`",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": [],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-53)"
+      ],
+      "brief": "wp/SP-53-backend-credential-contract.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-54",
+      "title": "Signed-in subject in the licence document (`profile.user` whenever `devices.subject` is set)",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "corpus",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["I-05"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "threat-model", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-54)"
+      ],
+      "brief": "wp/SP-54-signed-in-subject-in-licence-document.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-55",
+      "title": "`@polaris-key/server`: the Fetch core, Express, Hono and Next.js, `/testing`, their example apps",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.6, 2.2],
+      "deps": ["SP-53"],
+      "planMode": false,
+      "gates": ["drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-55)"
+      ],
+      "brief": "wp/SP-55-polaris-key-server-express-hono-next.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-56",
+      "title": "Python server drop-ins: `polaris_key.server` with FastAPI/Starlette, Django and DRF, Flask",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.4, 1.9],
+      "deps": ["SP-53"],
+      "planMode": false,
+      "gates": ["drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-56)"
+      ],
+      "brief": "wp/SP-56-python-server-drop-ins.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-57",
+      "title": "Kotlin server drop-ins: `polaris-key-server` and the Ktor plugin",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["SP-53"],
+      "planMode": false,
+      "gates": ["drift-gate", "ci:kotlin"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-57)"
+      ],
+      "brief": "wp/SP-57-kotlin-server-drop-ins-ktor.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-58",
+      "title": "The client half: `client.backend` in Node, React and Python",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["SP-53"],
+      "planMode": false,
+      "gates": ["all-sdks", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-58)"
+      ],
+      "brief": "wp/SP-58-client-backend-node-react-python.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-59",
+      "title": "The client half in Swift, Kotlin and Godot",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.1, 1.5],
+      "deps": ["SP-58"],
+      "planMode": false,
+      "gates": ["all-sdks", "drift-gate", "ci:macos", "ci:android"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-59)"
+      ],
+      "brief": "wp/SP-59-client-backend-swift-kotlin-godot.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-60",
+      "title": "Node server drop-ins, should tier: Fastify, NestJS, Koa",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.1],
+      "deps": ["SP-55"],
+      "planMode": false,
+      "gates": ["drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-60)"
+      ],
+      "brief": "wp/SP-60-node-server-fastify-nestjs-koa.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-61",
+      "title": "Spring Boot starter on Spring Security",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.1],
+      "deps": ["SP-57"],
+      "planMode": false,
+      "gates": ["ci:kotlin"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-61)"
+      ],
+      "brief": "wp/SP-61-spring-boot-starter.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-62",
+      "title": "Swift server drop-in: `PolarisKeyServer` building on Linux, and the Vapor package",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.2, 1.7],
+      "deps": ["SP-53", "SP-52"],
+      "planMode": false,
+      "gates": ["ci:macos"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-62)"
+      ],
+      "brief": "wp/SP-62-swift-server-vapor.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-63",
+      "title": "Managed config on a server: `serverClient()` in Node and Python",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": [],
+      "planMode": false,
+      "gates": ["drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-63)"
+      ],
+      "brief": "wp/SP-63-server-client-config.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-64",
+      "title": "Framework drop-ins on the Integration page and in the docs (servers and CLIs)",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["SP-33a", "SP-55", "SP-56", "UK-46", "UK-48", "DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated", "docs-links", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-64)"
+      ],
+      "brief": "wp/SP-64-framework-drop-ins-integration-and-docs.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-65",
+      "title": "End-to-end CI: client SDK → example backend → `pkey dev`",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["SP-41", "SP-55", "SP-56", "SP-57", "SP-58"],
+      "planMode": false,
+      "gates": ["ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-65)"
+      ],
+      "brief": "wp/SP-65-end-to-end-ci-client-backend-pkey-dev.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-66",
+      "title": "Plan developer webhooks: Standard Webhooks signing, the event catalogue, delivery",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "corpus",
+      "role": "pkey-wire-planner",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": true,
+      "gates": ["plan-mode", "human-approval"],
+      "humanInputs": ["the owner's go on push webhooks"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-66)"
+      ],
+      "brief": "wp/SP-66-plan-developer-webhooks.md",
+      "status": "todo",
+      "deferred": "the owner's go on push webhooks"
+    },
+    {
+      "id": "SP-67",
+      "title": "Developer webhooks: delivery, console endpoints, `verifyWebhook()` and `polarisWebhook()` in every server drop-in",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.8, 2.5],
+      "deps": ["SP-66", "SP-55", "SP-56", "SP-57"],
+      "planMode": true,
+      "gates": ["plan-mode", "drift-gate"],
+      "humanInputs": ["the owner's go on push webhooks"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-67)"
+      ],
+      "brief": "wp/SP-67-developer-webhooks-delivery-and-adapters.md",
+      "status": "todo",
+      "deferred": "the owner's go on push webhooks",
+      "planRef": "SP-66"
+    },
+    {
+      "id": "SP-68",
+      "title": "`requireSignIn()` accepts I-21 issuer tokens (`Authorization: Bearer`, RS256 JWKS)",
+      "phase": "SP",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["I-21", "SP-55", "SP-56", "SP-57"],
+      "planMode": false,
+      "gates": ["all-sdks", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (SP-68)"
+      ],
+      "brief": "wp/SP-68-requiresignin-accepts-i21-tokens.md",
+      "status": "todo"
+    },
+    {
       "id": "HA-01",
       "title": "Hosted-asset core: `hosted_assets` table, `core/safeFetch.ts` guard, `core/hostedAssets.ts` ingest (cap, sniff, SHA-256, put, ref) and Content-Type on every R2 put",
       "phase": "HA",
@@ -15829,6 +16161,86 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/UK-50-godot-drop-in-fixes-ahead-of-uk-11.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-51",
+      "title": "Terminal drop-in contract: the `cli` family in `ui-matrix.json`, exit 4",
+      "phase": "UK",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "parity",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["UK-02b"],
+      "planMode": true,
+      "gates": ["plan-mode", "corpus", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (UK-51)"
+      ],
+      "brief": "wp/UK-51-terminal-drop-in-contract.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-52",
+      "title": "Node CLI frameworks, should tier: the `@polaris-key/oclif` plugin and Ink components",
+      "phase": "UK",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["UK-46", "UK-51"],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (UK-52)"
+      ],
+      "brief": "wp/UK-52-node-cli-oclif-ink.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-53",
+      "title": "Textual screens for host apps",
+      "phase": "UK",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["UK-48", "UK-51"],
+      "planMode": false,
+      "gates": ["ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (UK-53)"
+      ],
+      "brief": "wp/UK-53-textual-screens.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-54",
+      "title": "JVM terminal kit on Mordant, with Clikt and picocli adapters",
+      "phase": "UK",
+      "stage": "framework drop-ins (2026-10-08)",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.8, 2.4],
+      "deps": ["UK-51", "UK-02b"],
+      "planMode": false,
+      "gates": ["ui-snapshots", "ci:kotlin"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-framework-drop-ins/README.md §12 (UK-54)"
+      ],
+      "brief": "wp/UK-54-jvm-terminal-kit-clikt-picocli.md",
       "status": "todo"
     },
     {

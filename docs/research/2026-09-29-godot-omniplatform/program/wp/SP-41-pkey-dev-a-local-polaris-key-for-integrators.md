@@ -1,16 +1,16 @@
 # SP-41 `pkey dev`: a local Polaris Key for integrators
 
-| Field       | Value                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK usability review (2026-10-08))                                                                         |
-| Size        | 1.5–2.2 engineer-weeks                                                                                                                                     |
-| Depends on  | none                                                                                                                                                       |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-36](SP-36-examples-in-one-tree-built-in-ci.md), [SP-42](SP-42-test-doubles-on-the-real-client-in-every-sdk.md) |
-| Role        | `pkey-implementer`                                                                                                                                         |
-| Plan mode   | no                                                                                                                                                         |
-| Gates       | `ci`, `cli-bundle`, `docs-links`                                                                                                                           |
-| Human input | none                                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK usability review (2026-10-08))                                                                                                                                  |
+| Size        | 1.5–2.2 engineer-weeks                                                                                                                                                                                              |
+| Depends on  | none                                                                                                                                                                                                                |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-36](SP-36-examples-in-one-tree-built-in-ci.md), [SP-42](SP-42-test-doubles-on-the-real-client-in-every-sdk.md), [SP-65](SP-65-end-to-end-ci-client-backend-pkey-dev.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                  |
+| Plan mode   | no                                                                                                                                                                                                                  |
+| Gates       | `ci`, `cli-bundle`, `docs-links`                                                                                                                                                                                    |
+| Human input | none                                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                           |
 
 ## Goal
 
