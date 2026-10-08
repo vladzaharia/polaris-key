@@ -21,12 +21,9 @@ import * as React from "react";
 import type { ReleaseStoreResponse, UpdateSettings } from "../../../api.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
-import {
-  ACCESS_DESCRIPTIONS,
-  ACCESS_LABELS,
-  PLATFORM_LABELS,
-} from "../../../lib/labels.js";
+import { ACCESS_DESCRIPTIONS, ACCESS_LABELS } from "../../../lib/labels.js";
 import { versionRangeError } from "../../../lib/version.js";
+import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { CopyButton } from "../../../ui/CopyButton.js";
@@ -505,6 +502,12 @@ export function shippedPlatforms(
   return [...set].sort();
 }
 
+/** The endpoints every product serves, whatever its releases: listed while they load. */
+const BASE_ENDPOINTS: readonly { label: string; path: string }[] = [
+  { label: "Discovery", path: ".well-known/polaris.json" },
+  { label: "Version check", path: "update/version" },
+];
+
 /**
  * The endpoint rows for these channels and shipped platforms. Discovery, the version check and
  * the signed feed serve every platform; the Sparkle appcasts are listed only when macOS ships and
@@ -518,8 +521,7 @@ export function endpointRows(
   const mac = !known || platforms.includes("macos");
   const win = !known || platforms.includes("windows");
   return [
-    { label: "Discovery", path: ".well-known/polaris.json" },
-    { label: "Version check", path: "update/version" },
+    ...BASE_ENDPOINTS,
     ...(mac ? [{ label: "Sparkle appcast", path: "update/appcast.xml" }] : []),
     ...channels.flatMap((c) => [
       { label: `Signed feed · ${c}`, path: `update/${c}/feed.jws` },
@@ -533,12 +535,18 @@ export function endpointRows(
   ];
 }
 
-/** "macOS and Windows". */
-function platformList(platforms: readonly string[]): string {
-  const names = platforms.map((p) => PLATFORM_LABELS[p] ?? p);
-  return names.length <= 1
-    ? (names[0] ?? "")
-    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+/**
+ * What the Endpoints section says about the updater feeds it leaves out, or null when it lists
+ * them all. It names only what is missing and when it appears, never the platforms that ship.
+ */
+export function updaterNote(platforms: readonly string[]): string | null {
+  if (platforms.length === 0) return null;
+  const mac = platforms.includes("macos");
+  const win = platforms.includes("windows");
+  if (mac && win) return null;
+  if (mac) return "WinSparkle appears once a release ships for Windows.";
+  if (win) return "Sparkle appears once a release ships for macOS.";
+  return "Sparkle and WinSparkle appear once a release ships for macOS or Windows.";
 }
 
 function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
@@ -554,18 +562,35 @@ function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
     () => shippedPlatforms(store.data),
     [store.data],
   );
-  const rows = endpointRows(channels, platforms);
+  // Discovery and the version check don't depend on the releases; the rest waits for them.
+  const rows = store.isPending
+    ? BASE_ENDPOINTS
+    : endpointRows(channels, platforms);
+  const note = updaterNote(platforms);
   return (
     <SettingsSection
       id="feed-endpoints"
       title="Endpoints"
       description={
-        platforms.length > 0
-          ? `Point an app at discovery; it finds the rest. Updater feeds are listed for the platforms your releases ship: ${platformList(platforms)}.`
+        note
+          ? `Point an app at discovery; it finds the rest. ${note}`
           : "Point an app at discovery; it finds the rest."
       }
     >
-      <ul className="space-y-2 px-5 py-4" aria-label="Feed endpoints">
+      {store.isError ? (
+        <p className="px-5 pt-4 text-sm text-fg-muted">
+          Your releases didn&apos;t load, so every updater feed is listed for
+          the stable channel only.{" "}
+          <Button variant="link" size="sm" onClick={() => void store.refetch()}>
+            Try again
+          </Button>
+        </p>
+      ) : null}
+      <ul
+        className="space-y-2 px-5 py-4"
+        aria-label="Feed endpoints"
+        aria-busy={store.isPending || undefined}
+      >
         {rows.map((row) => {
           const url = publicUrl(slug, row.path);
           return (
@@ -583,6 +608,17 @@ function EndpointsSection({ slug }: { slug: string }): React.ReactElement {
             </li>
           );
         })}
+        {store.isPending
+          ? [0, 1, 2].map((i) => (
+              <li
+                key={`loading-${i}`}
+                className="flex flex-wrap items-center gap-2 sm:flex-nowrap"
+              >
+                <Skeleton className="h-4 w-32 shrink-0 sm:w-44" />
+                <Skeleton className="h-6 min-w-0 flex-1" />
+              </li>
+            ))
+          : null}
       </ul>
     </SettingsSection>
   );
