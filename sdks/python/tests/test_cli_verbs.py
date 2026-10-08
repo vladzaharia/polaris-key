@@ -13,6 +13,9 @@ import httpx
 import pytest
 
 from polaris_key import copy
+from polaris_key.ui.core import Copy
+
+C = Copy("en")
 from polaris_key.cli import core, verbs
 from polaris_key.cli.argparse_cli import register_argparse
 
@@ -71,35 +74,49 @@ def test_devices_list_rename_deauthorize(capsys) -> None:
     code, out = _argparse(["devices", "--product", PRODUCT], _factory(), capsys)
     assert code == 0 and "DEV2" in out and "Laptop" in out
     code, out = _argparse(["devices", "--product", PRODUCT, "rename", "DEV2", "Work", "laptop"], _factory(), capsys)
-    assert code == 0 and "Renamed DEV2" in out
+    assert code == 0 and C("common.done") in out and "Work laptop" in out
     code, out = _argparse(["devices", "--product", PRODUCT, "frobnicate"], _factory(), capsys)
     assert code == 2
 
 
 def test_config_list_set_reset_and_shorthand(capsys, tmp_path) -> None:
     code, out = _argparse(["config", "--product", PRODUCT, "list"], _factory(), capsys)
-    assert code == 0 and "run.concurrency = 4 [enforced]" in out
+    assert code == 0 and any("run.concurrency" in ln and C("core.codes.managed_by_admin.title") in ln for ln in out.splitlines())
     code, out = _argparse(["config", "--product", PRODUCT, "set", "ui.theme", '"dark"'], _factory(), capsys)
-    assert code == 0 and 'ui.theme = "dark"' in out
+    assert code == 0 and C("settings.saved") in out and '"dark"' in out
     code, out = _argparse(["config", "--product", PRODUCT, "set", "run.concurrency", "9"], _factory(), capsys)
-    assert code == 1 and copy.message("managed_by_admin") in out
-    code, out = _argparse(["config", "--product", PRODUCT, "run.concurrency"], _factory(), capsys)
-    assert code == 0 and "run.concurrency = 4" in out
+    assert code == 1 and " ".join(copy.message("managed_by_admin").split()) in " ".join(out.split())
+    code, out = _argparse(["config", "--product", PRODUCT, "run.concurrency", "--json"], _factory(), capsys)
+    assert code == 0 and json.loads(out)["value"] == 4 and json.loads(out)["source"] == "enforced"
 
 
 def test_changelog_and_offline_request_and_doctor(capsys) -> None:
     code, out = _argparse(["changelog", "--product", PRODUCT, "--limit", "1"], _factory(), capsys)
     assert code == 0 and "1.2.0" in out and "Faster." in out
     code, out = _argparse(["offline-request", "--product", PRODUCT, "--no-qr"], _factory(activated=False), capsys)
-    assert code == 0 and "Request code:" in out
+    assert code == 0 and C("offlineActivation.request") in out
     code, out = _argparse(["doctor", "--product", PRODUCT], _factory(), capsys)
     assert code == 0 and "license.gate: yes" in out and "devices.attest: no (runtime)" in out
+    code, out = _argparse(["doctor", "--product", PRODUCT, "--json"], _factory(), capsys)
+    assert code == 0 and json.loads(out)["supports"]["devices.attest"] == "runtime"
 
 
-def test_sign_in_prints_the_code_and_a_qr(capsys) -> None:
+def test_sign_in_without_a_terminal_prints_the_code_and_no_qr(capsys) -> None:
+    """Piped (no terminal), sign-in shows the code view once and waits; never a QR in a terminal
+    (SIGN-IN.md D-67, D-68)."""
     code, out = _argparse(["sign-in", "--product", PRODUCT, "--ascii"], _factory(activated=False), capsys)
     assert code == 0, out
-    assert "ABCD-EFGH" in out and "##" in out and "Signed in as ada@example.com" in out
+    assert "ABCD-EFGH" in out and "##" not in out and "▀" not in out
+    assert C("account.holder", name="ada@example.com") in out
+
+
+def test_sign_in_json_prints_pending_then_the_result(capsys) -> None:
+    code, out = _argparse(["login", "--product", PRODUCT, "--json"], _factory(activated=False), capsys)
+    assert code == 0, out
+    pending, result = [json.loads(ln) for ln in out.strip().splitlines()]
+    assert pending["event"] == "pending" and pending["userCode"] == "ABCD-EFGH"
+    assert pending["verificationUri"] == "https://k/d"
+    assert result["event"] == "result" and result["state"] == "signedIn" and result["email"] == "ada@example.com"
 
 
 def test_secret_never_prints_the_value(capsys) -> None:
@@ -116,7 +133,11 @@ def test_update_and_packs_explain_a_missing_configuration(capsys) -> None:
 
 def test_boot_prints_stages(capsys) -> None:
     code, out = _argparse(["boot", "--product", PRODUCT], _factory(), capsys)
-    assert code == 0 and "… gate" in out and "Ready." in out
+    assert code == 0 and C("boot.ready") in out
+    code, out = _argparse(["boot", "--product", PRODUCT, "--json"], _factory(), capsys)
+    objs = [json.loads(ln) for ln in out.strip().splitlines()]
+    assert {"v": 1, "command": "boot", "event": "stage", "stage": "gate"} in objs
+    assert objs[-1]["event"] == "result" and objs[-1]["outcome"] == "ready"
 
 
 def test_click_runs_the_table_verbs() -> None:
@@ -145,4 +166,4 @@ def test_typer_runs_the_table_verbs() -> None:
     assert r.exit_code == 0, r.output
     assert "run.concurrency" in r.output
     r = CliRunner().invoke(app, ["offline-request", "--product", PRODUCT, "--no-qr"])
-    assert r.exit_code == 0 and "Request code" in r.output
+    assert r.exit_code == 0 and C("offlineActivation.request") in r.output

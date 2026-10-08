@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 import pytest
 
 from polaris_key.cli import core
+from polaris_key.ui.core import Copy
 from polaris_key.core.errors import PolarisError
 from polaris_key.core.models import AllowedRange
 from polaris_key.devices.client import RegisterClosed, RegisterOk
@@ -171,10 +172,20 @@ def test_parse_trust_rejects_bad_pair():
 
 
 # ── core commands ─────────────────────────────────────────────────────────────────────
+# The commands draw through the terminal kit (UK-13): every human line is catalog copy, and the
+# --json result carries the data. A library caller gets plain lines.
+C = Copy("en")
+
+
+def _text(r: core.CommandResult) -> str:
+    return " ".join(" ".join(r.lines).split())
+
+
 def test_activate_ok():
     c = FakeClient(state=_State(status="ok"))
     r = core.activate(c, "KEY-123")
-    assert r.code == 0 and "Activated" in r.lines[0]
+    assert r.code == 0 and C("core.activation.ok.title") in r.lines
+    assert r.data["kind"] == "ok" and r.data["status"] == "ok"
     assert c.activated_key == "KEY-123"
 
 
@@ -182,19 +193,22 @@ def test_activate_device_limit():
     c = FakeClient(activation_result=ActivationDeviceLimit(limit=3, deviceCount=3))
     r = core.activate(c, "KEY")
     assert r.code == 1
-    assert "device limit reached" in r.lines[0] and "3/3" in r.lines[0]
+    assert C("deviceLimit.heading", used=3, limit=3) in r.lines
+    assert C("part.seatMeter.caption", used=3, limit=3) in _text(r)
+    assert r.data == {"kind": "device-limit", "code": "device_limit", "deviceCount": 3, "limit": 3, "manageUrl": None}
 
 
 def test_activate_unauthorized():
     c = FakeClient(activation_result=ActivationUnauthorized())
     r = core.activate(c, "KEY")
-    assert r.code == 1 and "invalid or revoked" in r.lines[0]
+    assert r.code == 1 and C("core.activation.unauthorized.title") in r.lines
+    assert C("core.activation.unauthorized.message") in _text(r)
 
 
 def test_enroll_ok():
     c = FakeClient(state=_State(status="ok"))
     r = core.enroll(c)
-    assert r.code == 0 and "Enrolled" in r.lines[0]
+    assert r.code == 0 and C("core.activation.ok.title") in r.lines
     assert c.enrolled is True
 
 
@@ -202,7 +216,8 @@ def test_register_syncs_and_reports():
     c = FakeClient(state=_State(status="ok"))
     r = core.register(c)
     assert r.code == 0
-    assert "Registered device dev-123" in r.lines[0]
+    assert C("core.gate.ok.title") in r.lines and "dev-123" in r.lines
+    assert r.data == {"deviceId": "dev-123", "status": "ok"}
     assert c.registered is True and c.synced is True
 
 
@@ -210,7 +225,8 @@ def test_register_closed_is_reported_not_retried():
     c = FakeClient(register_result=RegisterClosed())
     r = core.register(c)
     assert r.code == 1
-    assert "keyless registration" in r.lines[0]
+    assert C("core.codes.registration_closed.title") in r.lines
+    assert r.data["error"] == "registration_closed"
     assert c.synced is False, "a refusal must not be retried against activate"
 
 
@@ -222,10 +238,10 @@ def test_status_licensed_with_profile():
     )
     r = core.status(c)
     assert r.code == 0
-    assert r.lines[0] == "Status: ok"
-    assert any("Grace until (epoch): 123" in ln for ln in r.lines)
+    assert C("account.title") in r.lines
     assert any("Grace Hopper" in ln for ln in r.lines)
-    assert r.lines[-1] == "Usable: True"
+    assert r.data["status"] == "ok" and r.data["usable"] is True and r.data["graceUntil"] == 123
+    assert r.data["profile"] == {"name": "Grace Hopper", "email": "grace@example.com"}
 
 
 def test_status_shows_the_allowed_range_when_blocked():
@@ -235,7 +251,9 @@ def test_status_shows_the_allowed_range_when_blocked():
     )
     r = core.status(c)
     assert r.code == 1
-    assert any("min=2.0.0" in ln for ln in r.lines)
+    assert C("status.allowedMin", min="2.0.0") in r.lines
+    assert C("core.gate.version-too-old.title") in r.lines
+    assert r.data["allowedRange"] == {"min": "2.0.0", "max": None}
 
 
 def test_status_unlicensed_nonzero():
@@ -246,7 +264,8 @@ def test_status_unlicensed_nonzero():
 def test_status_not_applicable_is_zero():
     c = FakeClient(state=_State(status="not-applicable"), licensed=True)
     r = core.status(c)
-    assert r.code == 0 and r.lines[0] == "Status: not-applicable"
+    assert r.code == 0 and C("core.gate.not-applicable.title") in r.lines
+    assert r.data["status"] == "not-applicable"
 
 
 # ── P1b-09: the Linux enrol hint and the token-store line ─────────────────────────────
@@ -254,7 +273,7 @@ def test_enroll_fingerprint_required_on_linux_names_the_machine_id_remedy():
     c = FakeClient(activation_result=ActivationFingerprintRequired())
     r = core.enroll(c, platform="linux")
     assert r.code == 1
-    assert r.lines[0].startswith("Enrollment failed")
+    assert C("core.activation.fingerprint-required.title") in r.lines
     assert core.LINUX_NO_MACHINE_ID_HINT in r.lines
     assert "/etc/machine-id" in core.LINUX_NO_MACHINE_ID_HINT
 
@@ -272,39 +291,47 @@ def test_activation_fingerprint_required_on_linux_has_no_enrol_hint():
     assert core.LINUX_NO_MACHINE_ID_HINT not in r.lines
 
 
-def test_status_prints_the_token_store_line():
+def test_status_names_a_degraded_token_store():
     c = FakeClient(state=_State(status="ok"))
     c.store_status = lambda: StoreStatus(  # type: ignore[attr-defined]
         "file", StoreDegraded("keyring-unavailable", "no keyring extra")
     )
     r = core.status(c)
-    assert r.lines[-1] == "Token store: file (degraded: keyring-unavailable: no keyring extra)"
+    assert "Token store: file (degraded: keyring-unavailable: no keyring extra)" in r.lines
+    assert r.data["tokenStore"] == {"backend": "file", "degraded": {"reason": "keyring-unavailable", "detail": "no keyring extra"}}
     c.store_status = lambda: StoreStatus("keyring")  # type: ignore[attr-defined]
-    assert core.status(c).lines[-1] == "Token store: keyring"
+    healthy = core.status(c)
+    assert not any(ln.startswith("Token store") for ln in healthy.lines)
+    assert healthy.data["tokenStore"] == {"backend": "keyring", "degraded": None}
 
 
 def test_status_without_store_status_prints_no_store_line():
     c = FakeClient(state=_State(status="ok"))
-    assert not any(ln.startswith("Token store") for ln in core.status(c).lines)
+    r = core.status(c)
+    assert not any(ln.startswith("Token store") for ln in r.lines)
+    assert "tokenStore" not in r.data
 
 
 def test_config_layered_value():
     c = FakeClient(config={"run.concurrency": 4}, sources={"run.concurrency": "enforced"})
     r = core.config(c, "run.concurrency")
     assert r.code == 0
-    assert "run.concurrency = 4" in r.lines[0] and "enforced" in r.lines[0]
+    assert r.data == {"key": "run.concurrency", "value": 4, "source": "enforced"}
+    assert any("run.concurrency" in ln and C("core.codes.managed_by_admin.title") in ln for ln in r.lines)
 
 
 def test_config_fallback():
     c = FakeClient()
     r = core.config(c, "missing.key", "DEFAULT")
-    assert "missing.key = 'DEFAULT'" in r.lines[0] and "fallback" in r.lines[0]
+    assert r.data == {"key": "missing.key", "value": "DEFAULT", "source": "fallback"}
+    assert any('missing.key' in ln and '"DEFAULT"' in ln for ln in r.lines)
 
 
 def test_import_bundle_ok_and_refusal():
     c = FakeClient(state=_State(status="ok"))
     r = core.import_bundle(c, "a.b.c")
-    assert r.code == 0 and "Imported bundle B1 (license)" in r.lines[0]
+    assert r.code == 0 and C("offlineActivation.done") in r.lines
+    assert r.data == {"bundleId": "B1", "imported": ["license"], "status": "ok"}
     assert c.imported == "a.b.c"
 
     refused = FakeClient(
@@ -312,8 +339,9 @@ def test_import_bundle_ok_and_refusal():
     )
     r2 = core.import_bundle(refused, "a.b.c")
     assert r2.code == 1
-    assert "Bundle import failed: wrong device" in r2.lines[0]
-    assert "bundle-claims-rejected" in r2.lines[1]
+    # The copy names the step that refused; the server's words stay in the JSON.
+    assert C("core.codes.bundle-claims-rejected.title") in r2.lines
+    assert r2.data == {"error": "bundle-claims-rejected", "message": "wrong device"}
 
 
 def test_run_command_always_closes():
@@ -350,7 +378,7 @@ def test_register_argparse_dispatch_activate(capsys):
     assert args.func(args) == 0
     assert client.activated_key == "KEY-9"
     assert client.closed is True
-    assert "Activated" in capsys.readouterr().out
+    assert C("core.activation.ok.title") in capsys.readouterr().out
 
 
 def test_register_argparse_dispatch_register(capsys):
@@ -359,7 +387,7 @@ def test_register_argparse_dispatch_register(capsys):
     args = parser.parse_args(["register", "--product", "djdl"])
     assert args.func(args) == 0
     assert client.registered is True
-    assert "Registered device dev-123" in capsys.readouterr().out
+    assert "dev-123" in capsys.readouterr().out
 
 
 def test_register_argparse_dispatch_enroll(capsys):
@@ -368,7 +396,7 @@ def test_register_argparse_dispatch_enroll(capsys):
     args = parser.parse_args(["enroll", "--product", "djdl"])
     assert args.func(args) == 0
     assert client.enrolled is True
-    assert "Enrolled" in capsys.readouterr().out
+    assert C("core.activation.ok.title") in capsys.readouterr().out
 
 
 def test_register_argparse_dispatch_config(capsys):
@@ -377,7 +405,7 @@ def test_register_argparse_dispatch_config(capsys):
     args = parser.parse_args(["config", "--product", "djdl", "ui.theme"])
     assert args.func(args) == 0
     out = capsys.readouterr().out
-    assert "ui.theme = 'dark'" in out and "remote-default" in out
+    assert "ui.theme" in out and '"dark"' in out and C("settings.source.default") in out
 
 
 def test_register_argparse_dispatch_import_bundle(tmp_path, capsys):
@@ -388,7 +416,7 @@ def test_register_argparse_dispatch_import_bundle(tmp_path, capsys):
     args = parser.parse_args(["import-bundle", "--product", "djdl", str(path)])
     assert args.func(args) == 0
     assert client.imported == "a.b.c"
-    assert "Imported bundle B1" in capsys.readouterr().out
+    assert C("offlineActivation.done") in capsys.readouterr().out
 
 
 def test_register_argparse_import_bundle_reads_stdin(monkeypatch, capsys):
@@ -464,7 +492,7 @@ def test_polaris_click_group_builds_and_invokes():
     runner = CliRunner()
     result = runner.invoke(app, ["polaris", "config", "--product", "djdl", "run.concurrency"])
     assert result.exit_code == 0, result.output
-    assert "run.concurrency = 4" in result.output and "enforced" in result.output
+    assert "run.concurrency" in result.output and C("core.codes.managed_by_admin.title") in result.output
 
 
 def test_polaris_click_group_exposes_every_v3_verb():
@@ -489,7 +517,7 @@ def test_polaris_click_group_register_and_activate_exit_codes():
         ["register", "--product", "djdl"],
     )
     assert result.exit_code == 0, result.output
-    assert "Registered device dev-123" in result.output
+    assert "dev-123" in result.output
 
     bad = FakeClient(activation_result=ActivationUnauthorized())
     result = runner.invoke(
@@ -497,7 +525,7 @@ def test_polaris_click_group_register_and_activate_exit_codes():
         ["activate", "--product", "djdl", "BADKEY"],
     )
     assert result.exit_code == 1
-    assert "invalid or revoked" in result.output
+    assert C("core.activation.unauthorized.title") in result.output
 
 
 def test_polaris_click_group_import_bundle(tmp_path):
@@ -539,7 +567,7 @@ def test_polaris_typer_app_builds_and_invokes():
     runner = CliRunner()
     result = runner.invoke(app, ["polaris", "status", "--product", "djdl"])
     assert result.exit_code == 0, result.output
-    assert "Status: ok" in result.output and "Ada Lovelace" in result.output
+    assert C("account.title") in result.output and "Ada Lovelace" in result.output
 
 
 def test_polaris_typer_app_config():
@@ -555,7 +583,7 @@ def test_polaris_typer_app_config():
         ["config", "--product", "djdl", "x"],
     )
     assert result.exit_code == 0, result.output
-    assert "x = 'y'" in result.output and "local" in result.output
+    assert '"y"' in result.output and C("settings.source.local") in result.output
 
 
 def test_polaris_typer_app_register_and_import_bundle(tmp_path):
@@ -591,3 +619,18 @@ def test_the_cli_barrel_re_exports_all_three_adapters():
     assert callable(cli.polaris_click_group)
     assert callable(cli.polaris_typer_app)
     assert callable(cli.main)
+
+
+def test_every_front_end_takes_json_and_prints_one_result_object(capsys):
+    """--json on every verb (UK-13): one object, the last line, with "event": "result"."""
+    import json
+
+    client = FakeClient(state=_State(status="ok"), profile=_FakeProfile("Ada", "ada@example.com"))
+    parser = _argparse_app(client)
+    args = parser.parse_args(["status", "--product", "djdl", "--json"])
+    assert args.func(args) == 0
+    lines = capsys.readouterr().out.strip().splitlines()
+    obj = json.loads(lines[-1])
+    assert obj["v"] == 1 and obj["command"] == "status" and obj["event"] == "result"
+    assert obj["ok"] is True and obj["exit"] == 0 and obj["status"] == "ok"
+    assert obj["profile"] == {"name": "Ada", "email": "ada@example.com"}

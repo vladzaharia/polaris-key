@@ -48,11 +48,19 @@ function walkPngs(dir: string): string[] {
     for (const name of readdirSync(d).sort()) {
       const p = join(d, name);
       if (statSync(p).isDirectory()) walk(p);
-      else if (name.endsWith(".png")) out.push(p);
+      // The terminal kits' baselines are SVGs drawn from their golden ANSI text (UI-KITS §7.1),
+      // one per state at the top of the directory; their boards/ are not state baselines.
+      else if (name.endsWith(".png") || (name.endsWith(".svg") && d === dir))
+        out.push(p);
     }
   };
   if (existsSync(dir)) walk(dir);
   return out;
+}
+
+/** A baseline's name without its image extension. */
+function stem(file: string): string {
+  return basename(file).replace(/\.(png|svg)$/, "");
 }
 
 function splitTheme(name: string): { rest: string; theme: Shot["theme"] } {
@@ -85,7 +93,7 @@ export function collect(root = REPO_ROOT): Report {
   for (const { kit, dir } of BASELINE_DIRS) {
     const base = resolve(root, dir);
     for (const file of walkPngs(base)) {
-      const { rest, theme } = splitTheme(basename(file, ".png"));
+      const { rest, theme } = splitTheme(stem(file));
       // Either <state>-<theme>.png, or <state>/<variant>-<theme>.png (Roborazzi's layout).
       const parts = relative(base, file).split(/[\\/]/);
       const state = parts.length > 1 ? parts[0]! : stateOf(rest);

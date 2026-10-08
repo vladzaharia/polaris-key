@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="128.8" viewBox="0 0 705.6 128.8" role="img" aria-label="UpdatePrompt, downloading, terminal, dark theme">
+<rect width="705.6" height="128.8" rx="12" fill="#101114" stroke="#26282e"/>
+<g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
+<rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#7f848e"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#7f848e"/>
+<text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="26.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· update</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#7f848e"/>
+<text x="21" y="60.2" text-anchor="middle" fill="#72cabe">◆</text>
+<text x="42" y="60.2" textLength="168" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Tidewater Studio 2.5</text>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#7f848e"/>
+<rect x="42" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="50.4" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="58.8" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="67.2" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="75.6" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="84" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="92.4" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="100.8" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="109.2" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="117.6" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="126" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="134.4" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="142.8" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="151.2" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="159.6" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="168" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="176.4" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="184.8" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="193.2" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="201.6" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="210" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="218.4" y="71.6" width="8.4" height="2.4" fill="#72cabe"/>
+<rect x="226.8" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="235.2" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="243.6" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="252" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="260.4" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="268.8" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="277.2" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="285.6" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="294" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="302.4" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="310.8" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="319.2" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="327.6" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<rect x="336" y="71.6" width="8.4" height="2.4" fill="#7f848e"/>
+<text x="352.8" y="77" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">62%</text>
+<rect x="20.5" y="81.2" width="1" height="16.8" fill="#7f848e"/>
+<text x="42" y="93.8" textLength="386.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Downloading · 38 MB of 61 MB · About 20 s left</text>
+<rect x="20.5" y="98" width="1" height="8.4" fill="#7f848e"/>
+<rect x="20.5" y="105.9" width="4.7" height="1" fill="#7f848e"/>
+<text x="42" y="110.6" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Ctrl-C</text>
+<text x="100.8" y="110.6" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Cancel</text>
+</g></svg>

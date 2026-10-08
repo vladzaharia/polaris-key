@@ -1,0 +1,74 @@
+── truecolor · 80 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · boot[0m
+[90m│[0m
+[33m▲[0m  [1mContent not downloaded[0m
+[90m│[0m  Tidewater Studio needs this content to start. Download it when you're ready.
+[90m│[0m
+[90m│[0m  [1mtidewater boot[0m   [90mTry again[0m
+[90m└[0m
+── ansi16 · 80 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · boot[0m
+[90m│[0m
+[33m▲[0m  [1mContent not downloaded[0m
+[90m│[0m  Tidewater Studio needs this content to start. Download it when you're ready.
+[90m│[0m
+[90m│[0m  [1mtidewater boot[0m   [90mTry again[0m
+[90m└[0m
+── no-color · 80 ──
+┌   Tidewater Studio  · boot
+│
+▲  Content not downloaded
+│  Tidewater Studio needs this content to start. Download it when you're ready.
+│
+│  tidewater boot   Try again
+└
+── ascii · 80 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - boot[0m
+[90m|[0m
+[33m![0m  [1mContent not downloaded[0m
+[90m|[0m  Tidewater Studio needs this content to start. Download it when you're ready.
+[90m|[0m
+[90m|[0m  [1mtidewater boot[0m   [90mTry again[0m
+[90m`[0m
+── truecolor · 60 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · boot[0m
+[90m│[0m
+[33m▲[0m  [1mContent not downloaded[0m
+[90m│[0m  Tidewater Studio needs this content to start. Download it
+[90m│[0m  when you're ready.
+[90m│[0m
+[90m│[0m  [1mtidewater boot[0m   [90mTry again[0m
+[90m└[0m
+── ansi16 · 60 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · boot[0m
+[90m│[0m
+[33m▲[0m  [1mContent not downloaded[0m
+[90m│[0m  Tidewater Studio needs this content to start. Download it
+[90m│[0m  when you're ready.
+[90m│[0m
+[90m│[0m  [1mtidewater boot[0m   [90mTry again[0m
+[90m└[0m
+── no-color · 60 ──
+┌   Tidewater Studio  · boot
+│
+▲  Content not downloaded
+│  Tidewater Studio needs this content to start. Download it
+│  when you're ready.
+│
+│  tidewater boot   Try again
+└
+── ascii · 60 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - boot[0m
+[90m|[0m
+[33m![0m  [1mContent not downloaded[0m
+[90m|[0m  Tidewater Studio needs this content to start. Download it
+[90m|[0m  when you're ready.
+[90m|[0m
+[90m|[0m  [1mtidewater boot[0m   [90mTry again[0m
+[90m`[0m
+── pipe · 80 ──
+Tidewater Studio · boot
+Content not downloaded
+Tidewater Studio needs this content to start. Download it when you're ready.
+
+tidewater boot   Try again

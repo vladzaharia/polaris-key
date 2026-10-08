@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="128.8" viewBox="0 0 705.6 128.8" role="img" aria-label="Boot, consent, terminal, light theme">
+<rect width="705.6" height="128.8" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
+<g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
+<rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#6e7781"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#6e7781"/>
+<text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="26.6" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· boot</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="21" y="60.2" text-anchor="middle" fill="#14796f">◆</text>
+<text x="42" y="60.2" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Download content?</text>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="77" textLength="504" lengthAdjust="spacingAndGlyphs" fill="#24292f">Tidewater Studio needs 91 MB of new content, and you&#x27;re on a</text>
+<rect x="20.5" y="81.2" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="93.8" textLength="159.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">metered connection.</text>
+<rect x="20.5" y="98" width="1" height="8.4" fill="#6e7781"/>
+<rect x="20.5" y="105.9" width="4.7" height="1" fill="#6e7781"/>
+<text x="42" y="110.6" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">y</text>
+<text x="58.8" y="110.6" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Download ·</text>
+<text x="151.2" y="110.6" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">n</text>
+<text x="168" y="110.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Not now</text>
+</g></svg>

@@ -28,28 +28,11 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass, field
-from typing import Callable, Dict, IO, Iterable, List, Mapping, Optional
+from typing import Any, Callable, Dict, IO, Iterable, List, Mapping, Optional
 
 from .._version import __version__ as PACKAGE_VERSION
 from ..client import PolarisKeyClient
-from ..copy import message as copy_message
-from ..core.errors import PolarisError
 from ..core.store import StoreStatus
-from ..devices.client import (
-    RegisterClosed,
-    RegisterNotConfigured,
-    RegisterOk,
-    RegisterRateLimited,
-)
-from ..license.endpoints import (
-    ActivationDeviceLimit,
-    ActivationEnrollDisabled,
-    ActivationFingerprintRequired,
-    ActivationHardwareMismatch,
-    ActivationOk,
-    ActivationUnauthorized,
-)
-
 __all__ = [
     "CommandResult",
     "ClientOptions",
@@ -73,6 +56,8 @@ __all__ = [
     "config",
     "import_bundle",
     "read_bundle_file",
+    "result_of",
+    "terminal_for",
 ]
 
 # The version reported to the control plane when the host application doesn't say.
@@ -90,7 +75,7 @@ KEY_ENV_VAR = "POLARIS_KEY_ACTIVATION_KEY"
 #: The verb → owning-service grouping the three adapters render in their help output.
 SERVICE_COMMANDS: Dict[str, tuple] = {
     "license": ("activate", "enroll", "deactivate", "status"),
-    "identity": ("sign-in", "sign-out"),
+    "identity": ("sign-in", "sign-out", "login", "logout"),
     "devices": ("register", "devices"),
     "config": ("config", "secret", "mint"),
     "release": ("changelog",),
@@ -101,12 +86,24 @@ SERVICE_COMMANDS: Dict[str, tuple] = {
 
 @dataclass
 class CommandResult:
-    """A command's outcome: process exit code + human-readable output lines."""
+    """A command's outcome: process exit code + human-readable output lines.
+
+    ``lines`` is the plain text of the terminal kit's screen (UK-13). ``styled`` holds the same
+    screen as kit lines and ``data`` the ``--json`` result's fields; ``terminal``, when the
+    command ran through a front end, is where :meth:`emit` draws them."""
 
     code: int = 0
     lines: List[str] = field(default_factory=list)
+    styled: Optional[List[Any]] = field(default=None, repr=False, compare=False)
+    data: Dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    terminal: Optional[Any] = field(default=None, repr=False, compare=False)
 
     def emit(self) -> None:
+        if self.terminal is not None:
+            from ..ui.terminal.flows import Outcome
+
+            self.terminal.finish(Outcome(self.code, list(self.styled or []), dict(self.data)))
+            return
         for line in self.lines:
             print(line)
 
@@ -266,118 +263,89 @@ LINUX_NO_MACHINE_ID_HINT = (
 )
 
 
-def _describe_activation_failure(
-    r: object, verb: str, platform: Optional[str] = None
-) -> CommandResult:
-    """Render a non-ok activation outcome.
+def terminal_for(client: Any, verb: str, *, terminal: Any = None) -> Any:
+    """The terminal kit (``polaris_key.ui.terminal``) a command draws with: the front end's, or
+    for a library caller a plain one (no escapes, no prompts, the screen as text lines)."""
+    from ..ui.terminal.env import TermEnv
+    from ..ui.terminal.flows import Terminal
 
-    Shared by ``activate`` and ``enroll`` so the two can't drift into describing the same
-    server response differently. Mirrors ``describeFailure()`` in the Node CLI.
-    """
-    if isinstance(r, ActivationDeviceLimit):
-        detail = ""
-        if r.limit is not None:
-            detail = f" ({r.deviceCount}/{r.limit} devices in use)"
-        lines = [f"{verb} failed: device limit reached{detail}."]
-        # PX-W8: the portal link that frees a seat, printed without the key (scrollback is a log).
-        if r.manage_url:
-            lines.append(f"Free a device: {r.manage_url}")
-        return CommandResult(1, lines)
-    if isinstance(r, ActivationUnauthorized):
-        return CommandResult(1, [f"{verb} failed: invalid or revoked credential."])
-    if isinstance(r, ActivationFingerprintRequired):
-        lines = [
-            f"{verb} failed: a hardware fingerprint is required but could not be "
-            "collected on this host."
-        ]
-        # Keyless enrolment needs a machine anchor, which Linux reads only from the
-        # machine-id files (WIRE-CONTRACT-V3 §6.1 rule 2); most container images ship none.
-        if verb == "Enrollment" and (platform or sys.platform).startswith("linux"):
-            lines.append(LINUX_NO_MACHINE_ID_HINT)
-        return CommandResult(1, lines)
-    if isinstance(r, ActivationHardwareMismatch):
-        changed = f" ({', '.join(r.changed)})" if r.changed else ""
-        return CommandResult(
-            1,
-            [
-                f"{verb} failed: this machine's hardware changed{changed}. "
-                "The previous authorization was released — run the command again to re-bind."
-            ],
-        )
-    if isinstance(r, ActivationEnrollDisabled):
-        return CommandResult(
-            1, [f"{verb} failed: this product does not offer keyless enrollment."]
-        )
-    code = getattr(r, "code", None)
-    if isinstance(code, str):
-        # Every other kind carries a registry code: say it with the shared copy (§3.2).
-        lines = [f"{verb} failed: {copy_message(code)}"]
-        if getattr(r, "kind", None) in ("refused", "error"):
-            lines[0] += f" ({code})"
-        return CommandResult(1, lines)
-    message = getattr(r, "message", "") or "unknown error."
-    return CommandResult(1, [f"{verb} failed: {message}"])
+    if terminal is not None:
+        terminal.verb = verb
+        return terminal
+    return Terminal.create(product=getattr(client, "product", None), client=client, verb=verb, term_env=TermEnv())
+
+
+def result_of(outcome: Any, terminal: Any = None) -> CommandResult:
+    """A flow's outcome as a :class:`CommandResult`."""
+    return CommandResult(
+        outcome.code,
+        outcome.text,
+        styled=list(outcome.lines),
+        data=dict(outcome.data),
+        terminal=terminal,
+    )
 
 
 # ── license ─────────────────────────────────────────────────────────────────────────
-def activate(client: PolarisKeyClient, key: str) -> CommandResult:
-    """Activate this device with a licence ``key`` and pull the first documents."""
-    r = client.license.activate_with_key(key)
-    if isinstance(r, ActivationOk):
-        st = client.status()
-        return CommandResult(0, [f"Activated. Status: {st.status}"])
-    return _describe_activation_failure(r, "Activation")
+def activate(client: PolarisKeyClient, key: Optional[str], *, terminal: Any = None) -> CommandResult:
+    """Activate this device with a licence ``key`` and pull the first documents. With no key
+    and an interactive terminal, the kit asks for it (masked entry, UI-KITS §4.3)."""
+    from ..ui.terminal import flows
+
+    t = terminal_for(client, "activate", terminal=terminal)
+    return result_of(flows.activate(client, t, key), terminal)
 
 
-def enroll(client: PolarisKeyClient, platform: Optional[str] = None) -> CommandResult:
+def enroll(client: PolarisKeyClient, platform: Optional[str] = None, *, terminal: Any = None) -> CommandResult:
     """Obtain a licence with no key and no sign-in, when the product offers a free tier.
 
     ``platform`` only selects the failure hint; it defaults to ``sys.platform``."""
-    r = client.license.enroll()
-    if isinstance(r, ActivationOk):
-        st = client.status()
-        return CommandResult(0, [f"Enrolled. Status: {st.status}"])
-    if isinstance(r, ActivationEnrollDisabled):
-        return CommandResult(
-            1,
-            [
-                "This product does not offer keyless enrollment — "
-                "activate with a license key instead."
-            ],
-        )
-    return _describe_activation_failure(r, "Enrollment", platform)
+    from ..ui.terminal import flows
+    from ..ui.terminal.text import Span
+
+    t = terminal_for(client, "enroll", terminal=terminal)
+    out = flows.enroll(client, t)
+    # Keyless enrolment needs a machine anchor, which Linux reads only from the machine-id files
+    # (WIRE-CONTRACT-V3 §6.1 rule 2); most container images ship none.
+    if out.data.get("kind") == "fingerprint-required" and (platform or sys.platform).startswith("linux"):
+        hint = t.kit.body([Span(LINUX_NO_MACHINE_ID_HINT, (), None, "data:diagnostic")])
+        out.lines = out.lines[:-1] + hint + out.lines[-1:]
+    res = result_of(out, terminal)
+    if out.data.get("kind") == "fingerprint-required" and (platform or sys.platform).startswith("linux"):
+        res.lines.append(LINUX_NO_MACHINE_ID_HINT)
+    return res
 
 
-def deactivate(client: PolarisKeyClient) -> CommandResult:
+def deactivate(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
     """Deauthorize this device and wipe the local token + cache."""
-    client.license.deactivate()
-    return CommandResult(0, ["Deactivated. Local credentials wiped."])
+    from ..ui.terminal import flows
+
+    t = terminal_for(client, "deactivate", terminal=terminal)
+    return result_of(flows.deactivate(client, t), terminal)
 
 
-def status(client: PolarisKeyClient) -> CommandResult:
-    """Print the current gate status + a short profile/grace summary.
+def status(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
+    """The gate status as the terminal kit draws it: the account summary when licensed, the
+    grace line offline, the blocked state with its fix, or the activation prompt.
 
     The exit code reflects whether the gate currently permits running — which for a
-    product with License disabled is 0 on ``not-applicable``, not a failure.
+    product with License disabled is 0 on ``not-applicable``, not a failure. A degraded token
+    store is named under the summary (and in ``--json`` as ``tokenStore``).
     """
-    st = client.status()
-    lines = [f"Status: {st.status}"]
-    if st.graceUntil is not None:
-        lines.append(f"Grace until (epoch): {st.graceUntil}")
-    if st.allowedRange is not None:
-        ar = st.allowedRange
-        lines.append(f"Allowed version range: min={ar.min or '-'} max={ar.max or '-'}")
-    profile = client.license.get_profile()
-    if profile is not None:
-        lines.append(f"Licensed to: {profile.name} <{profile.email}>")
-    usable = client.is_licensed()
-    lines.append(f"Usable: {usable}")
+    from ..ui.terminal import flows
+
+    t = terminal_for(client, "status", terminal=terminal)
     # `getattr`: a host's test double need not implement it.
     store_status = getattr(client, "store_status", None)
     store = store_status() if callable(store_status) else None
+    line = format_store_status(store) if isinstance(store, StoreStatus) and store.degraded is not None else None
+    out = flows.status(client, t, store_line=line)
     if isinstance(store, StoreStatus):
-        lines.append(format_store_status(store))
-    return CommandResult(0 if usable else 1, lines)
+        out.data["tokenStore"] = {
+            "backend": store.backend,
+            "degraded": None if store.degraded is None else {"reason": store.degraded.reason, "detail": store.degraded.detail},
+        }
+    return result_of(out, terminal)
 
 
 def format_store_status(store: StoreStatus) -> str:
@@ -390,7 +358,7 @@ def format_store_status(store: StoreStatus) -> str:
 
 
 # ── devices ─────────────────────────────────────────────────────────────────────────
-def register(client: PolarisKeyClient) -> CommandResult:
+def register(client: PolarisKeyClient, *, terminal: Any = None) -> CommandResult:
     """``POST /<p>/devices/register`` — the keyless device mint (§6).
 
     The provisioning verb for a product whose registration policy is ``open``, and the
@@ -399,58 +367,35 @@ def register(client: PolarisKeyClient) -> CommandResult:
     ``activate``: the two are different operator intents and quietly substituting one
     would hide a misconfigured policy.
     """
-    r = client.devices.register()
-    if isinstance(r, RegisterOk):
-        client.sync(force=True)
-        st = client.status()
-        return CommandResult(
-            0, [f"Registered device {r.deviceId}. Status: {st.status}"]
-        )
-    if isinstance(r, RegisterClosed):
-        return CommandResult(
-            1,
-            [
-                "Registration failed: this product does not accept keyless registration. "
-                "Activate with a license key instead."
-            ],
-        )
-    if isinstance(r, RegisterRateLimited):
-        return CommandResult(
-            1, ["Registration failed: too many attempts; try again shortly."]
-        )
-    if isinstance(r, RegisterNotConfigured):
-        return CommandResult(1, ["Registration failed: unknown product."])
-    message = getattr(r, "message", "") or "unknown error."
-    return CommandResult(1, [f"Registration failed: {message}"])
+    from ..ui.terminal import flows
+
+    t = terminal_for(client, "register", terminal=terminal)
+    return result_of(flows.register(client, t), terminal)
 
 
 # ── config ──────────────────────────────────────────────────────────────────────────
 def config(
-    client: PolarisKeyClient, key: str, fallback: Optional[str] = None
+    client: PolarisKeyClient, key: str, fallback: Optional[str] = None, *, terminal: Any = None
 ) -> CommandResult:
-    """Resolve a single layered-config ``key`` and print its value + source."""
-    value = client.config.get_config(key, fallback)
-    source = client.config.get_config_source(key)
-    return CommandResult(0, [f"{key} = {value!r} (source: {source})"])
+    """Resolve a single layered-config ``key`` and show its value and source."""
+    from ..ui.terminal import flows
+
+    t = terminal_for(client, "config", terminal=terminal)
+    return result_of(flows.config(client, t, [key], fallback=fallback), terminal)
 
 
 # ── core ────────────────────────────────────────────────────────────────────────────
-def import_bundle(client: PolarisKeyClient, jws: str) -> CommandResult:
+def import_bundle(client: PolarisKeyClient, jws: str, *, terminal: Any = None) -> CommandResult:
     """Import an offline activation bundle (§7).
 
     All-or-nothing: a rejection leaves the install exactly as it was, and the message
     names the STEP that refused — "get a bundle minted for THIS machine" is a different
     operator action from "the trust manifest inside it was rejected".
     """
-    try:
-        r = client.import_bundle(jws)
-    except PolarisError as e:
-        return CommandResult(1, [f"Bundle import failed: {e.message}", f"({e.code})"])
-    st = client.status()
-    imported = "+".join(r.imported) or "nothing"
-    return CommandResult(
-        0, [f"Imported bundle {r.bundleId} ({imported}). Status: {st.status}"]
-    )
+    from ..ui.terminal import flows
+
+    t = terminal_for(client, "import-bundle", terminal=terminal)
+    return result_of(flows.import_bundle(client, t, jws), terminal)
 
 
 def read_bundle_file(path: str) -> str:

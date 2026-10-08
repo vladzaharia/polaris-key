@@ -1,0 +1,106 @@
+── truecolor · 80 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · changelog[0m
+[90m│[0m
+[38;2;20;121;111m◆[0m  [1mWhat's new in Tidewater Studio[0m
+[90m│[0m
+[90m│[0m  ]8;;https://tidewater.app/releases/2.5\[1mVersion 2.5[0m]8;;\[90m · Released 2026-10-01[0m
+[90m│[0m    Stem export in one click, with loudness matching
+[90m│[0m    Track freeze now works with every plug-in
+[90m│[0m
+[90m│[0m  [1mVersion 2.4.1[0m[90m · Released 2026-09-12[0m
+[90m│[0m    Fixes a crash when a plug-in is missing
+[90m└[0m
+── ansi16 · 80 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · changelog[0m
+[90m│[0m
+[36m◆[0m  [1mWhat's new in Tidewater Studio[0m
+[90m│[0m
+[90m│[0m  ]8;;https://tidewater.app/releases/2.5\[1mVersion 2.5[0m]8;;\[90m · Released 2026-10-01[0m
+[90m│[0m    Stem export in one click, with loudness matching
+[90m│[0m    Track freeze now works with every plug-in
+[90m│[0m
+[90m│[0m  [1mVersion 2.4.1[0m[90m · Released 2026-09-12[0m
+[90m│[0m    Fixes a crash when a plug-in is missing
+[90m└[0m
+── no-color · 80 ──
+┌   Tidewater Studio  · changelog
+│
+◆  What's new in Tidewater Studio
+│
+│  Version 2.5 · Released 2026-10-01
+│    Stem export in one click, with loudness matching
+│    Track freeze now works with every plug-in
+│
+│  Version 2.4.1 · Released 2026-09-12
+│    Fixes a crash when a plug-in is missing
+└
+── ascii · 80 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - changelog[0m
+[90m|[0m
+[36m*[0m  [1mWhat's new in Tidewater Studio[0m
+[90m|[0m
+[90m|[0m  ]8;;https://tidewater.app/releases/2.5\[1mVersion 2.5[0m]8;;\[90m - Released 2026-10-01[0m
+[90m|[0m    Stem export in one click, with loudness matching
+[90m|[0m    Track freeze now works with every plug-in
+[90m|[0m
+[90m|[0m  [1mVersion 2.4.1[0m[90m - Released 2026-09-12[0m
+[90m|[0m    Fixes a crash when a plug-in is missing
+[90m`[0m
+── truecolor · 60 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · changelog[0m
+[90m│[0m
+[38;2;20;121;111m◆[0m  [1mWhat's new in Tidewater Studio[0m
+[90m│[0m
+[90m│[0m  ]8;;https://tidewater.app/releases/2.5\[1mVersion 2.5[0m]8;;\[90m · Released 2026-10-01[0m
+[90m│[0m    Stem export in one click, with loudness matching
+[90m│[0m    Track freeze now works with every plug-in
+[90m│[0m
+[90m│[0m  [1mVersion 2.4.1[0m[90m · Released 2026-09-12[0m
+[90m│[0m    Fixes a crash when a plug-in is missing
+[90m└[0m
+── ansi16 · 60 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · changelog[0m
+[90m│[0m
+[36m◆[0m  [1mWhat's new in Tidewater Studio[0m
+[90m│[0m
+[90m│[0m  ]8;;https://tidewater.app/releases/2.5\[1mVersion 2.5[0m]8;;\[90m · Released 2026-10-01[0m
+[90m│[0m    Stem export in one click, with loudness matching
+[90m│[0m    Track freeze now works with every plug-in
+[90m│[0m
+[90m│[0m  [1mVersion 2.4.1[0m[90m · Released 2026-09-12[0m
+[90m│[0m    Fixes a crash when a plug-in is missing
+[90m└[0m
+── no-color · 60 ──
+┌   Tidewater Studio  · changelog
+│
+◆  What's new in Tidewater Studio
+│
+│  Version 2.5 · Released 2026-10-01
+│    Stem export in one click, with loudness matching
+│    Track freeze now works with every plug-in
+│
+│  Version 2.4.1 · Released 2026-09-12
+│    Fixes a crash when a plug-in is missing
+└
+── ascii · 60 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - changelog[0m
+[90m|[0m
+[36m*[0m  [1mWhat's new in Tidewater Studio[0m
+[90m|[0m
+[90m|[0m  ]8;;https://tidewater.app/releases/2.5\[1mVersion 2.5[0m]8;;\[90m - Released 2026-10-01[0m
+[90m|[0m    Stem export in one click, with loudness matching
+[90m|[0m    Track freeze now works with every plug-in
+[90m|[0m
+[90m|[0m  [1mVersion 2.4.1[0m[90m - Released 2026-09-12[0m
+[90m|[0m    Fixes a crash when a plug-in is missing
+[90m`[0m
+── pipe · 80 ──
+Tidewater Studio · changelog
+What's new in Tidewater Studio
+
+Version 2.5 · Released 2026-10-01
+  Stem export in one click, with loudness matching
+  Track freeze now works with every plug-in
+
+Version 2.4.1 · Released 2026-09-12
+  Fixes a crash when a plug-in is missing

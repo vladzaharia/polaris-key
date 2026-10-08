@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="128.8" viewBox="0 0 705.6 128.8" role="img" aria-label="Activate, rejected, terminal, dark theme">
+<rect width="705.6" height="128.8" rx="12" fill="#101114" stroke="#26282e"/>
+<g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
+<rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#7f848e"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#7f848e"/>
+<text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="26.6" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· activate</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#7f848e"/>
+<text x="21" y="60.2" text-anchor="middle" fill="#72cabe">◆</text>
+<text x="42" y="60.2" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">License key</text>
+<text x="151.2" y="60.2" textLength="319.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">You&#x27;ll find it in your purchase email.</text>
+<rect x="159.6" y="64.4" width="8.4" height="16.8" fill="#d7dae0"/>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#7f848e"/>
+<text x="46.2" y="77" text-anchor="middle" fill="#7f848e">•</text>
+<text x="54.6" y="77" text-anchor="middle" fill="#7f848e">•</text>
+<text x="63" y="77" text-anchor="middle" fill="#7f848e">•</text>
+<text x="71.4" y="77" text-anchor="middle" fill="#7f848e">•</text>
+<text x="79.8" y="77" text-anchor="middle" fill="#7f848e">•</text>
+<text x="88.2" y="77" text-anchor="middle" fill="#7f848e">•</text>
+<text x="96.6" y="77" text-anchor="middle" fill="#7f848e">•</text>
+<text x="105" y="77" text-anchor="middle" fill="#7f848e">•</text>
+<text x="109.2" y="77" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">4-ABCD</text>
+<rect x="20.5" y="81.2" width="1" height="16.8" fill="#7f848e"/>
+<text x="46.2" y="93.8" text-anchor="middle" fill="#ef6b73">✗</text>
+<text x="58.8" y="93.8" textLength="504" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">That doesn&#x27;t look like a license key. Keys start with pkey_.</text>
+<rect x="20.5" y="98" width="1" height="8.4" fill="#7f848e"/>
+<rect x="20.5" y="105.9" width="4.7" height="1" fill="#7f848e"/>
+<text x="42" y="110.6" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Enter</text>
+<text x="92.4" y="110.6" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Activate license ·</text>
+<text x="252" y="110.6" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Esc</text>
+<text x="285.6" y="110.6" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Cancel</text>
+</g></svg>

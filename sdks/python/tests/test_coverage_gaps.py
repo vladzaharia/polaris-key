@@ -19,6 +19,9 @@ import pytest
 
 import polaris_key.devices.deviceid as deviceid
 from polaris_key.cli import core
+from polaris_key.ui.core import Copy
+
+C = Copy("en")
 from polaris_key.core.context import (
     DocumentBlocked,
     DocumentDeviceCap,
@@ -266,18 +269,17 @@ def _cli_client(**kw: Any):
 def test_cli_activate_then_status_then_deactivate() -> None:
     c = _cli_client()
     r = core.activate(c, "my-key")
-    assert r.code == 0 and any("Activated" in line for line in r.lines)
+    assert r.code == 0 and Copy("en")("core.activation.ok.title") in r.lines
 
     st = core.status(c)
     assert st.code == 0
-    assert any("Status: ok" in line for line in st.lines)
-    assert any("Licensed to: Grace Hopper" in line for line in st.lines)
-    assert "Usable: True" in st.lines
-    # P1b-09: the token store is named last.
-    assert st.lines[-1] == "Token store: memory"
+    assert st.data["status"] == "ok" and st.data["usable"] is True
+    assert any("Grace Hopper" in line for line in st.lines)
+    # P1b-09: the token store is named (in --json; in the lines only when degraded).
+    assert st.data["tokenStore"] == {"backend": "memory", "degraded": None}
 
     d = core.deactivate(c)
-    assert d.code == 0 and any("Deactivated" in line for line in d.lines)
+    assert d.code == 0 and d.data == {"signedOut": True}
     # After deactivate the gate is needs-activation -> status exits non-zero.
     assert core.status(c).code == 1
     c.close()
@@ -292,14 +294,15 @@ def test_cli_status_exits_zero_on_not_applicable() -> None:
     )
     st = core.status(c)
     assert st.code == 0
-    assert any("Status: not-applicable" in line for line in st.lines)
+    assert st.data["status"] == "not-applicable"
     c.close()
 
 
 def test_cli_activate_unauthorized_returns_code_1() -> None:
     c = make_client(lambda r: httpx.Response(401, text="bad key"))
     r = core.activate(c, "nope")
-    assert r.code == 1 and any("invalid or revoked" in line for line in r.lines)
+    assert r.code == 1 and C("core.activation.unauthorized.title") in r.lines
+    assert not any("nope" in line for line in r.lines), "the key never goes back to the scrollback"
     c.close()
 
 
@@ -307,8 +310,8 @@ def test_cli_activate_device_limit_reports_counts() -> None:
     c = make_client(lambda r: httpx.Response(403, json={"limit": 3, "deviceCount": 3}))
     r = core.activate(c, "k")
     assert r.code == 1
-    assert any("device limit reached" in line for line in r.lines)
-    assert any("3/3" in line for line in r.lines)
+    assert C("deviceLimit.heading", used=3, limit=3) in r.lines
+    assert r.data["deviceCount"] == 3 and r.data["limit"] == 3
     c.close()
 
 
@@ -316,7 +319,7 @@ def test_cli_enroll_disabled_has_its_own_message() -> None:
     c = make_client(lambda r: httpx.Response(404))
     r = core.enroll(c)
     assert r.code == 1
-    assert any("keyless enrollment" in line for line in r.lines)
+    assert C("core.activation.enroll-disabled.title") in r.lines
     c.close()
 
 
@@ -325,22 +328,22 @@ def test_cli_register_syncs_and_reports_the_device_id() -> None:
     r = core.register(c)
     assert r.code == 0
     assert any(c.core.device_id in line for line in r.lines)
-    assert any("Status: ok" in line for line in r.lines)
+    assert C("core.gate.ok.title") in r.lines and r.data["status"] == "ok"
     c.close()
 
 
 @pytest.mark.parametrize(
     "status,fragment",
     [
-        (403, "keyless registration"),
-        (429, "too many attempts"),
-        (404, "unknown product"),
+        (403, "core.codes.registration_closed.title"),
+        (429, "core.codes.rate_limited.title"),
+        (404, "core.codes.not-configured.title"),
     ],
 )
 def test_cli_register_failure_messages(status: int, fragment: str) -> None:
     c = make_client(lambda r: httpx.Response(status))
     r = core.register(c)
-    assert r.code == 1 and any(fragment in line for line in r.lines)
+    assert r.code == 1 and C(fragment) in r.lines
     c.close()
 
 
@@ -349,9 +352,9 @@ def test_cli_config_prints_value_and_source() -> None:
     core.activate(c, "k")
     r = core.config(c, "run.concurrency")
     assert r.code == 0
-    assert "run.concurrency = 4" in r.lines[0] and "enforced" in r.lines[0]
+    assert r.data == {"key": "run.concurrency", "value": 4, "source": "enforced"}
     fb = core.config(c, "missing.key", "DEFAULT")
-    assert "missing.key = 'DEFAULT'" in fb.lines[0] and "fallback" in fb.lines[0]
+    assert fb.data == {"key": "missing.key", "value": "DEFAULT", "source": "fallback"}
     c.close()
 
 
@@ -362,14 +365,14 @@ def test_cli_import_bundle_success_and_refusal(tmp_path) -> None:
     device_id = c.core.device_id
     good = sign_bundle(device_id, docs={"license": sign_license(device_id)})
     r = core.import_bundle(c, good)
-    assert r.code == 0 and any("Imported bundle" in line for line in r.lines)
+    assert r.code == 0 and C("offlineActivation.done") in r.lines
 
     bad = sign_bundle("someone-else")
     r2 = core.import_bundle(c, bad)
     assert r2.code == 1
-    assert any("Bundle import failed" in line for line in r2.lines)
-    # The message names the STEP, which is the operator's remedy.
-    assert any("bundle-claims-rejected" in line for line in r2.lines)
+    # The copy names the STEP, which is the operator's remedy.
+    assert C("core.codes.bundle-claims-rejected.message") in r2.lines
+    assert r2.data["error"] == "bundle-claims-rejected"
     c.close()
 
 
@@ -401,7 +404,7 @@ def test_service_commands_group_every_verb_by_owner() -> None:
     assert core.SERVICE_COMMANDS["devices"] == ("register", "devices")
     assert core.SERVICE_COMMANDS["config"] == ("config", "secret", "mint")
     assert core.SERVICE_COMMANDS["core"] == ("import-bundle", "offline-request", "boot", "doctor")
-    assert core.SERVICE_COMMANDS["identity"] == ("sign-in", "sign-out")
+    assert core.SERVICE_COMMANDS["identity"] == ("sign-in", "sign-out", "login", "logout")
     assert core.SERVICE_COMMANDS["release"] == ("changelog",)
     assert core.SERVICE_COMMANDS["update"] == ("update", "packs")
 

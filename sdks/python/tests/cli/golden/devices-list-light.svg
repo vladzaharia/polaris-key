@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="313.6" viewBox="0 0 705.6 313.6" role="img" aria-label="Devices, list, terminal, light theme">
+<rect width="705.6" height="313.6" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
+<g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
+<rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#6e7781"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#6e7781"/>
+<text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="26.6" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· devices</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="21" y="60.2" text-anchor="middle" fill="#14796f">◆</text>
+<text x="42" y="60.2" textLength="100.8" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Your devices</text>
+<text x="151.2" y="60.2" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· 3 devices</text>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="77" textLength="226.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Devices using this license.</text>
+<rect x="20.5" y="81.2" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="98" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="110.6" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Work laptop</text>
+<rect x="20.5" y="114.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="58.8" y="127.4" textLength="369.6" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Windows 11 · last seen 41 days ago · dev_9k2</text>
+<rect x="20.5" y="131.6" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="148.4" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="161" textLength="33.6" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Mara</text>
+<text x="79.8" y="161" text-anchor="middle" fill="#24292f" font-weight="600">’</text>
+<text x="84" y="161" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">s iPad</text>
+<rect x="20.5" y="165.2" width="1" height="16.8" fill="#6e7781"/>
+<text x="58.8" y="177.8" textLength="344.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">iPadOS 26 · last seen yesterday · dev_4m7</text>
+<rect x="20.5" y="182" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="198.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="211.4" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">MacBook Pro</text>
+<text x="142.8" y="211.4" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">·</text>
+<text x="159.6" y="211.4" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#14796f">This computer</text>
+<rect x="20.5" y="215.6" width="1" height="16.8" fill="#6e7781"/>
+<text x="58.8" y="228.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">macOS 26 · last seen today · dev_1c3</text>
+<rect x="20.5" y="232.4" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="249.2" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="261.8" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater devices rename &lt;id&gt; &lt;name&gt;</text>
+<text x="369.6" y="261.8" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Rename</text>
+<rect x="20.5" y="266" width="1" height="16.8" fill="#6e7781"/>
+<text x="42" y="278.6" textLength="285.6" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater devices deauthorize &lt;id&gt;</text>
+<text x="369.6" y="278.6" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Remove</text>
+<rect x="20.5" y="282.8" width="1" height="8.4" fill="#6e7781"/>
+<rect x="20.5" y="290.7" width="4.7" height="1" fill="#6e7781"/>
+</g></svg>

@@ -954,27 +954,7 @@
     {
       "board": "terminal",
       "state": "device-limit",
-      "text": "↑↓ choose · enter remove · esc cancel"
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "◆ Which device?"
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "◇ License key · pkey_tidewater_7Q2M…3WPLDA"
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "● Work laptop"
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "✓ Tidewater Studio Pro · Lifetime"
+      "text": "◇ License key · pkey_tidewater_…3WPLDA"
     },
     {
       "board": "terminal",
@@ -984,7 +964,17 @@
     {
       "board": "terminal",
       "state": "device-limit",
-      "text": "Remove one to use it on build-server-02. You can add it back later."
+      "text": "Enter Open in browser · Esc Cancel"
+    },
+    {
+      "board": "terminal",
+      "state": "device-limit",
+      "text": "key.plrs.im/portal/tidewater/devices"
+    },
+    {
+      "board": "terminal",
+      "state": "device-limit",
+      "text": "Replace a device in your browser. Tidewater Studio continues when"
     },
     {
       "board": "terminal",
@@ -994,52 +984,32 @@
     {
       "board": "terminal",
       "state": "device-limit",
-      "text": "Tidewater Studio signs out on Work laptop."
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "Windows 11 · last used 41 days ago · least recent"
+      "text": "you're done."
     },
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "` enter remove · esc cancel"
+      "text": "- activate"
     },
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "+ Tidewater Studio - activate"
+      "text": "· activate"
     },
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "| ( ) Mara's iPad"
+      "text": "Enter"
     },
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "| (*) Work laptop - least recent"
+      "text": "Esc"
     },
     {
       "board": "terminal",
       "state": "fallbacks",
-      "text": "○ Mara's iPad"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "● Work laptop · least recent"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "enter remove · esc cancel"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "Tidewater Studio · activate"
+      "text": "key.plrs.im/portal/tidewater/devices"
     },
     {
       "board": "terminal",
@@ -1109,37 +1079,7 @@
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "↑↓ choose · enter remove · esc cancel"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "◆ Which device?"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "◇ License key · pkey_tide…PLDA"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "○ MacBook Pro today"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "○ Mara's iPad yesterday"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "● Work laptop"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "✓ Tidewater Studio Pro · Lifetime"
+      "text": "◇ License key · pkey_tidewater_…3WPLDA"
     },
     {
       "board": "terminal",
@@ -1149,12 +1089,27 @@
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "least recent"
+      "text": "back later."
     },
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "Remove one to use it on build-server-02."
+      "text": "continues when you're done."
+    },
+    {
+      "board": "terminal",
+      "state": "narrow",
+      "text": "Enter Open in browser · Esc Cancel"
+    },
+    {
+      "board": "terminal",
+      "state": "narrow",
+      "text": "key.plrs.im/portal/tidewater/devices"
+    },
+    {
+      "board": "terminal",
+      "state": "narrow",
+      "text": "Replace a device in your browser. Tidewater Studio"
     },
     {
       "board": "terminal",
@@ -1164,22 +1119,22 @@
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "Tidewater Studio signs out on Work laptop."
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "Windows 11 · 41 days ago"
-    },
-    {
-      "board": "terminal",
-      "state": "narrow",
-      "text": "You can add it back later."
+      "text": "To use it on this computer, replace one. You can add it"
     },
     {
       "board": "terminal",
       "state": "sign-in",
-      "text": "⠹ Waiting… · expires in 4:52"
+      "text": "◇ No browser on this computer. Use a code instead:"
+    },
+    {
+      "board": "terminal",
+      "state": "sign-in",
+      "text": "◇ Opening Polaris Key in your browser…"
+    },
+    {
+      "board": "terminal",
+      "state": "sign-in",
+      "text": "⠹ Waiting for your browser…"
     },
     {
       "board": "terminal",
@@ -1189,37 +1144,17 @@
     {
       "board": "terminal",
       "state": "sign-in",
-      "text": "and enter this code:"
+      "text": "build-01 $ tidewater login"
     },
     {
       "board": "terminal",
       "state": "sign-in",
-      "text": "c copy · o open · esc cancel"
+      "text": "c Copy code · Esc Cancel"
     },
     {
       "board": "terminal",
       "state": "sign-in",
-      "text": "Check the code there matches"
-    },
-    {
-      "board": "terminal",
-      "state": "sign-in",
-      "text": "Go to key.plrs.im/activate"
-    },
-    {
-      "board": "terminal",
-      "state": "sign-in",
-      "text": "Polaris Key handles sign-in. Harbor Audio never sees your passkeys."
-    },
-    {
-      "board": "terminal",
-      "state": "sign-in",
-      "text": "this one."
-    },
-    {
-      "board": "terminal",
-      "state": "sign-in",
-      "text": "Tidewater Studio · sign in"
+      "text": "Tidewater Studio · login"
     },
     {
       "board": "terminal",

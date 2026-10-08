@@ -1,0 +1,74 @@
+── truecolor · 80 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
+[90m│[0m
+[31m✗[0m  [1mLicense expired[0m
+[90m│[0m  Your license has expired. Connect to the internet or renew it to continue.
+[90m│[0m
+[90m│[0m  [1mtidewater activate[0m   [90mRenew[0m
+[90m└[0m
+── ansi16 · 80 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
+[90m│[0m
+[31m✗[0m  [1mLicense expired[0m
+[90m│[0m  Your license has expired. Connect to the internet or renew it to continue.
+[90m│[0m
+[90m│[0m  [1mtidewater activate[0m   [90mRenew[0m
+[90m└[0m
+── no-color · 80 ──
+┌   Tidewater Studio  · status
+│
+✗  License expired
+│  Your license has expired. Connect to the internet or renew it to continue.
+│
+│  tidewater activate   Renew
+└
+── ascii · 80 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
+[90m|[0m
+[31mx[0m  [1mLicense expired[0m
+[90m|[0m  Your license has expired. Connect to the internet or renew it to continue.
+[90m|[0m
+[90m|[0m  [1mtidewater activate[0m   [90mRenew[0m
+[90m`[0m
+── truecolor · 60 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
+[90m│[0m
+[31m✗[0m  [1mLicense expired[0m
+[90m│[0m  Your license has expired. Connect to the internet or
+[90m│[0m  renew it to continue.
+[90m│[0m
+[90m│[0m  [1mtidewater activate[0m   [90mRenew[0m
+[90m└[0m
+── ansi16 · 60 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
+[90m│[0m
+[31m✗[0m  [1mLicense expired[0m
+[90m│[0m  Your license has expired. Connect to the internet or
+[90m│[0m  renew it to continue.
+[90m│[0m
+[90m│[0m  [1mtidewater activate[0m   [90mRenew[0m
+[90m└[0m
+── no-color · 60 ──
+┌   Tidewater Studio  · status
+│
+✗  License expired
+│  Your license has expired. Connect to the internet or
+│  renew it to continue.
+│
+│  tidewater activate   Renew
+└
+── ascii · 60 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
+[90m|[0m
+[31mx[0m  [1mLicense expired[0m
+[90m|[0m  Your license has expired. Connect to the internet or
+[90m|[0m  renew it to continue.
+[90m|[0m
+[90m|[0m  [1mtidewater activate[0m   [90mRenew[0m
+[90m`[0m
+── pipe · 80 ──
+Tidewater Studio · status
+License expired
+Your license has expired. Connect to the internet or renew it to continue.
+
+tidewater activate   Renew

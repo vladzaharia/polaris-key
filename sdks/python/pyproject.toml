@@ -31,7 +31,11 @@ dependencies = [
 keyring = ["keyring>=24"]
 click = ["click>=8"]
 typer = ["typer>=0.9"]
-dev = ["pytest>=7", "click>=8", "typer>=0.9"]
+# The terminal kit (UK-13): rich renders the CLI's styled output; without it the kit writes the same
+# ANSI itself. Textual is only for the optional full-screen app (polaris_key.ui.terminal.textual_app).
+cli = ["rich>=13"]
+tui = ["rich>=13", "textual>=0.80"]
+dev = ["pytest>=7", "click>=8", "typer>=0.9", "rich>=13", "textual>=0.80"]
 
 [project.scripts]
 polaris-key = "polaris_key.cli:main"

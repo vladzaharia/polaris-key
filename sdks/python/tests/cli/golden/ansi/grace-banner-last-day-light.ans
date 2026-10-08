@@ -1,0 +1,106 @@
+── truecolor · 80 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
+[90m│[0m
+[33m▲[0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
+[90m│[0m  [90mReconnect by 2026-10-03[0m
+[90m│[0m
+[90m│[0m  Offline[90m · [0mPro license[90m · Lifetime[0m
+[90m│[0m  Signed in as Mara Fennick[90m · mara@fennick.studio[0m
+[90m│[0m  Version 2.4.1[90m · stable[0m
+[90m│[0m
+[90m│[0m  [1mtidewater status[0m   [90mReconnect[0m
+[90m└[0m
+── ansi16 · 80 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
+[90m│[0m
+[33m▲[0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
+[90m│[0m  [90mReconnect by 2026-10-03[0m
+[90m│[0m
+[90m│[0m  Offline[90m · [0mPro license[90m · Lifetime[0m
+[90m│[0m  Signed in as Mara Fennick[90m · mara@fennick.studio[0m
+[90m│[0m  Version 2.4.1[90m · stable[0m
+[90m│[0m
+[90m│[0m  [1mtidewater status[0m   [90mReconnect[0m
+[90m└[0m
+── no-color · 80 ──
+┌   Tidewater Studio  · status
+│
+▲  Offline · reconnect today to keep using Tidewater Studio
+│  Reconnect by 2026-10-03
+│
+│  Offline · Pro license · Lifetime
+│  Signed in as Mara Fennick · mara@fennick.studio
+│  Version 2.4.1 · stable
+│
+│  tidewater status   Reconnect
+└
+── ascii · 80 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
+[90m|[0m
+[33m![0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
+[90m|[0m  [90mReconnect by 2026-10-03[0m
+[90m|[0m
+[90m|[0m  Offline[90m - [0mPro license[90m - Lifetime[0m
+[90m|[0m  Signed in as Mara Fennick[90m - mara@fennick.studio[0m
+[90m|[0m  Version 2.4.1[90m - stable[0m
+[90m|[0m
+[90m|[0m  [1mtidewater status[0m   [90mReconnect[0m
+[90m`[0m
+── truecolor · 60 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
+[90m│[0m
+[33m▲[0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
+[90m│[0m  [90mReconnect by 2026-10-03[0m
+[90m│[0m
+[90m│[0m  Offline[90m · [0mPro license[90m · Lifetime[0m
+[90m│[0m  Signed in as Mara Fennick[90m · mara@fennick.studio[0m
+[90m│[0m  Version 2.4.1[90m · stable[0m
+[90m│[0m
+[90m│[0m  [1mtidewater status[0m   [90mReconnect[0m
+[90m└[0m
+── ansi16 · 60 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
+[90m│[0m
+[33m▲[0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
+[90m│[0m  [90mReconnect by 2026-10-03[0m
+[90m│[0m
+[90m│[0m  Offline[90m · [0mPro license[90m · Lifetime[0m
+[90m│[0m  Signed in as Mara Fennick[90m · mara@fennick.studio[0m
+[90m│[0m  Version 2.4.1[90m · stable[0m
+[90m│[0m
+[90m│[0m  [1mtidewater status[0m   [90mReconnect[0m
+[90m└[0m
+── no-color · 60 ──
+┌   Tidewater Studio  · status
+│
+▲  Offline · reconnect today to keep using Tidewater Studio
+│  Reconnect by 2026-10-03
+│
+│  Offline · Pro license · Lifetime
+│  Signed in as Mara Fennick · mara@fennick.studio
+│  Version 2.4.1 · stable
+│
+│  tidewater status   Reconnect
+└
+── ascii · 60 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
+[90m|[0m
+[33m![0m  [1mOffline · reconnect today to keep using Tidewater Studio[0m
+[90m|[0m  [90mReconnect by 2026-10-03[0m
+[90m|[0m
+[90m|[0m  Offline[90m - [0mPro license[90m - Lifetime[0m
+[90m|[0m  Signed in as Mara Fennick[90m - mara@fennick.studio[0m
+[90m|[0m  Version 2.4.1[90m - stable[0m
+[90m|[0m
+[90m|[0m  [1mtidewater status[0m   [90mReconnect[0m
+[90m`[0m
+── pipe · 80 ──
+Tidewater Studio · status
+Offline · reconnect today to keep using Tidewater Studio
+Reconnect by 2026-10-03
+
+Offline · Pro license · Lifetime
+Signed in as Mara Fennick · mara@fennick.studio
+Version 2.4.1 · stable
+
+tidewater status   Reconnect

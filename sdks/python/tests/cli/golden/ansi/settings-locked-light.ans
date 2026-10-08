@@ -1,0 +1,88 @@
+── truecolor · 80 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · config[0m
+[90m│[0m
+[38;2;20;121;111m◆[0m  [1mSettings[0m
+[90m│[0m  telemetry.crashReports  [1mtrue[0m[90m · Set by Fennick Studio[0m
+[90m│[0m  ui.theme                [1m"dark"[0m[90m · Changed by you[0m
+[90m│[0m
+[90m│[0m  [1mtidewater config set <key> <value>[0m
+[90m│[0m  [1mtidewater config reset <key>[0m         [90mReset to default[0m
+[90m└[0m
+── ansi16 · 80 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · config[0m
+[90m│[0m
+[36m◆[0m  [1mSettings[0m
+[90m│[0m  telemetry.crashReports  [1mtrue[0m[90m · Set by Fennick Studio[0m
+[90m│[0m  ui.theme                [1m"dark"[0m[90m · Changed by you[0m
+[90m│[0m
+[90m│[0m  [1mtidewater config set <key> <value>[0m
+[90m│[0m  [1mtidewater config reset <key>[0m         [90mReset to default[0m
+[90m└[0m
+── no-color · 80 ──
+┌   Tidewater Studio  · config
+│
+◆  Settings
+│  telemetry.crashReports  true · Set by Fennick Studio
+│  ui.theme                "dark" · Changed by you
+│
+│  tidewater config set <key> <value>
+│  tidewater config reset <key>         Reset to default
+└
+── ascii · 80 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - config[0m
+[90m|[0m
+[36m*[0m  [1mSettings[0m
+[90m|[0m  telemetry.crashReports  [1mtrue[0m[90m - Set by Fennick Studio[0m
+[90m|[0m  ui.theme                [1m"dark"[0m[90m - Changed by you[0m
+[90m|[0m
+[90m|[0m  [1mtidewater config set <key> <value>[0m
+[90m|[0m  [1mtidewater config reset <key>[0m         [90mReset to default[0m
+[90m`[0m
+── truecolor · 60 ──
+[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · config[0m
+[90m│[0m
+[38;2;20;121;111m◆[0m  [1mSettings[0m
+[90m│[0m  telemetry.crashReports  [1mtrue[0m[90m · Set by Fennick Studio[0m
+[90m│[0m  ui.theme                [1m"dark"[0m[90m · Changed by you[0m
+[90m│[0m
+[90m│[0m  [1mtidewater config set <key> <value>[0m
+[90m│[0m  [1mtidewater config reset <key>[0m         [90mReset to default[0m
+[90m└[0m
+── ansi16 · 60 ──
+[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · config[0m
+[90m│[0m
+[36m◆[0m  [1mSettings[0m
+[90m│[0m  telemetry.crashReports  [1mtrue[0m[90m · Set by Fennick Studio[0m
+[90m│[0m  ui.theme                [1m"dark"[0m[90m · Changed by you[0m
+[90m│[0m
+[90m│[0m  [1mtidewater config set <key> <value>[0m
+[90m│[0m  [1mtidewater config reset <key>[0m         [90mReset to default[0m
+[90m└[0m
+── no-color · 60 ──
+┌   Tidewater Studio  · config
+│
+◆  Settings
+│  telemetry.crashReports  true · Set by Fennick Studio
+│  ui.theme                "dark" · Changed by you
+│
+│  tidewater config set <key> <value>
+│  tidewater config reset <key>         Reset to default
+└
+── ascii · 60 ──
+[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - config[0m
+[90m|[0m
+[36m*[0m  [1mSettings[0m
+[90m|[0m  telemetry.crashReports  [1mtrue[0m[90m - Set by Fennick Studio[0m
+[90m|[0m  ui.theme                [1m"dark"[0m[90m - Changed by you[0m
+[90m|[0m
+[90m|[0m  [1mtidewater config set <key> <value>[0m
+[90m|[0m  [1mtidewater config reset <key>[0m         [90mReset to default[0m
+[90m`[0m
+── pipe · 80 ──
+Tidewater Studio · config
+Settings
+telemetry.crashReports  true · Set by Fennick Studio
+ui.theme                "dark" · Changed by you
+
+tidewater config set <key> <value>
+tidewater config reset <key>         Reset to default
