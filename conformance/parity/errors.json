@@ -505,19 +505,19 @@
       "code": "bad_response",
       "kind": "client",
       "service": "core",
-      "description": "Node, Python, Swift: the server answered 200 with a body missing a field the call needs (an edge-mint without its token or expiry, a device sign-in start without a complete prompt)."
+      "description": "Node, Python, Swift: the server answered 200 with a body missing a field the call needs (an edge-mint without its token or expiry, a device sign-in start without a complete prompt). Node also: a 2xx body that is not JSON, and a signed document that fails verification during sync."
     },
     {
       "code": "network-error",
       "kind": "client",
       "service": "core",
-      "description": "Node, Python, Swift: the request never got an answer (edge-mint, device-code sign-in). A device-code sign-in wait treats it as transient and polls again."
+      "description": "The request never got an answer (refused, reset, DNS, the client's deadline). Node: every network call, thrown or in its result, with the failure as `cause`; Python, Swift: edge-mint, device-code sign-in. A device-code sign-in wait treats it as transient and polls again."
     },
     {
       "code": "server-error",
       "kind": "client",
-      "service": "identity",
-      "description": "Node, Python, Swift, Godot: a device-code sign-in poll answered 5xx. Transient: the wait polls again at the same interval."
+      "service": "core",
+      "description": "The server answered 5xx. Node: every network call, with `status` and the server's own code as `wireCode`; Python, Swift, Godot: a device-code sign-in poll. Transient: a sign-in wait polls again at the same interval."
     },
     {
       "code": "cancelled",
