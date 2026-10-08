@@ -1,16 +1,24 @@
-# LX-12 Licence and grant lifecycle: grant expiry, refund and chargeback states, `refundGraceHours`, `ended_reason`
+# LX-12 Licence and add-on lifecycle states (no refund grace)
 
-| Field       | Value                                                                                                                                         |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                  |
-| Size        | 0.4–0.55 engineer-weeks                                                                                                                       |
-| Depends on  | [LX-08](LX-08-licensing-expand.md), [LX-06](LX-06-licensing-settings.md)                                                                      |
-| Unblocks    | [LX-14](LX-14-console-licensing.md), [LX-18](LX-18-licensing-wire.md), [LX-23](LX-23-subscriptions.md), [CM-05](CM-05-checkout-fulfilment.md) |
-| Role        | `pkey-implementer`                                                                                                                            |
-| Plan mode   | no                                                                                                                                            |
-| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); THREAT-MODEL                                                                             |
-| Human input | none                                                                                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                     |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                                                                                                                                                                                                |
+| Size        | 0.4–0.55 engineer-weeks                                                                                                                                                                                                                                                                                                                                     |
+| Depends on  | [LX-08](LX-08-licensing-expand.md), [LX-06](LX-06-licensing-settings.md)                                                                                                                                                                                                                                                                                    |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-14](LX-14-console-licensing.md), [LX-18](LX-18-licensing-wire.md), [LX-23](LX-23-subscriptions.md), [CM-05](CM-05-checkout-fulfilment.md), [CM-22](CM-22-purchases-ledger-one-revocation-path.md), [LX-40](LX-40-retire-licensing-model-settings-7-1.md), [LX-41](LX-41-durations-subscriptions-core-trials.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                          |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                                                          |
+| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); THREAT-MODEL                                                                                                                                                                                                                                                                                           |
+| Human input | none                                                                                                                                                                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                   |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Keeps ended_reason and the licence and add-on states; drops refundGraceHours (full refunds and chargebacks revoke at once; partial refunds never). Dunning lives in LX-41 and LX-23 with the store's own grace.
+
+- Title: was "Licence and grant lifecycle: grant expiry, refund and chargeback states, `refundGraceHours`, `ended_reason`".
 
 ## Goal
 

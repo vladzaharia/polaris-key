@@ -12,6 +12,14 @@
 | Human input | the addon's licence; the first version number; pushing the release tag; the Godot Asset Store upload and the legacy Asset Library submission (no upload API exists)  |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                            |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (25e6209ce). Asset Store and Asset Library uploads stay human steps in HANDOFF.md; the Godot docs page becomes SP-33b output when ST-47 retires the second Godot config artifact.
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 The Godot SDK is a published, documented sixth language. A `godot-vX.Y.Z` tag builds a GitHub

@@ -1,16 +1,22 @@
 # HA-14 Godot SDK and UI kit read presentation: icon fetched, verified (SHA-256 in the SDK's own hasher) and cached under `user://`, `ui_accent` default
 
-| Field       | Value                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------ |
-| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs) |
-| Size        | 0.5–0.8 engineer-weeks                                                                           |
-| Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md)          |
-| Unblocks    | [UK-41](UK-41-must-tier-closeout.md)                                                             |
-| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                         |
-| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                 |
-| Gates       | plan mode; corpus and transcript runners; UI snapshots                                           |
-| Human input | none                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                        |
+| Field       | Value                                                                                                                         |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 5: presentation in SDKs)                              |
+| Size        | 0.5–0.8 engineer-weeks                                                                                                        |
+| Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md)                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [UK-41](UK-41-must-tier-closeout.md) |
+| Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                      |
+| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                                              |
+| Gates       | plan mode; corpus and transcript runners; UI snapshots                                                                        |
+| Human input | none                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                     |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Godot side of HA-13.
 
 ## Goal
 

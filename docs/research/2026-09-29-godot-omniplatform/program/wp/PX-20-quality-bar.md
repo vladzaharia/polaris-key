@@ -21,6 +21,14 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - E2E covers every LicenseChoice state of SIGN-IN.md §6.2's conformance list (incl. sign-in and mixed) in both themes at 1440 and 390; axe and keyboard checks per §3.14 (no radio on full and blocked rows, Replace reachable by Tab, focus to the h1, one code input).
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (d12e46cd2). Treat the e2e suite as a standing gate; its fixtures move into P0-40's shared builders.
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 CI runs Playwright over every §4 state in both themes at 1440 and 390 px with axe on every state, a CSP browser test, a visual baseline and the horizontal-scroll assertion; the suite grows with each PX front-end package and is complete when the last one lands.

@@ -12,6 +12,17 @@
 | Human input | none                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                       |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive as a package when an adopter ships on Vue. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Vue kit package. Vue ships as a UK-31 recipe over the elements; revive as a package when an adopter ships on Vue.
+
+- Optional now (was required).
+
 ## Goal
 
 A Vue 3 / Nuxt app gates itself in its framework's idiom, with every element's parts and slots passed through and typed.

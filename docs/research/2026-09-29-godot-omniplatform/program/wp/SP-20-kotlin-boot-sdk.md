@@ -12,6 +12,14 @@
 | Human input | none                                                                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                          |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Merged (297c369aa).
+
+- Status: stamped `done` (was `in-review`).
+
 ## Goal
 
 `:sdk` exposes `client.boot()` (discovery, keyless registration, trust, documents and report to a stage outcome) as plain coroutine code with no Android dependency; `:ui`'s `PolarisBootState.launch` becomes a thin state holder over it; and the `:conformance` replayer runs `boot-cold-register.json` and the `stage-matrix.json` outcomes on the JVM.

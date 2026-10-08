@@ -12,6 +12,15 @@
 | Human input | none                                                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                         |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive after launch if sync latency is a measured complaint. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Live pokes. Pull on foreground, online and visibility covers 'restore from any instance'. Revive after launch if sync latency is a measured complaint.
+
 ## Goal
 
 Clients learn about changes immediately through a hibernating WebSocket "poke", in all six SDKs (Godot `WebSocketPeer`), with pull still the source of truth.

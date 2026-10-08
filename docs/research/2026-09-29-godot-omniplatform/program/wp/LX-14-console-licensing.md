@@ -1,11 +1,11 @@
-# LX-14 Console licensing: Entitlements and Grants tabs, comp, trial, suppress and move actions, tier rank, catalog `combine` and `entitlementKind`, commerce mappings and restore policy, licensing report
+# LX-14 Licence record: Status, Entitlements, Keys, Devices, Activity
 
 | Field       | Value                                                                                                                                                                                                                               |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                                                                        |
 | Size        | 0.7–1 engineer-weeks                                                                                                                                                                                                                |
 | Depends on  | [LX-06](LX-06-licensing-settings.md), [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md), [LX-14a](LX-14a-per-license-device-limit.md) |
-| Unblocks    | [CM-12](CM-12-console-commerce.md)                                                                                                                                                                                                  |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-12](CM-12-console-commerce.md)                                                                                                                                                          |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                  |
 | Plan mode   | no                                                                                                                                                                                                                                  |
 | Gates       | console CSP parity; docsLinks                                                                                                                                                                                                       |
@@ -15,6 +15,16 @@
 ## S-24 amendment (2026-10-06)
 
 The licences list's **Holder** column and filter, the **Batch** filter and the holder actions on the record (Assign, Send a new key, Reassign, Make floating) are [LX-30](LX-30-console-holder-surfaces.md)'s, and creation is [LX-29](LX-29-new-license-wizard.md)'s wizard; this package's Entitlements and Grants tabs sit beside them ([S-24](../../notes/S-24-licence-holders.md) §8.8).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Licence record only: Status, Entitlements (effective with sources, add-ons with actions, the override editor replacing the 'Config overrides' tab), Keys, Devices, Activity; a comp is a comp add-on or a licence entitlement override, a trial is a duration (LX-41). The tier half goes to LX-44, commerce mappings to CM-23; no catalog combine/entitlementKind editors. Absorbs UX-07 (Status tab) and UX-24 (Add seats... as a seat-pack comp).
+
+- Title: was "Console licensing: Entitlements and Grants tabs, comp, trial, suppress and move actions, tier rank, catalog `combine` and `entitlementKind`, commerce mappings and restore policy, licensing report".
+- UX rows absorbed (`uxRows` in `backlog-changes.json`): UX-07.
+- UX rows that name this package: UX-24 (dropped: merged into LX-14 (Add seats... is a seat-pack comp)).
 
 ## Goal
 

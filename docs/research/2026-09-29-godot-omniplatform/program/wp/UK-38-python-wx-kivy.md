@@ -12,6 +12,15 @@
 | Human input | none                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                     |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive condition (the note): wxPython and Kivy adapters; ui-core lets a host draw its own. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> wxPython and Kivy adapters; ui-core lets a host draw its own.
+
 ## Goal
 
 The wxPython and Kivy surface exists over the existing core, with no second state machine, and is baselined in both themes.

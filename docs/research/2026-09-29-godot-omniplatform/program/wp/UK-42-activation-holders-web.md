@@ -1,16 +1,25 @@
 # UK-42 Activation without an account in ui-core, the elements and React: the Done step after a key with the capability-aware recommendation, **Add your name and email** (hints, then keep and attach), the owned, waiting and other-email states, the AccountAndLicense row, copy keys and UI fixtures
 
-| Field       | Value                                                                                                                                        |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                 |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                                       |
-| Depends on  | [UK-03](UK-03-ui-core.md), [UK-05](UK-05-react-kit.md), [UK-44](UK-44-sdk-signin-hints.md), [I-10a](I-10a-sdk-identity-node-react-python.md) |
-| Unblocks    | [LX-31](LX-31-holders-closeout.md), [UK-43](UK-43-activation-holders-native.md)                                                              |
-| Role        | `pkey-sdk-porter`                                                                                                                            |
-| Plan mode   | no                                                                                                                                           |
-| Gates       | UI snapshots in both themes; modernity lint; kit copy drift gate (`gen:brand -- --check`); UI fixtures in every SDK                          |
-| Human input | none                                                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                    |
+| Field       | Value                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                            |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                  |
+| Depends on  | [UK-03](UK-03-ui-core.md), [UK-05](UK-05-react-kit.md), [I-10a](I-10a-sdk-identity-node-react-python.md)                |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-31](LX-31-holders-closeout.md), [UK-43](UK-43-activation-holders-native.md) |
+| Role        | `pkey-sdk-porter`                                                                                                       |
+| Plan mode   | no                                                                                                                      |
+| Gates       | UI snapshots in both themes; modernity lint; kit copy drift gate (`gen:brand -- --check`); UI fixtures in every SDK     |
+| Human input | none                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                               |
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> In ui-core, the elements and React (rebuilt kits only). LX-31's global default waits for it; LX-39's per-product flips do not.
+
+- Depends on: removed UK-44.
+- UX rows that name this package: UX-47 (built by PX-17 (UK-42 in the kits)).
 
 ## Goal
 

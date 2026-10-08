@@ -4,7 +4,7 @@
 | ----------- | ---------------------------------------------------------------------------------------- |
 | Phase       | U: Cloud Sync (S-17) (U3 collections)                                                    |
 | Size        | 0.2–0.3 engineer-weeks                                                                   |
-| Depends on  | [U-11a](U-11a-console-data-settings.md), [U-09](U-09-collections-backend.md)             |
+| Depends on  | none                                                                                     |
 | Unblocks    | none                                                                                     |
 | Role        | `pkey-implementer`                                                                       |
 | Plan mode   | no: follows the approved [`plans/U-01.md`](../plans/U-01.md) where it names this package |
@@ -17,6 +17,17 @@
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/U-01.md`](../plans/U-01.md):** the registry hub area (S-18) for the Cloud Sync data settings.
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [U-11a](U-11a-console-data-settings.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [U-11a](U-11a-console-data-settings.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> One browser for one store.
+
+- Dependencies cleared on closing (they were U-11a and U-09), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

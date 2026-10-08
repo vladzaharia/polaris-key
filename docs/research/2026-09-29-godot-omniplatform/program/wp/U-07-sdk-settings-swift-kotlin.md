@@ -1,22 +1,31 @@
-# U-07 SDK user settings in Swift and Kotlin: the same as U-06 plus `@PolarisSetting`, `rememberSetting`, WorkManager retry, `scenePhase` flush, first-sign-in upload, scenario runners
+# U-07 Synced settings on `config.*` in Swift and Kotlin
 
-| Field       | Value                                                                                                                                              |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                      |
-| Size        | 1.4–1.95 engineer-weeks                                                                                                                            |
-| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-18](U-18-scenario-corpus.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md) |
-| Unblocks    | [U-08](U-08-merge-prompt.md), [U-14](U-14-live-pokes.md)                                                                                           |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                               |
-| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                  |
-| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); CI: macOS; CI: Android         |
-| Human input | none                                                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                          |
+| Field       | Value                                                                                                                                                                                               |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | U: Cloud Sync (S-17) (U1 MVP)                                                                                                                                                                       |
+| Size        | 1.4–1.95 engineer-weeks                                                                                                                                                                             |
+| Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-05](U-05-cloud-sync-do.md), [U-18](U-18-scenario-corpus.md), [I-10b](I-10b-sdk-identity-swift-kotlin-godot.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-08](U-08-merge-prompt.md), [U-14](U-14-live-pokes.md)                                                                                                    |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                |
+| Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                   |
+| Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; all six SDKs (`parity:check`); CI: macOS; CI: Android                                                          |
+| Human input | none                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                           |
 
 ## Amendments from approved plans (2026-10-05)
 
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/U-01.md`](../plans/U-01.md):** client codes from §2.8 (`body_too_large`, not `payload_too_large`); the Q5 policy source: `user` policies come from `/config/schema` cached beside the journal, the compiled mirror before the first fetch, and a refetch when the pull's `catalogVersion` changes; a stale LWW write answers `conflict` with the server copy (Q6).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track G, Managed config and Cloud Sync](../../../2026-10-07-dx-consolidation/tracks.md#g-managed-config-and-cloud-sync)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> As U-06 for Swift and Kotlin: @PolarisSetting and rememberSetting wrap config.setting(key).
+
+- Title: was "SDK user settings in Swift and Kotlin: the same as U-06 plus `@PolarisSetting`, `rememberSetting`, WorkManager retry, `scenePhase` flush, first-sign-in upload, scenario runners".
+- Depends on: added SP-35.
 
 ## Goal
 

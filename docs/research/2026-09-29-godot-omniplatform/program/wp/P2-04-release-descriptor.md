@@ -2,7 +2,7 @@
 
 | Field       | Value                                                                                                                                                             |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P2: Release truth and publishing                                                                                                                                  |
+| Phase       | P2: Release truth, publishing and release tracks                                                                                                                  |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                              |
 | Depends on  | [P2-03](P2-03-release-data-model.md)                                                                                                                              |
 | Unblocks    | [P2-02](P2-02-trusted-publisher.md), [P2-06](P2-06-publish-cli-action.md), [P2b-02](P2b-02-distribution-manifest.md)                                              |

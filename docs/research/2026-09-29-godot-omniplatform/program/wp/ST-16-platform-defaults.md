@@ -1,22 +1,32 @@
-# ST-16 Platform defaults and policies: live inheritance with fan-out preview and L2 confirm (D5), enforce or delegate, clamped-value display; licence defaults, key-entry maximum, Cloud Sync ceilings
+# ST-16 Live platform defaults with fan-out confirm (trimmed)
 
-| Field       | Value                                                                                                        |
-| ----------- | ------------------------------------------------------------------------------------------------------------ |
-| Phase       | ST: Settings architecture (S-18) (phase 3: coverage)                                                         |
-| Size        | 0.6–0.85 engineer-weeks                                                                                      |
-| Depends on  | [ST-09](ST-09-platform-settings-area.md), [ST-04](ST-04-settings-resolver.md), [U-05](U-05-cloud-sync-do.md) |
-| Unblocks    | none                                                                                                         |
-| Role        | `pkey-implementer`                                                                                           |
-| Plan mode   | no                                                                                                           |
-| Gates       | THREAT-MODEL; console CSP parity                                                                             |
-| Human input | none                                                                                                         |
-| Repo        | `vladzaharia/polaris-key`                                                                                    |
+| Field       | Value                                                                         |
+| ----------- | ----------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (phase 3: coverage)            |
+| Size        | 0.6–0.85 engineer-weeks                                                       |
+| Depends on  | [ST-09](ST-09-platform-settings-area.md), [ST-04](ST-04-settings-resolver.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                        |
+| Role        | `pkey-implementer`                                                            |
+| Plan mode   | no                                                                            |
+| Gates       | THREAT-MODEL; console CSP parity                                              |
+| Human input | none                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                     |
 
 ## Amendments from approved plans (2026-10-05)
 
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/U-01.md`](../plans/U-01.md):** the three Cloud Sync ceiling entries.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track D, Administration, access control and console identity](../../../2026-10-07-dx-consolidation/tracks.md#d-administration-access-control-and-console-identity)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Keep live platform defaults with the fan-out count and L2 confirm; drop enforce/delegate per entry and the products-policies matrix. No longer waits for U-05: U-05 registers its own Cloud Sync rows (cloudSync.ceiling.bytes and writesPaused). Platform-wide service restriction (owner brief 'restrict features ... platform-wide') stays deferred; revive here as one platform policy row when a deployment needs to switch a service off for every product.
+
+- Title: was "Platform defaults and policies: live inheritance with fan-out preview and L2 confirm (D5), enforce or delegate, clamped-value display; licence defaults, key-entry maximum, Cloud Sync ceilings".
+- Depends on: removed U-05.
+- UX rows that name this package: UX-28 (dropped: merged into ST-07 (pre-save diff) and ST-16 (fan-out confirm)).
 
 ## Goal
 

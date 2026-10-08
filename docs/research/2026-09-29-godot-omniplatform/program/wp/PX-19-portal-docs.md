@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------ |
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                       |
 | Size        | 0.1–0.2 engineer-weeks                                                                           |
-| Depends on  | [PX-09](PX-09-get-it-complete.md), [PX-14](PX-14-passthrough-header.md)                          |
+| Depends on  | none                                                                                             |
 | Unblocks    | none                                                                                             |
 | Role        | `pkey-implementer`                                                                               |
 | Plan mode   | no                                                                                               |
@@ -20,6 +20,17 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
 - Portal docs: licences are not typed (owner decision 2026-10-05: no 'Account-wide' label): every licence is account-bound and device-limited ("2 of 5 devices", Devices with Remove; SIGN-IN.md D-53), and shows its origin in plain words ("From signing in", "Steam key ending 3WPLDA", "From Steam"), the tier pill and "Lifetime", Replace a device from sign-in vs Remove in the portal (SIGN-IN.md D-08, O-11).
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [I-19](I-19-identity-docs.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [I-19](I-19-identity-docs.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> One identity and portal docs package; customer help moves into the portal.
+
+- Dependencies cleared on closing (they were PX-09 and PX-14), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

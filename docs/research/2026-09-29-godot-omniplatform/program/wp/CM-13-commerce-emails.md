@@ -1,21 +1,32 @@
 # CM-13 Commerce emails: in your Library, gift received, access ending, access ended; optional dunning mail
 
-| Field       | Value                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | CM: Polaris Key commerce (S-22): deferred until the owner's go                                                                 |
-| Size        | 0.3–0.5 engineer-weeks                                                                                                         |
-| Depends on  | [CM-06](CM-06-refunds-disputes.md), [CM-08](CM-08-subscriptions.md), [CM-10](CM-10-gifting.md), [I-18](I-18-email-delivery.md) |
-| Unblocks    | [CM-17](CM-17-commerce-closeout.md)                                                                                            |
-| Role        | `pkey-implementer`                                                                                                             |
-| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md))                                               |
-| Gates       | `email-snapshots`, `docs:privacy`                                                                                              |
-| Human input | the owner's go signal (removes `deferred`)                                                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                                                                      |
+| Field       | Value                                                                            |
+| ----------- | -------------------------------------------------------------------------------- |
+| Phase       | CM: Commerce: store commerce (required) and Polaris Key checkout (deferred)      |
+| Size        | 0.3–0.5 engineer-weeks                                                           |
+| Depends on  | none                                                                             |
+| Unblocks    | none                                                                             |
+| Role        | `pkey-implementer`                                                               |
+| Plan mode   | no (executes its sections of the approved [`plans/CM-01.md`](../plans/CM-01.md)) |
+| Gates       | `email-snapshots`, `docs:privacy`                                                |
+| Human input | the owner's go signal (removes `deferred`)                                       |
+| Repo        | `vladzaharia/polaris-key`                                                        |
 
 > **Deferred. Do not dispatch.** This package is optional and carries `deferred` in
 > `workpackages.json`: the owner asked for the commerce plan on 2026-10-05 but not for its
 > execution. `check.mjs --ready` does not list it. It becomes dispatchable only when the owner says
 > go and the lead removes the `deferred` field.
+
+## Consolidation 2026-10-07
+
+> **Closed 2026-10-07 (DX consolidation): merged into [CM-05](CM-05-checkout-fulfilment.md).** The id stays in the graph as `dropped` so it
+> is not reused; do not build this package. Its scope moves to [CM-05](CM-05-checkout-fulfilment.md).
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **merge** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Emails ride with their events on P0-21: fulfilment, refund and ended in CM-05; renewal and dunning in CM-08.
+
+- Dependencies cleared on closing (they were CM-06, CM-08, CM-10 and I-18), so nothing in the graph waits on or through a closed package.
 
 ## Goal
 

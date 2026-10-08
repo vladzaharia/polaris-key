@@ -5,7 +5,7 @@
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                       |
 | Size        | 2–3 engineer-weeks                                                                                 |
 | Depends on  | [UK-09](UK-09-compose-android.md), [UK-40](UK-40-kotlin-jvm-desktop.md)                            |
-| Unblocks    | [UK-41](UK-41-must-tier-closeout.md)                                                               |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-41](UK-41-must-tier-closeout.md)                       |
 | Role        | `pkey-sdk-porter`                                                                                  |
 | Plan mode   | no                                                                                                 |
 | Gates       | Compose Desktop screenshot tests for Windows, macOS and Linux chrome; the Compose lint equivalents |
@@ -36,6 +36,12 @@ the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {l
 every row, no "Account-wide"). For this package:
 
 - **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the Welcome pane as the inline form (frames 28, 29), one `ContentDialog` (frame 30) or `AdwDialog` (frame 40) for `sheet`, Replace's confirm per SIGN-IN.md D-80, and the Compose motion of §3.18. Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Owner decision (JVM desktop parity).
 
 ## Goal
 

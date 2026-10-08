@@ -1,11 +1,11 @@
-# LX-23 Subscriptions: Apple auto-renewables, Play subscriptions and the shared dunning machinery (`past_due`, `dunningGraceDays`); web-checkout subscriptions moved to CM-08 (S-22)
+# LX-23 Store subscriptions: Apple and Play on Core subscriptions (required)
 
 | Field       | Value                                                                                                                            |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase D: optional)                                                   |
 | Size        | 1.4–1.95 engineer-weeks                                                                                                          |
-| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md)                                                           |
-| Unblocks    | [CM-08](CM-08-subscriptions.md)                                                                                                  |
+| Depends on  | [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md), [LX-41](LX-41-durations-subscriptions-core-trials.md)    |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-08](CM-08-subscriptions.md)                                                          |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                            |
 | Plan mode   | yes: the plan [`plans/LX-23.md`](../plans/LX-23.md) needs human approval before code                                             |
 | Gates       | plan mode; THREAT-MODEL; D1 migration (replayable, scratch-SQLite rehearsal)                                                     |
@@ -19,6 +19,16 @@ The commerce plan [S-22](../../notes/S-22-polaris-key-commerce.md) (its packages
 - **Scope narrowed.** Stripe and Paddle web-checkout subscriptions move to [CM-08](CM-08-subscriptions.md) and the CM provider abstraction ([S-22 §6](../../notes/S-22-polaris-key-commerce.md#6-the-provider-abstraction), [§7.6](../../notes/S-22-polaris-key-commerce.md#76-subscriptions)). LX-23 keeps Apple auto-renewables, Play subscriptions and the shared dunning machinery: the `past_due` → `active` / `revoked` transitions, `grace_until` from `licensing.dunningGraceDays`, and unhiding that setting.
 - **CM-08 depends on this package** for the dunning machinery; build it provider-neutral (no store-specific names in the state transitions) so CM-08 only adds Stripe's events.
 - The human input no longer needs Stripe or Paddle test accounts.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **edit** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track E, Licensing model](../../../2026-10-07-dx-consolidation/tracks.md#e-licensing-model)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Required now (owner asks for subscriptions): Apple auto-renewables and Play subscriptions as sources on LX-41's Core subscriptions; billing grace maps to past_due; free trials and introductory offers map to status trialing; its plan joins CM-20.
+
+- Title: was "Subscriptions: Apple auto-renewables, Play subscriptions and the shared dunning machinery (`past_due`, `dunningGraceDays`); web-checkout subscriptions moved to CM-08 (S-22)".
+- Depends on: added LX-41.
+- Required now (was optional).
 
 ## Goal
 

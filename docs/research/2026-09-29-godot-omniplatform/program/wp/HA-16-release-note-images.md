@@ -12,6 +12,15 @@
 | Human input | none                                                                                            |
 | Repo        | `vladzaharia/polaris-key`                                                                       |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive after A-27 if notes need hosted images; What's New formatting ships in ST-36. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Release-note images. Revive after A-27 if notes need hosted images; What's New formatting ships in ST-36.
+
 ## Goal
 
 Image links in release notes are pulled into hosted copies. The portal's What's New, the download page and the AltStore source render those images from the media host, or drop them, instead of mangling (`!alt`) or hotlinking them.

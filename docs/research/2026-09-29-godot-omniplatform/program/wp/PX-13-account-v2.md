@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                   |
 | Depends on  | [PX-07](PX-07-account-v1.md), [PX-W12](PX-W12-sign-in-methods-api.md), [I-07](I-07-login-card-email.md)                                                                                  |
-| Unblocks    | [PX-W19](PX-W19-account-api-gaps.md), [PX-25](PX-25-account-v2-gaps-ui.md)                                                                                                               |
+| Unblocks    | [PX-W19](PX-W19-account-api-gaps.md)                                                                                                                                                     |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                       |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
@@ -84,6 +84,14 @@ on PX-W12's and I-07's APIs, change no contract, and report any API change inste
   from a provider's Connect callback, `?remove=`, `?add=email|passkey`, `?connect=`), read once and
   dropped from the URL. "Connected" is said only when the methods list shows the provider
   connected.
+
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Already stamped done on main (2eb10597c); the hygiene PR leaves it. Merged (acb923675). Its connected-products half is superseded by I-34's Connected apps.
+
+- UX rows that name this package: UX-48 (built by PX-13 and PX-22).
 
 ## Goal
 

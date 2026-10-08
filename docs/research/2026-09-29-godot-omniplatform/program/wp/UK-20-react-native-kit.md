@@ -12,6 +12,17 @@
 | Human input | none                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                  |
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive when a product ships React Native. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> React Native (4-6 weeks, a native module over two SDKs). Revive when a product ships React Native.
+
+- Optional now (was required).
+
 ## Goal
 
 An Expo or bare React Native app gates itself with one component, and the screens follow the iOS 26 and Android idioms of §1.4.

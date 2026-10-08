@@ -18,6 +18,15 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/I-24.md`](../plans/I-24.md):** per-seat features key on `license_seat_holders`; the dependency moves from I-24 to I-24a.
 
+## Consolidation 2026-10-07
+
+> **Parked 2026-10-07 (DX consolidation).** Optional and `deferred`, so `--ready` and `--critical`
+> skip it. Revive with I-24a. Re-read this brief against the code before reviving it.
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **parked** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Per-seat features with named-user seats; no owner ask. Revive with I-24a.
+
 ## Goal
 
 Optional: features can be assigned per seat, alongside I-24's named-user seats.

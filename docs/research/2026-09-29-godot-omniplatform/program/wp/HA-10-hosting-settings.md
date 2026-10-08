@@ -12,6 +12,12 @@
 | Human input | none                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                |
 
+## Consolidation 2026-10-07
+
+The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
+
+> Already stamped done on main (2eb10597c); the hygiene PR leaves it. Merged (a999c0c67).
+
 ## Goal
 
 The four S-20 settings are registry entries with S-20's scopes and defaults. Ingest and mirroring enforce them. The console shows each product's usage against its quotas.
