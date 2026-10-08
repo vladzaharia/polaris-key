@@ -142,7 +142,7 @@ describe("blob route", () => {
     expect(full.headers.get("etag")).toBe(`"${BLOB_HEX}"`);
     expect(full.headers.get("repr-digest")).toMatch(/^sha-256=:/);
     expect(full.headers.get("cache-control")).toBe(
-      "public, max-age=31536000, immutable, no-transform",
+      "public, max-age=3600, no-transform",
     );
     expect(full.headers.get("content-security-policy")).toBe(BLOB_CSP);
     expect(full.headers.get("x-content-type-options")).toBe("nosniff");
@@ -283,7 +283,7 @@ describe("build and file routes", () => {
       `${BYTES}/${SLUG}/release/builds/1.1.0/cli-arm64`,
     );
     expect(pinned.headers.get("cache-control")).toBe(
-      "public, max-age=31536000, immutable, no-transform",
+      "public, max-age=3600, no-transform",
     );
   });
 
@@ -392,7 +392,7 @@ describe("build and file routes", () => {
     );
     expect(res.headers.get("content-disposition")).toMatch(/^attachment;/);
     expect(res.headers.get("cache-control")).toBe(
-      "public, max-age=31536000, immutable, no-transform",
+      "public, max-age=3600, no-transform",
     );
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(ASSET_BYTES[102]);
   });
@@ -531,11 +531,13 @@ describe("the entitled access mode on the build, file and blob routes", () => {
         [v110, "version_blocked"],
         [v1234, "version_blocked"],
       ] as const) {
+        // SEC-DST-12: out of the window is the plain not-found on the blob route, the same
+        // answer as a digest this product never held (no hash-existence oracle for a licensee).
         const res = await get(s, at(hex), auth);
-        expect(res.status, `${origin} ${hex}`).toBe(403);
-        expect(await res.json(), `${origin} ${hex}`).toMatchObject({
-          error: { code },
-        });
+        expect(res.status, `${origin} ${hex} ${code}`).toBe(404);
+        expect(await res.json(), `${origin} ${hex}`).toEqual(
+          await (await get(s, at("e".repeat(64)), auth)).json(),
+        );
       }
       const orphan = await get(s, at(BLOB_HEX), auth);
       expect(orphan.status, origin).toBe(404);
@@ -642,6 +644,11 @@ describe("the entitled access mode on the build, file and blob routes", () => {
           `/release/blobs/sha256/${hex}`,
         ]) {
           const res = await get(s, `${origin}/${SLUG}${p}`, auth);
+          if (p.includes("/blobs/")) {
+            // SEC-DST-12: the blob route answers the plain not-found (no hash oracle).
+            expect(res.status, `${origin}${p}`).toBe(404);
+            continue;
+          }
           expect(res.status, `${origin}${p}`).toBe(403);
           expect(await res.json(), `${origin}${p}`).toMatchObject({
             error: { code: "version_blocked" },

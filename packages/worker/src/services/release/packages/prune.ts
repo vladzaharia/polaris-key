@@ -22,7 +22,7 @@
  *          silently.
  *   HOW    In atomic D1 batches of up to 20 versions (at most 200 per run): per version, the
  *          `release_packages`, `release_artifacts`, `release_yanks` and `release_metadata` rows
- *          go, the version's `artifact` blob refs are dropped (`core/blobs.ts` `stmtDropRefs`), a
+ *          go, the version's `package-file` blob refs are dropped (`core/blobs.ts` `stmtDropRefs`), a
  *          tombstone is written (`release_package_prunes`, which keeps the version unique
  *          forever: ingest refuses to republish it), the deletion is audited
  *          (`package.version.prune`: package, version, actor, bytes; its `parent_id` the stable
@@ -61,6 +61,7 @@ import type { Db, DbStatement, Env } from "../../../core/platform.js";
 import { randomId } from "../../../core/platform.js";
 import { appendAudit, auditStatement } from "../../../core/data.js";
 import {
+  PACKAGE_FILE_REF,
   heldObjects,
   refsBeyond,
   stmtDropRefs,
@@ -81,8 +82,8 @@ export const PRUNE_ACTOR = "system:feed-retention";
 /** The channel `publish-sdks.yml`'s builds of main are published on. */
 export const MAIN_CHANNEL = "main";
 
-/** The blob-ref kind a package version's files are held by (`ingest.ts`). */
-const ARTIFACT_REF = "artifact";
+/** The blob-ref kind a package version's files are held by (`ingest.ts`; SEC-DST-1). */
+const ARTIFACT_REF = PACKAGE_FILE_REF;
 
 // ── Versions ─────────────────────────────────────────────────────────────────────────────────
 

@@ -355,7 +355,7 @@ describe("release-file mirroring (acceptance)", () => {
     expect(after.headers.get("etag")).toBe(`"${digest}"`);
     expect(after.headers.get("repr-digest")).toBeTruthy();
     expect(after.headers.get("cache-control")).toBe(
-      "public, max-age=31536000, immutable, no-transform",
+      "public, max-age=3600, no-transform",
     );
     expect(await hexOf(after)).toBe(digest);
     expect(gh.calls.storage).toEqual([]);

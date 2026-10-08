@@ -1042,6 +1042,31 @@ export async function refHolders(
 }
 
 /**
+ * SEC-DST-1: the `blob_refs.ref_kind` a package version's files are held by (F-03,
+ * `services/release/packages/ingest.ts`), with `<releaseId>/<artifactId>` as the ref id. It is
+ * possession only, like `oci-push`: the package feeds (`services/distribution/registry/`) serve
+ * the bytes under the feed's own ladder (`stricter(feed access_mode, dist_access)`), and the
+ * anonymous blob route never serves a key only such a ref holds. Before this kind existed the
+ * files carried an `artifact` ref, which the blob route read as an app artifact under the app's
+ * (usually `public`) mode, so any package file was a bearer capability named by its sha256.
+ */
+export const PACKAGE_FILE_REF = "package-file";
+
+/**
+ * The cache a PUBLIC blob response carries. Bounded, not `immutable`: the same digest can be made
+ * non-public later (an access change, a feed switched to `entitled`, a release withdrawn) and a
+ * year-long public entry would keep serving it from every shared cache. An hour bounds the
+ * exposure; the strong ETag keeps a revalidation a 304. The exact purge of anything cached
+ * before this change is the owner's CDN step (docs/security/THREAT-MODEL.md, blob cache).
+ */
+export const PUBLIC_BLOB_CACHE = "public, max-age=3600, no-transform";
+
+/** The default public cache: content-addressed objects whose audience cannot narrow (pack
+ *  objects, registry files behind their own access ladder). */
+const IMMUTABLE_BLOB_CACHE =
+  "public, max-age=31536000, immutable, no-transform";
+
+/**
  * The `blob_refs.ref_kind` an object uploaded through OCI's native push holds (F-23; Release's
  * `services/release/packages/ociPush.ts`, restated here because Core imports no service), with
  * the package deliverable as its ref id. It is POSSESSION only, like `pack-upload`: it lets the
@@ -1146,6 +1171,12 @@ export interface BlobResponseOptions {
   disposition?: "attachment" | "inline";
   /** Sanitised into `Content-Disposition`; defaults to the hash. */
   filename?: string;
+  /**
+   * The `Cache-Control` of an ungated 200/206/304, default one year immutable. A route whose
+   * audience can narrow later (an app artifact: its deliverable's mode can tighten) passes
+   * `PUBLIC_BLOB_CACHE`, so a shared cache cannot outlive the change by a year (SEC-DST-1).
+   */
+  publicCache?: string;
 }
 
 function sanitizeFilename(name: string): string {
@@ -1231,7 +1262,7 @@ function ifNoneMatchHits(header: string | null, etag: string): boolean {
  *
  * Headers on every 200/206/304: `ETag: "<hex>"`, `Repr-Digest` (the whole representation,
  * also on a 206), `Accept-Ranges: bytes`, `X-Content-Type-Options: nosniff`, `BLOB_CSP`, and
- * `Cache-Control` — `public, max-age=31536000, immutable, no-transform` ungated (no edge
+ * `Cache-Control` — `public, max-age=31536000, immutable, no-transform` ungated (`opts.publicCache` bounds it, SEC-DST-1; no edge
  * recompression: hashes and ranges depend on the stored bytes), `private, no-store,
  * no-transform` gated (the edge must not recompress `application/wasm` and break
  * `Content-Length`, `Range` and `Repr-Digest` on a private response either).
@@ -1279,7 +1310,7 @@ export async function blobResponse(
     "content-security-policy": BLOB_CSP,
     "cache-control": gated
       ? "private, no-store, no-transform"
-      : "public, max-age=31536000, immutable, no-transform",
+      : (opts.publicCache ?? IMMUTABLE_BLOB_CACHE),
   });
 
   if (ifNoneMatchHits(req.headers.get("if-none-match"), etag))

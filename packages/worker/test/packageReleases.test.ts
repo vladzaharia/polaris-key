@@ -302,7 +302,7 @@ describe("publishing a package release (F-03)", () => {
     ]);
     expect(
       await db.all("SELECT ref_kind FROM blob_refs WHERE product = ?", SLUG),
-    ).toEqual([{ ref_kind: "artifact" }]);
+    ).toEqual([{ ref_kind: "package-file" }]);
     const row = await pkgRow("1.4.0");
     expect(row).toMatchObject({
       name: "@acme/sdk",

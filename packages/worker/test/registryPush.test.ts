@@ -738,8 +738,9 @@ describe("blob uploads over R2 multipart", () => {
         BYTE_ROUTES,
         SERVICES,
       );
-    // Even with the app public: a published object of the owner is served, the pushed,
-    // untagged one is not (a holder that serves nothing never falls back to the app's mode).
+    // Even with the app public: neither the pushed, untagged object (a holder that serves
+    // nothing never falls back to the app's mode) nor a published image's object (a
+    // `package-file` ref, SEC-DST-1: the OCI pull route serves it, never the blob route).
     await db.run(
       "INSERT OR IGNORE INTO release_config (product) VALUES (?)",
       OWNER,
@@ -752,7 +753,7 @@ describe("blob uploads over R2 multipart", () => {
     );
     const published = ociFixture()[3]!.objects[2]!;
     const pubRes = await blob(published.sha256);
-    expect(pubRes.status, await pubRes.clone().text()).toBe(200);
+    expect(pubRes.status, await pubRes.clone().text()).toBe(404);
     expect((await blob(sha(bytes))).status).toBe(404);
   });
 
@@ -1237,7 +1238,7 @@ describe("manifest PUT", () => {
       order.map(([o]) => blobKey(sha(o.bytes))).sort(),
     );
     const refs = await db.all<{ storage_key: string }>(
-      "SELECT storage_key FROM blob_refs WHERE product = ? AND ref_kind = 'artifact' AND ref_id LIKE ?",
+      "SELECT storage_key FROM blob_refs WHERE product = ? AND ref_kind = 'package-file' AND ref_id LIKE ?",
       OWNER,
       `${OCI_ID}@2.0.0/%`,
     );
