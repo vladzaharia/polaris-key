@@ -276,7 +276,8 @@ function ThemeSwatch({
   return (
     <span
       aria-hidden
-      className="mt-2 flex h-10 w-28 overflow-hidden rounded-md border border-border"
+      // Shrinks with its card: three cards share a narrow column on tablets.
+      className="mt-2 flex h-10 w-full max-w-28 overflow-hidden rounded-md border border-border"
     >
       {preference !== "light" ? <span className="flex-1 bg-[#060912]" /> : null}
       {preference !== "dark" ? <span className="flex-1 bg-[#f6f7fb]" /> : null}

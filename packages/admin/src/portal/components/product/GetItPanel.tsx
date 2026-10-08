@@ -77,12 +77,14 @@ export function GetItPanel({
           Open this page on your computer to download {product.name}.
         </p>
       ) : model.os && model.recommended.length ? (
-        <div className="mb-5 space-y-3 rounded-xl border border-border bg-accent-subtle p-4 desk:p-5">
+        // A size container: the column is narrow on tablets (main · side), so the build and its
+        // Download sit side by side only when the box has 24rem, not from a viewport width.
+        <div className="mb-5 space-y-3 rounded-xl border border-border bg-accent-subtle p-4 @container desk:p-5">
           <p className="text-sm text-fg-muted">{recommendedLabel(model.os)}</p>
           {model.recommended.map((r) => (
             <div
               key={r.artifact.artifactId}
-              className="flex flex-col gap-3 sm:flex-row sm:items-center"
+              className="flex flex-col gap-3 @sm:flex-row @sm:items-center"
             >
               <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-lg bg-surface-page text-fg-strong">
                 {r.platform ? (
