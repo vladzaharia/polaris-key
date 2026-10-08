@@ -701,6 +701,9 @@ describe("a raw value never runs as a CI log command (secret, mint)", () => {
     "##vso[task.setvariable variable=x]y",
     "##VSO[task.complete result=Failed]",
     "##teamcity[buildStatus text='x']",
+    // NEL (U+0085): the runner's .NET TrimStart strips it, JavaScript's trimStart does not.
+    "\u0085::add-mask::x",
+    "x\n\u0085::set-output name=a::b",
   ];
   /** Values that stay byte-exact even inside CI: nothing a runner reads as a command. */
   const BENIGN = [

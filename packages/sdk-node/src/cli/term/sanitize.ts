@@ -38,17 +38,23 @@ export function safeLink(url: string | undefined | null): string | null {
  *  which those runners find anywhere in a line. */
 const LOG_COMMAND_ANYWHERE = /##(?:vso|teamcity)?\[/i;
 
+/** GitHub's `::` command after leading whitespace. The runner trims with .NET's `TrimStart`,
+ *  whose whitespace includes NEL (U+0085), which JavaScript's `\s` and `trimStart` do not: a line
+ *  starting `\u0085::add-mask::` is a command there, so NEL counts here too. (JS's `\s` also
+ *  takes U+FEFF, which .NET does not trim: that only ever withholds more.) */
+const GITHUB_COMMAND = /^[\s\u0085]*::/;
+
 /**
  * Whether a line of `text` would run as a command in a CI log (`readsLogCommands`): one whose
- * start, after leading whitespace, is GitHub's `::`, or one holding `##[`, `##vso[` or
- * `##teamcity[`. Lines break at CR, LF or CRLF, as the runners read them. Used where a value
- * must reach stdout byte for byte (`secret`, `mint`), so it cannot be defused, only withheld.
+ * start, after leading whitespace (NEL included, as the runner trims), is GitHub's `::`, or one
+ * holding `##[`, `##vso[` or `##teamcity[`. Lines break at CR, LF or CRLF, as the runners read
+ * them. Used where a value must reach stdout byte for byte (`secret`, `mint`), so it cannot be
+ * defused, only withheld.
  */
 export function hasLogCommand(text: string): boolean {
   return text
     .split(/\r\n|\r|\n/)
     .some(
-      (line) =>
-        line.trimStart().startsWith("::") || LOG_COMMAND_ANYWHERE.test(line),
+      (line) => GITHUB_COMMAND.test(line) || LOG_COMMAND_ANYWHERE.test(line),
     );
 }

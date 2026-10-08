@@ -130,7 +130,8 @@ def test_secret_and_mint_values_never_reach_a_ci_log(capsys, monkeypatch) -> Non
     a line of which the runner would obey, unless ``--allow-workflow-commands``. This kit never
     prints either value at all, so the same guarantee holds by construction; pinned here so a
     change that starts printing them has to take the Node kit's guard with it."""
-    hostile = "x\n::add-mask::y\n##vso[task.setvariable variable=a]b\n##teamcity[buildStatus text='c']"
+    # NEL (U+0085) too: GitHub's runner trims it (.NET TrimStart) before it looks for ``::``.
+    hostile = "x\n::add-mask::y\n##vso[task.setvariable variable=a]b\n##teamcity[buildStatus text='c']\n\u0085::set-output name=d::e"
     for name, value in (("GITHUB_ACTIONS", "true"), ("TF_BUILD", "True"), ("TEAMCITY_VERSION", "2024.12")):
         monkeypatch.setenv(name, value)
 
@@ -148,7 +149,7 @@ def test_secret_and_mint_values_never_reach_a_ci_log(capsys, monkeypatch) -> Non
         for extra in ([], ["--json"]):
             code, out = _argparse(argv + extra, factory, capsys)
             assert code == 0, out
-            for part in ("add-mask", "##vso[", "setvariable", "##teamcity[", "buildStatus"):
+            for part in ("add-mask", "##vso[", "setvariable", "##teamcity[", "buildStatus", "set-output"):
                 assert part not in out, (argv, extra, out)
 
 
