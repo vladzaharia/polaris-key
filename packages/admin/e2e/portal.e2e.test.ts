@@ -986,7 +986,7 @@ describe("main flows", () => {
     ]);
     await picker.selectOption({ label: "Free · From Harbor Audio" });
     await licenseSourceIs(o.page, "From Harbor Audio");
-    // The term is said once, as Updates included, never as a meta line under the tier.
+    // The term is said once, as Access, never as a meta line under the tier.
     expect(await card.getByText(/ · (Lifetime|Expires|Ended)/).count()).toBe(0);
     expect(await o.violations()).toEqual([]);
     await o.close();

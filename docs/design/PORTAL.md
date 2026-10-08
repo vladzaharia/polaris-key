@@ -938,6 +938,10 @@ device counter (on the License card or in Devices); the sign-in licence keeps it
   pill. The "N of M devices" line is gone: the Devices card says it. A licence granted through
   OIDC at sign-in (auto-issue or a group grant) reads **Automatic Grant** as its License source;
   the status and the picker keep "From signing in" and "Sign-in".
+- **Access, not "Updates included" (P0-47).** The Worker ends a licence at its end date, so the
+  term fact is **Access**: "Lifetime", "Until 3 Mar 2027" or "Ended 3 Mar 2027". An expired
+  licence's callout reads "Ended 3 Mar 2027. Renew with <developer> to keep using it." The card
+  promises no updates or newer versions until LX-41's "keeps the last version" ships.
 - **What's new.** The notes are Markdown, drawn formatted (headings under the card's `h2`, bold,
   italic, lists, quotes, code, `https:` and `mailto:` links only; raw HTML shows as text; never an
   HTML string). A summary shows at once (the first paragraph or list, cut to three lines or

@@ -247,7 +247,7 @@ describe("product page on today's data (PX-04)", () => {
     // "tier as text" for this card only); the facts stay as text.
     expect(within(card).getByText("Deluxe")).toBeTruthy();
     expect(within(card).queryByText("Tier")).toBeNull();
-    expect(within(card).getByText("Updates included").tagName).toBe("DT");
+    expect(within(card).getByText("Access").tagName).toBe("DT");
     const included = within(card).getByRole("list", { name: "Included" });
     expect(
       within(included)
@@ -278,9 +278,61 @@ describe("product page on today's data (PX-04)", () => {
     const card = await screen.findByRole("region", {
       name: "Nightfall license",
     });
-    await within(card).findByText("Updates included");
+    await within(card).findByText("Access");
     expect(within(h1.parentElement!).getByText("Expired")).toBeTruthy();
     expect(within(card).queryByText("Expired")).toBeNull();
+  });
+
+  it("says what the end date does: access ends, and renewing keeps the app working (P0-47)", async () => {
+    // The Worker refuses an expired licence, so the card promises no updates or newer versions
+    // (LX-41 brings "keeps the last version" later).
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", {
+      name: "Nightfall license",
+    });
+    const access = await within(card).findByText("Access");
+    expect(access.nextElementSibling?.textContent).toMatch(/^Ended /);
+    expect(card.textContent).toMatch(
+      /Ended [^.]+\. Renew with the developer to keep using it\./,
+    );
+    expect(card.textContent).not.toMatch(/Updates included|newer versions/);
+  });
+
+  it("a licence with an end date reads Until <date> under Access (P0-47)", async () => {
+    const term = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S + 40 * DAY,
+    });
+    mockFetch(
+      signedIn([term], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": detail(term, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", {
+      name: "Nightfall license",
+    });
+    const access = await within(card).findByText("Access");
+    expect(access.tagName).toBe("DT");
+    expect(access.nextElementSibling?.textContent).toMatch(/^Until /);
+    expect(card.textContent).not.toMatch(/Updates included/);
   });
 
   it("an issue of the licence the card shows sits after the tier, both at the header's top right (owner polish 2026-10-07)", async () => {
@@ -304,7 +356,7 @@ describe("product page on today's data (PX-04)", () => {
     const card = await screen.findByRole("region", {
       name: "Nightfall license",
     });
-    await within(card).findByText("Updates included");
+    await within(card).findByText("Access");
     const pills = card.querySelector("[data-license-pills]")!;
     expect(
       Array.from(pills.querySelectorAll("[data-status=pill]")).map((p) => [
@@ -899,7 +951,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     expect(terms.indexOf("License source")).toBe(
       terms.indexOf("Activated") + 1,
     );
-    // "Lifetime" once, as Updates included; no "<origin> · <term>" meta line.
+    // "Lifetime" once, as Access; no "<origin> · <term>" meta line.
     expect(within(card).getAllByText("Lifetime")).toHaveLength(1);
     expect(within(card).queryByText(/ · (Lifetime|Expires|Ended)/)).toBeNull();
     expect(await axeViolations()).toEqual([]);
