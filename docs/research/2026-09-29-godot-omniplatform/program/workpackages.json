@@ -831,7 +831,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/cq-frontend.md"
       ],
       "brief": "wp/P0-31-console-shared-layer-cleanup-lead-window.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P0-32",
