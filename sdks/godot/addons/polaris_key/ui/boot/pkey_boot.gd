@@ -116,8 +116,11 @@ var _background_total := 0
 var _background_running := false
 
 var _center: CenterContainer
+var _lead: VBoxContainer
+var _side: VBoxContainer
 var _logo: TextureRect
-var _shell: VBoxContainer
+var _product: PKeyProductHeader
+var _shell: BoxContainer
 var _status: Label
 var _progress: ProgressBar
 var _card: PanelContainer
@@ -135,12 +138,16 @@ var prompt: PKeyUpdatePrompt
 var _overlay: Control
 
 
-## The boot shell's width on a viewport wide enough for it (narrower ones keep a gutter).
-const SHELL_WIDTH := 480.0
-
-
 func _apply_width(_width: float) -> void:
-	_shell.custom_minimum_size.x = card_width(SHELL_WIDTH)
+	var side_by_side := not _shell.vertical
+	_side.custom_minimum_size.x = card_width(role("card_width")) if not side_by_side else minf(role("card_width"), content_room().x * 0.62)
+	_shell.custom_minimum_size.x = 0.0
+	_logo.custom_minimum_size.y = roundf(role("hero_icon_size") * 2.0)
+	_progress.custom_minimum_size.y = role("space_2")
+	# The corner pill keeps the page margin from the corner.
+	var g := gutter() + side_padding(self) / 2.0
+	_pill.offset_right = -g
+	_pill.offset_bottom = -g
 
 
 func _build() -> void:
@@ -149,32 +156,42 @@ func _build() -> void:
 	_center = CenterContainer.new()
 	_center.name = "Center"
 	add_child(_center)
-	var box := vbox(_center, "Shell", 16)
-	box.custom_minimum_size = Vector2(SHELL_WIDTH, 0)
-	_shell = box
+	# The shell: the game's logo or the product leading, then the progress and any stop card. On a
+	# short landscape screen with a card the two sit side by side (`_arrange`).
+	_shell = columns(scroll_area(_center), "Shell")
+	set_columns(_shell, false)
+	_lead = vbox(_shell, "Lead", "PKeyStack")
+	_lead.alignment = BoxContainer.ALIGNMENT_CENTER
+	_lead.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_logo = TextureRect.new()
 	_logo.name = "Logo"
 	_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_logo.custom_minimum_size = Vector2(0, 120)
-	box.add_child(_logo)
-	_status = label(box, "Status", "PKeyMuted")
+	_lead.add_child(_logo)
+	# Without a logo of the game's own, the product's identity leads (never a Polaris Key mark).
+	_product = product_header(_lead, "Product", true)
+	_product.centered = true
+	_side = vbox(_shell, "Side", "PKeySections")
+	_side.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var box := _side
+	var progress := vbox(box, "Progress", "PKeyTight")
+	_status = label(progress, "Status", "PKeyMuted")
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_progress = ProgressBar.new()
-	_progress.name = "Progress"
+	_progress.name = "Bar"
 	_progress.show_percentage = false
-	_progress.custom_minimum_size = Vector2(0, 8)
-	box.add_child(_progress)
+	progress.add_child(_progress)
 	_notice = label(box, "Notice", "PKeyMuted")
+	_notice.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_card = PanelContainer.new()
 	_card.name = "Card"
 	_card.theme_type_variation = "PKeyCard"
 	box.add_child(_card)
-	var cb := vbox(_card, "Body", 12)
-	_title = label(cb, "Title", "PKeyTitle")
-	_body = label(cb, "Message", "PKeyMuted")
-	var actions := hbox(cb, "Actions")
-	actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	var cb := vbox(_card, "Body", "PKeySections")
+	var head := vbox(cb, "Head", "PKeyTight")
+	_title = label(head, "Title", "PKeyTitle")
+	_body = label(head, "Message", "PKeyMuted")
+	var actions := actions_row(cb, "Actions", FlowContainer.ALIGNMENT_BEGIN)
 	_update_action = button(actions, "UpdateAction", _on_update_action, "PKeyPrimary")
 	_retry = button(actions, "Retry", retry, "PKeyPrimary")
 	_play_offline = button(actions, "PlayOffline", play_offline)
@@ -210,6 +227,15 @@ func _build() -> void:
 	_pill.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_overlay.add_child(_pill)
 	set_process(false)
+
+
+func _arrange(m: Dictionary) -> void:
+	# Side by side when the column would not fit a landscape screen's height.
+	var stacked := _lead.get_combined_minimum_size().y + _side.get_combined_minimum_size().y + role("section_gap")
+	var lead_shown := _logo.visible or _product.visible
+	set_columns(_shell, m["landscape"] and lead_shown and _card.visible and stacked > available_height())
+	super(m)
+	fit_scrolls(available_height(), outer_view() == self)
 
 
 func _ready() -> void:
@@ -582,13 +608,14 @@ func _render() -> void:
 	self_modulate.a = 1.0 if show_default_view and not _background_running else 0.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if _background_running else Control.MOUSE_FILTER_STOP
 	_center.visible = show_default_view and not waiting_gate and not _background_running
-	var shown: Texture2D = logo
-	if shown == null and PKeyUiTheme.branded():
-		shown = PKeyUiTheme.mark_texture(PKeyUiTheme.is_dark(self), 96)
-	_logo.texture = shown
-	_logo.visible = shown != null
+	_logo.texture = logo
+	_logo.visible = logo != null
+	_product.visible = logo == null
+	if logo == null:
+		_product.refresh()
 	show_text(_status, t.text(_status_key(stage)) if not stopped and _status_key(stage) != "" else "")
 	_progress.visible = not stopped and (_show_progress() or verify_progress >= 0.0)
+	_progress.get_parent().visible = _status.visible or _progress.visible
 	if verify_progress >= 0.0:
 		_progress.set("indeterminate", false)
 		_progress.value = verify_progress * 100.0

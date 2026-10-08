@@ -9,9 +9,16 @@ extends PKeyUiView
 ## The capabilities come from `sdk` (PolarisKey) when it is configured, unless
 ## `set_capabilities()` was called (snapshots, a custom flow). The dialogs open inside the panel,
 ## never as a separate window, so a gamepad never loses focus.
+##
+## Layout (PKeyUiView): the intro (the product, the title, the subtitle) and the form are two
+## columns in landscape and stack in portrait; the key field leads the form, the one primary
+## action beside it, the other ways in below. A host card that leads with its own column (the
+## gate) adopts `intro` into it (`adopt_intro()`).
 
 ## A token was minted (key, enrolment or sign-in) or a bundle installed.
 signal activated()
+## The panel switched between "main", "sign-in" and "offline" (`open_mode()`).
+signal mode_changed(mode: String)
 
 ## Offer "Continue free" (keyless enrolment, POST /license/enroll) where License runs. Off by
 ## default: only a product with a free tier turns it on.
@@ -33,6 +40,12 @@ var show_title := true:
 		if show_title != value:
 			show_title = value
 			refresh_view()
+## Lead with the product's identity above the title (off when a host card already leads with it).
+var show_product := true:
+	set(value):
+		if show_product != value:
+			show_product = value
+			refresh_view()
 var mode := "main"
 var busy := false
 var message := ""
@@ -41,6 +54,11 @@ var message_ok := false
 var manage_url := ""
 
 var _caps_override: Variant = null
+## The intro column (product, title, subtitle); a host may adopt it (`adopt_intro()`).
+var intro: VBoxContainer
+var _adopted: Node = null
+var _form: VBoxContainer
+var _product: PKeyProductHeader
 var _title: Label
 var _subtitle: Label
 var _key_label: Label
@@ -53,22 +71,30 @@ var _message: Label
 var _manage: Button
 var _manage_qr: PKeyQrRect
 var _manage_caption: Label
+var _manage_box: VBoxContainer
 ## The last result's kind.
 var last_kind: StringName = &""
-var _main: VBoxContainer
+var _main: BoxContainer
 var sign_in_dialog: PKeySignInDialog
 var offline_dialog: PKeyOfflineDialog
 
 
 func _build() -> void:
 	name = "PKeyActivationPanel"
-	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	var root := vbox(self, "Stack", 0)
-	_main = vbox(root, "Main", 10)
-	_title = label(_main, "Title", "PKeyTitle")
-	_subtitle = label(_main, "Subtitle", "PKeyMuted")
-	_key_label = label(_main, "KeyLabel")
-	var row := hbox(_main, "KeyRow")
+	var root := vbox(card_panel(), "Stack", "PKeySections")
+	_main = columns(root, "Main")
+	intro = vbox(_main, "Intro", "PKeyStack")
+	intro.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	intro.size_flags_stretch_ratio = 0.8
+	_product = product_header(intro, "Product", true)
+	var head := vbox(intro, "Head", "PKeyTight")
+	_title = label(head, "Title", "PKeyTitle")
+	_subtitle = label(head, "Subtitle", "PKeyMuted")
+	_form = vbox(_main, "Form", "PKeyStack")
+	_form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var field := vbox(_form, "KeyField", "PKeyTight")
+	_key_label = label(field, "KeyLabel")
+	var row := hbox(field, "KeyRow")
 	_key = LineEdit.new()
 	_key.name = "KeyInput"
 	_key.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -76,17 +102,17 @@ func _build() -> void:
 	_key.text_submitted.connect(func(_t): _on_submit())
 	row.add_child(_key)
 	_submit = button(row, "Activate", _on_submit, "PKeyPrimary")
-	_sign_in = button(_main, "SignIn", _on_sign_in)
-	_free = button(_main, "ContinueFree", _on_free)
-	_offline = button(_main, "OfflineActivation", _on_offline)
-	_message = label(_main, "Message")
-	_manage = button(_main, "FreeDevice", _on_manage)
-	_manage_qr = PKeyQrRect.new()
-	_manage_qr.name = "FreeDeviceQr"
-	_manage_qr.custom_minimum_size = Vector2(220, 220)
-	_manage_qr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_main.add_child(_manage_qr)
-	_manage_caption = label(_main, "FreeDeviceCaption", "PKeyMuted")
+	_message = label(_form, "Message")
+	_manage = button(_form, "FreeDevice", _on_manage)
+	# The QR code to replace a device and its caption move together: under the intro in two
+	# columns (the form keeps its height), under the message in one.
+	_manage_box = vbox(_form, "Replace", "PKeyTight")
+	_manage_qr = qr_tile(_manage_box, "FreeDeviceQr")
+	_manage_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_manage_caption = label(_manage_box, "FreeDeviceCaption", "PKeyMuted")
+	_sign_in = button(_form, "SignIn", _on_sign_in)
+	_free = button(_form, "ContinueFree", _on_free)
+	_offline = button(_form, "OfflineActivation", _on_offline)
 	sign_in_dialog = PKeySignInDialog.new()
 	sign_in_dialog.auto_sdk = false
 	sign_in_dialog.closed.connect(_back)
@@ -97,6 +123,53 @@ func _build() -> void:
 	offline_dialog.closed.connect(_back)
 	offline_dialog.activated.connect(func(): activated.emit())
 	root.add_child(offline_dialog)
+
+
+## Move the intro column under `host` (a host card's lead column), or back into the panel with
+## null. The intro holds no control, so the focus chain is untouched.
+func adopt_intro(host: Node) -> void:
+	if host == _adopted:
+		return
+	_adopted = host
+	if host != null:
+		place(intro, host)
+	else:
+		place(intro, _main, 0)
+
+
+## The content width this panel wants (logical pixels, without a host card's padding): the two
+## columns in landscape, one column otherwise, or what an open dialog wants.
+func preferred_width() -> float:
+	if mode == "sign-in":
+		return sign_in_dialog.preferred_width()
+	if mode == "offline":
+		return offline_dialog.preferred_width()
+	if is_landscape() and _adopted == null:
+		return role("card_width_wide") - 2.0 * role("card_padding")
+	if is_landscape():
+		return (role("card_width_wide") - 2.0 * role("card_padding") - role("column_gap")) * 0.55
+	return role("card_width") - 2.0 * role("card_padding")
+
+
+func _apply_width(width: float) -> void:
+	super(minf(preferred_width() + card_padding_x(), content_room().x) if width > 0.0 else 0.0)
+
+
+func _arrange(m: Dictionary) -> void:
+	super(m)
+	# Two columns only while the intro is the panel's own and the screen is landscape.
+	set_columns(_main, m["landscape"] and _adopted == null)
+	if m["landscape"]:
+		place(_manage_box, intro)
+	else:
+		place(_manage_box, _form, _message.get_index() + 1)
+	var qr := qr_side(content_room().y * 0.45)
+	_manage_qr.custom_minimum_size = Vector2(qr, qr)
+	# On a small landscape screen the QR code to replace a device needs the intro's height: the
+	# product's identity gives way to it there.
+	_product.visible = show_product and not (m["landscape"] and m["density"] == "compact" and _manage_qr.visible)
+	# With the QR code in it, the intro column takes half the width (its caption needs it).
+	intro.size_flags_stretch_ratio = 1.0 if _manage_qr.visible else 0.8
 
 
 func _ready() -> void:
@@ -124,8 +197,12 @@ func _render() -> void:
 	_main.visible = mode == "main"
 	sign_in_dialog.visible = mode == "sign-in"
 	offline_dialog.visible = mode == "offline"
+	_product.visible = show_product
+	if show_product:
+		_product.refresh()
 	_title.text = t.text("activation_title")
 	_title.visible = show_title
+	intro.visible = mode == "main" and (_product.visible or show_title or caps["key_entry"] or caps["sign_in"])
 	var subtitle := ""
 	if caps["key_entry"] and caps["sign_in"]:
 		subtitle = "activation_subtitle"
@@ -136,7 +213,7 @@ func _render() -> void:
 	show_text(_subtitle, t.text(subtitle) if subtitle != "" else "")
 	_key_label.text = t.text("key_label")
 	_key_label.visible = caps["key_entry"]
-	_key.get_parent().visible = caps["key_entry"]
+	_key.get_parent().get_parent().visible = caps["key_entry"]
 	_key.placeholder_text = t.text("key_placeholder")
 	_key.editable = not busy
 	_submit.text = t.text("activation_working") if busy else t.text("key_submit")
@@ -237,10 +314,16 @@ func _on_offline() -> void:
 
 ## Show "main", "sign-in" or "offline" (snapshots open a dialog without starting it).
 func open_mode(m: String) -> void:
+	var changed := mode != m
 	mode = m
 	sign_in_dialog.sdk = sdk
 	offline_dialog.sdk = sdk
+	if m == "offline":
+		# The request code and product come from the SDK it was just given.
+		offline_dialog.refresh_view()
 	refresh_view()
+	if changed:
+		mode_changed.emit(m)
 	focus_first.call_deferred()
 
 

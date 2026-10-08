@@ -38,11 +38,11 @@ var _writing := false
 
 func _build() -> void:
 	name = "PKeySettingsPanel"
-	max_content_width = 640.0
+	max_content_width = float(PKeyUiTheme.MEASURES["content_width"])
 	# A long catalog (or the advanced rows) scrolls instead of running off the screen; a gamepad
 	# focusing a row below the fold scrolls it into view. The Powered-by badge sits below the
 	# scroll area, never scrolled away.
-	_frame = vbox(self, "Frame", 12)
+	_frame = vbox(card_panel("Card", false), "Frame", "PKeyStack")
 	_scroll = ScrollContainer.new()
 	_scroll.name = "Scroll"
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -56,11 +56,12 @@ func _build() -> void:
 	_inset.minimum_size_changed.connect(layout_content)
 	_scroll.add_child(_inset)
 	_scroll.get_v_scroll_bar().visibility_changed.connect(func():
-		_inset.add_theme_constant_override("margin_right", 12 if _scroll.get_v_scroll_bar().visible else 0))
-	var box := vbox(_inset, "Body", 12)
-	_title = label(box, "Title", "PKeyTitle")
-	_empty = label(box, "Empty", "PKeyMuted")
-	_list = vbox(box, "Rows", 14)
+		_inset.add_theme_constant_override("margin_right", roundi(role("space_4")) if _scroll.get_v_scroll_bar().visible else 0))
+	var box := vbox(_inset, "Body", "PKeySections")
+	var head := vbox(box, "Head", "PKeyTight")
+	_title = label(head, "Title", "PKeyTitle")
+	_empty = label(head, "Empty", "PKeyMuted")
+	_list = vbox(box, "Rows", "PKeySections")
 	_advanced = CheckButton.new()
 	_advanced.name = "AdvancedToggle"
 	_advanced.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -73,7 +74,7 @@ func _build() -> void:
 
 
 func _content() -> Control:
-	return _frame
+	return _card_box
 
 
 ## The scroll area is as tall as the rows, up to the room the viewport leaves (less the gutters,
@@ -83,15 +84,26 @@ func _apply_width(width: float) -> void:
 	super(width)
 	var room := INF
 	if is_inside_tree():
-		var box := get_theme_stylebox("panel")
-		var pad := box.get_margin(SIDE_TOP) + box.get_margin(SIDE_BOTTOM) if box != null else 0.0
+		room = available_height()
 		if _powered_by.visible:
-			pad += _powered_by.get_combined_minimum_size().y + _frame.get_theme_constant("separation")
-		room = maxf(0.0, get_viewport_rect().size.y - pad - 2.0 * GUTTER)
+			room -= _powered_by.get_combined_minimum_size().y + _frame.get_theme_constant("separation")
+		room = maxf(0.0, room)
 	var want := minf(_inset.get_combined_minimum_size().y, room)
 	if not is_equal_approx(_scroll.custom_minimum_size.y, want):
 		_scroll.custom_minimum_size.y = want
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL if width <= 0.0 else Control.SIZE_FILL
+
+
+func _arrange(m: Dictionary) -> void:
+	super(m)
+	# Inputs sized from the theme: a line field a third of a card wide, a text area wider and
+	# a control and a half tall.
+	for k in _controls:
+		var input = _controls[k]["input"]
+		if input is TextEdit:
+			(input as TextEdit).custom_minimum_size = Vector2(roundf(role("card_width") * 0.46), roundf(role("control_height") * 1.5))
+		elif input is LineEdit:
+			(input as LineEdit).custom_minimum_size.x = roundf(role("card_width") * 0.38)
 
 
 func _config() -> PKeyConfig:
@@ -142,27 +154,28 @@ func _rebuild(shown: Array) -> void:
 		child.queue_free()
 	_controls.clear()
 	var category = null
+	var group: VBoxContainer = null
 	for r in shown:
-		if r["category"] != category:
+		if group == null or r["category"] != category:
 			category = r["category"]
+			# One group per category: its heading and its rows close together, the groups a section
+			# apart.
+			group = vbox(_list, "Group_%s" % _safe(category if category != "" else "General"), "PKeyStack")
 			if category != "":
-				var h := label(_list, "Category_%s" % _safe(category), "PKeyMuted", true)
+				var h := label(group, "Category", "PKeySection", true)
 				h.text = tr(category)
-		_controls[r["key"]] = _row_nodes(r)
+		_controls[r["key"]] = _row_nodes(group, r)
 	if focused_key != "" and _controls.has(focused_key):
 		var input = _controls[focused_key].get("input")
 		if input is Control:
 			(input as Control).grab_focus.call_deferred()
 
 
-func _row_nodes(r: Dictionary) -> Dictionary:
+func _row_nodes(group: Node, r: Dictionary) -> Dictionary:
 	var key: String = r["key"]
-	var row := vbox(_list, "Row_%s" % _safe(key), 4)
+	var row := vbox(group, "Row_%s" % _safe(key), "PKeyTight")
 	# A flow line: on a narrow screen the badge and Reset wrap below instead of squeezing the name.
-	var line := HFlowContainer.new()
-	line.name = "Line"
-	line.add_theme_constant_override("v_separation", 6)
-	row.add_child(line)
+	var line := actions_row(row, "Line", FlowContainer.ALIGNMENT_BEGIN)
 	var name_label := label(line, "Label", "", true)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -202,14 +215,12 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 			ctl = ob
 		"textarea":
 			var te := TextEdit.new()
-			te.custom_minimum_size = Vector2(240, 80)
 			te.focus_exited.connect(func(): _write_text(key, te.text))
 			ctl = te
 		"password", "text":
 			var le := LineEdit.new()
 			le.secret = r["widget"] == "password"
 			le.placeholder_text = tr(r["placeholder"])
-			le.custom_minimum_size = Vector2(200, 0)
 			le.text_submitted.connect(func(t: String): _write_text(key, t))
 			le.focus_exited.connect(func(): _write_text(key, le.text))
 			ctl = le

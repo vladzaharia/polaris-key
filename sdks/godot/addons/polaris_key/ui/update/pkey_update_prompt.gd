@@ -17,6 +17,10 @@ extends PKeyUiView
 ## export reloads, and a direct build installs through its native updater (or the download
 ## link), downloads a code pack, or restarts into a staged one ("Restart now"). With an SDK the
 ## button runs PolarisKey.update.apply(result); every link it opens is https.
+##
+## Layout (PKeyUiView): a banner is one row on a wide screen (the words, then the action and the
+## dismiss at the end) and stacks on a narrow one; the modal is a centred column. The action is
+## the one primary.
 
 ## The player chose the action (after the URL, if any, was opened).
 signal action_taken(result: PKeyResult)
@@ -38,7 +42,9 @@ var result: PKeyResult = null
 var is_dismissed := false
 var model: Dictionary = {}
 
-var _card: VBoxContainer
+var _card: BoxContainer
+var _text: VBoxContainer
+var _actions: HFlowContainer
 var _title: Label
 var _body: Label
 var _action: Button
@@ -51,13 +57,69 @@ var _page_link := false
 
 func _build() -> void:
 	name = "PKeyUpdatePrompt"
-	_card = vbox(self, "Body", 8)
-	_title = label(_card, "Title", "PKeyTitle")
-	_body = label(_card, "Message", "PKeyMuted")
-	var actions := hbox(_card, "Actions")
-	_action = button(actions, "Action", _on_action, "PKeyPrimary")
-	_dismiss = button(actions, "Dismiss", _on_dismiss)
+	# The view's panel is the prompt's own: a page ground for the modal, a transparent strip that
+	# floats the banner card for the banner (`_arrange`).
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_card = columns(card_panel(), "Body")
+	_text = vbox(_card, "Text", "PKeyTight")
+	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_title = label(_text, "Title", "PKeyTitle")
+	_body = label(_text, "Message", "PKeyMuted")
+	_actions = actions_row(_card, "Actions", FlowContainer.ALIGNMENT_BEGIN)
+	_actions.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_action = button(_actions, "Action", _on_action, "PKeyPrimary")
+	_dismiss = button(_actions, "Dismiss", _on_dismiss)
 	minimum_size_changed.connect(_queue_fit)
+
+
+func _floats() -> bool:
+	return not _covering
+
+
+## Always its own card: the modal's, or the banner's floating strip card.
+func _card_shown() -> bool:
+	return true
+
+
+func _card_variation() -> String:
+	return "PKeyCard" if _covering else "PKeyBanner"
+
+
+## One row: a banner on a landscape screen.
+func _row() -> bool:
+	return not _covering and is_landscape()
+
+
+func _apply_width(width: float) -> void:
+	if width <= 0.0:
+		super(width)
+		return
+	super(minf(role("card_width_wide" if _row() else "card_width"), content_room().x))
+
+
+func _arrange(m: Dictionary) -> void:
+	var row := _row()
+	set_columns(_card, row)
+	# In a row the actions sit at the end on one line; stacked, they lead under the words.
+	_actions.size_flags_horizontal = Control.SIZE_SHRINK_END if row else Control.SIZE_FILL
+	_actions.alignment = FlowContainer.ALIGNMENT_END if row else FlowContainer.ALIGNMENT_BEGIN
+	_title.theme_type_variation = "PKeyTitle" if _covering else "PKeySection"
+	if _covering:
+		if get_theme_stylebox("panel") is StyleBoxEmpty:
+			remove_theme_stylebox_override("panel")
+		mouse_filter = Control.MOUSE_FILTER_STOP
+	else:
+		_float_strip()
+		# The strip's margins let the game's clicks through; only the card takes them.
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	super(m)
+	var line := 0.0
+	if row:
+		for b in [_action, _dismiss]:
+			if (b as Control).visible:
+				line += (b as Control).get_combined_minimum_size().x + (role("inline_gap") if line > 0.0 else 0.0)
+	_actions.custom_minimum_size.x = line
 
 
 func _ready() -> void:
@@ -164,7 +226,7 @@ func _render() -> void:
 			set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 			_covering = false
 		size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		theme_type_variation = "PKeyBanner"
+		theme_type_variation = ""
 		_queue_fit()
 	show_text(_title, t.text(model["title"]) if model["title"] != "" else "")
 	show_text(_body, t.text(model["body"], model["body_arg"]) if model["body"] != "" else "")

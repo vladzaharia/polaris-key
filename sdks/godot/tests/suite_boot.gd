@@ -263,7 +263,7 @@ func _dropin(t: PKeyTestContext) -> void:
 		if kept:
 			var rect: Rect2 = p.get_global_rect()
 			t.check("dropin: the kept %s prompt is a strip at the top, not full-screen" % kind, rect.size.y > 0.0 and rect.size.y < screen.y * 0.25 and is_equal_approx(rect.position.y, 0.0) and p.presentation() == "banner", "%s on %s" % [rect, screen])
-			t.check("dropin: the kept %s prompt has no dismiss" % kind, not (p.get_node("Body/Actions/Dismiss") as Button).visible)
+			t.check("dropin: the kept %s prompt has no dismiss" % kind, not (p.find_child("Dismiss", true, false) as Button).visible)
 			p._on_dismiss()
 			await tree.process_frame
 			t.check("dropin: the kept %s prompt cannot be dismissed" % kind, is_instance_valid(p) and p.is_visible_in_tree())
@@ -290,7 +290,7 @@ func _dropin(t: PKeyTestContext) -> void:
 	var optional = sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false})
 	await _boot_to_ready(sdk3, optional)
 	var p3 = sdk3.boot_prompt
-	var ok3: bool = p3 is PKeyUpdatePrompt and p3.is_visible_in_tree() and (p3.get_node("Body/Actions/Dismiss") as Button).visible
+	var ok3: bool = p3 is PKeyUpdatePrompt and p3.is_visible_in_tree() and (p3.find_child("Dismiss", true, false) as Button).visible
 	t.check("dropin: a dismissable answer stays with its dismiss", ok3)
 	if ok3:
 		p3._on_dismiss()

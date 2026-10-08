@@ -275,6 +275,9 @@ func _theme(t: PKeyTestContext) -> void:
 
 func _overrides(t: PKeyTestContext) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
+	# The kit lays out for the screen it is on (PKeyUiView): give the headless root a real one.
+	var root_size := tree.root.size
+	tree.root.size = Vector2i(1280, 720)
 	var gate_scene := load("res://addons/polaris_key/ui/gate/pkey_gate.tscn") as PackedScene
 	var mount := func() -> Control:
 		var v: Control = gate_scene.instantiate()
@@ -288,10 +291,14 @@ func _overrides(t: PKeyTestContext) -> void:
 	var shown := func(v: Control, n: String) -> bool:
 		var r := v.find_child(n, true, false) as TextureRect
 		return r != null and r.visible and r.texture != null
+	# The product's identity leads a gate card (UI-KITS.md §1.2): its icon or monogram and name.
+	var product := func(v: Control) -> bool:
+		var h := v.find_child("Product", true, false) as PKeyProductHeader
+		return h != null and h.visible and h.product_name() != ""
 
 	PKeyUiTheme.reset()
 	var v: Control = mount.call()
-	t.check("default: a scene file starts on the neutral theme", PKeyUiTheme.is_stock(v.theme) and v.theme == PKeyUiTheme.for_view(v) and not PKeyUiTheme.branded())
+	t.check("default: a scene file starts on the neutral theme", PKeyUiTheme.is_stock(v.theme) and PKeyUiTheme.base_of(v.theme) == PKeyUiTheme.for_view(v) and not PKeyUiTheme.branded())
 	t.check("default: no Pinned K", not shown.call(v, "Mark"))
 	t.check("default: no Powered by badge", not shown.call(v, "PoweredBy"))
 	unmount.call(v)
@@ -317,8 +324,8 @@ func _overrides(t: PKeyTestContext) -> void:
 	opts.ui_branding = "polaris-key"
 	PKeyUiTheme.apply_options(opts)
 	v = mount.call()
-	t.check("brand: one option gives the Polaris Key dark theme", v.theme != null and v.theme.resource_path == PKeyUiTheme.DARK_PATH)
-	t.check("brand: the Pinned K is shown", shown.call(v, "Mark"))
+	t.check("brand: one option gives the Polaris Key dark theme", v.theme != null and PKeyUiTheme.base_of(v.theme).resource_path == PKeyUiTheme.DARK_PATH)
+	t.check("brand: the product leads the card, never the Pinned K (UI-KITS.md §1.2)", product.call(v) and not shown.call(v, "Mark"))
 	t.check("brand: still no Powered by badge unless asked", not shown.call(v, "PoweredBy"))
 	unmount.call(v)
 
@@ -326,7 +333,10 @@ func _overrides(t: PKeyTestContext) -> void:
 	opts.ui_powered_by = true
 	PKeyUiTheme.apply_options(opts)
 	v = mount.call()
-	t.check("brand: ui_brand_scheme light gives the light theme", v.theme != null and v.theme.resource_path == PKeyUiTheme.LIGHT_PATH)
+	t.check("brand: ui_brand_scheme light gives the light theme", v.theme != null and PKeyUiTheme.base_of(v.theme).resource_path == PKeyUiTheme.LIGHT_PATH)
+	# The badge shows where the card has the room for it, once the layout has settled.
+	for i in 3:
+		await tree.process_frame
 	t.check("powered by: shown when asked", shown.call(v, "PoweredBy"))
 	var badge := v.find_child("PoweredBy", true, false) as Control
 	t.check("powered by: never below the kit minimum", badge != null and badge.custom_minimum_size.x >= 232 and badge.custom_minimum_size.y >= 88)
@@ -340,7 +350,7 @@ func _overrides(t: PKeyTestContext) -> void:
 	opts.ui_theme = own
 	PKeyUiTheme.apply_options(opts)
 	v = mount.call()
-	t.check("override: ui_theme reaches a stock scene", v.theme == own)
+	t.check("override: ui_theme reaches a stock scene, over the kit's neutral structure", PKeyUiTheme.base_of(v.theme) == PKeyUiTheme.layered(own) and PKeyUiTheme.layered(own).get_meta(PKeyUiTheme.LAYERED_META) == own)
 	t.check("override: an own Theme drops the Pinned K", not shown.call(v, "Mark"))
 	unmount.call(v)
 
@@ -363,13 +373,13 @@ func _overrides(t: PKeyTestContext) -> void:
 	late.ui_branding = "polaris-key"
 	PKeyUiTheme.apply_options(late)
 	await tree.process_frame
-	t.check("boot flow: apply_options re-themes a mounted view", boot.theme != null and boot.theme.resource_path == PKeyUiTheme.DARK_PATH, str(boot.theme.resource_path if boot.theme else "null"))
+	t.check("boot flow: apply_options re-themes a mounted view", boot.theme != null and PKeyUiTheme.base_of(boot.theme).resource_path == PKeyUiTheme.DARK_PATH, str(PKeyUiTheme.base_of(boot.theme).resource_path if boot.theme else "null"))
 	boot.call("refresh_view")
 	var bgate: Control = boot.get("gate")
 	bgate.call("show_state", {"status": "needs-activation"})
 	var title := bgate.find_child("Title", true, false) as Label
 	t.check("boot flow: the gate title is in the brand face", title != null and title.get_theme_font("font") == load(PKeyUiTheme.BOLD_PATH))
-	t.check("boot flow: the Pinned K on the brand theme", shown.call(bgate, "Mark"))
+	t.check("boot flow: the product leads the brand gate", product.call(bgate) and not shown.call(bgate, "Mark"))
 	PKeyUiTheme.apply_options(PKeyOptions.new())
 	await tree.process_frame
 	t.check("boot flow: back to neutral when the options say so", PKeyUiTheme.is_stock(boot.theme) and not boot.theme.has_default_font_size() and not shown.call(bgate, "Mark"))
@@ -381,6 +391,7 @@ func _overrides(t: PKeyTestContext) -> void:
 	t.check("options: an unknown branding is neutral", not PKeyUiTheme.branded())
 	PKeyUiTheme.reset()
 	t.check("reset: neutral, no badge", not PKeyUiTheme.branded() and not PKeyUiTheme.powered_by and PKeyUiTheme.override == null)
+	tree.root.size = root_size
 
 
 ## The WCAG contrast ratio of two opaque colours.

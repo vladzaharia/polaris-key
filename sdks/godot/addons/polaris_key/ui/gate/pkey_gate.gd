@@ -11,6 +11,11 @@ extends PKeyUiView
 ## With `sdk` it follows PolarisKey.state_changed. Retry runs `sdk.sync(true)` itself unless
 ## `managed_retry` is set (PKeyBoot sets it and sends the machine's `retry` instead).
 ## `show_state()` drives it without an SDK (snapshots).
+##
+## Layout (PKeyUiView): one card, centred, led by the product's identity (UI-KITS.md §1.2). With
+## the activation form in landscape the card is wide and has two columns, the product and what
+## the screen says on one side and the form on the other; a message screen is one narrower
+## column; sign-in and offline activation take the whole card in their own layouts.
 
 ## The licence lets the game run (ok, grace, not-applicable).
 signal usable()
@@ -44,6 +49,12 @@ var screen := "loading"
 var activation: PKeyActivationPanel
 var banner: PKeyStatusBanner
 var _card: PanelContainer
+var _split: BoxContainer
+var _aside: VBoxContainer
+var _head: VBoxContainer
+var _main: VBoxContainer
+var _product: PKeyProductHeader
+var _powered_by: TextureRect
 var _title: Label
 var _body: Label
 var _detail: Label
@@ -56,42 +67,41 @@ var _bound := false
 var _was_usable := false
 
 
-## The card's width on a viewport wide enough for it (narrower ones keep a gutter).
-const CARD_WIDTH := 480.0
-
-
-func _apply_width(_width: float) -> void:
-	_card.custom_minimum_size.x = card_width(CARD_WIDTH)
-
-
 func _build() -> void:
 	name = "PKeyGate"
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_center = CenterContainer.new()
 	_center.name = "Center"
 	add_child(_center)
-	var center := _center
 	_card = PanelContainer.new()
 	_card.name = "Card"
 	_card.theme_type_variation = "PKeyCard"
-	_card.custom_minimum_size = Vector2(CARD_WIDTH, 0)
-	center.add_child(_card)
-	var box := vbox(_card, "Body", 12)
-	brand_node(box, "Mark", BRAND_MARK, Control.SIZE_SHRINK_BEGIN)
-	_title = label(box, "Title", "PKeyTitle")
-	_body = label(box, "Message", "PKeyMuted")
-	_detail = label(box, "Detail", "PKeyMuted")
+	_center.add_child(_card)
+	var box := vbox(scroll_area(_card), "Body", "PKeySections")
+	_split = columns(box, "Split")
+	_aside = vbox(_split, "Aside", "PKeyStack")
+	_aside.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_aside.size_flags_stretch_ratio = 0.8
+	_product = product_header(_aside, "Product", true)
+	_head = vbox(_aside, "Head", "PKeyTight")
+	_title = label(_head, "Title", "PKeyTitle")
+	_body = label(_head, "Message", "PKeyMuted")
+	_detail = label(_head, "Detail", "PKeyMuted")
 	# The caller's message (an activation or sign-in error it already worded): data here.
-	_error = label(box, "Error", "PKeyError", true)
+	_error = label(_head, "Error", "PKeyError", true)
+	_main = vbox(_split, "Main", "PKeySections")
+	_main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	activation = PKeyActivationPanel.new()
 	activation.auto_sdk = false
+	activation.show_product = false
 	activation.activated.connect(_on_activated)
-	box.add_child(activation)
-	var actions := hbox(box, "Actions")
-	actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	# Sign-in and offline activation take the whole card: the gate re-renders around them.
+	activation.mode_changed.connect(func(_m: String) -> void: refresh_view())
+	_main.add_child(activation)
+	var actions := actions_row(_main, "Actions", FlowContainer.ALIGNMENT_BEGIN)
 	_update = button(actions, "UpdateAction", _on_update, "PKeyPrimary")
 	_retry = button(actions, "Retry", _on_retry)
-	brand_node(box, "PoweredBy", BRAND_POWERED_BY)
+	_powered_by = brand_node(box, "PoweredBy", BRAND_POWERED_BY)
 	_banner_slot = MarginContainer.new()
 	_banner_slot.name = "BannerSlot"
 	_banner_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -103,6 +113,50 @@ func _build() -> void:
 	banner = PKeyStatusBanner.new()
 	banner.auto_sdk = false
 	_banner_slot.add_child(banner)
+
+
+## Two columns: the activation form beside the product and the message, in landscape.
+func _two_columns() -> bool:
+	return activation.visible and activation.mode == "main" and is_landscape()
+
+
+## The card's content width (logical pixels): what the activation panel wants while it shows,
+## else one column.
+func _content_wanted() -> float:
+	if activation.visible and activation.mode != "main":
+		return activation.preferred_width()
+	if _two_columns():
+		return role("card_width_wide") - 2.0 * role("card_padding")
+	return role("card_width") - 2.0 * role("card_padding")
+
+
+func _apply_width(_width: float) -> void:
+	_card.custom_minimum_size.x = card_width(_content_wanted() + side_padding(_card))
+
+
+func _arrange(m: Dictionary) -> void:
+	var two := _two_columns()
+	activation.adopt_intro(_aside if two else null)
+	set_columns(_split, two)
+	# In two columns the actions sit under the form; the form's own column order is unchanged.
+	super(m)
+	_fit_brand()
+	fit_scrolls(available_height() - end_padding(_card), outer_view() == self or embedded)
+
+
+## The Powered-by badge shows at its kit minimum or not at all: it gives way when the card would
+## not fit the screen with it.
+func _fit_brand() -> void:
+	if _powered_by.texture == null:
+		return
+	if _card.size.x < 1.0:
+		# Not laid out yet: wrapped text has no width to measure against; decide on the next pass.
+		_powered_by.visible = true
+		return
+	_powered_by.visible = false
+	var room := content_room().y
+	var need := _card.get_combined_minimum_size().y + _powered_by.custom_minimum_size.y + role("section_gap")
+	_powered_by.visible = need <= room
 
 
 func _ready() -> void:
@@ -167,8 +221,15 @@ func _render() -> void:
 	activation.visible = ctl["activation"]
 	# One title per card: the activation panel's own only when the gate shows none above it.
 	activation.show_title = not _title.visible
-	show_text(_update, t.text("update_action") if ctl["update_action"] else "")
-	show_text(_retry, t.text("retry") if ctl["retry"] else "")
+	# Sign-in and offline activation lead with their own layouts; everything else leads with the
+	# product.
+	var sub := activation.visible and activation.mode != "main"
+	_aside.visible = not sub
+	_head.visible = _title.visible or _body.visible or _detail.visible or _error.visible
+	_product.refresh()
+	activation.sign_in_dialog.show_product = sub
+	show_text(_update, t.text("update_action") if ctl["update_action"] and not sub else "")
+	show_text(_retry, t.text("retry") if ctl["retry"] and not sub else "")
 	if is_usable and not _was_usable:
 		_was_usable = true
 		usable.emit.call_deferred()

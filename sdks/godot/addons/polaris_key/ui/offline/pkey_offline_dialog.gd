@@ -8,6 +8,10 @@ extends PKeyUiView
 ##
 ## An import is PolarisKey.import_bundle(text): all-or-nothing; a refusal names the §7 step that
 ## failed (signature, claims, trust, the licence inside) in plain words.
+##
+## Layout (PKeyUiView): the request (the code to send, its QR code, Copy) and the import (load,
+## paste, Import) are two columns in landscape and stack in portrait. The QR code shows only where
+## it fits at a scannable size; the code and Copy carry the request without it.
 
 ## A bundle verified and installed.
 signal activated()
@@ -24,6 +28,9 @@ var message := ""
 var message_ok := false
 var busy := false
 
+var _body: BoxContainer
+var _request_col: VBoxContainer
+var _import_col: VBoxContainer
 var _title: Label
 var _request: Label
 var _product: Label
@@ -42,33 +49,61 @@ var _file_dialog: FileDialog = null
 
 func _build() -> void:
 	name = "PKeyOfflineDialog"
-	var box := vbox(self, "Body", 10)
-	_title = label(box, "Title", "PKeyTitle")
-	_request = label(box, "Request", "PKeyMuted")
-	_product = label(box, "Product", "PKeyMuted")
-	_code = label(box, "RequestCode", "PKeyCode", true)
-	_code.add_theme_font_size_override("font_size", 22)
-	_code.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_qr = PKeyQrRect.new()
-	_qr.name = "QrCode"
-	_qr.custom_minimum_size = Vector2(160, 160)
-	_qr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	box.add_child(_qr)
-	_copy = button(box, "CopyCode", _on_copy)
-	_hint = label(box, "LoadHint", "PKeyMuted")
-	_load = button(box, "LoadFile", _on_load)
+	_body = columns(card_panel(), "Body")
+	_request_col = vbox(_body, "Request", "PKeyStack")
+	_request_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var head := vbox(_request_col, "Head", "PKeyTight")
+	_title = label(head, "Title", "PKeyTitle")
+	_request = label(head, "RequestText", "PKeyMuted")
+	var code := vbox(_request_col, "Code", "PKeyTight")
+	_product = label(code, "Product", "PKeyMuted")
+	_code = label(code, "RequestCode", "PKeyMono", true)
+	_qr = qr_tile(_request_col)
+	_qr.get_parent().size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var copy_row := actions_row(_request_col, "CopyRow", FlowContainer.ALIGNMENT_BEGIN)
+	_copy = button(copy_row, "CopyCode", _on_copy)
+	_import_col = vbox(_body, "Import", "PKeyStack")
+	_import_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_hint = label(_import_col, "LoadHint", "PKeyMuted")
+	var load_row := actions_row(_import_col, "LoadRow", FlowContainer.ALIGNMENT_BEGIN)
+	_load = button(load_row, "LoadFile", _on_load)
 	_paste = TextEdit.new()
 	_paste.name = "Paste"
-	_paste.custom_minimum_size = Vector2(0, 90)
 	_paste.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	_paste.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	box.add_child(_paste)
-	_drop = label(box, "DropHint", "PKeyMuted")
-	_message = label(box, "Message")
-	var actions := hbox(box, "Actions")
-	actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	_import_col.add_child(_paste)
+	_drop = label(_import_col, "DropHint", "PKeyMuted")
+	_message = label(_import_col, "Message")
+	var actions := actions_row(_import_col, "Actions", FlowContainer.ALIGNMENT_BEGIN)
 	_import = button(actions, "Import", _on_import, "PKeyPrimary")
 	_close = button(actions, "Close", func(): closed.emit())
+
+
+## The content width this dialog wants (logical pixels, without a host card's padding).
+func preferred_width() -> float:
+	if is_landscape():
+		return role("card_width_wide") - 2.0 * role("card_padding")
+	return role("card_width") - 2.0 * role("card_padding")
+
+
+func _apply_width(width: float) -> void:
+	super(minf(preferred_width() + card_padding_x(), content_room().x) if width > 0.0 else 0.0)
+
+
+func _arrange(m: Dictionary) -> void:
+	super(m)
+	set_columns(_body, m["landscape"])
+	_paste.custom_minimum_size.y = roundf(role("control_height") * 1.75)
+	# The QR code at a scannable size where the screen has the height for it, else not at all.
+	var want := _device_id() != "" and not _qr.encode_failed
+	_qr.visible = want
+	_qr.get_parent().visible = want
+	if want:
+		var q := qr_side(content_room().y * 0.4)
+		_qr.custom_minimum_size = Vector2(q, q)
+		var fits := _body.get_combined_minimum_size().y <= available_height()
+		_qr.visible = fits
+		_qr.get_parent().visible = fits
 
 
 func _ready() -> void:
@@ -102,12 +137,12 @@ func _render() -> void:
 	show_text(_product, t.text("offline_product", _product_slug()) if _product_slug() != "" else "")
 	show_text(_code, _device_id())
 	_qr.text = _device_id()
-	_qr.visible = _device_id() != "" and not _qr.encode_failed
 	_copy.text = t.text("offline_copy_code")
 	_copy.visible = _device_id() != ""
+	_copy.get_parent().visible = _copy.visible
 	_hint.text = t.text("offline_load_hint")
 	_load.text = t.text("offline_load_file")
-	_load.visible = not web
+	_load.get_parent().visible = not web
 	_paste.placeholder_text = t.text("offline_paste_placeholder")
 	show_text(_drop, t.text("offline_drop_hint") if not web else "")
 	show_text(_message, message)

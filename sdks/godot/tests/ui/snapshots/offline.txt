@@ -1,38 +1,35 @@
 == native ==
-Body/Title: Label "Offline activation"
-Body/Request: Label "Send this request code to whoever issues your license:"
-Body/Product: Label "Product: djdl"
-Body/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Body/QrCode: PKeyQrRect "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Body/CopyCode: Button "Copy code" [focus 1]
-Body/LoadHint: Label "Then load the activation file you receive, or paste its text:"
-Body/LoadFile: Button "Load file…" [focus 2]
-Body/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
-Body/DropHint: Label "You can also drop the file onto this window."
-Body/Actions/Import: Button "Activate" [focus 4]
-Body/Actions/Close: Button "Close" [focus 5]
+Card/Scroll/Body/Request/Head/Title: Label "Offline activation"
+Card/Scroll/Body/Request/Head/RequestText: Label "Send this request code to whoever issues your license:"
+Card/Scroll/Body/Request/Code/Product: Label "Product: djdl"
+Card/Scroll/Body/Request/Code/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+Card/Scroll/Body/Request/CopyRow/CopyCode: Button "Copy code" [focus 1]
+Card/Scroll/Body/Import/LoadHint: Label "Then load the activation file you receive, or paste its text:"
+Card/Scroll/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
+Card/Scroll/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
+Card/Scroll/Body/Import/DropHint: Label "You can also drop the file onto this window."
+Card/Scroll/Body/Import/Actions/Import: Button "Activate" [focus 4]
+Card/Scroll/Body/Import/Actions/Close: Button "Close" [focus 5]
 == web ==
-Body/Title: Label "Offline activation"
-Body/Request: Label "Send this request code to whoever issues your license:"
-Body/Product: Label "Product: djdl"
-Body/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Body/QrCode: PKeyQrRect "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Body/CopyCode: Button "Copy code" [focus 1]
-Body/LoadHint: Label "Then load the activation file you receive, or paste its text:"
-Body/Paste: TextEdit [placeholder "Paste the activation text here", focus 2]
-Body/Actions/Import: Button "Activate" [focus 3]
-Body/Actions/Close: Button "Close" [focus 4]
+Card/Scroll/Body/Request/Head/Title: Label "Offline activation"
+Card/Scroll/Body/Request/Head/RequestText: Label "Send this request code to whoever issues your license:"
+Card/Scroll/Body/Request/Code/Product: Label "Product: djdl"
+Card/Scroll/Body/Request/Code/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+Card/Scroll/Body/Request/CopyRow/CopyCode: Button "Copy code" [focus 1]
+Card/Scroll/Body/Import/LoadHint: Label "Then load the activation file you receive, or paste its text:"
+Card/Scroll/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 2]
+Card/Scroll/Body/Import/Actions/Import: Button "Activate" [focus 3]
+Card/Scroll/Body/Import/Actions/Close: Button "Close" [focus 4]
 == rejected signature ==
-Body/Title: Label "Offline activation"
-Body/Request: Label "Send this request code to whoever issues your license:"
-Body/Product: Label "Product: djdl"
-Body/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Body/QrCode: PKeyQrRect "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
-Body/CopyCode: Button "Copy code" [focus 1]
-Body/LoadHint: Label "Then load the activation file you receive, or paste its text:"
-Body/LoadFile: Button "Load file…" [focus 2]
-Body/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
-Body/DropHint: Label "You can also drop the file onto this window."
-Body/Message: Label "The file's signature isn't valid."
-Body/Actions/Import: Button "Activate" [focus 4]
-Body/Actions/Close: Button "Close" [focus 5]
+Card/Scroll/Body/Request/Head/Title: Label "Offline activation"
+Card/Scroll/Body/Request/Head/RequestText: Label "Send this request code to whoever issues your license:"
+Card/Scroll/Body/Request/Code/Product: Label "Product: djdl"
+Card/Scroll/Body/Request/Code/RequestCode: Label "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+Card/Scroll/Body/Request/CopyRow/CopyCode: Button "Copy code" [focus 1]
+Card/Scroll/Body/Import/LoadHint: Label "Then load the activation file you receive, or paste its text:"
+Card/Scroll/Body/Import/LoadRow/LoadFile: Button "Load file…" [focus 2]
+Card/Scroll/Body/Import/Paste: TextEdit [placeholder "Paste the activation text here", focus 3]
+Card/Scroll/Body/Import/DropHint: Label "You can also drop the file onto this window."
+Card/Scroll/Body/Import/Message: Label "The file's signature isn't valid."
+Card/Scroll/Body/Import/Actions/Import: Button "Activate" [focus 4]
+Card/Scroll/Body/Import/Actions/Close: Button "Close" [focus 5]

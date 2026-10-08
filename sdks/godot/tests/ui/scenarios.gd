@@ -55,6 +55,10 @@ func all() -> Array:
 	out.append(["gate", "loading", gate.bind("", true, "")])
 	out.append(["gate", "needs-activation after an error", gate.bind("needs-activation", true, "That license key wasn't accepted.")])
 	out.append(["gate", "version-too-old with a store action", gate_store])
+	# The gate with sign-in and offline activation open inside it (what a player sees after
+	# choosing them on the needs-activation card).
+	out.append(["gate", "sign-in pending", gate_flow.bind("sign-in")])
+	out.append(["gate", "offline activation", gate_flow.bind("offline")])
 	# ── PKeyActivationPanel: every capability combination.
 	for lic in [true, false]:
 		for idn in [true, false]:
@@ -101,6 +105,7 @@ func all() -> Array:
 	out.append(["boot", "blocked update-required", boot.bind("update-required")])
 	out.append(["boot", "blocked not-available", boot.bind("not-available")])
 	out.append(["boot", "waiting needs-activation", boot.bind("waiting")])
+	out.append(["boot", "syncing", boot.bind("syncing")])
 	# ── PKeyBoot's pack stages (P4-08): the consent card, a declined download, the pill.
 	out.append(["boot", "consent metered", boot.bind("consent")])
 	out.append(["boot", "blocked content-declined", boot.bind("declined")])
@@ -137,6 +142,25 @@ func gate_store() -> Control:
 	add(g)
 	g.update_result = update_check({"action": "store", "release": {"version": "2.0.0", "seq": 3}, "listingUrl": "https://store.steampowered.com/app/480", "mandatory": true, "critical": false, "discardStaged": false})
 	g.show_state({"status": "version-too-old"})
+	return g
+
+
+## The needs-activation gate with sign-in (a code showing) or offline activation open.
+func gate_flow(which: String) -> Control:
+	var g := PKeyGateView.new()
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(g)
+	g.show_state({"status": "needs-activation"})
+	var panel := g.activation
+	if which == "sign-in":
+		panel.sign_in_dialog.now_source = func(): return NOW
+		panel.open_mode("sign-in")
+		panel.sign_in_dialog.show_prompt(prompt_fixture())
+	else:
+		panel.offline_dialog.web_override = 0
+		panel.offline_dialog.product = "djdl"
+		panel.offline_dialog.device_id = "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+		panel.open_mode("offline")
 	return g
 
 
@@ -338,6 +362,9 @@ func boot(stop: String) -> Control:
 	host.answer({"type": "shell.done"})
 	host.answer({"type": "guard.done", "result": "ok"})
 	match stop:
+		"syncing":
+			# Still at SYNC, a sliced bundle verify reporting its progress.
+			b.set_verify_progress(0.42)
 		"offline":
 			host.answer({"type": "sync.done", "result": "offline"})
 		"error":

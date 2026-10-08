@@ -152,6 +152,14 @@ const CONFIG_ENV_NEVER := 2
 @export var ui_theme: Theme = null
 ## Show the "Powered by Polaris Key" badge on the gate, boot and settings scenes (off by default).
 @export var ui_powered_by := false
+## The kit's spacing (PKeyUiTheme.DENSITIES; UI-KITS.md §3.1): `spacious` (the default, for a
+## game at TV distance), `comfortable` or `compact`. A screen too small for it steps down.
+@export_enum("spacious", "comfortable", "compact") var ui_density := "spacious"
+## The product name the kit's screens lead with; empty: the project's `application/config/name`.
+@export var ui_product_name := ""
+## The product icon beside it; null: the project's `application/config/icon` (else a monogram
+## tile of the name's initial).
+@export var ui_product_icon: Texture2D = null
 @export_group("")
 
 ## A PKeyStore to use instead of the file store (tests, a platform secure store). Not exported.

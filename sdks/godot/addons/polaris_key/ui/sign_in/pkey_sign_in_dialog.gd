@@ -11,6 +11,12 @@ extends PKeyUiView
 ## optional "attach this device's licence" check, until the player accepts on the device.
 ## `show_*()` drives the dialog without an SDK (snapshots, a custom flow). Headless logic:
 ## PKeySignInController.
+##
+## Layout (PKeyUiView): in landscape the QR code stands on one side and the product, the steps,
+## the code and the actions on the other, as a console's device-code screen; in portrait one
+## centred column, the code above the QR code. The code and the QR code are the focal point: the
+## largest type on the screen and a QR code at the theme's `qr_size`, never under
+## QR_MIN_PHYSICAL on screen.
 
 ## The sign-in ended (every way: PKeySignInResult.kind).
 signal finished(result: PKeySignInResult)
@@ -22,6 +28,12 @@ signal closed()
 @export var device_name := ""
 ## Hold at the signed-in identity for the player's acceptance (and offer the licence attach).
 @export var confirm_identity := false
+## Lead with the product's identity above the title.
+var show_product := true:
+	set(value):
+		if show_product != value:
+			show_product = value
+			refresh_view()
 
 ## `func() -> float` epoch seconds for the countdown (tests); empty: the system clock.
 var now_source: Callable = Callable()
@@ -32,6 +44,11 @@ var confirmation: Dictionary = {}
 var result: PKeySignInResult = null
 var copied := false
 
+var _body: BoxContainer
+var _qr_column: CenterContainer
+var _info: VBoxContainer
+var _steps: VBoxContainer
+var _product: PKeyProductHeader
 var _title: Label
 var _status: Label
 var _instructions: Label
@@ -39,6 +56,7 @@ var _code: Label
 var _qr: PKeyQrRect
 var _expires: Label
 var _device: Label
+var _actions: HFlowContainer
 var _open: Button
 var _copy: Button
 var _confirm_body: Label
@@ -51,33 +69,82 @@ var _accum := 0.0
 
 func _build() -> void:
 	name = "PKeySignInDialog"
-	var box := vbox(self, "Body", 12)
-	_title = label(box, "Title", "PKeyTitle")
-	_status = label(box, "Status", "PKeyMuted")
-	_instructions = label(box, "Instructions", "PKeyMuted")
-	_code = label(box, "UserCode", "PKeyCode", true)
-	_code.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_qr = PKeyQrRect.new()
-	_qr.name = "QrCode"
-	_qr.custom_minimum_size = Vector2(220, 220)
-	_qr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	box.add_child(_qr)
-	_expires = label(box, "Expires", "PKeyMuted")
-	_device = label(box, "DeviceLabel", "PKeyMuted")
-	var links := hbox(box, "Links")
-	links.alignment = BoxContainer.ALIGNMENT_CENTER
-	_open = button(links, "OpenBrowser", _on_open)
-	_copy = button(links, "CopyLink", _on_copy)
-	_confirm_body = label(box, "ConfirmBody")
+	_body = columns(card_panel(), "Body")
+	_qr_column = CenterContainer.new()
+	_qr_column.name = "QrColumn"
+	_body.add_child(_qr_column)
+	_info = vbox(_body, "Info", "PKeySections")
+	_info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_info.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var head := vbox(_info, "Header", "PKeyTight")
+	_product = product_header(head, "Product")
+	_title = label(head, "Title", "PKeyTitle")
+	_status = label(head, "Status", "PKeyMuted")
+	_steps = vbox(_info, "Steps", "PKeyStack")
+	_instructions = label(_steps, "Instructions")
+	_code = label(_steps, "UserCode", "PKeyCode", true)
+	_qr = qr_tile(_qr_column)
+	var timing := vbox(_steps, "Timing", "PKeyTight")
+	_expires = label(timing, "Expires", "PKeyMuted")
+	_device = label(timing, "DeviceLabel", "PKeyMuted")
+	_confirm_body = label(_steps, "ConfirmBody")
 	_attach = CheckButton.new()
 	_attach.name = "AttachLicense"
 	_attach.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	box.add_child(_attach)
-	var actions := hbox(box, "Actions")
-	actions.alignment = BoxContainer.ALIGNMENT_CENTER
-	_continue = button(actions, "Continue", _on_continue, "PKeyPrimary")
-	_try_again = button(actions, "TryAgain", begin, "PKeyPrimary")
-	_cancel_btn = button(actions, "Cancel", _on_cancel)
+	# A long label wraps rather than widening the dialog past a narrow screen.
+	_attach.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_steps.add_child(_attach)
+	_actions = actions_row(_info, "Actions")
+	_open = button(_actions, "OpenBrowser", _on_open, "PKeyPrimary")
+	_copy = button(_actions, "CopyLink", _on_copy)
+	_continue = button(_actions, "Continue", _on_continue, "PKeyPrimary")
+	_try_again = button(_actions, "TryAgain", begin, "PKeyPrimary")
+	_cancel_btn = button(_actions, "Cancel", _on_cancel)
+
+
+## The content width this dialog wants (logical pixels, without a host card's padding): the QR
+## code, the column gap and a text column in landscape while a code shows; one column otherwise.
+func preferred_width() -> float:
+	var text := role("card_width") - 2.0 * role("card_padding")
+	if _pending() and _side_by_side():
+		return qr_side() + role("column_gap") + text * 1.1
+	return text
+
+
+func _pending() -> bool:
+	return state == "pending" and prompt != null
+
+
+func _side_by_side() -> bool:
+	return is_landscape() and _qr.text != "" and not _qr.encode_failed
+
+
+func _apply_width(width: float) -> void:
+	# On its own, the dialog centres its content at the width it wants (capped by the room).
+	super(minf(preferred_width() + card_padding_x(), content_room().x) if width > 0.0 else 0.0)
+
+
+func _arrange(m: Dictionary) -> void:
+	super(m)
+	var side := _pending() and _side_by_side()
+	set_columns(_body, side)
+	var tile := _qr.get_parent()
+	if side:
+		place(tile, _qr_column)
+	else:
+		place(tile, _steps, _code.get_index() + 1)
+	_qr_column.visible = side and _qr.visible
+	# The QR code: as large as the theme asks, within the room the screen leaves.
+	var room := content_room()
+	var q := qr_side(room.y * 0.62 if side else minf(room.x, room.y * 0.4))
+	_qr.custom_minimum_size = Vector2(q, q)
+	# Landscape reads left to right from the QR code; a portrait column is centred.
+	var align := HORIZONTAL_ALIGNMENT_LEFT if side or m["landscape"] else HORIZONTAL_ALIGNMENT_CENTER
+	for l in [_title, _status, _instructions, _code, _expires, _device, _confirm_body]:
+		(l as Label).horizontal_alignment = align
+	var flow := FlowContainer.ALIGNMENT_BEGIN if align == HORIZONTAL_ALIGNMENT_LEFT else FlowContainer.ALIGNMENT_CENTER
+	_actions.alignment = flow
+	_product.centered = align == HORIZONTAL_ALIGNMENT_CENTER
 
 
 ## Start a sign-in through `sdk.identity` and follow it to the end.
@@ -128,8 +195,11 @@ func _now() -> float:
 
 func _render() -> void:
 	var t := c()
-	var pending := state == "pending" and prompt != null
+	var pending := _pending()
 	var confirming := state == "confirm"
+	_product.visible = show_product
+	if show_product:
+		_product.refresh()
 	var ended := state == "ended" and result != null
 	_title.text = t.text("sign_in_confirm_title") if confirming else t.text("sign_in_title")
 	var status := ""
@@ -148,6 +218,7 @@ func _render() -> void:
 	show_text(_expires, t.text("sign_in_expires", PKeySignInController.clock(PKeySignInController.remaining(prompt, _now()))) if pending else "")
 	# The label the page will show, as the Worker stored it (the echo), so the player can match it.
 	show_text(_device, t.text("sign_in_device", prompt.device_name) if pending and prompt.device_name != "" else "")
+	_expires.get_parent().visible = _expires.visible or _device.visible
 	_open.visible = pending and prompt.verification_uri_complete != ""
 	_open.text = t.text("sign_in_open_browser")
 	_copy.visible = _open.visible

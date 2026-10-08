@@ -23,7 +23,22 @@ extends RefCounted
 ##
 ## A scene given a Theme of its own (in the inspector or in code) keeps it; only a scene still on
 ## the kit's stock theme follows these settings. PKeyBoot's `theme` option (a Theme a mounted pack
-## provides) still applies after MOUNT.
+## provides) still applies after MOUNT. `ui_theme` is layered: the game's Theme wins wherever it
+## sets an item, over the neutral layer derived from it (`layered()`), so a game's own theme keeps
+## the kit's type hierarchy, spacing and container gaps where it does not set them itself.
+##
+## **Spacing and type (both looks).** One spacing scale on a 4 px base (`SPACE`), and the roles the
+## scenes use (`DENSITIES`, `MEASURES`), in every stock theme as constants of the type
+## `PKeyLayout` (`get_theme_constant("card_padding", "PKeyLayout")`), and as the container type
+## variations the scenes are built from: `PKeyStack` (a column of related items), `PKeyTight` (a
+## title over its line, a label over its control), `PKeySections` (a card's sections),
+## `PKeyRow` and `PKeyActions` (buttons in a row, wrapping), `PKeyColumns` (the two columns of a
+## landscape layout). The type scale is `PKeyTitle`, `PKeySection`, the body (Label, Button and the
+## inputs), `PKeyMuted` (captions), `PKeyCode` (the user code, mono) and `PKeyMono` (ids). The
+## numbers are at scale 1 (a 1280×720 screen) in the spacious density, the Godot default
+## (UI-KITS.md §3.1); `variant()` makes a stock theme for another screen scale or density, which
+## PKeyUiView picks as the screen changes. The brand theme's roles are these numbers; the neutral
+## one scales them by the game's font size against the brand's body size (18).
 ##
 ## Committed resources (tools/gen_theme.gd writes them; the `brand` suite fails on drift):
 ## pkey_theme.tres (neutral, the one every scene file references, as built over the engine's
@@ -34,6 +49,7 @@ const DARK_PATH := "res://addons/polaris_key/ui/theme/pkey_brand_dark.tres"
 const LIGHT_PATH := "res://addons/polaris_key/ui/theme/pkey_brand_light.tres"
 const REGULAR_PATH := "res://addons/polaris_key/ui/theme/fonts/rubik_regular.tres"
 const BOLD_PATH := "res://addons/polaris_key/ui/theme/fonts/rubik_bold.tres"
+const MONO_PATH := "res://addons/polaris_key/ui/theme/fonts/system_mono.tres"
 
 ## The bundled fonts' licence texts (SIL OFL 1.1 requires them to travel with the fonts), keyed by
 ## the font resources' path prefix under `fonts/`. They are `.txt` files, which an export preset
@@ -74,9 +90,10 @@ const BRANDING_POLARIS_KEY := "polaris-key"
 ## Meta on every theme this class builds, so a scene can tell the stock look from the game's own.
 const STOCK_META := &"pkey_stock"
 
-## Corner radii (BRAND.md §4.6): controls `md`, cards `lg`, chips `full`.
-const RADIUS_CONTROL := 6
-const RADIUS_CARD := 10
+## Corner radii: the Godot kit's control and panel radii (PKeyKitTokens.RADIUS_CONTROL and
+## RADIUS_PANEL, UI-KITS.md §2.1), chips `full`.
+const RADIUS_CONTROL := 16
+const RADIUS_CARD := 28
 const RADIUS_FULL := 999
 ## The focus ring (BRAND.md §7.4): 2 px of `focus`, drawn 2 px outside the control.
 const RING_WIDTH := 2
@@ -93,12 +110,101 @@ const VARIATIONS := {
 	"PKeyCard": "PanelContainer",
 	"PKeyBanner": "PanelContainer",
 	"PKeyTitle": "Label",
+	"PKeySection": "Label",
 	"PKeyMuted": "Label",
 	"PKeyCode": "Label",
+	"PKeyMono": "Label",
+	"PKeyStrong": "Label",
 	"PKeyError": "Label",
 	"PKeyBadge": "Label",
 	"PKeyPrimary": "Button",
+	"PKeyQrTile": "PanelContainer",
+	"PKeyStack": "VBoxContainer",
+	"PKeyTight": "VBoxContainer",
+	"PKeySections": "VBoxContainer",
+	"PKeyRow": "HBoxContainer",
+	"PKeyColumns": "BoxContainer",
+	"PKeyActions": "HFlowContainer",
+	"PKeyGrid": "GridContainer",
 }
+
+# ── Spacing and type ─────────────────────────────────────────────────────────────────────
+
+## The spacing scale: a 4 px base, in logical pixels at scale 1. Every margin, padding and gap in
+## the kit is one of these (through the roles below); in every stock theme as the PKeyLayout
+## constants space_1 … space_16 (the step is the multiple of 4).
+const SPACE := [4, 8, 12, 16, 20, 24, 32, 40, 48, 64]
+## The theme type that carries the layout roles and the scale as constants.
+const LAYOUT_TYPE := &"PKeyLayout"
+## The layout roles in each density (UI-KITS.md §3.1 `density`; Godot defaults to spacious), at
+## scale 1. Translated from the mockup kit's rhythm (its card inset 24, section gap 32, stack 16,
+## label to control 8, buttons 8 apart, controls 36 high, at a 14 px body) to the Godot kit's
+## 18 px body at TV distance:
+##   page_margin      the least space between the screen's (safe) edge and a card
+##   card_padding     inside a card or dialog
+##   section_gap      between a card's sections: its heading, its body, its actions
+##   stack_gap        between related items in a section (fields, stacked buttons)
+##   tight_gap        a title to its one line, a label to its control, a value to its caption
+##   inline_gap       buttons and chips in a row
+##   column_gap       between the two columns of a landscape layout
+##   control_height   every button and input
+##   control_padding  a button's sides
+##   banner_padding   a strip's top and bottom
+const DENSITIES := {
+	"spacious": {"page_margin": 32, "card_padding": 40, "section_gap": 32, "stack_gap": 16, "tight_gap": 8, "inline_gap": 12, "column_gap": 48, "control_height": 56, "control_padding": 24, "banner_padding": 16},
+	"comfortable": {"page_margin": 24, "card_padding": 32, "section_gap": 24, "stack_gap": 12, "tight_gap": 8, "inline_gap": 12, "column_gap": 40, "control_height": 48, "control_padding": 20, "banner_padding": 12},
+	"compact": {"page_margin": 16, "card_padding": 24, "section_gap": 16, "stack_gap": 8, "tight_gap": 4, "inline_gap": 8, "column_gap": 24, "control_height": 40, "control_padding": 16, "banner_padding": 8},
+}
+## The density a stock theme is built in when nobody asks for another.
+const DEFAULT_DENSITY := "spacious"
+## Widths and sizes that do not change with density, at scale 1:
+##   card_width       a one-column card
+##   card_width_wide  a two-column (landscape) card
+##   content_width    a list (settings)
+##   qr_size          a QR code a phone scans (never under PKeyUiView.QR_MIN_PHYSICAL on screen)
+##   icon_size        the product's icon heading a focused step
+##   hero_icon_size   the product's icon leading a screen (the gate, the boot)
+const MEASURES := {"card_width": 520, "card_width_wide": 960, "content_width": 680, "qr_size": 232, "icon_size": 40, "hero_icon_size": 64}
+## Which role sets each container variation's gap.
+const CONTAINER_GAPS := {
+	"PKeyStack": "stack_gap",
+	"PKeyTight": "tight_gap",
+	"PKeySections": "section_gap",
+	"PKeyRow": "inline_gap",
+	"PKeyColumns": "column_gap",
+	"PKeyActions": "inline_gap",
+}
+## The type scale at scale 1 (the generated Godot kit tokens, PKeyKitTokens: title, body, meta and
+## code; the section step sits between body and title).
+const TYPE_TITLE := 32
+const TYPE_SECTION := 24
+const TYPE_BODY := 18
+const TYPE_CAPTION := 16
+const TYPE_CHIP := 14
+const TYPE_CODE := 52
+## The neutral look's steps, as multiples of the game's font size.
+const NEUTRAL_RATIOS := {"PKeyTitle": 1.5, "PKeySection": 1.25, "PKeyCode": 2.25, "PKeyMono": 1.0, "PKeyMuted": 0.875, "PKeyBadge": 0.8}
+## Meta on a stock theme: its density, the multiplier its layout roles were built with (1 for the
+## brand theme, the game's font size over TYPE_BODY for the neutral one), and whether it is the
+## brand theme (which also sizes the built-in controls' padding).
+const DENSITY_META := &"pkey_density"
+const UNIT_META := &"pkey_unit"
+const BRAND_META := &"pkey_brand"
+## Meta on a `layered()` theme: the game's Theme it was built over.
+const LAYERED_META := &"pkey_layered_over"
+## Meta on a neutral theme: the game's font size it was built for. On a `variant()`: the stock
+## theme it was made from (`base_of()`).
+const BASE_SIZE_META := &"pkey_base_size"
+const VARIANT_OF_META := &"pkey_variant_of"
+## The engine control types a scaled neutral theme sizes (the neutral theme itself leaves them to
+## the game).
+const BODY_TYPES := ["Label", "Button", "CheckButton", "CheckBox", "OptionButton", "LineEdit", "TextEdit", "PopupMenu", "TooltipLabel", "ProgressBar"]
+## Engine icons a scaled theme resizes with the text.
+const SCALED_ICON_TYPES := ["CheckButton", "CheckBox", "OptionButton"]
+
+static var _variants := {}
+static var _layered := {}
+static var _icons := {}
 
 ## BRANDING_NONE (the default) or BRANDING_POLARIS_KEY.
 static var branding := BRANDING_NONE:
@@ -119,6 +225,13 @@ static var accent := Color(0, 0, 0, 0):
 static var override: Theme = null
 ## Show the "Powered by Polaris Key" badge where the scenes offer it (gate, boot, settings).
 static var powered_by := false
+## The density the scenes use where the screen has room for it (UI-KITS.md §3.1): "spacious" (the
+## Godot default), "comfortable" or "compact". A screen too small for it steps down on its own.
+static var density := DEFAULT_DENSITY
+## The product the screens name (UI-KITS.md §1.2 ProductIdentity, until the SDK's presentation
+## accessor feeds it): empty / null fall back to the project's application/config/name and icon.
+static var product_name := ""
+static var product_icon: Texture2D = null
 
 static var _cache: Theme = null
 static var _textures := {}
@@ -135,6 +248,11 @@ static func apply_options(opts: Resource) -> void:
 	accent = opts.get("ui_accent") if opts.get("ui_accent") is Color else Color(0, 0, 0, 0)
 	override = opts.get("ui_theme") as Theme
 	powered_by = opts.get("ui_powered_by") == true
+	var d = opts.get("ui_density")
+	density = d if d is String and DENSITIES.has(d) else DEFAULT_DENSITY
+	var pn = opts.get("ui_product_name")
+	product_name = pn if pn is String else ""
+	product_icon = opts.get("ui_product_icon") as Texture2D
 	refresh_views()
 
 
@@ -153,6 +271,25 @@ static func reset() -> void:
 	accent = Color(0, 0, 0, 0)
 	override = null
 	powered_by = false
+	density = DEFAULT_DENSITY
+	product_name = ""
+	product_icon = null
+
+
+## The product's identity for the kit's headers: {"name": String, "icon": Texture2D or null}, from
+## `product_name` / `product_icon`, else the project's `application/config/name` and
+## `application/config/icon` (UI-KITS.md §1.2: the integrator first, the bundle last; never a
+## Polaris Key mark).
+static func product_identity() -> Dictionary:
+	var n := product_name
+	if n == "":
+		n = str(ProjectSettings.get_setting("application/config/name", ""))
+	var icon := product_icon
+	if icon == null:
+		var path := str(ProjectSettings.get_setting("application/config/icon", ""))
+		if path != "" and ResourceLoader.exists(path):
+			icon = load(path) as Texture2D
+	return {"name": n, "icon": icon}
 
 
 ## True when the Polaris Key brand is on (and no override Theme replaces it).
@@ -160,11 +297,11 @@ static func branded() -> bool:
 	return override == null and branding == BRANDING_POLARIS_KEY
 
 
-## The theme a kit scene should use now: `override`, else the brand theme when branded, else the
-## neutral theme built over the game's project theme.
+## The theme a kit scene should use now: `override` (layered over the kit's neutral structure),
+## else the brand theme when branded, else the neutral theme built over the game's project theme.
 static func current() -> Theme:
 	if override != null:
-		return override
+		return layered(override)
 	if _cache != null:
 		return _cache
 	if branding == BRANDING_POLARIS_KEY:
@@ -172,6 +309,7 @@ static func current() -> Theme:
 			_cache = build(scheme != "light", accent)
 		else:
 			_cache = load(LIGHT_PATH if scheme == "light" else DARK_PATH) as Theme
+		kit_icons(_cache, 1.0)
 	else:
 		_cache = neutral()
 	return _cache
@@ -237,15 +375,11 @@ static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBo
 	for v in VARIATIONS:
 		t.set_type_variation(v, VARIATIONS[v])
 	var card := panel.duplicate() as StyleBox if panel != null else StyleBoxFlat.new()
-	card.set_content_margin_all(roundi(base_size * 1.5))
 	t.set_stylebox("panel", "PKeyCard", card)
-	var strip := card.duplicate() as StyleBox
-	strip.set_content_margin_all(roundi(base_size * 0.625))
-	t.set_stylebox("panel", "PKeyBanner", strip)
-	t.set_font_size("font_size", "PKeyTitle", roundi(base_size * 1.5))
-	t.set_font_size("font_size", "PKeyCode", roundi(base_size * 2.25))
-	t.set_font_size("font_size", "PKeyMuted", roundi(base_size * 0.875))
-	t.set_font_size("font_size", "PKeyBadge", roundi(base_size * 0.8))
+	t.set_stylebox("panel", "PKeyBanner", card.duplicate() as StyleBox)
+	for v in NEUTRAL_RATIOS:
+		t.set_font_size("font_size", v, roundi(base_size * NEUTRAL_RATIOS[v]))
+	_apply_layout(t, float(base_size) / TYPE_BODY, DEFAULT_DENSITY, false)
 	var muted := text
 	muted.a *= 0.72
 	t.set_color("font_color", "PKeyMuted", muted)
@@ -262,10 +396,15 @@ static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBo
 	t.set_stylebox("normal", "PKeyBadge", chip)
 	if bold != null:
 		t.set_font("font", "PKeyTitle", bold)
+		t.set_font("font", "PKeySection", bold)
+		t.set_font("font", "PKeyStrong", bold)
 		t.set_font("font", "PKeyCode", bold)
 		t.set_font("font", "PKeyPrimary", bold)
 	t.set_color("dark", "PKeyQrRect", Color.BLACK)
 	t.set_color("light", "PKeyQrRect", Color.WHITE)
+	t.set_stylebox("panel", "PKeyQrTile", _box(Color.WHITE, Color.WHITE, 0, RADIUS_CONTROL, 8))
+	t.set_meta(UNIT_META, float(base_size) / TYPE_BODY)
+	t.set_meta(BASE_SIZE_META, base_size)
 	return t
 
 
@@ -292,15 +431,22 @@ static func _project_stylebox(item: StringName, type: StringName) -> StyleBox:
 
 # ── Polaris Key ──────────────────────────────────────────────────────────────────────────
 
-## The brand theme with the bundled Rubik. `p_accent` (alpha 0: the platform violet) colours the
-## primary button, the chips and the hover border; give it a colour with at least 3:1 against the
-## theme's surfaces. `regular` / `bold` replace Rubik.
+## The brand theme with the bundled Rubik. `p_accent` (alpha 0: the platform
+## violet) colours the primary button, the chips and the hover border; give it a colour with at
+## least 3:1 against the theme's surfaces. `regular` / `bold` replace Rubik.
 static func build(dark := true, p_accent := Color(0, 0, 0, 0), regular: Font = null, bold: Font = null) -> Theme:
-	return build_with(dark, p_accent, regular if regular != null else load(REGULAR_PATH) as Font, bold if bold != null else load(BOLD_PATH) as Font)
+	return build_with(dark, p_accent, regular if regular != null else load(REGULAR_PATH) as Font, bold if bold != null else load(BOLD_PATH) as Font, system_mono())
+
+
+## The platform's monospace face for ids (SF Mono or Menlo, Consolas, DejaVu Sans Mono…;
+## fonts/system_mono.tres). The bundled JetBrains Mono variable font draws E, 8 and 0 as solid
+## boxes in Godot 4.7, so the kit does not use it until it is fixed (UK-11).
+static func system_mono() -> Font:
+	return load(MONO_PATH) as Font
 
 
 ## `build()` with exactly these fonts: null keeps the engine's default font for that role.
-static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font) -> Theme:
+static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, mono: Font = null) -> Theme:
 	var p := palette(dark)
 	if p_accent.a > 0.0:
 		p["accent"] = p_accent
@@ -310,64 +456,92 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font) -
 		p["on_accent"] = _on(p_accent)
 	var t := Theme.new()
 	t.set_meta(STOCK_META, true)
-	t.default_font_size = 18
+	t.set_meta(BRAND_META, true)
+	t.set_meta(UNIT_META, 1.0)
+	t.default_font_size = TYPE_BODY
 	if regular != null:
 		t.default_font = regular
 
-	# Surfaces: the page ground, raised cards and banners.
-	t.set_stylebox("panel", "PanelContainer", _box(p.page, p.page, 0, 0, 24))
+	# Surfaces: the page ground, raised cards and banners (their padding: _apply_layout below).
+	t.set_stylebox("panel", "PanelContainer", _box(p.page, p.page, 0, 0, 0))
 	for v in VARIATIONS:
 		t.set_type_variation(v, VARIATIONS[v])
-	t.set_stylebox("panel", "PKeyCard", _box(p.raised, p.border, 1, RADIUS_CARD, 28))
-	t.set_stylebox("panel", "PKeyBanner", _box(p.raised, p.border, 1, RADIUS_CARD, 10))
+	t.set_stylebox("panel", "PKeyCard", _box(p.raised, p.border, 1, RADIUS_CARD, 0))
+	t.set_stylebox("panel", "PKeyBanner", _box(p.raised, p.border, 1, RADIUS_CARD, 0))
 
-	# Text.
+	# Text: the type scale, every step sized explicitly (so a scaled variant scales them all), with
+	# the line heights of the Godot kit tokens (body 18/26, caption 16/22, section 24/32, title 32/40).
+	for type in ["Label", "Button", "CheckButton", "CheckBox", "OptionButton", "LineEdit", "TextEdit", "PopupMenu", "TooltipLabel", "ProgressBar"]:
+		t.set_font_size("font_size", type, TYPE_BODY)
 	t.set_color("font_color", "Label", p.text)
-	t.set_font_size("font_size", "PKeyTitle", 28)
+	t.set_constant("line_spacing", "Label", 4)
+	t.set_font_size("font_size", "PKeyTitle", TYPE_TITLE)
 	t.set_color("font_color", "PKeyTitle", p.strong)
+	t.set_constant("line_spacing", "PKeyTitle", 2)
+	t.set_font_size("font_size", "PKeySection", TYPE_SECTION)
+	t.set_color("font_color", "PKeySection", p.strong)
+	t.set_constant("line_spacing", "PKeySection", 4)
 	t.set_color("font_color", "PKeyMuted", p.muted)
-	t.set_font_size("font_size", "PKeyMuted", 16)
-	t.set_font_size("font_size", "PKeyCode", 40)
+	t.set_font_size("font_size", "PKeyMuted", TYPE_CAPTION)
+	t.set_constant("line_spacing", "PKeyMuted", 3)
+	t.set_font_size("font_size", "PKeyCode", TYPE_CODE)
 	t.set_color("font_color", "PKeyCode", p.strong)
+	t.set_font_size("font_size", "PKeyMono", TYPE_BODY)
+	t.set_color("font_color", "PKeyMono", p.strong)
+	t.set_color("font_color", "PKeyStrong", p.strong)
 	t.set_color("font_color", "PKeyError", p.danger)
 	if bold != null:
 		t.set_font("font", "PKeyTitle", bold)
+		t.set_font("font", "PKeySection", bold)
+	# The user code in Rubik Bold (the display face); ids in the platform's monospace.
+	if bold != null:
 		t.set_font("font", "PKeyCode", bold)
+	if mono != null:
+		t.set_font("font", "PKeyMono", mono)
 	# The entitlement chip: the accent's text on its tint, never gold (BRAND.md §1.2).
 	t.set_color("font_color", "PKeyBadge", p.accent_fg)
-	t.set_font_size("font_size", "PKeyBadge", 14)
+	t.set_font_size("font_size", "PKeyBadge", TYPE_CHIP)
 	var chip := _box(p.accent_subtle, p.accent, 1, RADIUS_FULL, 4)
-	chip.content_margin_left = 10
-	chip.content_margin_right = 10
+	chip.content_margin_left = 12
+	chip.content_margin_right = 12
 	t.set_stylebox("normal", "PKeyBadge", chip)
 
-	# Controls.
+	# Controls (their padding and height: _apply_layout below).
 	var focus := _ring(p.focus)
 	for type in ["Button", "CheckButton", "CheckBox", "OptionButton", "LineEdit", "TextEdit"]:
 		t.set_stylebox("focus", type, focus)
 	for type in ["Button", "OptionButton"]:
-		t.set_stylebox("normal", type, _box(p.overlay, p.border_strong, 1, RADIUS_CONTROL, 10))
-		t.set_stylebox("hover", type, _box(p.overlay, p.accent, 1, RADIUS_CONTROL, 10))
-		t.set_stylebox("pressed", type, _box(p.sunken, p.accent, 1, RADIUS_CONTROL, 10))
-		t.set_stylebox("disabled", type, _box(p.raised, p.border, 1, RADIUS_CONTROL, 10))
+		t.set_stylebox("normal", type, _box(p.overlay, p.border_strong, 1, RADIUS_CONTROL, 0))
+		t.set_stylebox("hover", type, _box(p.overlay, p.accent, 1, RADIUS_CONTROL, 0))
+		t.set_stylebox("pressed", type, _box(p.sunken, p.accent, 1, RADIUS_CONTROL, 0))
+		t.set_stylebox("disabled", type, _box(p.raised, p.border, 1, RADIUS_CONTROL, 0))
 		t.set_color("font_color", type, p.text)
 		t.set_color("font_hover_color", type, p.strong)
 		t.set_color("font_focus_color", type, p.strong)
 		t.set_color("font_pressed_color", type, p.strong)
 		t.set_color("font_disabled_color", type, p.subtle)
-	t.set_stylebox("normal", "PKeyPrimary", _box(p.accent, p.accent, 1, RADIUS_CONTROL, 10))
-	t.set_stylebox("hover", "PKeyPrimary", _box(p.accent_hover, p.accent_hover, 1, RADIUS_CONTROL, 10))
-	t.set_stylebox("pressed", "PKeyPrimary", _box(p.accent_pressed, p.accent_pressed, 1, RADIUS_CONTROL, 10))
+	t.set_stylebox("normal", "PKeyPrimary", _box(p.accent, p.accent, 1, RADIUS_CONTROL, 0))
+	t.set_stylebox("hover", "PKeyPrimary", _box(p.accent_hover, p.accent_hover, 1, RADIUS_CONTROL, 0))
+	t.set_stylebox("pressed", "PKeyPrimary", _box(p.accent_pressed, p.accent_pressed, 1, RADIUS_CONTROL, 0))
 	for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
 		t.set_color(c, "PKeyPrimary", p.on_accent)
+	if bold != null:
+		t.set_font("font", "PKeyPrimary", bold)
 	for type in ["LineEdit", "TextEdit"]:
-		t.set_stylebox("normal", type, _box(p.sunken, p.border_strong, 1, RADIUS_CONTROL, 10))
-		t.set_stylebox("read_only", type, _box(p.raised, p.border, 1, RADIUS_CONTROL, 10))
+		t.set_stylebox("normal", type, _box(p.sunken, p.border_strong, 1, RADIUS_CONTROL, 0))
+		t.set_stylebox("read_only", type, _box(p.raised, p.border, 1, RADIUS_CONTROL, 0))
 		t.set_color("font_color", type, p.text)
 		t.set_color("font_placeholder_color", type, p.subtle)
 		t.set_color("caret_color", type, p.focus)
 		t.set_color("selection_color", type, p.accent_subtle)
 	for type in ["CheckButton", "CheckBox"]:
+		# A check control is its label and its switch or box, never a framed button.
+		for item in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+			var e := StyleBoxEmpty.new()
+			e.content_margin_top = 4
+			e.content_margin_bottom = 4
+			t.set_stylebox(item, type, e)
+		t.set_constant("h_separation", type, 12)
 		t.set_color("font_color", type, p.text)
 		t.set_color("font_hover_color", type, p.strong)
 		t.set_color("font_focus_color", type, p.strong)
@@ -386,6 +560,9 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font) -
 	# A QR code stays black on white whatever the theme: scanners need the contrast.
 	t.set_color("dark", "PKeyQrRect", Color.BLACK)
 	t.set_color("light", "PKeyQrRect", Color.WHITE)
+	# Its tile: white, rounded, a little padding beyond the code's own quiet zone.
+	t.set_stylebox("panel", "PKeyQrTile", _box(Color.WHITE, Color.WHITE, 0, RADIUS_CONTROL, 8))
+	_apply_layout(t, 1.0, DEFAULT_DENSITY, true)
 	return t
 
 
@@ -453,6 +630,255 @@ static func powered_by_size(layout: String, requested := Vector2.ZERO) -> Vector
 	}.get(layout, Vector2(PKeyBrand.BADGE_MIN_COMPACT))
 	var k := maxf(1.0, maxf(requested.x / minimum.x, requested.y / minimum.y))
 	return minimum * k
+
+
+# ── Layout, scale and density ─────────────────────────────────────────────────────────────
+
+## Write the layout roles of `density`, times `unit` (the screen scale times the theme's own
+## multiplier), into `t`: the PKeyLayout constants (the roles, MEASURES and the scale), the gaps of
+## the container variations, and the padding of the card and the strip; in the brand theme also of
+## the page ground and the controls (a neutral theme leaves those to the game).
+static func _apply_layout(t: Theme, unit: float, density: String, brand: bool) -> void:
+	var roles: Dictionary = DENSITIES.get(density, DENSITIES[DEFAULT_DENSITY])
+	for r in roles:
+		t.set_constant(r, LAYOUT_TYPE, roundi(roles[r] * unit))
+	for m in MEASURES:
+		t.set_constant(m, LAYOUT_TYPE, roundi(MEASURES[m] * unit))
+	for s in SPACE:
+		t.set_constant("space_%d" % (s / 4), LAYOUT_TYPE, roundi(s * unit))
+	t.set_constant("h_separation", "PKeyGrid", roundi(roles["control_padding"] * unit))
+	t.set_constant("v_separation", "PKeyGrid", roundi(roles["tight_gap"] * unit))
+	for v in CONTAINER_GAPS:
+		var gap := roundi(roles[CONTAINER_GAPS[v]] * unit)
+		if VARIATIONS[v] == "HFlowContainer":
+			t.set_constant("h_separation", v, gap)
+			t.set_constant("v_separation", v, gap)
+		else:
+			t.set_constant("separation", v, gap)
+	var card := roundf(roles["card_padding"] * unit)
+	_pad(t, "panel", "PKeyCard", card, card)
+	_pad(t, "panel", "PKeyBanner", roundf(roles["control_padding"] * unit), roundf(roles["banner_padding"] * unit))
+	if brand:
+		var page := roundf(roles["page_margin"] * unit)
+		_pad(t, "panel", "PanelContainer", page, page)
+		var side := roundf(roles["control_padding"] * unit)
+		var v := roundf(roles["tight_gap"] * unit)
+		for type in ["Button", "OptionButton", "PKeyPrimary"]:
+			for item in ["normal", "hover", "pressed", "disabled"]:
+				_pad(t, item, type, side, v)
+		for type in ["LineEdit", "TextEdit"]:
+			for item in ["normal", "read_only"]:
+				_pad(t, item, type, roundf(roles["stack_gap"] * unit), v)
+	t.set_meta(DENSITY_META, density)
+
+
+## Replace `t`'s stylebox `item` of `type` (when it has one) with a copy padded `x` a side and `y`
+## top and bottom.
+static func _pad(t: Theme, item: StringName, type: StringName, x: float, y: float) -> void:
+	if not t.has_stylebox(item, type):
+		return
+	var b := t.get_stylebox(item, type).duplicate() as StyleBox
+	b.content_margin_left = x
+	b.content_margin_right = x
+	b.content_margin_top = y
+	b.content_margin_bottom = y
+	t.set_stylebox(item, type, b)
+
+
+## A layout role (or MEASURES entry, or `space_N`) as `t` holds it, else its spacious value at
+## scale 1: what a scene reads when its Theme is a game's own without the kit's constants.
+static func role(t: Theme, name: StringName) -> int:
+	if t != null and t.has_constant(name, LAYOUT_TYPE):
+		return t.get_constant(name, LAYOUT_TYPE)
+	var roles: Dictionary = DENSITIES[DEFAULT_DENSITY]
+	if roles.has(name):
+		return roles[name]
+	return MEASURES.get(name, 0)
+
+
+## The density `t` was built in (DEFAULT_DENSITY for a theme the kit did not build).
+static func density_of(t: Theme) -> String:
+	return String(t.get_meta(DENSITY_META, DEFAULT_DENSITY)) if t != null else DEFAULT_DENSITY
+
+
+## A stock theme for screen scale `k` and `density`: `base` itself at scale 1 in its own density;
+## otherwise a copy with every font size, stylebox (padding, radii, borders, focus ring), constant
+## and engine check and arrow icon times `k`, and the layout roles of `density` times `k` (and the
+## theme's own multiplier). Cached per theme, scale and density; a theme that is not stock is
+## returned as it is.
+static func variant(base: Theme, k: float, density: String) -> Theme:
+	if base == null or not is_stock(base):
+		return base
+	if is_equal_approx(k, 1.0) and density == density_of(base):
+		return base
+	var key := "%d|%.3f|%s" % [base.get_instance_id(), k, density]
+	if _variants.has(key):
+		return _variants[key]
+	var t := base.duplicate() as Theme
+	if base.has_default_font_size():
+		t.default_font_size = roundi(base.default_font_size * k)
+	for type in base.get_font_size_type_list():
+		for n in base.get_font_size_list(type):
+			t.set_font_size(n, type, maxi(1, roundi(base.get_font_size(n, type) * k)))
+	for type in base.get_stylebox_type_list():
+		for n in base.get_stylebox_list(type):
+			t.set_stylebox(n, type, _scaled_box(base.get_stylebox(n, type), k))
+	for type in base.get_constant_type_list():
+		for n in base.get_constant_list(type):
+			t.set_constant(n, type, roundi(base.get_constant(n, type) * k))
+	if base.has_meta(BRAND_META):
+		kit_icons(t, k)
+	if not is_equal_approx(k, 1.0):
+		_scale_icons(t, k)
+		if not base.has_default_font_size() and base.has_meta(BASE_SIZE_META):
+			# The neutral body text follows the game's size; shrunk, it is set here.
+			for type in BODY_TYPES:
+				if not t.has_font_size("font_size", type):
+					t.set_font_size("font_size", type, maxi(1, roundi(int(base.get_meta(BASE_SIZE_META)) * k)))
+	_apply_layout(t, float(base.get_meta(UNIT_META, 1.0)) * k, density, base.has_meta(BRAND_META))
+	t.set_meta(VARIANT_OF_META, base)
+	_variants[key] = t
+	return t
+
+
+## The stock theme `t` was made from by `variant()` (`t` itself when it is not a variant).
+static func base_of(t: Theme) -> Theme:
+	return t.get_meta(VARIANT_OF_META) as Theme if t != null and t.has_meta(VARIANT_OF_META) else t
+
+
+## `b` with its padding, corner radii, borders, expand margins and shadow times `k`.
+static func _scaled_box(b: StyleBox, k: float) -> StyleBox:
+	if b == null or is_equal_approx(k, 1.0):
+		return b
+	var s := b.duplicate() as StyleBox
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		var m := b.get_content_margin(side)
+		if m > 0.0:
+			s.set_content_margin(side, roundf(m * k))
+	if s is StyleBoxFlat:
+		var f := s as StyleBoxFlat
+		for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+			var w := f.get_border_width(side)
+			if w > 0:
+				f.set_border_width(side, maxi(1, roundi(w * k)))
+			f.set_expand_margin(side, roundf(f.get_expand_margin(side) * k))
+		for corner in [CORNER_TOP_LEFT, CORNER_TOP_RIGHT, CORNER_BOTTOM_RIGHT, CORNER_BOTTOM_LEFT]:
+			var r := f.get_corner_radius(corner)
+			if r < RADIUS_FULL:
+				f.set_corner_radius(corner, roundi(r * k))
+		f.shadow_size = roundi(f.shadow_size * k)
+		f.shadow_offset = f.shadow_offset * k
+	elif s is StyleBoxLine:
+		var l := s as StyleBoxLine
+		l.thickness = maxi(1, roundi(l.thickness * k))
+		l.grow_begin *= k
+		l.grow_end *= k
+	return s
+
+
+## The kit's own switch, check box, radio and drop-down chevron (PKeyKitIcons, the generated
+## Godot kit icons) in the brand theme's colours, rasterised for screen scale `k`, into `t` (the
+## brand theme): the accent track and its ink when on, the control border when off. Done at run
+## time, so the committed .tres files carry no bitmaps.
+static func kit_icons(t: Theme, k: float) -> void:
+	if t == null or not t.has_stylebox("normal", "PKeyPrimary") or (t.has_meta(&"pkey_icons") and is_equal_approx(float(t.get_meta(&"pkey_icons")), k)):
+		return
+	var on := (t.get_stylebox("normal", "PKeyPrimary") as StyleBoxFlat).bg_color
+	var on_ink := t.get_color("font_color", "PKeyPrimary")
+	var off := (t.get_stylebox("normal", "Button") as StyleBoxFlat).border_color if t.get_stylebox("normal", "Button") is StyleBoxFlat else t.get_color("font_color", "PKeyMuted")
+	var ink := t.get_color("font_color", "Label")
+	var muted := t.get_color("font_color", "PKeyMuted")
+	var sets := {
+		"CheckButton": {
+			"checked": ["toggle_on", on_ink, on, on], "unchecked": ["toggle_off", ink, off, off],
+			"checked_disabled": ["toggle_on", muted, off, off], "unchecked_disabled": ["toggle_off", muted, off, off],
+		},
+		"CheckBox": {
+			"checked": ["checkbox_checked", on_ink, on, on], "unchecked": ["checkbox_unchecked", off, off, off],
+			"checked_disabled": ["checkbox_checked", muted, off, off], "unchecked_disabled": ["checkbox_unchecked", muted, muted, muted],
+			"radio_checked": ["radio_checked", on_ink, on, on], "radio_unchecked": ["radio_unchecked", off, off, off],
+			"radio_checked_disabled": ["radio_checked", muted, off, off], "radio_unchecked_disabled": ["radio_unchecked", muted, muted, muted],
+		},
+		"OptionButton": {"arrow": ["chevron_down", muted, muted, muted]},
+	}
+	for type in sets:
+		for icon in sets[type]:
+			var spec: Array = sets[type][icon]
+			var tex := _kit_icon(spec[0], spec[1], spec[2], spec[3], k)
+			if tex == null:
+				continue
+			t.set_icon(icon, type, tex)
+			if type == "CheckButton":
+				t.set_icon(icon + "_mirrored", type, tex)
+	t.set_meta(&"pkey_icons", k)
+
+
+static func _kit_icon(name: String, fg: Color, bg: Color, track: Color, k: float) -> Texture2D:
+	var key := "kit|%s|%s|%s|%s|%.3f" % [name, fg.to_html(), bg.to_html(), track.to_html(), k]
+	if _icons.has(key):
+		return _icons[key]
+	var img := Image.new()
+	var tex: Texture2D = null
+	if img.load_svg_from_string(PKeyKitIcons.svg(name, fg, bg, track), k) == OK:
+		tex = ImageTexture.create_from_image(img)
+	_icons[key] = tex
+	return tex
+
+
+## The engine's check, toggle and arrow icons (the project theme's, else the engine's) at `k`
+## times their size, into `t`, unless `t` sets its own.
+static func _scale_icons(t: Theme, k: float) -> void:
+	var project := ThemeDB.get_project_theme()
+	var stock := ThemeDB.get_default_theme()
+	for type in SCALED_ICON_TYPES:
+		for icon in stock.get_icon_list(type):
+			if t.has_icon(icon, type):
+				continue
+			var src: Texture2D = project.get_icon(icon, type) if project != null and project.has_icon(icon, type) else stock.get_icon(icon, type)
+			var key := "%d|%.3f" % [src.get_instance_id() if src != null else 0, k]
+			if not _icons.has(key):
+				var tex: Texture2D = null
+				var img := src.get_image() if src != null else null
+				if img != null and not img.is_empty():
+					img = img.duplicate() as Image
+					if img.is_compressed():
+						img.decompress()
+					img.resize(maxi(1, roundi(img.get_width() * k)), maxi(1, roundi(img.get_height() * k)), Image.INTERPOLATE_LANCZOS)
+					tex = ImageTexture.create_from_image(img)
+				_icons[key] = tex
+			if _icons[key] != null:
+				t.set_icon(icon, type, _icons[key])
+
+
+## A game's whole Theme (`ui_theme`) over the kit's neutral structure derived from it: the type
+## hierarchy, the layout roles, the container gaps and the card padding in the game's own font
+## size, text colour and panel, wherever `own` does not set them itself (the game's items win).
+## Stock-marked, so the scenes keep following the options. Cached per theme.
+static func layered(own: Theme) -> Theme:
+	if own == null or is_stock(own):
+		return own
+	if _layered.has(own):
+		return _layered[own]
+	var project := ThemeDB.get_project_theme()
+	var size := ThemeDB.fallback_font_size
+	if own.has_default_font_size():
+		size = own.default_font_size
+	elif project != null and project.has_default_font_size():
+		size = project.default_font_size
+	var font: Font = own.default_font if own.has_default_font() else (project.default_font if project != null and project.has_default_font() else ThemeDB.fallback_font)
+	var bold: FontVariation = null
+	if font != null:
+		bold = FontVariation.new()
+		bold.base_font = font
+		bold.variation_embolden = 0.6
+	var text := own.get_color("font_color", "Label") if own.has_color("font_color", "Label") else _project_color("font_color", "Label")
+	var panel := own.get_stylebox("panel", "PanelContainer") if own.has_stylebox("panel", "PanelContainer") else _project_stylebox("panel", "PanelContainer")
+	var t := neutral_with(size, text, bold, panel)
+	t.merge_with(own)
+	t.set_meta(STOCK_META, true)
+	t.set_meta(LAYERED_META, own)
+	_layered[own] = t
+	return t
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────────────────

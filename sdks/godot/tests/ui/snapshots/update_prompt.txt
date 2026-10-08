@@ -1,73 +1,73 @@
 == v3 newer version ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version of this game has been released (1.5.0)."
-Body/Actions/Action: Button "Get the update" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version of this game has been released (1.5.0)."
+Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == v3 up to date (shown) ==
-Body/Message: Label "You're up to date."
+Card/Scroll/Body/Text/Message: Label "You're up to date."
 == code-ready ==
-Body/Title: Label "An update is ready"
-Body/Message: Label "Restart the game to finish updating."
-Body/Actions/Action: Button "Restart now" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is ready"
+Card/Scroll/Body/Text/Message: Label "Restart the game to finish updating."
+Card/Scroll/Body/Actions/Action: Button "Restart now" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == binary on a direct build ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version of this game has been released (1.5.0)."
-Body/Actions/Action: Button "Get the update" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version of this game has been released (1.5.0)."
+Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == binary, modal ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version of this game has been released (1.5.0)."
-Body/Actions/Action: Button "Get the update" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version of this game has been released (1.5.0)."
+Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == binary mandatory (locked, modal asked) ==
-Body/Title: Label "An update is available"
-Body/Message: Label "This version is below the minimum supported version. Please update; you can keep playing until you do."
-Body/Actions/Action: Button "Get the update" [focus 1]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "This version is below the minimum supported version. Please update; you can keep playing until you do."
+Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
 == binary on an itch build ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version of this game has been released (1.5.0)."
-Body/Actions/Dismiss: Button "Not now" [focus 1]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version of this game has been released (1.5.0)."
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]
 == store ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version of this game has been released (1.5.0)."
-Body/Actions/Action: Button "Open the store" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version of this game has been released (1.5.0)."
+Card/Scroll/Body/Actions/Action: Button "Open the store" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == platform ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version is available. Steam installs it; restart Steam if it has not arrived."
-Body/Actions/Dismiss: Button "Not now" [focus 1]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version is available. Steam installs it; restart Steam if it has not arrived."
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]
 == blocked (locked) ==
-Body/Title: Label "This version is no longer supported"
-Body/Message: Label "This version is below the minimum supported version, and no update is available here yet. You can keep playing."
+Card/Scroll/Body/Text/Title: Label "This version is no longer supported"
+Card/Scroll/Body/Text/Message: Label "This version is below the minimum supported version, and no update is available here yet. You can keep playing."
 == binary native with no plugin (the download link) ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version of this game has been released (1.5.0)."
-Body/Actions/Action: Button "Get the update" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version of this game has been released (1.5.0)."
+Card/Scroll/Body/Actions/Action: Button "Get the update" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == binary sidecar-pck (a code pack downloads) ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version of this game has been released (1.5.0)."
-Body/Actions/Action: Button "Download the update" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version of this game has been released (1.5.0)."
+Card/Scroll/Body/Actions/Action: Button "Download the update" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == store on TestFlight ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version of this game has been released (1.5.0)."
-Body/Actions/Action: Button "Open TestFlight" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version of this game has been released (1.5.0)."
+Card/Scroll/Body/Actions/Action: Button "Open TestFlight" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == store on AltStore with no source page ==
-Body/Title: Label "An update is available"
-Body/Message: Label "This version is below the minimum supported version. Please update; you can keep playing until you do."
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "This version is below the minimum supported version. Please update; you can keep playing until you do."
 == platform on itch ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version is available. The itch app installs it."
-Body/Actions/Dismiss: Button "Not now" [focus 1]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version is available. The itch app installs it."
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]
 == platform on the web (reload) ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version is available. Reload the page to play it."
-Body/Actions/Action: Button "Reload" [focus 1]
-Body/Actions/Dismiss: Button "Not now" [focus 2]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version is available. Reload the page to play it."
+Card/Scroll/Body/Actions/Action: Button "Reload" [focus 1]
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 2]
 == platform on a package-managed direct build ==
-Body/Title: Label "An update is available"
-Body/Message: Label "A newer version is available. Your package manager installs it."
-Body/Actions/Dismiss: Button "Not now" [focus 1]
+Card/Scroll/Body/Text/Title: Label "An update is available"
+Card/Scroll/Body/Text/Message: Label "A newer version is available. Your package manager installs it."
+Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]

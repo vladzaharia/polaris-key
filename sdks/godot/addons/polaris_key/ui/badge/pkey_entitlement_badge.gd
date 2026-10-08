@@ -23,6 +23,7 @@ func _build() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_chips = HFlowContainer.new()
 	_chips.name = "Chips"
+	_chips.theme_type_variation = "PKeyActions"
 	# A row of chips: centred within the space the game gives the badge, never forced wider.
 	max_content_width = 0.0
 	if "alignment" in _chips:

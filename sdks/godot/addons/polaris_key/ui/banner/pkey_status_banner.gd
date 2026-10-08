@@ -22,11 +22,44 @@ var _bound := false
 
 func _build() -> void:
 	name = "PKeyStatusBanner"
-	theme_type_variation = "PKeyBanner"
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_lines = vbox(self, "Lines", 2)
-	# A strip: its lines centred across whatever width the game gives it.
-	max_content_width = 0.0
+	# A transparent strip floating its card in from the top and the sides (`_arrange`).
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_lines = vbox(card_panel("Card", false), "Lines", "PKeyTight")
+	_card_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A strip: its lines centred, at most a wide card's width, the page margin from the sides.
+	max_content_width = float(PKeyUiTheme.MEASURES["card_width_wide"])
+
+
+func _card_shown() -> bool:
+	return true
+
+
+func _floats() -> bool:
+	return true
+
+
+func _card_variation() -> String:
+	return "PKeyBanner"
+
+
+func _arrange(m: Dictionary) -> void:
+	_float_strip()
+	super(m)
+
+
+## A toast that hugs its lines: as wide as the longest one (plus the card's padding), never wider
+## than the room, centred.
+func _apply_width(width: float) -> void:
+	if width <= 0.0:
+		super(width)
+		return
+	var widest := 0.0
+	for l in _lines.get_children():
+		var label_ := l as Label
+		if label_ != null and label_.visible:
+			widest = maxf(widest, label_.get_theme_font("font").get_string_size(label_.text, HORIZONTAL_ALIGNMENT_LEFT, -1, label_.get_theme_font_size("font_size")).x)
+	super(minf(ceilf(widest) + 2.0 + card_padding_x(), width))
 
 
 func _ready() -> void:
@@ -57,7 +90,8 @@ func _render() -> void:
 	var lines := PKeyBannerController.lines(state, _now(), update_available, show_last_verified, c())
 	var labels := _lines.get_children()
 	while labels.size() < lines.size():
-		var l := label(_lines, "Line%d" % labels.size(), "PKeyMuted")
+		# The first line says what is happening; the rest qualify it.
+		var l := label(_lines, "Line%d" % labels.size(), "" if labels.is_empty() else "PKeyMuted")
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		labels.append(l)
 	for i in labels.size():

@@ -154,9 +154,11 @@ func _layout(t: PKeyTestContext, all: Array) -> void:
 				var r := node.get_global_rect()
 				var vr := v.get_global_rect()
 				var dx := absf(r.get_center().x - vr.get_center().x)
-				var fits_v := r.size.y <= vr.size.y
+				# A banner floats at the top of whatever rect it is given; only its sides are centred.
+				var fits_v: bool = r.size.y <= vr.size.y and not (v is PKeyUpdatePrompt and v.presentation() == "banner")
 				var dy := absf(r.get_center().y - vr.get_center().y) if fits_v else 0.0
-				var maxw: float = maxf(v.max_content_width, 480.0)
+				# A two-column landscape card is as wide as a wide card (PKeyUiTheme.MEASURES).
+				var maxw: float = maxf(v.max_content_width, float(PKeyUiTheme.MEASURES["card_width_wide"]))
 				var ok: bool = dx <= 1.5 and dy <= 1.5 and r.size.x <= maxw + 1.0 and r.position.x >= PKeyUiView.GUTTER - 1.0 and r.end.x <= sz.x - PKeyUiView.GUTTER + 1.0
 				if t.check("layout: %s / %s centred at %dx%d (%s)" % [c[0], c[1], sz.x, sz.y, look], ok, "rect %s in %s" % [r, vr]):
 					checked += 1
@@ -341,7 +343,7 @@ func _update_prompt(t: PKeyTestContext) -> void:
 	p.show_result(_sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}))
 	t.check("update: a dismissable answer may be modal", p.presentation() == "modal")
 	p.show_result(locked)
-	var dismiss := p.get_node("Body/Actions/Dismiss") as Button
+	var dismiss := p.find_child("Dismiss", true, false) as Button
 	t.check("update: a mandatory answer is a banner even when modal is asked", p.presentation() == "banner" and p.anchor_bottom == 0.0, "%s anchor_bottom=%s" % [p.presentation(), p.anchor_bottom])
 	t.check("update: a locked answer has no dismiss", not dismiss.visible)
 	p._on_dismiss()
@@ -401,7 +403,7 @@ func _never_covering(t: PKeyTestContext) -> void:
 		await _tree().process_frame
 		var pr := boot.prompt.get_global_rect()
 		var br := boot.get_global_rect()
-		var dismiss := boot.prompt.get_node("Body/Actions/Dismiss") as Button
+		var dismiss := boot.prompt.find_child("Dismiss", true, false) as Button
 		t.check("never covering: a %s answer in PKeyBoot is a strip at the top" % kind, boot.prompt.is_visible_in_tree() and boot.prompt.presentation() == "banner" and pr.size.y > 0.0 and pr.size.y < br.size.y * 0.25 and is_equal_approx(pr.position.y, br.position.y), "prompt %s in boot %s" % [pr, br])
 		t.check("never covering: a %s answer in PKeyBoot has no dismiss" % kind, not dismiss.visible)
 		t.check("never covering: PKeyBoot's prompt overlay takes no input", boot.get_node("Overlay").mouse_filter == Control.MOUSE_FILTER_IGNORE)
@@ -497,7 +499,7 @@ func _gate(t: PKeyTestContext) -> void:
 	g.show_state({"status": "grace", "grace_until": 0})
 	t.check("gate: grace with allow_grace false blocks", g.screen == "grace-blocked" and g.get_node("Center/Card").visible)
 	g.show_state({"status": "expired"})
-	(g.get_node("Center/Card/Body/Actions/Retry") as Button).pressed.emit()
+	(g.find_child("Retry", true, false) as Button).pressed.emit()
 	t.check("gate: expired's Retry asks the owner to retry", retried[0] == 1)
 	_free(g)
 
