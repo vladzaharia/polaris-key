@@ -207,7 +207,8 @@ public fun PolarisTheme(
 
 /**
  * [this] scheme with its primary roles from a resolved accent: the fill and its label, the tinted
- * container (with the scheme's strongest text on it) and the focus colour.
+ * container (with the scheme's strongest text on it) and the surface tint. The accent's text
+ * colour (`fg`) travels separately, as [PolarisUiConfig.accentText].
  */
 internal fun ColorScheme.withAccent(accent: PolarisAccent.Resolved): ColorScheme = copy(
     primary = colorOf(accent.solid),
