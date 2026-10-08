@@ -476,8 +476,15 @@ export const SHIPPED: ShippedState[] = [
         .waitFor();
       await p.getByRole("menu").waitFor({ state: "detached" });
       // Checked from the top, like every state: focus on Keep it scrolls the page, and a tile's
-      // name link under the sticky header reads to axe as an obscured target.
+      // name link under the sticky header reads to axe as an obscured target. Focus can land on
+      // Keep it a task after the menu has gone (the menu hands focus back first), so wait for it
+      // before scrolling: otherwise its scroll can come after ours and the sticky header and tab
+      // bar are captured mid-page.
+      await p.waitForFunction(() =>
+        document.activeElement?.textContent?.includes("Keep it"),
+      );
       await p.evaluate(() => window.scrollTo(0, 0));
+      await p.waitForFunction(() => window.scrollY === 0);
     },
   },
   {
