@@ -1,4 +1,5 @@
 import type { Request } from "playwright";
+import { qrSvg } from "../../worker/src/core/qr.js";
 import { artPng, squirclePng, type Rgb } from "./artPng.js";
 
 /**
@@ -719,6 +720,79 @@ function tidewaterDownloads() {
         live: true,
         version: "2.4.1",
       },
+    ],
+  };
+}
+
+/** The Worker's QR code of a link, as the downloads view carries it (`page/customer.ts`). */
+function qrDataUri(text: string, label: string): string {
+  const svg = qrSvg(text, `QR code: ${label}`)!;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
+
+/**
+ * Tidewater with the download page's install sources (P0-48): Homebrew under macOS, Scoop under
+ * Windows, AltStore under iPhone and iPad, F-Droid (with its fingerprint) under Android.
+ */
+export function tidewaterInstallSources() {
+  const base = tidewaterDownloads();
+  const HOST = "https://keys.harbor-audio.example/tidewater/distribution";
+  const source = `${HOST}/altstore/stable/source.json`;
+  const fp = "a3f1c09e7b5d2e4f6a8c0b1d3e5f7a9c2b4d6e8f0a1c3e5b7d9f1a3c5e7b9d1f";
+  const repo = `${HOST}/fdroid/stable/repo?fingerprint=${fp}`;
+  const altDeep = `altstore://source?url=${encodeURIComponent(source)}`;
+  const fdroidDeep = `fdroidrepos://${repo.slice("https://".length)}`;
+  const link = (o: Record<string, unknown>) => ({
+    outletId: "main",
+    url: null,
+    deepLink: null,
+    command: null,
+    activateUrl: null,
+    live: true,
+    version: "2.4.1",
+    fingerprint: null,
+    qr: null,
+    ...o,
+  });
+  return {
+    ...base,
+    installSources: [
+      link({
+        id: "homebrew:main",
+        kind: "homebrew",
+        platforms: ["macos"],
+        label: "Homebrew",
+        command: "brew install --cask tidewater-studio",
+        version: null,
+      }),
+      link({
+        id: "scoop:main",
+        kind: "scoop",
+        platforms: ["windows"],
+        label: "Scoop",
+        command: `scoop install ${HOST}/scoop/stable.json`,
+      }),
+      link({
+        id: "altstore:alt",
+        kind: "altstore",
+        outletId: "alt",
+        platforms: ["ios"],
+        label: "Add to AltStore",
+        url: source,
+        deepLink: altDeep,
+        qr: qrDataUri(altDeep, "Add to AltStore"),
+      }),
+      link({
+        id: "fdroid:fd",
+        kind: "fdroid",
+        outletId: "fd",
+        platforms: ["android"],
+        label: "Add to F-Droid",
+        url: repo,
+        deepLink: fdroidDeep,
+        fingerprint: fp,
+        qr: qrDataUri(fdroidDeep, "Add to F-Droid"),
+      }),
     ],
   };
 }
