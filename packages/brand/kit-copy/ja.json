@@ -550,7 +550,7 @@
     "cli.devices.renamed": "名前を{device}に変更しました。",
     "cli.devices.nameCleared": "{device}の名前を消去しました。",
     "cli.devices.removed": "{device}を削除しました。枠は空いています。",
-    "cli.update.cancelled": "アップデートをキャンセルしました。何もインストールされていません。",
+    "cli.update.cancelled": "アップデートをキャンセルしました。",
     "cli.packs.none": "インストール済みのコンテンツはありません。",
     "cli.packs.afterRestart": "再起動後に適用",
     "cli.config.unset": "{name}には値がありません。",

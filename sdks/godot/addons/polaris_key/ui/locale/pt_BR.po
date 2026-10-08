@@ -3342,10 +3342,10 @@ msgstr "{device} agora está sem nome."
 msgid "cli.devices.removed"
 msgstr "{device} foi removido. A vaga está livre."
 
-#. Update cancelled. Nothing was installed.
-#. Terminal: the person stopped an update download.
+#. Update cancelled.
+#. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
 msgid "cli.update.cancelled"
-msgstr "Atualização cancelada. Nada foi instalado."
+msgstr "Atualização cancelada."
 
 #. No content is installed.
 #. Terminal: there are no downloadable content packs on this device.

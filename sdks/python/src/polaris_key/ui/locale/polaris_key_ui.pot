@@ -3331,8 +3331,8 @@ msgstr ""
 msgid "cli.devices.removed"
 msgstr ""
 
-#. Update cancelled. Nothing was installed.
-#. Terminal: the person stopped an update download.
+#. Update cancelled.
+#. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
 msgid "cli.update.cancelled"
 msgstr ""
 

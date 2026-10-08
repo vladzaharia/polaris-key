@@ -550,7 +550,7 @@
     "cli.devices.renamed": "Renomeado para {device}.",
     "cli.devices.nameCleared": "{device} agora está sem nome.",
     "cli.devices.removed": "{device} foi removido. A vaga está livre.",
-    "cli.update.cancelled": "Atualização cancelada. Nada foi instalado.",
+    "cli.update.cancelled": "Atualização cancelada.",
     "cli.packs.none": "Nenhum conteúdo instalado.",
     "cli.packs.afterRestart": "após reiniciar",
     "cli.config.unset": "{name} não tem valor.",

@@ -1253,8 +1253,8 @@
     <string name="cli_devices_nameCleared">%1$s ora non ha un nome.</string>
     <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
     <string name="cli_devices_removed">%1$s è stato rimosso. Il posto è libero.</string>
-    <!-- Terminal: the person stopped an update download. -->
-    <string name="cli_update_cancelled">Aggiornamento annullato. Non è stato installato nulla.</string>
+    <!-- Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it. -->
+    <string name="cli_update_cancelled">Aggiornamento annullato.</string>
     <!-- Terminal: there are no downloadable content packs on this device. -->
     <string name="cli_packs_none">Nessun contenuto installato.</string>
     <!-- Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version. -->

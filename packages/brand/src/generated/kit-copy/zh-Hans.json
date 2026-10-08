@@ -543,7 +543,7 @@
   "cli.devices.renamed": "已重命名为{device}。",
   "cli.devices.nameCleared": "{device}现在没有名称。",
   "cli.devices.removed": "{device}已移除。其席位已释放。",
-  "cli.update.cancelled": "更新已取消。未安装任何内容。",
+  "cli.update.cancelled": "更新已取消。",
   "cli.packs.none": "没有已安装的内容。",
   "cli.packs.afterRestart": "重启后生效",
   "cli.config.unset": "{name}没有值。",

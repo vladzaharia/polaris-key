@@ -8024,61 +8024,61 @@
       }
     },
     "cli.update.cancelled": {
-      "comment": "Terminal: the person stopped an update download.",
+      "comment": "Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update cancelled. Nothing was installed."
+            "value": "Update cancelled."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Update abgebrochen. Es wurde nichts installiert."
+            "value": "Update abgebrochen."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mise à jour annulée. Rien n’a été installé."
+            "value": "Mise à jour annulée."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Actualización cancelada. No se instaló nada."
+            "value": "Actualización cancelada."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Atualização cancelada. Nada foi instalado."
+            "value": "Atualização cancelada."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aggiornamento annullato. Non è stato installato nulla."
+            "value": "Aggiornamento annullato."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アップデートをキャンセルしました。何もインストールされていません。"
+            "value": "アップデートをキャンセルしました。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "업데이트를 취소했어요. 설치된 항목이 없어요."
+            "value": "업데이트를 취소했어요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "更新已取消。未安装任何内容。"
+            "value": "更新已取消。"
           }
         }
       }

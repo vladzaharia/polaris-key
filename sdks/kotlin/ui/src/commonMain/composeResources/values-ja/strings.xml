@@ -1233,8 +1233,8 @@
     <string name="cli_devices_nameCleared">%1$sの名前を消去しました。</string>
     <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
     <string name="cli_devices_removed">%1$sを削除しました。枠は空いています。</string>
-    <!-- Terminal: the person stopped an update download. -->
-    <string name="cli_update_cancelled">アップデートをキャンセルしました。何もインストールされていません。</string>
+    <!-- Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it. -->
+    <string name="cli_update_cancelled">アップデートをキャンセルしました。</string>
     <!-- Terminal: there are no downloadable content packs on this device. -->
     <string name="cli_packs_none">インストール済みのコンテンツはありません。</string>
     <!-- Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version. -->

@@ -1233,8 +1233,8 @@
     <string name="cli_devices_nameCleared">%1$s의 이름을 지웠어요.</string>
     <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
     <string name="cli_devices_removed">%1$s을(를) 제거했어요. 자리가 비었어요.</string>
-    <!-- Terminal: the person stopped an update download. -->
-    <string name="cli_update_cancelled">업데이트를 취소했어요. 설치된 항목이 없어요.</string>
+    <!-- Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it. -->
+    <string name="cli_update_cancelled">업데이트를 취소했어요.</string>
     <!-- Terminal: there are no downloadable content packs on this device. -->
     <string name="cli_packs_none">설치된 콘텐츠가 없어요.</string>
     <!-- Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version. -->

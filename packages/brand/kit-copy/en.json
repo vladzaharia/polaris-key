@@ -2737,9 +2737,9 @@
       "note": "Terminal: a device was removed from the license."
     },
     "cli.update.cancelled": {
-      "value": "Update cancelled. Nothing was installed.",
+      "value": "Update cancelled.",
       "role": "body",
-      "note": "Terminal: the person stopped an update download."
+      "note": "Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it."
     },
     "cli.packs.none": {
       "value": "No content is installed.",

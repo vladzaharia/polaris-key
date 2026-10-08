@@ -543,7 +543,7 @@
   "cli.devices.renamed": "Umbenannt in {device}.",
   "cli.devices.nameCleared": "{device} hat jetzt keinen Namen.",
   "cli.devices.removed": "{device} wurde entfernt. Der Platz ist frei.",
-  "cli.update.cancelled": "Update abgebrochen. Es wurde nichts installiert.",
+  "cli.update.cancelled": "Update abgebrochen.",
   "cli.packs.none": "Es sind keine Inhalte installiert.",
   "cli.packs.afterRestart": "nach einem Neustart",
   "cli.config.unset": "{name} hat keinen Wert.",
