@@ -22,7 +22,7 @@ import {
 import { handleAdminApi } from "./api.js";
 import { appSecurityHeaders } from "../securityHeaders.js";
 import { imgOrigin } from "../core/imgHostname.js";
-import { isSafeAssetPath } from "../http.js";
+import { isPublicSpaAssetPath } from "../http.js";
 
 /** Minimal SPA placeholder for tests/local configurations without an assets binding. */
 function spaShell(env: Env): Response {
@@ -52,7 +52,7 @@ async function serveAdminAsset(
   // whose parser normalises percent-encoded dot segments — `/manage/%2e%2e/%2e%2e/x.html`
   // walked the fetch out of the /manage prefix. Anything that is not a literal, already
   // normalised asset path falls through to the SPA shell.
-  const isShell = !isSafeAssetPath(cleanPath) || !cleanPath.includes(".");
+  const isShell = !isPublicSpaAssetPath(cleanPath);
   url.pathname = isShell ? "/manage.html" : cleanPath;
   const res = await env.ASSETS.fetch(new Request(url, req));
   const headers = new Headers(res.headers);

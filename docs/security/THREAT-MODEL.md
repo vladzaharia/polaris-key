@@ -8146,3 +8146,21 @@ host or a credential; or, for the portal media proxy (PX-W1), it gains a source 
 `isAllowedStorageHost`, takes any part of the source from the request, follows a redirect without
 re-checking it, serves a type it did not sniff (SVG above all), raises a size cap, or the portal
 CSP's `img-src` widens beyond `'self' data:` and the image host's origin (HA-07).
+
+### The shared assets root and the docs gate (SEC-WEB-1)
+
+**What arrived.** One assets root holds the admin and portal SPA (`/assets/*`, `/manage.html`,
+`/index.html`) and the gated docs site (`/docs/**`). The unauthenticated SPA proxies (`/manage/*`
+in `admin/index.ts`, the portal in `services/identity/portal/index.ts`) used to fetch any
+dotted path from that root, so `GET /manage/docs/<file>` served gated docs with no session.
+
+**Control.** `isPublicSpaAssetPath` (`http.ts`) is an allowlist: the proxies fetch only
+`/assets/<literal file>`, and every other path is the SPA shell. Docs are served only by
+`handleDocs`, which checks the admin session first for every path under `/docs`. Tests:
+`test/docsGateBypass.test.ts` walks every file in the assembled tree through encoded, cased,
+doubled-slash, traversal, HEAD and Range variants, anonymously (denied) and with an admin
+session (served at `/docs` only).
+
+**Residual.** Anything placed under `/assets/` in the admin build is public by design. The
+developer docs become public with DOC-03b; that change flips the gate in `docs.ts`, not this
+allowlist.

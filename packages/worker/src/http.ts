@@ -26,6 +26,18 @@ export function isSafeAssetPath(path: string): boolean {
 }
 
 /**
+ * SEC-WEB-1 allowlist for the UNAUTHENTICATED SPA proxies (`/manage/*`, the portal): the only
+ * files they may fetch from the shared ASSETS root are the SPA's own content-hashed bundle
+ * directory, `/assets/<file>`. The root also holds the gated docs site (`/docs/**`); a denylist
+ * of "not docs" would leak the next thing someone adds to the tree, so everything outside
+ * `/assets/` is the SPA shell instead, and docs are served only by `handleDocs` after its
+ * session check. Also requires a literal, normalised path (`isSafeAssetPath`).
+ */
+export function isPublicSpaAssetPath(path: string): boolean {
+  return path.startsWith("/assets/") && isSafeAssetPath(path);
+}
+
+/**
  * True when the request looks like a same-origin top-level navigation, per the Fetch Metadata
  * request headers (which are set by the browser and cannot be forged by page script).
  *

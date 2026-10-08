@@ -20,7 +20,11 @@
  */
 
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
-import { isSafeAssetPath, type Db, type Env } from "../../../core/platform.js";
+import {
+  isPublicSpaAssetPath,
+  type Db,
+  type Env,
+} from "../../../core/platform.js";
 import {
   handleMagicVerify,
   handlePortalCallback,
@@ -83,7 +87,7 @@ async function servePortalAsset(
   const url = new URL(req.url);
   // Same prefix-escape + CSP-stripping shape as the admin proxy (R1-06): only a literal,
   // already-normalised path is proxied, and every response carries the security headers.
-  const isShell = !isSafeAssetPath(cleanPath) || !cleanPath.includes(".");
+  const isShell = !isPublicSpaAssetPath(cleanPath);
   url.pathname = isShell ? "/index.html" : cleanPath;
   // The shell is the same bytes for every query, and a query can carry a secret: a legacy
   // `/activate?key=<license key>` link (one of the links already out from before the key moved

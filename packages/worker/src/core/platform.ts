@@ -37,6 +37,7 @@ export type { Db, DbParam, DbStatement } from "../db/types.js";
 export {
   bearer,
   isAllowedStorageHost,
+  isPublicSpaAssetPath,
   isSafeAssetPath,
   isSameOriginNavigation,
 } from "../http.js";
