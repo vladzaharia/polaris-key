@@ -485,9 +485,11 @@ export function Dialog({
 }
 
 /**
- * The scrolling middle of a dialog. When its content overflows (a phone on its side, 200 % zoom)
- * it joins the tab order, so a keyboard can scroll it even when it holds nothing focusable
- * (WCAG 2.1.1; axe `scrollable-region-focusable`), with the focus ring drawn inside it.
+ * The scrolling middle of a dialog. Whenever its content overflows (a phone on its side, 200 %
+ * zoom) it joins the tab order, so a keyboard can scroll it even when it holds nothing focusable
+ * (WCAG 2.1.1; axe `scrollable-region-focusable`). While it is a tab stop it is a `region` named
+ * by the dialog's title ("Dialog content" when no title is reachable), and its focus ring is drawn
+ * 4 px inside its edges with rounded corners.
  */
 export function DialogBody({
   className,
@@ -495,13 +497,31 @@ export function DialogBody({
 }: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
   const ref = React.useRef<HTMLDivElement>(null);
   const overflows = useOverflowsY(ref);
+  // The title's id from the dialog's own `aria-labelledby` (Radix names the content by its title).
+  const [titleId, setTitleId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!overflows) return;
+    const id = ref.current
+      ?.closest("[role=dialog], [role=alertdialog]")
+      ?.getAttribute("aria-labelledby");
+    setTitleId(id && document.getElementById(id) ? id : null);
+  }, [overflows]);
+  const region = overflows
+    ? {
+        tabIndex: 0,
+        role: "region",
+        ...(titleId
+          ? { "aria-labelledby": titleId }
+          : { "aria-label": "Dialog content" }),
+      }
+    : {};
   return (
     <div
       ref={ref}
-      tabIndex={overflows ? 0 : undefined}
+      {...region}
       className={cn(
-        "pk-scroll min-h-0 flex-1 overflow-y-auto px-6 py-2 text-base",
-        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+        "pk-scroll min-h-0 flex-1 overflow-y-auto rounded-md px-6 py-2 text-base",
+        "focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-focus focus-visible:ring-0 focus-visible:ring-offset-0",
         className,
       )}
       {...props}
