@@ -418,7 +418,10 @@ export async function authorizeDevice(
   const { isNewAuthorization } = reconciled;
   const adoptFrom =
     reconciled.existing && reconciled.existing.license_id !== license.id
-      ? reconciled.existing.license_id
+      ? {
+          licenseId: reconciled.existing.license_id,
+          status: reconciled.existing.status,
+        }
       : undefined;
   if (isNewAuthorization) {
     // The seat limit is an ENTITLEMENT, resolved through the same pipeline the license

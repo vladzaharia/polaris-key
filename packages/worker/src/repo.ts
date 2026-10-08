@@ -1435,12 +1435,14 @@ export async function claimDeviceSeat(
   now: number,
   opts: {
     /**
-     * SEC-LIC-1: the licence id the caller OBSERVED on the row it was authorised to take over
-     * (ownership proven, or a dead row). The upsert below moves a row off another licence only
-     * when it still names exactly this licence, so a row that changed hands between the check and
-     * the claim is left alone rather than stolen.
+     * SEC-LIC-1: the licence id AND status the caller OBSERVED on the row it was authorised to
+     * take over (ownership proven, or a dead row). A compare-and-set: the upsert below moves a
+     * row off another licence only while it still shows exactly this pair, so a row that changed
+     * hands, or that its owner re-activated after the check, is left alone rather than stolen.
+     * SEC-LIC-2: the same batch clears what the row carried for that licence, so a bind that
+     * fails after the claim cannot leave the old overrides or label on the new licence.
      */
-    adoptFrom?: string;
+    adoptFrom?: { licenseId: string; status: string };
     /**
      * PX-W9 (WIRE-CONTRACT-V4 §12.2 step 5): a statement written in the SAME batch as the seat
      * INSERT, and before it, so it commits exactly when the claim does: a lost ordinal race rolls
@@ -1495,7 +1497,7 @@ export async function claimDeviceSeat(
            last_seen = excluded.last_seen
          WHERE (devices.license_id = excluded.license_id
                 AND (devices.seat_no IS NULL OR devices.status <> 'authorized'))
-            OR devices.license_id = ?`,
+            OR (devices.license_id = ? AND devices.status = ?)`,
       params: [
         product,
         deviceId,
@@ -1503,13 +1505,39 @@ export async function claimDeviceSeat(
         free.n,
         now,
         now,
-        opts.adoptFrom ?? null,
+        opts.adoptFrom?.licenseId ?? null,
+        opts.adoptFrom?.status ?? null,
       ],
     };
+    const adopt = opts.adoptFrom;
+    const clear: DbStatement[] = adopt
+      ? [
+          {
+            sql: `UPDATE devices SET label = NULL, overrides_json = NULL, reported_json = NULL,
+                    customer_id = NULL
+                  WHERE product = ? AND device_id = ? AND license_id = ? AND status = ?`,
+            params: [product, deviceId, adopt.licenseId, adopt.status],
+          },
+          {
+            sql: `DELETE FROM device_facts WHERE product = ? AND device_id = ?
+                    AND EXISTS (SELECT 1 FROM devices WHERE product = ? AND device_id = ?
+                                  AND license_id = ? AND status = ?)`,
+            params: [
+              product,
+              deviceId,
+              product,
+              deviceId,
+              adopt.licenseId,
+              adopt.status,
+            ],
+          },
+        ]
+      : [];
     try {
       // Applied, or a no-op because the row already holds a seat: either way nothing is left to
       // claim. Only a UNIQUE loss on `idx_devices_seat` (below) tries again.
-      if (opts.withClaim) await db.batch([opts.withClaim(), seat]);
+      if (opts.withClaim) await db.batch([opts.withClaim(), ...clear, seat]);
+      else if (clear.length > 0) await db.batch([...clear, seat]);
       else await db.runChanges(seat.sql, ...seat.params);
       // A no-op upsert is success only when the row is ours: a row held by another licence is
       // never reported as claimed (the caller turns this into a refusal, not a seat).

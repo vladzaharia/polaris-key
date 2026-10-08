@@ -230,7 +230,7 @@ describe("device-id ownership (SEC-WP-01)", () => {
         VICTIM_DEVICE,
         2,
         NOW,
-        { adoptFrom: "lic_somebody_else" },
+        { adoptFrom: { licenseId: "lic_somebody_else", status: "authorized" } },
       );
       expect(ok).toBe(false);
       await expectVictimIntact(token);
@@ -246,6 +246,58 @@ describe("device-id ownership (SEC-WP-01)", () => {
         ),
       ).toBe(false);
       await expectVictimIntact(token);
+    });
+  });
+
+  describe("claim compare-and-set (review round)", () => {
+    it("refuses a dead row its owner re-activated between the check and the claim", async () => {
+      await victimActivates();
+      await setDeviceStatus(db, "djdl", VICTIM_DEVICE, "deauthorized");
+      // The attacker observed the dead row ...
+      const observed = { licenseId: victim.licenseId, status: "deauthorized" };
+      // ... then the owner brought it back to life before the claim ran.
+      const token = await victimActivates();
+      expect(
+        await claimDeviceSeat(
+          db,
+          "djdl",
+          attacker.licenseId,
+          VICTIM_DEVICE,
+          2,
+          NOW,
+          { adoptFrom: observed },
+        ),
+      ).toBe(false);
+      await expectVictimIntact(token);
+    });
+
+    it("clears the old licence's data inside the claim itself, before any bind", async () => {
+      await victimActivates();
+      await db.run(
+        `UPDATE devices SET label = 'Ada laptop', overrides_json = '{"a":1}', reported_json = '{}'
+          WHERE product = 'djdl' AND device_id = ?`,
+        VICTIM_DEVICE,
+      );
+      await setDeviceStatus(db, "djdl", VICTIM_DEVICE, "deauthorized");
+      expect(
+        await claimDeviceSeat(
+          db,
+          "djdl",
+          attacker.licenseId,
+          VICTIM_DEVICE,
+          2,
+          NOW,
+          {
+            adoptFrom: { licenseId: victim.licenseId, status: "deauthorized" },
+          },
+        ),
+      ).toBe(true);
+      // bindDevice never ran (as if it had thrown): nothing of the old licence remains.
+      const row = await getDevice(db, "djdl", VICTIM_DEVICE);
+      expect(row?.license_id).toBe(attacker.licenseId);
+      expect(row?.label).toBeNull();
+      expect(row?.overrides_json).toBeNull();
+      expect(row?.reported_json).toBeNull();
     });
   });
 
