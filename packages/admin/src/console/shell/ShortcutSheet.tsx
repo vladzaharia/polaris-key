@@ -6,7 +6,7 @@ import { Kbd } from "../../ui/Kbd.js";
 
 /** The product `g` shortcuts, read from nav.ts so the sheet cannot drift from the handlers. */
 export function productShortcuts(): ShortcutDef[] {
-  return PRODUCT_PAGES.filter((p) => p.shortcut && p.ready).map((p) => ({
+  return PRODUCT_PAGES.filter((p) => p.shortcut).map((p) => ({
     keys: `g ${p.shortcut}`,
     label: `Go to ${p.label}`,
     scope: "product" as const,

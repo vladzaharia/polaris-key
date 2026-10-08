@@ -13,13 +13,9 @@
  * including one running nothing, so Core is never filtered out (an operator must always be able to
  * reach Services to turn something back on).
  *
- * ── Pages that are not built yet ──────────────────────────────────────────────────────────────
- * The table declares the whole §2.3 page set so URLs and typed builders exist from chunk 2 on. A
- * page whose redesign lands in a later area chunk carries `ready: false` and a `host`: the page
- * that holds the capability today (the Platform section's Settings opens Deployment, for
- * example). The router redirects a not-ready page to its host, and the sidebar and palette list
- * only ready pages, so every capability stays reachable and no URL is a dead end. An area chunk
- * flips `ready` and deletes `host` when it builds the page.
+ * ── Section roots ─────────────────────────────────────────────────────────────────────────────
+ * A section's key alone (`#/p/<slug>/license`, `#/platform`) is not a page: the router sends it to
+ * the section's first listed page (`routes.ts`).
  *
  * The worker's docsLinks gate (packages/worker/test/docsLinks.test.ts) reads every quoted docs path
  * literal in this file and asserts the page exists in the built docs site.
@@ -64,7 +60,6 @@ import {
   Rocket,
   Rss,
   Send,
-  Server,
   ServerCog,
   Settings,
   ShieldCheck,
@@ -96,7 +91,6 @@ export type GlobalPageId =
   | "home"
   | "products"
   | "product-new"
-  | "platform"
   // the Platform section (notes/S-13 §9.1)
   | "platform-settings"
   | "platform-deployment"
@@ -165,8 +159,6 @@ export interface NavRecord {
   noun: string;
   /** The URL tabs, when the record page has them. The first is the default. */
   tabs?: readonly string[];
-  /** Is the record page built? A record that is not redirects to its collection. */
-  ready: boolean;
   /**
    * A record nested under this one: `<path>/:id/<segment>/:childId…[/:childTab]` (a package under
    * a feed). `ids` is how many path segments name the child (`:owner/:name` is two).
@@ -207,10 +199,6 @@ export interface NavPage {
   docs: string;
   /** False for sub-pages reached from their parent (the catalog editor, the simulator). */
   inNav: boolean;
-  /** Is the page built in this chunk? See the file comment. */
-  ready: boolean;
-  /** Where the capability lives until the page is built. Required when `ready` is false. */
-  host?: PageId;
   record?: NavRecord;
   /** The `g <key>` shortcut (ADMIN.md §5.5), product pages only. */
   shortcut?: string;
@@ -258,7 +246,6 @@ export const SECTIONS: NavSection[] = [
         icon: LayoutDashboard,
         docs: "/docs/admin/products/",
         inNav: true,
-        ready: true,
         shortcut: "o",
       },
       {
@@ -268,7 +255,6 @@ export const SECTIONS: NavSection[] = [
         icon: Blocks,
         docs: "/docs/admin/services-enablement/",
         inNav: true,
-        ready: true,
       },
       {
         page: "devices",
@@ -277,9 +263,8 @@ export const SECTIONS: NavSection[] = [
         icon: MonitorSmartphone,
         docs: "/docs/admin/licenses-and-devices/",
         inNav: true,
-        ready: true,
         // The routed device drawer (`devices/:deviceId`).
-        record: { noun: "Device", ready: true },
+        record: { noun: "Device" },
       },
       {
         // I-12: every product has users (its licence owners), whatever its Identity toggle.
@@ -289,13 +274,11 @@ export const SECTIONS: NavSection[] = [
         icon: UsersRound,
         docs: "/docs/admin/users/",
         inNav: true,
-        ready: true,
         // `users/:subject[/:tab]`. `data` is reserved for the Cloud Sync Data tab (U-11a): the
         // record shows it only while Cloud Sync is on, and answers a deep link with Overview.
         record: {
           noun: "User",
           tabs: ["overview", "licenses", "devices", "activity", "data"],
-          ready: true,
         },
       },
       {
@@ -306,7 +289,6 @@ export const SECTIONS: NavSection[] = [
         icon: Image,
         docs: "/docs/admin/presentation/",
         inNav: true,
-        ready: true,
       },
       {
         page: "keys",
@@ -315,7 +297,6 @@ export const SECTIONS: NavSection[] = [
         icon: LockKeyhole,
         docs: "/docs/admin/secrets-and-keys/",
         inNav: true,
-        ready: true,
       },
       {
         page: "activity",
@@ -324,7 +305,6 @@ export const SECTIONS: NavSection[] = [
         icon: Activity,
         docs: "/docs/admin/activity/",
         inNav: true,
-        ready: true,
         shortcut: "a",
       },
       {
@@ -334,7 +314,6 @@ export const SECTIONS: NavSection[] = [
         icon: Settings,
         docs: "/docs/admin/products/",
         inNav: true,
-        ready: true,
         shortcut: "s",
       },
     ],
@@ -354,12 +333,10 @@ export const SECTIONS: NavSection[] = [
         icon: KeyRound,
         docs: "/docs/admin/licenses-and-devices/",
         inNav: true,
-        ready: true,
         shortcut: "l",
         record: {
           noun: "License",
           tabs: ["overview", "keys", "devices", "config"],
-          ready: true,
         },
       },
       {
@@ -369,8 +346,7 @@ export const SECTIONS: NavSection[] = [
         icon: Layers,
         docs: "/docs/services/license/model/",
         inNav: true,
-        ready: true,
-        record: { noun: "Tier", tabs: ["overview", "used-by"], ready: true },
+        record: { noun: "Tier", tabs: ["overview", "used-by"] },
       },
       {
         page: "enrollment",
@@ -379,7 +355,6 @@ export const SECTIONS: NavSection[] = [
         icon: Fingerprint,
         docs: "/docs/services/license/enrollment/",
         inNav: true,
-        ready: true,
       },
       // LX-30: licence batches (LX-28), reached from Licenses' Batch filter and a batch licence;
       // not in the sidebar.
@@ -391,8 +366,7 @@ export const SECTIONS: NavSection[] = [
         icon: Boxes,
         docs: "/docs/admin/licenses-and-devices/",
         inNav: false,
-        ready: true,
-        record: { noun: "Batch", ready: true },
+        record: { noun: "Batch" },
       },
       // LX-06: S-19's licensing settings (`licensing.*`, the settings area `license.licensing`).
       {
@@ -403,7 +377,6 @@ export const SECTIONS: NavSection[] = [
         icon: SlidersHorizontal,
         docs: "/docs/services/license/model/",
         inNav: true,
-        ready: true,
       },
     ],
   },
@@ -422,7 +395,6 @@ export const SECTIONS: NavSection[] = [
         icon: ListTree,
         docs: "/docs/services/config/catalog/",
         inNav: true,
-        ready: true,
         shortcut: "c",
       },
       {
@@ -432,7 +404,6 @@ export const SECTIONS: NavSection[] = [
         icon: FilePen,
         docs: "/docs/services/config/catalog/",
         inNav: false,
-        ready: true,
       },
       {
         page: "profiles",
@@ -441,12 +412,10 @@ export const SECTIONS: NavSection[] = [
         icon: FileStack,
         docs: "/docs/services/config/profiles/",
         inNav: true,
-        ready: true,
         record: {
           noun: "Profile",
           // A History tab joins these once the activity log filters by target (ADMIN.md A-2).
           tabs: ["payload", "used-by"],
-          ready: true,
         },
       },
       {
@@ -456,7 +425,6 @@ export const SECTIONS: NavSection[] = [
         icon: Stamp,
         docs: "/docs/services/config/edge-mint/",
         inNav: true,
-        ready: true,
       },
     ],
   },
@@ -475,13 +443,11 @@ export const SECTIONS: NavSection[] = [
         icon: Rocket,
         docs: "/docs/services/release/truth-store/",
         inNav: true,
-        ready: true,
         shortcut: "r",
         // The History tab joins when activity filters (A-2) can scope it to one release.
         record: {
           noun: "Release",
           tabs: ["builds", "packs", "channels", "distribution"],
-          ready: true,
         },
       },
       {
@@ -491,7 +457,6 @@ export const SECTIONS: NavSection[] = [
         icon: Waypoints,
         docs: "/docs/services/release/channels/",
         inNav: true,
-        ready: true,
       },
       {
         page: "deliverables",
@@ -500,11 +465,9 @@ export const SECTIONS: NavSection[] = [
         icon: PackageOpen,
         docs: "/docs/services/release/packs/",
         inNav: true,
-        ready: true,
         record: {
           noun: "Deliverable",
           tabs: ["releases", "channels", "delivery", "files"],
-          ready: true,
         },
       },
       {
@@ -514,7 +477,6 @@ export const SECTIONS: NavSection[] = [
         icon: Grid3x3,
         docs: "/docs/services/release/compatibility/",
         inNav: true,
-        ready: true,
       },
       {
         page: "simulator",
@@ -523,7 +485,6 @@ export const SECTIONS: NavSection[] = [
         icon: FlaskConical,
         docs: "/docs/services/release/compatibility/",
         inNav: false,
-        ready: true,
       },
       {
         page: "content-keys",
@@ -532,7 +493,6 @@ export const SECTIONS: NavSection[] = [
         icon: KeySquare,
         docs: "/docs/services/release/packs/",
         inNav: true,
-        ready: true,
       },
     ],
   },
@@ -551,7 +511,6 @@ export const SECTIONS: NavSection[] = [
         icon: LayoutGrid,
         docs: "/docs/admin/distribution-matrix/",
         inNav: true,
-        ready: true,
         shortcut: "m",
       },
       {
@@ -561,7 +520,6 @@ export const SECTIONS: NavSection[] = [
         icon: TrendingUp,
         docs: "/docs/services/distribution/rollouts/",
         inNav: true,
-        ready: true,
       },
       {
         page: "outlets",
@@ -570,7 +528,6 @@ export const SECTIONS: NavSection[] = [
         icon: Store,
         docs: "/docs/services/distribution/feeds/",
         inNav: true,
-        ready: true,
       },
       {
         // A-18j: every storefront's tile, and "Add to storefronts" (T6, resumable from the
@@ -581,10 +538,9 @@ export const SECTIONS: NavSection[] = [
         icon: Globe,
         docs: "/docs/admin/storefronts/",
         inNav: true,
-        ready: true,
         // PS-06 (SETUP.md §2.1: one page per storefront): a built-in store's own page,
         // `distribution/storefronts/polaris-key`.
-        record: { noun: "Storefront", ready: true },
+        record: { noun: "Storefront" },
       },
       {
         // A-18j: the shared listing model (T3): locales, fit report, slot board, release notes,
@@ -595,7 +551,6 @@ export const SECTIONS: NavSection[] = [
         icon: SquarePen,
         docs: "/docs/admin/storefront-listing/",
         inNav: true,
-        ready: true,
       },
       {
         // A-17g: the App Store Distribute flow (T6) for the product's pinned app.
@@ -605,7 +560,6 @@ export const SECTIONS: NavSection[] = [
         icon: Send,
         docs: "/docs/admin/app-store/",
         inNav: true,
-        ready: true,
       },
       {
         // A-17g: the commerce mappings beside the store's own products (App Store products, T2).
@@ -615,7 +569,6 @@ export const SECTIONS: NavSection[] = [
         icon: ShoppingBag,
         docs: "/docs/services/distribution/commerce/",
         inNav: true,
-        ready: true,
       },
       {
         page: "access",
@@ -624,7 +577,6 @@ export const SECTIONS: NavSection[] = [
         icon: ShieldCheck,
         docs: "/docs/services/distribution/delivery/",
         inNav: true,
-        ready: true,
       },
       {
         // F-11: the product's package feeds on pkg.plrs.im, shown while `packageFeeds` is on.
@@ -635,12 +587,10 @@ export const SECTIONS: NavSection[] = [
         icon: Archive,
         docs: "/docs/admin/feeds/",
         inNav: true,
-        ready: true,
         requires: "packageFeeds",
         record: {
           noun: "Feed",
           tabs: FEED_TABS,
-          ready: true,
           child: {
             segment: "packages",
             noun: "Package",
@@ -656,7 +606,6 @@ export const SECTIONS: NavSection[] = [
         icon: HeartPulse,
         docs: "/docs/services/distribution/update-health/",
         inNav: true,
-        ready: true,
       },
       {
         page: "credentials",
@@ -665,7 +614,6 @@ export const SECTIONS: NavSection[] = [
         icon: Plug,
         docs: "/docs/admin/secrets-and-keys/",
         inNav: true,
-        ready: true,
       },
     ],
   },
@@ -684,7 +632,6 @@ export const SECTIONS: NavSection[] = [
         icon: Rss,
         docs: "/docs/services/update/eligibility/",
         inNav: true,
-        ready: true,
       },
     ],
   },
@@ -703,7 +650,6 @@ export const SECTIONS: NavSection[] = [
         icon: AppWindow,
         docs: "/docs/services/identity/portal/",
         inNav: true,
-        ready: true,
       },
       {
         page: "sign-in",
@@ -712,7 +658,6 @@ export const SECTIONS: NavSection[] = [
         icon: LogIn,
         docs: "/docs/services/identity/oidc/",
         inNav: true,
-        ready: true,
       },
     ],
   },
@@ -731,7 +676,6 @@ export const SECTIONS: NavSection[] = [
         icon: Database,
         docs: "/docs/services/sync/",
         inNav: true,
-        ready: true,
       },
     ],
   },
@@ -744,8 +688,7 @@ export const SECTIONS: NavSection[] = [
  * section bit). The group shows only off a product (Home, Products and the Platform pages
  * themselves); inside a product it is not drawn (owner, 2026-10-04) and is reached through the
  * product switcher's Platform entry, the account menu's version chip and ⌘K. `#/platform` itself
- * is not a page: it redirects to Settings, and a page that is not built yet redirects on to
- * Deployment.
+ * is not a page: like a product section's key, it redirects to the group's first page (Settings).
  */
 const PLATFORM_PAGES: NavPage[] = [
   {
@@ -755,7 +698,6 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: ServerCog,
     docs: "/docs/admin/platform-settings/",
     inNav: true,
-    ready: true,
     group: "platform",
   },
   {
@@ -765,7 +707,6 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: CloudUpload,
     docs: "/docs/admin/deploy/",
     inNav: true,
-    ready: true,
     group: "platform",
   },
   {
@@ -775,7 +716,6 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: Gauge,
     docs: "/docs/admin/operations/",
     inNav: true,
-    ready: true,
     group: "platform",
   },
   {
@@ -785,7 +725,6 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: PlugZap,
     docs: "/docs/admin/store-connections/",
     inNav: true,
-    ready: true,
     group: "platform",
   },
   {
@@ -796,12 +735,10 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: Archive,
     docs: "/docs/admin/feeds/",
     inNav: true,
-    ready: true,
     group: "platform",
     record: {
       noun: "Feed",
       tabs: FEED_TABS,
-      ready: true,
       // Platform scope lists every owner's packages: a package is `:owner/:name`.
       child: {
         segment: "packages",
@@ -820,7 +757,6 @@ const PLATFORM_PAGES: NavPage[] = [
     icon: ArrowRightLeft,
     docs: "/docs/services/config/",
     inNav: true,
-    ready: true,
     group: "platform",
   },
 ];
@@ -834,7 +770,6 @@ export const GLOBAL_PAGES: NavPage[] = [
     icon: House,
     docs: "/docs/admin/",
     inNav: true,
-    ready: true,
   },
   {
     page: "products",
@@ -843,7 +778,6 @@ export const GLOBAL_PAGES: NavPage[] = [
     icon: Boxes,
     docs: "/docs/admin/products/",
     inNav: true,
-    ready: true,
   },
   {
     page: "product-new",
@@ -852,18 +786,6 @@ export const GLOBAL_PAGES: NavPage[] = [
     icon: Plus,
     docs: "/docs/admin/products/",
     inNav: false,
-    ready: true,
-  },
-  {
-    // The section root: always a redirect to the section's first page.
-    page: "platform",
-    label: "Platform",
-    path: "platform",
-    icon: Server,
-    docs: "/docs/admin/deploy/",
-    inNav: false,
-    ready: false,
-    host: "platform-settings",
   },
   ...PLATFORM_PAGES,
 ];
@@ -971,26 +893,24 @@ export function meetsRequirement(
 }
 
 /**
- * The pages a section lists in the sidebar and the palette: in nav, built, and (with `features`)
+ * The pages a section lists in the sidebar and the palette: in nav and (with `features`)
  * meeting their requirement.
  */
 export function navItems(
   section: NavSection,
   features: NavFeatures = null,
 ): NavPage[] {
-  return section.items.filter(
-    (i) => i.inNav && i.ready && meetsRequirement(i, features),
-  );
+  return section.items.filter((i) => i.inNav && meetsRequirement(i, features));
 }
 
 /** The global pages the sidebar lists at the top level: Home and Products. */
 export function platformLinks(): NavPage[] {
-  return GLOBAL_PAGES.filter((p) => p.inNav && p.ready && !p.group);
+  return GLOBAL_PAGES.filter((p) => p.inNav && !p.group);
 }
 
-/** The Platform section's pages the sidebar and palette list: in nav and built. */
+/** The Platform section's pages the sidebar and palette list: the ones in nav. */
 export function platformItems(): NavPage[] {
-  return PLATFORM_GROUP.items.filter((p) => p.inNav && p.ready);
+  return PLATFORM_GROUP.items.filter((p) => p.inNav);
 }
 
 /** Is this one of the Platform section's pages? */

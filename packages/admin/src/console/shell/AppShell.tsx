@@ -39,7 +39,6 @@ import { LiveRegion } from "../../ui/LiveRegion.js";
 import type { ProductLike } from "./bits.js";
 import { CommandPalette } from "./CommandPalette.js";
 import { navigationSource, productSource } from "./palette/navigation.js";
-import { LegacyPage } from "./LegacyPage.js";
 import { PageErrorBoundary } from "./PageErrorBoundary.js";
 import { ShortcutSheet } from "./ShortcutSheet.js";
 import { Sidebar, useNavCollapse } from "./Sidebar.js";
@@ -257,7 +256,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
         return true;
       }
       if (!slug) return false;
-      const target = PRODUCT_PAGES.find((p) => p.shortcut === k && p.ready);
+      const target = PRODUCT_PAGES.find((p) => p.shortcut === k);
       if (!target || !isPageEnabled(target.page as ProductPageId, services))
         return false;
       return navigate(productPage(slug, target.page as ProductPageId));
@@ -407,7 +406,6 @@ export function routeSkeleton(route: Route): SkeletonTemplate {
   if (route.id !== undefined || route.child) return "record";
   if (
     route.page === "overview" ||
-    route.page === "platform" ||
     route.page === "platform-deployment" ||
     route.page === "platform-operations"
   )
@@ -510,9 +508,7 @@ function PageContent({
   return (
     <React.Suspense fallback={<PageLoading route={route} />}>
       <PageErrorBoundary>
-        <LegacyPage>
-          <Pages route={route} />
-        </LegacyPage>
+        <Pages route={route} />
       </PageErrorBoundary>
     </React.Suspense>
   );

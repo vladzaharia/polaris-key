@@ -7,20 +7,22 @@
  *
  * Every page comes from `nav.ts`; this module only knows how a `NavPage` maps to and from a hash.
  *
- * ── Old URLs keep working ─────────────────────────────────────────────────────────────────────
- * `LEGACY_REDIRECTS` maps every pre-redesign path to its new one. The router applies a redirect
- * with `history.replaceState`, so Back does not loop. A page that is not built yet redirects to its
- * `host` the same way. Anything else unrecognised is a not-found page that names the segment:
- * there is no silent fallback any more (SH-8), and `#/productsfoo` is not Products.
+ * ── Redirects and not-found ───────────────────────────────────────────────────────────────────
+ * A section's key alone (`#/p/<slug>/license`, `#/platform`) redirects to the section's first
+ * page; the router applies a redirect with `history.replaceState`, so Back does not loop.
+ * Anything else unrecognised is a not-found page that names the segment: there is no silent
+ * fallback (SH-8), and `#/productsfoo` is not Products.
  */
 
 import {
   GLOBAL_PAGES,
+  PLATFORM_GROUP,
   PRODUCT_PAGES,
   SECTIONS,
   isProductPage,
   navItems,
   pageOf,
+  platformItems,
   type GlobalPageId,
   type NavPage,
   type PageId,
@@ -65,47 +67,10 @@ export interface RouteChild {
   tab?: string;
 }
 
-/** A route plus, when the URL was an old or not-ready one, the canonical hash to replace it with. */
+/** A route plus, when the URL was a section root, the canonical hash to replace it with. */
 export interface ParsedLocation {
   route: Route;
   redirect?: string;
-}
-
-// ── Legacy redirects ───────────────────────────────────────────────────────────────────────────
-
-/**
- * Pre-redesign product paths (the old `route.ts` tabs) → their new path. The function receives the
- * segments after the old tab and returns the new path, or `null` when the old URL had no such
- * shape (it then resolves to not-found). ADMIN.md §2.5's table, exactly; `route.test.ts` walks it.
- */
-export const LEGACY_REDIRECTS: Record<
-  string,
-  (rest: string[]) => string | null
-> = {
-  overview: (rest) => (rest.length === 0 ? "" : null),
-  secrets: (rest) => (rest.length === 0 ? "keys" : null),
-  licenses: (rest) => withId("license/licenses", rest),
-  tiers: (rest) => (rest.length === 0 ? "license/tiers" : null),
-  fingerprints: (rest) => (rest.length === 0 ? "license/enrollment" : null),
-  config: (rest) => (rest.length === 0 ? "config/catalog" : null),
-  profiles: (rest) => withId("config/profiles", rest),
-  releases: (rest) => (rest.length === 0 ? "release/releases" : null),
-  deliverables: (rest) => withId("release/deliverables", rest),
-  compatibility: (rest) => (rest.length === 0 ? "release/compatibility" : null),
-  distribution: (rest) => (rest.length === 0 ? "distribution/matrix" : null),
-  "distribution-matrix": (rest) =>
-    rest.length === 0 ? "distribution/matrix" : null,
-  "distribution-health": (rest) =>
-    rest.length === 0 ? "distribution/health" : null,
-  updates: (rest) => (rest.length === 0 ? "update/feed" : null),
-  identity: (rest) => (rest.length === 0 ? "identity/portal" : null),
-};
-
-/** An old list tab with an optional detail id: `<list>[/<id>]`. */
-function withId(base: string, rest: string[]): string | null {
-  if (rest.length === 0) return base;
-  if (rest.length === 1) return `${base}/${encodeURIComponent(rest[0]!)}`;
-  return null;
 }
 
 // ── Parsing ────────────────────────────────────────────────────────────────────────────────────
@@ -218,12 +183,6 @@ export function parseLocation(hash: string): ParsedLocation {
     const matched = matchProductPath(rest);
     if (matched) {
       const { page, id, tab, child } = matched;
-      if (!page.ready) {
-        return redirectTo(productHref(slug, page.host!, {}, suffix));
-      }
-      if (id !== undefined && page.record && !page.record.ready) {
-        return redirectTo(productHref(slug, page.page, {}, suffix));
-      }
       return {
         route: {
           kind: "product",
@@ -236,19 +195,11 @@ export function parseLocation(hash: string): ParsedLocation {
         },
       };
     }
-    const legacy = rest[0] ? LEGACY_REDIRECTS[rest[0]] : undefined;
-    const target = legacy ? legacy(rest.slice(1)) : sectionDefault(rest);
-    if (target !== null && target !== undefined) {
-      // Re-parse the target so a redirect into a not-ready page follows on to its host.
-      const next = parseLocation(
+    const target = sectionDefault(rest);
+    if (target !== null) {
+      return redirectTo(
         `#/p/${encodeURIComponent(slug)}${target ? `/${target}` : ""}${suffix}`,
       );
-      return {
-        route: next.route,
-        redirect:
-          next.redirect ??
-          `#/p/${encodeURIComponent(slug)}${target ? `/${target}` : ""}${suffix}`,
-      };
     }
     return {
       route: { kind: "not-found", slug, path: rest.join("/"), query },
@@ -256,9 +207,12 @@ export function parseLocation(hash: string): ParsedLocation {
   }
 
   const globalPath = segments.join("/");
+  // The Platform group's key alone is its root, as a product section's is.
+  if (globalPath === PLATFORM_GROUP.key) {
+    return redirectTo(globalHref(platformItems()[0]!.page, suffix));
+  }
   const global = GLOBAL_PAGES.find((p) => p.path === globalPath);
   if (global) {
-    if (!global.ready) return redirectTo(globalHref(global.host!, suffix));
     return {
       route: { kind: "global", page: global.page as GlobalPageId, query },
     };
@@ -271,7 +225,7 @@ export function parseLocation(hash: string): ParsedLocation {
           segments,
         )
       : null;
-  if (deep && deep.id !== undefined && deep.page.ready) {
+  if (deep && deep.id !== undefined) {
     return {
       route: {
         kind: "global",
@@ -286,7 +240,7 @@ export function parseLocation(hash: string): ParsedLocation {
   return { route: { kind: "not-found", path: rawPath, query } };
 }
 
-/** Redirect to `hash`, following on when it redirects too (`#/platform` → Settings → Deployment). */
+/** Redirect to `hash`, following on when it redirects too. */
 function redirectTo(hash: string): ParsedLocation {
   const next = parseLocation(hash);
   return { route: next.route, redirect: next.redirect ?? hash };
@@ -397,7 +351,8 @@ export const r = {
   home: (query?: QueryInit) => globalPage("home", query),
   products: (query?: QueryInit) => globalPage("products", query),
   productNew: (query?: QueryInit) => globalPage("product-new", query),
-  platform: () => globalPage("platform"),
+  /** The Platform group's root, which redirects to its first page. */
+  platform: () => `#/${PLATFORM_GROUP.key}`,
   platformSettings: () => globalPage("platform-settings"),
   platformDeployment: () => globalPage("platform-deployment"),
   platformOperations: () => globalPage("platform-operations"),

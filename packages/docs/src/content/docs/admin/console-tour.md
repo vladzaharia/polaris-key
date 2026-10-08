@@ -151,27 +151,13 @@ Shown when the product runs **Identity**.
 | **Portal**  | `identity/portal`  | What the customer portal offers: the portal switch, the sign-in methods, automatic license linking, release downloads, and the branding read-out.          |
 | **Sign-in** | `identity/sign-in` | The OIDC provider, issuer and client this product trusts, and its group → tier map, read from `.pkey/product`. Resync from repo applies a manifest change. |
 
-## Old URLs
+## Section URLs
 
-Every URL from before the redesign still works. The console replaces it with the new one (Back
-does not loop through the old address):
+A section's address on its own (`#/p/<slug>/license`, `#/platform`) opens the section's first
+page. The console replaces the address with that page's, so Back does not loop through it.
 
-| Old                                                | New                                      |
-| -------------------------------------------------- | ---------------------------------------- |
-| `#/p/<slug>/overview`                              | `#/p/<slug>`                             |
-| `#/p/<slug>/secrets`                               | `#/p/<slug>/keys`                        |
-| `#/p/<slug>/licenses`, `…/licenses/<id>`           | `#/p/<slug>/license/licenses[/<id>]`     |
-| `#/p/<slug>/tiers`                                 | `#/p/<slug>/license/tiers`               |
-| `#/p/<slug>/fingerprints`                          | `#/p/<slug>/license/enrollment`          |
-| `#/p/<slug>/config`                                | `#/p/<slug>/config/catalog`              |
-| `#/p/<slug>/profiles`, `…/profiles/<id>`           | `#/p/<slug>/config/profiles[/<id>]`      |
-| `#/p/<slug>/releases`                              | `#/p/<slug>/release/releases`            |
-| `#/p/<slug>/deliverables`, `…/deliverables/<id>`   | `#/p/<slug>/release/deliverables[/<id>]` |
-| `#/p/<slug>/compatibility`                         | `#/p/<slug>/release/compatibility`       |
-| `#/p/<slug>/distribution`, `…/distribution-matrix` | `#/p/<slug>/distribution/matrix`         |
-| `#/p/<slug>/distribution-health`                   | `#/p/<slug>/distribution/health`         |
-| `#/p/<slug>/updates`                               | `#/p/<slug>/update/feed`                 |
-| `#/p/<slug>/identity`                              | `#/p/<slug>/identity/portal`             |
+The addresses from before the console redesign (`#/p/<slug>/licenses`, `…/secrets`,
+`…/fingerprints` and the like) no longer redirect: they open the not-found page described below.
 
 ## When a link goes nowhere
 

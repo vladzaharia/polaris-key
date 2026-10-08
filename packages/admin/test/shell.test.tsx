@@ -472,7 +472,7 @@ describe("accents and the section bit (BRAND.md §6)", () => {
     expect(bit()).toBeNull();
     expect(brand.querySelector(".polaris-section-bit")).toBeNull();
 
-    for (const page of PRODUCT_PAGES.filter((p) => p.ready && p.inNav)) {
+    for (const page of PRODUCT_PAGES.filter((p) => p.inNav)) {
       const section = SECTIONS.find((s) => s.items.includes(page))!;
       act(() => {
         window.location.hash = `#/p/djdl${page.path ? `/${page.path}` : ""}`;
@@ -711,25 +711,24 @@ describe("state pages (T8)", () => {
   });
 });
 
-describe("old URLs and history", () => {
-  it("replaces an old URL with the new one, so Back does not loop", async () => {
+describe("section roots and history", () => {
+  it("replaces a section's root with its first page, so Back does not loop", async () => {
     const replace = vi.spyOn(window.history, "replaceState");
-    boot("#/p/djdl/tiers", { services: ALL_ON });
+    boot("#/p/djdl/license", { services: ALL_ON });
     await ready();
     await waitFor(() =>
-      expect(window.location.hash).toBe("#/p/djdl/license/tiers"),
+      expect(window.location.hash).toBe("#/p/djdl/license/licenses"),
     );
     expect(replace).toHaveBeenCalled();
     expect(
       within(nav())
-        .getByRole("link", { name: "Tiers" })
+        .getByRole("link", { name: "Licenses" })
         .getAttribute("aria-current"),
     ).toBe("page");
   });
 
-  it("sends a page that holds nothing itself to the page that does", async () => {
-    // Every page is built (F-11 built the last, Package feeds); the Platform section's root is
-    // not a page and still redirects to its host.
+  it("sends the Platform group's root to its first page", async () => {
+    // `#/platform` is not a page: like a product section's key, it opens Settings.
     boot("#/platform", { services: ALL_ON });
     await screen.findByRole("navigation", { name: "Console" });
     await waitFor(() =>
