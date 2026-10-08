@@ -1,0 +1,509 @@
+<title>Polaris Key Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Rubik:wght@400;500;600&display=swap">
+<style>
+/* Layout: a sticky index of areas and screens beside a column of screen cards; each card is a stage (mockup, built, or both) with its review and notes. Dark first, like the brand. */
+:root {
+  color-scheme: dark;
+  --page: #060912;
+  --raised: #0d111b;
+  --overlay: #121722;
+  --sunken: #020408;
+  --line: #212633;
+  --line-strong: #61697b;
+  --ink-strong: #ffffff;
+  --ink: #dbe4ff;
+  --ink-muted: #b5bed3;
+  --ink-subtle: #969eb2;
+  --violet: #9a5cff;
+  --gold: #ffc24d;
+  --ok: #39d075;
+  --warn: #ffc24d;
+  --bad: #ff6fa6;
+  --on-accent: #060912;
+  --svc-core: #9a5cff;
+  --svc-license: #c6e940;
+  --svc-config: #fac700;
+  --svc-release: #00dbfd;
+  --svc-distribution: #39d075;
+  --svc-update: #fe8001;
+  --svc-identity: #d77df2;
+  --svc-sync: #14f8e1;
+  --font-sans: "Rubik", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 0.625rem;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --page: #f6f8ff; --raised: #ffffff; --overlay: #ffffff; --sunken: #ebeef8;
+    --line: #dadee9; --line-strong: #7e8699;
+    --ink-strong: #060912; --ink: #262d40; --ink-muted: #48536b; --ink-subtle: #5d667b;
+    --violet: #7a2fff; --gold: #d07a00; --ok: #05773b; --warn: #aa5000; --bad: #e0348a; --on-accent: #ffffff;
+    --svc-core: #7a2fff; --svc-license: #556e00; --svc-config: #866500; --svc-release: #007487;
+    --svc-distribution: #05773b; --svc-update: #aa5000; --svc-identity: #9e34ae; --svc-sync: #086260;
+  }
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+  --page: #f6f8ff; --raised: #ffffff; --overlay: #ffffff; --sunken: #ebeef8;
+  --line: #dadee9; --line-strong: #7e8699;
+  --ink-strong: #060912; --ink: #262d40; --ink-muted: #48536b; --ink-subtle: #5d667b;
+  --violet: #7a2fff; --gold: #d07a00; --ok: #05773b; --warn: #aa5000; --bad: #e0348a; --on-accent: #ffffff;
+  --svc-core: #7a2fff; --svc-license: #556e00; --svc-config: #866500; --svc-release: #007487;
+  --svc-distribution: #05773b; --svc-update: #aa5000; --svc-identity: #9e34ae; --svc-sync: #086260;
+}
+:root[data-theme="dark"] { color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 1.55; padding-inline: clamp(1rem, 3vw, 2rem); padding-block: 0 4rem; }
+a { color: var(--violet); text-underline-offset: 0.18em; }
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { color: var(--ink-strong); margin: 0; line-height: 1.2; text-wrap: balance; font-weight: 600; }
+.mono, code { font-family: var(--font-mono); font-size: 0.85em; }
+.eyebrow { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-subtle); }
+.muted { color: var(--ink-muted); }
+
+.shell { max-width: 96rem; margin-inline: auto; display: grid; gap: 2.5rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1180px) { .shell { grid-template-columns: 15rem minmax(0, 1fr); } }
+
+/* Index */
+.index { display: none; }
+@media (min-width: 1180px) {
+  .index { display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1.5rem); align-self: start; max-height: calc(100vh - 3rem); overflow-y: auto; padding-top: 2rem; padding-right: 0.5rem; }
+}
+.index .area-link { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; color: var(--ink-strong); font-weight: 500; text-decoration: none; font-size: 0.9rem; }
+.index ol { list-style: none; margin: 0.35rem 0 0; padding: 0; display: grid; gap: 1px; }
+.index ol a { display: flex; align-items: center; gap: 0.45rem; padding: 0.22rem 0.5rem; border-radius: 6px; color: var(--ink-muted); text-decoration: none; font-size: 0.84rem; line-height: 1.3; }
+.index ol a:hover { background: var(--raised); color: var(--ink-strong); }
+.dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; flex: none; border: 1.5px solid var(--violet); }
+.dot[data-s="building"] { border-color: var(--gold); background: var(--gold); }
+.dot[data-s="built"] { border-color: var(--ok); background: var(--ok); }
+.dot[data-s="shipped"] { border-color: var(--ok); background: var(--ok); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 35%, transparent); }
+.bit { width: 0.55rem; height: 0.55rem; border-radius: 2px; background: var(--accent, var(--svc-core)); flex: none; }
+
+/* Header */
+header.top { padding-top: 2.5rem; display: grid; gap: 1.1rem; }
+h1 { font-size: clamp(1.9rem, 3.4vw, 2.6rem); letter-spacing: -0.02em; }
+.lede { font-size: 1.05rem; color: var(--ink-muted); max-width: 70ch; }
+.counts { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.count { display: inline-flex; align-items: baseline; gap: 0.4rem; padding: 0.35rem 0.75rem; border: 1px solid var(--line); border-radius: 999px; background: var(--raised); font-size: 0.85rem; color: var(--ink-muted); }
+.count b { font-family: var(--font-mono); color: var(--ink-strong); font-weight: 500; font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; padding: 0.75rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); background: var(--page); z-index: 5; }
+.controls label { font-size: 0.8rem; color: var(--ink-subtle); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--raised); }
+.seg button { border: 0; background: transparent; padding: 0.3rem 0.65rem; font-size: 0.8rem; cursor: pointer; color: var(--ink-muted); min-height: 28px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--violet); color: var(--on-accent); }
+.seg button:disabled { opacity: 0.4; cursor: not-allowed; }
+.filters { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.chip { border: 1px solid var(--line); background: var(--raised); border-radius: 999px; padding: 0.2rem 0.65rem; font-size: 0.8rem; cursor: pointer; color: var(--ink-muted); min-height: 28px; }
+.chip[aria-pressed="true"] { border-color: var(--violet); color: var(--ink-strong); background: color-mix(in srgb, var(--violet) 18%, var(--raised)); }
+
+main { display: grid; gap: 3rem; min-width: 0; }
+.area { display: grid; gap: 1.5rem; scroll-margin-top: 4.5rem; }
+.area-head { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.area-head h2 { font-size: 1.6rem; }
+.area-head p { flex-basis: 100%; color: var(--ink-muted); max-width: 72ch; margin: 0; }
+
+/* Screen card */
+.screen { display: grid; gap: 0.9rem; padding: 1.1rem 1.2rem 1.25rem; background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); scroll-margin-top: 4.5rem; min-width: 0; }
+.screen[hidden] { display: none; }
+.screen-head { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: flex-start; justify-content: space-between; }
+.screen-head .sid { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-subtle); }
+.screen-head h3 { font-size: 1.15rem; font-weight: 500; }
+.tags { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 0.3rem; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.03em; padding: 0.12rem 0.55rem; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill[data-s="mockup"] { color: var(--violet); }
+.pill[data-s="building"] { color: var(--gold); }
+.pill[data-s="built"], .pill[data-s="shipped"] { color: var(--ok); }
+.wp { font-family: var(--font-mono); font-size: 0.72rem; padding: 0.1rem 0.45rem; border-radius: 5px; background: var(--sunken); border: 1px solid var(--line); color: var(--ink-strong); }
+.summary { margin: 0; color: var(--ink); max-width: 80ch; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem 0.9rem; align-items: center; }
+
+.stage { background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; padding: 0.75rem; overflow: hidden; }
+.stage.full { overflow-x: auto; }
+.panes { display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }
+.panes.two { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 1100px) { .panes.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.pane { display: grid; gap: 0.4rem; min-width: 0; justify-items: center; }
+.pane-label { justify-self: start; font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-subtle); }
+.frame-box { position: relative; overflow: hidden; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); background: var(--page); max-width: 100%; }
+.frame-box iframe { border: 0; position: absolute; top: 0; left: 0; transform-origin: 0 0; background: transparent; }
+.frame-box img { display: block; width: 100%; height: auto; }
+.placeholder { padding: 2.5rem 1rem; text-align: center; color: var(--ink-subtle); font-size: 0.9rem; width: 100%; }
+
+.cols { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .cols { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } }
+details.review { border: 1px solid var(--line); border-radius: 8px; padding: 0.6rem 0.85rem; background: var(--page); }
+details.review summary { cursor: pointer; font-weight: 500; color: var(--ink-strong); font-size: 0.92rem; }
+details.review summary .muted { font-weight: 400; }
+.findings { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.55rem; }
+.findings li { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); gap: 0.6rem; font-size: 0.88rem; }
+.sev { font-family: var(--font-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.05em; padding-top: 0.15rem; }
+.sev[data-v="blocking"] { color: var(--bad); }
+.sev[data-v="major"] { color: var(--warn); }
+.sev[data-v="minor"] { color: var(--ink-subtle); }
+.findings .res { display: block; color: var(--ink-muted); margin-top: 0.15rem; }
+.checks { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; font-size: 0.88rem; }
+.block-title { font-size: 0.8rem; color: var(--ink-subtle); margin: 0 0 0.35rem; font-family: var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; }
+
+.notes { display: grid; gap: 0.6rem; }
+.note-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.note { border-left: 2px solid var(--violet); padding: 0.35rem 0 0.35rem 0.75rem; font-size: 0.9rem; display: grid; gap: 0.25rem; }
+.note[data-status="resolved"] { border-left-color: var(--ok); opacity: 0.8; }
+.note .meta { font-size: 0.75rem; color: var(--ink-subtle); display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.note .reply { font-size: 0.85rem; color: var(--ink-muted); background: var(--page); border-radius: 6px; padding: 0.35rem 0.6rem; }
+.note .text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.linkbtn { border: 0; background: none; color: var(--violet); cursor: pointer; padding: 0; font-size: 0.75rem; text-decoration: underline; text-underline-offset: 0.18em; }
+.note-form { display: grid; gap: 0.4rem; }
+.note-form textarea { width: 100%; min-height: 4.2rem; resize: vertical; background: var(--page); border: 1px solid var(--line); border-radius: 8px; padding: 0.5rem 0.65rem; }
+.note-form .row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+.btn { border: 1px solid var(--violet); background: var(--violet); color: var(--on-accent); border-radius: 8px; padding: 0.35rem 0.85rem; cursor: pointer; font-size: 0.85rem; min-height: 32px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.form-msg { font-size: 0.8rem; color: var(--ink-subtle); }
+.empty-area { color: var(--ink-subtle); }
+@media (prefers-reduced-motion: no-preference) { .seg button, .chip { transition: background-color 120ms ease, color 120ms ease; } }
+</style>
+
+<div class="shell">
+  <nav class="index" id="index" aria-label="Screens"><span class="eyebrow">Screens</span></nav>
+  <main id="main">
+    <header class="top">
+      <span class="eyebrow">Polaris Key · consolidation · the 0.9 line</span>
+      <h1>Every screen we're building, before and after</h1>
+      <p class="lede">Each mockup shows what a package will build, drawn from the consolidation plan and critiqued by a UX designer from rendered screenshots. As packages land, the real screens appear beside their mockups so you can compare and critique them. Leave a note on any screen and Claude picks it up.</p>
+      <div class="counts" id="counts"></div>
+    </header>
+    <div class="controls" role="group" aria-label="Show all screens as">
+      <label for="all-view">All screens</label>
+      <div class="seg" id="all-view" role="group" aria-label="View">
+        <button type="button" data-k="view" data-v="mockup" aria-pressed="true">Mockup</button><button type="button" data-k="view" data-v="built" aria-pressed="false">Built</button><button type="button" data-k="view" data-v="both" aria-pressed="false">Side by side</button>
+      </div>
+      <div class="seg" role="group" aria-label="Theme">
+        <button type="button" data-k="theme" data-v="dark" aria-pressed="true">Dark</button><button type="button" data-k="theme" data-v="light" aria-pressed="false">Light</button>
+      </div>
+      <div class="seg" role="group" aria-label="Device">
+        <button type="button" data-k="device" data-v="desktop" aria-pressed="true">Desktop</button><button type="button" data-k="device" data-v="phone" aria-pressed="false">Phone</button>
+      </div>
+      <div class="filters" id="status-filters" role="group" aria-label="Filter by status"></div>
+    </div>
+    <div id="areas"></div>
+  </main>
+</div>
+
+<script type="application/json" id="mockups-data">/*__DATA__*/</script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById("mockups-data").textContent);
+  const STATUS = [
+    ["mockup", "Mockup"],
+    ["building", "Building"],
+    ["built", "Built"],
+    ["shipped", "Shipped"],
+  ];
+  const STATUS_LABEL = Object.fromEntries(STATUS);
+  const ACCENT = { core: "--svc-core", license: "--svc-license", config: "--svc-config", release: "--svc-release", distribution: "--svc-distribution", update: "--svc-update", identity: "--svc-identity", sync: "--svc-sync" };
+  const SIZE = { desktop: { w: 1440, h: 900, max: 2600 }, phone: { w: 390, h: 844, max: 2400 } };
+
+  // Live state from the artifact's database (may never arrive).
+  const live = { screens: {}, notes: [] };
+  let db = null, user = null, myId = null, canWrite = null;
+  const names = {};
+
+  const prefersDark = () => {
+    const t = document.documentElement.getAttribute("data-theme");
+    if (t) return t === "dark";
+    return !window.matchMedia || !window.matchMedia("(prefers-color-scheme: light)").matches;
+  };
+  const global = { view: "mockup", theme: prefersDark() ? "dark" : "light", device: "desktop", status: new Set() };
+  const cards = new Map();
+
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === null || v === undefined || v === false) continue;
+      if (k === "text") n.textContent = v;
+      else if (k === "class") n.className = v;
+      else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else n.setAttribute(k, v === true ? "" : v);
+    }
+    for (const k of kids.flat()) if (k !== null && k !== undefined) n.append(k.nodeType ? k : document.createTextNode(String(k)));
+    return n;
+  };
+
+  const statusOf = (s) => (live.screens[s.id] && live.screens[s.id].status) || s.status || "mockup";
+  const builtOf = (s) => (live.screens[s.id] && live.screens[s.id].built) || null;
+
+  function srcdoc(screen, theme) {
+    return "<!doctype html><html data-theme=\"" + theme + "\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>" + DATA.kitCss + "</style><style>html,body{margin:0}</style></head><body>" + screen.html + "</body></html>";
+  }
+
+  // --- Index, counts, filters -------------------------------------------------
+  function renderIndex() {
+    const nav = document.getElementById("index");
+    nav.replaceChildren(el("span", { class: "eyebrow", text: "Screens" }));
+    for (const area of DATA.areas) {
+      const screens = DATA.screens.filter((s) => s.area === area.key);
+      if (!screens.length) continue;
+      const accent = `var(${ACCENT[area.accent] || "--svc-core"})`;
+      const head = el("a", { class: "area-link", href: "#a-" + area.key }, el("span", { class: "bit", style: `--accent:${accent}` }), area.title);
+      const list = el("ol", {}, screens.map((s) => el("li", {}, el("a", { href: "#s-" + s.id.replace(/\./g, "-") }, el("span", { class: "dot", "data-s": statusOf(s) }), s.title))));
+      nav.append(head, list);
+    }
+  }
+  function renderCounts() {
+    const c = { mockup: 0, building: 0, built: 0, shipped: 0 };
+    for (const s of DATA.screens) c[statusOf(s)] = (c[statusOf(s)] || 0) + 1;
+    const open = live.notes.filter((n) => n.status !== "resolved").length;
+    const box = document.getElementById("counts");
+    box.replaceChildren(
+      el("span", { class: "count" }, el("b", { text: String(DATA.screens.length) }), "screens"),
+      ...STATUS.map(([k, label]) => el("span", { class: "count" }, el("b", { text: String(c[k] || 0) }), label.toLowerCase())),
+      el("span", { class: "count" }, el("b", { text: String(open) }), open === 1 ? "open note" : "open notes"),
+    );
+  }
+  function renderStatusFilters() {
+    const box = document.getElementById("status-filters");
+    box.replaceChildren(...STATUS.map(([k, label]) => el("button", {
+      type: "button", class: "chip", "aria-pressed": String(global.status.has(k)),
+      onclick: () => { global.status.has(k) ? global.status.delete(k) : global.status.add(k); renderStatusFilters(); applyFilter(); },
+    }, label)));
+  }
+  function applyFilter() {
+    for (const [id, c] of cards) c.root.hidden = global.status.size > 0 && !global.status.has(statusOf(c.screen));
+    for (const sec of document.querySelectorAll(".area")) {
+      const any = [...sec.querySelectorAll(".screen")].some((n) => !n.hidden);
+      sec.hidden = !any;
+    }
+  }
+
+  // --- Cards ---------------------------------------------------------------------
+  function seg(label, key, options, card) {
+    return el("div", { class: "seg", role: "group", "aria-label": label }, options.map(([v, text]) => el("button", {
+      type: "button", "data-k": key, "data-v": v, "aria-pressed": String(card.opts[key] === v),
+      onclick: () => { card.opts[key] = v; paintCard(card); },
+    }, text)));
+  }
+
+  function buildCard(screen, area) {
+    const card = { screen, area, opts: { view: global.view, theme: global.theme, device: global.device }, frames: [] };
+    const root = el("article", { class: "screen", id: "s-" + screen.id.replace(/\./g, "-"), "data-area": area.key });
+    card.root = root;
+    card.head = el("div", { class: "screen-head" });
+    card.summary = el("p", { class: "summary", text: screen.summary || "" });
+    card.toolbar = el("div", { class: "toolbar" });
+    card.stage = el("div", { class: "stage" });
+    card.cols = el("div", { class: "cols" });
+    card.notes = el("section", { class: "notes", "aria-label": "Notes on " + screen.title });
+    root.append(card.head, card.summary, card.toolbar, card.stage, card.cols, card.notes);
+    cards.set(screen.id, card);
+    paintCard(card);
+    paintCols(card);
+    paintNotes(card);
+    return root;
+  }
+
+  function paintHead(card) {
+    const s = card.screen, st = statusOf(s), b = live.screens[s.id] || {};
+    card.head.replaceChildren(
+      el("div", {}, el("div", { class: "sid", text: s.id + " · " + (s.surface || "") }), el("h3", { text: s.title })),
+      el("div", { class: "tags" },
+        el("span", { class: "pill", "data-s": st, text: STATUS_LABEL[st] + (b.builtIn ? " · " + b.builtIn : "") }),
+        (s.packages || []).map((p) => el("span", { class: "wp", text: p }))),
+    );
+  }
+
+  function paintCard(card) {
+    paintHead(card);
+    const built = builtOf(card.screen);
+    card.toolbar.replaceChildren(
+      seg("View", "view", [["mockup", "Mockup"], ["built", "Built"], ["both", "Side by side"]], card),
+      seg("Theme", "theme", [["dark", "Dark"], ["light", "Light"]], card),
+      seg("Device", "device", [["desktop", "Desktop"], ["phone", "Phone"]], card),
+    );
+    if (!built) for (const b of card.toolbar.querySelectorAll('[data-k="view"]:not([data-v="mockup"])')) b.disabled = true;
+    const view = built ? card.opts.view : "mockup";
+    const panes = el("div", { class: "panes" + (view === "both" ? " two" : "") });
+    if (view === "mockup" || view === "both") panes.append(mockPane(card, view === "both"));
+    if (view === "built" || view === "both") panes.append(builtPane(card, built));
+    card.stage.replaceChildren(panes);
+    requestAnimationFrame(() => fitFrames(card));
+  }
+
+  function mockPane(card, labelled) {
+    const { device, theme } = card.opts, size = SIZE[device];
+    const box = el("div", { class: "frame-box" });
+    const iframe = el("iframe", { title: card.screen.title + " mockup, " + device + ", " + theme, loading: "lazy", tabindex: "-1" });
+    iframe.style.width = size.w + "px";
+    iframe.dataset.h = String(size.h);
+    box.append(iframe);
+    card.frames = [{ iframe, box, size }];
+    const load = () => { iframe.srcdoc = srcdoc(card.screen, theme); };
+    iframe.addEventListener("load", () => {
+      try {
+        const d = iframe.contentDocument;
+        const h = Math.min(size.max, Math.max(size.h, d.documentElement.scrollHeight, d.body.scrollHeight));
+        iframe.dataset.h = String(h);
+      } catch (e) { /* cross-origin view: keep the default height */ }
+      fitFrames(card);
+    });
+    lazy(box, load);
+    return el("div", { class: "pane" }, labelled ? el("span", { class: "pane-label", text: "Mockup" }) : null, box);
+  }
+
+  function builtPane(card, built) {
+    const key = card.opts.device + "-" + card.opts.theme;
+    const url = built && (built[key] || built[card.opts.device + "-dark"] || built[card.opts.device + "-light"]);
+    const box = el("div", { class: "frame-box" });
+    box.style.width = card.opts.device === "phone" ? "390px" : "100%";
+    if (url) box.append(el("img", { src: url, alt: card.screen.title + " as built, " + key, loading: "lazy" }));
+    else box.append(el("div", { class: "placeholder", text: "No " + key.replace("-", ", ") + " screenshot of the built screen yet." }));
+    return el("div", { class: "pane" }, el("span", { class: "pane-label", text: "Built" + (live.screens[card.screen.id] && live.screens[card.screen.id].builtIn ? " · " + live.screens[card.screen.id].builtIn : "") }), box);
+  }
+
+  function fitFrames(card) {
+    for (const f of card.frames) {
+      const paneWidth = f.box.parentElement ? f.box.parentElement.clientWidth : f.size.w;
+      const scale = Math.min(1, paneWidth / f.size.w);
+      const h = Number(f.iframe.dataset.h || f.size.h);
+      f.iframe.style.height = h + "px";
+      f.iframe.style.transform = "scale(" + scale + ")";
+      f.box.style.width = Math.round(f.size.w * scale) + "px";
+      f.box.style.height = Math.round(h * scale) + "px";
+    }
+  }
+
+  const io = "IntersectionObserver" in window ? new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { const fn = e.target.__load; if (fn) { e.target.__load = null; io.unobserve(e.target); fn(); } }
+  }, { rootMargin: "800px 0px" }) : null;
+  function lazy(node, fn) { if (io) { node.__load = fn; io.observe(node); } else fn(); }
+
+  function paintCols(card) {
+    const s = card.screen, r = s.designReview, b = live.screens[s.id] || {};
+    const left = el("div", {});
+    if (r) {
+      const det = el("details", { class: "review" },
+        el("summary", {}, "Design review", el("span", { class: "muted", text: " · round " + (r.round || 1) + (r.verdict ? " · " + r.verdict : "") })),
+        el("ul", { class: "findings" }, (r.findings || []).map((f) => el("li", {},
+          el("span", { class: "sev", "data-v": f.severity || "minor", text: f.severity || "note" }),
+          el("span", {}, f.issue || "", el("span", { class: "res", text: f.resolution ? "→ " + f.resolution : "" }))))));
+      left.append(det);
+    } else left.append(el("p", { class: "muted", text: "No design review recorded yet." }));
+    if (b.builtReview) {
+      left.append(el("details", { class: "review", open: true },
+        el("summary", {}, "Review of the built screen", el("span", { class: "muted", text: b.builtReview.verdict ? " · " + b.builtReview.verdict : "" })),
+        el("p", { class: "muted", text: "A UX designer used the real screen in a browser: the task end to end, every state, keyboard and phone, then the visuals, then the mockup." }),
+        el("ul", { class: "findings" }, (b.builtReview.findings || []).map((f) => el("li", {},
+          el("span", { class: "sev", "data-v": f.severity || "minor", text: f.severity || "note" }),
+          el("span", {}, f.group ? el("b", { text: f.group + ": " }) : null, f.issue || "", el("span", { class: "res", text: f.resolution ? "→ " + f.resolution : "" })))))));
+    }
+    const right = el("div", {}, el("p", { class: "block-title", text: "Check when it's built" }),
+      (s.compare && s.compare.length) ? el("ul", { class: "checks" }, s.compare.map((c) => el("li", { text: c }))) : el("p", { class: "muted", text: "Nothing listed." }));
+    card.cols.replaceChildren(left, right);
+  }
+
+  // --- Notes ----------------------------------------------------------------------
+  function who(id) { return (id && names[id]) || (id && id === myId ? "You" : "Someone"); }
+  function paintNotes(card) {
+    const list = live.notes.filter((n) => n.screen === card.screen.id).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    const items = el("ul", { class: "note-list" }, list.map((n) => el("li", { class: "note", "data-status": n.status || "open" },
+      el("span", { class: "text", text: n.text || "" }),
+      el("span", { class: "meta" },
+        el("span", { text: who(n.author) }), n.createdAt ? el("span", { text: new Date(n.createdAt).toLocaleString() }) : null, el("span", { text: n.status === "resolved" ? "Resolved" : "Open" }),
+        (db && canWrite !== false) ? el("button", { type: "button", class: "linkbtn", text: n.status === "resolved" ? "Reopen" : "Mark resolved", onclick: () => toggleNote(n) }) : null),
+      n.reply ? el("span", { class: "reply", text: "Claude: " + n.reply }) : null)));
+    const head = el("p", { class: "block-title", text: "Notes" + (list.length ? " (" + list.length + ")" : "") });
+    if (!db) {
+      card.notes.replaceChildren(head, list.length ? items : el("p", { class: "muted", text: "Notes appear here when the page is opened on claude.ai while signed in." }));
+      return;
+    }
+    const ta = el("textarea", { id: "note-" + card.screen.id.replace(/\./g, "-"), placeholder: "What should change on this screen?", "aria-label": "Add a note on " + card.screen.title });
+    const msg = el("span", { class: "form-msg", role: "status" });
+    const btn = el("button", { type: "button", class: "btn", text: "Add note" });
+    btn.addEventListener("click", async () => {
+      const text = ta.value.trim();
+      if (!text) { msg.textContent = "Write the note first."; return; }
+      btn.disabled = true; msg.textContent = "Saving…";
+      try {
+        await db.collection("notes").add({ screen: card.screen.id, text, author: myId, createdAt: Date.now(), status: "open" });
+        ta.value = ""; msg.textContent = "Saved. Claude reads these notes and replies here.";
+      } catch (e) {
+        msg.textContent = e && e.code === "invalid_argument" ? "You can read notes on this page but not add them." : e && e.code === "quota_exceeded" ? "The notes store is full. Resolve and delete old notes, then try again." : "Couldn't save the note. Try again in a moment.";
+        if (e && e.code === "invalid_argument") canWrite = false;
+      } finally { btn.disabled = false; }
+    });
+    const form = canWrite === false ? null : el("div", { class: "note-form" }, ta, el("div", { class: "row" }, btn, msg));
+    card.notes.replaceChildren(head, list.length ? items : el("p", { class: "muted", text: "No notes yet." }), form);
+  }
+  async function toggleNote(n) {
+    try { await db.doc("notes/" + n.id).update({ status: n.status === "resolved" ? "open" : "resolved" }); }
+    catch (e) { /* the snapshot keeps the true state */ }
+  }
+
+  // --- Page -------------------------------------------------------------------------
+  function renderAll() {
+    const host = document.getElementById("areas");
+    host.replaceChildren();
+    for (const area of DATA.areas) {
+      const screens = DATA.screens.filter((s) => s.area === area.key);
+      if (!screens.length) continue;
+      const accent = `var(${ACCENT[area.accent] || "--svc-core"})`;
+      const sec = el("section", { class: "area", id: "a-" + area.key, "aria-labelledby": "h-" + area.key },
+        el("div", { class: "area-head" }, el("span", { class: "bit", style: `--accent:${accent}` }), el("h2", { id: "h-" + area.key, text: area.title }), area.blurb ? el("p", { text: area.blurb }) : null));
+      for (const s of screens) sec.append(buildCard(s, area));
+      host.append(sec);
+    }
+    if (!DATA.screens.length) host.append(el("p", { class: "empty-area", text: "The designers are still drawing. Screens appear here as each area is finished." }));
+  }
+
+  for (const b of document.querySelectorAll(".controls .seg button")) {
+    b.addEventListener("click", () => {
+      const k = b.dataset.k, v = b.dataset.v;
+      global[k] = v;
+      for (const o of document.querySelectorAll(`.controls .seg button[data-k="${k}"]`)) o.setAttribute("aria-pressed", String(o === b));
+      for (const c of cards.values()) { c.opts[k] = v; paintCard(c); }
+    });
+  }
+  for (const o of document.querySelectorAll('.controls .seg button[data-k="theme"]')) o.setAttribute("aria-pressed", String(o.dataset.v === global.theme));
+
+  let resizeT = 0;
+  window.addEventListener("resize", () => { clearTimeout(resizeT); resizeT = setTimeout(() => { for (const c of cards.values()) fitFrames(c); }, 120); });
+
+  renderIndex(); renderCounts(); renderStatusFilters(); renderAll();
+
+  // --- Live data: status, built screenshots, reviews and notes -------------------
+  (async () => {
+    if (!window.claude || typeof window.claude.use !== "function") return;
+    try { user = await window.claude.use("user"); } catch (e) { user = null; }
+    try { db = await window.claude.use("db"); } catch (e) { db = null; }
+    if (user) {
+      try { myId = await user.id(); } catch (e) { myId = null; }
+      try { canWrite = await user.can("data.write"); } catch (e) { canWrite = null; }
+    }
+    if (!db) return;
+    const resolveNames = async () => {
+      if (!user) return;
+      const ids = [...new Set(live.notes.map((n) => n.author).filter(Boolean))].filter((id) => !(id in names));
+      if (!ids.length) return;
+      try { const ps = await user.profiles(ids); for (const id of ids) names[id] = (ps[id] && ps[id].name) || ""; } catch (e) { /* names stay generic */ }
+    };
+    db.collection("screens").onSnapshot((snap) => {
+      const next = {};
+      for (const d of snap.docs) next[d.id] = d.data() || {};
+      live.screens = next;
+      renderIndex(); renderCounts(); applyFilter();
+      for (const c of cards.values()) { paintCard(c); paintCols(c); }
+    }, () => {});
+    db.collection("notes").onSnapshot(async (snap) => {
+      live.notes = snap.docs.map((d) => Object.assign({ id: d.id }, d.data() || {}));
+      await resolveNames();
+      renderCounts();
+      for (const c of cards.values()) paintNotes(c);
+    }, () => {});
+    for (const c of cards.values()) paintNotes(c);
+  })();
+})();
+</script>
