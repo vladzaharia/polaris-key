@@ -11924,16 +11924,22 @@ function balanceLast(lines3, width) {
     if (words(head).length === 0)
       return;
     if (widthOf(head) <= width && widthOf(tail) <= width && words(tail).length >= 2) {
+      while (head.length > 1 && SEPARATOR.test(head[head.length - 1].text))
+        head.pop();
       lines3[n - 2] = head;
       lines3[n - 1] = tail;
       return;
     }
   }
 }
+var SEPARATOR = /^\s*·\s*$/;
 function wrapPieces(spans, width, ellipsis) {
   const lines3 = [[]];
   let w = 0;
   const newLine = () => {
+    const last = lines3[lines3.length - 1];
+    while (last.length > 1 && SEPARATOR.test(last[last.length - 1].text))
+      last.pop();
     lines3.push([]);
     w = 0;
   };
