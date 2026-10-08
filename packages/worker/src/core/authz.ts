@@ -86,8 +86,6 @@ import { stmtRecordDeviceKeyEntry } from "./keyEntries.js";
 
 export type AuthzError =
   | { error: "unauthorized" }
-  /** SEC-LIC-1: the device id is held live by a licence the caller has not proven it controls. */
-  | { error: "device_conflict" }
   | { error: "device_limit"; limit: number; deviceCount: number }
   | { error: "fingerprint_required" }
   | {
@@ -414,8 +412,8 @@ export async function authorizeDevice(
   );
   // The conflict is not logged as a refusal of THIS licence: the row and the attempt are another
   // licence's business, and `reconcileDeviceHardware` has already audited it.
-  if ("error" in reconciled && reconciled.error === "device_conflict")
-    return reconciled;
+  if ("error" in reconciled && reconciled.error === "unauthorized")
+    return { error: "unauthorized" };
   if ("error" in reconciled) return refuse("hardware_mismatch", reconciled);
   const { isNewAuthorization } = reconciled;
   const adoptFrom =
@@ -490,7 +488,7 @@ export async function authorizeDevice(
         current.license_id !== license.id &&
         current.status === "authorized"
       )
-        return { error: "device_conflict" };
+        return { error: "unauthorized" };
       return refuse("device_limit", {
         error: "device_limit",
         limit,

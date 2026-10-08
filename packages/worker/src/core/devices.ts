@@ -160,7 +160,9 @@ export interface LicensedDeviceToken extends ValidDeviceToken {
  * Carries nothing: not who holds it, not which components differ (SEC-LIC-10).
  */
 export interface DeviceConflict {
-  error: "device_conflict";
+  error: "unauthorized";
+  /** Internal only: why. It never reaches the response, which is a plain `unauthorized`. */
+  heldBy: "another_licence";
 }
 
 export interface DeviceHardwareMismatch {
@@ -362,7 +364,7 @@ export async function reconcileDeviceHardware(
         summary:
           "A device id held by another licence was presented without proof of the machine; refused",
       });
-      return { error: "device_conflict" };
+      return { error: "unauthorized", heldBy: "another_licence" };
     }
   }
 
