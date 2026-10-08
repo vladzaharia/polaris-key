@@ -1652,7 +1652,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/P0-52-feed-coherence-atomic-lockstep-publishing.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "P1-01",
@@ -11578,7 +11578,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-46-node-library-0-8-x-one-error-taxonomy.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "SP-47",
@@ -11620,7 +11620,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-48-python-0-8-x-patch-fail-open-leak-and-error.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "SP-49",
@@ -11662,7 +11662,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-50-kotlin-0-8-x-hotfix-android-runtime.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "SP-51",
@@ -11683,7 +11683,7 @@
         "docs/research/2026-10-08-sdk-usability/findings.json"
       ],
       "brief": "wp/SP-51-kotlin-live-state-and-lifecycle.md",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "id": "SP-52",
