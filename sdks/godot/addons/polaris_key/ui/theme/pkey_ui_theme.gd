@@ -960,6 +960,8 @@ static func _apply_layout(t: Theme, unit: float, density: String, brand: bool) -
 	_pad(t, "panel", "PKeyBanner", roundf(roles["control_padding"] * unit), roundf(roles["banner_padding"] * unit))
 	var page_pad := roundf(roles["page_margin"] * unit)
 	_pad(t, "panel", "PKeyScrim", page_pad, page_pad)
+	# A sunken surface (a pane, a grouped list) keeps its content off its edge.
+	_pad(t, "panel", "PKeyRail", roundf(roles["control_padding"] * unit), roundf(roles["stack_gap"] * unit))
 	if brand:
 		var page := roundf(roles["page_margin"] * unit)
 		_pad(t, "panel", "PanelContainer", page, page)

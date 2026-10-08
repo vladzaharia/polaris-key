@@ -259,6 +259,8 @@ func _arrange(m: Dictionary) -> void:
 	offline_dialog.size_flags_vertical = fill
 	_main.size_flags_vertical = fill
 	_limit_box.size_flags_vertical = fill
+	_limit_cols.size_flags_vertical = fill
+	_limit_right.size_flags_vertical = Control.SIZE_EXPAND_FILL if phone_screen() else Control.SIZE_SHRINK_CENTER
 	var qr := qr_side(content_room().y * 0.45)
 	if squeeze_level() >= 1:
 		qr = maxf(roundf(qr * 0.7), QR_MIN_PHYSICAL / float(m["physical"]))

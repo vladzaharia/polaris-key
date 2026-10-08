@@ -115,5 +115,7 @@ func _arrange(m: Dictionary) -> void:
 			sum += (ch as Control).get_combined_minimum_size().x
 			count += 1
 	sum += maxf(0.0, count - 1.0) * gap
-	var room: float = (m["room"] as Vector2).x - 2.0 * gutter() - side_padding(self)
+	var room: float = (m["room"] as Vector2).x - 2.0 * maxf(GUTTER, gutter()) - side_padding(self)
 	_chips.custom_minimum_size.x = minf(sum, maxf(room, 0.0))
+	# The row is as wide as its chips (wrapping at the room), centred in a strip across the width.
+	_chips.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

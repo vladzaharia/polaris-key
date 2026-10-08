@@ -341,6 +341,7 @@ func _row_nodes(group: Node, r: Dictionary) -> Dictionary:
 	var lock_row := hbox(text, "Locked")
 	var lock := glyph_node(lock_row, "Lock", "lock")
 	var set_by := label(lock_row, "SetBy", "PKeyMuted", true)
+	set_by.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var control := vbox(row, "Control", "PKeyTight")
 	control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var line := hbox(control, "Line")
@@ -365,6 +366,7 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 		l.theme_type_variation = &"PKeyStrong"
 		l.set_meta(DATA_META, true)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		ctl = l
 		ctl.name = "Input"
 		ctl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED

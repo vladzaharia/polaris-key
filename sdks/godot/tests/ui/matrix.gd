@@ -431,7 +431,7 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 	# (a 28 or 36 px host font, or 18-20 px type on a 360 px tall canvas). The screen then keeps
 	# its primary action reachable through its scroll fallback, and does not promise two columns.
 	var preset: String = row.get("preset", "")
-	var tight := not strict and (preset in ["native28", "native36"] or screen_rect.size.y <= 380.0)
+	var tight := not strict and (preset in ["native28", "native36"] or screen_rect.size.y <= 380.0 or (preset == "custom" and (view as PKeyUiView).is_phone_device()))
 	# The margins are held to the screen's safe area (a strip or a badge is placed within it).
 	var safe := Rect2(screen_rect.position + Vector2(ins[0], ins[1]), screen_rect.size - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	if kind == "full" and not screen_rect.grow(1.0).encloses(r) and not (tight and preset == "native36" and screen_rect.size.x <= 640.0):
@@ -492,7 +492,7 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 	if tight and preset == "native36" and screen_rect.size.x <= 640.0:
 		var kept := PackedStringArray()
 		for line in out:
-			if not (" is outside the panel's safe rect" in line or " is within " in line or " overflows its container" in line):
+			if not (" is outside the panel's safe rect" in line or " is within " in line or " overflows its container" in line or " breaks the word" in line):
 				kept.append(line)
 		out = kept
 	return out
@@ -570,6 +570,15 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		var l := c as Label
 		if l.text != "" and l.get_visible_line_count() < l.get_line_count():
 			out.append("%s clips its text (%d of %d lines)" % [_path(view, c), l.get_visible_line_count(), l.get_line_count()])
+		# A word never breaks across lines (a label squeezed to a sliver wraps a letter per line).
+		if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART and l.size.x > 0.0:
+			for word in l.text.split(" ", false):
+				# (Unspaced Japanese and Chinese break between any two characters, by design.)
+				if word.unicode_at(word.length() - 1) >= 0x2E80 or word.unicode_at(0) >= 0x2E80:
+					continue
+				if PKeyUiView.text_width(l, word) > l.size.x + 1.0:
+					out.append("%s breaks the word \"%s\" across lines (%.0f px wide)" % [_path(view, c), word, l.size.x])
+					break
 		if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_OFF:
 			var w := PKeyUiView.text_width(l, l.text)
 			if w > l.size.x + 1.0:

@@ -301,7 +301,7 @@ func _arrange(m: Dictionary) -> void:
 	_actions.set_meta(&"pkey_align", BoxContainer.ALIGNMENT_CENTER if centred else BoxContainer.ALIGNMENT_BEGIN)
 	_product.centered = centred
 	_title_row.alignment = BoxContainer.ALIGNMENT_CENTER if centred else BoxContainer.ALIGNMENT_BEGIN
-	_title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if centred else Control.SIZE_EXPAND_FILL
+	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_glyph(_glyph, 24.0, get_theme_color("font_color", "PKeyWarning"))
 	var ink := get_theme_font_size("font_size", "PKeyStrong") if has_theme_font_size("font_size", "PKeyStrong") else 0
 	_avatar.custom_minimum_size = Vector2.ONE * roundf(role("control_height") * 0.8)

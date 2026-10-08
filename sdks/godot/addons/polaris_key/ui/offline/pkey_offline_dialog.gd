@@ -186,7 +186,7 @@ func _arrange(m: Dictionary) -> void:
 	# The product's name leads; it is the screen's name for the product, never a slug.
 	_product.centered = false
 	# The QR code at a scannable size where the screen has the height for it, else not at all.
-	var want := _device_id() != "" and not _qr.encode_failed
+	var want := _device_id() != "" and not _qr.encode_failed and not is_phone_device()
 	_qr.visible = want
 	_qr.get_parent().visible = want
 	if want:

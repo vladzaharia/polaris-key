@@ -186,6 +186,8 @@ func _arrange(m: Dictionary) -> void:
 	set_columns(_split, two)
 	_split.size_flags_vertical = Control.SIZE_EXPAND_FILL if bleed else Control.SIZE_FILL
 	_pane.visible = (_product.visible or _head.visible) and not _activation_owns_screen()
+	# The last squeeze step drops the secondary line (the version range, say) before any scrolling.
+	_detail.visible = _detail.text != "" and squeeze_level() < 3
 	if two:
 		if _pane.has_theme_stylebox_override("panel"):
 			_pane.remove_theme_stylebox_override("panel")

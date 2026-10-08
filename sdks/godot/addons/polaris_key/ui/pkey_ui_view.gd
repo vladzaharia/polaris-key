@@ -1083,11 +1083,12 @@ func _style_card() -> void:
 		# Full-bleed: the page is the card, at the page margin from the (safe) edges.
 		var pad := maxf(0.0, role("page_margin") - side_padding(outer_view()) / 2.0)
 		var e := _card_box.get_theme_stylebox("panel") as StyleBoxEmpty if _card_box.has_theme_stylebox_override("panel") else null
-		if e == null or not is_equal_approx(e.content_margin_left, pad) or not is_equal_approx(e.content_margin_top, pad):
+		if e == null or not is_equal_approx(e.content_margin_left, pad) or not is_equal_approx(e.content_margin_top, pad) or not is_equal_approx(e.content_margin_bottom, pad):
 			var box := StyleBoxEmpty.new()
 			box.content_margin_left = pad
 			box.content_margin_right = pad
 			box.content_margin_top = pad
+			box.content_margin_bottom = pad
 			_card_box.add_theme_stylebox_override("panel", box)
 	elif _card_shown():
 		if _card_box.has_theme_stylebox_override("panel"):
