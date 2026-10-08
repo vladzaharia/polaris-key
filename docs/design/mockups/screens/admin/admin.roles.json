@@ -13,14 +13,14 @@
   "summary": "Members → Roles: the four built-in roles as cards (what each covers, who can give it, how many people hold it) and the read-only role × area matrix generated from the route table, product areas first with their stable ids, then the platform pages.",
   "compare": [
     "Exactly four role cards in this order: Superadmin, Platform admin, Product admin, Console access. No Product editor, Product viewer or custom role, and no 'Create role' button.",
-    "Each card says what the role covers in one or two sentences, then a footer: who can give it (Superadmin; or that product's admin for Product admin; or a Platform admin for Console access) and, on its own line, how many people hold it now. The footers' dividers line up across the four cards.",
+    "Each card says what the role covers in one or two sentences, then a footer: who can give it and, on its own line, how many people hold it now. The footers' dividers and their first lines line up across the four cards.",
     "The matrix is read-only and says it is generated from the route table; the built page must be produced by the same generator the docs' roles page uses, with a drift gate.",
-    "Product rows list the ten areas in order with their stable ids in mono (core, license, config, ship, signin, sync, commerce, keys, settings, members) and the service glyph for the six features; Core, Keys, Settings and Members carry a one-line list of what they cover.",
+    "Product rows list the ten areas in order with the service glyph for the six features (no ids shown); Core, Keys, Settings and Members carry a one-line list of what they cover.",
     "Platform admin sees other products by name and status on Home only; every other product cell for Platform admin is a dash.",
-    "Members (product) for Product admin reads 'Gives Product admin of its product, up to its own areas' (no escalation).",
+    "Members (product) for Product admin reads 'Invite', and its footnote says it gives Product admin of its product, up to its own areas (no escalation).",
     "Platform rows: Members and SSO rules, Connections, Platform settings, Packages and Status, New products (a Platform admin who creates one becomes its admin), Docs (every member; operator pages for Superadmin and Platform admin only).",
-    "Healthy cells use the green status check with a verb (Manage, Create, Everything), partial cells are muted text, and none is a subtle dash; no pills in the matrix.",
-    "Phone: the four cards stack; above the matrix a segmented control picks one role (Superadmin, Platform, Product, Console) and the matrix shows the Area column (60%, names wrap beside their icon) plus that role's column only, with the area ids and the header glyphs hidden. The matrix fits its card at 390 and 360 px."
+    "A healthy cell is a green tick alone (Manage, named in the legend); exceptions are words (Create, Invite, Name only, Most) explained in one footnote list; none is a subtle dash for a granted right; no pills in the matrix.",
+    "Phone: the four roles are a 2x2 grid of tiles (full names, people count); the picked tile switches the matrix column and shows its words under the tiles. The matrix shows the Area column plus that role's column only."
   ],
   "status": "mockup",
   "designReview": {
@@ -43,6 +43,79 @@
         "severity": "minor",
         "issue": "The phone switch reads 'Super', which isn't a role name.",
         "resolution": "The switch reads Superadmin, Platform, Product, Console, and fits at 360."
+      },
+      {
+        "severity": "major",
+        "issue": "A Members action (Invite people) sat on the read-only Roles tab and pushed content down on phone.",
+        "resolution": "Each tab shows only its own action: Members 'Invite people', SSO rules 'Add rule', Roles none.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Four stacked role cards took 600px before the matrix on phone, tablet cells wrapped to 3-4 lines, and card footers were misaligned by about 8px.",
+        "resolution": "Phone shows a 2x2 grid of compact role tiles (full names) that pick the matrix column, with the picked role's words under them; prose cells became short labels (Name only, Invite, Create, Most) with the detail in one footnote list; footer words start on one line across cards.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The mono slugs restated the names, Manage appeared 22 to 30 times, and the subtitle and footnote narrated the table.",
+        "resolution": "Slugs removed; Manage is a tick alone with 'Manage' in a legend; words only for exceptions; the Area column is fixed (380px from 1280px, 300px below) and the role columns are equal with centred marks; subtitle 'A person's roles add up'; the footnote repeating the Product admin card is deleted.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
+        "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
+        "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
+        "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Date and glossary rules belong to the copy rules and the consolidation plan, not to a spacing pass.",
+        "resolution": "declined: Rewrite dates to 'relative within 7 days, else Oct 6, year only when not current' and add the 'Product admin = one product or all' glossary note.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2"
+        ]
       }
     ]
   }

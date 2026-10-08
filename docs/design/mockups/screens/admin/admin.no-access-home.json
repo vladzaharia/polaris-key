@@ -14,11 +14,11 @@
   "summary": "Home for a member whose only role is Console access: Noor joined through the email-domain rule for studio.example.com. The page says she's in but has nothing yet, names the people who can give her a role with copyable emails, and points to her library and the docs.",
   "compare": [
     "The Platform context shows Home only, with 'No products shared yet' under the context name and no switcher chevrons; Members, Connections, Settings, Packages, Status and Activity are absent, not disabled.",
-    "The title is exactly 'You're in. Ask an administrator for access.' and the lead says nothing has been shared yet and that a new role appears the next time she opens the console.",
+    "The title is exactly 'You don't have access to any product yet' and the lead is 'Ask one of these people to add you'.",
     "The facts line shows her email, the Console access role tag and where it came from (the rule for addresses at studio.example.com).",
     "'Who can give you access' lists up to three Superadmins (who can give any role) with role and a copyable email. Platform admins are left out: they can't give a product role to someone else, and naming the products they admin would reveal product names. No product names or product admins are shown to a member without a product role, and there is no Request access button.",
-    "Two tiles offer real next steps, and each whole tile is the link (arrow beside the title, hover border and shadow, focus ring): Your library (the same account's licenses, downloads and devices) and Docs (any console member can read them, operator pages excepted).",
-    "'Signed in with the wrong account?' is plain text followed by the link 'Use another account'.",
+    "One tile offers the real next step, and the whole tile is the link (arrow beside the title, hover border and shadow, focus ring): Your library (the same account's licenses, downloads and devices). The top bar already holds Docs.",
+    "'Use another account' is a quiet link beside the email in the signed-in line.",
     "Phone: the menu button replaces the sidebar, the helpers stack with the email under the name, and the two tiles stack."
   ],
   "status": "mockup",
@@ -42,6 +42,49 @@
         "severity": "minor",
         "issue": "The two tiles' actions are small text links at the bottom of large cards.",
         "resolution": "Each tile is one link (a.card) with the arrow beside its title, a hover border and shadow, and a focus-visible ring."
+      },
+      {
+        "severity": "major",
+        "issue": "The empty state was said three times; the left card was 207px against 327px on the right with a floating footer line.",
+        "resolution": "Title 'You don't have access to any product yet' with the subtitle 'Ask one of these people to add you'; the Docs tile is removed; 'Your library' stays as the one secondary action; 'Use another account' sits beside the email; one balanced 8/4 grid with equal-height cards and no orphan line.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
+        "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
+        "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
+        "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
       }
     ]
   }

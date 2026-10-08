@@ -15,17 +15,17 @@
   "summary": "pkey login end to end: the terminal opens the browser and shows a code, the console's sign-in card asks Priya to approve the CLI with her passkey, and the terminal then holds a 30-day admin-scope personal token in the keychain that can do only what her roles allow. A Diceroll command is refused by name, PKEY_ADMIN_COOKIE is refused with the fix, and package managers get a separate packages-only token.",
   "compare": [
     "pkey login prints the console context (Polaris Key console · key.plrs.im), opens the browser, prints the fallback link, and shows the code in reverse video with the keys Enter (open again), c (copy the code) and Esc (cancel); the spinner is the braille one on stderr.",
-    "The browser page is the shared sign-in card (AuthCard) in console context: 'Let pkey sign in as you?' with the machine line under it (priyas-macbook-pro, macOS, just now), the code panel 'Check this matches your terminal', the roles the token will be bounded by as role tags, the 30-day end date and that it can't install packages.",
+    "The browser page is the shared sign-in card (AuthCard) in console context: 'Let pkey sign in as you?' with the machine line under it, the code panel 'Check this matches your terminal', the roles the token will be bounded by as role tags, the end date once ('Ends Nov 6') and that it can't install packages.",
     "Approval needs a fresh strong sign-in: the button is 'Approve with your passkey' even when the console is already open (step-up to mint). A session signed in with an email code only gets 'Sign in with your passkey to approve' and no Approve button until then (Other states).",
     "After approval the terminal prints '✓ Signed in as <name> (<email>)', then Roles, Token (pkeyp_…, admin, end date) and where it is saved (macOS Keychain; Windows Credential Manager or the Secret Service on Linux), then that the token follows the roles and how to end it.",
     "A command outside the roles fails with '✗ You don't have access to <product> → <area>.', the current roles and the people to ask, one per line with email and role (Kenji Mori, then the Superadmins), the same list as the console's no-access page.",
     "Setting PKEY_ADMIN_COOKIE fails with what changed and the fix (run pkey login once); there is no deprecation warning or fallback in 0.9.",
     "pkey feeds setup --write makes its own packages:read token and writes package-manager files; the admin token is never written to a file, and a token is never both admin and packages.",
     "pkey whoami shows the person, the roles and the token's end date; pkey logout ends the token on the server and removes it from the keychain.",
-    "The other endings are drawn under Other states: Approved (the browser says 'Signed in. Go back to your terminal.'), Cancelled (the browser says nothing was approved; the terminal prints '✗ Sign-in was cancelled in the browser.' and to run pkey login again), Expired (the terminal names the code and says to run pkey login for a new one).",
+    "The other endings are drawn: Approved (the browser says 'Signed in. Go back to your terminal.', beside terminal 3), and under Other states Cancelled, Expired and Email code only.",
     "Over SSH or with no browser, the terminal skips the browser and says to enter the code at key.plrs.im/manage/device on another device; --json prints one object per state and never prompts; CI uses a service token instead.",
     "Every line fits 80 columns; colours are the ANSI roles (pkey has no product accent, so emphasis is bold, not cyan text) and ✓ ✗ fall back to ASCII under TERM=dumb.",
-    "Phone and tablet: one column in the order things happen (waiting, approve, signed in, the rest, notes), then the other states in one column; the terminals scroll sideways inside their frames."
+    "Landscape (tablet and up): two rows of two equal frames in order (terminal 1 and the approval page, terminal 3 and the approved page), then the related commands, then the three notes as a strip, then Other states in equal columns. Phone: one column in that order; terminal lines scroll sideways inside their frames."
   ],
   "status": "mockup",
   "designReview": {
@@ -48,6 +48,81 @@
         "severity": "minor",
         "issue": "The refusal names only Kenji Mori, while the no-access page shows up to three people.",
         "resolution": "The terminal now lists Kenji Mori, Ada Lindqvist and Jonas Weber, one per line with email and role, inside 80 columns."
+      },
+      {
+        "severity": "major",
+        "issue": "At desktop the reading order across columns was 1, 3, 2, 4 with a 60px stagger and a third column that floated alone on wide.",
+        "resolution": "A strict two-up story: terminal 1 beside browser 2, terminal 3 beside the Approved browser, equal height; step 4's old-cookie terminal and the unrelated commands from step 3 sit in an open 'Related commands' block; 'How it behaves' is a full-width three-bullet strip; Other states use equal columns.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The subtitle restated the title, the end date appeared four times, wrapped terminal text lost its columns, and captions cross-referenced.",
+        "resolution": "Page subtitle deleted; 'Ends Nov 6' shows once, in the browser card; cross-reference captions deleted; the approved page reads 'Signed in' with 'Go back to your terminal'; terminal frames scroll sideways on phone with tabindex, role=region and an aria-label at 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
+        "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
+        "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Other states left 120 to 700px of dead space beside shorter cards, and the captions narrated layout.",
+        "resolution": "Other states sit on one equal-width grid (3 columns from desktop, 2 on tablet, 1 on phone) with the page's card primitive; captions name the state and its trigger.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Add new frames for 'Not you?', a denied approval, lost connection and SSH.",
+        "resolution": "declined: They are new states. This pass keeps the content and states as they are.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      },
+      {
+        "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
+        "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
       }
     ]
   }

@@ -1,312 +1,131 @@
 <style>
-  /* admin.cli-login: pkey login end to end — the terminal, the approval in the browser, then use. */
-  [data-screen="admin.cli-login"] .lay {
-    flex-basis: 100%;
+  /* admin.cli-login: no spacing of its own. Two rows of two equal frames in the order things happen; the
+     related commands and the notes follow full width; Other states are equal columns. */
+  [data-screen="admin.cli-login"] .states-grid3 {
     display: grid;
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: 32px 40px;
-    align-items: start;
-    min-width: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: var(--sp-6);
   }
-  [data-screen="admin.cli-login"] .col {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-    min-width: 0;
+  [data-screen="admin.cli-login"] .states-grid3 > .board-item > :first-child {
+    flex: 1 1 auto;
   }
-  [data-screen="admin.cli-login"] .board-item {
-    width: 100%;
+  [data-screen="admin.cli-login"] .states-grid3 .mk-stack-3 {
+    height: 100%;
   }
-  [data-screen="admin.cli-login"] .term {
-    width: 100%;
+  [data-screen="admin.cli-login"] .states-grid3 .mk-stack-3 > .term {
+    flex: 1 1 auto;
   }
-  [data-screen="admin.cli-login"] .step-no {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    margin-right: 8px;
-    border-radius: 50%;
-    background: var(--pk-accent);
-    color: var(--pk-accent-on);
-    font-size: 12px;
-    font-weight: 700;
-    vertical-align: 1px;
-  }
-
-  /* The approval page in the browser: the shared sign-in card in console context. */
-  [data-screen="admin.cli-login"] .browser-body {
-    display: flex;
-    justify-content: center;
-    padding: 32px 20px 36px;
-    background: var(--pk-surface-page);
-  }
-  [data-screen="admin.cli-login"] .auth {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    width: 100%;
-    max-width: 400px;
-    padding: 24px;
-    border: 1px solid var(--mk-line);
-    border-radius: var(--pk-radius-xl);
-    background: var(--pk-surface-raised);
-    box-shadow: var(--mk-card-shadow);
-  }
-  [data-screen="admin.cli-login"] .auth-ctx {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.cli-login"] .auth-ctx b {
-    color: var(--pk-text-strong);
-  }
-  [data-screen="admin.cli-login"] .app-req {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-  [data-screen="admin.cli-login"] .app-icon {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 13px;
-    background: var(--mk-term-bg);
-    color: var(--mk-term-green);
-    box-shadow: inset 0 0 0 1px var(--mk-term-border);
-  }
-  [data-screen="admin.cli-login"] .app-req h2 {
-    font-size: 18px;
-    line-height: 24px;
-    font-weight: 700;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="admin.cli-login"] .app-req p {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.cli-login"] .code-panel {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: var(--pk-surface-sunken);
-    border: 1px solid var(--mk-line);
-  }
-  [data-screen="admin.cli-login"] .code-panel .small {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.cli-login"] .code-panel .mono {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--pk-text-strong);
-    white-space: nowrap;
-  }
-  [data-screen="admin.cli-login"] .roles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  [data-screen="admin.cli-login"] .role {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 24px;
-    padding: 0 9px 0 4px;
-    border: 1px solid var(--mk-line);
-    border-radius: 999px;
-    background: var(--pk-surface-sunken);
-    color: var(--pk-text-default);
-    font-size: 12px;
-    white-space: nowrap;
-  }
-  [data-screen="admin.cli-login"] .role > .logo.xs {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-  }
-  [data-screen="admin.cli-login"] .role > .ic {
-    width: 14px;
-    height: 14px;
-    margin-left: 2px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.cli-login"] .grants {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="admin.cli-login"] .grants li {
-    display: flex;
-    gap: 8px;
-  }
-  [data-screen="admin.cli-login"] .grants .ic {
-    margin-top: 2px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="admin.cli-login"] .person {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding-top: 14px;
-    border-top: 1px solid var(--mk-line);
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.cli-login"] .person b {
-    display: block;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="admin.cli-login"] .person .link {
-    margin-left: auto;
-    font-size: 13px;
-  }
-  [data-screen="admin.cli-login"] .notes {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  [data-screen="admin.cli-login"] .note {
-    display: flex;
-    gap: 10px;
-    font-size: 13px;
-    line-height: 19px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.cli-login"] .note > .ic {
-    margin-top: 2px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="admin.cli-login"] .note b {
-    color: var(--pk-text-strong);
-  }
-  @container screen (max-width: 1023px) {
-    /* One column, in the order things happen: waiting, approve, signed in, the rest, notes. */
-    [data-screen="admin.cli-login"] .lay {
-      display: flex;
-      flex-direction: column;
-      gap: 32px;
+  @container screen (max-width: 1279px) {
+    [data-screen="admin.cli-login"] .states-grid3 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    [data-screen="admin.cli-login"] .col {
-      display: contents;
-    }
-    [data-screen="admin.cli-login"] .o1 { order: 1; }
-    [data-screen="admin.cli-login"] .o2 { order: 2; }
-    [data-screen="admin.cli-login"] .o3 { order: 3; }
-    [data-screen="admin.cli-login"] .o4 { order: 4; }
-    [data-screen="admin.cli-login"] .o5 { order: 5; }
   }
   @container screen (max-width: 639px) {
-    [data-screen="admin.cli-login"] .term-body {
-      font-size: 11px;
-      line-height: 17px;
-    }
-    [data-screen="admin.cli-login"] .browser-body {
-      padding: 16px 12px 20px;
-    }
-    [data-screen="admin.cli-login"] .auth {
-      padding: 18px;
-    }
-    [data-screen="admin.cli-login"] .url {
-      font-size: 12px;
-    }
-  }
-  /* Other states: the browser and terminal after approve, cancel, expiry and a weak sign-in. */
-  [data-screen="admin.cli-login"] .states-title {
-    margin-top: 16px;
-    padding-top: 40px;
-    border-top: 1px dashed var(--pk-border-strong);
-  }
-  [data-screen="admin.cli-login"] .states-grid {
-    flex-basis: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 32px 40px;
-    align-items: start;
-    min-width: 0;
-  }
-  [data-screen="admin.cli-login"] .pair {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    min-width: 0;
-  }
-  [data-screen="admin.cli-login"] .auth.sm {
-    gap: 14px;
-    padding: 20px;
-  }
-  [data-screen="admin.cli-login"] .done-mark {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 13px;
-    background: var(--pk-success-subtle);
-    color: var(--pk-success);
-  }
-  [data-screen="admin.cli-login"] .done-mark.muted {
-    background: var(--mk-fill);
-    color: var(--pk-text-muted);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="admin.cli-login"] .states-grid {
+    [data-screen="admin.cli-login"] .states-grid3 {
       grid-template-columns: minmax(0, 1fr);
     }
   }
 </style>
 
 <div class="board" data-service="core">
-  <div class="board-title">
-    <h1><code>pkey login</code></h1>
-    <p>The CLI signs in to the console with a personal token that has the admin scope. You approve it in the browser with your passkey; the token can never do more than your roles allow, lasts 30 days and lives in the system keychain. <code>PKEY_ADMIN_COOKIE</code> is gone.</p>
-  </div>
+  <div class="board-page cap-form">
+    <header class="board-head">
+      <h1>pkey login</h1>
+    </header>
 
-  <div class="lay">
-    <div class="col">
-      <figure class="board-item o1">
+    <!-- The device-code story: the terminal and the browser side by side, in order. -->
+    <div class="story">
+      <figure class="board-item">
         <div class="term">
           <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
-<pre class="term-body"><span class="c-prompt">❯</span> pkey login
+<pre class="term-body scroll-x" tabindex="0" role="region" aria-label="Terminal output, step 1"><span class="c-prompt">❯</span> pkey login
 <span class="c-b">Polaris Key console</span> <span class="c-dim">· key.plrs.im</span>
 
 Opening Polaris Key in your browser…
-<span class="c-dim">If it didn’t open, go to</span> <span class="c-u">https://key.plrs.im/manage/device</span>
+<span class="c-dim">Didn’t open? Go to</span> <span class="c-u">https://key.plrs.im/manage/device</span>
 
 Check that the browser shows this code:  <span class="c-chip">QXKM-TPRW</span>
 
 <span class="c-accent">⠹</span> Waiting for you to approve in the browser
   <span class="c-dim">Enter open again · c copy the code · Esc cancel</span></pre>
         </div>
-        <figcaption><span class="step-no">1</span><strong>Waiting.</strong>The code ties this terminal to the approval in the browser.</figcaption>
+        <figcaption><strong>1 · Waiting.</strong>The code ties this terminal to the browser.</figcaption>
       </figure>
 
-      <figure class="board-item o3">
+      <figure class="board-item">
+        <div class="browser">
+          <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/manage/device</span></div>
+          <div class="hosted framed">
+            <div class="hosted-brand"><i class="pk-mark sm"></i>Polaris Key</div>
+            <main class="hosted-card">
+              <header class="hosted-head">
+                <span class="icon-tile lg"><i class="ic ic-square-terminal"></i></span>
+                <div class="grow"><div class="hosted-title">Let <strong>pkey</strong> sign in as you?</div><div class="hosted-sub">priyas-macbook-pro · macOS · just now</div></div>
+              </header>
+              <div class="hosted-body">
+                <div class="match-code"><span>Check this matches your terminal</span><strong>QXKM-TPRW</strong></div>
+                <div class="mk-stack-2">
+                  <span class="type-small muted">Limited to your roles</span>
+                  <span class="role-tags flow"><span class="role-tag"><i class="ic ic-shield"></i>Platform admin</span><span class="role-tag"><span class="logo xs" data-product="djdl"></span>DJDL admin</span></span>
+                </div>
+                <div class="mk-stack-2">
+                  <p class="hosted-note"><i class="ic ic-calendar-clock"></i><span>Ends Nov 6</span></p>
+                  <p class="hosted-note"><i class="ic ic-ban"></i><span>Can’t install packages</span></p>
+                </div>
+                <div class="hosted-actions">
+                  <button class="btn primary block"><i class="ic ic-fingerprint"></i>Approve with your passkey</button>
+                  <button class="btn ghost block">Cancel</button>
+                </div>
+                <div class="person-row"><span class="avatar">PR</span><span class="person-row-text"><strong>Priya Raman</strong><span>priya@example.com</span></span><a class="link" href="#">Not you?</a></div>
+              </div>
+            </main>
+          </div>
+        </div>
+        <figcaption><strong>2 · Approve.</strong>A fresh passkey check, even with the console already open.</figcaption>
+      </figure>
+
+      <figure class="board-item">
         <div class="term">
           <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
-<pre class="term-body"><span class="c-ok">✓</span> Signed in as <span class="c-b">Priya Raman</span> (priya@example.com)
+<pre class="term-body scroll-x" tabindex="0" role="region" aria-label="Terminal output, step 3"><span class="c-ok">✓</span> Signed in as <span class="c-b">Priya Raman</span> (priya@example.com)
 
   <span class="c-dim">Roles   </span>  Platform admin, DJDL admin
-  <span class="c-dim">Token   </span>  pkeyp_…h7Q2 · admin · ends Nov 6, 2026
+  <span class="c-dim">Token   </span>  pkeyp_…h7Q2 · admin
   <span class="c-dim">Saved in</span>  macOS Keychain, “Polaris Key CLI (key.plrs.im)”
 
-  The token follows your roles: when they change, so does what it can do.
-  Run <span class="c-b">pkey logout</span> to end it now.
+  It follows your roles. Run <span class="c-b">pkey logout</span> to end it.
 
-<span class="c-prompt">❯</span> pkey bundle --product djdl --device dev_4F2K9QX --grace-days 30
+<span class="c-prompt">❯</span> <span class="cursor"></span></pre>
+        </div>
+        <figcaption><strong>3 · Signed in.</strong>The terminal after Approve.</figcaption>
+      </figure>
+
+      <figure class="board-item">
+        <div class="browser">
+          <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/manage/device</span></div>
+          <div class="hosted framed">
+            <div class="hosted-brand"><i class="pk-mark sm"></i>Polaris Key</div>
+            <main class="hosted-card">
+              <div class="hosted-body">
+                <i class="ic ic-circle-check-big xxl text-success"></i>
+                <h1>Signed in</h1>
+                <p>Go back to your terminal</p>
+              </div>
+            </main>
+          </div>
+        </div>
+        <figcaption><strong>4 · Approved.</strong>The browser after Approve.</figcaption>
+      </figure>
+    </div>
+
+    <section class="section gap-6 related" aria-labelledby="related-title">
+      <div class="related-head"><i class="ic ic-chevron-down"></i><h2 id="related-title" class="type-card">Related commands</h2></div>
+      <div class="related-grid">
+        <figure class="board-item">
+        <div class="term">
+          <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
+<pre class="term-body scroll-x" tabindex="0" role="region" aria-label="Terminal output, related commands"><span class="c-prompt">❯</span> pkey bundle --product djdl --device dev_4F2K9QX --grace-days 30
 <span class="c-ok">✓</span> Wrote djdl-dev_4F2K9QX.pkey-bundle <span class="c-dim">(license and config, 30 days offline)</span>
 
 <span class="c-prompt">❯</span> pkey listing import --godot ./diceroll --product diceroll
@@ -318,19 +137,16 @@ Check that the browser shows this code:  <span class="c-chip">QXKM-TPRW</span>
 
 <span class="c-prompt">❯</span> pkey whoami
 Priya Raman (priya@example.com) <span class="c-dim">on key.plrs.im</span>
-Platform admin, DJDL admin <span class="c-dim">· pkeyp_…h7Q2, ends Nov 6, 2026</span>
-
-<span class="c-prompt">❯</span> <span class="cursor"></span></pre>
+Platform admin, DJDL admin <span class="c-dim">· pkeyp_…h7Q2</span></pre>
         </div>
-        <figcaption><span class="step-no">3</span><strong>Signed in.</strong>DJDL work runs; a Diceroll command is refused by name, with the same people the console’s no-access page lists.</figcaption>
-      </figure>
-
-      <figure class="board-item o4">
+        <figcaption><strong>Bundle, a refusal and whoami.</strong>DJDL work runs; Diceroll is refused with the people to ask.</figcaption>
+        </figure>
+        <figure class="board-item">
         <div class="term">
           <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
-<pre class="term-body"><span class="c-prompt">❯</span> PKEY_ADMIN_COOKIE=… pkey bundle --product djdl --device dev_4F2K9QX
+<pre class="term-body scroll-x" tabindex="0" role="region" aria-label="Terminal output, old cookie, package managers, sign out"><span class="c-prompt">❯</span> PKEY_ADMIN_COOKIE=… pkey bundle --product djdl --device dev_4F2K9QX
 <span class="c-err">✗</span> PKEY_ADMIN_COOKIE isn’t used any more.
-  Run <span class="c-b">pkey login</span> once; commands then use the token in your keychain.
+  Run <span class="c-b">pkey login</span> once; commands then use your keychain.
 
 <span class="c-prompt">❯</span> pkey feeds setup --write
 <span class="c-ok">✓</span> Made a packages-only token <span class="c-dim">(pkeyp_…9LcD, packages:read)</span>
@@ -340,131 +156,85 @@ Platform admin, DJDL admin <span class="c-dim">· pkeyp_…h7Q2, ends Nov 6, 202
 <span class="c-prompt">❯</span> pkey logout
 <span class="c-ok">✓</span> Signed out. Ended pkeyp_…h7Q2 and removed it from the keychain.</pre>
         </div>
-        <figcaption><span class="step-no">4</span><strong>Old cookie, package managers, sign out.</strong>Admin and packages tokens never mix.</figcaption>
-      </figure>
-    </div>
-
-    <div class="col">
-      <figure class="board-item o2">
-        <div class="browser">
-          <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/manage/device</span></div>
-          <div class="browser-body">
-            <div class="auth">
-              <div class="auth-ctx"><i class="pk-mark sm"></i><span><b>Polaris Key</b> console</span></div>
-              <div class="app-req">
-                <span class="app-icon"><i class="ic ic-square-terminal xl"></i></span>
-                <div><h2>Let pkey sign in as you?</h2><p>From priyas-macbook-pro, macOS · just now</p></div>
-              </div>
-              <div class="code-panel"><span class="small">Check this matches your terminal</span><span class="mono">QXKM-TPRW</span></div>
-              <div class="stack gap-2">
-                <span class="small muted">It can do what your roles allow, and nothing more</span>
-                <div class="roles">
-                  <span class="role"><i class="ic ic-shield"></i>Platform admin</span>
-                  <span class="role"><span class="logo xs" data-product="djdl"></span>DJDL admin</span>
-                </div>
-              </div>
-              <ul class="grants">
-                <li><i class="ic ic-calendar-clock"></i><span>Ends <b>Nov 6, 2026</b>, in 30 days. End it sooner in Personal tokens or with <span class="mono">pkey logout</span>.</span></li>
-                <li><i class="ic ic-ban"></i><span>Can’t install packages. Package managers get their own token.</span></li>
-              </ul>
-              <button class="btn primary block"><i class="ic ic-fingerprint"></i>Approve with your passkey</button>
-              <button class="btn ghost block">Cancel</button>
-              <div class="person"><span class="avatar sm">PR</span><div><b>Priya Raman</b>priya@example.com</div><a class="link" href="#">Not you?</a></div>
-            </div>
-          </div>
-        </div>
-        <figcaption><span class="step-no">2</span><strong>Approve.</strong>A fresh passkey check mints the token, even when the console is already open.</figcaption>
-      </figure>
-
-      <div class="notes o5">
-        <p class="eyebrow">What stays true</p>
-        <div class="note"><i class="ic ic-shield-check"></i><span>The admin API checks the token against <b>Priya’s roles at each call</b>, so removing a role takes effect on the token too.</span></div>
-        <div class="note"><i class="ic ic-key-round"></i><span>A token is <b>admin or packages-only, never both</b>: the package registry refuses admin tokens and the admin API refuses packages tokens.</span></div>
-        <div class="note"><i class="ic ic-server"></i><span><b>No browser here</b> (SSH, CI): the terminal says so and shows only the code to enter at key.plrs.im/manage/device on another device. CI uses a service token, not <span class="mono">pkey login</span>.</span></div>
-        <div class="note"><i class="ic ic-code-xml"></i><span><span class="mono">--json</span> prints one object per state (<span class="mono">pending</span>, then <span class="mono">signedIn</span> or <span class="mono">cancelled</span>) and never prompts.</span></div>
+      
+        <figcaption><strong>Old cookie, package managers, sign out.</strong></figcaption>
+        </figure>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <div class="board-title states-title">
-    <h1>Other states</h1>
-    <p>For checking the built flow: what the browser and the terminal show when the approval ends some other way.</p>
-  </div>
+    <section class="strip-3" aria-labelledby="behaves-title">
+      <h2 id="behaves-title" class="sr-only">How it behaves</h2>
+      <p class="board-note"><i class="ic ic-key-round"></i><span>A token is admin or packages-only, never both: each API refuses the other kind.</span></p>
+      <p class="board-note"><i class="ic ic-server"></i><span>No browser (SSH): the terminal shows only the code, to enter at key.plrs.im/manage/device on another device. CI uses a service token.</span></p>
+      <p class="board-note"><i class="ic ic-code-xml"></i><span><code>--json</code> prints one object per state (<code>pending</code>, then <code>signedIn</code> or <code>cancelled</code>) and never prompts.</span></p>
+    </section>
 
-  <div class="states-grid">
-    <figure class="board-item">
-      <div class="browser">
-        <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/manage/device</span></div>
-        <div class="browser-body">
-          <div class="auth sm">
-            <div class="auth-ctx"><i class="pk-mark sm"></i><span><b>Polaris Key</b> console</span></div>
-            <div class="app-req">
-              <span class="done-mark"><i class="ic ic-circle-check-big xl"></i></span>
-              <div><h2>Signed in. Go back to your terminal.</h2><p><span class="mono">pkey</span> on priyas-macbook-pro can act as you until Nov 6, 2026. You can close this tab.</p></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <figcaption><strong>Approved.</strong>The browser hands back to the terminal, which prints step 3.</figcaption>
-    </figure>
-
-    <figure class="board-item">
-      <div class="pair">
-        <div class="browser">
-          <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/manage/device</span></div>
-          <div class="browser-body">
-            <div class="auth sm">
-              <div class="app-req">
-                <span class="done-mark muted"><i class="ic ic-circle-x xl"></i></span>
-                <div><h2>Sign-in cancelled</h2><p>Nothing was approved, and no token was made. You can close this tab.</p></div>
+    <section class="section gap-6" aria-labelledby="states-title">
+      <div class="section-head"><h2 id="states-title">Other states</h2></div>
+      <div class="states-grid3">
+                <figure class="board-item">
+          <div class="mk-stack-3">
+            <div class="browser">
+              <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/manage/device</span></div>
+              <div class="hosted framed">
+                <div class="hosted-brand"><i class="pk-mark sm"></i>Polaris Key</div>
+                <main class="hosted-card">
+                  <div class="hosted-body">
+                    <i class="ic ic-circle-x xxl subtle"></i>
+                    <h1>Sign-in cancelled</h1>
+                    <p>Nothing was approved. You can close this tab.</p>
+                  </div>
+                </main>
               </div>
             </div>
-          </div>
-        </div>
-        <div class="term">
-          <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
-<pre class="term-body"><span class="c-err">✗</span> Sign-in was cancelled in the browser.
+            <div class="term">
+              <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
+<pre class="term-body scroll-x" tabindex="0" role="region" aria-label="Terminal output"><span class="c-err">✗</span> Sign-in was cancelled in the browser.
   Run <span class="c-b">pkey login</span> to try again.
 
 <span class="c-prompt">❯</span> <span class="cursor"></span></pre>
-        </div>
-      </div>
-      <figcaption><strong>Cancelled in the browser.</strong>Esc in the terminal ends it the same way, and the browser page then says the request was withdrawn.</figcaption>
-    </figure>
+            </div>
+          </div>
+          <figcaption><strong>Cancelled.</strong>In the browser or with Esc.</figcaption>
+        </figure>
 
-    <figure class="board-item">
-      <div class="term">
-        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
-<pre class="term-body"><span class="c-prompt">❯</span> pkey login
+        <figure class="board-item">
+          <div class="term">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
+<pre class="term-body scroll-x" tabindex="0" role="region" aria-label="Terminal output"><span class="c-prompt">❯</span> pkey login
 <span class="c-b">Polaris Key console</span> <span class="c-dim">· key.plrs.im</span>
-
-Check that the browser shows this code:  <span class="c-chip">QXKM-TPRW</span>
-
-<span class="c-err">✗</span> The code QXKM-TPRW expired before it was approved.
-  Nothing was signed in. Run <span class="c-b">pkey login</span> to get a new code.
+<span class="c-dim">…</span>
+<span class="c-err">✗</span> Code QXKM-TPRW expired before it was approved.
+  Run <span class="c-b">pkey login</span> to get a new one.
 
 <span class="c-prompt">❯</span> <span class="cursor"></span></pre>
-      </div>
-      <figcaption><strong>Expired.</strong>The terminal stops waiting and says what to run; opening the old link shows the same in the browser.</figcaption>
-    </figure>
-
-    <figure class="board-item">
-      <div class="browser">
-        <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/manage/device</span></div>
-        <div class="browser-body">
-          <div class="auth sm">
-            <div class="auth-ctx"><i class="pk-mark sm"></i><span><b>Polaris Key</b> console</span></div>
-            <div class="app-req">
-              <span class="app-icon"><i class="ic ic-square-terminal xl"></i></span>
-              <div><h2>Let pkey sign in as you?</h2><p>From priyas-macbook-pro, macOS · just now</p></div>
-            </div>
-            <div class="callout info"><i class="ic ic-fingerprint"></i><div class="grow"><div class="callout-title">Sign in with your passkey to approve</div><div class="callout-text">You signed in with an email code. That opens your library, but approving a CLI sign-in needs your passkey.</div></div></div>
-            <button class="btn primary block"><i class="ic ic-fingerprint"></i>Continue with your passkey</button>
-            <button class="btn ghost block">Cancel</button>
           </div>
-        </div>
+          <figcaption><strong>Expired.</strong>The code ran out.</figcaption>
+        </figure>
+
+        <figure class="board-item">
+          <div class="browser">
+            <div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/manage/device</span></div>
+            <div class="hosted framed">
+              <div class="hosted-brand"><i class="pk-mark sm"></i>Polaris Key</div>
+              <main class="hosted-card">
+                <header class="hosted-head">
+                  <span class="icon-tile lg"><i class="ic ic-square-terminal"></i></span>
+                  <div class="grow"><div class="hosted-title">Let <strong>pkey</strong> sign in as you?</div><div class="hosted-sub">priyas-macbook-pro · macOS · just now</div></div>
+                </header>
+                <div class="hosted-body">
+                  <div class="callout info"><i class="ic ic-fingerprint"></i><div class="grow"><div class="callout-title">Approving needs your passkey</div><div class="callout-text">You signed in with an email code.</div></div></div>
+                  <div class="hosted-actions">
+                    <button class="btn primary block"><i class="ic ic-fingerprint"></i>Continue with your passkey</button>
+                    <button class="btn ghost block">Cancel</button>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+          <figcaption><strong>Email code only.</strong>No Approve until the passkey check.</figcaption>
+        </figure>
       </div>
-      <figcaption><strong>Signed in with an email code only.</strong>The card asks for the passkey first; there is no Approve button until then.</figcaption>
-    </figure>
+    </section>
   </div>
 </div>

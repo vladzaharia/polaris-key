@@ -1,188 +1,3 @@
-<style>
-  /* admin.no-access: NoAccessPage for a forbidden deep link. Names who can help; never a dead end. */
-  [data-screen="admin.no-access"] .na {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    width: 100%;
-    max-width: 640px;
-    margin: 24px auto 0;
-  }
-  [data-screen="admin.no-access"] .na-head {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  [data-screen="admin.no-access"] .na-mark {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-    background: var(--pk-accent-subtle);
-  }
-  [data-screen="admin.no-access"] .na-mark > .svc {
-    width: 26px;
-    height: 26px;
-  }
-  [data-screen="admin.no-access"] .na-mark > .lock {
-    position: absolute;
-    right: -6px;
-    bottom: -6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: var(--pk-surface-raised);
-    box-shadow: 0 0 0 1px var(--mk-line), var(--pk-elevation-1);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.no-access"] .na-head h1 {
-    font-size: 26px;
-    line-height: 34px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="admin.no-access"] .na-head p {
-    font-size: 15px;
-    line-height: 22px;
-    color: var(--pk-text-default);
-  }
-  [data-screen="admin.no-access"] .role {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 24px;
-    padding: 0 9px 0 4px;
-    border: 1px solid var(--mk-line);
-    border-radius: 999px;
-    background: var(--pk-surface-sunken);
-    color: var(--pk-text-default);
-    font-size: 12px;
-    line-height: 16px;
-    white-space: nowrap;
-    vertical-align: 1px;
-  }
-  [data-screen="admin.no-access"] .role > .logo.xs {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-  }
-  /* A role narrowed to areas reads as one tag: the role, a divider, then the areas. On phone the
-     areas drop under the tag, outside it, so the tag never wraps into a box. */
-  [data-screen="admin.no-access"] .role-set {
-    display: inline-flex;
-    align-items: center;
-    height: 24px;
-    border: 1px solid var(--mk-line);
-    border-radius: 999px;
-    background: var(--pk-surface-sunken);
-    font-size: 12px;
-    line-height: 16px;
-    white-space: nowrap;
-    vertical-align: 1px;
-  }
-  [data-screen="admin.no-access"] .role-set > .role {
-    height: 22px;
-    border: 0;
-    background: none;
-  }
-  [data-screen="admin.no-access"] .role-set > .areas {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 9px 0 8px;
-    border-left: 1px solid var(--mk-line);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.no-access"] .helper {
-    display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-  }
-  [data-screen="admin.no-access"] .helper .who b {
-    display: block;
-    color: var(--pk-text-strong);
-  }
-  [data-screen="admin.no-access"] .helper .who span {
-    font-size: 13px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.no-access"] .helper .id {
-    font-family: var(--pk-font-sans);
-    font-size: 13px;
-  }
-  [data-screen="admin.no-access"] .go {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  [data-screen="admin.no-access"] .elsewhere {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 20px;
-    font-size: 13px;
-  }
-  [data-screen="admin.no-access"] .elsewhere .link {
-    font-size: 13px;
-  }
-  [data-screen="admin.no-access"] .asked {
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="admin.no-access"] .asked .mono {
-    overflow-wrap: anywhere;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="admin.no-access"] .role-set {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 4px;
-      height: auto;
-      border: 0;
-      border-radius: 0;
-      background: none;
-    }
-    [data-screen="admin.no-access"] .role-set > .role {
-      height: 24px;
-      border: 1px solid var(--mk-line);
-      background: var(--pk-surface-sunken);
-    }
-    [data-screen="admin.no-access"] .role-set > .areas {
-      flex-wrap: wrap;
-      padding: 0 0 0 6px;
-      border-left: 0;
-      white-space: normal;
-    }
-    [data-screen="admin.no-access"] .na {
-      margin-top: 4px;
-    }
-    [data-screen="admin.no-access"] .na-head h1 {
-      font-size: 22px;
-      line-height: 30px;
-    }
-    [data-screen="admin.no-access"] .helper {
-      grid-template-columns: 32px minmax(0, 1fr);
-      padding: 12px 16px;
-    }
-    [data-screen="admin.no-access"] .helper .id {
-      grid-column: 2;
-      justify-self: start;
-    }
-    [data-screen="admin.no-access"] .go .btn {
-      flex: 1 1 100%;
-    }
-  }
-</style>
-
 <div class="console" data-service="core">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
@@ -200,8 +15,8 @@
       <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
       <i class="ic ic-chevrons-up-down"></i>
     </div>
-    <div class="nav-group" data-service="release" style="padding-top: 4px">
-      <div class="nav-label">Ship builds<i class="ic ic-chevron-down sm"></i></div>
+    <div class="nav-group" data-service="release">
+      <button class="nav-label" aria-expanded="true">Ship builds<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-package"></i><span class="nav-text">Releases</span></a>
       <a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span><span class="count">4</span></a>
       <a class="nav-item" href="#"><i class="ic ic-rocket"></i><span class="nav-text">Rollouts</span></a>
@@ -210,7 +25,7 @@
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
     </div>
     <div class="nav-group" data-service="commerce">
-      <div class="nav-label">Commerce<i class="ic ic-chevron-down sm"></i></div>
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span></a>
       <a class="nav-item" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
       <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
@@ -221,57 +36,53 @@
   </nav>
 
   <main class="main">
-    <div class="page">
-      <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Licensing<i class="ic ic-chevron-right"></i>Licenses</nav>
+    <!-- A message page: centred, 960 wide. Who can help beside where you can go; one column below 1280. -->
+    <div class="page medium centered cap-form">
+      <header class="page-head">
+        <div class="page-icon" data-service="license"><span class="icon-tile lg"><i class="svc"></i><span class="tile-badge"><i class="ic ic-lock"></i></span></span></div>
+        <div class="page-heading"><h1>You don’t have access to <span class="nowrap">Diceroll → Licensing</span></h1></div>
+        <div class="page-sub"><span>Signed in as <strong>lucia@example.com</strong> with</span><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds, <i class="svc" data-service="commerce"></i>Commerce</span></span><a class="link" href="#">Use another account</a></div>
+      </header>
 
-      <div class="na">
-        <div class="na-head" data-service="license">
-          <span class="na-mark"><i class="svc"></i><span class="lock"><i class="ic ic-lock sm"></i></span></span>
-          <h1>You don’t have access to <span class="nowrap">Diceroll → Licensing</span></h1>
-          <p>You’re signed in as <strong>lucia@example.com</strong>, and your role in Diceroll doesn’t include Licensing.</p>
-          <div class="row wrap gap-2"><span class="small muted">Your role</span><span class="role-set"><span class="role"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="areas"><i class="svc sm" data-service="release"></i>Ship builds, <i class="svc sm" data-service="commerce"></i>Commerce</span></span></div>
-        </div>
-
+      <div class="mk-with-rail keep-rail g-stretch">
         <section class="card" aria-labelledby="help-title">
           <div class="card-head">
-            <div class="title">
-              <h2 id="help-title">Who can give you access</h2>
-              <p>Ask one of them to add Licensing to your Diceroll role. They’ll find you in Diceroll’s members.</p>
-            </div>
+            <div class="title"><h2 id="help-title">Who can give you access</h2><p>Ask one of them to add Licensing to your role.</p></div>
           </div>
           <div class="card-rows">
-            <div class="helper">
-              <span class="avatar">KM</span>
-              <div class="who"><b>Kenji Mori</b><span>Diceroll admin</span></div>
-              <span class="id">kenji@example.com<i class="ic ic-copy"></i></span>
+            <div class="item-row">
+              <span class="avatar md">KM</span>
+              <div class="item-text"><div class="item-title">Kenji Mori</div><div class="item-desc">Diceroll admin</div></div>
+              <div class="item-end"><span class="id">kenji@example.com<i class="ic ic-copy"></i></span></div>
             </div>
-            <div class="helper">
-              <span class="avatar violet">AL</span>
-              <div class="who"><b>Ada Lindqvist</b><span>Superadmin</span></div>
-              <span class="id">ada@example.com<i class="ic ic-copy"></i></span>
+            <div class="item-row">
+              <span class="avatar md violet">AL</span>
+              <div class="item-text"><div class="item-title">Ada Lindqvist</div><div class="item-desc">Superadmin</div></div>
+              <div class="item-end"><span class="id">ada@example.com<i class="ic ic-copy"></i></span></div>
             </div>
-            <div class="helper">
-              <span class="avatar">JW</span>
-              <div class="who"><b>Jonas Weber</b><span>Superadmin</span></div>
-              <span class="id">jonas@example.com<i class="ic ic-copy"></i></span>
+            <div class="item-row">
+              <span class="avatar md">JW</span>
+              <div class="item-text"><div class="item-title">Jonas Weber</div><div class="item-desc">Superadmin</div></div>
+              <div class="item-end"><span class="id">jonas@example.com<i class="ic ic-copy"></i></span></div>
             </div>
           </div>
         </section>
 
-        <div class="stack gap-3">
-          <p class="eyebrow">You can open</p>
-          <div class="go">
-            <button class="btn primary"><i class="svc" data-service="release" style="background-color: currentColor"></i>Diceroll releases</button>
-            <button class="btn outline"><i class="svc" data-service="commerce"></i>Diceroll storefronts</button>
-          </div>
-          <div class="elsewhere">
-            <a class="link" href="#">Open your library<i class="ic ic-arrow-right"></i></a>
-            <a class="link" href="#">Use another account<i class="ic ic-arrow-right"></i></a>
-          </div>
+        <div class="mk-rail">
+          <section class="card" aria-labelledby="open-title">
+            <div class="card-head"><div class="title"><h2 id="open-title">You can open</h2></div></div>
+            <div class="card-body mk-stack-2">
+              <div class="mk-stack-2">
+                <button class="btn primary block"><i class="ic ic-package"></i>Diceroll releases</button>
+                <button class="btn outline block"><i class="ic ic-store"></i>Diceroll storefronts</button>
+              </div>
+              <a class="link" href="#">Open your library<i class="ic ic-arrow-right"></i></a>
+            </div>
+          </section>
         </div>
-
-        <p class="asked">You opened <span class="mono">key.plrs.im/manage#/p/diceroll/license/licenses</span>. Nothing on that page was loaded.</p>
       </div>
+
+      <p class="type-meta mono muted">key.plrs.im/manage#/p/diceroll/license/licenses</p>
     </div>
   </main>
 </div>

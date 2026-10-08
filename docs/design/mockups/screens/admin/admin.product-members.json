@@ -15,11 +15,11 @@
   "compare": [
     "The sidebar is Diceroll's product context only; Kenji holds no platform role, so the context switcher lists Diceroll alone and no Platform page (Home, Members, Settings…) appears anywhere.",
     "Members is a tab of the product Settings hub (Features, Presentation, Keys and secrets, Members), with Settings active at the foot of the sidebar; until ST-08's hub lands it is a standalone page with the same content.",
-    "The first table lists Diceroll's own bindings: Kenji (You), Lucía from the diceroll-store SSO rule, and marco@example.com as an invite 'Waiting for first sign-in'. The role column shows the Diceroll binding only, never the person's roles in other products.",
-    "A binding that comes from an SSO rule (Lucía, from diceroll-store) has a menu: 'Add areas…' makes a direct binding on top of the rule's role, limited to the areas the viewer holds; 'Remove from Diceroll' is locked and names the rule and the Superadmins who can change it. Drawn open on desktop.",
-    "'Also manage Diceroll' lists Superadmins and All-products admins read-only with their source (Root rule, SSO rule) and 'Platform role' instead of a menu.",
+    "The first table ('Admins') lists Diceroll's own bindings: Kenji (You), Lucía from the diceroll-store SSO rule, and marco@example.com as an invite. The role column shows the Diceroll binding only, never the person's roles in other products.",
+    "A binding that comes from an SSO rule (Lucía) has a menu, drawn in Other states: 'Add areas…' makes a direct binding on top of the rule's role, limited to the areas the viewer holds; 'Remove from Diceroll' is locked and names the rule and the Superadmins who can change it.",
+    "'Platform roles' lists Superadmins and All-products admins read-only with their source (Root rule, SSO rule) and no menu.",
     "Invite people (the same button words as Platform → Members) opens the same drawer with the role fixed to Product admin, the product fixed to Diceroll, and only the areas Kenji holds selectable (no escalation).",
-    "The success toast says exactly what happened: 'Invited marco@example.com', then 'Diceroll admin for Commerce. We emailed marco@example.com and told every Superadmin.', with Undo, which removes the binding. It never guesses a name from the address.",
+    "The success toast (Other states) says 'Invited marco@example.com' with Undo, which removes the binding. It never guesses a name from the address.",
     "Phone: both tables become stacked rows (person and menu, then the role tag, its areas on the next line, and the source indented under the name); the Settings tab strip fades at its scrolled edge instead of clipping a word, and the toast sits clear of section headings."
   ],
   "status": "mockup",
@@ -43,6 +43,81 @@
         "severity": "minor",
         "issue": "On phone the tab strip shows a clipped 's' from 'Features', and the toast covers the 'Also manage Diceroll' heading.",
         "resolution": "The tab strip fades over its first 40px, so the scrolled edge reads as more tabs rather than a fragment. On phone the toast sits over the new invite's row, clear of the heading (measured at 360 and 390: toast 660–760 px, heading at 788 px)."
+      },
+      {
+        "severity": "major",
+        "issue": "The open row menu and the toast covered data in the primary shot, and the active Members tab was clipped to 'Membe' on phone.",
+        "resolution": "The menu and the toast moved to Other states; the tab strip scrolls the active tab into view (.tabs.follow-active) with the right-edge fade; at wide the two cards share one height.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The product name appeared three times and who can change a role was stated twice.",
+        "resolution": "Cards are 'Admins' and 'Platform roles', the column is 'Role'; the first subtitle is dropped; the toast is 'Invited marco@example.com' with Undo; the names of who can change a role live in the row menu only.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
+        "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
+        "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Other states left 120 to 700px of dead space beside shorter cards, and the captions narrated layout.",
+        "resolution": "Other states sit on one equal-width grid (3 columns from desktop, 2 on tablet, 1 on phone) with the page's card primitive; captions name the state and its trigger.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Change the Members tab count to 6, or drop it.",
+        "resolution": "declined: The count is existing data and structure. Revisit it in copy review if it is judged ambiguous.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      },
+      {
+        "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
+        "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
       }
     ]
   }

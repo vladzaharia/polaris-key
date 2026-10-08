@@ -1,232 +1,8 @@
 <style>
-  /* admin.product-members: Diceroll → Settings → Members, seen by a Diceroll admin. */
-  [data-screen="admin.product-members"] .roles {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  [data-screen="admin.product-members"] .role {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 24px;
-    padding: 0 9px 0 4px;
-    border: 1px solid var(--mk-line);
-    border-radius: 999px;
-    background: var(--pk-surface-sunken);
-    color: var(--pk-text-default);
-    font-size: 12px;
-    line-height: 16px;
-    white-space: nowrap;
-  }
-  [data-screen="admin.product-members"] .role > .logo.xs {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-  }
-  [data-screen="admin.product-members"] .role > .ic {
-    width: 14px;
-    height: 14px;
-    margin-left: 2px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.product-members"] .role.super > .ic {
-    color: var(--pk-accent);
-  }
-  /* A role narrowed to areas reads as one tag: the role, a divider, then the areas. On phone the
-     areas drop under the tag, outside it, so the tag never wraps into a box. */
-  [data-screen="admin.product-members"] .role-set {
-    display: inline-flex;
-    align-items: center;
-    height: 24px;
-    border: 1px solid var(--mk-line);
-    border-radius: 999px;
-    background: var(--pk-surface-sunken);
-    font-size: 12px;
-    line-height: 16px;
-    white-space: nowrap;
-    vertical-align: 1px;
-  }
-  [data-screen="admin.product-members"] .role-set > .role {
-    height: 22px;
-    border: 0;
-    background: none;
-  }
-  [data-screen="admin.product-members"] .role-set > .areas {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 9px 0 8px;
-    border-left: 1px solid var(--mk-line);
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.product-members"] .src-line {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    font-size: 13px;
-    line-height: 18px;
-    white-space: nowrap;
-  }
-  [data-screen="admin.product-members"] .src-line > .ic {
-    align-self: center;
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="admin.product-members"] .src-line .mono {
-    font-size: 12px;
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.product-members"] .you {
-    margin-left: 6px;
-    font-weight: 400;
-    color: var(--pk-text-subtle);
-    font-size: 12px;
-  }
-  [data-screen="admin.product-members"] .invite-avatar {
-    background: transparent;
-    border: 1px dashed var(--pk-border-strong);
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="admin.product-members"] tr.invite .cell-title {
-    font-weight: 400;
-    color: var(--pk-text-default);
-  }
-  [data-screen="admin.product-members"] .ro {
-    font-size: 12px;
-    color: var(--pk-text-subtle);
-    white-space: nowrap;
-  }
-  [data-screen="admin.product-members"] .inherited td {
-    color: var(--pk-text-muted);
-  }
-  [data-screen="admin.product-members"] .members {
-    table-layout: fixed;
-  }
-  [data-screen="admin.product-members"] .members .c-member {
-    width: 30%;
-  }
-  [data-screen="admin.product-members"] .members .c-roles {
-    width: 34%;
-  }
-  [data-screen="admin.product-members"] .members .end {
-    width: 130px;
-  }
-  [data-screen="admin.product-members"] .table-wrap {
-    position: relative;
-  }
-  [data-screen="admin.product-members"] .row-menu {
-    position: absolute;
-    z-index: 5;
-    top: 146px;
-    right: 14px;
-  }
-  [data-screen="admin.product-members"] .row-menu .menu {
-    width: 300px;
-  }
-  [data-screen="admin.product-members"] .menu-item.off {
-    color: var(--pk-text-subtle);
-  }
-  [data-screen="admin.product-members"] .menu-note {
-    padding: 2px 10px 8px 36px;
-    font-size: 12px;
-    line-height: 16px;
-    color: var(--pk-text-muted);
-    white-space: normal;
-  }
-  [data-screen="admin.product-members"] .menu-item .end {
-    font-size: 11px;
-  }
-  [data-screen="admin.product-members"] tr.menu-open td {
-    background: color-mix(in oklab, var(--mk-fill) 60%, transparent);
-  }
-  @container screen (max-width: 1023px) {
-    [data-screen="admin.product-members"] .row-menu {
-      display: none;
-    }
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="admin.product-members"] .roles {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    [data-screen="admin.product-members"] .role-set {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 4px;
-      height: auto;
-      border: 0;
-      border-radius: 0;
-      background: none;
-    }
-    [data-screen="admin.product-members"] .role-set > .role {
-      height: 24px;
-      border: 1px solid var(--mk-line);
-      background: var(--pk-surface-sunken);
-    }
-    [data-screen="admin.product-members"] .role-set > .areas {
-      flex-wrap: wrap;
-      padding: 0 0 0 6px;
-      border-left: 0;
-      white-space: normal;
-    }
-    /* The tab strip scrolls; the active tab shows and the edge fades instead of clipping a word. */
-    [data-screen="admin.product-members"] .tabs {
-      justify-content: flex-end;
-      -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 40px);
-      mask-image: linear-gradient(90deg, transparent 0, #000 40px);
-    }
-    [data-screen="admin.product-members"] tr.menu-open td {
-      background: transparent;
-    }
-    /* In this still, the toast sits over the new invite's row, clear of the next section's heading. */
-    [data-screen="admin.product-members"] .toasts {
-      bottom: 84px;
-    }
-    [data-screen="admin.product-members"] .members .c-member,
-    [data-screen="admin.product-members"] .members .c-roles,
-    [data-screen="admin.product-members"] .members .end {
-      width: auto;
-    }
-    [data-screen="admin.product-members"] .members thead {
-      display: none;
-    }
-    [data-screen="admin.product-members"] .members tr {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
-      padding: 12px 14px;
-      border-top: 1px solid var(--mk-line);
-    }
-    [data-screen="admin.product-members"] .members tbody tr:first-child {
-      border-top: 0;
-    }
-    [data-screen="admin.product-members"] .members td {
-      display: block;
-      padding: 0;
-      border: 0;
-    }
-    [data-screen="admin.product-members"] .members td.c-member {
-      grid-column: 1;
-      grid-row: 1;
-    }
-    [data-screen="admin.product-members"] .members td.end {
-      grid-column: 2;
-      grid-row: 1;
-    }
-    [data-screen="admin.product-members"] .members td.c-roles,
-    [data-screen="admin.product-members"] .members td.c-src {
-      grid-column: 1 / -1;
-      padding-left: 44px;
-    }
-    [data-screen="admin.product-members"] .table-card {
-      overflow-x: hidden;
-    }
-    [data-screen="admin.product-members"] .cell-title {
-      white-space: normal;
-    }
-    [data-screen="admin.product-members"] .src-line {
-      white-space: normal;
-      flex-wrap: wrap;
+  /* admin.product-members: no spacing of its own. At wide the two cards share their height. */
+  @container screen (min-width: 1600px) {
+    [data-screen="admin.product-members"] .page.columns {
+      align-items: stretch;
     }
   }
 </style>
@@ -254,10 +30,10 @@
     <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
     <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
     <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
-    <div class="nav-group closed" data-service="license"><div class="nav-label">Licensing<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="config" style="padding-top: 4px"><div class="nav-label">Managed config<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="release" style="padding-top: 4px"><div class="nav-label">Ship builds<i class="ic ic-chevron-right sm"></i></div></div>
-    <div class="nav-group closed" data-service="commerce" style="padding-top: 4px"><div class="nav-label">Commerce<i class="ic ic-chevron-right sm"></i></div></div>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item active" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -265,7 +41,8 @@
   </nav>
 
   <main class="main">
-    <div class="page">
+    <!-- Wide (≥ 1600): Diceroll's own admins in the main column, the platform roles in the aside. -->
+    <div class="page columns cap-table gap-6">
       <header class="page-head">
         <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Settings</nav>
         <div class="page-heading"><h1>Settings</h1></div>
@@ -274,93 +51,103 @@
         </div>
       </header>
 
-      <nav class="tabs" aria-label="Settings">
+      <nav class="tabs follow-active" aria-label="Settings">
         <a class="tab" href="#">Features</a>
         <a class="tab" href="#">Presentation</a>
         <a class="tab" href="#">Keys and secrets</a>
         <a class="tab active" href="#">Members <span class="count">3</span></a>
       </nav>
 
-      <section class="section" aria-labelledby="pm-title">
-        <div class="section-head">
-          <div><h2 id="pm-title">Diceroll admins</h2><p>People who manage Diceroll, in every area or only some. You can invite people and add areas, up to the areas you have.</p></div>
+      <section class="card" aria-labelledby="pm-title">
+        <div class="card-head">
+          <div class="title"><h2 id="pm-title">Admins</h2></div>
         </div>
-        <div class="table-wrap">
-        <div class="table-card">
-          <table class="table members">
-            <thead><tr><th class="c-member">Member</th><th class="c-roles">Role in Diceroll</th><th>Access from</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
-            <tbody>
-              <tr>
-                <td class="c-member"><div class="cell-with-logo"><span class="avatar">KM</span><div><div class="cell-title">Kenji Mori<span class="you">You</span></div><div class="cell-sub">kenji@example.com</div></div></div></td>
-                <td class="c-roles"><div class="roles"><span class="role"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span></div></td>
-                <td class="c-src"><div class="src-line"><i class="ic ic-user-check sm"></i>Added by Ada Lindqvist<span class="muted small">Sep 30</span></div></td>
-                <td class="end"><button class="btn ghost icon xs" aria-label="More for Kenji Mori"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr class="menu-open">
-                <td class="c-member"><div class="cell-with-logo"><span class="avatar">LO</span><div><div class="cell-title">Lucía Ortega</div><div class="cell-sub">lucia@example.com</div></div></div></td>
-                <td class="c-roles"><div class="roles"><span class="role-set"><span class="role"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="areas"><i class="svc sm" data-service="release"></i>Ship builds, <i class="svc sm" data-service="commerce"></i>Commerce</span></span></div></td>
-                <td class="c-src"><div class="src-line"><i class="ic ic-waypoints sm"></i>SSO rule<span class="mono">diceroll-store</span></div></td>
-                <td class="end"><button class="btn ghost icon xs" aria-label="More for Lucía Ortega" style="background: var(--mk-fill)"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr class="invite">
-                <td class="c-member"><div class="cell-with-logo"><span class="avatar invite-avatar"><i class="ic ic-mail sm"></i></span><div><div class="cell-title">marco@example.com</div><div class="cell-sub">Waiting for first sign-in</div></div></div></td>
-                <td class="c-roles"><div class="roles"><span class="role-set"><span class="role"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="areas"><i class="svc sm" data-service="commerce"></i>Commerce</span></span></div></td>
-                <td class="c-src"><div class="src-line"><i class="ic ic-send sm"></i>Invited by you<span class="muted small">just now</span></div></td>
-                <td class="end"><button class="btn ghost icon xs" aria-label="More for marco@example.com"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <!-- The row menu on a binding that comes from an SSO rule: add areas on top; Remove names the rule. -->
-        <div class="row-menu">
-          <div class="menu">
-            <span class="menu-label">Lucía Ortega</span>
-            <a class="menu-item" href="#"><i class="ic ic-plus"></i>Add areas…<span class="end">On top of the rule</span></a>
-            <div class="menu-sep"></div>
-            <span class="menu-item off"><i class="ic ic-lock"></i>Remove from Diceroll</span>
-            <p class="menu-note">Lucía’s Diceroll role comes from the <span class="mono">diceroll-store</span> rule. Only a Superadmin can change rules: Ada Lindqvist or Jonas Weber.</p>
-          </div>
-        </div>
-        </div>
+        <table class="table fixed stack-phone members rows-56" aria-label="Admins">
+          <colgroup><col style="width: 27%"><col style="width: 41%"><col style="width: 26%"><col style="width: 6%"></colgroup>
+          <thead><tr><th>Member</th><th>Role</th><th>Access from</th><th class="row-menu"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-with-logo"><span class="avatar">KM</span><div><div class="cell-title mk-cluster baseline">Kenji Mori<span class="meta">You</span></div><div class="cell-sub">kenji@example.com</div></div></div></td>
+              <td><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span></td>
+              <td class="type-small"><span class="icon-text"><i class="ic ic-user-check"></i>Added by Ada Lindqvist<span class="meta">Sep 30</span></span></td>
+              <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Kenji Mori"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="avatar">LO</span><div><div class="cell-title">Lucía Ortega</div><div class="cell-sub">lucia@example.com</div></div></div></td>
+              <td><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds, <i class="svc" data-service="commerce"></i>Commerce</span></span></td>
+              <td class="type-small"><span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">diceroll-store</span></span></td>
+              <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Lucía Ortega"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="avatar pending"><i class="ic ic-mail"></i></span><div><div>marco@example.com</div></div></div></td>
+              <td><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="commerce"></i>Commerce</span></span></td>
+              <td class="type-small"><span class="icon-text"><i class="ic ic-send"></i>Invited by you<span class="meta">Just now</span></span></td>
+              <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for marco@example.com"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
-      <section class="section" aria-labelledby="inh-title">
-        <div class="section-head">
-          <div><h2 id="inh-title">Also manage Diceroll</h2><p>Through a platform-wide role. Only a Superadmin can change these.</p></div>
+      <section class="card aside" aria-labelledby="inh-title">
+        <div class="card-head">
+          <div class="title"><h2 id="inh-title">Platform roles</h2><p>Read-only here</p></div>
         </div>
-        <div class="table-card">
-          <table class="table members">
-            <tbody>
-              <tr class="inherited">
-                <td class="c-member"><div class="cell-with-logo"><span class="avatar violet">AL</span><div><div class="cell-title">Ada Lindqvist</div><div class="cell-sub">ada@example.com</div></div></div></td>
-                <td class="c-roles"><div class="roles"><span class="role super"><i class="ic ic-crown"></i>Superadmin</span></div></td>
-                <td class="c-src"><div class="src-line"><i class="ic ic-lock-keyhole sm"></i>Root rule<span class="mono">polaris-admins</span></div></td>
-                <td class="end"><span class="ro">Platform role</span></td>
-              </tr>
-              <tr class="inherited">
-                <td class="c-member"><div class="cell-with-logo"><span class="avatar">JW</span><div><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com</div></div></div></td>
-                <td class="c-roles"><div class="roles"><span class="role super"><i class="ic ic-crown"></i>Superadmin</span></div></td>
-                <td class="c-src"><div class="src-line"><i class="ic ic-lock-keyhole sm"></i>Root rule<span class="mono">polaris-admins</span></div></td>
-                <td class="end"><span class="ro">Platform role</span></td>
-              </tr>
-              <tr class="inherited">
-                <td class="c-member"><div class="cell-with-logo"><span class="avatar">SO</span><div><div class="cell-title">Sam Okoye</div><div class="cell-sub">sam@example.com</div></div></div></td>
-                <td class="c-roles"><div class="roles"><span class="role-set"><span class="role"><i class="ic ic-layers"></i>All products admin</span><span class="areas"><i class="svc sm" data-service="release"></i>Ship builds</span></span></div></td>
-                <td class="c-src"><div class="src-line"><i class="ic ic-waypoints sm"></i>SSO rule<span class="mono">release-managers</span></div></td>
-                <td class="end"><span class="ro">Platform role</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <table class="table fixed stack-phone rows-56" aria-label="Platform roles">
+          <colgroup><col style="width: 34%"><col style="width: 34%"><col style="width: 26%"><col style="width: 6%"></colgroup>
+          <tbody>
+            <tr>
+              <td><div class="cell-with-logo"><span class="avatar violet">AL</span><div><div class="cell-title">Ada Lindqvist</div><div class="cell-sub">ada@example.com</div></div></div></td>
+              <td><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></td>
+              <td class="type-small"><span class="icon-text"><i class="ic ic-lock-keyhole"></i>Root rule<span class="slug">polaris-admins</span></span></td>
+              <td class="row-menu"></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="avatar">JW</span><div><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com</div></div></div></td>
+              <td><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></td>
+              <td class="type-small"><span class="icon-text"><i class="ic ic-lock-keyhole"></i>Root rule<span class="slug">polaris-admins</span></span></td>
+              <td class="row-menu"></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="avatar">SO</span><div><div class="cell-title">Sam Okoye</div><div class="cell-sub">sam@example.com</div></div></div></td>
+              <td><span class="role-set"><span class="role-tag"><i class="ic ic-layers"></i>All products admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds</span></span></td>
+              <td class="type-small"><span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">release-managers</span></span></td>
+              <td class="row-menu"></td>
+            </tr>
+          </tbody>
+        </table>
       </section>
     </div>
   </main>
+</div>
 
-  <div class="toasts">
+<!-- Other states. -->
+<section class="board below states-grid" aria-label="Other states">
+  <div class="board-title"><h1>Other states</h1></div>
+  <figure class="board-item">
+    <div class="mk-stack-2">
+      <div class="card">
+        <div class="card-row">
+          <div class="cell-with-logo grow"><span class="avatar">LO</span><div><div class="cell-title">Lucía Ortega</div><div class="cell-sub">lucia@example.com</div></div></div>
+          <button class="btn icon hit" aria-label="More for Lucía Ortega" aria-expanded="true"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </div>
+      <!-- A binding from an SSO rule: add areas on top; Remove names the rule and who can change it. -->
+      <div class="menu cap-300">
+        <span class="menu-label">Lucía Ortega</span>
+        <a class="menu-item" href="#"><i class="ic ic-plus"></i>Add areas…<span class="end">On top of the rule</span></a>
+        <div class="menu-sep"></div>
+        <span class="menu-item disabled"><i class="ic ic-lock"></i>Remove from Diceroll</span>
+        <p class="menu-note">The <span class="mono">diceroll-store</span> rule gives this role, and only a Superadmin can change it: Ada Lindqvist or Jonas Weber.</p>
+      </div>
+    </div>
+    <figcaption><strong>Row menu, role from a rule.</strong>Opens from ⋯ on the row.</figcaption>
+  </figure>
+  <figure class="board-item">
     <div class="toast success">
       <i class="ic ic-circle-check"></i>
-      <div class="grow"><div class="toast-title">Invited marco@example.com</div><div class="toast-text">Diceroll admin for Commerce. We emailed marco@example.com and told every Superadmin.</div></div>
+      <div class="grow"><div class="toast-title">Invited marco@example.com</div></div>
       <button class="btn ghost xs">Undo</button>
     </div>
-  </div>
-</div>
+    <figcaption><strong>After inviting.</strong>Undo removes the invite.</figcaption>
+  </figure>
+</section>
