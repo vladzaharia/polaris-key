@@ -24,8 +24,8 @@
 <text x="42" y="161" textLength="168" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Code expires in 4:12</text>
 <rect x="20.5" y="165.2" width="1" height="16.8" fill="#7f848e"/>
 <text x="21" y="194.6" text-anchor="middle" fill="#7f848e">⠹</text>
-<text x="42" y="194.6" textLength="201.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Waiting for your browser</text>
-<text x="247.8" y="194.6" text-anchor="middle" fill="#d7dae0">…</text>
+<text x="42" y="194.6" textLength="218.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Waiting for you to sign in</text>
+<text x="264.6" y="194.6" text-anchor="middle" fill="#d7dae0">…</text>
 <rect x="20.5" y="198.8" width="1" height="8.4" fill="#7f848e"/>
 <rect x="20.5" y="206.7" width="4.7" height="1" fill="#7f848e"/>
 <text x="42" y="211.4" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">c</text>

@@ -74,6 +74,11 @@ class Terminal:
         self.kit = kit
         self.device = device
         self.verb = verb
+        # A resize (SIGWINCH, read by a live region) lays the kit's screens out at the new width.
+        device.on_resize(self._resized)
+
+    def _resized(self, env: TermEnv) -> None:
+        self.kit.env = env
 
     @classmethod
     def create(
@@ -93,6 +98,7 @@ class Terminal:
         stdin: Optional[IO[str]] = None,
         term_env: Optional[TermEnv] = None,
         use_rich: Optional[bool] = None,
+        size: Optional[Callable[[], Tuple[int, int]]] = None,
     ) -> "Terminal":
         th = theme or Theme()
         te = term_env or detect(
@@ -109,7 +115,7 @@ class Terminal:
         )
         slug = product or (getattr(client, "product", None) if client is not None else None)
         kit = Kit.create(te, theme=th, product=slug, source=presentation_source(client), prog=prog)
-        return cls(kit, Device(te, kit.palette(), stdout=stdout, stdin=stdin, use_rich=use_rich), verb)
+        return cls(kit, Device(te, kit.palette(), stdout=stdout, stdin=stdin, use_rich=use_rich, size=size), verb)
 
     @property
     def env(self) -> TermEnv:
@@ -215,7 +221,7 @@ def _busy(t: Terminal, fn: Callable[[], Any], draw: Callable[[int], List[Line]])
     frame = 0
     with t.device.live() as live:
         while w.is_alive():
-            live.update(draw(frame))
+            live.update(lambda f=frame: draw(f))
             frame += 1
             w.join(0.08)
     if w.error is not None:
@@ -234,7 +240,7 @@ def read_key(t: Terminal) -> Optional[str]:
     with t.device.keys() as keys, t.device.live() as live:
         while True:
             verdict = parse_key(raw, final=final)
-            live.update(screens.key_entry(k, raw, verdict, show_empty=show_empty))
+            live.update(lambda r=raw, v=verdict, e=show_empty: screens.key_entry(k, r, v, show_empty=e))
             key = keys.read(None)
             if key is None:
                 continue
@@ -291,7 +297,7 @@ def _replace_in_browser(t: Terminal, view: Any, verb: str) -> bool:
     opened = False
     with t.device.keys() as keys, t.device.live() as live:
         while True:
-            live.update(screens.device_limit(k, view, verb, opened=opened))
+            live.update(lambda o=opened: screens.device_limit(k, view, verb, opened=o))
             key = keys.read(None)
             if key == "esc":
                 return False
@@ -378,7 +384,7 @@ def sign_in(
         with t.device.keys() as keys, t.device.live() as live:
             while worker.is_alive():
                 model.tick(prompt.expiresAt - _now())
-                live.update(screens.sign_in(k, model.view, verb, frame=frame))
+                live.update(lambda v=model.view, f=frame: screens.sign_in(k, v, verb, frame=f))
                 frame += 1
                 key = keys.read(0.08)
                 if key == "esc":
@@ -585,7 +591,8 @@ class _Progress:
         self.last = now
         elapsed = now - self.started
         eta = fmt.duration(elapsed * (total - done) / done, loc) if done and done < total else None
-        self.live.update(self.draw(f, fmt.size(done, loc), fmt.size(total, loc), eta))
+        a, b = fmt.size(done, loc), fmt.size(total, loc)
+        self.live.update(lambda: self.draw(f, a, b, eta))
 
 
 def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[str] = None, to: Optional[str] = None) -> Outcome:
@@ -691,7 +698,8 @@ def boot(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
     live.__enter__()
 
     def draw() -> None:
-        live.update(screens.boot_progress(k, state["stage"], state["frame"], done=state["done"], total=state["total"]))
+        st, fr, dn, tt = state["stage"], state["frame"], state["done"], state["total"]
+        live.update(lambda: screens.boot_progress(k, st, fr, done=dn, total=tt))
         state["frame"] += 1
 
     def on_stage(_: Any, emits: Any) -> None:

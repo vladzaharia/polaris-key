@@ -56,7 +56,7 @@ click and typer. The verbs:
 | `changelog`           | Release notes                                                                                                                                                                   |
 | `config`              | Settings with their source, and the locked rows                                                                                                                                 |
 | `boot`                | A live line per stage, the consent question, then Ready or the stop and its fix                                                                                                 |
-| `offline-request`     | The request code, with a half-block QR at 70 columns and 20 rows or more                                                                                                        |
+| `offline-request`     | The request code, with a half-block QR wherever the whole screen fits with it                                                                                                   |
 | `doctor`              | Diagnostics for the person integrating the SDK                                                                                                                                  |
 
 Sign-in in a terminal is the browser presentation only: the license is chosen on the card, the
@@ -66,7 +66,8 @@ terminal never lists licenses, and no terminal draws a QR for sign-in.
 
 Layer (b) is `Kit` and `screens`: each screen takes a headless view and returns lines, which
 `to_ansi` (or the rich device) writes. The parts are on `Kit`: `header`, `step`, `body`, `end`,
-`hints`, `seat_meter`, `bar`, `code`, `link`, `key` (a key cut in the middle) and `qr`.
+`hints`, `seat_meter`, `bar`, `code`, `link` (a URL wrapped at `/ ? &`, never cut), `key` (a key
+cut in the middle) and `qr`.
 
 ```python
 from polaris_key.ui.terminal import Terminal, screens
@@ -150,13 +151,33 @@ typer builders; the fields are on [Theming](/docs/build/ui/theming/). In a termi
   accent the kit draws ink (bold and plain reverse video), never Polaris violet;
 - `color_scheme` picks the accent's dark or light form; `system` reads `PKEY_THEME`, then the
   terminal's background (OSC 11), then `COLORFGBG`, then dark;
-- `colors` overrides a role's SGR parameters per scheme, and `symbols` picks Unicode or ASCII;
-- `preset="native"` keeps the terminal's own colours;
+- `colors` overrides a role per scheme with a hex colour, `{"dark": {"success": "#3fb27f"}}`, the
+  same value the Node kit takes; it is drawn only where the terminal draws truecolor, so ANSI-16
+  keeps the user's palette (a value that is not hex is ignored). `symbols` picks Unicode or ASCII;
+- `preset="native"` keeps the terminal's own palette: no product colour and no `colors`, the chip
+  in plain reverse video; `NO_COLOR` drops every escape in either preset;
+- `density="compact"` drops the blank rail rows between blocks;
 - `motion` set to `reduced` or `none` stops the spinners, which never run without a terminal or
   with `CI`;
 - `copy` takes a `locale` and overrides;
-- `radius`, `typography`, `density`, `ambient`, `service_cues` and `platform` have no meaning in
-  a cell grid.
+- `radius`, `typography`, `ambient`, `service_cues` and `platform` have no meaning in a cell grid.
+
+## Sizes
+
+The layout is the terminal's width up to 80 columns, never below 32, and the Node kit's is the
+same:
+
+- prose wraps at spaces (and between CJK characters); a URL or a user code is never cut: it starts
+  a line of its own and wraps after `/` or before `?` and `&`, each piece still a link. Only a key
+  or an id is cut in the middle, and a long product name ends in an ellipsis inside its chip;
+- below 50 columns a command row stacks: the command, then what it does;
+- a short terminal (16 rows or fewer, a "landscape" window) has no blank rows, so the code, the URL
+  and the key hints stay in view; a header that does not fit scrolls away, never the code;
+- the offline QR shows only where it fits: as wide as the terminal, and the whole screen with it no
+  taller than the terminal;
+- a resize mid-flow (SIGWINCH) lays the live region out again: it erases the rows it really took
+  on the reflowed screen and redraws at the new width, so nothing is left wider than the terminal
+  or drawn twice.
 
 ## Localisation
 
@@ -168,7 +189,8 @@ key to English. Wide CJK characters take two cells, and lines break between them
 
 Golden ANSI text for every state in both terminal themes, in every variant (truecolor, ANSI-16,
 `NO_COLOR`, ASCII symbols; 80 and 60 columns; piped), and an SVG of the default render that the
-component pages show. Record them with
+component pages show. `tests/cli/test_responsive.py` runs the resolution matrix (40, 60, 80 and
+120 columns at 12 and 24 rows, long values, German and Japanese, a resize mid-flow) in pyte. Record them with
 `PKEY_GOLDEN=record .venv/bin/python -m pytest -q tests/cli` in `sdks/python`.
 
 <KitCoverage kit="terminal-python" />

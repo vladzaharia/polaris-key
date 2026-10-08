@@ -35,7 +35,8 @@ typer = ["typer>=0.9"]
 # ANSI itself. Textual is only for the optional full-screen app (polaris_key.ui.terminal.textual_app).
 cli = ["rich>=13"]
 tui = ["rich>=13", "textual>=0.80"]
-dev = ["pytest>=7", "click>=8", "typer>=0.9", "rich>=13", "textual>=0.80"]
+# pyte: the terminal emulator the terminal kit's responsive tests draw into (tests/cli/pyterm.py).
+dev = ["pytest>=7", "click>=8", "typer>=0.9", "rich>=13", "textual>=0.80", "pyte>=0.8"]
 
 [project.scripts]
 polaris-key = "polaris_key.cli:main"

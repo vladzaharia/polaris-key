@@ -70,6 +70,7 @@ BORROWS: Dict[str, Dict[str, str]] = {
         "signin.cli.headless": "SIGN-IN.md §5.2: the headless code view (D-68)",
         "signin.again": "expired: sign in again (SignIn expired's key)",
         "signin.handoff.waiting": "the code view waits as the handoff does",
+        "cli.signin.waitingCode": "the code view waits for the person, in the Node kit's words",
         "signin.handoff.finishing": "the code view finishes as the handoff does",
         "signin.cli.ifNotOpened": "SIGN-IN.md §5.2 terminal hand-off copy",
         "signin.cli.opening": "SIGN-IN.md §5.2 terminal hand-off copy",

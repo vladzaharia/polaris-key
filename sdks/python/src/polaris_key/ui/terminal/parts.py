@@ -4,16 +4,21 @@
 copy, the resolved product identity and the theme. Its methods are the parts: the product header
 (the chip), the continuous rail, step glyphs, wrapped body text, key hints (keys in ``strong``,
 actions in ``mute``, §1.5 rule 13), radio rows, the neutral seat meter, the progress bar, the user
-code in reverse video, the half-block QR (black on white, hidden below 70 columns or 20 rows), links
-(OSC 8) and keys truncated in the middle.
+code in reverse video, the half-block QR (black on white, shown only where the whole screen fits
+with it), links (OSC 8, wrapped at ``/ ? &`` and never cut) and keys truncated in the middle.
 
-Restyle hooks: ``Theme.colors`` (per scheme, role → SGR parameters), ``Theme.symbols`` (Unicode or
-ASCII) and ``Theme.preset = "native"`` (the host terminal's own colours: no product colour, the chip
-in plain reverse video). Every line a part returns is a :class:`~.text.Line`; nothing is printed.
+Spacing is one rail rhythm: one blank rail row between blocks, never two. A short terminal (16 rows
+or fewer) drops the blank rows altogether, so the code, the URL and the key hints stay in view.
+
+Restyle hooks: ``Theme.colors`` (per scheme, role → a hex colour, drawn only in truecolor; the same
+value the Node kit takes), ``Theme.symbols`` (Unicode or ASCII) and ``Theme.preset = "native"`` (the
+host terminal's own palette: no product colour, no ``colors``, the chip in plain reverse video).
+Every line a part returns is a :class:`~.text.Line`; nothing is printed.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, List, Optional, Sequence, Tuple
 
@@ -36,14 +41,33 @@ STEP_GLYPHS = {
     "warn": ("warn", "warning"),
 }
 
-#: The QR's floor (UI-KITS §1.4 Terminal: hidden below 70 columns or 20 rows).
-QR_MIN_COLUMNS = 70
-QR_MIN_ROWS = 20
+#: Cells before a QR row: the rail, the gutter and the code's indent (it lines up with the code).
+QR_INDENT = 6
+
+#: Below this many columns a two-column command row stacks: the command, then its label.
+STACK_COLUMNS = 50
+
+_HEX = re.compile(r"^#?([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$")
 
 
 def _rgb(hex_color: str) -> str:
-    h = hex_color.lstrip("#")
+    h = hex_color.strip().lstrip("#")
+    if len(h) == 3:
+        h = "".join(c * 2 for c in h)
     return "%d;%d;%d" % (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
+def role_colors(colors: Any, scheme: str, color: str, native: bool) -> Tuple[Tuple[str, str], ...]:
+    """``Theme.colors`` for one terminal: each role's hex colour as SGR parameters, only in
+    truecolor and never under the native preset (ANSI-16 keeps the user's palette, ``NO_COLOR``
+    drops everything). A value that is not a hex colour is ignored."""
+    if native or color != "truecolor" or not colors:
+        return ()
+    out: List[Tuple[str, str]] = []
+    for role, value in dict(colors.get(scheme, {}) or {}).items():
+        if isinstance(value, str) and _HEX.match(value.strip()):
+            out.append((role, "38;2;" + _rgb(value)))
+    return tuple(out)
 
 
 @dataclass
@@ -120,10 +144,10 @@ class Kit:
 
     def palette(self) -> Palette:
         env = self.env
-        overrides = tuple(dict(self.theme.colors.get(env.scheme, {})).items()) if self.theme.colors else ()
-        if env.color == "none":
-            return Palette(color="none", overrides=overrides)
         native = self.theme.preset == "native"
+        overrides = role_colors(self.theme.colors, env.scheme, env.color, native)
+        if env.color == "none":
+            return Palette(color="none")
         resolved = None if native else self.identity.accent(env.scheme)
         if resolved is None:
             # Ink (no product colour) or the host's own colours: strong text, a plain reverse chip.
@@ -148,18 +172,35 @@ class Kit:
     def body_width(self) -> int:
         return self.env.width - (3 if self.decor else 0)
 
+    @property
+    def short(self) -> bool:
+        """A short terminal (16 rows or fewer): no blank rows, key hints inline."""
+        return self.decor and self.env.short
+
+    def gap(self) -> List[Line]:
+        """A blank rail row between blocks; none on a short terminal or under ``density="compact"``."""
+        if self.decor and (self.short or self.theme.density == "compact"):
+            return []
+        return [self.rail()] if self.decor else [Line([])]
+
+    def fits(self, spans: Sequence[Span]) -> bool:
+        """``spans`` fit one line of the body."""
+        return cell_len("".join(s.text for s in spans).rstrip()) <= self.body_width
+
     def _prefix(self, symbol: str, role: str = "muted") -> List[Span]:
         if not self.decor:
             return []
         return [Span(self.env.symbol[symbol], (role,), None, "symbol"), Span("  ")]
 
     def header(self, verb: str) -> Line:
-        """``┌  [ Product ] · verb``: the product chip opens every flow."""
+        """``┌  [ Product ] · verb``: the product chip opens every flow. A name too long for the
+        line ends in an ellipsis inside the chip (never a hard crop)."""
         if not self.product:
             return Line(self._prefix("railStart") + [self.d(verb, "command", *(("muted",) if self.decor else ()))])
-        chip = Span(" " + self.product + " ", ("chip",), None, "data:product")
         if not self.decor:
             return Line([Span(self.product, (), None, "data:product"), self.sep(), self.d(verb, "command")])
+        room = max(8, self.body_width - 2 - 3 - cell_len(verb))
+        chip = Span(" " + _end_cut(self.product, room, self.env.symbol["ellipsis"]) + " ", ("chip",), None, "data:product")
         return Line(self._prefix("railStart") + [chip, self.sep(), self.d(verb, "command", "muted")])
 
     def rail(self) -> Line:
@@ -278,18 +319,32 @@ class Kit:
         return Span(middle(shown, w, ellipsis=ell), ("muted",), None, "data:key", True)
 
     def qr(self, payload: str) -> List[Line]:
-        """The half-block QR, black on white, or nothing below 70 columns or 20 rows, or without
-        Unicode. QR codes are always paired with the text code (§4.4 rule 7)."""
-        if not self.decor or self.env.width < QR_MIN_COLUMNS or self.env.height < QR_MIN_ROWS:
-            return []
-        if self.env.symbols == "ascii":
+        """The half-block QR, black on white, lined up under the code, or nothing without Unicode
+        or as wide as the terminal. QR codes are always paired with the text code (§4.4 rule 7);
+        whether the screen has the rows for it is the screen's to decide (``screens``)."""
+        if not self.decor or self.env.symbols == "ascii":
             return []
         invert = self.env.color == "none" and self.env.scheme == "dark"
         text = _qr.terminal(payload, quiet_zone=2, invert=invert)
         if text is None:
             return []
+        rows = text.split("\n")
+        if QR_INDENT + max(cell_len(r) for r in rows) > self.env.columns:
+            return []
         roles = () if self.env.color == "none" else ("qr",)
-        return [Line(self._prefix("rail") + [Span(row, roles, None, "symbol", True)]) for row in text.split("\n")]
+        return [Line(self._prefix("rail") + [Span("   "), Span(row, roles, None, "symbol", True)]) for row in rows]
+
+
+def _end_cut(text: str, width: int, ellipsis: str) -> str:
+    """``text`` cut at its end to ``width`` cells with an ellipsis (a name, never a key or a URL)."""
+    if cell_len(text) <= width:
+        return text
+    out = ""
+    for ch in text:
+        if cell_len(out + ch) > width - cell_len(ellipsis):
+            break
+        out += ch
+    return out.rstrip() + ellipsis
 
 
 def _display_url(url: str) -> str:

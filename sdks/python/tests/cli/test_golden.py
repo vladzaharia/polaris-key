@@ -54,7 +54,8 @@ def test_board_fallbacks(theme: str) -> None:
 
 @pytest.mark.parametrize("theme", THEMES)
 def test_board_narrow(theme: str) -> None:
-    """The 60-column board (terminal.html "narrow"): meta wraps, keys cut in the middle, no QR."""
+    """The 60-column board (terminal.html "narrow"): meta wraps, keys cut in the middle, URLs wrap
+    whole, and the QR shows where the screen fits it."""
     names = ("device-limit-browser-mode", "activate-parsed", "sign-in-handoff-code", "offline-activation-default")
     blocks = []
     for fx in FIXTURES:

@@ -27,8 +27,8 @@
 <text x="58.8" y="177.8" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Copied</text>
 <rect x="20.5" y="182" width="1" height="16.8" fill="#6e7781"/>
 <text x="21" y="211.4" text-anchor="middle" fill="#6e7781">⠹</text>
-<text x="42" y="211.4" textLength="201.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">Waiting for your browser</text>
-<text x="247.8" y="211.4" text-anchor="middle" fill="#24292f">…</text>
+<text x="42" y="211.4" textLength="218.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">Waiting for you to sign in</text>
+<text x="264.6" y="211.4" text-anchor="middle" fill="#24292f">…</text>
 <rect x="20.5" y="215.6" width="1" height="8.4" fill="#6e7781"/>
 <rect x="20.5" y="223.5" width="4.7" height="1" fill="#6e7781"/>
 <text x="42" y="228.2" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">c</text>

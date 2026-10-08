@@ -177,12 +177,22 @@ def test_light_and_dark_resolve_the_accent_per_scheme() -> None:
     assert dark.accent == "38;2;114;202;190" and light.accent == "38;2;20;121;111"
 
 
-def test_theme_colors_override_a_role_per_scheme() -> None:
-    th = Theme(colors={"dark": {"muted": "2"}})
-    _, text = render(FIXTURES[0], env("ansi16", "unicode", 80, "dark"))
-    k = Kit.create(env("ansi16", "unicode", 80, "dark"), theme=th, source=Presentation(), product="t")
-    assert k.palette().params(("muted",)) == "2"
-    assert "\x1b[90m" in text
+def test_theme_colors_are_hex_per_role_per_scheme_in_truecolor_only() -> None:
+    """One value language across kits (the Node kit takes the same): a hex colour per role, per
+    scheme, drawn only where the terminal draws truecolor; ANSI-16 keeps the user's palette, the
+    native preset takes none, NO_COLOR drops every escape, and a value that is not hex is ignored."""
+    th = Theme(colors={"dark": {"muted": "#7a7a7a", "success": "2"}})
+    true = Kit.create(env("truecolor", "unicode", 80, "dark"), theme=th, source=Presentation(), product="t")
+    assert true.palette().params(("muted",)) == "38;2;122;122;122"
+    assert true.palette().params(("success",)) == "32"
+    ansi16 = Kit.create(env("ansi16", "unicode", 80, "dark"), theme=th, source=Presentation(), product="t")
+    assert ansi16.palette().params(("muted",)) == "90"
+    native = Kit.create(env("truecolor", "unicode", 80, "dark"), theme=th.with_(preset="native"), source=Presentation(), product="t")
+    assert native.palette().params(("muted",)) == "90"
+    light = Kit.create(env("truecolor", "unicode", 80, "light"), theme=th, source=Presentation(), product="t")
+    assert light.palette().params(("muted",)) == "90"
+    _, text = render(FIXTURES[0], env("none", "unicode", 80, "dark"))
+    assert "\x1b[" not in text
 
 
 def test_theme_validates_its_fields() -> None:
@@ -346,7 +356,8 @@ def test_detect_colour_modes() -> None:
 def test_detect_width_scheme_motion_and_headless() -> None:
     assert _detect(env={}).width == 80
     assert _detect(env={}, size=lambda: (64, 24)).width == 64
-    assert _detect(env={}, size=lambda: (40, 24)).width == 60
+    assert _detect(env={}, size=lambda: (40, 24)).width == 40
+    assert _detect(env={}, size=lambda: (20, 24)).width == 32
     assert _detect(env={}).scheme == "dark"
     assert _detect(env={"COLORFGBG": "0;15"}).scheme == "light"
     assert _detect(env={"PKEY_THEME": "light"}).scheme == "light"

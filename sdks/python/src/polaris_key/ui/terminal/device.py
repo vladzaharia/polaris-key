@@ -14,15 +14,17 @@ from __future__ import annotations
 import base64
 import json as _json
 import os
+import shutil
+import signal
 import sys
 import threading
 import time
-from typing import IO, Any, Callable, Iterable, List, Optional, Sequence
+from typing import IO, Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
 from .env import TermEnv
 from .text import Line, Palette, Span, _merge, cell_len, clean, safe_link, to_ansi
 
-__all__ = ["Device", "KeyReader", "rich_available", "to_rich"]
+__all__ = ["Device", "KeyReader", "LiveRegion", "physical_rows", "rich_available", "to_rich"]
 
 
 def rich_available() -> bool:
@@ -255,6 +257,7 @@ class Device:
         stdout: Optional[IO[str]] = None,
         stdin: Optional[IO[str]] = None,
         use_rich: Optional[bool] = None,
+        size: Optional[Callable[[], Tuple[int, int]]] = None,
     ) -> None:
         self.env = env
         self.palette = palette
@@ -262,6 +265,8 @@ class Device:
         self.inp = stdin or sys.stdin
         self.use_rich = rich_available() if use_rich is None else use_rich
         self._console: Any = None
+        self._size = size
+        self._resized: List[Callable[[TermEnv], None]] = []
         if not self.use_rich and env.color != "none" and os.name == "nt" and not _enable_vt():
             # A legacy Windows console without virtual-terminal processing: plain lines.
             self.palette = Palette(color="none")
@@ -271,6 +276,32 @@ class Device:
         if self._console is None:
             self._console = rich_console(self.env, self.out)
         return self._console
+
+    def size(self) -> Tuple[int, int]:
+        """The terminal's size now (columns, rows)."""
+        if self._size is not None:
+            return self._size()
+        try:
+            sz = os.get_terminal_size(self.out.fileno())
+        except Exception:
+            sz = shutil.get_terminal_size((self.env.columns, self.env.height))
+        return sz.columns, sz.lines
+
+    def on_resize(self, fn: Callable[[TermEnv], None]) -> None:
+        """Call ``fn`` with the new :class:`TermEnv` when the terminal changes size."""
+        self._resized.append(fn)
+
+    def refresh_size(self) -> None:
+        """Re-read the terminal's size into ``env`` (and every ``on_resize`` listener: the kit)."""
+        try:
+            cols, rows = self.size()
+        except Exception:
+            return
+        if (cols, rows) == (self.env.columns, self.env.height):
+            return
+        self.env = self.env.resized(cols, rows)
+        for fn in self._resized:
+            fn(self.env)
 
     def print(self, lines: Sequence[Line]) -> None:
         if self.env.json or not lines:
@@ -317,16 +348,51 @@ class Device:
             return False
 
 
+Frame = Union[Sequence[Line], Callable[[], Sequence[Line]]]
+
+
+def physical_rows(widths: Sequence[int], columns: int) -> int:
+    """Rows lines of these cell widths take on a terminal ``columns`` wide (a wider line wraps)."""
+    c = max(1, columns)
+    return sum(max(1, -(-w // c)) for w in widths)
+
+
+def _erase(rows: int) -> str:
+    """Erase ``rows`` rows ending at the cursor's, leaving it at the start of the first."""
+    if rows <= 0:
+        return ""
+    return "\r" + (f"\x1b[{rows - 1}A" if rows > 1 else "") + "\x1b[J"
+
+
 class LiveRegion:
     """Lines redrawn in place (spinners, countdowns, progress) at most every 80 ms; on a terminal
-    without motion the region is drawn once per change and never animated."""
+    without motion the region is drawn once per change and never animated.
+
+    Each frame replaces the last, erased by the rows its lines really took on the screen (a line
+    wider than the terminal wraps). A frame taller than the terminal does not fit: the lines at its
+    top that do not fit (the header first) are printed once above the region and scroll away, so the
+    rows that matter at the bottom (the code, the URL, the key hints) stay in view and redraw
+    cleanly; rich's ``Live`` would crop them to "...".
+
+    On SIGWINCH the region re-reads the size, erases what it drew by the rows that now take on the
+    reflowed screen (with the lines it printed above, when they are still all on it) and draws its
+    frame again at the new width: pass ``update`` a function to have it laid out again. Narrowing a
+    terminal mid-flow never leaves a duplicated header, a stack of progress bars or a line wider than
+    the screen. The Node kit's ``LiveRegion`` behaves the same."""
 
     def __init__(self, device: Device) -> None:
         self.d = device
-        self._lines: List[Line] = []
-        self._drawn = 0
+        self._frame: Optional[Frame] = None
+        #: Cell widths of the lines drawn now.
+        self._drawn: List[int] = []
+        #: Lines at the top of the frame already printed above the region, and their widths.
+        self._head = 0
+        self._head_widths: List[int] = []
         self._live: Any = None
         self._lock = threading.Lock()
+        self._resize_pending = False
+        self._old_winch: Any = None
+        self._winch = False
 
     @property
     def _redraws(self) -> bool:
@@ -334,48 +400,122 @@ class LiveRegion:
         motion only decides whether spinners turn), never on ``TERM=dumb``."""
         return (self.d.env.interactive or self.d.env.motion) and not self.d.env.dumb
 
-    def _rows(self, line: Line) -> int:
-        """Physical rows ``line`` takes: a terminal narrower than the 60-column layout wraps it."""
-        cols = max(1, self.d.env.columns)
-        return max(1, -(-cell_len(clean(line.text).rstrip()) // cols))
+    @staticmethod
+    def _widths(lines: Sequence[Line]) -> List[int]:
+        return [cell_len(clean(line.text).rstrip()) for line in lines]
 
     def __enter__(self) -> "LiveRegion":
-        if self.d.use_rich and self._redraws:
+        if not self._redraws:
+            return self
+        if self.d.use_rich and getattr(self.d.console, "legacy_windows", False):
+            # A legacy Windows console takes no cursor escapes: rich drives it through the console API.
             from rich.live import Live
 
             self._live = Live(console=self.d.console, auto_refresh=False, transient=True, redirect_stdout=False, redirect_stderr=False)
             self._live.__enter__()
-        elif self._redraws:
-            self.d.out.write("\x1b[?25l")
+            return self
+        self.d.out.write("\x1b[?25l")
+        self.d.out.flush()
+        self._listen(True)
         return self
 
-    def update(self, lines: Sequence[Line]) -> None:
+    def _listen(self, on: bool) -> None:
+        """Take SIGWINCH while the region is up (main thread only; the previous handler still runs)."""
+        if on == self._winch or not hasattr(signal, "SIGWINCH"):
+            return
+        if threading.current_thread() is not threading.main_thread():
+            return
+        try:
+            if on:
+                self._old_winch = signal.signal(signal.SIGWINCH, self._on_winch)
+            else:
+                signal.signal(signal.SIGWINCH, self._old_winch if self._old_winch is not None else signal.SIG_DFL)
+        except (ValueError, OSError):
+            return
+        self._winch = on
+
+    def _on_winch(self, signum: int, frame: Any) -> None:
+        old = self._old_winch
+        if callable(old):
+            old(signum, frame)
+        self.resize()
+
+    def _place(self, lines: Sequence[Line]) -> str:
+        """The frame's lines from the head on, printing any that do not fit above the region."""
+        widths = self._widths(lines)
+        cols, rows = self.d.env.columns, self.d.env.height
+        start = min(self._head, len(lines))
+        while start < len(lines) - 1 and physical_rows(widths[start:], cols) > rows:
+            start += 1
+        out = ""
+        if start > self._head:
+            out += "".join(to_ansi(ln, self.d.palette) + "\n" for ln in lines[self._head : start])
+            self._head_widths += widths[self._head : start]
+            self._head = start
+        out += "\n".join(to_ansi(ln, self.d.palette) for ln in lines[start:])
+        self._drawn = widths[start:]
+        return out
+
+    def update(self, frame: Frame) -> None:
+        """Show ``frame`` (lines, or a function that draws them at the current size) in place of the
+        last one."""
         with self._lock:
-            self._lines = list(lines)
+            self._frame = frame
+            lines = list(frame() if callable(frame) else frame)
             if self._live is not None:
-                self._live.update(to_rich(self._lines, self.d.palette), refresh=True)
+                self._live.update(to_rich(lines, self.d.palette), refresh=True)
                 return
             if not self._redraws:
                 return
-            out = self.d.out
-            if self._drawn:
-                out.write(f"\x1b[{self._drawn}F\x1b[J")
-            for line in self._lines:
-                out.write(to_ansi(line, self.d.palette) + "\n")
-            self._drawn = sum(self._rows(line) for line in self._lines)
-            out.flush()
+            out = _erase(physical_rows(self._drawn, self.d.env.columns)) + self._place(lines)
+            self.d.out.write(out)
+            self.d.out.flush()
+            if self._resize_pending:
+                self._resize()
+
+    def resize(self) -> None:
+        """The terminal changed size (SIGWINCH): lay the region out again. Safe from a signal
+        handler: a resize that lands mid-draw runs when that draw ends."""
+        if not self._lock.acquire(blocking=False):
+            self._resize_pending = True
+            return
+        try:
+            self._resize()
+        finally:
+            self._lock.release()
+
+    def _resize(self) -> None:
+        self._resize_pending = False
+        self.d.refresh_size()
+        if self._frame is None or self._live is not None or not self._redraws:
+            return
+        cols, rows = self.d.env.columns, self.d.env.height
+        n = physical_rows(self._drawn, cols)
+        head = physical_rows(self._head_widths, cols) if self._head else 0
+        if self._head and head + n <= rows:
+            # The lines printed above are all still on the screen: lay them out again too.
+            n += head
+            self._head, self._head_widths = 0, []
+        frame = self._frame
+        lines = list(frame() if callable(frame) else frame)
+        self._drawn = []
+        self.d.out.write(_erase(n) + self._place(lines))
+        self.d.out.flush()
 
     def clear(self) -> None:
         with self._lock:
             if self._live is not None:
                 self._live.update(to_rich([], self.d.palette), refresh=True)
             elif self._drawn and self._redraws:
-                self.d.out.write(f"\x1b[{self._drawn}F\x1b[J")
+                self.d.out.write(_erase(physical_rows(self._drawn, self.d.env.columns)))
                 self.d.out.flush()
-                self._drawn = 0
+            self._drawn = []
+            self._frame = None
+            self._head, self._head_widths = 0, []
 
     def __exit__(self, *exc: Any) -> None:
         self.clear()
+        self._listen(False)
         if self._live is not None:
             self._live.__exit__(None, None, None)
         elif self._redraws:

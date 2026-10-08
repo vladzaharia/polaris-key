@@ -25,7 +25,7 @@ from ..core.models import (
     UpdateView,
 )
 from . import fmt
-from .parts import Kit
+from .parts import STACK_COLUMNS, Kit
 from .text import Line, Span
 
 __all__ = [
@@ -55,22 +55,38 @@ Lines = List[Line]
 def _frame(k: Kit, verb: str, body: Lines, end: Sequence[Span] = ()) -> Lines:
     out = [k.header(verb)]
     if k.decor:
-        out.append(k.rail())
+        out += k.gap()
     out += body
     out += k.end(end)
     return out
 
 
 def _gap(k: Kit) -> Lines:
-    return [k.rail()] if k.decor else [Line([])]
+    """One blank rail row between blocks (none on a short terminal): one rhythm, never two."""
+    return k.gap()
 
 
 def _fixes(k: Kit, fixes: Sequence[Tuple[str, str]]) -> Lines:
-    """Fix commands, aligned: ``polaris-key activate   Use a different key``."""
+    """Fix commands, aligned: ``polaris-key activate   Use a different key``. Below 50 columns, or
+    when a row would not fit its line, each command stacks above its label."""
     if not fixes:
         return []
     width = max(len(f"{k.prog} {w}") for w, _ in fixes)
-    return [Line(k._prefix("rail") + k.command(w, label, width)) for w, label in fixes]
+    rows = [k.command(w, label, width) for w, label in fixes]
+    if k.env.width >= STACK_COLUMNS and all(k.fits(r) for r in rows):
+        return [Line(k._prefix("rail") + r) for r in rows]
+    out: Lines = []
+    for w, label in fixes:
+        out.append(Line(k._prefix("rail") + k.command(w)))
+        if label:
+            out += k.body([k.t(label, "muted")], 2)
+    return out
+
+
+def _code_row(k: Kit, code: str) -> Lines:
+    """The user code in reverse video, under the content column (wrapped after a hyphen, never
+    cut, when it is wider than a line)."""
+    return k.body(([Span("   ")] if k.decor else []) + [k.code(code)])
 
 
 def _code_title_message(k: Kit, code: Optional[str], *, group: str = "codes") -> Tuple[Span, Span]:
@@ -324,13 +340,14 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
         if k.env.interactive:
             end = k.hints([("c", "signin.handoff.useCode"), ("Esc", "common.cancel")])
     elif v.state in ("code", "link-copied") or (v.state == "finishing" and v.component == "SignInHandoff"):
-        if v.headless:
+        if v.headless and not k.env.device_code:
+            # No browser here: say so. Someone who asked for a code (--device-code) needs no note.
             body += k.step("done", [k.t("signin.cli.headless")])
-        else:
+        elif not v.headless:
             body += k.step("active", [k.t("signin.handoff.codeTitle", "strong")])
         body += _with_link(k, "signin.handoff.codeBody", url)
         body += _gap(k)
-        body += [Line(k._prefix("rail") + ([Span("   ")] if k.decor else []) + [k.code(v.user_code or "")])]
+        body += _code_row(k, v.user_code or "")
         body += _gap(k)
         body += k.body([k.t("signin.handoff.check")])
         if v.seconds_left is not None:
@@ -338,7 +355,7 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
         if v.copied:
             body += k.body([*k.icon("ok", "success"), k.t("common.copied", "muted")])
         body += _gap(k)
-        body += _wait_line(k, "signin.handoff.finishing" if v.state == "finishing" else "signin.handoff.waiting", frame)
+        body += _wait_line(k, "signin.handoff.finishing" if v.state == "finishing" else "cli.signin.waitingCode", frame)
         if k.env.interactive and v.state != "finishing":
             pairs = [("c", "a11y.copyCode")] if k.env.clipboard else []
             if not v.headless:
@@ -384,14 +401,18 @@ def offline_activation(k: Kit, v: OfflineView, verb: str = "offline-request") ->
         body += k.body([k.t("offlineActivation.request")])
         body += k.body([k.t("offlineActivation.product", "muted", product=k.product)])
         body += _gap(k)
-        body += [Line(k._prefix("rail") + ([Span("   ")] if k.decor else []) + [k.code(v.request_code or "")])]
+        body += _code_row(k, v.request_code or "")
+        after: Lines = _gap(k)
+        after += k.body([k.t("offlineActivation.loadHint")])
+        after += _fixes(k, [("import-bundle <file>", "offlineActivation.submit")])
+        # The QR only where the whole screen fits with it (one blank row on each side, never
+        # two), so it never pushes the header off the screen.
         qr = k.qr(v.request_code or "")
-        if qr:
+        screen = len(_frame(k, verb, body + after))
+        if qr and screen + len(_gap(k)) + len(qr) <= k.env.height:
             body += _gap(k)
             body += qr
-        body += _gap(k)
-        body += k.body([k.t("offlineActivation.loadHint")])
-        body += _fixes(k, [("import-bundle <file>", "offlineActivation.submit")])
+        body += after
     elif v.state == "done":
         body += k.step("ok", [k.t("offlineActivation.done", "strong")])
         if v.imported:
