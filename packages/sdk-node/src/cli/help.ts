@@ -33,6 +33,18 @@ export const VERB_OPTIONS: Readonly<
   login: [{ flags: "--device-code", key: "cli.option.deviceCode" }],
   logout: [{ flags: "-y, --yes", key: "cli.option.yes" }],
   deactivate: [{ flags: "-y, --yes", key: "cli.option.yes" }],
+  secret: [
+    {
+      flags: "--allow-workflow-commands",
+      key: "cli.option.allowWorkflowCommands",
+    },
+  ],
+  mint: [
+    {
+      flags: "--allow-workflow-commands",
+      key: "cli.option.allowWorkflowCommands",
+    },
+  ],
 };
 
 /** A verb as typed: its words and arguments (`devices rename <deviceId> [label...]`). */

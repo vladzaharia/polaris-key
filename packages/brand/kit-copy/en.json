@@ -2616,6 +2616,11 @@
       "role": "body",
       "note": "Terminal help: what the --device-code flag does."
     },
+    "cli.option.allowWorkflowCommands": {
+      "value": "Print the value even if a CI log would run a line of it as a command",
+      "role": "body",
+      "note": "Terminal help: what the --allow-workflow-commands flag of the secret and mint commands does. A CI log is a build server's job log (GitHub Actions, Azure Pipelines); a command is an instruction the build server reads from that log."
+    },
     "cli.keys.activate": {
       "value": "Enter activate · Esc cancel",
       "role": "hint",
@@ -2755,6 +2760,11 @@
       "value": "No secret named {name} is delivered to this device.",
       "role": "body",
       "note": "Terminal: the secret command found nothing. {name} is the secret's key."
+    },
+    "cli.output.workflowCommand": {
+      "value": "The value was not printed: this CI log would run a line of it as a command. To print it anyway, run {command}.",
+      "role": "body",
+      "note": "Terminal: the secret or mint command did not print its value (a secret or a token) because the build server reading the output would treat a line of it as an instruction. {command} is a command line (the same command with --allow-workflow-commands)."
     },
     "cli.offline.import": {
       "value": "Then run {command} with the file you get back.",

@@ -268,6 +268,12 @@ included, as a `\u` escape). Each line on stdout is one JSON object (NDJSON) wit
   other failure; 2 a usage error; 130 Ctrl-C.
 - **Never on a `--json` line:** a license key, a device token, a sign-in poll credential, a
   secret's value or a minted token.
+- **Off `--json`,** the Node kit's `secret` and `mint` print the value alone on stdout for a script
+  to capture byte for byte; the Python kit's never print it. Inside a CI job whose runner obeys
+  commands in its log (`GITHUB_ACTIONS`, `TF_BUILD`, `TEAMCITY_VERSION`), with stdout not a
+  terminal, the Node kit withholds a value with a line the runner would obey (`::`, `##[`,
+  `##vso[`, `##teamcity[`) and exits 1, unless `--allow-workflow-commands` is given. It never
+  alters the value to defuse it.
 
 **Desktop model** (revised 2026-10-05, SIGN-IN.md §3.17). Sign-in and activation are steps of
 the **one sign-in form**: inline in the Welcome window's pane by default, or, with `presentation:

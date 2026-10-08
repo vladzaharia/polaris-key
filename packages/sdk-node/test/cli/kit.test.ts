@@ -32,9 +32,11 @@ import {
 } from "../../src/cli/index.js";
 import {
   detectTerminal,
+  readsLogCommands,
   schemeFromColorFgBg,
   schemeFromOsc11,
 } from "../../src/cli/term/caps.js";
+import { hasLogCommand } from "../../src/cli/term/sanitize.js";
 import {
   truncateMiddle,
   wrapText,
@@ -684,6 +686,185 @@ describe("--json on every verb (both adapters)", () => {
     await program.parseAsync(["sign-out", "--yes"], { from: "user" });
     // No presentation and no bundle name here: the product is named after its slug.
     expect(screen.text()).toContain("Signed out of Tidewater on this device.");
+  });
+});
+
+describe("a raw value never runs as a CI log command (secret, mint)", () => {
+  /** Values a CI runner would obey a line of: GitHub's `::` (after leading whitespace) and
+   *  legacy `##[`, Azure's `##vso[` and TeamCity's `##teamcity[`, whatever the line break. */
+  const HOSTILE = [
+    "first line\n::add-mask::x",
+    "  ::stop-commands::resume",
+    "a\r\n\t::error::boom",
+    "a\r::warning::b",
+    "x ##[error]y",
+    "##vso[task.setvariable variable=x]y",
+    "##VSO[task.complete result=Failed]",
+    "##teamcity[buildStatus text='x']",
+  ];
+  /** Values that stay byte-exact even inside CI: nothing a runner reads as a command. */
+  const BENIGN = [
+    "s3cr3t",
+    "a::b",
+    "x ::y",
+    "multi\nline\nvalue",
+    "##vso",
+    "#[x]",
+    "with trailing newline\n",
+  ];
+  const GITHUB = { GITHUB_ACTIONS: "true" };
+
+  async function run(
+    verb: "secret" | "mint",
+    value: string,
+    env: Record<string, string>,
+    opts: { extra?: string[]; tty?: boolean; json?: boolean } = {},
+  ): Promise<{ out: string; err: string; code: number }> {
+    const out = new Screen({ tty: opts.tty ?? false });
+    const err = new Screen({ tty: false });
+    const program = new Command();
+    program.exitOverride();
+    let code = 0;
+    registerPolarisCommands(
+      program,
+      async () =>
+        stubClient({
+          config: {
+            getSecret: () => value,
+            mintToken: async () => ({ token: value, expiresAt: 1 }),
+          },
+        }),
+      {
+        pinnedKeys: {},
+        productSlug: "tidewater",
+        io: {
+          stdout: out,
+          stderr: err,
+          env,
+          ticker: frozenTicker,
+          now: () => NOW,
+        },
+        setExitCode: (c) => {
+          code = c;
+        },
+      },
+    );
+    await program.parseAsync(
+      [
+        verb,
+        verb === "secret" ? "api.key" : "cdn",
+        ...(opts.extra ?? []),
+        ...(opts.json ? ["--json"] : []),
+      ],
+      { from: "user" },
+    );
+    return { out: out.raw, err: err.text(), code };
+  }
+
+  it("knows which runners read commands, and which lines they obey", () => {
+    expect(readsLogCommands({})).toBe(false);
+    expect(readsLogCommands({ CI: "true" })).toBe(false);
+    expect(readsLogCommands({ GITHUB_ACTIONS: "false" })).toBe(false);
+    expect(readsLogCommands({ GITHUB_ACTIONS: "true" })).toBe(true);
+    expect(readsLogCommands({ TF_BUILD: "True" })).toBe(true);
+    expect(readsLogCommands({ TEAMCITY_VERSION: "2024.12" })).toBe(true);
+    for (const v of HOSTILE) expect(hasLogCommand(v), v).toBe(true);
+    for (const v of BENIGN) expect(hasLogCommand(v), v).toBe(false);
+  });
+
+  it("refuses, writing nothing on stdout, where a CI runner reads the log", async () => {
+    const runners: Array<Record<string, string>> = [
+      GITHUB,
+      { TF_BUILD: "True" },
+      { TEAMCITY_VERSION: "2024.12" },
+    ];
+    for (const env of runners)
+      for (const verb of ["secret", "mint"] as const)
+        for (const v of HOSTILE) {
+          const r = await run(verb, v, env);
+          const what = `${verb} ${JSON.stringify(v)} ${JSON.stringify(env)}`;
+          expect(r.out, what).toBe("");
+          expect(r.code, what).toBe(1);
+          expect(r.err, what).toContain(
+            `${verb} ${verb === "secret" ? "api.key" : "cdn"} --allow-workflow-commands`,
+          );
+          expect(r.err, what).toContain("would run a line of it as a command");
+          expect(r.err, what).not.toContain(v.trim());
+        }
+  });
+
+  it("prints the value byte for byte otherwise: opted in, benign, outside CI", async () => {
+    for (const verb of ["secret", "mint"] as const) {
+      for (const v of HOSTILE) {
+        const allowed = await run(verb, v, GITHUB, {
+          extra: ["--allow-workflow-commands"],
+        });
+        expect(allowed.out).toBe(`${v}\n`);
+        expect(allowed.code).toBe(0);
+        const local = await run(verb, v, {});
+        expect(local.out).toBe(`${v}\n`);
+        expect(local.code).toBe(0);
+      }
+      for (const v of BENIGN) {
+        const r = await run(verb, v, GITHUB);
+        expect(r.out).toBe(`${v}\n`);
+        expect(r.code).toBe(0);
+        expect(r.err).toBe("");
+      }
+    }
+  });
+
+  it("--json never prints the value, so it never refuses", async () => {
+    const r = await run("secret", HOSTILE[0]!, GITHUB, { json: true });
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.out)).toMatchObject({
+      command: "secret",
+      ok: true,
+      key: "api.key",
+      present: true,
+    });
+    expect(r.out).not.toContain("add-mask");
+  });
+
+  it("a terminal gets the cleaned value, one line, as before", async () => {
+    const r = await run("secret", "a\n::add-mask::x", GITHUB, { tty: true });
+    expect(r.out).toBe("a::add-mask::x\n");
+    expect(r.code).toBe(0);
+  });
+
+  it("yargs reads the flag too", async () => {
+    const out = new Screen({ tty: false });
+    const err = new Screen({ tty: false });
+    let code = -1;
+    const y = yargs([]).exitProcess(false);
+    registerYargsCommands(
+      y,
+      async () => stubClient({ config: { getSecret: () => HOSTILE[0] } }),
+      {
+        pinnedKeys: {},
+        productSlug: "tidewater",
+        io: {
+          stdout: out,
+          stderr: err,
+          env: GITHUB,
+          ticker: frozenTicker,
+          now: () => NOW,
+        },
+        setExitCode: (c) => {
+          code = c;
+        },
+      },
+    );
+    await y.parseAsync(["polaris-key", "secret", "api.key"]);
+    expect(out.raw).toBe("");
+    expect(code).toBe(1);
+    await y.parseAsync([
+      "polaris-key",
+      "secret",
+      "api.key",
+      "--allow-workflow-commands",
+    ]);
+    expect(out.raw).toBe(`${HOSTILE[0]}\n`);
   });
 });
 

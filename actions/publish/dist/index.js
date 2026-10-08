@@ -11562,6 +11562,9 @@ var truthy = (v) => v !== void 0 && v !== "" && v !== "0" && v.toLowerCase() !==
 function isCi(env) {
   return truthy(env.CI) || truthy(env.GITHUB_ACTIONS) || truthy(env.BUILDKITE);
 }
+function readsLogCommands(env) {
+  return truthy(env.GITHUB_ACTIONS) || truthy(env.TF_BUILD) || truthy(env.TEAMCITY_VERSION);
+}
 function isHeadless(env, platform = process.platform) {
   if (truthy(env.SSH_CONNECTION) || truthy(env.SSH_TTY) || isCi(env))
     return true;
@@ -11621,6 +11624,7 @@ function detectTerminal(opts = {}) {
     rows: tty && out?.rows ? out.rows : 24,
     scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
     ci,
+    logCommands: readsLogCommands(env),
     headless: isHeadless(env, platform),
     json
   };

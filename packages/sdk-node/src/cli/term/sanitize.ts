@@ -33,3 +33,22 @@ export function safeLink(url: string | undefined | null): string | null {
   if (u.protocol === "http:" && LOOPBACK.has(u.hostname)) return url;
   return null;
 }
+
+/** A legacy GitHub `##[…]`, an Azure Pipelines `##vso[…]` or a TeamCity `##teamcity[…]` command,
+ *  which those runners find anywhere in a line. */
+const LOG_COMMAND_ANYWHERE = /##(?:vso|teamcity)?\[/i;
+
+/**
+ * Whether a line of `text` would run as a command in a CI log (`readsLogCommands`): one whose
+ * start, after leading whitespace, is GitHub's `::`, or one holding `##[`, `##vso[` or
+ * `##teamcity[`. Lines break at CR, LF or CRLF, as the runners read them. Used where a value
+ * must reach stdout byte for byte (`secret`, `mint`), so it cannot be defused, only withheld.
+ */
+export function hasLogCommand(text: string): boolean {
+  return text
+    .split(/\r\n|\r|\n/)
+    .some(
+      (line) =>
+        line.trimStart().startsWith("::") || LOG_COMMAND_ANYWHERE.test(line),
+    );
+}

@@ -124,6 +124,34 @@ def test_secret_never_prints_the_value(capsys) -> None:
     assert code == 0 and "present" in out and "vpn.example.com" not in out
 
 
+def test_secret_and_mint_values_never_reach_a_ci_log(capsys, monkeypatch) -> None:
+    """The Node kit prints a secret's value or a minted token raw for a script, so inside a CI job
+    that reads commands from its log (GitHub Actions, Azure Pipelines, TeamCity) it withholds one
+    a line of which the runner would obey, unless ``--allow-workflow-commands``. This kit never
+    prints either value at all, so the same guarantee holds by construction; pinned here so a
+    change that starts printing them has to take the Node kit's guard with it."""
+    hostile = "x\n::add-mask::y\n##vso[task.setvariable variable=a]b\n##teamcity[buildStatus text='c']"
+    for name, value in (("GITHUB_ACTIONS", "true"), ("TF_BUILD", "True"), ("TEAMCITY_VERSION", "2024.12")):
+        monkeypatch.setenv(name, value)
+
+    class _Token:
+        token = hostile
+        expiresAt = 1
+
+    def factory(opts: core.ClientOptions):
+        c = _factory()(opts)
+        c.config.get_secret = lambda key: hostile
+        c.config.mint_token = lambda recipe: _Token()
+        return c
+
+    for argv in (["secret", "--product", PRODUCT, "api.key"], ["mint", "--product", PRODUCT, "cdn"]):
+        for extra in ([], ["--json"]):
+            code, out = _argparse(argv + extra, factory, capsys)
+            assert code == 0, out
+            for part in ("add-mask", "##vso[", "setvariable", "##teamcity[", "buildStatus"):
+                assert part not in out, (argv, extra, out)
+
+
 def test_update_and_packs_explain_a_missing_configuration(capsys) -> None:
     code, out = _argparse(["update", "--product", PRODUCT, "download", "--to", "x"], _factory(), capsys)
     assert code == 1 and "no signed updates" in out
