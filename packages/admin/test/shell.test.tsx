@@ -679,21 +679,146 @@ describe("state pages (T8)", () => {
     expect(screen.queryByText(/not authorized/i)).toBeNull();
   });
 
-  it("an unknown page names the segment and offers Overview and the palette", async () => {
-    boot("#/p/djdl/nonsense", { services: ALL_ON });
+  it("an unknown page names the segment and offers Overview and the palette, searching for it", async () => {
+    boot("#/p/djdl/license/nonsense", { services: ALL_ON });
     expect(
       await screen.findByRole("heading", { name: "Page not found" }),
     ).toBeTruthy();
-    expect(screen.getByText("nonsense")).toBeTruthy();
+    expect(screen.getByText("license/nonsense")).toBeTruthy();
     expect(
       screen.getByRole("link", { name: "Go to Overview" }).getAttribute("href"),
     ).toBe("#/p/djdl");
     await userEvent.click(
       screen.getByRole("button", { name: "Search or jump to…" }),
     );
+    const palette = await screen.findByRole("dialog", {
+      name: "Command palette",
+    });
+    const input = within(palette).getByRole("combobox", {
+      name: "Search or jump to",
+    }) as HTMLInputElement;
+    // The dead segment, selected, so typing replaces it.
+    expect(input.value).toBe("nonsense");
+    await waitFor(() => expect(document.activeElement).toBe(input));
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 8]);
+    await userEvent.keyboard("tiers");
+    expect(input.value).toBe("tiers");
+    // Closed and opened from the top bar, the palette starts empty again.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Command palette" }),
+      ).toBeNull(),
+    );
+    await userEvent.click(
+      within(screen.getByRole("banner")).getByRole("button", {
+        name: "Search or jump to",
+      }),
+    );
     expect(
-      await screen.findByRole("dialog", { name: "Command palette" }),
+      (
+        await screen.findByRole("combobox", { name: "Search or jump to" })
+      ).getAttribute("value") ?? "",
+    ).toBe("");
+  });
+
+  it("a not-found page under a product keeps the product's switcher and sidebar", async () => {
+    boot("#/p/djdl/nonsense", { services: ALL_ON });
+    await screen.findByRole("heading", { name: "Page not found" });
+    await ready();
+    expect(sectionHeaders()).toContain("License");
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Product: DJDL (djdl). Change product",
+      }),
+    );
+    await userEvent.click(await screen.findByRole("option", { name: /^Acme/ }));
+    await waitFor(() => expect(window.location.hash).toBe("#/p/acme"));
+  });
+
+  it("an old bookmark says where its page moved and links there, keeping the id and the query", async () => {
+    const replace = vi.spyOn(window.history, "replaceState");
+    boot("#/p/djdl/licenses?status=disabled", { services: ALL_ON });
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Page moved" }),
     ).toBeTruthy();
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "This page moved to License\u00a0→\u00a0Licenses",
+      }),
+    ).toBeTruthy();
+    // Not a redirect: the old address stays until the operator follows the link.
+    expect(window.location.hash).toBe("#/p/djdl/licenses?status=disabled");
+    expect(replace).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(document.title).toBe("Page moved · DJDL · Polaris Key"),
+    );
+    // The product's chrome stays.
+    expect(
+      screen.getByRole("button", {
+        name: "Product: DJDL (djdl). Change product",
+      }),
+    ).toBeTruthy();
+    const go = screen.getByRole("link", { name: "Go to Licenses" });
+    expect(go.getAttribute("href")).toBe(
+      "#/p/djdl/license/licenses?status=disabled",
+    );
+    await userEvent.click(go);
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/p/djdl/license/licenses?status=disabled",
+      ),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /^Licenses/ }),
+    ).toBeTruthy();
+  });
+
+  it("names the new home of every kind of old bookmark", async () => {
+    for (const [old, title, link, href] of [
+      [
+        "#/p/djdl/licenses/lic_1",
+        "This page moved to License\u00a0→\u00a0Licenses",
+        "Open license lic_1",
+        "#/p/djdl/license/licenses/lic_1",
+      ],
+      [
+        "#/p/djdl/secrets",
+        "This page moved to Core\u00a0→\u00a0Keys & secrets",
+        "Go to Keys & secrets",
+        "#/p/djdl/keys",
+      ],
+      [
+        "#/p/djdl/overview",
+        "This page moved to Core\u00a0→\u00a0Overview",
+        "Go to Overview",
+        "#/p/djdl",
+      ],
+      [
+        "#/p/djdl/deliverables/textures",
+        "This page moved to Release\u00a0→\u00a0Deliverables",
+        "Open deliverable textures",
+        "#/p/djdl/release/deliverables/textures",
+      ],
+      [
+        "#/p/djdl/updates",
+        "This page moved to Update\u00a0→\u00a0Feed",
+        "Go to Feed",
+        "#/p/djdl/update/feed",
+      ],
+    ] as const) {
+      boot(old, { services: ALL_ON });
+      expect(
+        await screen.findByRole("heading", { level: 2, name: title }),
+        old,
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("link", { name: link }).getAttribute("href"),
+        old,
+      ).toBe(href);
+      cleanup();
+    }
   });
 
   it("an unknown global path is not found, not Products (#/productsfoo)", async () => {

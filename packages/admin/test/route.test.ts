@@ -24,11 +24,14 @@ import {
   type ServiceState,
 } from "../src/console/nav.js";
 import {
+  MOVED_TABS,
   codecs,
   hrefFor,
+  movedHref,
   parseLocation,
   productPage,
   r,
+  searchTermFor,
   viewKey,
   withParam,
   type Route,
@@ -38,7 +41,7 @@ import type { ServiceSlug } from "../src/api.js";
 /**
  * The console's URL contract (docs/design/ADMIN.md §2.5–2.6): every page parses and round-trips,
  * a section's key alone redirects to its first page, and anything else is a not-found page that
- * names the segment (SH-8).
+ * names the segment (SH-8); a pre-redesign tab's not-found page knows where its page moved.
  * The nav model those URLs come from (nav.ts) is pinned here too.
  */
 
@@ -201,21 +204,81 @@ describe("section roots redirect to the section's first page", () => {
     expect(r.platform()).toBe("#/platform");
   });
 
-  it("pre-redesign tab paths are gone: they resolve to not-found, not to a guess", () => {
-    for (const old of [
-      "#/p/djdl/overview",
-      "#/p/djdl/secrets",
-      "#/p/djdl/licenses",
-      "#/p/djdl/licenses/lic_1",
-      "#/p/djdl/fingerprints",
-      "#/p/djdl/distribution-health",
-      "#/p/djdl/updates",
-    ]) {
+  it("pre-redesign tabs do not redirect: their not-found route says where the page moved", () => {
+    // ADMIN.md §2.5: old hash → the new address the moved page links to (id and query kept).
+    const OLD: [string, string][] = [
+      ["#/p/djdl/overview", "#/p/djdl"],
+      ["#/p/djdl/secrets", "#/p/djdl/keys"],
+      ["#/p/djdl/licenses", "#/p/djdl/license/licenses"],
+      ["#/p/djdl/licenses/lic_1", "#/p/djdl/license/licenses/lic_1"],
+      [
+        "#/p/djdl/licenses?status=disabled",
+        "#/p/djdl/license/licenses?status=disabled",
+      ],
+      ["#/p/djdl/tiers", "#/p/djdl/license/tiers"],
+      ["#/p/djdl/fingerprints", "#/p/djdl/license/enrollment"],
+      ["#/p/djdl/profiles", "#/p/djdl/config/profiles"],
+      ["#/p/djdl/profiles/p1", "#/p/djdl/config/profiles/p1"],
+      ["#/p/djdl/releases", "#/p/djdl/release/releases"],
+      ["#/p/djdl/deliverables", "#/p/djdl/release/deliverables"],
+      [
+        "#/p/djdl/deliverables/textures",
+        "#/p/djdl/release/deliverables/textures",
+      ],
+      ["#/p/djdl/compatibility", "#/p/djdl/release/compatibility"],
+      ["#/p/djdl/distribution-matrix", "#/p/djdl/distribution/matrix"],
+      ["#/p/djdl/distribution-health", "#/p/djdl/distribution/health"],
+      ["#/p/djdl/updates", "#/p/djdl/update/feed"],
+      ["#/p/a%20b/licenses/lic%2F1", "#/p/a%20b/license/licenses/lic%2F1"],
+    ];
+    for (const [old, now] of OLD) {
       const parsed = parseLocation(old);
       expect(parsed.redirect, old).toBeUndefined();
-      expect(parsed.route.kind, old).toBe("not-found");
+      const route = parsed.route;
+      if (route.kind !== "not-found") throw new Error(`${old}: ${route.kind}`);
+      expect(route.moved, old).toBeDefined();
+      expect(movedHref(route.slug!, route.moved!, route.query), old).toBe(now);
+      // The new address is a page, not another not-found.
+      expect(parseLocation(now).route.kind, now).toBe("product");
     }
-    expect(parseLocation("#/p/djdl/config/nope").route.kind).toBe("not-found");
+    // Every old tab in the map is a page that exists, and it is not a path a page owns today.
+    for (const [tab, page] of MOVED_TABS) {
+      expect(pageOf(page).page).toBe(page);
+      expect(parseLocation(`#/p/djdl/${tab}`).route.kind, tab).toBe(
+        "not-found",
+      );
+    }
+  });
+
+  it("only an old tab, or an old tab and an id its page has records for, is moved", () => {
+    for (const hash of [
+      "#/p/djdl/nope",
+      "#/p/djdl/secrets/x", // Keys & secrets has no records
+      "#/p/djdl/licenses/lic_1/keys", // the old URLs had no record tabs
+      "#/p/djdl/constructor",
+      "#/p/djdl/config/nope",
+    ]) {
+      const route = parseLocation(hash).route;
+      expect(route.kind, hash).toBe("not-found");
+      expect(route.kind === "not-found" && route.moved, hash).toBeFalsy();
+    }
+    // The old tabs that are section keys now are section roots, and redirect as before.
+    expect(parseLocation("#/p/djdl/config").redirect).toBe(
+      "#/p/djdl/config/catalog",
+    );
+    for (const key of ["distribution", "identity"])
+      expect(parseLocation(`#/p/djdl/${key}`).redirect, key).toMatch(
+        new RegExp(`^#/p/djdl/${key}/`),
+      );
+  });
+
+  it("a not-found path's search term is its first segment that is not a section key", () => {
+    expect(searchTermFor("nope")).toBe("nope");
+    expect(searchTermFor("license/nope")).toBe("nope");
+    expect(searchTermFor("licensez/lic_1")).toBe("licensez");
+    expect(searchTermFor("distribution-foo_bar")).toBe("distribution foo bar");
+    expect(searchTermFor("license")).toBe("license");
+    expect(searchTermFor("")).toBe("");
   });
 });
 

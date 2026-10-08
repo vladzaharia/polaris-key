@@ -78,18 +78,22 @@ function openInNewTab(href: string): void {
  * stagger, no list transition), and the selection highlight eases between rows at `micro`.
  *
  * `items` are rows a caller adds to the sources' own; a row whose id a source already offers is
- * dropped, so the shell's navigation and product rows never show twice.
+ * dropped, so the shell's navigation and product rows never show twice. `initialQuery` is typed
+ * in each time it opens (a not-found page's dead segment), selected, so typing replaces it.
  */
 export function CommandPalette({
   me,
   open,
   onOpenChange,
+  initialQuery = "",
   items: extra,
 }: {
   /** The session: which products the palette may offer. */
   me: Me;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The query the palette opens with. */
+  initialQuery?: string;
   items?: PaletteItem[];
 }): React.ReactElement {
   const ctx = usePaletteContext(me);
@@ -104,12 +108,17 @@ export function CommandPalette({
     open: boolean;
     key: number;
   } | null>(null);
-  React.useEffect(() => {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  // Reset on open, during render rather than in an effect, so the input mounts holding the
+  // initial query and the dialog's open focus can select it.
+  const [wasOpen, setWasOpen] = React.useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
-      setQuery("");
+      setQuery(initialQuery);
       setRecentIds(readRecents());
     }
-  }, [open]);
+  }
 
   const items = usePaletteItems(ctx, query, extra);
   const recents = resolveRecents(recentIds, items, ctx.products);
@@ -146,6 +155,12 @@ export function CommandPalette({
           <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs animate-pk-overlay-in" />
           <DialogPrimitive.Content
             aria-describedby={undefined}
+            onOpenAutoFocus={(e) => {
+              if (!initialQuery) return;
+              e.preventDefault();
+              inputRef.current?.focus();
+              inputRef.current?.select();
+            }}
             className={cn(
               // A phone gets the whole screen (EXPERIENCE.md §3); wider screens a centred panel.
               "fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-overlay pt-[env(safe-area-inset-top,0px)] text-fg animate-pk-in",
@@ -175,6 +190,7 @@ export function CommandPalette({
               <div className="flex items-center gap-2 border-b border-border px-3">
                 <Search aria-hidden className="size-4 shrink-0 text-fg-muted" />
                 <Command.Input
+                  ref={inputRef}
                   value={query}
                   onValueChange={setQuery}
                   aria-label="Search or jump to"

@@ -11,7 +11,8 @@
  * A section's key alone (`#/p/<slug>/license`, `#/platform`) redirects to the section's first
  * page; the router applies a redirect with `history.replaceState`, so Back does not loop.
  * Anything else unrecognised is a not-found page that names the segment: there is no silent
- * fallback (SH-8), and `#/productsfoo` is not Products.
+ * fallback (SH-8), and `#/productsfoo` is not Products. A pre-redesign tab (`MOVED_TABS`) is
+ * not-found too, but the route carries where its page went, and the page says so.
  */
 
 import {
@@ -58,8 +59,16 @@ export type Route =
       slug?: string;
       /** The path that matched nothing, for the not-found copy. */
       path: string;
+      /** The page a pre-redesign tab became (`MOVED_TABS`), when the path is one. */
+      moved?: MovedTo;
       query: URLSearchParams;
     };
+
+/** Where a pre-redesign product URL's page lives now: the page, and the record id it named. */
+export interface MovedTo {
+  page: ProductPageId;
+  id?: string;
+}
 
 /** A nested record: its id segments (`[name]`, or `[owner, name]`) and its tab. */
 export interface RouteChild {
@@ -71,6 +80,43 @@ export interface RouteChild {
 export interface ParsedLocation {
   route: Route;
   redirect?: string;
+}
+
+// ── Moved pages ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The pre-redesign product tabs (`#/p/<slug>/<tab>[/<id>]`, the old `route.ts`) and the page each
+ * one became. They do not redirect: the 0.9 line keeps no compatibility windows. The product
+ * not-found page reads this map instead and says where the page went ("This page moved to
+ * License → Licenses"), with one button to the new address that keeps the record id and the
+ * query. The old `config`, `distribution` and `identity` tabs are section keys now, so they are
+ * section roots and redirect like any other.
+ */
+export const MOVED_TABS: ReadonlyMap<string, ProductPageId> = new Map<
+  string,
+  ProductPageId
+>([
+  ["overview", "overview"],
+  ["secrets", "keys"],
+  ["licenses", "licenses"],
+  ["tiers", "tiers"],
+  ["fingerprints", "enrollment"],
+  ["profiles", "profiles"],
+  ["releases", "releases"],
+  ["deliverables", "deliverables"],
+  ["compatibility", "compatibility"],
+  ["distribution-matrix", "matrix"],
+  ["distribution-health", "health"],
+  ["updates", "feed"],
+]);
+
+/** An old tab, or an old tab and a record id when its page has records; anything else is not. */
+function movedFrom(rest: string[]): MovedTo | undefined {
+  const page = rest[0] === undefined ? undefined : MOVED_TABS.get(rest[0]);
+  if (!page) return undefined;
+  if (rest.length === 1) return { page };
+  if (rest.length === 2 && pageOf(page).record) return { page, id: rest[1] };
+  return undefined;
 }
 
 // ── Parsing ────────────────────────────────────────────────────────────────────────────────────
@@ -201,8 +247,15 @@ export function parseLocation(hash: string): ParsedLocation {
         `#/p/${encodeURIComponent(slug)}${target ? `/${target}` : ""}${suffix}`,
       );
     }
+    const moved = movedFrom(rest);
     return {
-      route: { kind: "not-found", slug, path: rest.join("/"), query },
+      route: {
+        kind: "not-found",
+        slug,
+        path: rest.join("/"),
+        ...(moved ? { moved } : {}),
+        query,
+      },
     };
   }
 
@@ -322,6 +375,30 @@ export function hrefFor(route: Route): string {
   }
   const prefix = route.slug ? `#/p/${encodeURIComponent(route.slug)}/` : "#/";
   return `${prefix}${route.path}${suffix}`;
+}
+
+/** The new address of a moved page (`MovedTo`), with the old URL's query. */
+export function movedHref(
+  slug: string,
+  moved: MovedTo,
+  query: URLSearchParams,
+): string {
+  return productHref(slug, moved.page, { id: moved.id }, queryString(query));
+}
+
+/**
+ * The part of a not-found path worth searching for: its first segment that is not a section's key
+ * (`license/nope` → `nope`), with dashes and underscores as spaces, since the palette matches
+ * words. Empty for an empty path.
+ */
+export function searchTermFor(path: string): string {
+  const keys = new Set<string>([
+    ...SECTIONS.map((s) => s.key),
+    PLATFORM_GROUP.key,
+  ]);
+  const parts = path.split("/").filter(Boolean);
+  const term = parts.find((p) => !keys.has(p)) ?? parts[0] ?? "";
+  return term.replace(/[-_]+/g, " ").trim();
 }
 
 /** A global page's hash, optionally a record of it. */
