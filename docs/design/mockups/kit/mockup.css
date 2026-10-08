@@ -15433,6 +15433,64 @@ a.card:focus-visible {
     min-height: 0;
   }
 }
+
+/*
+ * Integration steps (owner, 2026-10-08: concept C's stepper takes the place of the cards'
+ * strips). From 3 columns the steps are the last column under the hero's Integration pane and
+ * span two rows, the board's and the one under it (Recent activity), so integration reads down
+ * one column:
+ *   hero (every column) / board (.ov-main) + steps (.ov-side.span-rows) / activity (.ov-main).
+ * With 2 columns the board takes both and the steps sit in the second column (under the hero's
+ * pane, as at 3 and 4) beside the block after them; in one column the source order holds: board,
+ * steps, activity.
+ */
+@container ov (min-width: 680px) and (max-width: 975px) {
+  .ov-grid:has(> .ov-side.span-rows) {
+    grid-auto-flow: row dense;
+  }
+  .ov-grid > .ov-side.span-rows {
+    grid-column: 2;
+  }
+  .ov-grid > .ov-side.span-rows ~ .ov-main {
+    grid-column: 1;
+  }
+}
+@container ov (min-width: 976px) {
+  .ov-grid > .ov-side.span-rows {
+    grid-row: span 2;
+  }
+}
+
+/*
+ * A stepper with no pane (.guide.flat): rows only, each its mark, its name over one line of
+ * state or of its next action (a sub-line of links for a step whose next work is in the app),
+ * and the platform badges. The mark and the badges centre on the row's first 56px; a one- or
+ * two-line name block centres there too, and a taller one starts at the row's top, so every
+ * row's name is level with its mark.
+ *   <ol class="guide flat"><li class="guide-step done"><div class="guide-row">
+ *     <span class="guide-mark"></span><div class="guide-title"><h3>Licensing</h3></div>
+ *     <span class="plat-badges">…</span></div></li>…</ol>
+ */
+.guide.flat {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: none;
+}
+.guide.flat > .guide-step > .guide-row {
+  grid-template-columns: var(--card-media) minmax(0, 1fr) auto;
+  align-items: start;
+}
+.guide.flat .guide-title {
+  justify-content: center;
+  min-height: calc(var(--row-h) - 2 * var(--sp-2));
+}
+.guide.flat .plat-badges {
+  margin-top: calc((var(--row-h) - var(--card-media)) / 2 - var(--sp-2));
+}
+/* A link on a sub-line keeps its 24px target without growing the 20px line. */
+.guide.flat .guide-sub .link {
+  min-height: 24px;
+  margin-block: calc(-1 * var(--sp-0-5));
+}
 /* END product-overview */
 
 /* ── Distribution, multi-review pass (distribution screens, 2026-10-08) ─────────────────── */

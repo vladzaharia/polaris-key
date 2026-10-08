@@ -80,8 +80,7 @@
             </section>
           </div>
 
-          <!-- The board: one card per feature, canonical order. The strip under each fact is what integration still needs.
-               While only one platform has been seen a strip line is its state and time; platform names appear from the second. -->
+          <!-- The board: one card per feature, canonical order, each its key number. Integration lives in the steps. -->
           <section class="section ov-main" aria-labelledby="feat-title">
             <div class="section-head">
               <div><h2 id="feat-title">Features</h2></div>
@@ -96,9 +95,6 @@
                   <span class="stat-value">240 <small>licenses</small></span>
                   <span class="stat-foot">Standard · 3 waiting</span>
                 </div>
-                <div class="ov-feature-state">
-                  <div class="ov-line"><span class="verified">Verified</span><span class="meta">Oct 7, 10:42</span></div>
-                </div>
               </article>
 
               <!-- Needs attention: the dot on the tile; the hero states the problem. -->
@@ -109,21 +105,14 @@
                   <span class="stat-value">v4 <small>catalog</small></span>
                   <span class="stat-foot">12 settings · 3 secrets</span>
                 </div>
-                <div class="ov-feature-state">
-                  <div class="ov-line"><span class="verified">Verified</span><span class="meta">Oct 7, 10:44</span></div>
-                </div>
               </article>
 
-              <!-- The first open console step in canonical order: where integration continues. -->
-              <article class="card ov-feature current">
+              <article class="card ov-feature">
                 <div class="ov-feature-main">
                   <span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
                   <h3><a href="#">Ship builds</a></h3>
                   <span class="stat-value">4.2.0 <small>stable</small></span>
                   <span class="stat-foot">4.3.0-beta.2 on beta · Oct 6</span>
-                </div>
-                <div class="ov-feature-state">
-                  <div class="ov-line"><a class="btn outline sm" href="#"><i class="ic ic-key-round"></i>Add Sparkle signing key</a></div>
                 </div>
               </article>
 
@@ -134,10 +123,6 @@
                   <span class="stat-value">312 <small>accounts</small></span>
                   <span class="stat-foot">Pocket ID · members, admins</span>
                 </div>
-                <div class="ov-feature-state">
-                  <div class="ov-line"><span class="waiting-dot"><span>Waiting for the first <span class="nowrap">sign-in</span></span></span></div>
-                  <div class="ov-line"><span class="links"><a class="link" href="#" aria-label="Sign-in drop-in kit">Drop-in kit<i class="ic ic-arrow-right"></i></a><a class="link quiet" href="#" aria-label="Integrate Sign-in directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span></div>
-                </div>
               </article>
 
               <article class="card ov-feature">
@@ -145,9 +130,6 @@
                   <span class="icon-tile sm" data-service="sync"><i class="svc"></i></span>
                   <h3><a href="#">Cloud Sync</a></h3>
                   <span class="stat-foot">Not syncing yet</span>
-                </div>
-                <div class="ov-feature-state">
-                  <div class="ov-line"><span class="open-step"><a class="link" href="#">Set storage per account</a></span></div>
                 </div>
               </article>
 
@@ -163,7 +145,81 @@
             </div>
           </section>
 
-          <section class="section ov-side" aria-labelledby="act-title">
+          <!-- Integration steps (concept C's stepper): one step per enabled feature, canonical order, on a rail.
+               From 3 columns the last column, under the hero's Integration pane; Hide there hides both. -->
+          <section class="section ov-side span-rows" aria-labelledby="steps-title">
+            <div class="section-head">
+              <div><h2 id="steps-title">Integration steps</h2></div>
+            </div>
+            <div class="card">
+              <ol class="guide flat" aria-labelledby="steps-title">
+                <li class="guide-step done">
+                  <div class="guide-row">
+                    <span class="guide-mark"></span>
+                    <div class="guide-title"><h3>Licensing<span class="sr-only">, done</span></h3></div>
+                    <span class="plat-badges">
+                      <span class="plat-badge verified" role="img" aria-label="macOS: Verified Oct 7, 10:42" title="macOS: Verified Oct 7, 10:42"><i class="ic ic-apple"></i></span>
+                      <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+                    </span>
+                  </div>
+                </li>
+                <li class="guide-step done">
+                  <div class="guide-row">
+                    <span class="guide-mark"></span>
+                    <div class="guide-title"><h3>Managed config<span class="sr-only">, done</span></h3></div>
+                    <span class="plat-badges">
+                      <span class="plat-badge verified" role="img" aria-label="macOS: Verified Oct 7, 10:44" title="macOS: Verified Oct 7, 10:44"><i class="ic ic-apple"></i></span>
+                      <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+                    </span>
+                  </div>
+                </li>
+                <!-- The first open step: where integration continues. Its console step is its one action. -->
+                <li class="guide-step current">
+                  <div class="guide-row">
+                    <span class="guide-mark"></span>
+                    <div class="guide-title">
+                      <h3>Ship builds</h3>
+                      <span class="guide-sub"><a class="link" href="#">Add Sparkle signing key</a></span>
+                    </div>
+                    <span class="plat-badges">
+                      <span class="plat-badge after" role="img" aria-label="macOS: After the console step" title="macOS: After the console step"><i class="ic ic-apple"></i></span>
+                      <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+                    </span>
+                  </div>
+                </li>
+                <!-- The console is done and the next work is in the app: the drop-in path, once on the page. -->
+                <li class="guide-step waiting">
+                  <div class="guide-row">
+                    <span class="guide-mark"></span>
+                    <div class="guide-title">
+                      <h3>Sign-in</h3>
+                      <span class="guide-sub">Waiting for the first <span class="nowrap">sign-in</span></span>
+                      <span class="guide-sub"><span class="links"><a class="link" href="#" aria-label="Sign-in drop-in kit">Drop-in kit<i class="ic ic-arrow-right"></i></a><a class="link quiet" href="#" aria-label="Integrate Sign-in directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span></span>
+                    </div>
+                    <span class="plat-badges">
+                      <span class="plat-badge waiting" role="img" aria-label="macOS: Waiting for the first sign-in" title="macOS: Waiting for the first sign-in"><i class="ic ic-apple"></i></span>
+                      <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+                    </span>
+                  </div>
+                </li>
+                <li class="guide-step">
+                  <div class="guide-row">
+                    <span class="guide-mark"></span>
+                    <div class="guide-title">
+                      <h3>Cloud Sync</h3>
+                      <span class="guide-sub"><a class="link" href="#">Set storage per account</a></span>
+                    </div>
+                    <span class="plat-badges">
+                      <span class="plat-badge after" role="img" aria-label="macOS: After the console step" title="macOS: After the console step"><i class="ic ic-apple"></i></span>
+                      <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+                    </span>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </section>
+
+          <section class="section ov-main" aria-labelledby="act-title">
             <div class="section-head">
               <div><h2 id="act-title">Recent activity</h2></div>
               <a class="btn link" href="#">Open Activity<i class="ic ic-arrow-right"></i></a>

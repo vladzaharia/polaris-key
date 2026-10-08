@@ -1626,43 +1626,50 @@ nav. `identity.sign-in`, `identity.consent`, `identity.connection`, `identity.co
 ## Product overview (products.overview)
 
 The final Overview: exploration B's hero and board on one column grid, so the hero, the board and
-the aside share their edges.
+the last column share their edges, with exploration C's setup stepper (owner, 2026-10-08) as the
+Integration steps in the last column under the hero's Integration pane.
 
 ```html
 <div class="page"><div class="ov"><div class="ov-grid">
   <div class="card ov-hero attention">                 <!-- every column; .attention: 3px warning edge and wash -->
     <div class="ov-hero-main"><header class="page-head">…</header><section class="mk-stack-5">…the next step…</section></div>
     <section class="ov-hero-side">                     <!-- the last column: a sunken gauge -->
-      <h2 class="type-card">Integration</h2>
+      <div class="ov-pane-head"><h2 class="type-card"><a href="#">Integration<i class="ic ic-arrow-right"></i></a></h2><button class="btn link quiet">Hide</button></div>
       <div class="ov-gauge"><div class="meter-head">…macOS · 2 of 5 verified · bar…</div></div>
-      <div class="ov-hero-foot"><span class="ov-seen"><i class="ic ic-code-xml"></i><span>Last seen 4 min ago · …</span></span><button class="btn ghost sm">Hide</button></div>
+      <p class="ov-seen"><i class="ic ic-code-xml"></i><span>Last seen 4 min ago · …</span></p>
     </section></div>
   <section class="section ov-main">…<div class="ov-board">
-    <article class="card ov-feature">                  <!-- .issue .current .off -->
+    <article class="card ov-feature">                  <!-- .issue .off -->
       <div class="ov-feature-main"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
         <h3><a href="#">Licensing</a></h3><span class="stat-value">240 <small>licenses</small></span><span class="stat-foot">Standard · 3 waiting</span></div>
-      <div class="ov-feature-state"><div class="ov-line"><span class="verified">Verified</span><span class="meta">macOS · Oct 7, 10:42</span></div></div>
     </article>…</div></section>
-  <section class="section ov-side">…Recent activity…</section>
+  <section class="section ov-side span-rows">…<div class="card"><ol class="guide flat">…steps…</ol></div></section>
+  <section class="section ov-main">…Recent activity…</section>
 </div></div></div>
 ```
 
 - **`.ov` / `.ov-grid`**: columns from the grid's own width, never the viewport: 4 from 1488px
-  (360px columns and up), 3 from 940, 2 from 680, else 1. From 3 columns `.ov-main` takes every
-  column but the last and `.ov-side` the last; with 2 the board takes both and the aside goes
-  under it. Rows are `--section-gap` apart, columns `--grid-gap`. No width cliff: a column never
-  drops under about 300px.
-- **`.ov-hero`**: the side pane is always the last column (its divider lines up with the aside),
-  the panes stack under 800px of grid, and the lg primary is full width under 560. `.ov-gauge` is
-  one platform: a `.meter-head` and one line under it. `.ov-hero-foot` is pinned to the pane's
-  bottom.
+  (360px columns and up), 3 from 976, 2 from 680, else 1. From 3 columns `.ov-main` takes every
+  column but the last and `.ov-side` the last; `.ov-side.span-rows` spans two rows (the board's
+  and the next `.ov-main`'s), so the hero's pane and the steps read down the last column. With 2
+  columns the board takes both, then the block after the steps (column 1) sits beside the steps
+  (column 2); in one column the source order holds. Rows are `--section-gap` apart, columns
+  `--grid-gap`. No width cliff: a column never drops under about 300px.
+- **`.ov-hero`**: the side pane is always the last column (its divider lines up with the last
+  column), the panes stack under 800px of grid, and the lg primary is full width under 560.
+  `.ov-gauge` is one platform: a `.meter-head` and one line under it. `.ov-seen` is pinned to the
+  pane's bottom.
 - **`.ov-board`**: `--ov-board-cols` columns. **`.ov-feature`**: the fact (`.ov-feature-main`:
-  tile, name, number on the right, foot under the name; its link covers only this area) over one
-  sunken strip (`.ov-feature-state`) of `.ov-line`s: the state on the left, its platform and time
-  on the right. Fact areas in a board row share a height, so strips start on one line; in one
-  column a card is as tall as its lines. `.issue` warning border; `.current` accent border, 3px
-  accent edge and tinted strip (the first open integration step); `.off` dashed, only as tall as
-  its line, with a `.link` in the number's place.
+  tile, name, number on the right, foot under the name; its link covers the card). Cards in a
+  board row share a height; in one column a card is as tall as its lines. `.issue` warning border;
+  `.off` dashed, only as tall as its line, with a `.link` in the number's place. (`.ov-feature-state`
+  and `.current`, the per-card integration strip, stay in the kit for the explorations.)
+- **`.guide.flat`**: the guided-setup stepper with no pane: rows only, each the step's mark, its
+  name over at most one line of state or next action (one `.guide-sub` each; a second one holds
+  `.links` for a step whose next work is in the app), and `.plat-badges`. No chevron, no row
+  button: each link opens that feature on Integration. The mark and badges centre on the row's
+  first 56px and a one- or two-line name block centres there too, so a taller row keeps its name
+  level with its mark. Sub-line links keep a 24px target inside the 20px line.
 
 ## Toasts at the page's end, choice bodies, stacked facts (commerce screens)
 
