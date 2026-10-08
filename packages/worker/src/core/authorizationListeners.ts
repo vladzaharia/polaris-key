@@ -60,16 +60,6 @@ export function registerAuthorizationListener(
   LISTENERS.set(name, listener);
 }
 
-/** Remove a registration (tests only: the registry is module state). */
-export function unregisterAuthorizationListener(name: string): void {
-  LISTENERS.delete(name);
-}
-
-/** The registered names, in registration order. */
-export function authorizationListenerNames(): string[] {
-  return [...LISTENERS.keys()];
-}
-
 /** Is anyone listening? `authorizeDevice` reads `firstOnLicense` only when someone is. */
 export function hasAuthorizationListeners(): boolean {
   return LISTENERS.size > 0;

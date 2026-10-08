@@ -65,18 +65,6 @@ export function stmtEnqueuePackageRender(
   };
 }
 
-/** Enqueue one render on its own (a writer with no batch of its own to ride in). */
-export async function enqueuePackageRender(
-  db: Db,
-  product: string,
-  deliverableId: string,
-  reason: RenderReason,
-  now: number,
-): Promise<void> {
-  const s = stmtEnqueuePackageRender(product, deliverableId, reason, now);
-  await db.run(s.sql, ...s.params);
-}
-
 export interface QueuedRender {
   product: string;
   deliverableId: string;
