@@ -129,7 +129,7 @@ export function AccountPage({
       <div className="flex gap-8">
         <nav
           aria-label="On this page"
-          className="sticky top-24 hidden w-56 shrink-0 self-start desk:block"
+          className="sticky top-24 hidden w-56 shrink-0 self-start desk:block short:top-6"
         >
           <ul className="space-y-1">
             {sections.map((s) => (
@@ -276,8 +276,9 @@ function ThemeSwatch({
   return (
     <span
       aria-hidden
-      // Shrinks with its card: three cards share a narrow column on tablets.
-      className="mt-2 flex h-10 w-full max-w-28 overflow-hidden rounded-md border border-border"
+      data-swatch={preference}
+      // 112 px, shrinking only when its card is narrower (three cards share a tablet's column).
+      className="mt-2 flex h-10 w-28 max-w-full overflow-hidden rounded-md border border-border"
     >
       {preference !== "light" ? <span className="flex-1 bg-[#060912]" /> : null}
       {preference !== "dark" ? <span className="flex-1 bg-[#f6f7fb]" /> : null}
