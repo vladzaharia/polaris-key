@@ -99,7 +99,7 @@ function ProductSkeleton(): React.ReactElement {
     <div aria-busy className="space-y-6">
       <h1 className="sr-only">Loading</h1>
       <Skeleton className="h-80 w-full rounded-xl" />
-      <div className="grid gap-6 desk:grid-cols-[1fr_340px]">
+      <div className="grid gap-6 split:grid-cols-[1fr_340px]">
         <Skeleton className="h-64 rounded-xl" />
         <Skeleton className="h-64 rounded-xl" />
       </div>
@@ -276,11 +276,12 @@ function ProductBody({
     devices: activeDevices,
   };
   const has = (s: ProductSection) => sections.includes(s);
-  // Two columns when the main column has a card from the start (Get it and What's new come
-  // with the releases, Help with the developer's links); Package access alone arrives later.
+  // Two columns from 1024 px (§4.20, the `split` breakpoint) when the main column has a card from
+  // the start (Get it and What's new come with the releases, Help with the developer's links);
+  // Package access alone arrives later. Below 1024 px one column in the phone's task order.
   const twoColumns = has("get") || has("new") || has("help");
   const column = twoColumns
-    ? "pk-vt-scope contents desk:flex desk:flex-col desk:gap-6"
+    ? "pk-vt-scope contents split:flex split:flex-col split:gap-6"
     : "pk-vt-scope contents";
   const navProps = {
     sections,
@@ -330,7 +331,7 @@ function ProductBody({
           data-columns={twoColumns ? "two" : "one"}
           className={
             twoColumns
-              ? "flex min-w-0 flex-1 flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]"
+              ? "flex min-w-0 flex-1 flex-col gap-6 split:grid split:grid-cols-[minmax(0,1fr)_21.25rem] split:items-start wide:grid-cols-[minmax(0,1fr)_24rem]"
               : "flex min-w-0 max-w-2xl flex-1 flex-col gap-6"
           }
         >
@@ -398,10 +399,11 @@ function ProductBody({
                 />
               </div>
             ) : null}
-            {/* Product sign-in, only with Identity on (§3.1): after License on wide screens, after
-                Devices on phones (§4.20's task order); equal orders keep the source order. */}
+            {/* Product sign-in, only with Identity on (§3.1): after License in the side column
+                (from 1024 px), after Devices in one column (§4.20's task order); equal orders keep
+                the source order. */}
             {view.data?.services.identity === true ? (
-              <div className="order-3 desk:order-2">
+              <div className="order-3 split:order-2">
                 <ProductIdentityCard productName={product.name} />
               </div>
             ) : null}

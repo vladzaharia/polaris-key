@@ -135,6 +135,9 @@
      Named, not min-[900px]: an arbitrary px breakpoint sorts before the rem ones, so it would
      lose to a desk: utility on the same property. */
   --breakpoint-mid: 56.25rem;
+  /* 1024 px, where the product page splits into main · side (§4.20); one column in task order
+     below it. */
+  --breakpoint-split: 64rem;
   --breakpoint-wide: 73.75rem;
   /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */

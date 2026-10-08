@@ -23,7 +23,8 @@ export function SectionCard({
       aria-labelledby={`section-${id}-h`}
       data-section={id}
       className={cn(
-        "scroll-mt-36 rounded-xl border border-border bg-surface-raised p-5 shadow-elevation-1 desk:scroll-mt-24 desk:p-6",
+        // Clears the sticky header and the section pills below 1180 px; the header alone above.
+        "scroll-mt-36 rounded-xl border border-border bg-surface-raised p-5 shadow-elevation-1 desk:p-6 wide:scroll-mt-24",
         className,
       )}
     >

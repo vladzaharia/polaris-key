@@ -5,8 +5,9 @@ import type { ProductSection } from "../../router.js";
 import { SECTION_LABEL } from "../../model/product.js";
 
 /**
- * The in-page section nav (§4.20): a sticky TOC at ≥ 1180 px, sticky pill tabs on phones, hidden
- * between. Both list only the sections present, in the page's order (`sections`, from
+ * The in-page section nav (§4.20): a sticky TOC at ≥ 1180 px, sticky pill tabs below that (under
+ * the 56 px phone header, or the 64 px header from 761 px; at the top on a short screen, where the
+ * header scrolls away). Both list only the sections present, in the page's order (`sections`, from
  * `presentSections`: the order the page reads in as it scrolls, owner polish 2026-10-07), and
  * mark the one being read. `counts` adds a count after the label as a small neutral pill, the
  * pill the page uses for its other facts ("Devices 2").
@@ -33,8 +34,8 @@ export function SectionNav({
       className={cn(
         "pk-vt-chrome",
         variant === "toc"
-          ? "sticky top-24 hidden w-[9.25rem] shrink-0 self-start wide:block"
-          : "sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 desk:hidden",
+          ? "sticky top-24 hidden w-[9.25rem] shrink-0 self-start wide:block short:top-6"
+          : "sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 desk:top-16 desk:-mx-8 desk:px-8 wide:hidden short:top-0",
       )}
     >
       <ul
