@@ -167,6 +167,7 @@ this page or fails the freshness gate.
 | `account_product_subjects` | 0068_a_accounts.sql | `account_id`, `product`, `subject`, `created_at` |
 | `account_product_subject_aliases` | 0068_a_accounts.sql | `product`, `alias`, `subject`, `merged_at` |
 | `account_tombstones` | 0068_a_accounts.sql | `id`, `email_hash`, `merged_into`, `deleted_at` |
+| `account_erasures` | 0107_account_erasures.sql | `account_id`, `requested_at`, `attempts`, `last_attempt_at`, `next_attempt_at`, `lease_until`, `failed_step`, `last_error` |
 | `subject_events` | 0068_a_accounts.sql | `product`, `id`, `type`, `subject`, `payload_json`, `created_at` |
 | `account_sessions` | 0068_a_accounts.sql | `id_hash`, `account_id`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at`, `user_agent`, `amr_json` |
 | `account_product_grants` | 0068_a_accounts.sql | `account_id`, `product`, `claims_json`, `granted_at`, `modified_at`, `scope_hash (0087)` |

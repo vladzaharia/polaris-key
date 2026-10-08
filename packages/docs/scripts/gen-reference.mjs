@@ -475,6 +475,8 @@ export const TABLE_OWNERS = {
     "account_product_subjects",
     "account_product_subject_aliases",
     "account_tombstones",
+    // SEC-WP-04: the progress record of an account erasure that has not finished.
+    "account_erasures",
     "subject_events",
     "account_sessions",
     "account_product_grants",

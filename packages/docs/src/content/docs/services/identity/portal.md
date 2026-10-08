@@ -325,10 +325,13 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   developers keep the alias they were told about, and the joined account gets a fresh pairwise
   subject where its old one became an alias (`404 not_found` once undone or past 72 hours,
   `409 last_link` when an account would be left with no way to sign in).
-- **`DELETE /api/me`** — the account holder erases their own account. Deletes every email,
-  identity, and license-link row plus the account row itself in one atomic batch, then writes a
-  single tombstone audit entry naming only the opaque `acct_…` id — nothing that still identifies
-  the person. Rate-limited to 5 attempts on the account's own budget; the notice email is sent
+- **`DELETE /api/me`** — the account holder erases their own account. The account closes at once
+  (sessions end, sign-in is refused), every registered store's data is deleted, and then one
+  atomic batch deletes every email, identity, and license-link row plus the account row itself and
+  writes a single tombstone audit entry naming only the opaque `acct_…` id — nothing that still
+  identifies the person. If a store fails, the answer carries `erasing: true`: the erasure is
+  recorded and the Worker's cron retries it with back-off until it completes, and one that keeps
+  failing shows as the failed `erasures` step on the Operations page. Rate-limited to 5 attempts on the account's own budget; the notice email is sent
   **before** the delete, because afterward there is no address left to send it to
   (the R11 audit findings, `R11-09`). Licenses themselves are **not** deleted — they
   are the product's records, and the portal account is only a view onto them.

@@ -641,16 +641,25 @@ async function handleMeDelete(
     accountDeletedNotice({ origin: new URL(req.url).origin }),
     now,
   );
-  await deletePortalAccount(
+  const result = await deletePortalAccount(
     db,
     session.accountId,
     now,
     env,
     new URL(req.url).origin,
   );
-  return portalJson({ ok: true, deleted: session.accountId }, 200, {
-    "set-cookie": buildPortalClearCookie(),
-  });
+  // SEC-PRV-1: the account is closed either way (no session, no sign-in). `erasing: true` says a
+  // store hook failed and the retry sweeper is still finishing the erasure; the data is not
+  // readable through any API meanwhile.
+  return portalJson(
+    {
+      ok: true,
+      deleted: session.accountId,
+      ...(result.erasing ? { erasing: true } : {}),
+    },
+    200,
+    { "set-cookie": buildPortalClearCookie() },
+  );
 }
 
 /**

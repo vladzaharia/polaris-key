@@ -113,6 +113,27 @@ export async function runSubjectDelete(
 }
 
 /**
+ * Like {@link runSubjectDelete}, but fault-isolated per store (SEC-PRV-1): every store gets its
+ * turn even when an earlier one threw, and the failures come back by store name instead of
+ * aborting the run. Account erasure uses it so one failing store cannot leave the others
+ * undeleted, and so the retry knows which store to run again. A store's `delete` is idempotent.
+ */
+export async function runSubjectDeleteIsolated(
+  ctx: SubjectStoreContext,
+  args: { product: string; subject: string },
+): Promise<Array<{ store: string; error: unknown }>> {
+  const failures: Array<{ store: string; error: unknown }> = [];
+  for (const name of subjectStoreNames()) {
+    try {
+      await STORES.get(name)!.delete(ctx, args);
+    } catch (error) {
+      failures.push({ store: name, error });
+    }
+  }
+  return failures;
+}
+
+/**
  * Every store's export for one product, keyed by store name (the console's per-subject export,
  * I-12; the portal's per-product export, I-11). A store without `export` is listed as `null`, so
  * the export says the store exists and holds nothing it can hand out.
