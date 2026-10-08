@@ -723,9 +723,13 @@ function tidewaterDownloads() {
   };
 }
 
-/** Ember Tactics: expired; the update window covered 1.8, not 2.0 (§5.4 "Download 1.8"). */
+/**
+ * Ember Tactics: expired. The Worker ends a licence at its end date (P0-47), so no file is
+ * downloadable: each says `license_inactive` ("Needs an active license"), and nothing is
+ * recommended, as the License card's "Renew … to use it again" says.
+ */
 function emberDownloads() {
-  const notEntitled = { canDownload: false, reason: "not_entitled" };
+  const inactive = { canDownload: false, reason: "license_inactive" };
   const m20 = file(
     "rel_200",
     "2.0",
@@ -733,7 +737,7 @@ function emberDownloads() {
     "EmberTactics-2.0.dmg",
     "macos",
     "universal",
-    notEntitled,
+    inactive,
   );
   const w20 = file(
     "rel_200",
@@ -742,44 +746,13 @@ function emberDownloads() {
     "EmberTactics-2.0.exe",
     "windows",
     "x86_64",
-    notEntitled,
+    inactive,
   );
-  const m18 = file(
-    "rel_180",
-    "1.8",
-    "e18-mac",
-    "EmberTactics-1.8.dmg",
-    "macos",
-    "universal",
-    { sizeBytes: 1_900_000_000 },
-  );
-  const w18 = file(
-    "rel_180",
-    "1.8",
-    "e18-win",
-    "EmberTactics-1.8.exe",
-    "windows",
-    "x86_64",
-    { sizeBytes: 2_000_000_000 },
-  );
-  const rec = (
-    platform: string,
-    label: string,
-    f: ReturnType<typeof file>,
-  ) => ({
-    platform,
-    label,
-    releaseId: "rel_180",
-    version: "1.8",
-    universal: f.arch === "universal",
-    latest: false,
-    files: [f],
-  });
   return {
     product: { slug: "ember-tactics", name: "Ember Tactics" },
     channel: "stable",
     available: true,
-    access: "entitled",
+    access: "licensed",
     detected: { platform: "macos", arch: null, touchAmbiguous: false },
     latest: {
       releaseId: "rel_200",
@@ -787,19 +760,19 @@ function emberDownloads() {
       title: null,
       publishedAt: NOW - 10 * DAY,
     },
-    recommended: rec("macos", "macOS", m18),
+    recommended: null,
     platforms: [
       {
         platform: "macos",
         label: "macOS",
-        recommended: rec("macos", "macOS", m18),
-        files: [m20, m18],
+        recommended: null,
+        files: [m20],
       },
       {
         platform: "windows",
         label: "Windows",
-        recommended: rec("windows", "Windows", w18),
-        files: [w20, w18],
+        recommended: null,
+        files: [w20],
       },
     ],
     extras: [],

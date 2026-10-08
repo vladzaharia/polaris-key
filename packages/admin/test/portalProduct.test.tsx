@@ -306,7 +306,7 @@ describe("product page on today's data (PX-04)", () => {
     const access = await within(card).findByText("Access");
     expect(access.nextElementSibling?.textContent).toMatch(/^Ended /);
     expect(card.textContent).toMatch(
-      /Ended [^.]+\. Renew with the developer to keep using it\./,
+      /Ended [^.]+\. Renew with the developer to use it again\./,
     );
     expect(card.textContent).not.toMatch(/Updates included|newer versions/);
   });

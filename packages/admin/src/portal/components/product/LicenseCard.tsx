@@ -175,7 +175,7 @@ function LicenseFacts({
       {status.kind === "expired" || status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
           {status.kind === "expired"
-            ? `${status.note}. Renew with ${product.presentation.developer ?? "the developer"} to keep using it.`
+            ? `${status.note}. Renew with ${product.presentation.developer ?? "the developer"} to use it again.`
             : `${product.presentation.developer ?? "The developer"} suspended this license. Contact them to find out why.`}
         </p>
       ) : null}
