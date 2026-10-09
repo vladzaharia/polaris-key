@@ -571,6 +571,16 @@ public object Feature {
     public const val uiKitManage: String = "ui.kit.manage"
     public const val uiKitKeyentry: String = "ui.kit.keyentry"
     public const val uiCli: String = "ui.cli"
+    public const val uiGate: String = "ui.gate"
+    public const val uiActivate: String = "ui.activate"
+    public const val uiSignin: String = "ui.signin"
+    public const val uiDevicelimit: String = "ui.devicelimit"
+    public const val uiDevices: String = "ui.devices"
+    public const val uiUpdate: String = "ui.update"
+    public const val uiSettings: String = "ui.settings"
+    public const val uiPaywall: String = "ui.paywall"
+    public const val uiTheme: String = "ui.theme"
+    public const val uiI18n: String = "ui.i18n"
     public const val commerceReceipt: String = "commerce.receipt"
 }
 
@@ -660,6 +670,16 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.cli",
+    "ui.gate",
+    "ui.activate",
+    "ui.signin",
+    "ui.devicelimit",
+    "ui.devices",
+    "ui.update",
+    "ui.settings",
+    "ui.paywall",
+    "ui.theme",
+    "ui.i18n",
     "commerce.receipt",
 )
 
@@ -1241,6 +1261,9 @@ public const val DEVICE_LABEL_VERSION: Int = 1
 /** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
 public const val PRESENTATION_MATRIX_VERSION: Int = 1
 
+/** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
+public const val UI_MATRIX_VERSION: Int = 1
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 public const val CONTENT_CORPUS_VERSION: Int = 2
 
@@ -1524,8 +1547,18 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.kit.manage" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit.keyentry" to CapabilityRow("planned", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
+    "ui.gate" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.activate" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.signin" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.devicelimit" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.devices" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.update" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.settings" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.paywall" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.theme" to CapabilityRow("planned", "sdk", listOf()),
+    "ui.i18n" to CapabilityRow("planned", "sdk", listOf()),
     "commerce.receipt" to CapabilityRow("implemented", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "30a1e43428f178b2bf1be5153343056578f0cf823b6fcfa5559265c0f0874e21"
+public const val CAPABILITY_DIGEST: String = "f348c51df6a08445a887da7df2d1d9fe3d43e8e14c44b8825ed52ac40e9725e0"

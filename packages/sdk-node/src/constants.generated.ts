@@ -569,6 +569,16 @@ export const Feature = {
   uiKitManage: "ui.kit.manage",
   uiKitKeyentry: "ui.kit.keyentry",
   uiCli: "ui.cli",
+  uiGate: "ui.gate",
+  uiActivate: "ui.activate",
+  uiSignin: "ui.signin",
+  uiDevicelimit: "ui.devicelimit",
+  uiDevices: "ui.devices",
+  uiUpdate: "ui.update",
+  uiSettings: "ui.settings",
+  uiPaywall: "ui.paywall",
+  uiTheme: "ui.theme",
+  uiI18n: "ui.i18n",
   commerceReceipt: "commerce.receipt",
 } as const;
 export type Feature = (typeof Feature)[keyof typeof Feature];
@@ -659,6 +669,16 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.kit.manage",
   "ui.kit.keyentry",
   "ui.cli",
+  "ui.gate",
+  "ui.activate",
+  "ui.signin",
+  "ui.devicelimit",
+  "ui.devices",
+  "ui.update",
+  "ui.settings",
+  "ui.paywall",
+  "ui.theme",
+  "ui.i18n",
   "commerce.receipt",
 ];
 
@@ -1290,6 +1310,9 @@ export const DEVICE_LABEL_VERSION = 1;
 /** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
 export const PRESENTATION_MATRIX_VERSION = 1;
 
+/** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
+export const UI_MATRIX_VERSION = 1;
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 export const CONTENT_CORPUS_VERSION = 2;
 
@@ -1646,9 +1669,19 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "node", reason: "runtime" }],
   },
   "ui.cli": { status: "implemented", service: "sdk", na: [] },
+  "ui.gate": { status: "planned", service: "sdk", na: [] },
+  "ui.activate": { status: "planned", service: "sdk", na: [] },
+  "ui.signin": { status: "planned", service: "sdk", na: [] },
+  "ui.devicelimit": { status: "planned", service: "sdk", na: [] },
+  "ui.devices": { status: "planned", service: "sdk", na: [] },
+  "ui.update": { status: "planned", service: "sdk", na: [] },
+  "ui.settings": { status: "planned", service: "sdk", na: [] },
+  "ui.paywall": { status: "planned", service: "sdk", na: [] },
+  "ui.theme": { status: "planned", service: "sdk", na: [] },
+  "ui.i18n": { status: "planned", service: "sdk", na: [] },
   "commerce.receipt": { status: "implemented", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "40161bb7de97590be162d490f41aa6752884682ee077e073c576b080ea6d0b5e";
+  "d3a3eb4328bdbbd8e2e9cdbbcca08ba803db99398e72d2b81a5ffe4d88e7b77a";

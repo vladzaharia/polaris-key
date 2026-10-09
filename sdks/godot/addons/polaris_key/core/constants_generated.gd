@@ -416,11 +416,21 @@ class Feature:
 	const UI_KIT_MANAGE := "ui.kit.manage"
 	const UI_KIT_KEYENTRY := "ui.kit.keyentry"
 	const UI_CLI := "ui.cli"
+	const UI_GATE := "ui.gate"
+	const UI_ACTIVATE := "ui.activate"
+	const UI_SIGNIN := "ui.signin"
+	const UI_DEVICELIMIT := "ui.devicelimit"
+	const UI_DEVICES := "ui.devices"
+	const UI_UPDATE := "ui.update"
+	const UI_SETTINGS := "ui.settings"
+	const UI_PAYWALL := "ui.paywall"
+	const UI_THEME := "ui.theme"
+	const UI_I18N := "ui.i18n"
 	const COMMERCE_RECEIPT := "commerce.receipt"
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.cli", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.cli", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -843,6 +853,9 @@ const DEVICE_LABEL_VERSION := 1
 ## `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
 const PRESENTATION_MATRIX_VERSION := 1
 
+## `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
+const UI_MATRIX_VERSION := 1
+
 ## `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 const CONTENT_CORPUS_VERSION := 2
 
@@ -1123,8 +1136,18 @@ static func capabilities() -> Dictionary:
 		"ui.kit.manage": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.kit.keyentry": {"status": "planned", "service": "sdk", "na": []},
 		"ui.cli": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"ui.gate": {"status": "planned", "service": "sdk", "na": []},
+		"ui.activate": {"status": "planned", "service": "sdk", "na": []},
+		"ui.signin": {"status": "planned", "service": "sdk", "na": []},
+		"ui.devicelimit": {"status": "planned", "service": "sdk", "na": []},
+		"ui.devices": {"status": "planned", "service": "sdk", "na": []},
+		"ui.update": {"status": "planned", "service": "sdk", "na": []},
+		"ui.settings": {"status": "planned", "service": "sdk", "na": []},
+		"ui.paywall": {"status": "planned", "service": "sdk", "na": []},
+		"ui.theme": {"status": "planned", "service": "sdk", "na": []},
+		"ui.i18n": {"status": "planned", "service": "sdk", "na": []},
 		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "f901d4f05b32ef70f12f9544be87ce0fc6f0b43979767a6368d429d33b3ea318"
+const CAPABILITY_DIGEST := "e38f39f8acd75a10862ab2579536ab9154fdc38efddd0b157ee3d9dddf9c14ca"

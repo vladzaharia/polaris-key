@@ -86,6 +86,7 @@ __all__ = [
     "SYNC_SCENARIOS_VERSION",
     "DEVICE_LABEL_VERSION",
     "PRESENTATION_MATRIX_VERSION",
+    "UI_MATRIX_VERSION",
     "CONTENT_CORPUS_VERSION",
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
@@ -712,6 +713,16 @@ class Feature:
     UI_KIT_MANAGE: Final = "ui.kit.manage"
     UI_KIT_KEYENTRY: Final = "ui.kit.keyentry"
     UI_CLI: Final = "ui.cli"
+    UI_GATE: Final = "ui.gate"
+    UI_ACTIVATE: Final = "ui.activate"
+    UI_SIGNIN: Final = "ui.signin"
+    UI_DEVICELIMIT: Final = "ui.devicelimit"
+    UI_DEVICES: Final = "ui.devices"
+    UI_UPDATE: Final = "ui.update"
+    UI_SETTINGS: Final = "ui.settings"
+    UI_PAYWALL: Final = "ui.paywall"
+    UI_THEME: Final = "ui.theme"
+    UI_I18N: Final = "ui.i18n"
     COMMERCE_RECEIPT: Final = "commerce.receipt"
 
 
@@ -801,6 +812,16 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.cli",
+    "ui.gate",
+    "ui.activate",
+    "ui.signin",
+    "ui.devicelimit",
+    "ui.devices",
+    "ui.update",
+    "ui.settings",
+    "ui.paywall",
+    "ui.theme",
+    "ui.i18n",
     "commerce.receipt",
 )
 
@@ -1474,6 +1495,10 @@ DEVICE_LABEL_VERSION: Final[int] = 1
 PRESENTATION_MATRIX_VERSION: Final[int] = 1
 
 
+#: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
+UI_MATRIX_VERSION: Final[int] = 1
+
+
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 CONTENT_CORPUS_VERSION: Final[int] = 2
 
@@ -1832,9 +1857,19 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.kit.manage": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.keyentry": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
+        "ui.gate": CapabilityRow("planned", "sdk", ()),
+        "ui.activate": CapabilityRow("planned", "sdk", ()),
+        "ui.signin": CapabilityRow("planned", "sdk", ()),
+        "ui.devicelimit": CapabilityRow("planned", "sdk", ()),
+        "ui.devices": CapabilityRow("planned", "sdk", ()),
+        "ui.update": CapabilityRow("planned", "sdk", ()),
+        "ui.settings": CapabilityRow("planned", "sdk", ()),
+        "ui.paywall": CapabilityRow("planned", "sdk", ()),
+        "ui.theme": CapabilityRow("planned", "sdk", ()),
+        "ui.i18n": CapabilityRow("planned", "sdk", ()),
         "commerce.receipt": CapabilityRow("implemented", "license", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "7f12f7f84342bdafeb0385f301984806db4a829917268caaa952313c82e033ea"
+CAPABILITY_DIGEST: Final[str] = "23d6ce503bec7fcf42597404c388ec4a92a1ba619924b3db5d00cfeeb9b21402"

@@ -381,6 +381,56 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
+    "ui.gate": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.activate": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.signin": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.devicelimit": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.devices": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.update": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.settings": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.paywall": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.theme": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
+    "ui.i18n": {
+      "status": "planned",
+      "wp": "UK-09",
+      "note": "Android kit; desktop via UK-10; Android Views is a recipe"
+    },
     "commerce.receipt": {
       "status": "implemented",
       "note": "client.commerce (:sdk's CommerceClient, P6-01): binding() and claim(store, payload) with claimPlay, claimSteam and claimAppStore, ClaimResult Ok / NotOwned / AttestationRequired / Refused(code, reason) (the host syncs after an Ok claim, as the transcript pins), attest-and-retry on attestation_required, hiddenHere/isUnlocked (App Store 3.1.3(b)); the commerce-claim transcript replays. Steam claims work on the JVM (the host passes the GetAuthTicketForWebApi hex ticket); Play Billing's one-call purchase and restore are :billing's PolarisPlayBilling in polaris-key-billing (obfuscatedAccountId = the binding, claim, acknowledge after the claim)."

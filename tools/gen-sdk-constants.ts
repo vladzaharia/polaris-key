@@ -34,7 +34,7 @@
 //                                       stageMatrixVersion, updateMatrixVersion,
 //                                       outletMatrixVersion, planMatrixVersion,
 //                                       syncScenariosVersion, deviceLabelVersion,
-//                                       presentationMatrixVersion, and
+//                                       presentationMatrixVersion, uiMatrixVersion, and
 //                                       content/cases.json's contentCorpusVersion
 //   @polaris-key/protocol/identity      the IDENTITY_EXPORTS (WIRE-CONTRACT-V4 §12.7, PX-W13)
 //   @polaris-key/protocol/core          the PRESENTATION_EXPORTS (WIRE-CONTRACT-V4 §5.5, HA-12)
@@ -166,6 +166,7 @@ export interface Sources {
     syncScenariosVersion: number;
     deviceLabelVersion: number;
     presentationMatrixVersion: number;
+    uiMatrixVersion: number;
     contentCorpusVersion: number;
   };
 }
@@ -645,6 +646,7 @@ export function loadSources(root = ROOT): Sources {
         "presentation-matrix.json",
         "presentationMatrixVersion",
       ),
+      uiMatrixVersion: corpus("ui-matrix.json", "uiMatrixVersion"),
       contentCorpusVersion: corpus(
         "content/cases.json",
         "contentCorpusVersion",
@@ -1050,6 +1052,11 @@ export function buildModel(sources: Sources): Model {
       name: "PRESENTATION_MATRIX_VERSION",
       doc: "`presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.",
       value: sources.corpus.presentationMatrixVersion,
+    },
+    {
+      name: "UI_MATRIX_VERSION",
+      doc: "`uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.",
+      value: sources.corpus.uiMatrixVersion,
     },
     {
       name: "CONTENT_CORPUS_VERSION",

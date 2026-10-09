@@ -454,6 +454,46 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
+    "ui.gate": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.activate": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.signin": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.devicelimit": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.devices": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.update": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.settings": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.paywall": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.theme": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
+    "ui.i18n": {
+      "status": "planned",
+      "wp": "UK-11"
+    },
     "commerce.receipt": {
       "status": "implemented",
       "note": "PolarisKey.commerce (services/commerce.gd, P6-01): get_binding() (the licence's purchase binding — P5-05 PKeyApple's appAccountToken, godot-google-play-billing's obfuscatedAccountId, GodotSteam's getAuthTicketForWebApi identity — and the mapped store products) and claim(store, payload) for the StoreKit JWS, the Play purchase token or the Steam web-API ticket; the Worker verifies with the store and grants the licence flag. hidden_here() applies App Store 3.1.3(b) on Apple outlets. suite_commerce and the commerce-claim transcript (suite_transcripts)."
