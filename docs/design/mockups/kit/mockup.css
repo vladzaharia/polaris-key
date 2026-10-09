@@ -12493,8 +12493,9 @@ a.card:focus-visible {
 .symbol-key-sym.s-ok {
   color: var(--pk-success);
 }
+/* The legend for the terminal's ● (.c-accent): the terminal's cyan, whatever the board's service. */
 .symbol-key-sym.s-wait {
-  color: var(--pk-accent-fg);
+  color: var(--mk-term-cyan);
 }
 .symbol-key-sym.s-unseen {
   color: var(--pk-text-subtle);

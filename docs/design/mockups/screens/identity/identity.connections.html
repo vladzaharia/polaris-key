@@ -45,12 +45,12 @@
 <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a></nav>
         <div class="page-heading"><h1>Connections</h1></div>
         <div class="page-actions">
-          <button class="btn primary"><i class="ic ic-plus"></i>Add SSO connection</button>
+          <button class="btn primary" data-service="identity"><i class="ic ic-plus"></i>Add SSO connection</button>
         </div>
       </header>
 
       <!-- Built-in providers (I-31): set up in the console, secrets sealed under the platform KEK. -->
-      <section class="card" aria-labelledby="h-providers">
+      <section class="card" aria-labelledby="h-providers" data-service="identity">
         <div class="card-head">
           <div class="title"><h2 id="h-providers">Sign-in providers</h2></div>
         </div>
@@ -82,7 +82,7 @@
       </section>
 
       <!-- SSO connections (I-30): platform or product scope, verified domains, SSO required per domain. -->
-      <section class="section" aria-labelledby="h-sso">
+      <section class="section" aria-labelledby="h-sso" data-service="identity">
         <div class="section-head">
           <h2 id="h-sso">Single sign-on</h2>
         </div>

@@ -43,9 +43,9 @@
 
   <main class="main">
     <!-- From 1280: the main column and a 360px sticky rail (what it gives people, the client, delete); below, one column. -->
-    <div class="page rhythm">
+    <div class="page rhythm" data-service="identity">
       <header class="page-head is-record">
-        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a><i class="ic ic-chevron-right"></i><a href="#">Connections</a></nav>
+        <nav class="crumbs" aria-label="Breadcrumb" data-service="core"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a><i class="ic ic-chevron-right"></i><a href="#">Connections</a></nav>
         <div class="page-heading"><h1>Lakeside University</h1></div>
         <p class="page-sub">Keycloak</p>
         <div class="page-actions">
@@ -157,12 +157,12 @@
             <div class="title"><h2 id="h-uses">What it gives people</h2></div>
           </div>
           <div class="card-rows">
-            <div class="list-row">
+            <div class="list-row" data-service="license">
               <span class="logo sm" data-product="djdl"></span>
               <div class="list-row-text"><div class="strong bold">DJDL Access</div><div class="type-small muted"><span class="mono">example.edu</span> gets an Education license · 57 accounts</div></div>
               <a class="link" href="#">Open<i class="ic ic-arrow-right"></i></a>
             </div>
-            <div class="list-row">
+            <div class="list-row" data-service="core">
               <span class="icon-tile muted"><i class="ic ic-users"></i></span>
               <div class="list-row-text"><div class="strong bold">Console</div><div class="type-small muted">No SSO rule uses Lakeside University</div></div>
               <a class="link" href="#">SSO rules<i class="ic ic-arrow-right"></i></a>
@@ -202,7 +202,7 @@
   <!-- Picking a card that removes an audience asks first (an L1 caution confirm); the selection
        moves only once it's confirmed. -->
   <div class="overlay center sheet">
-    <div class="dialog scroll caution" role="alertdialog" aria-modal="true" aria-labelledby="aud-title" aria-describedby="aud-lead">
+    <div class="dialog scroll caution" data-service="identity" role="alertdialog" aria-modal="true" aria-labelledby="aud-title" aria-describedby="aud-lead">
       <div class="dialog-head">
         <i class="ic ic-triangle-alert lg"></i>
         <h2 id="aud-title">Sign in only operators?</h2>

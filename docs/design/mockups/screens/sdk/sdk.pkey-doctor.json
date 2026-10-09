@@ -19,7 +19,8 @@
     "No 'outlet', 'grant', 'capability' or programme id appears in the output.",
     "Commerce prints 'off' on its own line; 'needs Licensing' shows only while Licensing is off (here it is Verified). Console links appear only on the two to-do rows.",
     "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13).",
-    "The narrow run is the terminal matrix's 40-column row and the warning glyph is ▲ ('!' only as the ASCII fallback) (sdk-c-22)."
+    "The narrow run is the terminal matrix's 40-column row and the warning glyph is ▲ ('!' only as the ASCII fallback) (sdk-c-22).",
+    "B17: a platform board (core); the key's ● is the terminal's cyan."
   ],
   "status": "mockup",
   "designReview": {

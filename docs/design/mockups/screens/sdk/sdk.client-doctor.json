@@ -17,7 +17,8 @@
     "The summary line counts the same way pkey doctor does: '2 to do · 1 warning'. A debug run with no refusal prints nothing.",
     "From 1280: What a debug run prints over The call, beside The checks over When key.plrs.im can't be reached; the columns end within about 100px, and the Godot frame has no empty viewport strip (its menu bar with 'Running · main.tscn' and the Output dock tabs stay). Below 1280 one column, the debug run first. Phone: the output re-wraps to 44 columns, with details, Fix lines and links indented under each check, and the editor's menu and dock tabs drop to their first items.",
     "The offline run: '✗ Server couldn't reach key.plrs.im (timed out after 10 s)' with its Fix; the checks that need the server read '– Signing key not checked; pins read from the file', '– Features not checked' and '– Clock not checked', and the summary is '1 to do · 3 not checked'. A check never passes or fails on a guess.",
-    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13)."
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13).",
+    "B17: a platform board (core); the Release key check is release."
   ],
   "status": "mockup",
   "designReview": {

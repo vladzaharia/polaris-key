@@ -145,7 +145,7 @@
               <div class="title"><div class="mk-cluster baseline"><h2 id="h-gets">What Diceroll gets</h2><span class="pill sm"><i class="ic ic-file-code-2"></i>.pkey/product</span></div><p>Changing the list asks every player again at their next sign-in.</p></div>
             </div>
             <div class="card-body tight"><p class="icon-line type-small muted"><i class="ic ic-info"></i><span>A change here overrides <code>identity.claims</code> until you revert it.</span></p></div>
-            <div class="setting-row">
+            <div class="setting-row" data-service="license">
               <div><div class="setting-title">License for this device</div></div>
               <span class="status muted"><i class="ic ic-lock"></i>Always</span>
             </div>
@@ -161,7 +161,7 @@
               <div><div class="setting-title">Email</div><div class="setting-desc"><span class="share-line"><span class="progress" style="--v: 61%"></span>Shared by 61% of players</span></div></div>
               <div class="segmented sm"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
             </div>
-            <div class="setting-row stack-narrow">
+            <div class="setting-row stack-narrow" data-service="sync">
               <div><div class="setting-title">Cloud Sync</div><div class="setting-desc"><span>Off keeps saves on that device only</span><span class="share-line"><span class="progress" style="--v: 94%"></span>On for 94%</span></div></div>
               <div class="segmented sm"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
             </div>
@@ -181,7 +181,7 @@
           </section>
 
           <!-- Key entry (I-09's setting, I-35's manifest block): taken over from the manifest. -->
-          <section class="card" id="s-keys" aria-labelledby="h-keys">
+          <section class="card" id="s-keys" data-service="license" aria-labelledby="h-keys">
             <div class="card-head">
               <div class="title"><div class="mk-cluster baseline"><h2 id="h-keys">License keys</h2><span class="pill sm"><i class="ic ic-pencil"></i>Changed here · <code>.pkey/product</code> says 5</span></div></div>
               <button class="btn ghost sm">Revert to manifest…</button>
@@ -199,7 +199,7 @@
 
         <div class="toc-aside">
           <!-- Customer portal: the two portal switches that remain (portal.enabled, keyReissue). -->
-          <section class="card" id="s-portal" aria-labelledby="h-portal">
+          <section class="card" id="s-portal" data-service="core" aria-labelledby="h-portal">
             <div class="card-head"><div class="title"><h2 id="h-portal">Customer portal</h2></div></div>
             <div class="setting-row">
               <div><div class="setting-title">Show Diceroll in players’ libraries</div></div>
@@ -212,7 +212,7 @@
           </section>
 
           <!-- Presentation is Core's (HA-12): read-only here; it replaces the old "App name" field. -->
-          <section class="card" id="s-pres" aria-labelledby="h-pres">
+          <section class="card" id="s-pres" data-service="core" aria-labelledby="h-pres">
             <div class="card-head">
               <div class="title"><h2 id="h-pres">Presentation</h2></div>
               <a class="link" href="#">Edit in Settings<i class="ic ic-arrow-right"></i></a>
@@ -246,7 +246,7 @@
             <p class="change-text">Activated devices keep playing.</p>
             <p class="meta">Diceroll accounts stops exchanging Firebase tokens</p>
           </div>
-          <div class="change-item">
+          <div class="change-item" data-service="sync">
             <span class="icon-tile sm" data-service="sync"><i class="svc"></i></span>
             <div class="change-title">Cloud Sync</div>
             <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>

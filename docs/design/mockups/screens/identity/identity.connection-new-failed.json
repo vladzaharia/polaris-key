@@ -13,7 +13,8 @@
     "Nothing is saved: no account, link, license or consent. 'Continue to domains' stays disabled with the hint 'Fix the client and try again to continue'.",
     "The stepper's current step reads 'Didn’t work' under Test sign-in; earlier steps keep their done marks.",
     "Phone: the callout's buttons go under its text, the answer's labels stack above their values, and long values wrap rather than scroll.",
-    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink; focus, hover, checked and selected take the accent of the service the element references (B17), never a status colour; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink; focus, hover, checked and selected take the accent of the service the element references (B17), never a status colour; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "B17: a Platform page (core rule and crumbs); the wizard is identity."
   ],
   "status": "mockup",
   "designReview": {
