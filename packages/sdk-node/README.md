@@ -715,6 +715,13 @@ A key given as an argument to `activate` still works and now warns that it lands
 history; the prompt or a pipe is the way to pass it. A host that relied on the old plain messages
 passes `kit: false`.
 
+**Changed in 0.8.x (UK-45).** `secret` and `mint` print their value only with `--reveal`; a script
+that captured it adds the flag (`$(tidewater secret api.key --reveal)`). `login` on a device that
+holds a key license asks before adding it to the account, and keeps it unless the answer is yes.
+`DeviceInfo.lastSeen` (epoch seconds, from the roster) is new; `lastVerifiedAt` stays this device's
+own verification in epoch milliseconds. `client.update.packageName` returns the `update.packageName`
+the upgrade command is built from.
+
 ## Samples and recipes
 
 Runnable samples live in the repository's `examples/` directory:

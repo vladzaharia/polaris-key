@@ -94,6 +94,30 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+### Corrections after verifying against the code (2026-10-09)
+
+- **Capability table.** `ui-matrix.json` and its `cli` family do not exist yet: UK-51 (plan mode,
+  corpus) creates them. The Node detection already met every row the brief names (CI truthiness over
+  `CI`, `GITHUB_ACTIONS` and `BUILDKITE` with `CI=0` and `CI=false` not CI; OSC 8 links only on a TTY
+  stdout; animation follows stdout, never stdin; no OSC 11 under `NO_COLOR`), so this package adds
+  the table as a test (`test/cli/uk45.test.ts`, "the terminal capability table") for UK-51 to lift
+  into the matrix, and changes no detection code.
+- **OSC 11.** `createKitContext` already skips the question when `PKEY_THEME` or `COLORFGBG` decides;
+  a test pins it, `NO_COLOR` included.
+- **Time unit.** The consumer was reading `lastVerifiedAt` with a "too large to be seconds" guess.
+  `DeviceInfo` now carries the roster's `lastSeen` (epoch seconds) and documents `lastVerifiedAt` as
+  this device's own, in milliseconds; `client-core`'s comment already said milliseconds.
+- **Refusal marks.** Gate and activation refusals keep ✗: the shared parity board
+  (`docs/design/ui-kits/terminal-parity.json`) pins `✗  Signed out` for both kits, and UK-51 owns
+  the move to ▲ and exit 4 for both at once.
+- **Holder.** The email is shown first, then the name (the parity board's `Pro · mara@…`); an empty
+  one counts as absent, and the signed-in account's is preferred to the license profile's.
+- **`core.gate.revoked`.** The core copy is shared (LX-19, SP-39 own it), so the kit says "This
+  license key no longer works" from its own catalog for a key-only device and leaves the core
+  title for a signed-in one.
+- **Not touched.** The Python kit's flows (UK-13, UK-48): it picks the new catalog strings up from
+  the regenerated tables, and its own platform names, stdin bound and `--reveal` remain theirs.
+
 ## UX coverage (2026-10-09)
 
 Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
@@ -102,13 +126,13 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Goldens with a real client's status (ms `lastVerifiedAt`) and an empty-email profile.
-- [ ] A key-held login prompts, defaults to No and keeps the key licence.
-- [ ] `login` works from the documented factory without a manual `discover()`.
-- [ ] `update apply` goldens for npm, pnpm, brew, npx, no driver and not-configured each end in an actionable line.
-- [ ] A lint finds no kit string naming Polaris Key where the product fits.
+- [x] Goldens with a real client's status (ms `lastVerifiedAt`) and an empty-email profile.
+- [x] A key-held login prompts, defaults to No and keeps the key license.
+- [x] `login` works from the documented factory without a manual `discover()`.
+- [x] `update apply` goldens for npm, pnpm, brew, npx, no driver and not-configured each end in an actionable line.
+- [x] A lint finds no kit string naming Polaris Key where the product fits.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
-- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
+- [x] The acceptance in "Design language v2 (2026-10-08)" above holds (terminal rows, a resize sequence and the parity board, on a real pty: `_lead/evidence/UK-45`).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

@@ -553,7 +553,8 @@ included, as a `\u` escape). Each line on stdout is one JSON object (NDJSON) wit
 - **Never on a `--json` line:** a license key, a device token, a sign-in poll credential, a
   secret's value or a minted token.
 - **Off `--json`,** the Node kit's `secret` and `mint` print the value alone on stdout for a script
-  to capture byte for byte; the Python kit's never print it. Inside a CI job whose runner obeys
+  to capture byte for byte, and only with `--reveal` (without it `secret` says the value is set and
+  `mint` mints nothing and exits 2); the Python kit's never print it. Inside a CI job whose runner obeys
   commands in its log (`GITHUB_ACTIONS`, `TF_BUILD`, `TEAMCITY_VERSION`), with stdout not a
   terminal, the Node kit withholds a value with a line the runner would obey (`::`, `##[`,
   `##vso[`, `##teamcity[`) and exits 1, unless `--allow-workflow-commands` is given. It never
