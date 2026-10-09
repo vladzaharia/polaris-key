@@ -5,7 +5,7 @@
   "surface": "dialog",
   "packages": ["CM-23", "LX-23", "LX-41"],
   "uxRows": [],
-  "summary": "The purchase drawer for Jonas's Diceroll Plus subscription on the App Store, from a free trial through renewals and Apple's billing retry to the lapse, with what each step did to his license: Plus added at the trial, kept through renewals and the retry, removed at the lapse, the rest of the license untouched.",
+  "summary": "The purchase drawer for Jonas's Diceroll Plus subscription on the App Store, from a free trial through renewals and Apple's billing retry to the lapse, with what each step did to his license: Plus added at the trial, kept through renewals and the retry, removed at the lapse.",
   "compare": [
     "The timeline is the subscription's life in the store's words (trial, renewed, billing retry, lapsed), each license effect on its own line (added, kept, removed) (admin-3-21, guide p324).",
     "Lapsed is a neutral pill with a minus glyph: the end of a subscription is a fact, not an error; a refund keeps the danger tone (commerce.purchase).",
