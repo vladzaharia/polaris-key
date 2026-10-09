@@ -78,6 +78,18 @@
     border-radius: 2px;
     background: var(--pk-accent);
   }
+  /* B17: one specimen per service. */
+  .g-svc {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--sp-4);
+  }
+  .g-svc > .card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+  }
   @container screen (max-width: 639px) {
     .gallery {
       padding: var(--sp-6) var(--sp-4) var(--sp-12);
@@ -429,6 +441,69 @@
           <span class="chip"><i class="ic ic-windows"></i>Windows</span>
           <span class="chip"><i class="ic ic-linux"></i>Linux</span>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="g-sec">
+    <h2>Interaction follows the service (B17) <code>[data-service] · focus · hover · .on · .active · .selected</code></h2>
+    <p class="g-note">The nearest data-service colours focus rings, hover tints, checked controls, selections, context rules and accent marks. Status, the ink primary and unsaved marks never take it.</p>
+    <div class="g-svc">
+      <div class="card" data-service="core">
+        <div class="mk-cluster-1"><span class="icon-tile sm"><i class="svc"></i></span><strong>Platform</strong><span class="g-note">data-service="core"</span></div>
+        <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Selected</span></a>
+        <div class="g-row"><span class="check on"><span class="box"></span>On</span><span class="radio on"><span class="box"></span>Chosen</span><span class="switch on" role="switch" aria-checked="true" aria-label="Platform on"></span></div>
+        <div class="g-row"><div class="segmented sm" role="radiogroup" aria-label="Platform view"><span class="on" role="radio" aria-checked="true">Cards</span><span role="radio" aria-checked="false">Table</span></div><span class="chip on">Chosen</span></div>
+        <nav class="tabs"><a class="tab active" href="#">Active</a><a class="tab" href="#">Other</a></nav>
+        <div class="g-row"><button class="btn outline sm focus">Focused</button><a class="link" href="#">A link</a></div>
+      </div>
+      <div class="card" data-service="license">
+        <div class="mk-cluster-1"><span class="icon-tile sm"><i class="svc"></i></span><strong>Licensing</strong><span class="g-note">data-service="license"</span></div>
+        <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Selected</span></a>
+        <div class="g-row"><span class="check on"><span class="box"></span>On</span><span class="radio on"><span class="box"></span>Chosen</span><span class="switch on" role="switch" aria-checked="true" aria-label="Licensing on"></span></div>
+        <div class="g-row"><div class="segmented sm" role="radiogroup" aria-label="Licensing view"><span class="on" role="radio" aria-checked="true">Cards</span><span role="radio" aria-checked="false">Table</span></div><span class="chip on">Chosen</span></div>
+        <nav class="tabs"><a class="tab active" href="#">Active</a><a class="tab" href="#">Other</a></nav>
+        <div class="g-row"><button class="btn outline sm focus">Focused</button><a class="link" href="#">A link</a></div>
+      </div>
+      <div class="card" data-service="config">
+        <div class="mk-cluster-1"><span class="icon-tile sm"><i class="svc"></i></span><strong>Managed config</strong><span class="g-note">data-service="config"</span></div>
+        <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Selected</span></a>
+        <div class="g-row"><span class="check on"><span class="box"></span>On</span><span class="radio on"><span class="box"></span>Chosen</span><span class="switch on" role="switch" aria-checked="true" aria-label="Managed config on"></span></div>
+        <div class="g-row"><div class="segmented sm" role="radiogroup" aria-label="Managed config view"><span class="on" role="radio" aria-checked="true">Cards</span><span role="radio" aria-checked="false">Table</span></div><span class="chip on">Chosen</span></div>
+        <nav class="tabs"><a class="tab active" href="#">Active</a><a class="tab" href="#">Other</a></nav>
+        <div class="g-row"><button class="btn outline sm focus">Focused</button><a class="link" href="#">A link</a></div>
+      </div>
+      <div class="card" data-service="release">
+        <div class="mk-cluster-1"><span class="icon-tile sm"><i class="svc"></i></span><strong>Ship builds</strong><span class="g-note">data-service="release"</span></div>
+        <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Selected</span></a>
+        <div class="g-row"><span class="check on"><span class="box"></span>On</span><span class="radio on"><span class="box"></span>Chosen</span><span class="switch on" role="switch" aria-checked="true" aria-label="Ship builds on"></span></div>
+        <div class="g-row"><div class="segmented sm" role="radiogroup" aria-label="Ship builds view"><span class="on" role="radio" aria-checked="true">Cards</span><span role="radio" aria-checked="false">Table</span></div><span class="chip on">Chosen</span></div>
+        <nav class="tabs"><a class="tab active" href="#">Active</a><a class="tab" href="#">Other</a></nav>
+        <div class="g-row"><button class="btn outline sm focus">Focused</button><a class="link" href="#">A link</a></div>
+      </div>
+      <div class="card" data-service="commerce">
+        <div class="mk-cluster-1"><span class="icon-tile sm"><i class="svc"></i></span><strong>Commerce</strong><span class="g-note">data-service="commerce"</span></div>
+        <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Selected</span></a>
+        <div class="g-row"><span class="check on"><span class="box"></span>On</span><span class="radio on"><span class="box"></span>Chosen</span><span class="switch on" role="switch" aria-checked="true" aria-label="Commerce on"></span></div>
+        <div class="g-row"><div class="segmented sm" role="radiogroup" aria-label="Commerce view"><span class="on" role="radio" aria-checked="true">Cards</span><span role="radio" aria-checked="false">Table</span></div><span class="chip on">Chosen</span></div>
+        <nav class="tabs"><a class="tab active" href="#">Active</a><a class="tab" href="#">Other</a></nav>
+        <div class="g-row"><button class="btn outline sm focus">Focused</button><a class="link" href="#">A link</a></div>
+      </div>
+      <div class="card" data-service="identity">
+        <div class="mk-cluster-1"><span class="icon-tile sm"><i class="svc"></i></span><strong>Sign-in</strong><span class="g-note">data-service="identity"</span></div>
+        <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Selected</span></a>
+        <div class="g-row"><span class="check on"><span class="box"></span>On</span><span class="radio on"><span class="box"></span>Chosen</span><span class="switch on" role="switch" aria-checked="true" aria-label="Sign-in on"></span></div>
+        <div class="g-row"><div class="segmented sm" role="radiogroup" aria-label="Sign-in view"><span class="on" role="radio" aria-checked="true">Cards</span><span role="radio" aria-checked="false">Table</span></div><span class="chip on">Chosen</span></div>
+        <nav class="tabs"><a class="tab active" href="#">Active</a><a class="tab" href="#">Other</a></nav>
+        <div class="g-row"><button class="btn outline sm focus">Focused</button><a class="link" href="#">A link</a></div>
+      </div>
+      <div class="card" data-service="sync">
+        <div class="mk-cluster-1"><span class="icon-tile sm"><i class="svc"></i></span><strong>Cloud Sync</strong><span class="g-note">data-service="sync"</span></div>
+        <a class="nav-item active" href="#"><i class="ic ic-layers"></i><span class="nav-text">Selected</span></a>
+        <div class="g-row"><span class="check on"><span class="box"></span>On</span><span class="radio on"><span class="box"></span>Chosen</span><span class="switch on" role="switch" aria-checked="true" aria-label="Cloud Sync on"></span></div>
+        <div class="g-row"><div class="segmented sm" role="radiogroup" aria-label="Cloud Sync view"><span class="on" role="radio" aria-checked="true">Cards</span><span role="radio" aria-checked="false">Table</span></div><span class="chip on">Chosen</span></div>
+        <nav class="tabs"><a class="tab active" href="#">Active</a><a class="tab" href="#">Other</a></nav>
+        <div class="g-row"><button class="btn outline sm focus">Focused</button><a class="link" href="#">A link</a></div>
       </div>
     </div>
   </section>

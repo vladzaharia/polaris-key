@@ -24172,3 +24172,14 @@ dd .mono {
   outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
 }
+/* The mark on an accent fill (a check, a switch's knob, a choice's tick, a done step's check) is the
+   surface colour in every service, so one control looks the same in all eight: white on the light
+   fills (lime and cyan included, at least 3.8:1), near-black on the dark ones. Text on an accent
+   fill keeps --pk-accent-on. */
+.switch.on::after,
+.check.on > .box::after,
+.check.mixed > .box::after,
+.choice.on::before,
+.step.done .step-mark::after {
+  background: var(--pk-surface-raised);
+}
