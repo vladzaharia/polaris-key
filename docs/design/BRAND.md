@@ -21,7 +21,8 @@ Contents: [1. Kit rules](#1-kit-rules) · [2. Using the package](#2-using-the-pa
 [7. Usage conventions](#7-usage-conventions) · [8. The bytes host, dl.plrs.im](#8-the-bytes-host-dlplrsim) ·
 [9. Accessibility](#9-accessibility) · [10. Do and don't](#10-do-and-dont) ·
 [11. Migration from the console's `--pk-*` tokens](#11-migration-from-the-consoles---pk--tokens) ·
-[12. Native consumers](#12-native-consumers) · [13. Changing the system](#13-changing-the-system)
+[12. Native consumers](#12-native-consumers) · [13. Changing the system](#13-changing-the-system) ·
+[14. Brand expression and marketing](#14-brand-expression-and-marketing)
 
 ---
 
@@ -48,6 +49,18 @@ glyph and the bundled Rubik Bold, by the kit's own construction (`packages/brand
 
 The Star Cut identifies the service. It is **not** a live update-status indicator: never use it
 as a spinner, a badge count, or an "update available" icon (kit README).
+
+**A service icon is never a mark.** Service icons (`@polaris-key/brand/icons/services/*`, UK-57)
+explain a capability in navigation, diagrams and menus. They are not marks, never a recoloured
+mark, and always sit beside the service's name (Brand Guide Ed. 04 pp.4, 23). The set is ten
+single-colour outline icons on one grid and stroke per size: License `key-round`, Config
+`sliders-horizontal`, Release `package`, Distribution `waypoints`, Update `circle-arrow-up`,
+Identity `user-round`, Cloud Sync `cloud`, Commerce `shopping-bag`, Core `box`, and `boxes` for
+Content Packs, which is marketing-only and never a `data-service`. Distribution's icon is not the
+recoloured Star Cut: the Star Cut stays the Delivery mark (bytes host, lockups, service-off
+states). The package exports the SVGs, a sprite, `serviceIconSvg()` and `<ServiceIcon>`; the
+console's `ServiceGlyph` renders them instead of its own lucide imports, and `tools/services.json`
+`console.icon` follows the set. The tile that frames an icon is [§7.8](#78-service-icon-tile).
 
 ### 1.2 Colour (kit primitives)
 
@@ -108,6 +121,10 @@ without gold; `opticalCut()` and `<PolarisMark>` do the same.
 - Treatments: **transparent** and **outline** need a clean ground of matching contrast; **sticker**
   carries its own plate, for busy imagery. Variants dark, light, mono-black, mono-white.
 - **Never crop the badge padding**; the canvas is part of the artwork.
+- **The Powered-by line** (the Pinned K in its 16 px favicon cut, no bit, plus the exact phrase in
+  live `text-subtle` at 12–13 px) is the approved attribution for settings, about and credits
+  footers in SDK kits. Everywhere else use the badge at its minimum size. No Polaris mark is drawn
+  below the 16 px cut (UK-55 `mark-size`).
 
 Source: kit README ("Powered by badges"), Brand-Guide p.3.
 
@@ -115,9 +132,12 @@ Source: kit README ("Powered by badges"), Brand-Guide p.3.
 
 Rubik ships as **one variable face** (wght 300–900; `fonts/ttf/Rubik-Variable.ttf`, Rubik[wght]
 2.300, with latin and latin-ext WOFF2 subsets), replacing the kit's two static weights (UI-KITS.md
-§2.1, owner decisions 2026-10-05). UI uses three weights: **400** for body and row titles, **500**
-for labels and buttons, **600** for headings. **700** is the wordmark's (the kit's outlined Rubik
-Bold) and a game wordmark fallback's only. `tokens.css` sets `font-synthesis: none` so a browser
+§2.1, owner decisions 2026-10-05). UI uses three weights on **every** surface (console, portal, hosted
+sign-in, kits, docs): **400** for body and row titles, **500** for labels and buttons, **600** for
+headings. **700** is the wordmark's (the kit's outlined Rubik Bold) and a game wordmark fallback's
+only; hierarchy comes from scale and spacing, not from universal boldness. Customer body text is
+16 px; console tables and forms use `sm` 14 (§7.6). Display size and tracking exist only for
+marketing and the docs landing (§4.6, §14). `tokens.css` sets `font-synthesis: none` so a browser
 never fakes a weight or a slant. All logo text in the kit SVGs is outlined; the web fonts are for UI
 text only. The kit's static `Rubik-Regular.ttf` and `Rubik-Bold.ttf` stay in `kit/source/fonts/` as
 launch-kit originals (the Delivery wordmark is set from Rubik Bold).
@@ -135,19 +155,26 @@ when an adjacent visible label already names it. An icon alone never labels an i
 
 | You are building                      | Use                                                                                                              |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Admin console / portal (React)        | `tokens.css` + `theme.css` (Tailwind v4) + `fonts.css`; `@polaris-key/brand/react` components                    |
-| Docs (Astro Starlight)                | `tokens.css` + `theme.css` + `fonts.css` in `customCss`; map Starlight's `--sl-color-*` onto `--pk-*`            |
+| Admin console / portal (React)        | `tokens.css` + `theme.css` (Tailwind v4) + `fonts.css`; `@polaris-key/brand/react` components; service icons    |
+| Docs (Astro Starlight)                | `tokens.css` + `theme.css` + `fonts.css` in `customCss`; map Starlight's `--sl-color-*` onto `--pk-*`; `marketing.css` for the landing only |
+| Marketing (plrs.im)                   | `tokens.css` + `marketing.css`; service icons; generated Delivery assets (§14)                                   |
 | Worker HTML pages, emails, dl.plrs.im | `tokens.css` (inline the few variables you need in emails); `@polaris-key/brand/svg` strings; kit PNGs for email |
 | React SDK UI (opt-in branding)        | `@polaris-key/brand/react` + `THEME_TOKENS` (do not require consumers to load tokens.css)                        |
 | Godot UI kit                          | `sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd` (`PKeyBrand`)                                 |
 | SwiftUI gate                          | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` (`PolarisBrand`)                                   |
 | Any other generator                   | `@polaris-key/brand/tokens.json`                                                                                 |
 
-Asset paths through the exports map: `@polaris-key/brand/web/{key,update}/…` (favicons, PWA icons,
-manifest templates, head snippets), `/games/{key,update}/{dark,light,mono-*}/…-16.svg` (Godot
-editor glyphs) and `/games/powered-by-credit-{dark,light}*`, `/social/{key,update}/…` (OG cards,
-banners, avatars), `/marks/…`, `/lockups/…` (and the generated `/lockups/delivery/…`), `/powered-by/…`, `/app-icons/…`, `/sprite.svg`,
-and the whole kit under `/kit/…`.
+Asset paths through the exports map: `@polaris-key/brand/web/{key,delivery}/…` (favicons, PWA
+icons, manifest templates, head snippets), `/games/{key,update}/{dark,light,mono-*}/…-16.svg`
+(Godot editor glyphs) and `/games/powered-by-credit-{dark,light}*`, `/social/{key,delivery}/…` (OG
+cards, banners, avatars, and the 1080 × 1350 portrait canvases with an 8 % safe margin),
+`/marks/…` (and the generated `/marks/delivery/…`), `/lockups/…` (and the generated
+`/lockups/delivery/…`, plus the trimmed horizontal lockup for the 64 px console header),
+`/powered-by/…`, `/app-icons/…`, `/icons/services/…`, `/sprite.svg`, and the whole kit under
+`/kit/…`. The Delivery-named files are generated from the kit's Star Cut glyph, so no public
+surface carries the retired "Polaris Key Update" string; the kit's own Update files stay untouched
+in `kit/`. Every generated asset is listed with its SHA-256 in `packages/brand/GENERATED.sha256`,
+so marketing's `provenance.json` can pin our revision (UK-57).
 
 Emails: mail clients do not render SVG reliably. Use the kit PNGs (for example
 `/marks/key/png/dark/key-48.png`, `/lockups/key/key-horizontal-dark-944.png` shown at 472 × 160,
@@ -267,7 +294,7 @@ exact kit gold.
 | Radius    | `none 0`, `xs 2px`, `sm 4px`, `md 6px` (controls), `lg 10px` (cards), `xl 18px` (the badge frame's `rx`), `full`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Elevation | `--pk-elevation-{0..3}`: page-ground-ink shadows, stronger in light; on dark the surface step does the layering                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | Motion    | Durations `--pk-duration-{instant 0, micro 80ms, fast 120ms, base 200ms, moderate 260ms, slow 320ms, deliberate 480ms, shimmer 1600ms}`; easings `--pk-ease-{standard, enter, exit, emphasized, spring}` (`spring` is a `linear()` curve with a 4 % overshoot, `standard` where `linear()` is unsupported); distances `--pk-motion-distance-{xs 2px, sm 4px, md 8px, lg 12px, xl 24px}`; scales `--pk-motion-scale-{press 0.98, enter 0.98, pop 0.9}`; `--pk-stagger-step` 30ms, `--pk-stagger-max` 6; delays `--pk-delay-{skeleton 150ms, highlight 1600ms}` (not motion: never collapsed). §7.5 and notes/S-23 §5 |
-| Type      | `--pk-font-sans` (variable Rubik), `--pk-font-mono` (JetBrains Mono); `--pk-font-size-*` / `--pk-line-height-*` for `xs 12/16 … 5xl 48`; `--pk-font-weight-{regular 400, medium 500, semibold 600, bold 700}`                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Type      | `--pk-font-sans` (variable Rubik), `--pk-font-mono` (JetBrains Mono); `--pk-font-size-*` / `--pk-line-height-*` for `xs 12/16 … 5xl 48`; `--pk-font-weight-{regular 400, medium 500, semibold 600, bold 700}`. `marketing.css` (export `./marketing.css`, UK-58) adds the display scale, display and heading tracking (`--pk-tracking-display`, `--pk-tracking-heading`) and the eyebrow, for marketing pages and the docs landing only: never in tables, forms, the console or the kits. Product keeps tracking at or above -0.02em and only from 40 px up |
 | UI kits   | `--pk-kit-*` in `kit.css` (component measures, the per-platform type scale, highlight, scrim, the danger solid): [UI-KITS.md §2.1](UI-KITS.md#21-generated-never-hand-copied)                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **Monospace** is **JetBrains Mono** (SIL OFL 1.1; variable, wght 400–600, about 30 KB as a latin
@@ -278,6 +305,20 @@ WOFF2), the kit mono for keys, user codes, hashes and code, so a key reads the s
 Mono Fallback" on Menlo or Courier New, with `size-adjust` and ascent and descent overrides), named
 second in each stack, so a page does not shift when the web font arrives. **Figures** in tables use
 Rubik with `font-variant-numeric: tabular-nums` (Rubik ships `tnum`), not monospace.
+
+### 4.7 Action
+
+The primary action is **neutral ink**, in the console, the portal and hosted sign-in (lead
+decision B2, 2026-10-09). Role `action-neutral` (generated by `pnpm gen:brand`, UK-58; hover and
+pressed steps are generated with it):
+
+| Theme | Fill      | Label     | Contrast |
+| ----- | --------- | --------- | -------- |
+| Dark  | `#f6f8ff` | `#060912` | > 17:1   |
+| Light | `#060912` | `#ffffff` | > 19:1   |
+
+Danger buttons stay danger red. The accent marks context only (§5.4). UI kits keep the host's
+accent as their primary (UI-KITS DL13); the `polaris-key` preset's primary is the product accent.
 
 ---
 
@@ -328,6 +369,15 @@ and strong text all clear 4.5:1 on it).
 | **Update**       | Star Cut | tangerine  | `#fe8001` (7.1)                | `#b95800` (4.1)   | `#aa5000` (4.7) | green         |
 | **Identity**     | Pinned K | orchid     | `#d77df2` (6.9)                | `#9e34ae` (5.1)   | `#9e34ae` (5.1) | rose          |
 | **Cloud Sync**   | Pinned K | teal       | `#14f8e1` (13.3)               | `#086260` (6.2)   | `#086260` (6.2) | (new, U-04)   |
+| **Commerce**     | Pinned K | green (Distribution's) | `#39d075` (8.9)    | `#05773b` (4.9)   | `#05773b` (4.9) | (new, CM-29)  |
+
+**Commerce shares the Distribution green family** (lead decision B1, 2026-10-09; reverses the
+2026-10-08 vermilion choice, because the guide, the site and our mockups all draw green and
+vermilion reads as an error). There is no ninth family and the accent-distance floor stays 17.5.
+The `commerce` service slug and its routes (CM-29) stay: only the colour is shared. Commerce uses
+the shopping-bag icon and the Pinned K (it requires License), never the Star Cut. CM-29b is
+re-scoped to exactly that. Distribution and Commerce never sit side by side as one identity: the
+data-service decides, and the icon tells them apart.
 
 `on` is `#060912` on every dark solid (5.1–14.3:1) and on the light chartreuse and cyan solids
 (5.2–5.3:1); `#ffffff` on the other light solids (4.7–5.9:1). The full set (subtle values, bit colours) is in
@@ -401,12 +451,30 @@ the warning status (amber), and the danger status keeps the red end of the warm 
 
 ### 5.4 Using accents
 
-- Section chrome only: the active nav item (`subtle` background + `solid` marker), the section
-  header rule, the primary button in that section (`solid` + `on`), links in the section (`fg`),
-  charts that belong to the section.
-- Never as a status. Never as a large background (use `subtle`). Never in the marks, except the
-  [section bit](#6-the-section-bit).
-- The focus ring stays violet in every section: one learnable focus signal.
+- **The accent marks context only**: the active nav item, the section header rule (the 3 px accent
+  rule on the workspace canvas, [§7.6](#76-console-density-and-layout-data-heavy-tables)),
+  selected rows, links (`fg`), charts and the [section bit](#6-the-section-bit).
+- **The primary action is never the accent.** It is the neutral ink action
+  ([§4.7](#47-action)) in the console, portal and hosted sign-in, so a Distribution green or Config
+  yellow button can never read as success or warning. One filled primary per flow.
+- **Selected nav** = `subtle` fill + a 3 px solid marker on the inline-start edge + `text-strong`
+  at weight 500. The marker passes 3:1 against the sidebar ground (WCAG 1.4.11) and the selection
+  is never colour alone. Never a solid accent pill. Count badges keep their own status colour
+  inside the selected item.
+- **Accent never equals status.** Service green is not success and Config yellow is not warning
+  (Brand Guide Ed. 04 p.26); gold means signed only. Never an accent on a status role, never
+  a large accent background in product chrome (use `subtle`), never in the marks except the
+  section bit.
+- **One section identifier per page header**: the flat service tile of
+  [§7.8](#78-service-icon-tile) (feature landing pages, from 1024 px) or the product icon; never a
+  solid accent plate, never a glow. Platform pages use the Pinned K tile or the kit app icon
+  (`kit/05-app-icons/key/apple/app-icon-{dark,light}.svg`), never a recoloured K.
+- The focus ring stays violet in every section: one learnable focus signal, no per-component
+  focus colour.
+- Light-theme rules, markers and tiles use the theme `solid` (3:1), not a brighter display fill;
+  whether a decorative `display` fill is added for the tile is UK-58's decision.
+- Ship builds is one identity: Release cyan on Releases, Release tracks, Rollouts, Channels,
+  Packages, Updates and Health. Update tangerine and Packs orange are marketing and docs only.
 
 ---
 
