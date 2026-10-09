@@ -21927,6 +21927,8 @@ span.dash::before {
 }
 .mk-with-rail.g-stretch > .mk-rail {
   display: flex;
+  /* Not the phone rail grid's start: as a column flex, start shrank the card to 2px. */
+  align-items: stretch;
 }
 /* END admin-multi-review */
 
