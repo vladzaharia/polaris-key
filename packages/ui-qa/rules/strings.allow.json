@@ -48,6 +48,21 @@
     {
       "pattern": "Vocals|Guitar|Drums|Keys|Bass|Room mics",
       "reason": "Fixture session tracks in the host app around the kit."
+    },
+    {
+      "pattern": "\\$ tidewater( [\\w<>-]+)*",
+      "boards": ["terminal"],
+      "reason": "The command line the person typed, echoed above the program's output (the bin name is the fixture product's)."
+    },
+    {
+      "pattern": "Tidewater Studio · [a-z-]+( [a-z-]+)*",
+      "boards": ["terminal"],
+      "reason": "The terminal window's title bar: the fixture product and the command running."
+    },
+    {
+      "pattern": "dev_[A-Za-z0-9]+",
+      "boards": ["terminal"],
+      "reason": "A device id the kit prints for the person to copy (a value, not copy)."
     }
   ]
 }

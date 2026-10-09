@@ -154,17 +154,7 @@
     {
       "board": "android",
       "state": "update",
-      "text": "38 of 61 MB"
-    },
-    {
-      "board": "android",
-      "state": "update",
       "text": "Release notes"
-    },
-    {
-      "board": "android",
-      "state": "update",
-      "text": "You have 2.4.1 · 61 MB"
     },
     {
       "board": "apple",
@@ -562,11 +552,6 @@
       "text": "Release notes"
     },
     {
-      "board": "godot",
-      "state": "update",
-      "text": "You have 1.7.2"
-    },
-    {
       "board": "ios",
       "state": "activate",
       "text": "by Harbor Audio"
@@ -767,11 +752,6 @@
       "text": "This update is required. Your library moved to a new format, and 2.4.1 can't open it."
     },
     {
-      "board": "ios",
-      "state": "update-required",
-      "text": "You have 2.4.1"
-    },
-    {
       "board": "linux",
       "state": "activate",
       "text": "Your key is in the purchase email from Harbor Audio."
@@ -898,28 +878,8 @@
     },
     {
       "board": "terminal",
-      "state": "activate",
-      "text": "✓ Key for Tidewater Studio"
-    },
-    {
-      "board": "terminal",
-      "state": "activate",
-      "text": "$ tidewater activate"
-    },
-    {
-      "board": "terminal",
-      "state": "activate",
-      "text": "Tidewater Studio · activate"
-    },
-    {
-      "board": "terminal",
       "state": "device-limit",
       "text": "◇ License key · pkey_tidewater_••••••"
-    },
-    {
-      "board": "terminal",
-      "state": "device-limit",
-      "text": "$ tidewater activate"
     },
     {
       "board": "terminal",
@@ -934,12 +894,12 @@
     {
       "board": "terminal",
       "state": "device-limit",
-      "text": "Tidewater Studio · activate"
+      "text": "you're done."
     },
     {
       "board": "terminal",
-      "state": "device-limit",
-      "text": "you're done."
+      "state": "ended",
+      "text": "tidewater login Sign in again"
     },
     {
       "board": "terminal",
@@ -985,11 +945,6 @@
       "board": "terminal",
       "state": "fallbacks",
       "text": "Replace a device in your browser. Tidewater Studio continues when"
-    },
-    {
-      "board": "terminal",
-      "state": "fallbacks",
-      "text": "Tidewater Studio · activate"
     },
     {
       "board": "terminal",
@@ -1064,7 +1019,7 @@
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "$ tidewater activate"
+      "text": "Check the code there matches"
     },
     {
       "board": "terminal",
@@ -1074,7 +1029,17 @@
     {
       "board": "terminal",
       "state": "narrow",
+      "text": "enter this code."
+    },
+    {
+      "board": "terminal",
+      "state": "narrow",
       "text": "key.plrs.im/portal/tidewater/devices"
+    },
+    {
+      "board": "terminal",
+      "state": "narrow",
+      "text": "On any phone or computer, go"
     },
     {
       "board": "terminal",
@@ -1084,27 +1049,32 @@
     {
       "board": "terminal",
       "state": "narrow",
-      "text": "Tidewater Studio · activate"
+      "text": "this one."
     },
     {
       "board": "terminal",
-      "state": "sign-in",
-      "text": "◇ No browser on this computer. Use a code instead:"
+      "state": "narrow",
+      "text": "to key.plrs.im/device and"
     },
     {
       "board": "terminal",
-      "state": "sign-in",
-      "text": "⠋ Waiting for you to sign in…"
+      "state": "offline-landscape",
+      "text": "tidewater import-bundle <file> Activate from an offline activation file █ ▀ █▀ █▄█▀ █ ▀▄ ▄▄"
     },
     {
       "board": "terminal",
-      "state": "sign-in",
-      "text": "$ tidewater login"
+      "state": "short",
+      "text": "go to key.plrs.im/device and enter"
     },
     {
       "board": "terminal",
-      "state": "sign-in",
-      "text": "Tidewater Studio · login"
+      "state": "short",
+      "text": "On any phone or computer,"
+    },
+    {
+      "board": "terminal",
+      "state": "short",
+      "text": "this code."
     },
     {
       "board": "terminal",
@@ -1134,27 +1104,7 @@
     {
       "board": "terminal",
       "state": "states",
-      "text": "✓ Version 2.4.1 · up to date on stable"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
       "text": "⠹ Checking your license …"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "$ tidewater"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "$ tidewater status"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
-      "text": "$ tidewater update"
     },
     {
       "board": "terminal",
@@ -1174,22 +1124,7 @@
     {
       "board": "terminal",
       "state": "states",
-      "text": "Tidewater Studio · status"
-    },
-    {
-      "board": "terminal",
-      "state": "states",
       "text": "tidewater update --retry try again · exit 4"
-    },
-    {
-      "board": "terminal",
-      "state": "status-error",
-      "text": "✗ Tidewater Studio · license revoked"
-    },
-    {
-      "board": "terminal",
-      "state": "status-error",
-      "text": "$ tidewater status"
     },
     {
       "board": "terminal",
@@ -1269,42 +1204,12 @@
     {
       "board": "terminal",
       "state": "update",
-      "text": "◆ Tidewater Studio 2.5 · 61 MB"
+      "text": "✓ License Pro · mara@fennick.studio"
     },
     {
       "board": "terminal",
       "state": "update",
-      "text": "$ tidewater status"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "$ tidewater update"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "ctrl-c cancel"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "Devices 2 of 3"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "Release notes: tidewater.app/releases/2.5"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "Tidewater Studio · update"
-    },
-    {
-      "board": "terminal",
-      "state": "update",
-      "text": "Tidewater Studio Pro · Lifetime · mara@fennick.studio"
+      "text": "✓ Offline until Oct 19"
     },
     {
       "board": "web",
@@ -1350,11 +1255,6 @@
       "board": "web",
       "state": "components",
       "text": "Restart"
-    },
-    {
-      "board": "web",
-      "state": "components",
-      "text": "Restart to finish updating."
     },
     {
       "board": "web",

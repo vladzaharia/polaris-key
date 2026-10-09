@@ -379,6 +379,11 @@ export function stateOf(scope: string): string {
   return scope.replace(/-(390|deck|1080|720|\d+)$/, "");
 }
 
+/** The terminal's leading status mark: a done, active, failed or warning glyph, or a spinner frame. */
+const QR_BLOCKS = /\s*[\u2580-\u259f]+(?:\s+[\u2580-\u259f]+)*\s*$/u;
+
+const STATUS_MARK = /^[◆◇✓✗▲\u2800-\u28ff]\s+/u;
+
 export function lintStrings(
   catalog: CatalogMessage[],
   allow: Allow[],
@@ -395,7 +400,14 @@ export function lintStrings(
   for (const b of boards) {
     for (const s of b.strings) {
       const state = stateOf(s.scope);
-      const m = matchString(matchers, s.text, b.platform);
+      // The terminal prefixes a status mark and a space ("✗ Sign-in cancelled"): the mark is a
+      // glyph (strings.allow.json), the rest is the catalog string.
+      const text =
+        b.board === "terminal"
+          ? s.text.replace(STATUS_MARK, "").replace(QR_BLOCKS, "")
+          : s.text;
+      if (!text.trim()) continue;
+      const m = matchString(matchers, text, b.platform);
       if (m) {
         const k = keysByState.get(state) ?? new Map<string, Set<string>>();
         keysByState.set(state, k);
@@ -410,8 +422,8 @@ export function lintStrings(
         texts.set(norm, [...(texts.get(norm) ?? []), b.board]);
         continue;
       }
-      if (allowed(allow, s.text, b.board)) continue;
-      const near = nearest(catalog, s.text);
+      if (allowed(allow, text, b.board)) continue;
+      const near = nearest(catalog, text);
       findings.push({
         board: b.board,
         state,

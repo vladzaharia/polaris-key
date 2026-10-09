@@ -30,6 +30,8 @@ class PtyRun:
         self.answer_cpr = answer_cpr
         self.raw = ""
         self.osc11_seen = False
+        self.osc11_at: Optional[float] = None
+        self.exited_at: Optional[float] = None
         self.cpr_asked = 0
         self.status: Optional[int] = None
         self._decoder = codecs.getincrementaldecoder("utf-8")("replace")
@@ -72,6 +74,8 @@ class PtyRun:
             self.term.write(text)
             if "\x1b]11;?" in text:
                 self.osc11_seen = True
+                if self.osc11_at is None:
+                    self.osc11_at = time.monotonic()
                 if self.answer_osc11:
                     os.write(self.master, b"\x1b]11;rgb:0000/0000/0000\x1b\\")
             if "\x1b[6n" in text:
@@ -86,6 +90,7 @@ class PtyRun:
         pid, st = os.waitpid(self.pid, 0 if block else os.WNOHANG)
         if pid:
             self.status = os.waitstatus_to_exitcode(st)
+            self.exited_at = time.monotonic()
 
     def until(self, check: Callable[[], bool], timeout: float = 15.0) -> bool:
         end = time.monotonic() + timeout

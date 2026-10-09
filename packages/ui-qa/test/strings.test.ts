@@ -101,6 +101,31 @@ describe("the string lint's catalog matcher", () => {
     expect(findings[0]!.detail).toMatch(/Try again/);
   });
 
+  it("reads a terminal row without its status mark or the QR beside it, and still catches drift", () => {
+    const strings = [
+      { scope: "a", target: "row", text: "\u2713 Try again" },
+      {
+        scope: "a",
+        target: "row",
+        text: "\u2807 Try again \u2588\u2580 \u2584\u2588",
+      },
+      { scope: "a", target: "row", text: "\u2588\u2580\u2580 \u2584\u2584" },
+      { scope: "a", target: "row", text: "\u2717 Try Again" },
+    ];
+    const { findings } = lintStrings(
+      cat,
+      [],
+      [{ board: "terminal", platform: "terminal", strings }],
+    );
+    expect(findings.map((f) => f.text)).toEqual(["\u2717 Try Again"]);
+    const web = lintStrings(
+      cat,
+      [],
+      [{ board: "web", platform: "web", strings: [strings[0]!] }],
+    );
+    expect(web.findings).toHaveLength(1);
+  });
+
   it("names states without their size suffix", () => {
     expect(stateOf("sign-in-390")).toBe("sign-in");
     expect(stateOf("gate-deck")).toBe("gate");

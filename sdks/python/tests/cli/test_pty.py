@@ -157,12 +157,15 @@ def test_an_esc_typed_005_seconds_after_launch_is_honoured(answers: bool) -> Non
     with PtyRun(80, 24, "login", answer_osc11=answers) as run:
         run.pump(0.05)
         run.type(b"\x1b")
-        t0 = time.monotonic()
-        code = run.wait_exit(3)
+        # The 3 s bound is for the kit, not the machine: it runs from the program's first question
+        # (OSC 11, asked once the program is up), so a loaded runner's interpreter start-up is not
+        # counted. The wait itself only guards against a hang.
+        code = run.wait_exit(20)
         text = "\n".join(r for r, _ in run.term.all())
         assert "Sign-in cancelled" in text and "Code expired" not in text, text
-        assert code == 1 and time.monotonic() - t0 < 3
-        assert run.osc11_seen
+        assert code == 1
+        assert run.osc11_seen and run.osc11_at is not None and run.exited_at is not None
+        assert run.exited_at - run.osc11_at < 3
 
 
 @pytest.mark.parametrize("mode", ["login", "device-limit"])

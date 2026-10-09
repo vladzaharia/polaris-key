@@ -39,6 +39,10 @@ export class Pty {
   private resolveExit!: (n: number) => void;
   /** Every query the program sent that this terminal answered or ignored. */
   osc11Seen = false;
+  /** When the program first asked the OSC 11 question (it is up and reading keys), ms epoch. */
+  osc11At: number | undefined;
+  /** When the program exited, ms epoch. */
+  exitedAt: number | undefined;
 
   constructor(readonly o: PtyOptions) {
     this.screen = new XtermScreen(o.columns, o.rows);
@@ -77,11 +81,15 @@ export class Pty {
         const text = Buffer.from(msg.o, "base64").toString("utf8");
         if (text.includes("\x1b]11;?")) {
           this.osc11Seen = true;
+          this.osc11At ??= Date.now();
           if (this.o.answerOsc11 !== false)
             this.send(Buffer.from("\x1b]11;rgb:0000/0000/0000\x1b\\"));
         }
         this.screen.write(text);
-      } else if (msg.x !== undefined) this.resolveExit(msg.x);
+      } else if (msg.x !== undefined) {
+        this.exitedAt = Date.now();
+        this.resolveExit(msg.x);
+      }
     }
   }
 
