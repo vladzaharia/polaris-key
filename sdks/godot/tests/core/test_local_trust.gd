@@ -173,7 +173,7 @@ func _binding(t: PKeyTestContext) -> void:
 		var s := PKeyFileStore.new(product, root)
 		s.set_device_id(id)
 		s.set_token("pkeyt_stored")
-		s.write_cache({"v": 3, "trustJws": "t", "docs": {"license": "l"}, "etags": {"license": "\"e\""}, "importedBundle": {"bundleId": "b", "importedAt": 1},
+		s.write_cache({"v": 3, "trustJws": "t", "docs": {"license": "l"}, "etags": {"license": "\"e\""}, "bundle": "b.jws", "pinRevocations": {"k": "r.jws"},
 				"lastSyncUnauthorized": true, "blocked": {"reason": "version-too-old"}, "feeds": feeds, "releaseRecords": records})
 		return s
 
@@ -192,8 +192,8 @@ func _binding(t: PKeyTestContext) -> void:
 	var rec = s.read_cache()
 	t.check("binding: a stored id that disagrees is replaced by the derived one", bound == anchor_id and PKeyFileStore.new(product, root).get_device_id() == anchor_id)
 	t.check("binding: the token is discarded", s.get_token() == "")
-	t.check("binding: only the feeds and release records survive", rec is Dictionary and rec.keys().size() == 3 and rec.get("feeds") == feeds and rec.get("releaseRecords") == records and not rec.has("docs") and not rec.has("trustJws") \
-			and not rec.has("lastSyncUnauthorized") and not rec.has("blocked") and not rec.has("importedBundle") and not rec.has("etags"), str(rec))
+	t.check("binding: only the update slices and the pin evidence survive", rec is Dictionary and rec.keys().size() == 4 and rec.get("feeds") == feeds and rec.get("releaseRecords") == records and rec.get("pinRevocations") == {"k": "r.jws"} and not rec.has("docs") and not rec.has("trustJws") \
+			and not rec.has("lastSyncUnauthorized") and not rec.has("blocked") and not rec.has("bundle") and not rec.has("etags"), str(rec))
 	# Nothing to keep: the cache is cleared.
 	s = PKeyFileStore.new(product, root)
 	s.set_device_id(other_id)

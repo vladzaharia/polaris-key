@@ -118,9 +118,12 @@ func _activation_source(t: PKeyTestContext) -> void:
 	var store := PKeyMemoryStore.new(h.F["device_id"])
 	var sdk = await h.sdk(store)
 	t.check("entitlements: nothing held -> activation is empty", sdk.license.activation() == &"" and sdk.license.status()["status"] == "needs-activation")
-	sdk.core.cache.imported_bundle = {"bundleId": "b1", "importedAt": h.F["now"]}
+	sdk.core.cache.bundle = {"bundleId": "b1", "docs": ["license"], "activates": true}
 	t.check("entitlements: a bundle without a verified licence document does not activate", sdk.license.activation() == &"")
 	_stage(sdk, {})
+	sdk.core.cache.bundle = {"bundleId": "b1", "docs": ["config"], "activates": false}
+	t.check("entitlements: a re-verified bundle that does not carry the cached licence does not activate", sdk.license.activation() == &"")
+	sdk.core.cache.bundle = {"bundleId": "b1", "docs": ["license"], "activates": true}
 	t.check("entitlements: a bundle with a verified licence document -> bundle", sdk.license.activation() == &"bundle" and sdk.license.status()["status"] == "ok")
 	sdk.core.tokens.set_token("pkeyt_SUPERSEDES", PKeyTokenManager.SOURCE_ACTIVATE)
 	t.check("entitlements: a token supersedes a bundle", sdk.license.activation() == &"token")
