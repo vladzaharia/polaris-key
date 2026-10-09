@@ -56,7 +56,7 @@
            Requirements come from tools/services.json; a feature's own switches nest under it. -->
       <section class="card" aria-label="Features">
         <div class="feature-rows">
-          <div class="feature-row">
+          <div class="feature-row" data-service="license">
             <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Licensing</div>
@@ -64,7 +64,7 @@
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Licensing"></span>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="config">
             <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Managed config</div>
@@ -78,7 +78,7 @@
             </div>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="release">
             <span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Ship builds</div>
@@ -96,7 +96,7 @@
             </div>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="identity">
             <span class="icon-tile sm" data-service="identity"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Sign-in</div>
@@ -110,7 +110,7 @@
             </div>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="sync">
             <span class="icon-tile sm" data-service="sync"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Cloud Sync</div>
@@ -120,7 +120,7 @@
           </div>
 
           <!-- Just turned on (CM-29): its fact is one line under the description, with the next step. -->
-          <div class="feature-row just-on">
+          <div class="feature-row just-on" data-service="commerce">
             <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Commerce</div>
@@ -145,14 +145,14 @@
       </div>
       <div class="dialog-body">
         <div class="change-list" id="dlg-changes">
-          <div class="change-item">
+          <div class="change-item" data-service="license">
             <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
             <div class="change-title">Licensing</div>
             <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
             <p class="change-text">New players can’t activate Diceroll.</p>
             <p class="change-text">Players already activated keep playing until their 14 offline days run out.</p>
           </div>
-          <div class="change-item">
+          <div class="change-item" data-service="commerce">
             <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
             <div class="change-title">Commerce</div>
             <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
@@ -167,7 +167,7 @@
             <div class="callout-text">Stop selling on the App Store and Google Play.</div>
             <div class="callout-text">On Steam, stop selling in Steamworks.</div>
           </div>
-          <button class="btn outline sm">Open Offers</button>
+          <button class="btn outline sm" data-service="commerce">Open Offers</button>
         </div>
         <p class="icon-line type-small muted"><i class="ic ic-archive"></i><span>18,240 licenses and past purchases are kept.</span></p>
         <p class="icon-line type-small muted"><i class="ic ic-info"></i><span>Turning Licensing back on leaves Commerce off.</span></p>

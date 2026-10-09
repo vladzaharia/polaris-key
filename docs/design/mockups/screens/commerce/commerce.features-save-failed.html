@@ -60,7 +60,7 @@
            Requirements come from tools/services.json; a feature's own switches nest under it. -->
       <section class="card" aria-label="Features">
         <div class="feature-rows">
-          <div class="feature-row">
+          <div class="feature-row" data-service="license">
             <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Licensing</div>
@@ -68,7 +68,7 @@
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Licensing"></span>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="config">
             <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Managed config</div>
@@ -82,7 +82,7 @@
             </div>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="release">
             <span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Ship builds</div>
@@ -100,7 +100,7 @@
             </div>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="identity">
             <span class="icon-tile sm" data-service="identity"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Sign-in</div>
@@ -114,7 +114,7 @@
             </div>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="sync">
             <span class="icon-tile sm" data-service="sync"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Cloud Sync</div>
@@ -125,7 +125,7 @@
 
           <!-- A failed save: the switch is back where it was and the row says what failed, that
                nothing changed, and Try again. No toast; an error never dismisses itself. -->
-          <div class="feature-row failed">
+          <div class="feature-row failed" data-service="commerce">
             <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Commerce</div>
