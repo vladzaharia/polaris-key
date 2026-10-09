@@ -12,7 +12,7 @@
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock, asKv } from "../kvMock.js";
-import { makeEnv, NOW, seedProduct } from "../seed.js";
+import { approveEdgeMintRecipe, makeEnv, NOW, seedProduct } from "../seed.js";
 import type { Env } from "../../src/env.js";
 import type { Db } from "../../src/db/types.js";
 import { handleAdmin } from "../../src/admin/index.js";
@@ -544,6 +544,12 @@ describe("R1-05 /<product>/mint/<id>/auth renders stored HTML with no CSP and no
       "music.apple.com",
       payload,
     );
+    // SEC-CFG-14: the page is served only for an approved recipe.
+    const unapproved = (await loadProduct(env, db, "djdl"))!;
+    expect((await handleMintAuth(db, unapproved, "music")).status).toBe(404);
+    await approveEdgeMintRecipe(db, "djdl", "music", {
+      acknowledgeOpenRegistration: true,
+    });
     const product = (await loadProduct(env, db, "djdl"))!;
     // No bearer token, no cookie, no rate limit: handleMintAuth takes only (db, product, id).
     const res = await handleMintAuth(db, product, "music");

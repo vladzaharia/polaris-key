@@ -1125,6 +1125,7 @@ async function updateLicenseOnSignIn(
       signIn.provisioned.secrets,
       declared.secrets,
       now,
+      identity.sub,
     );
   const tier = await upgradedTier(db, product, existing, identityTierId);
   let current = existing.overrides_json;

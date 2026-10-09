@@ -364,10 +364,18 @@ async function browserDoc(
   const schemaRow = await getActiveSchema(db, product.slug);
   if (schemaRow) {
     try {
-      payload = validatePayload(
-        payload,
-        new Catalog(JSON.parse(schemaRow.catalog_json)),
-      );
+      const catalog = new Catalog(JSON.parse(schemaRow.catalog_json));
+      payload = validatePayload(payload, catalog);
+      // SEC-CFG-5: a `kind: "config"` entry flagged `secret: true` is a secret too; page JS
+      // never sees it.
+      payload = {
+        ...payload,
+        config: Object.fromEntries(
+          Object.entries(payload.config).filter(
+            ([k]) => catalog.entryByKey(k)?.secret !== true,
+          ),
+        ),
+      };
     } catch {
       // FAIL CLOSED, matching `/config/document` (500 `catalog_unavailable`).
       // `validatePayload` is what prunes unknown/invalid keys and stale overrides out of the
