@@ -73,10 +73,11 @@ describe("single-use store on workerd", () => {
       recipient: "workerd@example.com",
       flowId: crypto.randomUUID(),
     };
+    const req = new Request("https://key.plrs.im/");
     const { code } = await issueEmailCode(workerEnv, addr, "payload");
     const results = await Promise.all([
-      verifyEmailCode(workerEnv, { ...addr, code }),
-      verifyEmailCode(workerEnv, { ...addr, code }),
+      verifyEmailCode(workerEnv, { ...addr, code, req }),
+      verifyEmailCode(workerEnv, { ...addr, code, req }),
     ]);
     expect(results.filter((r) => r.ok)).toHaveLength(1);
   });

@@ -56,6 +56,7 @@ import {
   tighterMax,
   tighterMin,
   versionInWindow,
+  windowBounded,
   versionWindow,
 } from "./entitlements.js";
 
@@ -252,7 +253,7 @@ function unorderablePin(
   return (
     pinned &&
     !parseSemver(selector.version ?? "") &&
-    Boolean(allowedRange.min || allowedRange.max)
+    windowBounded(allowedRange)
   );
 }
 

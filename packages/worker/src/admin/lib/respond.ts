@@ -6,6 +6,7 @@
 import { ErrorCode } from "../../core/errors.js";
 import type { WriteRefusal } from "../../core/settings/write.js";
 import { appSecurityHeaders } from "../../securityHeaders.js";
+import { BodyTooLargeError, readBodyText } from "../../core/cappedBody.js";
 
 /** JSON response with the admin defaults (no-store, charset). */
 export function adminJson(
@@ -93,13 +94,13 @@ const MAX_ADMIN_BODY_BYTES = 64 * 1024;
 /** Parse a JSON request body into an object. Empty bodies remain `{}`; malformed or
  *  oversized bodies are request errors, not silent empty objects. */
 export async function readBody(req: Request): Promise<Record<string, unknown>> {
-  const len = req.headers.get("content-length");
-  if (len && Number(len) > MAX_ADMIN_BODY_BYTES) {
-    throw new AdminBodyError(413, "body_too_large", "request body too large");
-  }
-  const raw = await req.text();
-  if (raw.length > MAX_ADMIN_BODY_BYTES) {
-    throw new AdminBodyError(413, "body_too_large", "request body too large");
+  let raw: string;
+  try {
+    raw = await readBodyText(req, MAX_ADMIN_BODY_BYTES);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError)
+      throw new AdminBodyError(413, "body_too_large", "request body too large");
+    throw e;
   }
   if (raw.trim().length === 0) return {};
   let v: unknown;

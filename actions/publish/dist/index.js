@@ -21900,11 +21900,18 @@ function issuerUrlProblem(value) {
   if (url.search || url.hash) {
     return "must not carry a query string or fragment";
   }
-  const loopback = LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) {
+  const loopback = url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
+  if (url.protocol !== "https:" && !loopback) {
     return "must use https (http is accepted only for localhost during development)";
   }
-  if (!loopback && isReservedAddressLiteral(url.hostname)) {
+  if (/(^|\.)\./.test(url.hostname) || /\.\.+$/.test(url.hostname)) {
+    return "must not be a malformed host";
+  }
+  const bareHost = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (!loopback && (bareHost === "localhost" || bareHost.endsWith(".localhost"))) {
+    return "must not be a private, loopback, link-local, or otherwise reserved address";
+  }
+  if (!loopback && isReservedAddressLiteral(url.hostname.replace(/\.$/, ""))) {
     return "must not be a private, loopback, link-local, or otherwise reserved address";
   }
   return null;
@@ -21945,6 +21952,13 @@ function isReservedIpv6(b) {
   if (leadingZeros(12)) {
     return isReservedIpv4([b[12], b[13], b[14], b[15]]);
   }
+  if (b[0] === 0 && b[1] === 100 && b[2] === 255 && b[3] === 155) {
+    if (b.subarray(4, 12).every((x) => x === 0))
+      return isReservedIpv4([b[12], b[13], b[14], b[15]]);
+  }
+  if (b[0] === 32 && b[1] === 2)
+    return isReservedIpv4([b[2], b[3], b[4], b[5]]);
+  if (b[0] === 32 && b[1] === 1 && b[2] === 0 && b[3] === 0) return true;
   if ((b[0] & 254) === 252) return true;
   if (b[0] === 254 && (b[1] & 192) === 128) return true;
   if (b[0] === 255) return true;
@@ -42999,7 +43013,7 @@ async function runCommand(argv2, io) {
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
-        return await cmdSdk(parsed, cwd, stdout, ci.fetchImpl);
+        return await cmdSdk(parsed, cwd, stdout, stderr, ci.fetchImpl);
       case "mirror":
         return await cmdMirror(parsed, cwd, stdout, ci.fetchImpl);
       case "auth":
@@ -43427,7 +43441,7 @@ function cmdTrust(parsed, stdout) {
 `);
   return 0;
 }
-async function cmdSdk(parsed, cwd, stdout, fetchImpl) {
+async function cmdSdk(parsed, cwd, stdout, stderr, fetchImpl) {
   const lang = flagString(parsed, "lang");
   if (lang === void 0) {
     const product2 = flagString(parsed, "product") ?? parsed.positional[0];
@@ -43476,6 +43490,10 @@ ${SDK_CONFIG_USAGE}`
     ...kid !== void 0 && publicKey !== void 0 ? { expectPin: { kid, publicKey } } : {},
     ...fetchImpl ? { fetchImpl } : {}
   });
+  if (Object.keys(facts.pinnedKeys).length === 1)
+    stderr.write(
+      "warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.\n"
+    );
   const out = flagString(parsed, "out");
   const pkg = flagString(parsed, "package");
   const content = renderSdkConfig(lang, facts, {

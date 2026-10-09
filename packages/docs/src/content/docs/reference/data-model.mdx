@@ -23,7 +23,7 @@ this page or fails the freshness gate.
 | `license_refusals` | 0074_license_refusals.sql | `product`, `id`, `license_id`, `at`, `reason`, `device_label`, `device_hash` |
 | `license_auto_attach_blocks` | 0092_license_auto_attach_blocks.sql | `product`, `license_id`, `account_id`, `created_at` |
 | `license_key_entries` | 0100_license_key_entries.sql | `product`, `license_id`, `id`, `surface`, `device_id`, `created_at` |
-| `device_fingerprints` | 0010_fingerprint.sql | `product`, `device_id`, `hwid`, `components_json`, `anchor_hash`, `status`, `first_seen`, `last_seen`, `last_drift_at`, `last_drift_count` |
+| `device_fingerprints` | 0010_fingerprint.sql | `product`, `device_id`, `hwid`, `components_json`, `anchor_hash`, `status`, `first_seen`, `last_seen`, `last_drift_at`, `last_drift_count`, `baseline_components_json (0109)`, `baseline_anchor_hash (0109)`, `baseline_at (0109)` |
 | `device_facts` | 0010_fingerprint.sql | `product`, `device_id`, `os_name`, `os_version`, `os_build`, `kernel`, `cpu_model`, `cpu_cores`, `ram_mb`, `machine_model`, `locale`, `timezone`, `runtime_name`, `runtime_version`, `probes_json`, `updated_at` |
 | `audit` | 0001_init.sql | `product`, `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `parent_id`, `summary`, `before_json (0101)`, `after_json (0101)`, `origin (0101)`, `reason (0101)`, `setting_key (0101)` |
 | `product_sync_state` | 0005_product_sync_state.sql | `product`, `source`, `status`, `last_checked_at`, `last_synced_at`, `commit_sha`, `changed_paths_json`, `updated_json`, `errors_json`, `message` |

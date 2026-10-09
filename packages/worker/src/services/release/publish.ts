@@ -59,7 +59,7 @@ import {
   ciActor,
   type CiScope,
 } from "../../core/ciScope.js";
-import { rateLimitOk, clientIp } from "../../core/rateLimit.js";
+import { rateLimitOk, clientNetwork } from "../../core/rateLimit.js";
 import {
   blobKey,
   parseKey,
@@ -250,7 +250,7 @@ async function handleToken(ctx: ServiceContext): Promise<Response> {
       product.slug,
       {
         bucket: "ciPublishToken",
-        id: `ip:${clientIp(req)}`,
+        id: `ip:${clientNetwork(req)}`,
         ...TOKEN_RL_PER_IP,
       },
       now,

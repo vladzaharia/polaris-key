@@ -252,31 +252,32 @@ non-reserved claim; it may never set `iat`, `exp`, `nbf`, or `aud`.
 
 ## The routes
 
-| Route                                  | Auth                                            | Behaviour                                                                    |
-| -------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| `/<product>/config/mint/<id>/token`    | Device token + the confused-deputy guard below. | Mints and returns `{ token, expiresAt }`. Both `GET` and `POST` work.        |
-| `GET /<product>/config/mint/<id>/auth` | None.                                           | Serves `authPageTemplate` verbatim as HTML, or `404` if the recipe has none. |
+| Route                                  | Auth                                            | Behaviour                                                                                       |
+| -------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `/<product>/config/mint/<id>/token`    | Device token + the confused-deputy guard below. | Mints and returns `{ token, expiresAt }`. Both `GET` and `POST` work.                           |
+| `GET /<product>/config/mint/<id>/auth` | None.                                           | Serves `authPageTemplate` verbatim as HTML, or `404` if the recipe has none or is not approved. |
 
 ## Minting: the confused-deputy guard
 
 Requesting `/<product>/config/mint/<id>/token`:
 
-1. **Rate limit** — bucket `mint`, keyed by client IP, 60 requests per 60 seconds. Over budget is
-   `429 rate_limited`.
-2. **Device token required** — the same `validateDeviceToken` the config document route uses.
+1. **Device token required** — the same `validateDeviceToken` the config document route uses.
    Missing or invalid is `401 unauthorized`.
-3. **License-usable, but only if License is enabled.** When the product runs License, the
+2. **License-usable, but only if License is enabled.** When the product runs License, the
    device's license must also be usable (`licenseUsable`) or the request is `401`. When License
    is disabled for the product, this extra check is skipped entirely.
+3. **Rate limit on failure** — a request refused by step 1 or 2 is charged to bucket `mint`,
+   keyed by the client network (an IPv4 address or an IPv6 /64), 60 requests per 60 seconds; over
+   budget is `429 rate_limited`. Authenticated devices never spend it, so many devices behind one
+   address do not starve each other.
 4. **Per-device rate limit** — bucket `mintDevice`, keyed by the device id, 30 requests per 60
-   seconds, on top of the per-IP budget: one device behind many addresses cannot multiply its
-   allowance. Counted before the recipe lookup, so probing recipe ids spends the same budget.
+   seconds: one device behind many addresses cannot multiply its allowance. Counted before the recipe lookup, so probing recipe ids spends the same budget.
    Over budget is `429 rate_limited`.
 5. **An approved recipe** — see [Two operator conditions](#two-operator-conditions). Unknown,
    pending, or changed since approval is `404 not_found`.
 6. **An `edge-mint` signing secret** — else `500 misconfigured`.
 
-That third step is the confused-deputy guard, and its condition is deliberately narrower than
+That second step is the confused-deputy guard, and its condition is deliberately narrower than
 "always require a license". Minting a third-party credential is a stronger capability than reading
 your own settings, so it borrows the same scope rule Core's own `/devices` and `/devices/report`
 surfaces use: the license check applies **iff** the product enables License. On a config-only
@@ -292,7 +293,7 @@ on this route's behalf before the license/config split moved the check here expl
 | `200`               | Minted. `{ token, expiresAt }`.                                                                                       |
 | `401 unauthorized`  | Missing/invalid device token, or (License enabled) an unusable license.                                               |
 | `404 not_found`     | No recipe with that `id` for this product, or one not approved as it now stands.                                      |
-| `429 rate_limited`  | Over 60 requests/60s for this client IP, or over 30/60s for this device.                                              |
+| `429 rate_limited`  | Over 60 refused requests/60s for this client network, or over 30/60s for this device.                                 |
 | `500 misconfigured` | Unsupported `alg`, a signing key that is missing, unopenable or not marked `edge-mint`, or a corrupt claims template. |
 
 A success is `200`:

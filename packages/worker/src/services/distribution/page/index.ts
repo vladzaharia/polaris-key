@@ -60,7 +60,7 @@ import {
 } from "../../../core/platform.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { errorResponse, notFound } from "../../../core/errors.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { feedReaders, type FeedReadContext } from "../feeds/select.js";
 import {
   cachedFeedText,
@@ -229,7 +229,7 @@ async function withinBudget(
   return rateLimitOk(
     env,
     slug,
-    { bucket: "distributionFeed", id: clientIp(req), ...PAGE_RATE_LIMIT },
+    { bucket: "distributionFeed", id: clientNetwork(req), ...PAGE_RATE_LIMIT },
     now,
   );
 }

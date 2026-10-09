@@ -194,6 +194,7 @@ What the server decides rather than the caller:
 | `graceDays`         | An integer from 1 to **365**. The ceiling is enforced at mint **and** at verify                                                                                                                                                                   |
 | license document    | Included if and only if the License service is enabled — and then `licenseId` is **required**. There is no authenticated device here to infer a license from, and guessing would silently mint the wrong grant on the day a second license exists |
 | config document     | Included if and only if the Config service is enabled and `includeConfig` is not `false`. Asking for config on a product that does not run it is not an error; the answer is a bundle without it                                                  |
+| `signerKid`         | Optional. Signs the bundle, and its inner trust manifest, with that active, staged or retired key, for a device whose app pins only that key. A revoked or unknown `kid` is a 400                                                                 |
 | no documents at all | Refused. §7 makes such a bundle vacuous at import, so minting one produces a file whose only possible outcome is an error on a machine with no way to report it                                                                                   |
 
 The inner documents are built by the **same** assembly the network routes use, over the same

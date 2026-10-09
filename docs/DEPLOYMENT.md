@@ -27,6 +27,47 @@ Do not change the production hostname as a deployment-time tweak. The SDK defaul
 signed-config issuer, tests, docs, and product examples assume `key.plrs.im`; using a
 different host is a product migration.
 
+## Owner steps before deploy
+
+Do these before tagging the next release. The deploy refuses to ship without the first group.
+
+1. **Secrets, on prod, staging and dev.** Each must be set and at least 32 characters. The
+   deploy's "Config preflight" step fails while a required secret is missing (it reads names
+   only), and a deployed Worker answers 500 `server_misconfigured` while one is missing or short.
+   - `PORTAL_SESSION_SECRET` (new): `openssl rand -hex 32`, different from
+     `ADMIN_SESSION_SECRET`. Portal sessions no longer fall back to the admin secret.
+   - `ADMIN_SESSION_SECRET`.
+   - `KEY_HASH_PEPPER`. **If it is unset on an environment that already holds data, setting it
+     changes every stored key hash** (licence keys, device tokens and the other hashed
+     credentials stop matching). Decide the migration first; never set it blind.
+   - `PLATFORM_KEK` (or the `PLATFORM_KEK_KEYS` keyring), as today.
+   - When set, `DOWNLOAD_TICKET_KEY`, `DOWNLOAD_TICKET_KEY_PREVIOUS`, `GITHUB_WEBHOOK_SECRET` and
+     `GITHUB_WEBHOOK_SECRET_PREVIOUS` must also be at least 32 characters. Set
+     `GITHUB_WEBHOOK_SECRET_PREVIOUS` only during a webhook-secret rotation.
+   - `BLOB_ORIGIN`, `PKG_ORIGIN` and `IMG_ORIGIN` in `wrangler.toml` must be absolute `https://`
+     URLs when set.
+2. **`OIDC_ISSUER_ALLOWLIST` on prod**, if any product signs in through its own OIDC issuer
+   (`provider: custom`): list each issuer's host. Unset or empty on prod refuses every custom
+   issuer, so those products' sign-in fails.
+3. **GitHub rulesets** (§2, "GitHub environment `package-registry`", item 3): code-owner review
+   on `.github/`, `actions/publish/`, `.pkey/` and `tools/`; creation of `v*` tags restricted to
+   maintainers; the `production` and `package-registry` environments' deployment-ref rules
+   (`v*` tags; `main` too for `package-registry`).
+4. **Logs.** Workers invocation logs are now off (`invocation_logs = false` in `wrangler.toml`):
+   they recorded request URLs, which carry single-use tokens and codes. Worker `console` logs
+   are unchanged. Turn invocation logs back on only knowing what they record.
+5. **Watch the first tag's deploy** (these run only in the live pipeline):
+   - the unprivileged `verify` job runs first, and `deploy-worker` waits for it;
+   - `deploy-worker` builds after `pnpm install --ignore-scripts`; if a build step needs a
+     dependency's install script, restore scripts for that dependency only;
+   - the deploy hook accepts the job's OIDC token: a `push` event, a `refs/tags/vX.Y.Z` ref,
+     `job_workflow_ref` on `deploy.yml`, and a `sha` equal to the `PKEY_GIT_SHA` var the same
+     deploy sets (`--var PKEY_GIT_SHA:$GITHUB_SHA`); a Worker without it refuses every call;
+   - `publish-sdks` still runs after `deploy-worker`;
+   - promote and yank workflows run from tag refs, and the system product publishes only from
+     `main` or a `vX.Y.Z` tag. A `pkeyci_` token without `release:publish` can no longer read
+     private feeds or mint OCI pull tokens (401).
+
 ## 1. Local prerequisites
 
 Run from the repo root:
@@ -241,6 +282,12 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
    and deletion to maintainers). The trusted publisher requires `ref_protected` (P2-02), so an
    unprotected ref cannot publish. The `production` environment's deploy job (deploy.yml) relies
    on the same tag ruleset.
+   Also add a **ruleset requiring code-owner review on `.github/**`, `actions/publish/**`,
+`.pkey/**`and`tools/**`** (`.github/CODEOWNERS` names the owner), and verify the `production`
+   environment has the same deployment-ref limits: `sync-worker-secrets.yml` also refuses to run
+   off a `v*` release tag itself (the environment's only allowed ref), and the environment is the authority. `deploy.yml` runs install, build,
+   typecheck, test and lint in an unprivileged `verify` job (no environment, no secrets, no
+   `id-token`); the privileged `deploy-worker` job installs with `--ignore-scripts`.
 4. Nothing to register by hand. `deploy.yml`'s "Register the platform packages" step calls the
    deploy hook (`POST /webhooks/deploy`, `packages/worker/src/platformDeploy.ts`) on every
    production deploy, authenticated by the deploy job's own GitHub OIDC token (the job has
@@ -725,6 +772,8 @@ openssl rand -hex 32      # PORTAL_SESSION_SECRET
 openssl rand -base64 32   # PLATFORM_KEK, must decode to exactly 32 bytes
 openssl rand -hex 32      # GITHUB_WEBHOOK_SECRET, if not already chosen
 ```
+
+Every secret above must be at least 32 characters, and `PORTAL_SESSION_SECRET` has no fallback to `ADMIN_SESSION_SECRET`. The Worker answers 500 `server_misconfigured` on prod, staging and dev while `KEY_HASH_PEPPER`, `ADMIN_SESSION_SECRET` or `PORTAL_SESSION_SECRET` is missing or short, or a `*_ORIGIN` var is not an `https://` URL; the deploy's "Config preflight" step checks the names before anything ships. During a webhook-secret rotation set `GITHUB_WEBHOOK_SECRET_PREVIOUS` to the old value.
 
 Set the prod Worker secrets:
 

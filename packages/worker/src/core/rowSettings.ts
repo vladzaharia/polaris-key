@@ -49,6 +49,7 @@ import {
   type WriteRefusal,
 } from "./settings/write.js";
 import { tryParseJson } from "../platform/json.js";
+import { jsonList, jsonListArg } from "./sqlIn.js";
 
 /** The product facts the row store needs: who it is, when it was registered, how it is linked. */
 export interface RowSettingProduct {
@@ -116,10 +117,6 @@ export function manifestValueAt(manifest: unknown, def: SettingDef): unknown {
   return node;
 }
 
-function placeholders(n: number): string {
-  return Array.from({ length: n }, () => "?").join(", ");
-}
-
 /** The live console claim on `key`, as SQL binding `[product, key, now]` (ST-01b's guard). */
 const CLAIMED = `EXISTS (SELECT 1 FROM product_settings
     WHERE product = ? AND key = ? AND source = 'console'
@@ -137,9 +134,9 @@ export async function readRowSettings(
     keys.length === 0
       ? []
       : await db.all<ProductSettingRow>(
-          `SELECT * FROM product_settings WHERE product = ? AND key IN (${placeholders(keys.length)})`,
+          `SELECT * FROM product_settings WHERE product = ? AND key IN ${jsonList()}`,
           product.slug,
-          ...keys,
+          jsonListArg(keys),
         );
   const byKey = new Map(rows.map((r) => [r.key, r]));
   return defs.map((def) =>
@@ -274,7 +271,7 @@ export function manifestRowSettingStatements(
     );
   }
   if (undeclared.length > 0) {
-    const inList = placeholders(undeclared.length);
+    const inList = jsonList();
     out.push(
       {
         sql: `INSERT INTO audit
@@ -284,20 +281,20 @@ export function manifestRowSettingStatements(
                      'setting.resync', 'setting', key, NULL,
                      key || ' cleared from the manifest: ' || value_json || ' → default'
                 FROM product_settings
-               WHERE product = ? AND source = 'manifest' AND key IN (${inList})`,
+               WHERE product = ? AND source = 'manifest' AND key IN ${inList}`,
         params: [
           now,
           actor.sub,
           actor.name,
           actor.email,
           product,
-          ...undeclared,
+          jsonListArg(undeclared),
         ],
       },
       {
         sql: `DELETE FROM product_settings
-               WHERE product = ? AND source = 'manifest' AND key IN (${inList})`,
-        params: [product, ...undeclared],
+               WHERE product = ? AND source = 'manifest' AND key IN ${inList}`,
+        params: [product, jsonListArg(undeclared)],
       },
     );
   }
