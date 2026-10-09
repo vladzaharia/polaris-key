@@ -726,6 +726,8 @@ openssl rand -base64 32   # PLATFORM_KEK, must decode to exactly 32 bytes
 openssl rand -hex 32      # GITHUB_WEBHOOK_SECRET, if not already chosen
 ```
 
+Every secret above must be at least 32 characters, and `PORTAL_SESSION_SECRET` has no fallback to `ADMIN_SESSION_SECRET`. The Worker answers 500 `server_misconfigured` on prod, staging and dev while `KEY_HASH_PEPPER`, `ADMIN_SESSION_SECRET` or `PORTAL_SESSION_SECRET` is missing or short, or a `*_ORIGIN` var is not an `https://` URL; the deploy's "Config preflight" step checks the names before anything ships. During a webhook-secret rotation set `GITHUB_WEBHOOK_SECRET_PREVIOUS` to the old value.
+
 Set the prod Worker secrets:
 
 ```sh
