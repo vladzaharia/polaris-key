@@ -85,6 +85,79 @@ public struct PolarisTypography: Sendable, Equatable {
         }
     }
 
+    /// How heavy a kit-internal text role is. The brand family ships Regular and Bold only, so
+    /// `.medium` renders Regular there and never asks for a synthesised weight.
+    enum Emphasis {
+        case regular
+        case medium
+        case bold
+    }
+
+    /// The family at any text style, scaling with Dynamic Type from it.
+    func font(style: Font.TextStyle, emphasis: Emphasis) -> Font {
+        switch resolvedFamily {
+        case .system:
+            switch emphasis {
+            case .regular: return .system(style)
+            case .medium: return .system(style).weight(.medium)
+            case .bold: return .system(style).bold()
+            }
+        case .brand:
+            return .custom(
+                emphasis == .bold ? BrandFonts.boldName : BrandFonts.regularName,
+                size: Self.pointSize(style), relativeTo: style)
+        case .custom(let regular, let bold):
+            return .custom(
+                emphasis == .bold ? bold : regular, size: Self.pointSize(style), relativeTo: style)
+        }
+    }
+
+    /// The monospaced face at a fixed size: JetBrains Mono under `.brand` (the bundled variable
+    /// TTF, which KitTokens' code role names), SF Mono under `.system`, and the product's own mono
+    /// under `.custom` (falling back to its regular face). Used for the user code, the license key
+    /// and the offline request code.
+    func monoFont(size: CGFloat) -> Font {
+        switch family {
+        case .system:
+            return .system(size: size, weight: .medium, design: .monospaced)
+        case .brand:
+            if BrandFonts.monoAvailable {
+                return .custom(BrandFonts.monoName, fixedSize: size)
+            }
+            return .system(size: size, weight: .medium, design: .monospaced)
+        case .custom(let regular, _):
+            return .custom(regular, fixedSize: size)
+        }
+    }
+
+    /// The monospaced face scaling with Dynamic Type from `.body`, for text people read and edit
+    /// (the license key, the offline request code): JetBrains Mono under `.brand`, SF Mono under
+    /// `.system`, the product's own face under `.custom`.
+    func monoBodyFont() -> Font {
+        switch family {
+        case .system:
+            return .system(.body, design: .monospaced)
+        case .brand:
+            if BrandFonts.monoAvailable {
+                return .custom(BrandFonts.monoName, size: Self.pointSize(.body), relativeTo: .body)
+            }
+            return .system(.body, design: .monospaced)
+        case .custom(let regular, _):
+            return .custom(regular, size: Self.pointSize(.body), relativeTo: .body)
+        }
+    }
+
+    /// The family at a fixed size (a glyph drawn inside a fixed tile, such as the monogram).
+    func fixedFont(size: CGFloat, bold: Bool) -> Font {
+        switch resolvedFamily {
+        case .system: return .system(size: size, weight: bold ? .semibold : .regular)
+        case .brand:
+            return .custom(bold ? BrandFonts.boldName : BrandFonts.regularName, fixedSize: size)
+        case .custom(let regular, let boldName):
+            return .custom(bold ? boldName : regular, fixedSize: size)
+        }
+    }
+
     static func spec(_ role: Role) -> (Font.TextStyle, Bool) {
         switch role {
         case .title: return (.title2, true)
@@ -100,33 +173,46 @@ public struct PolarisTypography: Sendable, Equatable {
     static func pointSize(_ style: Font.TextStyle) -> CGFloat {
         #if os(macOS)
             switch style {
+            case .largeTitle: return 26
+            case .title: return 22
             case .title2: return 17
+            case .title3: return 15
+            case .callout: return 12
             case .subheadline: return 11
-            case .caption: return 10
+            case .footnote, .caption, .caption2: return 10
             default: return 13
             }
         #else
             switch style {
+            case .largeTitle: return 34
+            case .title: return 28
             case .title2: return 22
+            case .title3: return 20
+            case .callout: return 16
             case .subheadline: return 15
+            case .footnote: return 13
             case .caption: return 12
+            case .caption2: return 11
             default: return 17
             }
         #endif
     }
 }
 
-/// Process-scoped registration of the bundled Rubik faces.
+/// Process-scoped registration of the bundled Rubik and JetBrains Mono faces.
 enum BrandFonts {
     static let regularName = "Rubik-Regular"
     static let boldName = "Rubik-Bold"
+    /// JetBrains Mono's PostScript name (the bundled `JetBrainsMono-Variable.ttf`).
+    static let monoName = "JetBrainsMono-Regular"
+    static let monoFile = "JetBrainsMono-Variable"
 
-    /// The bundled font files, in `Resources/Brand/fonts/`.
-    static func url(_ name: String) -> URL? {
-        brandResourceURL("fonts/\(name).ttf")
+    /// A bundled font file, in `Resources/Brand/fonts/`.
+    static func url(_ file: String) -> URL? {
+        brandResourceURL("fonts/\(file).ttf")
     }
 
-    /// Registers both faces once per process; true when both can be instantiated by name.
+    /// Registers the Rubik faces once per process; true when both can be instantiated by name.
     static let isAvailable: Bool = {
         for name in [regularName, boldName] {
             if let url = url(name) {
@@ -136,6 +222,14 @@ enum BrandFonts {
             }
         }
         return [regularName, boldName].allSatisfy(isInstalled)
+    }()
+
+    /// Registers JetBrains Mono once per process; true when it can be instantiated by name.
+    static let monoAvailable: Bool = {
+        if let url = url(monoFile) {
+            _ = CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+        return isInstalled(monoName)
     }()
 
     static func isInstalled(_ postScriptName: String) -> Bool {

@@ -3,8 +3,8 @@
 // Every `gate-matrix` status routes to its surface (the same surfaces as `PolarisLoginView`).
 // What the model adds:
 //
-//   * "Sign in" opens the built-in device-code sign-in (`PolarisSignIn`, with a QR code) when the
-//     product runs Identity, and is HIDDEN when it does not — never a button that does nothing;
+//   * "Sign in" opens the built-in device-code sign-in (`PolarisSignIn`; a QR code on TV only) when
+//     the product runs Identity, and is HIDDEN when it does not — never a button that does nothing;
 //   * "Continue free" (keyless enrolment) when the host says the product offers a free tier;
 //   * "Activate offline" opens `PolarisOfflineActivation`;
 //   * key entry is hidden where the host says the outlet forbids it (`showsKeyEntry: false`);
@@ -24,6 +24,9 @@ public struct PolarisGate<Content: View>: View {
 
     @State private var licenseKey = ""
     @State private var sheet: GateSheet?
+    @State private var manageOpened = false
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     enum GateSheet: String, Identifiable {
         case signIn, offline
@@ -47,6 +50,8 @@ public struct PolarisGate<Content: View>: View {
             allowedRange: model.state.allowedRange,
             isWorking: model.isWorking,
             lastError: model.lastError,
+            manageURL: model.offeredManageURL,
+            onOpenManage: { manageOpened = true },
             licenseKey: $licenseKey,
             theme: theme,
             onSignIn: model.identityEnabled ? { sheet = .signIn } : nil,
@@ -57,6 +62,19 @@ public struct PolarisGate<Content: View>: View {
             showsKeyEntry: showsKeyEntry,
             content: content
         )
+        .onChange(of: model.lastActivation) { _, _ in
+            // A new result closes the round: a second refusal needs a second Replace tap.
+            manageOpened = false
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Only after the person opened Replace a device (never on a lock/unlock), and only
+            // while the field still holds the refused key, retry it once, quietly.
+            guard phase == .active, manageOpened, model.offeredManageURL != nil,
+                let key = model.lastKey, key == licenseKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            else { return }
+            manageOpened = false
+            Task { await model.activate(key: key, showsWork: false) }
+        }
         .sheet(item: $sheet) { which in
             Group {
                 switch which {
@@ -69,7 +87,7 @@ public struct PolarisGate<Content: View>: View {
                     PolarisOfflineActivation(model: model, theme: theme) { sheet = nil }
                 }
             }
-            .frame(minWidth: 360, minHeight: 520)
+            .polarisSheetFrame()
         }
     }
 }

@@ -48,18 +48,6 @@
       "rule": "compose-system-alert",
       "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisDevices.kt",
       "count": 2
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-border-shape",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisKitChrome.swift",
-      "count": 2
-    },
-    {
-      "kit": "swiftui",
-      "rule": "swiftui-border-shape",
-      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
-      "count": 5
     }
   ]
 }

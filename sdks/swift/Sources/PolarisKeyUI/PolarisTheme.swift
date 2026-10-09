@@ -50,12 +50,12 @@ public struct PolarisCopy: Sendable {
     public init(
         productName: String = "this app",
         welcomeTitle: String? = nil,
-        welcomeSubtitle: String = "Sign in or enter a license key to continue.",
-        signInButton: String = "Sign in",
+        welcomeSubtitle: String = "",
+        signInButton: String = KitButtonCase.button("Sign in"),
         orDividerLabel: String = "or",
         licenseKeyPlaceholder: String = "License key",
         activateButton: String = "Activate",
-        retryButton: String = "Retry",
+        retryButton: String = KitButtonCase.button("Try again"),
         reconnectButton: String = "Reconnect",
         graceTitle: String = ErrorCopy.title(LicenseStatus.grace.rawValue),
         graceSubtitle: String = ErrorCopy.message(LicenseStatus.grace.rawValue),
@@ -70,7 +70,7 @@ public struct PolarisCopy: Sendable {
         versionBlockSubtitle: String = "Your current version isn't permitted to run.",
         activationMessages: [String: String] = [:],
         signOutFailedMessage: String = "Sign-out couldn't clear the stored license.",
-        freeDeviceButton: String = "Replace a device",
+        freeDeviceButton: String = KitButtonCase.button("Replace a device"),
         freeDeviceScanCaption: String =
             "Scan with your phone to free a device, then try again."
     ) {
@@ -99,6 +99,20 @@ public struct PolarisCopy: Sendable {
         self.signOutFailedMessage = signOutFailedMessage
     }
 
+    /// The Welcome's title for the product the kit resolved: the integrator's title when they set
+    /// one, else "Welcome to <name>" with the name from the presentation or the bundle when the
+    /// copy still holds the generic "this app".
+    func welcomeTitle(naming name: String) -> String {
+        let generic = "Welcome to \(PolarisCopy().productName)"
+        return welcomeTitle == generic && productName == PolarisCopy().productName
+            ? "Welcome to \(name)" : welcomeTitle
+    }
+
+    /// Every button and link label on the gate, for the title-case parity test.
+    public var buttonLabels: [String] {
+        [signInButton, activateButton, retryButton, reconnectButton, freeDeviceButton]
+    }
+
     /// The sentence for an activation outcome: the product's override for its code, else the
     /// shared copy (`ActivationResult.message`); nil for `.ok`. Never the raw server body.
     public func activationMessage(_ result: ActivationResult) -> String? {
@@ -110,24 +124,25 @@ public struct PolarisCopy: Sendable {
 
 /// The theme: branding, colours, type, logo, copy and the optional "Powered by" badge.
 ///
-/// The defaults are native and neutral: system fonts, the host app's tint and system colours, a
-/// generic key glyph, no Polaris Key branding and no badge. Opting in to the Polaris Key brand is
-/// one modifier, `.polarisKeyBranding(.polarisKey)`, or `branding: .polarisKey` here: the generated
-/// brand palette (dark or light from the `colorScheme` environment), Rubik and the Pinned K. Any
-/// field set here wins over what the branding would pick:
+/// The defaults are native and neutral: system fonts, the host app's tint and system colours, the
+/// product's icon (`PolarisProductIdentity`), no Polaris Key branding and no badge. Opting in to
+/// the Polaris Key brand is one modifier, `.polarisKeyBranding(.polarisKey)`, or
+/// `branding: .polarisKey` here: the generated brand palette (dark or light from the `colorScheme`
+/// environment) in the product presentation's accent when it has one, and Rubik. Any field set
+/// here wins over what the branding or the presentation would pick:
 ///
 /// - `accent` (and `accentOn` for the text on it) re-points the primary button and the accent
 ///   text in both colour schemes, leaving the rest of the palette alone;
 /// - `palette` replaces every colour, per colour scheme;
 /// - `typography` picks the system font, Rubik or the product's own faces;
-/// - `logo` replaces the default glyph or mark;
+/// - `logo` replaces the product icon the kit would show;
 /// - `poweredBy` opts in to the kit's "Powered by Polaris Key" badge under the activation card.
 public struct PolarisTheme: Sendable {
     /// The branding for this gate; nil (the default) follows the `polarisKeyBranding`
     /// environment, which is `.native` unless the host opts in.
     public var branding: PolarisBranding?
     /// An accent override for both colour schemes; nil keeps the branding's accent (the app's
-    /// tint natively, the core violet under `.polarisKey`).
+    /// tint natively; under `.polarisKey` the presentation's accent, else the core violet).
     public var accentOverride: Color?
     /// The text colour on an overridden accent; nil keeps the palette's `onAccent`.
     public var accentOn: Color?
@@ -136,9 +151,9 @@ public struct PolarisTheme: Sendable {
     /// The type family; nil uses the system font natively and Rubik under `.polarisKey`.
     public var typography: PolarisTypography?
     public var copy: PolarisCopy
-    /// A product-supplied logo view builder (image, SF Symbol, anything); nil shows a neutral key
-    /// glyph in the tint natively and the Pinned K (`PolarisMark`, no section bit) under
-    /// `.polarisKey`.
+    /// A product-supplied logo view builder (image, SF Symbol, anything), offered a square at each
+    /// size the kit draws the product icon; nil shows the presentation's icon, else the app's
+    /// icon, else a monogram tile, in both brandings (never a Polaris Key mark).
     public var logoOverride: (@Sendable () -> AnyView)?
     /// The badge shown under the activation card, or nil (the default) for none.
     public var poweredBy: PolarisPoweredBy?
@@ -170,8 +185,15 @@ public struct PolarisTheme: Sendable {
 
     /// The colours the gate paints in `scheme` under `environment` branding: the palette with the
     /// accent overrides applied.
+    ///
+    /// The accent resolves in the UI-KITS §1.2 order: the integrator's (`accent`, or a whole
+    /// `palette`), then, under `.polarisKey` branding, the product presentation's accent
+    /// (`accentDark` in the dark scheme) through the contrast resolver (`PolarisAccent`), then the
+    /// branding's own. Natively the host app's tint always leads, so a presentation accent does not
+    /// apply there.
     public func resolvedPalette(
-        for scheme: ColorScheme, branding environment: PolarisBranding = .native
+        for scheme: ColorScheme, branding environment: PolarisBranding = .native,
+        presentation: PolarisProductPresentation? = nil
     ) -> PolarisPalette {
         var resolved =
             palette?(scheme)
@@ -179,6 +201,18 @@ public struct PolarisTheme: Sendable {
         if let accent = accentOverride {
             resolved.accent = accent
             resolved.accentText = accent
+        } else if palette == nil, resolvedBranding(environment) == .polarisKey,
+            let input = presentation?.accent(for: scheme),
+            let accent = PolarisAccent.resolve(input, dark: scheme != .light),
+            let solid = BrandColor(hexString: accent.solid),
+            let fg = BrandColor(hexString: accent.fg),
+            let on = BrandColor(hexString: accent.on),
+            let focus = BrandColor(hexString: accent.focus)
+        {
+            resolved.accent = solid.color
+            resolved.accentText = fg.color
+            resolved.onAccent = on.color
+            resolved.focus = focus.color
         }
         if let accentOn { resolved.onAccent = accentOn }
         return resolved
@@ -285,5 +319,15 @@ extension PolarisCopy {
             .compactMap { $0 }
         guard !parts.isEmpty else { return base }
         return base + " (allowed: \(parts.joined(separator: ", ")))"
+    }
+}
+
+extension BrandColor {
+    /// A `#rrggbb` string as a colour (the accent resolver's output), or nil.
+    init?(hexString: String) {
+        guard hexString.count == 7, hexString.hasPrefix("#"),
+            let value = UInt32(hexString.dropFirst(), radix: 16)
+        else { return nil }
+        self.init(hex: value)
     }
 }

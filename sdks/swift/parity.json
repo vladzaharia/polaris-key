@@ -326,7 +326,7 @@
     "ui.kit": {
       "status": "planned",
       "wp": "UK-07",
-      "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*)."
+      "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel, each laid out by the space it gets (one column, side by side in landscape and short windows, the split Welcome on iPad and roomy Mac windows; KitLayoutTests keeps the code and the primary action on screen at iPhone, iPad and Mac sizes, Dynamic Type L and AX3, native and branded); the product leads (theme, then the .polarisKeyPresentation seam HA-13 fills, then the bundle, then a monogram); QR on TV only (D-67). The rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*)."
     },
     "ui.kit.manage": {
       "status": "implemented",

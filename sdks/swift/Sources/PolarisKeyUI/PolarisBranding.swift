@@ -1,7 +1,7 @@
 // Whether the kit wears the Polaris Key brand. The default is `.native`: system fonts, the host
 // app's tint and system colours, with no Polaris Key branding at all. An integrator opts in to the
-// Polaris Key look (the generated `PolarisBrand` tokens, bundled Rubik, the core violet, the Pinned
-// K) with one modifier:
+// Polaris Key look (the generated `PolarisBrand` tokens, bundled Rubik, the core violet or the
+// product presentation's accent) with one modifier:
 //
 //     PolarisLoginView(model: gate) { MyRoot() }
 //         .polarisKeyBranding(.polarisKey)
@@ -15,7 +15,9 @@ import SwiftUI
 public enum PolarisBranding: String, Sendable, Equatable, CaseIterable {
     /// Native and neutral (the default): system fonts, the app's tint, system colours.
     case native
-    /// The Polaris Key design system: brand palette (dark or light), Rubik, the Pinned K.
+    /// The Polaris Key design system: brand palette (dark or light), Rubik, and the product's
+    /// accent when its presentation has one. Kit screens still lead with the product, never a
+    /// Polaris Key mark (UI-KITS §1.6).
     case polarisKey
 }
 
