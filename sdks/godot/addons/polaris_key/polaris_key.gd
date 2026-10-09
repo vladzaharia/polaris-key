@@ -310,6 +310,9 @@ func _enter_tree() -> void:
 	# One listener: the autoload, or the first SDK node when there is no autoload (tests).
 	if name == "PolarisKey" or not PKeyJws.progress_listener.is_valid():
 		PKeyJws.progress_listener = _on_verify_progress
+	if name == "PolarisKey":
+		# A pad's A and B must work on the kit's screens whatever the game's input map holds.
+		PKeyUiView.ensure_pad_bindings()
 	# iOS: this launch's AppDistributor read starts now (P5-05), so outlet detection usually has
 	# it; it is raced against 2 s and never cached across launches.
 	if name == "PolarisKey" and PKeyHeaders.update_platform() == PKeyConstants.Platform.IOS:

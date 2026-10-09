@@ -162,6 +162,7 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	ensure_pad_bindings()
 	if sdk == null and auto_sdk:
 		sdk = default_sdk()
 	var vp := get_viewport()
@@ -173,10 +174,38 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and _built and is_inside_tree():
 		refresh_view()
+	elif what == NOTIFICATION_VISIBILITY_CHANGED and _opener != null and not is_visible_in_tree():
+		# The dialog went away (hidden by its host, dismissed): the game's control gets its focus back.
+		restore_opener()
 	elif what == NOTIFICATION_PARENTED and _built:
 		layout_content()
 	elif what == NOTIFICATION_RESIZED and _built and is_inside_tree() and outer_view() == self:
 		queue_layout()
+
+
+static var _pad_bound := false
+
+
+## Godot's default input map binds ui_accept to the keyboard and ui_cancel to Escape only in some
+## projects (measured on 4.4.1 and 4.7.2: a joypad A and B then do nothing on a kit screen). Add the
+## pad's A (accept) and B (cancel) to an action that has no joypad button of its own, once, keeping
+## every binding the game made. Called by the PolarisKey autoload and by every kit view.
+static func ensure_pad_bindings() -> void:
+	if _pad_bound:
+		return
+	_pad_bound = true
+	for pair in [[&"ui_accept", JOY_BUTTON_A], [&"ui_cancel", JOY_BUTTON_B]]:
+		var action: StringName = pair[0]
+		if not InputMap.has_action(action):
+			continue
+		var has_pad := false
+		for e in InputMap.action_get_events(action):
+			if e is InputEventJoypadButton:
+				has_pad = true
+		if not has_pad:
+			var ev := InputEventJoypadButton.new()
+			ev.button_index = pair[1]
+			InputMap.action_add_event(action, ev)
 
 
 ## The last kind of input, for `pointer_last`; and a modal's input guard.
@@ -374,7 +403,13 @@ func _manage_focus() -> void:
 	if changed:
 		if _guard_for_modal():
 			_guard_until = Time.get_ticks_msec() + MODAL_GUARD_MSEC
-		ensure_focus(false)
+		# A dialog over a running game takes the focus from the game's own control (a pad's A
+		# must answer the dialog, never press the game's button behind it) and gives it back
+		# when it closes.
+		var takes := _takes_focus_from_game()
+		if takes and not _has_focus_inside():
+			remember_opener()
+		ensure_focus(takes)
 
 
 ## Focus the view's initial control when nothing inside it has focus: after keyboard or joypad
@@ -421,6 +456,12 @@ func _initial_focus() -> Control:
 ## A key naming the screen the view shows now: when it changes, the view asks for focus again.
 func _screen_key() -> String:
 	return ""
+
+
+## Whether this view, as the outermost one, opens over a running game and so takes the focus from
+## the game's control (the scrim dialogs: update modal, sign-in, offline activation, settings).
+func _takes_focus_from_game() -> bool:
+	return outer_view() == self and _scrim_wanted()
 
 
 ## Whether this view guards its first 250 ms against input (a modal).
@@ -798,6 +839,9 @@ func layout_content() -> void:
 	_apply_safe_area(metrics["insets"])
 	for v in views:
 		v._arrange(metrics)
+	# `_arrange()` re-parents nodes (`place()`), and the focus paths are relative to where a node
+	# sits: wire them again once everything is in place, or a neighbour path no longer resolves.
+	wire_focus()
 	if before.get("landscape") != metrics["landscape"] or before.get("scale") != metrics["scale"] or before.get("density") != metrics["density"]:
 		# A switch between layouts flips containers and moves nodes; the engine does not always
 		# re-sort a container whose child's minimum changed that way, so re-sort them all.

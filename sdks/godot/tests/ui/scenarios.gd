@@ -62,6 +62,9 @@ func all() -> Array:
 	# choosing them on the needs-activation card).
 	out.append(["gate", "sign-in pending", gate_flow.bind("sign-in")])
 	out.append(["gate", "offline activation", gate_flow.bind("offline")])
+	# The device limit reached through the gate (type a key, Activate, the licence is on every seat).
+	out.append(["gate", "device limit", gate_limit.bind("button")])
+	out.append(["gate", "device limit, replace a device (QR)", gate_limit.bind("qr")])
 	# ── PKeyActivationPanel: every capability combination.
 	for lic in [true, false]:
 		for idn in [true, false]:
@@ -182,6 +185,21 @@ func gate_flow(which: String) -> Control:
 		panel.offline_dialog.product = "djdl"
 		panel.offline_dialog.device_id = "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
 		panel.open_mode("offline")
+	return g
+
+
+## The gate after a key was refused with the device limit: the activation panel holds the limit view.
+func gate_limit(how: String) -> Control:
+	var g := PKeyGateView.new()
+	g.activation.manage_mode = how
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, true, false))
+	add(g)
+	g.show_state({"status": "needs-activation"})
+	var r := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
+	r.limit = 3
+	r.device_count = 3
+	r.manage_url = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64"
+	g.activation.show_result(r, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
 	return g
 
 

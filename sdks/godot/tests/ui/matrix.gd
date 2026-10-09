@@ -65,6 +65,8 @@ const SCREENS := [
 	["gate", "gate", "needs-activation", "full"],
 	["gate.sign_in", "gate", "sign-in pending", "full"],
 	["gate.offline", "gate", "offline activation", "full"],
+	["gate.device_limit", "gate", "device limit", "full"],
+	["gate.device_limit_qr", "gate", "device limit, replace a device (QR)", "full"],
 	["gate.error", "gate", "needs-activation after an error", "full"],
 	["gate.expired", "gate", "expired", "full"],
 	["gate.update", "gate", "version-too-old with a store action", "full"],

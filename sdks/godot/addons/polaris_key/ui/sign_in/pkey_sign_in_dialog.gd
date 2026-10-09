@@ -353,6 +353,7 @@ func show_result(r: PKeySignInResult) -> void:
 		finished.emit(r)
 		if not already:
 			closed.emit()
+			restore_opener()
 		return
 	state = "ended"
 	refresh_view()
@@ -485,12 +486,14 @@ func _on_continue() -> void:
 func _on_cancel() -> void:
 	if state == "ended":
 		closed.emit()
+		restore_opener()
 		return
 	if sdk != null and sdk.get("identity") != null:
 		sdk.identity.cancel()
 	# Cancelling closes the dialog at once; the flow's own cancelled result changes nothing more.
 	state = "cancelled"
 	closed.emit()
+	restore_opener()
 
 
 func _cancel() -> bool:

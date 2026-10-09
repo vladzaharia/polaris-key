@@ -249,6 +249,7 @@ func _cancel() -> bool:
 
 func _close_dialog() -> void:
 	closed.emit()
+	restore_opener()
 
 
 func _on_copy() -> void:

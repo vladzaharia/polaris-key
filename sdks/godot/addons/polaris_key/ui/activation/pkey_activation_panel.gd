@@ -218,8 +218,11 @@ func preferred_width() -> float:
 
 ## The device-limit view's two columns (the state, the way out): on a landscape panel with room.
 func _limit_side_by_side() -> bool:
-	var m := layout_metrics()
-	return not limit.is_empty() and mode == "main" and bool(m.get("landscape", false)) and not phone_screen()
+	if limit.is_empty() or mode != "main" or phone_screen() or not bool(layout_metrics().get("landscape", false)):
+		return false
+	# Only when the width this panel really gets holds both columns (a host card around it can be
+	# narrower than the screen): each column keeps most of a single column's width.
+	return room_x() + 1.0 >= (role("card_width") - 2.0 * role("card_padding")) * 1.45
 
 
 func _two_panes() -> bool:
@@ -274,8 +277,16 @@ func _arrange(m: Dictionary) -> void:
 		_form.move_child(first, want)
 	_sign_in.theme_type_variation = &"PKeyPrimary" if pad else &""
 	_submit.theme_type_variation = &"" if pad else &"PKeyPrimary"
-	_again.theme_type_variation = &"" if is_mobile() and _manage.visible else &"PKeyPrimary"
-	_manage.theme_type_variation = &"PKeyPrimary" if is_mobile() else &""
+	# "Replace a device" is the one filled primary where it shows (Try again is then secondary); with
+	# a QR code instead of the button, Try again is the primary.
+	_again.theme_type_variation = &"" if _manage.visible else &"PKeyPrimary"
+	_manage.theme_type_variation = &"PKeyPrimary"
+	# On a phone the three actions dock together at the bottom, the primary on top.
+	var docked := phone_screen() and not limit.is_empty()
+	if docked:
+		place(_manage, _limit_actions, 0)
+	else:
+		place(_manage, _remedy, 0)
 
 
 ## Fix the capabilities ({key_entry, sign_in, continue_free, offline}) instead of reading them
@@ -330,9 +341,10 @@ func _render() -> void:
 func _render_limit(t: PKeyUiCopy) -> void:
 	if limit.is_empty():
 		return
-	_limit_product.visible = show_product
-	if show_product:
-		_limit_product.refresh()
+	# The device-limit view leads with the product whoever hosts it: a host's own product pane gives
+	# way to it (the gate hides its pane while a limit shows).
+	_limit_product.visible = true
+	_limit_product.refresh()
 	var used: int = limit.get("used", -1)
 	var cap: int = limit.get("limit", -1)
 	if used >= 0 and cap >= 0:
@@ -356,9 +368,12 @@ func _render_limit(t: PKeyUiCopy) -> void:
 	var how := manage_presentation()
 	var has_link := manage_url != ""
 	_manage.text = t.text("free_device")
-	_manage.visible = has_link and (how == "button" or is_mobile()) 
-	_manage_qr.text = manage_url if how == "qr" and not is_mobile() else ""
-	_manage_qr.visible = has_link and how == "qr" and not is_mobile() and not _manage_qr.encode_failed
+	# A phone opens the link itself; a tablet or a pad-only device (a TV) shows the QR code for another
+	# device when that is how the link is offered.
+	var phone := is_phone_device()
+	_manage.visible = has_link and (how == "button" or phone)
+	_manage_qr.text = manage_url if how == "qr" and not phone else ""
+	_manage_qr.visible = has_link and how == "qr" and not phone and not _manage_qr.encode_failed
 	_manage_qr.get_parent().visible = _manage_qr.visible
 	show_text(_manage_caption, t.text("free_device_scan") if _manage_qr.visible else "")
 	_remedy.visible = _manage.visible or _manage_qr.visible
@@ -386,7 +401,7 @@ func _initial_focus() -> Control:
 	if mode == "offline":
 		return offline_dialog._initial_focus()
 	if not limit.is_empty():
-		return _again if is_focusable(_again) and not (is_mobile() and _manage.visible) else (_manage if is_focusable(_manage) else _again)
+		return _manage if is_focusable(_manage) else _again
 	if pad_only() and is_focusable(_sign_in):
 		return _sign_in
 	if is_focusable(_key):

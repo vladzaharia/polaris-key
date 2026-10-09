@@ -165,7 +165,7 @@ func _activation_owns_screen() -> bool:
 ## The card's content width (logical pixels): what the activation panel wants while a dialog of
 ## it shows, two panes' worth, or one column.
 func _content_wanted() -> float:
-	if activation.visible and activation.mode != "main":
+	if _activation_owns_screen():
 		return activation.preferred_width()
 	if _two_panes():
 		return role("card_width_wide") - 2.0 * role("card_padding")
