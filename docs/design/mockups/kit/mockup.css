@@ -22194,71 +22194,75 @@ span.dash::before {
   color: var(--pk-text-muted);
 }
 
-/* Selection is neutral too: a switch, a check, a radio, a chosen card or chip is drawn in ink, so
-   a coloured fill never reads as success (Commerce green, Cloud Sync teal) or as the section. */
+/* Selection follows the service it references (owner rule B17, 2026-10-09; it supersedes lead
+   answer 2's ink): a switch, a check, a radio, a chosen card or chip, a done step and a selected
+   card take the accent of the nearest data-service. Fills and rings are --pk-accent, thin edges
+   and text --pk-accent-fg, tints --pk-accent-subtle. The state never rests on the colour alone:
+   the check, the radio's ring, the knob's side, the 2px edge and the tick say it. Status keeps its
+   own tones (success, warning, danger); the primary stays ink. */
 .switch.on {
-  border-color: var(--mk-action);
-  background: var(--mk-action);
+  border-color: var(--pk-accent);
+  background: var(--pk-accent);
 }
 .switch.on::after {
-  background: var(--mk-action-on);
+  background: var(--pk-accent-on);
 }
 .check.on > .box,
 .check.mixed > .box {
-  border-color: var(--mk-action);
-  background: var(--mk-action);
+  border-color: var(--pk-accent);
+  background: var(--pk-accent);
 }
 .check.on > .box::after,
 .check.mixed > .box::after {
-  background: var(--mk-action-on);
+  background: var(--pk-accent-on);
 }
+/* The radio is a 5px ring in the accent round a hole in the surface, the same in every service. */
 .radio.on > .box {
-  border-color: var(--mk-action);
-  background: var(--mk-action-on);
+  border-color: var(--pk-accent);
+  background: var(--pk-surface-raised);
 }
 .choice.on {
-  border-color: var(--mk-action);
-  background: var(--mk-fill);
-  box-shadow: inset 0 0 0 1px var(--mk-action);
+  border-color: var(--pk-accent-fg);
+  background: var(--pk-accent-subtle);
+  box-shadow: inset 0 0 0 1px var(--pk-accent-fg);
 }
 .choice.on::after {
-  border-color: var(--mk-action);
-  background: var(--mk-action);
+  border-color: var(--pk-accent);
+  background: var(--pk-accent);
 }
 .choice.on::before {
-  background: var(--mk-action-on);
+  background: var(--pk-accent-on);
 }
-/* A feature choice (data-service on the .choice) is edged in its feature's accent, the owner's
-   2026-10-09 note: the colour names the feature (context); the ink check, the 2px edge and the
-   fill say it is chosen (state), so the accent never carries the state alone. */
+/* A feature choice (data-service on the .choice) is edged in its feature's accent at rest, the
+   owner's 2026-10-09 note; chosen, it takes the full 2px edge, the tint and the tick. */
 .choice[data-service] {
   border-color: color-mix(in oklab, var(--pk-accent) 50%, var(--mk-line));
 }
 .choice[data-service].on {
-  border-color: var(--pk-accent);
-  box-shadow: inset 0 0 0 1px var(--pk-accent);
+  border-color: var(--pk-accent-fg);
+  box-shadow: inset 0 0 0 1px var(--pk-accent-fg);
 }
 .chip.on,
 .filter.on {
   border-style: solid;
-  border-color: var(--mk-action);
-  background: var(--mk-fill);
+  border-color: var(--pk-accent-fg);
+  background: var(--pk-accent-subtle);
   color: var(--pk-text-strong);
 }
 .chip.on::before {
-  background: var(--pk-text-strong);
+  background: var(--pk-accent-fg);
 }
 .filter.on > .ic {
-  color: var(--pk-text-strong);
+  color: var(--pk-accent-fg);
 }
 .step.done .step-mark {
-  border-color: var(--mk-action);
-  background: var(--mk-action);
-  color: var(--mk-action-on);
+  border-color: var(--pk-accent);
+  background: var(--pk-accent);
+  color: var(--pk-accent-on);
 }
 .card.selected {
-  border-color: var(--mk-action);
-  box-shadow: 0 0 0 1px var(--mk-action);
+  border-color: var(--pk-accent-fg);
+  box-shadow: 0 0 0 1px var(--pk-accent-fg);
 }
 
 /* ── Nothing glows (B6): no wash, glow or gradient in product chrome ───────────────────────── */
@@ -23013,11 +23017,13 @@ span.dash::before {
   border-color: var(--mk-line);
   color: var(--pk-text-subtle);
 }
-/* Wizard progress is neutral like the marks it joins; the current step keeps the context accent. */
+/* Wizard progress joins its marks in the same accent: the done steps, the line between them and
+   the phone's segments follow the service the wizard belongs to (B17); the current step is the
+   accent ring. */
 .step.done + .step::before,
 .stepper.vertical .step.done:not(:last-child)::after,
 .stepper-progress > .segs > i.on {
-  background: var(--mk-action);
+  background: var(--pk-accent);
 }
 
 /* ── Brand v2: no text under 12px, no accent fill as state (B6) ──────────────────────────── */
@@ -23631,7 +23637,8 @@ dd .mono {
   color: var(--pk-danger);
 }
 
-/* Keyboard focus draws the one violet ring on every control, like the drawn .focus state. */
+/* Keyboard focus draws the ring on every control, like the drawn .focus state, in the accent of
+   the nearest data-service (B17: --pk-focus follows the service, see the B17 block at the end). */
 :is(.btn, a, button, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="checkbox"], [tabindex], .input, .select, .textarea, .search-field):focus-visible {
   outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
@@ -23639,8 +23646,10 @@ dd .mono {
 
 /* ── B2: the accent never encodes a state ───────────────────────────────────────────────────────
  * States read through words, glyphs, shape and the status tones (success, warning, danger); a
- * change, an override, a selection or a "new" mark is ink: a 2px ink bar, a strong edge, a label.
- * The accent stays on context (rule, chip, tile, nav marker, links, current wizard step).
+ * change, an override, a "new", "next" or "recommended" mark is ink: a 2px ink bar, a strong
+ * edge, a label. The accent stays on context (rule, chip, tile, nav marker, links, current wizard
+ * step) and, by owner rule B17, on interaction: focus, hover, checked and selected follow the
+ * service the element references (the B17 block at the end of this file).
  */
 .pill.accent,
 .pill.info,
@@ -23767,32 +23776,52 @@ dd .mono {
 .save-bar-msg > .ic {
   color: var(--pk-text-strong);
 }
-/* Selections and recommendations are ink too (lead answer 2). */
-.table tr.selected td,
+/* Recommendations are ink (a mark, not a selection). */
 .table tr.recommended td,
 .item-row.recommended,
 .card.tint {
   background: var(--mk-ink-wash);
 }
-.table tr.selected td:first-child,
 .table tr.recommended td:first-child,
 .item-row.recommended {
   box-shadow: inset 2px 0 0 var(--pk-text-strong);
+}
+/* Selections follow the service (B17, superseding lead answer 2's ink): the selected row, tile,
+   segment and jump link take the tint and a 3px bar or a 2px edge in the nearest accent. The open
+   item of a master list (.item-row.marked[aria-current]) is a selection too; a plain .marked row
+   is an unsaved change or an override and stays ink. */
+.table tr.selected td,
+.item-row.marked[aria-current],
+.table tr.marked[aria-current] > td {
+  background: var(--pk-accent-subtle);
+}
+.table tr.selected td:first-child,
+.item-row.marked[aria-current],
+.table tr.marked[aria-current] > td:first-child {
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+.marked[aria-current] > .rank {
+  background: var(--pk-accent);
+  color: var(--pk-accent-on);
 }
 .pick-tile.on,
 .role-tile.on,
 .filter.solid.on,
 .jump-nav > a.on {
-  border-color: var(--mk-action);
-  background: var(--mk-fill);
+  border-color: var(--pk-accent-fg);
+  background: var(--pk-accent-subtle);
   color: var(--pk-text-strong);
+}
+.pick-tile.on,
+.role-tile.on {
+  box-shadow: inset 0 0 0 1px var(--pk-accent-fg);
 }
 .role-tile.on > .rt-name > .ic {
-  color: var(--pk-text-strong);
+  color: var(--pk-accent-fg);
 }
 .segmented.matrix.fit > .on {
-  background: var(--mk-fill);
-  box-shadow: inset 0 0 0 1px var(--mk-action);
+  background: var(--pk-accent-subtle);
+  box-shadow: inset 0 0 0 1px var(--pk-accent-fg);
 }
 .token-field.focus {
   border-color: var(--pk-border-strong);
@@ -23930,13 +23959,14 @@ dd .mono {
   }
 }
 
-/* M5: the portal's phone bar. The selected tab is a neutral fill with a 3:1 edge in both themes;
-   Activate is a tab like its siblings (no ring that reads as selected or as focus); the
-   something-to-add dot is ink. */
+/* M5: the portal's phone bar. The selected tab is the portal's accent tint (core violet) with a
+   1px accent edge at 3:1 in both themes (B17: the selection follows the service); Activate is a
+   tab like its siblings (no ring that reads as selected or as focus); the something-to-add dot is
+   ink, an attention mark. */
 @container screen (max-width: 639px) {
   .portal-tabbar > a.active {
-    background: var(--mk-fill-strong);
-    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
+    background: var(--pk-accent-subtle);
+    box-shadow: inset 0 0 0 1px var(--pk-accent-fg);
     color: var(--pk-text-strong);
   }
   .portal-tabbar > a.act {
@@ -23946,9 +23976,6 @@ dd .mono {
   .portal-tabbar > a > .dot {
     background: var(--pk-text-strong);
   }
-}
-[data-theme="light"] .portal-tabbar > a.active {
-  background: var(--pk-surface-sunken);
 }
 /* The focused task's title spans the frame; the consequence sits beside the action. */
 .portal-page.task > .task-title {
@@ -23998,13 +24025,14 @@ dd .mono {
   padding-top: var(--sp-4);
 }
 .portal-grid .ptile-head.plain { margin-top: 0; }
-/* A selectable hosted row (a license to choose): radio, text, tag; the chosen row is ink-edged. */
+/* A selectable hosted row (a license to choose): radio, text, tag; the chosen row takes the
+   hosted card's accent (core violet): a 3px bar and the tint, the radio saying it is chosen. */
 .hosted-list > .hosted-row.choice-row:is(.choice-row, .choice-row) {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 .hosted-row.choice-row.on {
-  box-shadow: inset 2px 0 0 var(--pk-text-strong);
-  background: var(--mk-ink-wash);
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+  background: var(--pk-accent-subtle);
 }
 /* A row's leading glyph in the hosted card is a subject mark, not context: neutral. */
 .hosted-row > .ic:first-child {
@@ -24047,4 +24075,94 @@ dd .mono {
 }
 .choice > .choice-title > .pill {
   margin-right: var(--sp-6);
+}
+
+/* ══ B17 (owner rule, 2026-10-09): interaction and context follow the service ═════════════════════
+ * "Focus, active, hover, checked, border and accent follow the service they are referencing."
+ * The nearest data-service decides: core violet, license lime, config yellow, release cyan,
+ * distribution and commerce green, update orange, identity pink, sync teal. Put data-service on
+ * the element that references one service (a page, a sidebar group, a section, a dialog, and in a
+ * list that spans services each row, card or chip), so its focus ring, hover tint, checked control,
+ * selected state and accent marks take that service's colour. Fills and rings use --pk-accent,
+ * text and thin edges --pk-accent-fg (the light theme's text-safe step), tints --pk-accent-subtle.
+ * Kept: status (success, warning, danger, info, signed) never takes a service accent; every
+ * selected or checked state has a non-colour cue (a check, a dot, a bar, an edge, a label); the one
+ * filled primary stays the neutral ink action; unsaved, override, "new", "next" and "recommended"
+ * marks stay ink (B2); the in-app UI kits keep their own look (--kit-accent, DL13).
+ */
+:root,
+[data-theme],
+[data-service] {
+  /* The focus ring: every :focus-visible and drawn .focus state reads --pk-focus. */
+  --pk-focus: var(--pk-accent);
+  /* The hover tint: the service's subtle tint, lighter than a selection. */
+  --mk-hover: color-mix(in oklab, var(--pk-accent-subtle) 70%, transparent);
+}
+
+/* Selected and active, in the nearest accent: the tint plus a 3px bar or a 1px edge. */
+.segmented > .on,
+.kit-next .segmented > .on {
+  background: var(--pk-accent-subtle);
+  box-shadow: inset 0 0 0 1px var(--pk-accent-fg);
+}
+.list-nav-item.active {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+.list-nav-item.active > .ic:first-child {
+  color: var(--pk-accent-fg);
+}
+.toc-nav > a.on {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+.menu-item.active {
+  background: var(--pk-accent-subtle);
+}
+
+/* Hover: the subtle tint of the nearest service on every hoverable row, item and quiet button (the
+   drawn .hover states and the real :hover). A selected item keeps its stronger tint. */
+.nav-item:not(.active):hover,
+.nav-label:not(.active):hover,
+.list-nav-item:not(.active):hover,
+.menu-item:not(.active, .danger):hover,
+.toc-nav > a:not(.on):hover,
+.docs-item:not(.on):hover,
+.jump-nav > a:not(.on):hover,
+.segmented > :not(.on):hover,
+.table tr.hover:not(.selected) td,
+.table.row-links tbody tr:not(.selected):hover > td,
+.guide-row.hover,
+.guide-row:has(button:hover),
+.card.fold-row:hover,
+.stat:has(> .stat-label > a):hover,
+.stat.hover,
+.feature-card:has(> .feature-card-head a):hover,
+.feature-card.hover,
+.feature-card.off:has(> .feature-card-head a):hover,
+.ov-feature-main:has(a:hover),
+.ov-feature-main.hover,
+.ov-feature.off > .ov-feature-main:has(a:hover),
+.docs-card:hover,
+.docs-card.hover,
+.chip:not(.on, .off):hover,
+.filter:not(.on):hover,
+.choice:not(.on, .disabled):hover,
+.pick-tile:not(.on, .add):hover,
+.role-tile:not(.on):hover,
+.btn:is(.ghost, .outline, .action):not(.danger, .danger-outline, [disabled], .disabled):hover,
+.btn:not(.primary, .danger, .danger-outline, .link, .text, .ghost, .outline, .action, [disabled], .disabled):hover {
+  background: var(--mk-hover);
+}
+.tab:not(.active):hover,
+.code-tabs > :not(.active):hover,
+.portal-nav > a:not(.active):hover {
+  color: var(--pk-text-strong);
+  border-bottom-color: color-mix(in oklab, var(--pk-accent) 45%, transparent);
+}
+.docs-toc > a:not(.on):hover {
+  border-left-color: color-mix(in oklab, var(--pk-accent) 45%, transparent);
+  color: var(--pk-text-strong);
 }
