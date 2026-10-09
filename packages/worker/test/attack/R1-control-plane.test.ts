@@ -97,7 +97,7 @@ async function hmacB64url(secret: string, body: string): Promise<string> {
 // ───────────────────────────────────────────────────────────────────────────────
 
 describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
-  it("R1-01a: /manage/login binds the flow to nothing in the browser (no Set-Cookie)", async () => {
+  it("R1-01a: FIXED (SEC-ADM-6) /manage/login binds the flow to the starting browser (host-only cookie)", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = adminEnv(kv);
@@ -109,10 +109,12 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
       { now: NOW },
     );
     expect(res.status).toBe(302);
-    // The ONLY per-flow artefact is a single-use store row keyed by `state` (I-02 moved it out
-    // of KV). Nothing is planted in the requesting browser, so /manage/callback cannot tell
-    // "the browser that started this flow" from "any other browser".
-    expect(res.headers.get("set-cookie")).toBeNull();
+    // The flow is a single-use store row keyed by `state` (I-02 moved it out of KV) plus a
+    // `__Host-` cookie in the starting browser, whose hash the row holds: /manage/callback can
+    // tell "the browser that started this flow" from "any other browser".
+    expect(res.headers.get("set-cookie")).toMatch(
+      /^__Host-pkey_admin_flow=[^;]+; Path=\/; HttpOnly; Secure; SameSite=Lax/,
+    );
     const location = new URL(res.headers.get("location")!);
     const state = location.searchParams.get("state")!;
     expect(state).toBeTruthy();
@@ -122,18 +124,19 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
     expect(kv.keys()).toEqual([]);
     expect(singleUseMock(env).keys()).toEqual([flowKey]);
     expect(singleUseMock(env).keys()[0]).not.toContain(state);
-    // The stored flow holds only PKCE + nonce + redirect_uri — nothing browser-specific.
+    // The stored flow holds PKCE + nonce + redirect_uri + the binding's hash.
     const flow = JSON.parse(
       (await artefacts(env).get(await adminFlowKey(state, env)))!,
     ) as Record<string, unknown>;
     expect(Object.keys(flow).sort()).toEqual([
+      "bindingHash",
       "nonce",
       "redirectUri",
       "verifier",
     ]);
   });
 
-  it("R1-01b: an attacker-run flow can be redeemed in a VICTIM browser, planting the attacker's admin session", async () => {
+  it("R1-01b: FIXED (SEC-ADM-6) an attacker-run flow cannot be redeemed in a VICTIM browser", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = adminEnv(kv);
@@ -183,39 +186,24 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
       { now: NOW, verifier: victimVerifier },
     );
 
-    // The worker never looked at the victim's Cookie header — the flow is keyed by `state`
-    // alone — so it happily mints a session and 302s the victim into the admin SPA.
-    expect(victimRes.status).toBe(302);
-    expect(victimRes.headers.get("location")).toBe("/manage/");
-    const setCookie = victimRes.headers.get("set-cookie")!;
-    expect(setCookie).toContain(`${ADMIN_COOKIE}=`);
-    expect(setCookie).toContain("SameSite=Strict");
+    // The victim's browser holds no binding for this flow: refused, nothing planted.
+    expect(victimRes.status).toBe(400);
+    expect(victimRes.headers.get("set-cookie")).toBeNull();
 
-    // The planted cookie is a fully valid admin session for the ATTACKER's identity.
-    const token = setCookie.split(";")[0]!.slice(`${ADMIN_COOKIE}=`.length);
-    const session = await verifySession(env, token, NOW);
-    expect(session).not.toBeNull();
-    expect(session!.sub).toBe("attacker-oidc-sub");
-    expect(session!.groups).toContain(PLATFORM_GROUP);
-
-    // ...and the victim's browser is now driving the admin API as the attacker.
-    const me = await handleAdmin(
-      req("GET", "https://key.plrs.im/manage/api/me", {
-        cookie: `${ADMIN_COOKIE}=${token}`,
-      }),
+    // The flow survives the attempt, and the attacker's own browser can still finish it.
+    const ownRes = await handleAdmin(
+      req(
+        "GET",
+        `https://key.plrs.im/manage/callback?code=${ATTACKER_CODE}&state=${encodeURIComponent(state)}`,
+        { cookie: start.headers.get("set-cookie")!.split(";")[0]! },
+      ),
       env,
       db,
-      "/api/me",
-      { now: NOW },
+      "/callback",
+      { now: NOW, verifier: victimVerifier },
     );
-    expect(me.status).toBe(200);
-    expect(((await me.json()) as { sub: string }).sub).toBe(
-      "attacker-oidc-sub",
-    );
-
-    // Every subsequent admin mutation this browser performs is audited as the ATTACKER,
-    // breaking the "the audit actor is ALWAYS the verified session" property.
-    expect(kv.keys().some((k) => k.startsWith("admin:flow:"))).toBe(false);
+    expect(ownRes.status).toBe(302);
+    expect(ownRes.headers.get("set-cookie")).toContain(`${ADMIN_COOKIE}=`);
   });
 
   it("R1-01c: the group gate is the ONLY precondition — a non-admin code plants nothing", async () => {
@@ -235,6 +223,7 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
       req(
         "GET",
         `https://key.plrs.im/manage/callback?code=c&state=${encodeURIComponent(state)}`,
+        { cookie: start.headers.get("set-cookie")!.split(";")[0]! },
       ),
       env,
       db,
@@ -925,6 +914,7 @@ describe("REFUTED hypotheses", () => {
       req(
         "GET",
         `https://key.plrs.im/manage/callback?code=c&state=${encodeURIComponent(state)}`,
+        { cookie: start.headers.get("set-cookie")!.split(";")[0]! },
       ),
       env,
       db,

@@ -531,12 +531,12 @@ async function deleteUserCodeIndex(
 
 /**
  * Whether the computed `redirectUri` is permitted by the product's `redirect_uris_json`
- * allowlist. When the column is unset we cannot enforce, so we allow (the IdP still
- * enforces its own registered-redirect check); when it IS set, the computed URI MUST be a
- * member — otherwise an attacker-chosen host/path could exfiltrate the authorization code.
+ * allowlist. The computed URI MUST be a member — otherwise an attacker-chosen host/path could
+ * exfiltrate the authorization code. An unset column fails closed (SEC-IDN-16, was R8-07):
+ * no shipped writer leaves it NULL, so a NULL is a damaged row, not a policy of "allow all".
  */
 function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
-  if (!oidc.redirect_uris_json) return true;
+  if (!oidc.redirect_uris_json) return false;
   let allowed: unknown;
   try {
     allowed = JSON.parse(oidc.redirect_uris_json);
@@ -1511,13 +1511,14 @@ async function beginAuthFlow(
   // I-26: only a `provider: platform` product can reach the licence chooser, so only its flows
   // carry a binder; a custom-IdP product's sign-in is byte-identical to before.
   let binderCookie: string | undefined;
-  if ((oidc.row.provider ?? "platform") === "platform") {
+  if ((oidc.row.provider ?? "platform") === "platform")
     flow.binderEligible = true;
-    if (opts.browser) {
-      const binder = randomToken(32);
-      flow.binder = await hashKey(binder, env.KEY_HASH_PEPPER);
-      binderCookie = binderSetCookie(binder, FLOW_TTL_SECONDS);
-    }
+  // SEC-IDN-3: every browser flow, whatever the issuer, is bound to the browser that started it;
+  // the callback refuses any other browser (login CSRF / session fixation).
+  if (opts.browser) {
+    const binder = randomToken(32);
+    flow.binder = await hashKey(binder, env.KEY_HASH_PEPPER);
+    binderCookie = binderSetCookie(binder, FLOW_TTL_SECONDS);
   }
   await putArtefact(
     env,
@@ -1724,8 +1725,9 @@ async function confirmDeviceFlow(
   // I-26: the confirming browser is the one the licence chooser will answer (delegated decision
   // 13). Minted here, never at `/device/start`: that request comes from the device, not from
   // the browser that signs in.
-  let binder: string | null = null;
-  if (flowRecord.binderEligible) binder = randomToken(32);
+  // SEC-IDN-4: every device-code flow is bound to its confirming browser, so the IdP leg can
+  // only finish where the human confirmed, not in a victim's browser the starter phished.
+  const binder = randomToken(32);
   const stamped = await updateArtefact(env, stateKey, {
     set: {
       confirmedAt: now,
@@ -2126,6 +2128,17 @@ export async function handleAuthCallback(
   );
   if (limited) return limited;
   const stateKey = await flowKey(env, product.slug, state);
+  // SEC-IDN-3 / SEC-IDN-9: the browser binder is checked BEFORE the single-use claim, so a
+  // callback from another browser neither finishes the flow nor burns it.
+  const pending = await getArtefact(env, stateKey);
+  const pendingFlow = pending ? parseFlowRecord<FlowRecord>(pending) : null;
+  const callbackBinder = readBinder(req);
+  if (
+    !pendingFlow?.binder ||
+    !callbackBinder ||
+    (await hashKey(callbackBinder, env.KEY_HASH_PEPPER)) !== pendingFlow.binder
+  )
+    return errorResponse(400, "bad_request", "unknown state");
   // Single-use state (R8-04). Claim the flow before any outbound call so a second callback
   // can never overwrite the license a poller is already waiting on; a replay gets exactly the
   // same generic answer as an unknown state. The claim is one atomic compare-and-set in the

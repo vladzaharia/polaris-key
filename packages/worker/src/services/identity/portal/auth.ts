@@ -1,3 +1,4 @@
+import { isSameOriginRequest } from "../../../core/browserRequestGuard.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
   ALLOWED_ID_TOKEN_ALGS,
@@ -21,6 +22,7 @@ import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
+  getArtefact,
   putArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
@@ -350,12 +352,14 @@ export async function handlePortalCallback(
   if (!caps.portalEnabled || !caps.oidcEnabled) {
     return signInPage.off();
   }
-  // Atomic and single-use: of two racing callbacks for one `state`, one gets the flow.
-  const raw = await consumeArtefact(env, await portalFlowKey(env, state));
-  if (!raw) return signInPage.tookTooLong();
+  // SEC-IDN-9: the binding is checked on a read, BEFORE the atomic single-use consume, so a
+  // callback from another browser cannot burn the flow of the one that started it.
+  const flowKey = await portalFlowKey(env, state);
+  const peeked = await getArtefact(env, flowKey);
+  if (!peeked) return signInPage.tookTooLong();
   let flow: FlowRecord;
   try {
-    flow = JSON.parse(raw) as FlowRecord;
+    flow = JSON.parse(peeked) as FlowRecord;
   } catch {
     return signInPage.tookTooLong();
   }
@@ -372,6 +376,8 @@ export async function handlePortalCallback(
   ) {
     return signInPage.unverified();
   }
+  // Atomic and single-use: of two racing callbacks for one `state`, one gets the flow.
+  if (!(await consumeArtefact(env, flowKey))) return signInPage.tookTooLong();
   return clearingBinding(
     await completePortalCallback(req, env, db, flow, code, now),
   );
@@ -601,7 +607,12 @@ export async function handlePortalLogout(
   db?: Db,
   now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
-  if (req.method !== "POST" && !isSameOriginNavigation(req)) {
+  // SEC-WEB-8: a cross-site form POST must not sign the visitor out.
+  if (
+    req.method === "POST"
+      ? !isSameOriginRequest(req)
+      : !isSameOriginNavigation(req)
+  ) {
     return new Response("Method Not Allowed", {
       status: 405,
       headers: portalSecurityHeaders(

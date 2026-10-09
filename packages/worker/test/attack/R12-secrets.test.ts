@@ -739,6 +739,9 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     const callback = await handleAuthCallback(
       signInReq(
         `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/callback?code=c&state=${state}`,
+        {
+          headers: { cookie: start.headers.get("set-cookie")!.split(";")[0]! },
+        },
       ),
       env,
       db,
@@ -809,6 +812,11 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     const callback = await handleAuthCallback(
       signInReq(
         `${SIGN_IN_ORIGIN}/${SIGN_IN_SLUG}/identity/auth/callback?code=c&state=${state}`,
+        {
+          headers: {
+            cookie: confirmed.headers.get("set-cookie")!.split(";")[0]!,
+          },
+        },
       ),
       env,
       db,

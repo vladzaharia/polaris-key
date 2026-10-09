@@ -28,9 +28,15 @@ import { clientNetwork, rateLimitOk } from "../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
+  getArtefact,
   putArtefact,
   type ArtefactRef,
 } from "../core/singleUse.js";
+import {
+  accountRealmCookie,
+  clearAccountRealmCookie,
+  readCookie,
+} from "../core/accountCookies.js";
 import { adminOidcConfig } from "../platformOidc.js";
 import { brandedHtmlSecurityHeaders } from "../securityHeaders.js";
 import { renderBrandPage } from "../core/brandHtml.js";
@@ -71,7 +77,12 @@ interface FlowRecord {
   returnTo?: string;
   /** I-12: a step-up re-authentication (`prompt=login`, `max_age=0`) for the relink tool. */
   stepUp?: boolean;
+  /** SEC-ADM-6: hash of the `ADMIN_FLOW_COOKIE` value of the browser that started the flow. */
+  bindingHash: string;
 }
+
+/** SEC-ADM-6: binds an admin sign-in to the browser that started it (as the portal's I-17). */
+export const ADMIN_FLOW_COOKIE = "__Host-pkey_admin_flow";
 
 /**
  * Where a sign-in may land after the callback. Default (and the fallback for anything
@@ -150,6 +161,7 @@ const joseIdTokenVerifier: IdTokenVerifier = {
       `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
       {
         method: "POST",
+        signal: AbortSignal.timeout(10_000),
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           grant_type: "authorization_code",
@@ -219,6 +231,17 @@ function htmlError(status: number, message: string): Response {
   );
 }
 
+/** SEC-ADM-15: the configured `CONSOLE_ORIGIN` (https, origin-only) when set, else the request's. */
+function adminOrigin(env: Env, url: URL): string {
+  try {
+    const u = new URL(env.CONSOLE_ORIGIN ?? "");
+    if (u.protocol === "https:" || u.hostname === "localhost") return u.origin;
+  } catch {
+    // unset or unusable: the request's own origin
+  }
+  return url.origin;
+}
+
 /** GET /manage/login — start PKCE + redirect to the IdP authorize endpoint. */
 export async function handleAdminLogin(
   req: Request,
@@ -241,13 +264,15 @@ export async function handleAdminLogin(
   const nonce = randomToken(16);
   const { verifier, challenge } = await pkcePair();
   const url = new URL(req.url);
-  const redirectUri = `${url.origin}/manage/callback`;
+  const redirectUri = `${adminOrigin(env, url)}/manage/callback`;
   const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));
   const stepUp = url.searchParams.get("stepUp") === "1";
+  const binding = randomToken(32);
   const flow: FlowRecord = {
     verifier,
     nonce,
     redirectUri,
+    bindingHash: await hashKey(binding, env.KEY_HASH_PEPPER),
     ...(returnTo ? { returnTo } : {}),
     ...(stepUp ? { stepUp: true } : {}),
   };
@@ -275,7 +300,15 @@ export async function handleAdminLogin(
   }
   return new Response(null, {
     status: 302,
-    headers: { location: authorize.toString() },
+    headers: {
+      location: authorize.toString(),
+      "set-cookie": accountRealmCookie(
+        ADMIN_FLOW_COOKIE,
+        binding,
+        FLOW_TTL_SECONDS,
+      ),
+      "cache-control": "no-store",
+    },
   });
 }
 
@@ -307,7 +340,24 @@ export async function handleAdminCallback(
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state) return htmlError(400, "Missing authorization code.");
-  const raw = await consumeArtefact(env, await adminFlowKey(state, env));
+  // SEC-ADM-6 / SEC-IDN-9: only the browser that started the flow may finish it, checked
+  // before the single-use consume so another browser cannot burn the flow either.
+  const flowKey = await adminFlowKey(state, env);
+  const peeked = await getArtefact(env, flowKey);
+  let peekedFlow: FlowRecord | null = null;
+  try {
+    peekedFlow = peeked ? (JSON.parse(peeked) as FlowRecord) : null;
+  } catch {
+    peekedFlow = null;
+  }
+  const binding = readCookie(req.headers.get("cookie"), ADMIN_FLOW_COOKIE);
+  if (
+    !peekedFlow?.bindingHash ||
+    !binding ||
+    (await hashKey(binding, env.KEY_HASH_PEPPER)) !== peekedFlow.bindingHash
+  )
+    return htmlError(400, "This sign-in link has expired. Try again.");
+  const raw = await consumeArtefact(env, flowKey);
   if (!raw) return htmlError(400, "This sign-in link has expired. Try again.");
   let flow: FlowRecord;
   try {
@@ -355,6 +405,11 @@ export async function handleAdminCallback(
   const location = sanitizeReturnTo(flow.returnTo ?? null) ?? "/manage/";
   return new Response(null, {
     status: 302,
-    headers: { location, "set-cookie": buildSessionCookie(token) },
+    headers: new Headers([
+      ["location", location],
+      ["set-cookie", buildSessionCookie(token)],
+      ["set-cookie", clearAccountRealmCookie(ADMIN_FLOW_COOKIE)],
+      ["cache-control", "no-store"],
+    ]),
   });
 }

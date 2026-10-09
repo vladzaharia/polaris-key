@@ -56,6 +56,7 @@ import { readCappedText } from "../../../core/readCapped.js";
 import {
   artefactRef,
   consumeArtefact,
+  getArtefact,
   putArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
@@ -444,7 +445,10 @@ export async function handleProviderCallback(
   if (!state) return signInPage.tookTooLong();
   // Atomic and single-use: of two racing callbacks for one state, one gets the flow. A
   // cancelled or failed provider response still burns it.
-  const raw = await consumeArtefact(env, await signInFlowKey(env, state));
+  // SEC-IDN-9: read first, check the mix-up and the binding, and only then consume, so a
+  // callback from another browser (or provider) cannot burn the flow of the one that started it.
+  const flowKey = await signInFlowKey(env, state);
+  const raw = await getArtefact(env, flowKey);
   if (!raw) return signInPage.tookTooLong();
   let flow: SignInFlowRecord;
   try {
@@ -466,6 +470,7 @@ export async function handleProviderCallback(
       "This sign-in was started in another browser. Start again here.",
     );
   }
+  if (!(await consumeArtefact(env, flowKey))) return signInPage.tookTooLong();
   if (params.get("error") || params.get("openid.mode") === "cancel") {
     // The h1 without its full stop, then Sign in again (htmlError's default on a 400).
     return htmlError(400, `Sign in with ${label} was cancelled`);

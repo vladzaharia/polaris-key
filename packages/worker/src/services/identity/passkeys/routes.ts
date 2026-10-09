@@ -35,6 +35,7 @@ import {
   type Db,
   type Env,
 } from "../../../core/platform.js";
+import { readGuardedJsonObject } from "../../../core/browserRequestGuard.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   PASSKEY_FLOW_COOKIE,
@@ -83,7 +84,6 @@ import {
   verifyRegistration,
   type RelyingParty,
 } from "./webauthn.js";
-import { readBodyText } from "../../../core/cappedBody.js";
 
 /** The rate-limit scope of platform (account) sign-in, as for the email card. */
 const PORTAL_SCOPE = "_portal";
@@ -97,26 +97,12 @@ const MAX_BODY_BYTES = 128 * 1024;
 const clearPasskeyFlow = (): string =>
   clearAccountRealmCookie(PASSKEY_FLOW_COOKIE);
 
-/** The body as a JSON object (`{}` when empty), or `null` when it is not one or is too large. */
-async function readBoundedJson(
+/** The body as a JSON object (`{}` when empty), or `null` when it is not one, is not same-origin
+ *  JSON, or is too large (SEC-IDN-2). */
+function readBoundedJson(
   req: Request,
 ): Promise<Record<string, unknown> | null> {
-  let raw: string;
-  try {
-    raw = await readBodyText(req, MAX_BODY_BYTES);
-  } catch {
-    return null;
-  }
-  if (raw.length > MAX_BODY_BYTES) return null;
-  if (!raw.trim()) return {};
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
+  return readGuardedJsonObject(req, MAX_BODY_BYTES);
 }
 
 function unavailable(): Response {
