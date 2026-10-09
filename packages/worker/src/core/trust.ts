@@ -16,14 +16,11 @@ import type { TrustManifestDoc } from "@polaris-key/protocol";
 // is the third artifact the client verifies alongside the two signed documents, and all three
 // have to name one `iss` or an SDK that pins it cannot accept all three.
 import { ISSUER } from "@polaris-key/protocol/core";
+import { REVOKED_KEY_LISTING_SECONDS } from "@polaris-key/protocol/trust";
 import { loadPublicSigningKeys } from "./products.js";
 import { isStrictJsonError, signDoc } from "./signing.js";
 import type { Env } from "../env.js";
-import {
-  REVOKED_KEY_LISTING_SECONDS,
-  loadTrustSigner,
-  type TrustSigner,
-} from "./trustSigners.js";
+import { loadTrustSigner, type TrustSigner } from "./trustSigners.js";
 import { ErrorCode, wireError } from "./errors.js";
 
 const TRUST_CACHE_SECONDS = 300;

@@ -138,15 +138,35 @@ function payloadCapFor(requested: number | undefined): number {
 
 /** The base64url alphabet, unpadded. Nothing else is a valid JWS segment. */
 const B64URL_RE = /^[A-Za-z0-9_-]*$/;
+const B64URL_ALPHABET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
+/**
+ * WIRE-CONTRACT-V4 §1: canonical base64url. The alphabet only, no padding, a length whose
+ * remainder mod 4 is not 1, and zero unused low bits in the last character: 4 bits when the
+ * length is 2 mod 4, 2 bits when it is 3 mod 4. Equivalently, re-encoding the decoded bytes
+ * gives the input back. A lenient decoder maps up to sixteen spellings onto the same bytes, so a
+ * verifier that accepted them would accept a signature segment the signer never wrote. Applies
+ * to all three JWS segments and to every trust-set key, pinned or published.
+ */
+export function isCanonicalB64url(s: string): boolean {
+  if (!B64URL_RE.test(s)) return false;
+  const rem = s.length % 4;
+  if (rem === 1) return false;
+  if (rem === 0) return true;
+  const last = B64URL_ALPHABET.indexOf(s[s.length - 1]!);
+  return rem === 2 ? (last & 0x0f) === 0 : (last & 0x03) === 0;
+}
 
 /**
  * Strict base64url decode: rejects `+`, `/`, `=`, whitespace and any other out-of-alphabet
- * byte instead of silently discarding it. Python's `urlsafe_b64decode(validate=False)` used to
- * accept junk that Node and Swift rejected, making one SDK accept wire bytes the others refused
- * (audit finding R2-05). Returns null rather than throwing.
+ * byte instead of silently discarding it, and any non-canonical spelling (`isCanonicalB64url`).
+ * Python's `urlsafe_b64decode(validate=False)` used to accept junk that Node and Swift rejected,
+ * making one SDK accept wire bytes the others refused (audit finding R2-05). Returns null rather
+ * than throwing.
  */
 function base64UrlDecodeStrict(s: string): Uint8Array | null {
-  if (!B64URL_RE.test(s)) return null;
+  if (!isCanonicalB64url(s)) return null;
   try {
     return base64UrlDecode(s);
   } catch {
@@ -714,11 +734,15 @@ export async function importSigningKey(pem: string): Promise<CryptoKey> {
   );
 }
 
-/** Import a 32-byte raw Ed25519 public key (base64url) for verification. */
+/** Import a 32-byte raw Ed25519 public key (base64url) for verification. The key must be
+ *  canonical base64url (§1): a key spelled any other way is refused, never normalised. */
 export async function importVerifyKey(
   rawBase64Url: string,
 ): Promise<CryptoKey> {
-  const raw = base64UrlDecode(rawBase64Url);
+  const raw = base64UrlDecodeStrict(rawBase64Url);
+  if (raw === null) {
+    throw new Error("Ed25519 public key is not canonical base64url");
+  }
   if (raw.length !== 32) {
     throw new Error(`Ed25519 public key must be 32 bytes, got ${raw.length}`);
   }
@@ -863,7 +887,9 @@ export async function verifyJws<T = unknown>(
   // WIRE-CONTRACT-V4 §1.1: S < L, canonical A and R, no small-order A or R. OpenSSL (Node's
   // WebCrypto) accepts a non-canonical or small-order key, and every backend accepts a
   // small-order R, so the checks run here, before the backend sees the signature.
-  if (!ed25519Prechecks(base64UrlDecode(rawKey), sigBytes)) return null;
+  // `importVerifyKey` above has already refused a non-canonical key spelling.
+  const keyBytes = base64UrlDecodeStrict(rawKey);
+  if (!keyBytes || !ed25519Prechecks(keyBytes, sigBytes)) return null;
   let ok: boolean;
   try {
     ok = await crypto.subtle.verify(
