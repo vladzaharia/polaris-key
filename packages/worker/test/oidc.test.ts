@@ -597,7 +597,7 @@ describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8
       ada.account.id,
       r.licenseId,
     );
-    // SEC-CFG-3/4: the owner's identity is linked to the account, and the device is signed in as
+    // The owner's identity is linked to the account, and the device is signed in as
     // the owner (a key-only device on the licence no longer receives the owner's secrets).
     await db.run(
       `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email, email_verified, display_name, amr_json, created_at, last_used_at)

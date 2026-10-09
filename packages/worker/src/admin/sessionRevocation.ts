@@ -1,5 +1,5 @@
 /**
- * SEC-WP-09 (SEC-CRY-21, SEC-ADM-5): server-side revocation for the stateless admin cookie.
+ * Server-side revocation for the stateless admin cookie.
  *
  * The cookie stays an HMAC token (no per-request lookup of a session row), but sign-out now
  * writes a per-operator "revoked at" mark into the single-use store, and a session minted at or

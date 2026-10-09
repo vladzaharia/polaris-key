@@ -78,7 +78,7 @@ export const OIDC_CLOCK_SKEW_SECONDS = 60;
 export const JWKS_CACHE_SECONDS = 3600;
 /** The fastest an unknown `kid` may force a refetch. */
 export const JWKS_REFETCH_MIN_SECONDS = 60;
-/** SEC-SUP-17: the oldest cached JWKS that still verifies when GitHub cannot be reached. */
+/** The oldest cached JWKS that still verifies when GitHub cannot be reached. */
 export const JWKS_MAX_STALE_SECONDS = 6 * 60 * 60;
 const JWKS_KV_KEY = "gh:oidc:jwks";
 /** A JWKS is a few keys; anything bigger is not GitHub's. */
@@ -438,7 +438,7 @@ async function jwksFor(
       // Keep whatever we had; an unknown kid below is the answer.
     }
   }
-  // SEC-SUP-17: a set whose refetch keeps failing is honoured for a few hours, not the KV's
+  // A set whose refetch keeps failing is honoured for a few hours, not the KV's
   // 24: a key GitHub removed must not outlive a short outage.
   if (cached !== null && now - cached.fetchedAt > JWKS_MAX_STALE_SECONDS)
     return null;
@@ -602,7 +602,7 @@ const SYSTEM_PUBLISH_REF =
   /^refs\/(heads\/main|tags\/v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?)$/;
 
 /**
- * SEC-SUP-2 / SEC-SUP-3: bind an OIDC-minted token's scopes to the run's ref. A run from a
+ * Bind an OIDC-minted token's scopes to the run's ref. A run from a
  * branch publishes (the main channel) but cannot promote, pin or yank: those need a `refs/tags/`
  * run, so a step in any main-ref job or a leaked 30-minute token cannot move stable. Only
  * branches and tags are refs a token is minted for, and the platform's own product admits its
@@ -774,7 +774,7 @@ export async function exchangeOidcToken(
       message: "too many token requests",
     };
 
-  // SEC-SUP-2 / SEC-SUP-3: the ref the run was triggered from bounds what its token may do.
+  // The ref the run was triggered from bounds what its token may do.
   const bound = bindScopesToRef(input.product, v.claims.ref, policy.scopes);
   if (!bound.ok)
     return {

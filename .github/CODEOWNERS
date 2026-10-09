@@ -1,4 +1,4 @@
-# SEC-SUP-20: the CI/CD trust root. Pair with a ruleset that requires code-owner review
+# The CI/CD trust root. Pair with a ruleset that requires code-owner review
 # (Settings > Rules; see docs/DEPLOYMENT.md, package-registry step 3).
 /.github/            @vladzaharia
 /actions/publish/    @vladzaharia

@@ -135,7 +135,7 @@ export function cardPage(
 }
 
 /** A request body as a JSON object, or `null` when it is not one, is not same-origin JSON, or is
- *  too large (SEC-IDN-2). */
+ *  too large. */
 export function readJsonObject(
   req: Request,
 ): Promise<Record<string, unknown> | null> {
@@ -146,7 +146,7 @@ export function readJsonObject(
  * A bare ASCII addr-spec, normalised (trimmed, lower-case), or `null`. Display-name wrapping
  * (`Name<a@b.c>`), quoting, comments, address lists and anything else a mail provider might
  * parse differently from us are refused, so the string limited and suppressed is the string
- * mailed (SEC-IDN-15, SEC-PRV-3). Internationalised domains arrive as punycode.
+ * mailed. Internationalised domains arrive as punycode.
  */
 export function parseEmail(raw: unknown): string | null {
   return strictEmail(raw);

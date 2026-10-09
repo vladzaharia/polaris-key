@@ -92,7 +92,7 @@ import { runLicensingCatchUp } from "./core/licensingCatchUp.js";
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
 /** The one workflow whose runs may call the hook. */
 export const DEPLOY_WORKFLOW = ".github/workflows/deploy.yml";
-/** SEC-SUP-2: a release tag is `vMAJOR.MINOR.PATCH` with an optional prerelease. */
+/** A release tag is `vMAJOR.MINOR.PATCH` with an optional prerelease. */
 const DEPLOY_TAG_RE = /^refs\/tags\/v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 export const DEFAULT_DEPLOY_ENVIRONMENT = "production";
 /** The root `.pkey/` is a few KiB; anything near this is not it. */
@@ -264,7 +264,7 @@ export async function handleDeployHook(
       { claim: "ref" },
     );
 
-  // SEC-SUP-2 / SEC-INF-12: the deploy is a `push` of a semver release tag at the commit this
+  // The deploy is a `push` of a semver release tag at the commit this
   // Worker was built from. A dispatched run, a free-form `v*` ref or another commit's token is
   // refused whatever the workflow file says; `PKEY_GIT_SHA` is set by the same deploy.
   if (claims.event_name !== "push")

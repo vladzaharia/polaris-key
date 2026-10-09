@@ -1,5 +1,5 @@
 /**
- * SEC-INF-11: an `IN` list that does not count against D1's 100 bound-parameter limit.
+ * An `IN` list that does not count against D1's 100 bound-parameter limit.
  *
  * `IN (?, ?, ...)` binds one parameter per element, so a user with more than ~100 subjects,
  * licences or devices made the statement fail (a 500 on user detail and merge; potentially an

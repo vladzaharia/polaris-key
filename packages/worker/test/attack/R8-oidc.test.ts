@@ -850,7 +850,7 @@ describe("R8-02 device-code flow weaknesses", () => {
     expect(real.token?.startsWith("pkeyt_")).toBe(true);
   });
 
-  // FIXED (SEC-IDN-4). The user-code page cannot stop the flow's STARTER confirming its own flow
+  // FIXED. The user-code page cannot stop the flow's STARTER confirming its own flow
   // with no browser at all, but the confirmation now binds the flow to the confirming browser's
   // cookie, which the starter cannot put in the victim's browser: the phished callback is refused.
   it("FIXED (R1-07 / R8-03): the starter confirms its own flow from curl and phishes the authorize URL, but the victim's callback is refused and nothing is issued", async () => {
@@ -2118,7 +2118,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     ctx = await makeCtx();
   });
 
-  it("FIXED (SEC-IDN-3): the product flow is bound to the browser that started it; another browser's callback is refused and does not burn the flow", async () => {
+  it("FIXED: the product flow is bound to the browser that started it; another browser's callback is refused and does not burn the flow", async () => {
     const startRes = await handleAuthStart(
       req(
         `${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(`${ORIGIN}/djdl/app`)}`,
@@ -2158,7 +2158,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
       expect(res.status).toBe(400);
       expect(res.headers.get("set-cookie")).toBeNull();
     }
-    // The flow was not burned by those attempts (SEC-IDN-9): the real browser still finishes.
+    // The flow was not burned by those attempts: the real browser still finishes.
     const real = await handleAuthCallback(
       req(callbackUrl, {
         headers: { cookie: binderCookie.split(";")[0]! },
@@ -2194,7 +2194,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     expect(flow.returnTo).toBe(`${ORIGIN}/manage/products/djdl`);
   });
 
-  it("FIXED (SEC-ADM-6): the ADMIN flow (/manage/callback) is bound to the browser that started it", async () => {
+  it("FIXED: the ADMIN flow (/manage/callback) is bound to the browser that started it", async () => {
     ctx.env.ADMIN_SESSION_SECRET = "admin-secret";
     ctx.env.PLATFORM_ADMIN_GROUP = "platform-admins";
     ctx.env.PLATFORM_OIDC_ISSUER = ISSUER;
@@ -2308,7 +2308,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     );
     expect(res.status).toBe(401);
     expect(res.headers.get("set-cookie")).toBeNull();
-    // SEC-IDN-9: the refused attempt did not burn the flow of the browser that started it.
+    // The refused attempt did not burn the flow of the browser that started it.
     expect(
       await artefacts(ctx.env).get(await portalFlowKey(ctx.env, state)),
     ).not.toBeNull();
@@ -2824,7 +2824,7 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
 // R8-07 — redirect_uris_json fails open when the column is NULL
 // ═══════════════════════════════════════════════════════════════════════════════
 describe("R8-07 redirect-URI allowlist fail-open", () => {
-  // FIXED (SEC-IDN-16): a NULL column fails closed, like an empty or malformed one.
+  // FIXED: a NULL column fails closed, like an empty or malformed one.
   it("FIXED: with redirect_uris_json NULL the sign-in start is refused, whatever the Host header", async () => {
     const ctx = await makeCtx();
     await ctx.db.run(

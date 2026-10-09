@@ -456,7 +456,7 @@ export async function applyPointerOp(
     const r = await releaseOf(db, product, deliverable, input.releaseId);
     if (!r.ok) return r;
     const releaseId = r.release.release_id;
-    // SEC-SUP-3: CI moves a channel forward only. A token never promotes or pins a release
+    // CI moves a channel forward only. A token never promotes or pins a release
     // older than the one the channel already points at (a silent downgrade of stable for every
     // client); an operator in the console can, deliberately.
     if (actor.kind === "ci") {

@@ -131,7 +131,7 @@ export function firstError(map: ServiceErrorMap): PolarisError | null {
 }
 
 /**
- * The licence GATE's input (CLI-4). Discovery is an unsigned network read, so it may switch the
+ * The licence GATE's input. Discovery is an unsigned network read, so it may switch the
  * gate ON and never OFF: the gate is on when the BUILD expected the licence service (the
  * default, or a stated `expectServices` that lists it) or a discovery loaded this session says
  * it is on. `capabilities.license.enabled` keeps governing the sub-client (discovery wins).

@@ -197,7 +197,7 @@ async function consumeChallenge(
   const key = challengeKey(product, challenge);
   const raw = await env.HOT.get(key);
   if (raw === null) return false;
-  // SEC-CRY-10: the KV get/delete pair lets two concurrent attests both read the record; the
+  // The KV get/delete pair lets two concurrent attests both read the record; the
   // redemption is claimed in the single-use Durable Object so exactly one wins.
   if (!(await claimOnce(env, "attest-claim", key, 86_400))) return false;
   await env.HOT.delete(key);

@@ -1,4 +1,4 @@
-"""Device-id binding (SEC-CLI-1, part 1) — wire contract v4 §6.
+"""Device-id binding — wire contract v4 §6.
 
 A copied state directory must not carry a device's identity to another machine. On a desktop
 file store the device id is therefore RE-DERIVED from the platform anchor at every start

@@ -1,5 +1,5 @@
 /**
- * SEC-WP-09 (SEC-ADM-4): the one table of admin routes that need a fresh step-up, and the gate
+ * The one table of admin routes that need a fresh step-up, and the gate
  * that reads it. A route that is irreversible, exports personal data, or forces a key change
  * is listed here and calls `requireStepUp`; `test/adminStepUp.test.ts` walks this table so a
  * listed route cannot lose its gate and an unlisted one is visibly a decision.

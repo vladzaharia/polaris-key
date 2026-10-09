@@ -1,4 +1,4 @@
-// SEC-WP-07 (SEC-CRY-1, SEC-CRY-2, SEC-ADM-2): the signing-key state machine in one place.
+// The signing-key state machine in one place.
 //
 //   staged  -> active   (activate; retires the outgoing active key in the same batch)
 //   staged  -> retired  (retire)

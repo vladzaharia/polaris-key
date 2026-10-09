@@ -26,7 +26,7 @@ import { BodyTooLargeError, readBodyBytes } from "./core/cappedBody.js";
 /** How long a processed `X-GitHub-Delivery` GUID is remembered (7 days). */
 const DELIVERY_TTL_SECONDS = 604_800;
 
-/** Largest webhook body read (SEC-WEB-2). The events acted on (push, release) are a few KiB. */
+/** Largest webhook body read. The events acted on (push, release) are a few KiB. */
 const MAX_WEBHOOK_BODY = 5 * 1024 * 1024;
 /** KV scope for delivery GUIDs. Not a legal product slug (`^[a-z0-9-]+$`), so it can't collide. */
 const PLATFORM_SCOPE = "_platform";
@@ -133,7 +133,7 @@ async function installationMatches(
 ): Promise<boolean> {
   const cfg = await getReleaseConfig(db, product);
   const expected = cfg?.gh_installation_id ?? null;
-  // SEC-WEB-5: a missing binding fails closed. Only the system product has none (it is linked by
+  // A missing binding fails closed. Only the system product has none (it is linked by
   // the deploy hook, not through an installation).
   if (expected === null) return product === SYSTEM_PRODUCT_SLUG;
   return installationId === expected;
@@ -241,7 +241,7 @@ export async function handleGithubWebhook(
     );
   }
 
-  // SEC-WEB-2: streamed and capped BEFORE the HMAC, so a chunked flood is cut at the cap.
+  // Streamed and capped BEFORE the HMAC, so a chunked flood is cut at the cap.
   let raw: Uint8Array;
   try {
     raw = await readBodyBytes(req, MAX_WEBHOOK_BODY);
@@ -250,7 +250,7 @@ export async function handleGithubWebhook(
       return errorResponse(413, "body_too_large", "webhook body too large");
     throw e;
   }
-  // SEC-SUP-22: during a rotation the previous secret still verifies.
+  // During a rotation the previous secret still verifies.
   const sig = req.headers.get("x-hub-signature-256");
   const previous = env.GITHUB_WEBHOOK_SECRET_PREVIOUS;
   const ok =
@@ -273,9 +273,9 @@ export async function handleGithubWebhook(
   if (await env.HOT.get(deliveryKey)) {
     return json({ ok: true, ignored: "duplicate-delivery", deliveryId });
   }
-  // SEC-INF-3: the KV marker above is a hint only (get-then-put is not atomic). The claim is the
+  // The KV marker above is a hint only (get-then-put is not atomic). The claim is the
   // Durable Object's, on the delivery id AND on the signed body, because the delivery id is an
-  // unsigned header: a replayed body under a fresh GUID is the same delivery (SEC-WEB-4).
+  // unsigned header: a replayed body under a fresh GUID is the same delivery.
   const bodyHash = await sha256Hex(raw);
   const deliveryClaim = `gh:${deliveryId}`;
   const bodyClaim = `gh-body:${bodyHash}`;

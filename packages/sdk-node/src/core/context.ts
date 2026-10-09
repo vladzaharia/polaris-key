@@ -97,7 +97,7 @@ export function normalizeBaseUrl(raw: string): string {
         "plaintext http:// is only accepted for localhost/127.0.0.1.",
     );
   }
-  // The origin only (CLI-13): a path, query, fragment or userinfo would ride into every URL.
+  // The origin only: a path, query, fragment or userinfo would ride into every URL.
   return url.origin;
 }
 
@@ -227,7 +227,7 @@ export class CoreContext {
   }
 
   async init(): Promise<void> {
-    // CLI-1: the desktop file store's id is re-derived from the hardware anchor at every start;
+    // The desktop file store's id is re-derived from the hardware anchor at every start;
     // a stored id that disagrees is discarded with the token and the grant slices.
     this.deviceIdValue = (
       await bindDeviceId(this.product, this.store)
@@ -292,7 +292,7 @@ export class CoreContext {
   }
 
   /**
-   * The licence GATE's input (CLI-4, D2) — deliberately NOT `enabled("license")`.
+   * The licence GATE's input — deliberately NOT `enabled("license")`.
    *
    * `enabled()` answers "may this product call the licence sub-client", and discovery wins
    * there. The gate is a security decision, and discovery is an UNSIGNED network read: a
@@ -348,7 +348,7 @@ export class CoreContext {
         "This client is in local-only mode; network calls are refused.",
       );
     }
-    // Every product-scoped call follows the §5 redirect rule (CLI-3).
+    // Every product-scoped call follows the §5 redirect rule.
     return withRedirectPolicy(this.fetchImpl ?? ((...a) => fetch(...a)));
   }
 

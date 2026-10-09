@@ -289,7 +289,7 @@ class CacheManager:
 
     def revoke_slice(self, slice_name: str) -> None:
         """Remove one document slice (artifact, ETag and derived state) in memory, for the
-        next :meth:`flush` to persist (SEC-CLI-2). Called when the server has said, in
+        next :meth:`flush` to persist. Called when the server has said, in
         so many words, that this device must no longer hold it: a hard 401 for the slice it
         answered, or a 403 build block for the licence. The monotonic floor is NOT lowered —
         the dropped document's ``issuedAt`` stays a signed lower bound on real time."""

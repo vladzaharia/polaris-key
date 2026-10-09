@@ -38,7 +38,7 @@ async function world(): Promise<World> {
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   await seedProduct(db, SLUG);
-  // A proven step-up: break-glass activation below is in SEC-WP-09's step-up table.
+  // A proven step-up: break-glass activation below is in the step-up table.
   const { token, session } = await issueSession(
     env,
     {

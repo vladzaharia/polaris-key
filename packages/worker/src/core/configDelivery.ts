@@ -1,10 +1,10 @@
 /**
- * SEC-WP-11 — catalog delivery rules shared by the console PUT and the manifest resync.
+ * Catalog delivery rules shared by the console PUT and the manifest resync.
  *
  * - `delivery` only means something on a secret, and a secret carries no `default`/`examples`
- *   (the public `/config/schema` and the editor show them; SEC-CFG-1, SEC-CFG-10).
+ *   (the public `/config/schema` and the editor show them).
  * - Moving a stored `serverOnly`/`edgeMint` secret to a delivered mode silently declassifies a
- *   sealed value: refused while any layer still stores a value for the key (SEC-CFG-2).
+ *   sealed value: refused while any layer still stores a value for the key.
  */
 import type { Db } from "../db/types.js";
 

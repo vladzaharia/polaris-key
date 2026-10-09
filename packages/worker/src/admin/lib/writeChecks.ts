@@ -101,7 +101,7 @@ export class WriteChecks {
   }
 
   /** An absent or `null` expiry is fine; a present one must be a whole, in-range number of
-   *  seconds (SEC-LIC-8): a fraction or string would 500 the document or read as perpetual. */
+   *  seconds: a fraction or string would 500 the document or read as perpetual. */
   expiresAt(field: string, value: unknown): this {
     if (value === undefined || value === null) return this;
     if (

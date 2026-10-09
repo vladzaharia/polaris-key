@@ -28,8 +28,8 @@ __all__ = ["b64url_decode", "b64url_encode", "b64url_encode_str", "B64URL_RE"]
 
 # The unpadded base64url alphabet. Nothing else is a valid wire segment. Mirrors
 # `B64URL_RE` in packages/shared-jws/src/index.ts.
-# `\Z`, not `$`: `$` also matches before a final newline, so `re.match` would let `abc\n` through
-# (SEC-CRY-6). `fullmatch` below is the enforcing call; the anchor keeps a `.match` caller safe.
+# `\Z`, not `$`: `$` also matches before a final newline, so `re.match` would let `abc\n` through.
+# `fullmatch` below is the enforcing call; the anchor keeps a `.match` caller safe.
 B64URL_RE = re.compile(r"[A-Za-z0-9_-]*\Z")
 
 

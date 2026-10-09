@@ -1,4 +1,4 @@
-// SEC-WEB-3 / SEC-INF-1 recurrence lint: an unauthenticated per-client rate-limit bucket must be
+// Recurrence lint: an unauthenticated per-client rate-limit bucket must be
 // keyed on `clientNetwork(req)` (IPv4, or the IPv6 /64), never on `clientIp(req)` — one routed
 // /64 is 2^64 source addresses and would otherwise get a fresh budget per address.
 import { readdirSync, readFileSync, statSync } from "node:fs";

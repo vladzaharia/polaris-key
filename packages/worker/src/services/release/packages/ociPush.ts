@@ -736,7 +736,7 @@ async function loadUpload(
     id,
     push.ctx.now,
   );
-  // SEC-DST-7: an upload continues only for the publisher that started it.
+  // An upload continues only for the publisher that started it.
   return (
     (up && up.state.sub === push.publisher.sub ? up : null) ??
     ociError(404, "BLOB_UPLOAD_UNKNOWN", "blob upload unknown to registry")

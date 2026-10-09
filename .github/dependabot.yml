@@ -18,7 +18,7 @@ updates:
     directory: /sdks/python
     schedule:
       interval: weekly
-  # SEC-CRY-28: the Swift and Gradle (Kotlin) SDKs were the two ecosystems with no update PRs.
+  # The Swift and Gradle (Kotlin) SDKs were the two ecosystems with no update PRs.
   - package-ecosystem: swift
     directory: /sdks/swift
     schedule:

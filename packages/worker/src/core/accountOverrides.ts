@@ -339,7 +339,7 @@ export async function accountOverrideLayer(
   }
   return JSON.stringify({
     config,
-    // SEC-CFG-3: the owner's personal secrets reach only a device signed in as the owner; a
+    // The owner's personal secrets reach only a device signed in as the owner; a
     // key-only device on an owned licence gets the owner's config but not their secrets.
     secrets: answer.via === "owner" ? {} : p.secrets,
     entitlements: {},
@@ -370,7 +370,7 @@ export async function applyProvisionedAccountSecrets(
   provisioned: Record<string, ManagedEntry>,
   declared: ReadonlySet<string>,
   now: number,
-  /** The OIDC subject that signed in. SEC-CFG-4: written only while that identity is still
+  /** The OIDC subject that signed in. Written only while that identity is still
    *  linked to the licence's current owner account (a handed-over licence takes nothing from
    *  its previous owner's sign-in). */
   sub?: string,

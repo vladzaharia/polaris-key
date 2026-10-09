@@ -373,7 +373,7 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
     expect(await snapshot(db)).toEqual(before);
   });
 
-  it("a product with no installation binding refuses the delivery (SEC-WEB-5)", async () => {
+  it("a product with no installation binding refuses the delivery", async () => {
     const { db, env, state, gh } = await linkedWithV1();
     state.releases = [release("v1.1.0"), release("v1.0.0")];
     await db.run(
@@ -397,7 +397,7 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
     expect(gh.calls).toEqual([]);
   });
 
-  it("a captured body replayed under a fresh delivery id is a duplicate (SEC-WEB-4)", async () => {
+  it("a captured body replayed under a fresh delivery id is a duplicate", async () => {
     const { db, env, state, gh } = await linkedWithV1();
     state.releases = [release("v1.1.0"), release("v1.0.0")];
     const first = await delivery(releasePayload("published"));
@@ -436,7 +436,7 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
     expect(await snapshot(db)).toEqual(before);
   });
 
-  it("SEC-INF-3: a signed body replayed under a fresh delivery id is ignored", async () => {
+  it("a signed body replayed under a fresh delivery id is ignored", async () => {
     const { db, env, gh } = await linkedWithV1();
     const first = await delivery(releasePayload("published"));
     await post(env, db, gh.fetchImpl, first);
@@ -522,8 +522,7 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
       env,
       db,
       gh.fetchImpl,
-      // A real delivery differs from the first in its timestamps; a byte-identical body is a replay
-      // (SEC-WEB-4).
+      // A real delivery differs from the first in its timestamps; a byte-identical body is a replay.
       await delivery({ ...releasePayload("published"), sentAt: NOW + 180 }),
       NOW + 180,
     );

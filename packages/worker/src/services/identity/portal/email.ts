@@ -333,7 +333,7 @@ export async function sendSecurityNotice(
       // console logging (test/attack/R12-secrets.test.ts), so the shortfall is the return value.
     }
   }
-  // SEC-IDN-11: an account with no deliverable address (email-less, suppressed, mail down) gets no
+  // An account with no deliverable address (email-less, suppressed, mail down) gets no
   // out-of-band notice; leave a row so the change is not silent. Counts only, never an address.
   if (sent === 0)
     await recordUndelivered(db, accountId, recipients.length, 0, now);

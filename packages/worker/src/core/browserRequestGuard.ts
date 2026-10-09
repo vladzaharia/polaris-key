@@ -1,6 +1,6 @@
 /**
- * SEC-WP-10: the checks every cookie-carrying browser JSON endpoint of the sign-in flows shares
- * (SEC-IDN-2, SEC-IDN-3, SEC-WEB-8). Imports only the shared capped body reader.
+ * The checks every cookie-carrying browser JSON endpoint of the sign-in flows shares
+ * Imports only the shared capped body reader.
  */
 import { BodyTooLargeError, readBodyText } from "./cappedBody.js";
 

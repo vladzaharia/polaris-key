@@ -155,7 +155,7 @@ export function gitDescribe(cwd = process.cwd()) {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();
-  // SEC-SUP-18: `git describe` returns the NEAREST glob match, so one malformed tag
+  // `git describe` returns the NEAREST glob match, so one malformed tag
   // (v1.2.3x) made the whole derivation fall back to 0.0.1. Take the highest STRICT release
   // tag reachable from HEAD instead; a tag that is not a deployable release tag is ignored.
   let latestTag = null;

@@ -162,7 +162,7 @@ class FileStore:
         return device_id
 
     def set_device_id(self, device_id: str) -> None:
-        """Replace the stored id (SEC-CLI-1): device binding rewrites it with the id derived from
+        """Replace the stored id: device binding rewrites it with the id derived from
         the platform anchor. Its presence is what opts a store in to that binding."""
         _write_secure(self._device_path, device_id)
 

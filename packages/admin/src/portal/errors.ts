@@ -66,7 +66,7 @@ const DOWNLOAD_REFUSALS: Record<string, PortalErrorCopy> = {
 
 export function portalErrorCopy(err: unknown): PortalErrorCopy {
   if (err instanceof PortalApiError) {
-    // SEC-IDN-10: erasing the account, removing a license and minting a package token ask for a
+    // Erasing the account, removing a license and minting a package token ask for a
     // sign-in from the last five minutes.
     if (isStepUpRequired(err))
       return {

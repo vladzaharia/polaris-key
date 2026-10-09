@@ -742,7 +742,7 @@ describe("twine upload (POST /pypi/<owner>/legacy/)", () => {
     expect((await readSession(db, key))!.state).toBe("published");
   });
 
-  it("a token revoked mid-upload publishes nothing, through the settle or the cron (SEC-DST-3)", async () => {
+  it("a token revoked mid-upload publishes nothing, through the settle or the cron", async () => {
     await upload("acme_tools-1.0.0.tar.gz", sdist);
     await db.run(
       "UPDATE registry_tokens SET revoked_at = ? WHERE product = ?",

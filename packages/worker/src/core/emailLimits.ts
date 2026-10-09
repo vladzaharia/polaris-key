@@ -81,7 +81,7 @@ export function recipientHash(env: Env, email: string): Promise<string> {
 }
 
 /** Strikes are kept per (recipient, requester network), so a stranger's wrong guesses lock only
- *  their own network out of that recipient's mail, never the recipient (SEC-IDN-8). */
+ *  their own network out of that recipient's mail, never the recipient. */
 async function strikesRef(
   env: Env,
   product: string,
@@ -252,7 +252,7 @@ export async function verifyEmailCode(
   );
   if (result.ok) return result;
   // Only a guess against a live code is a strike: with no code outstanding there is nothing to
-  // guess, and counting it would let anyone hold a victim's lock (SEC-CRY-16).
+  // guess, and counting it would let anyone hold a victim's lock.
   if (result.live)
     await strikeArtefact(
       env,

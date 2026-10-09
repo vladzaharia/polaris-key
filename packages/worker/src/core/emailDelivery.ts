@@ -263,7 +263,7 @@ export async function deliverEmail(
       : passthroughSender(env, msg.sender.displayName, msg.sender.product);
   if (!from) return unavailable;
 
-  // Whatever reached here, only a bare addr-spec is accepted (and is mailed trimmed) to the provider (SEC-PRV-3).
+  // Whatever reached here, only a bare addr-spec is accepted (and is mailed trimmed) to the provider.
   if (strictEmail(msg.to) === null) return unavailable;
 
   if (isApplePrivateRelay(msg.to) && !applePrivateRelayRegistered(env))

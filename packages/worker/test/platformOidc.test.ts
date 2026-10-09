@@ -220,7 +220,7 @@ describe("console and portal sign-in use their own clients", () => {
   });
 });
 
-describe("admin sign-in leaves detection rows (SEC-ADM-12)", () => {
+describe("admin sign-in leaves detection rows", () => {
   async function callback(
     env: Env,
     db: ReturnType<typeof makeTestDb>,
@@ -228,7 +228,7 @@ describe("admin sign-in leaves detection rows (SEC-ADM-12)", () => {
   ) {
     const state = (await adminLogin(env)).searchParams.get("state")!;
     return handleAdminCallback(
-      // The browser that started the sign-in (SEC-ADM-6 binder), as every callback needs.
+      // The browser that started the sign-in (the flow binder), as every callback needs.
       new Request(`https://key.plrs.im/manage/callback?code=c&state=${state}`, {
         headers: { cookie: await bindAdminFlow(env, state) },
       }) as unknown as Request,

@@ -7,7 +7,7 @@
  *     and voided it, which the voided poll then sees).
  *   - **Play Voided Purchases poll**, daily: every purchase Google voided in the last 30 days
  *     (`startTime`) is revoked — the backstop for a lost `voidedPurchaseNotification`.
- *   - **App Store re-read**, weekly per purchase (SEC-COM-1/3): the Server API copy of every
+ *   - **App Store re-read**, weekly per purchase: the Server API copy of every
  *     active App Store purchase is read again, so a refund whose notification was lost, refused
  *     or raced by a claim still revokes. At most `STEAM_BATCH` a tick.
  *   - **Steam ownership re-check**, weekly per purchase: Steam does not push refunds, so an active
@@ -214,7 +214,7 @@ export async function runCommerceTick(
         if (typeof d.steamId !== "string" || typeof d.dlcAppId !== "string")
           continue;
         out.steamChecked++;
-        // SEC-COM-4: one failing row must not block the rest. A failed row keeps its old
+        // One failing row must not block the rest. A failed row keeps its old
         // `last_verified` (retried next tick) and is reported; the batch goes on.
         let owns: boolean;
         try {

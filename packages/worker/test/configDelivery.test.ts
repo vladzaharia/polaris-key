@@ -1,6 +1,7 @@
 /**
- * SEC-WP-11: config secret delivery rules (SEC-CFG-1, -2, -5..-8, -10, -14, -18).
- * The owner-line (SEC-CFG-3) and provisioning (SEC-CFG-4) cases live in accountOverrides.test.ts.
+ * Config secret delivery rules: delivery enforced for every kind, no silent declassification,
+ * malformed layers and the public schema projection.
+ * The owner-line and provisioning cases live in accountOverrides.test.ts.
  */
 import { describe, expect, it } from "vitest";
 import { Catalog } from "@polaris-key/catalog";
@@ -21,7 +22,7 @@ const e = (value: unknown, state = "enforced"): ManagedEntry =>
   ({ state, value, updatedAt: 1 }) as ManagedEntry;
 const base = { category: "c", label: "l", description: "d", schema: {} };
 
-describe("SEC-CFG-1: delivery enforced for every kind", () => {
+describe("delivery enforced for every kind", () => {
   const catalog = new Catalog({
     schemaVersion: 1,
     entries: [
@@ -48,7 +49,7 @@ describe("SEC-CFG-1: delivery enforced for every kind", () => {
   });
 });
 
-describe("SEC-CFG-2: no silent declassification", () => {
+describe("no silent declassification", () => {
   const prev = JSON.stringify({
     entries: [{ ...base, key: "s", kind: "secret", delivery: "serverOnly" }],
   });
@@ -72,7 +73,7 @@ describe("SEC-CFG-2: no silent declassification", () => {
   });
 });
 
-describe("SEC-CFG-7/8: malformed layers", () => {
+describe("malformed layers", () => {
   it("skips null entries and unknown states instead of crashing", () => {
     const out = mergePayloads(
       JSON.stringify({
@@ -91,7 +92,7 @@ describe("SEC-CFG-7/8: malformed layers", () => {
   });
 });
 
-describe("SEC-CFG-10: public schema projection", () => {
+describe("public schema projection", () => {
   it("strips default/examples of secret entries only", () => {
     const out = JSON.parse(
       publicCatalogJson(

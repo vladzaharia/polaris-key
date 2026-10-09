@@ -271,7 +271,7 @@ public class CoreContext(options: CoreOptions) {
 
     private suspend fun load() {
         var (deviceId, token, cached) = onStore { Triple(store.getDeviceId(), store.getToken(), store.readCache()) }
-        // CLI-1: a stored id that disagrees with the platform anchor is a copied state directory.
+        // A stored id that disagrees with the platform anchor is a copied state directory.
         val anchored = onStore { store.anchoredDeviceId() }
         if (anchored != null && anchored != deviceId) {
             // `deactivate()` without the network call: the token and the grant slices go, the update
@@ -458,7 +458,7 @@ public class CoreContext(options: CoreOptions) {
     public suspend fun enabled(slug: ServiceSlug): Boolean = services()[slug] == true
 
     /**
-     * The licence GATE's input (CLI-4): the build's own declaration (`expectedServices`, default
+     * The licence GATE's input: the build's own declaration (`expectedServices`, default
      * licence and config) OR what a discovery loaded this session says. Unsigned discovery can
      * switch the gate on, never off; it still governs sub-client availability ([enabled]).
      */
@@ -832,7 +832,7 @@ public class CoreContext(options: CoreOptions) {
         val healthy = outcomes.values.any { it == DocOutcome.Applied || it == DocOutcome.Unchanged }
         if (!patchSet && healthy) patchSet = true
         val finalPatch = patch
-        // CLI-2: a hard 401 drops the slice it answered for, and a 403 build block drops the licence
+        // A hard 401 drops the slice it answered for, and a 403 build block drops the licence
         // document, in the same write that sets the (display-only) hint.
         val rejected = outcomes.filterValues { it == DocOutcome.Unauthorized }.keys
         patchCache { rec ->

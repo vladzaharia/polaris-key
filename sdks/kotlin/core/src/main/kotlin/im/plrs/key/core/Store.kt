@@ -149,7 +149,7 @@ public interface Store {
     public suspend fun status(): StoreStatus? = null
 
     /**
-     * CLI-1: the device id this host's platform anchor derives, for a store that keeps the id in a
+     * The device id this host's platform anchor derives, for a store that keeps the id in a
      * file a user could copy to another machine (a desktop file or keyring store). Null: no
      * binding (memory, Keystore, or no anchor readable), so the stored id stands.
      */
@@ -361,7 +361,7 @@ public object DeviceId {
         return fromRaw(productSlug, source)
     }
 
-    /** The id the platform anchor gives, or null when none is readable (CLI-1). */
+    /** The id the platform anchor gives, or null when none is readable. */
     public fun anchored(productSlug: String): String? = anchor()?.let { fromRaw(productSlug, it) }
 
     /**

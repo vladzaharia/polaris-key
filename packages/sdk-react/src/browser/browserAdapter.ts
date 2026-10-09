@@ -443,7 +443,7 @@ export class BrowserAdapter implements PolarisAdapter {
   private csrf: string | null = null;
   private hadSession = false;
   private capabilities: ServicesMap;
-  /** The build's own belief (`expectServices`, else the default): the gate's floor (CLI-4). */
+  /** The build's own belief (`expectServices`, else the default): the gate's floor. */
   private readonly expectedServices: ServicesMap;
   /** `supports()`'s inputs: the generated table, runtime `web`, and `capabilities` above. */
   private readonly capabilityCtx: CapabilityContext;
@@ -792,7 +792,7 @@ export class BrowserAdapter implements PolarisAdapter {
 
   /** Install the product's real capability map from discovery (D-21). A failed or rejected
    *  document leaves the constructor's `expectServices` belief in place. */
-  /** The licence gate's input (CLI-4): build expectation OR a discovery loaded this session. */
+  /** The licence gate's input: build expectation OR a discovery loaded this session. */
   private licenseGate(): boolean {
     return licenseGateEnabled(this.expectedServices, this.capabilities);
   }

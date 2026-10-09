@@ -259,7 +259,7 @@ afterEach(() => {
 });
 
 describe("Users list and row", () => {
-  it("redacts the label of another person's device bound to the licence (SEC-PRV-12)", async () => {
+  it("redacts the label of another person's device bound to the licence", async () => {
     const w = await world();
     const f = await fixture(w);
     await w.db.run(
@@ -594,7 +594,7 @@ describe("actions", () => {
     );
   });
 
-  it("SEC-ADM-4: export, data delete and detach need a proven step-up, not just a fresh sign-in", async () => {
+  it("export, data delete and detach need a proven step-up, not just a fresh sign-in", async () => {
     const w = await world();
     const f = await fixture(w);
     // Signed in this second, but never through a step-up flow: `authAt` is current, `stepUpAt` absent.

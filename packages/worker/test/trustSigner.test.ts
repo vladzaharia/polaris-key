@@ -1,5 +1,5 @@
-// SEC-WP-17 slice 17-S: trust-manifest signer choice (SEC-CRY-3), 400-day revoked listing
-// (SEC-CRY-15) and canonical base64url MAC / pull-token decoding (SEC-CRY-4, SEC-CRY-5).
+// Trust-manifest signer choice, 400-day revoked listing
+// and canonical base64url MAC / pull-token decoding.
 
 import { describe, expect, it } from "vitest";
 import { inspectBundle } from "@polaris-key/client-core";
@@ -110,7 +110,7 @@ async function world(): Promise<{ db: Db; env: Env }> {
   return { db, env };
 }
 
-describe("trust manifest signer choice (SEC-CRY-3)", () => {
+describe("trust manifest signer choice", () => {
   it("default is the active key; ?signer= serves the same manifest under a staged or retired key", async () => {
     const { db, env } = await world();
     await addKey(db, env, "kid-staged", "staged");
@@ -142,7 +142,7 @@ describe("trust manifest signer choice (SEC-CRY-3)", () => {
     }
   });
 
-  it("lists a key revoked 300 days ago, not one revoked 401 days ago (SEC-CRY-15)", async () => {
+  it("lists a key revoked 300 days ago, not one revoked 401 days ago", async () => {
     const { db, env } = await world();
     const DAY = 86_400;
     await addKey(db, env, "kid-rev-300d", "revoked", NOW - 300 * DAY);
@@ -159,7 +159,7 @@ describe("trust manifest signer choice (SEC-CRY-3)", () => {
   });
 });
 
-describe("bundle mint signer choice (SEC-CRY-3)", () => {
+describe("bundle mint signer choice", () => {
   async function mint(
     body0: Record<string, unknown>,
   ): Promise<{ res: Response; pub: string; env: Env }> {
@@ -227,7 +227,7 @@ describe("bundle mint signer choice (SEC-CRY-3)", () => {
   });
 });
 
-describe("canonical base64url (SEC-CRY-4, SEC-CRY-5)", () => {
+describe("canonical base64url", () => {
   const ALPHA =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
   /** The same bytes spelled with every other value of the unused low bits of the last char. */

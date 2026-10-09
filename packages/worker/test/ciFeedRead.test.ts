@@ -1,4 +1,4 @@
-/** SEC-DST-4: a CI token is a feed-read credential only with the publish scope. */
+/** A CI token is a feed-read credential only with the publish scope. */
 import { describe, expect, it } from "vitest";
 import { ANONYMOUS, principalOf } from "../src/core/registryTokens.js";
 

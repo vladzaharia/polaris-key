@@ -94,7 +94,7 @@ export type AppleRejection =
   | "transaction_mismatch"
   | "unknown_transaction";
 
-/** SEC-COM-13: a notification (and the Server API's own copy) is signed within a day of its use. */
+/** A notification (and the Server API's own copy) is signed within a day of its use. */
 export const APPLE_MAX_SIGNED_AGE_SECONDS = 24 * 60 * 60;
 
 export class AppleRejected extends Error {
@@ -146,7 +146,7 @@ export async function verifyAppleJws(
   if (typeof signedMs === "number" && Number.isFinite(signedMs)) {
     const signed = Math.floor(signedMs / 1000);
     if (signed > now + 300) return reject("invalid_jws");
-    // SEC-CRY-8 / SEC-COM-13: where the caller wants a live signature (a notification, the
+    // Where the caller wants a live signature (a notification, the
     // Server API copy), signedDate cannot be backdated to a time an old or leaked leaf was valid.
     if (opts.maxAgeSeconds !== undefined && signed < now - opts.maxAgeSeconds)
       return reject("invalid_jws");

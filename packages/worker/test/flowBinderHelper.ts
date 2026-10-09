@@ -11,7 +11,7 @@ export const TEST_BINDER_COOKIE = `__Host-pk_lcb=${TEST_BINDER}`;
 /**
  * Stamp the flow under `state` as bound to {@link TEST_BINDER} (what `/auth/start` or the device
  * page's confirmation does with a real cookie) and answer the `Cookie` header that browser sends
- * back. For tests that are not about the binder itself (SEC-IDN-3 / SEC-IDN-4).
+ * back. For tests that are not about the binder itself.
  */
 export async function bindFlow(
   env: Env,
@@ -28,7 +28,7 @@ export async function bindFlow(
   return TEST_BINDER_COOKIE;
 }
 
-/** The admin twin of {@link bindFlow} (SEC-ADM-6): bind the console sign-in under `state`. */
+/** The admin twin of {@link bindFlow}: bind the console sign-in under `state`. */
 export async function bindAdminFlow(env: Env, state: string): Promise<string> {
   const key = await adminFlowKey(state, env);
   const raw = await artefacts(env).get(key);

@@ -2,11 +2,11 @@
 //
 // @pkey-feature core.sync core.cache core.verify license.gate
 //
-// SEC-WP-16 16-B: the client-local trust rules in the React SDK. CLI-2: a hard 401 / a 403 build
-// block deletes the slice (document + ETag) in the same cache write that sets the hint, so
-// clearing the hint hands back nothing. CLI-4: unsigned discovery turns the licence gate on,
-// never off. CLI-8: network verification runs at the effective clock. CLI-1 (device binding)
-// is a typed N/A in a browser (declared in parity.json): there is no hardware anchor.
+// The client-local trust rules in the React SDK. A hard 401 / a 403 build block deletes the
+// slice (document + ETag) in the same cache write that sets the hint, so clearing the hint
+// hands back nothing. Unsigned discovery turns the licence gate on, never off. Network
+// verification runs at the effective clock. Device binding is a typed N/A in a browser
+// (declared in parity.json): there is no hardware anchor.
 
 import { describe, expect, it } from "vitest";
 import type { CacheRecordV3, Store } from "@polaris-key/client-core";
@@ -21,7 +21,7 @@ import {
 } from "./fixtures.js";
 
 const NOW = 1_700_000_000;
-const DEVICE = "SEC16BDEVICE0000000000000000001";
+const DEVICE = "LOCALTRUSTDEV000000000000000001";
 
 class MemStore implements Store {
   cache: CacheRecordV3 | null = null;
@@ -50,7 +50,7 @@ class MemStore implements Store {
 }
 
 async function harness(opts: { clock?: { t: number } } = {}) {
-  const key = await newTestKey("pkey-sec16b");
+  const key = await newTestKey("pkey-local-trust");
   const clock = opts.clock ?? { t: NOW };
   const store = new MemStore();
   let mode: "ok" | "401" | "403" = "ok";
@@ -117,7 +117,7 @@ async function harness(opts: { clock?: { t: number } } = {}) {
   };
 }
 
-describe("CLI-2: a hard refusal deletes the slice it answered for", () => {
+describe("a hard refusal deletes the slice it answered for", () => {
   it("401 on the licence removes document + ETag in the same write as the hint; a reload holds nothing", async () => {
     const h = await harness();
     const s = h.make();
@@ -162,7 +162,7 @@ describe("CLI-2: a hard refusal deletes the slice it answered for", () => {
   });
 });
 
-describe("CLI-8: network verification runs at the effective clock", () => {
+describe("network verification runs at the effective clock", () => {
   it("accepts a re-signed document when the system clock was wound back below the floor", async () => {
     const h = await harness();
     const s = h.make();
@@ -176,7 +176,7 @@ describe("CLI-8: network verification runs at the effective clock", () => {
   });
 });
 
-describe("CLI-4: unsigned discovery turns the gate on, never off", () => {
+describe("unsigned discovery turns the gate on, never off", () => {
   const disabled = () =>
     makeFakeFetch(null, { capabilities: services("config") });
 
@@ -227,7 +227,7 @@ describe("CLI-4: unsigned discovery turns the gate on, never off", () => {
 
 void makeDoc;
 
-describe("CLI-4 on the desktop bridge", () => {
+describe("the licence gate on the desktop bridge", () => {
   it("a host reporting the licence off does not ungate a build that expects it", async () => {
     const { desktopAdapter } = await import("../src/desktop/desktopAdapter.js");
     const { makeFakeBridge, okBridgeState } = await import("./fixtures.js");

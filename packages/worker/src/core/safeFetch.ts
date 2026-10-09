@@ -106,7 +106,7 @@ export function guardUrl(raw: string): GuardReason | null {
   if (u.protocol !== "https:") return "scheme";
   if (u.username || u.password) return "credentials";
   if (u.port && u.port !== "443") return "port";
-  // SEC-DST-8/WEB-14: every trailing dot goes, and an empty label (`a..b`) is refused.
+  // Every trailing dot goes, and an empty label (`a..b`) is refused.
   const host = normalizeHost(u.hostname);
   if (host === null) return "unparseable";
   // The URL parser has already normalised every IPv4 spelling (hex, octal, short forms) to a
@@ -279,7 +279,7 @@ export async function safeFetch(
       const why = check(current, opts.allowHost);
       if (why) return { ok: false, reason: `guard:${why}`, hops };
       const headers = new Headers(opts.headers ?? {});
-      // SEC-WEB-14: a redirect hop carries none of the caller's credentials.
+      // A redirect hop carries none of the caller's credentials.
       if (hop > 0) {
         for (const h of ["authorization", "cookie", "proxy-authorization"])
           headers.delete(h);

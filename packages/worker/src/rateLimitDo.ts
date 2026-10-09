@@ -58,7 +58,7 @@ export class RateLimitDO implements DurableObject {
   async fetch(request: Request): Promise<Response> {
     const { bucket, id, limit, windowSec, now } =
       (await request.json()) as CheckRequest;
-    // SEC-INF-8: windowSec 0 would divide by zero (a permanent lockout, an uncollectable key).
+    // A `windowSec` of 0 would divide by zero (a permanent lockout, an uncollectable key).
     if (
       typeof bucket !== "string" ||
       typeof id !== "string" ||
@@ -112,7 +112,7 @@ export class RateLimitDO implements DurableObject {
   async alarm(): Promise<void> {
     const storage = this.state.storage;
     const nowSec = Math.floor(Date.now() / 1000);
-    // SEC-WEB-9 / SEC-INF-10: resume after the last key the previous alarm examined, so a flood
+    // Resume after the last key the previous alarm examined, so a flood
     // of live keys at the front of the key space cannot starve the rest of the sweep.
     const cursor = await storage.get<string>(SWEEP_CURSOR_KEY);
     const entries = await storage.list<Counter>({

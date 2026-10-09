@@ -309,7 +309,7 @@ export async function handleDeauthorize(
   product: Product,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
-  // SEC-LIC-13: per-network limit before the token hash and the D1 lookups.
+  // Per-network limit before the token hash and the D1 lookups.
   if (
     !(await rateLimitOk(
       env,

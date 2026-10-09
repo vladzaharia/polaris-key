@@ -401,7 +401,7 @@ export async function runScheduledMaintenance(
     pruneHeartbeats(db, now - JOB_RUN_RETENTION_SECONDS),
   );
 
-  // SEC-PRV-6 / SEC-PRV-17: relink snapshots past their undo window lose the licence's name and
+  // Relink snapshots past their undo window lose the licence's name and
   // email; merge tombstones and subject events past the audit retention are deleted.
   await step(report, "privacyResidue", () => purgePrivacyResidue(db, now));
 

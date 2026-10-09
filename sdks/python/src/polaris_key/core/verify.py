@@ -102,7 +102,7 @@ def verify_doc(
 ) -> Any:
     """Verify one signed Polaris Key document of a known type.
 
-    ``last_accepted_issued_at`` is REQUIRED (SEC-LIC-16): the per-type anti-replay floor, or an
+    ``last_accepted_issued_at`` is REQUIRED: the per-type anti-replay floor, or an
     explicit ``None`` for "no floor". An omitted argument is a ``TypeError``, never a silent
     no-floor.
 

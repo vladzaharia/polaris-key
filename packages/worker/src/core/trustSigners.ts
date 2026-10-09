@@ -1,10 +1,10 @@
 /**
- * Which key signs a served trust manifest or a minted bundle (SEC-CRY-3, SEC-CRY-15).
+ * Which key signs a served trust manifest or a minted bundle.
  *
  * The default is the product's active key. A client that pinned only an OLDER key cannot
  * verify an active-key manifest, so rotation would blind it; `?signer=<kid>` lets it ask for
  * the same manifest signed by a key it does pin. Only active, staged and retired keys may sign:
- * a revoked key is terminal (SEC-WP-07), and signing with it again would undo the revocation.
+ * a revoked key is terminal, and signing with it again would undo the revocation.
  */
 
 /// <reference types="@cloudflare/workers-types" />

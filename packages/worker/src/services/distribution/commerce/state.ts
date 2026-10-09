@@ -520,7 +520,7 @@ export async function recordPurchase(
       reason: existing ? "bound_elsewhere" : "binding_mismatch",
     };
 
-  // SEC-COM-9: a store reporting `pending` after the purchase was active never regresses it (the
+  // A store reporting `pending` after the purchase was active never regresses it (the
   // grant is untouched, so the row must not claim otherwise).
   if (existing?.state === "active" && p.state === "pending")
     return {

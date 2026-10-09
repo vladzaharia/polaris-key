@@ -75,7 +75,7 @@ export interface ExposePolarisBridgeOptions {
   flowGraceSeconds?: number;
 }
 
-/** The default sender rule (CLI-17): the top frame, on the app's origin. A frame the app did
+/** The default sender rule: the top frame, on the app's origin. A frame the app did
  *  not load itself (an iframe, a navigated-away window, remote content) cannot drive the
  *  bridge. */
 function defaultAllowSender(

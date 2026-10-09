@@ -347,7 +347,7 @@ class CoreContext:
         return copy_services(DEFAULT_SERVICES)
 
     def license_gate_enabled(self) -> bool:
-        """Whether the licence GATE runs (SEC-CLI-4): the build's own declaration OR discovery's.
+        """Whether the licence GATE runs: the build's own declaration OR discovery's.
 
         The build declares it through ``expected_services`` (default: licence and config), which
         is compiled into the host. Discovery is unsigned, so it may switch the gate ON but never

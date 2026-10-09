@@ -248,7 +248,7 @@ describe("slug check (W24)", () => {
     const db = makeTestDb();
     const env = envFor();
     await seedProduct(db, "tonebox");
-    // SEC-WP-09: slug-check reads the CURRENT platform group; a session without it is refused.
+    // Slug-check reads the CURRENT platform group; a session without it is refused.
     const outsider = await call(
       env,
       db,

@@ -266,7 +266,7 @@ describe("GitHub OIDC verification", () => {
     expect(f.calls).toBe(2);
   });
 
-  it("does not honour a cached key set older than the stale cap when GitHub is down (SEC-SUP-17)", async () => {
+  it("does not honour a cached key set older than the stale cap when GitHub is down", async () => {
     const up = fetcher(() => [jwk]);
     expect(await verify(await ghToken(), up)).toMatchObject({ ok: true });
     const down: JwksFetcher = async () => {
@@ -446,7 +446,7 @@ describe("exchangeOidcToken", () => {
     expect(audit.map((a) => a.action)).toContain("ci.token.exchange");
   });
 
-  it("a branch run's token cannot promote or yank; a tag run's can (SEC-SUP-3)", async () => {
+  it("a branch run's token cannot promote or yank; a tag run's can", async () => {
     await seedPolicy();
     const branch = await exchange(
       await ghToken({
@@ -466,7 +466,7 @@ describe("exchangeOidcToken", () => {
     if (tag.ok) expect(tag.scopes).toContain("release:promote");
   });
 
-  it("mints for branches and tags only, and the platform's own product for main or a semver tag (SEC-SUP-2)", async () => {
+  it("mints for branches and tags only, and the platform's own product for main or a semver tag", async () => {
     expect(bindScopesToRef("diceroll", "refs/pull/1/merge", ["x"]).ok).toBe(
       false,
     );

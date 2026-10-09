@@ -845,7 +845,7 @@ function auditFor(
     row.outcome === "dropped"
       ? `Dropped this license's config and secret overrides at the migration (no account): ${keyList(row.keys)}`
       : `Moved this license's config and secret overrides to ${subject}'s account overrides${row.outcome === "collapsed" ? `; ${row.values.collapsed?.length ?? 0} value(s) lost to another license` : ""}`;
-  // SEC-ADM-14: a deterministic id per (run, licence) and OR IGNORE, so a stale lease holder that
+  // A deterministic id per (run, licence) and OR IGNORE, so a stale lease holder that
   // re-applies a unit adds no second audit row.
   const stmt = auditStatement({
     product: row.product,

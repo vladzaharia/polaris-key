@@ -214,9 +214,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // The images are public and nothing secret is behind the limit, so an outage must not blank
   // every icon on every page.
   imgHost: "open",
-  // SEC-CFG-11: per-device cap on config-document fetches; a cost budget, nothing secret behind it.
+  // Per-device cap on config-document fetches; a cost budget, nothing secret behind it.
   configDocument: "open",
-  // SEC-LIC-13: per-network budgets in front of the licence document and self-deauthorize. Both
+  // Per-network budgets in front of the licence document and self-deauthorize. Both
   // need a live device token, so the limit protects D1 cost, not a secret; an outage must not stop
   // every licensed install from refreshing its document (as for `configDocument` above).
   licenseDoc: "open",
@@ -328,7 +328,7 @@ export function clientIp(req: Request): string {
  * IPv4 address as-is, or the IPv6 /64 the address sits in (`2001:db8:0:1::/64`). One ordinary
  * IPv6 host is routed a whole /64 — 2^64 source addresses at no cost (R10-04b) — so keying a
  * bucket on the full address (`clientIp`) hands an attacker an unlimited supply of fresh
- * budgets (SEC-WEB-3). An IPv4-mapped IPv6 address (`::ffff:192.0.2.1`) is unwrapped to its
+ * budgets. An IPv4-mapped IPv6 address (`::ffff:192.0.2.1`) is unwrapped to its
  * IPv4 form, so it neither collides in one `::/64` bucket nor escapes its IPv4 bucket.
  * Anything that does not parse as IPv6 falls back to `clientIp`. Callers must not key a
  * rate-limit bucket on `clientIp` directly (`test/rateLimitKeys.test.ts` enforces it).

@@ -1,5 +1,5 @@
 /**
- * The one way a route handler reads a request body (SEC-WEB-2).
+ * The one way a route handler reads a request body.
  *
  * `req.text()` / `req.json()` / `req.arrayBuffer()` buffer the WHOLE body before any caller can
  * look at its size, and a chunked upload carries no `Content-Length` to pre-check, so a check on

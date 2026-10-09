@@ -44,7 +44,7 @@ def test_revoked_gate_denies_every_flag() -> None:
     state["revoked"] = True
     c.sync(force=True)
     assert c.status().status == "revoked"
-    # SEC-CLI-2: the hard 401 removed the document it answered for, so nothing is left to grant.
+    # The hard 401 removed the document it answered for, so nothing is left to grant.
     assert c.license.doc is None
     assert c.license.is_entitled("polarisVpn") is False
     assert c.license.entitlement_value("license.tier") is None

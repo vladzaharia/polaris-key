@@ -273,7 +273,7 @@ export async function handleCiTokens(
     return err(405, ErrorCode.BadRequest, "method not allowed");
   if (!TOKEN_ID_RE.test(id)) return notFound();
   if (!(await revokeCiToken(db, slug, id, now))) return notFound();
-  // SEC-DST-4: the feed-read resolution cache dies with the token, not 30 s later.
+  // The feed-read resolution cache dies with the token, not 30 s later.
   forgetRegistryTokens();
   await audit(
     db,

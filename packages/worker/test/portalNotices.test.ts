@@ -387,7 +387,7 @@ describe("security notices reach every verified address", () => {
       expect(m.from).toEqual({ name: "Polaris Key", email: "noreply@plrs.im" });
   });
 
-  it("an account with no deliverable address leaves an audit row, no address (SEC-IDN-11)", async () => {
+  it("an account with no deliverable address leaves an audit row, no address", async () => {
     const db = makeTestDb();
     const { env } = portalEnv();
     const n = await sendSecurityNotice(

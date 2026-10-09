@@ -239,7 +239,7 @@ export class SingleUseDO implements DurableObject {
         const hits = (Array.isArray(prior?.hits) ? prior.hits : []).filter(
           (t) => typeof t === "number" && t > now - windowMs,
         );
-        // A locked address takes no more strikes: they would re-arm the lock (SEC-CRY-16).
+        // A locked address takes no more strikes: they would re-arm the lock.
         if (typeof prior?.lockedUntil === "number" && prior.lockedUntil > now)
           return reply({ locked: true });
         hits.push(now);
@@ -282,7 +282,7 @@ export class SingleUseDO implements DurableObject {
   async alarm(): Promise<void> {
     const storage = this.state.storage;
     const now = Date.now();
-    // SEC-WEB-9 / SEC-INF-10: resume after the last key the previous alarm examined, so a flood
+    // Resume after the last key the previous alarm examined, so a flood
     // of live keys at the front of the key space cannot starve the rest of the sweep.
     const cursor = await storage.get<string>(SWEEP_CURSOR_KEY);
     const entries = await storage.list<SingleUseRecord>({

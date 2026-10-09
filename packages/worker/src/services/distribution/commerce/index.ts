@@ -111,7 +111,7 @@ export const HOOK_RATE = { limit: 120, windowSec: 60 } as const;
  *  unauthenticated sender can spend on signature checks without touching the product bucket. */
 export const HOOK_IP_RATE = { limit: 60, windowSec: 60 } as const;
 
-/** SEC-COM-8: an event that ended `failed` or `unresolved` is processed again when redelivered. */
+/** An event that ended `failed` or `unresolved` is processed again when redelivered. */
 const REDELIVERABLE = new Set(["failed", "unresolved"]);
 
 export const APP_STORE_EVENTS = "app-store-notifications";
@@ -612,7 +612,7 @@ async function handleAppStoreHook(
     await event("stored");
     return json({ ok: true });
   }
-  // SEC-COM-1: the product-wide bucket is charged only by a fresh, signed notification for THIS
+  // The product-wide bucket is charged only by a fresh, signed notification for THIS
   // app that will cost a Server API call — not by another app's, a replayed or an ignored one.
   if (
     !(await rateLimitOk(
@@ -704,7 +704,7 @@ async function handlePlayHook(ctx: ServiceContext): Promise<Response | null> {
   if (!msg) return json({ ok: true, ignored: "not_rtdn" });
 
   const write = { db, product: product.slug, now };
-  // SEC-COM-11: dedupe on the message id AND its content, so a pre-burned id cannot drop a
+  // Dedupe on the message id AND its content, so a pre-burned id cannot drop a
   // different later notification.
   const eventId = `${msg.messageId}.${(await sha256Hex(msg.raw)).slice(0, 16)}`;
   const seen = await eventSeen(db, product.slug, PLAY_EVENTS, eventId);

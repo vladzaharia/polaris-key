@@ -497,7 +497,7 @@ describe("the deploy hook (F-10 automation)", () => {
     ],
     ["a pull request", { event_name: "pull_request" }, "event_name"],
     ["a branch", { ref: "refs/heads/main" }, "ref"],
-    // SEC-SUP-2 / SEC-INF-12: push of a semver tag at the built commit only.
+    // Push of a semver tag at the built commit only.
     ["a dispatched run", { event_name: "workflow_dispatch" }, "event_name"],
     ["a non-semver v* tag", { ref: "refs/tags/vanything" }, "ref"],
     ["another commit", { sha: "e".repeat(40) }, "sha"],
@@ -512,14 +512,14 @@ describe("the deploy hook (F-10 automation)", () => {
     expect(await getProduct(db, SYSTEM_PRODUCT_SLUG)).toBeNull();
   });
 
-  it("refuses every token when the Worker does not know its own commit (SEC-INF-12)", async () => {
+  it("refuses every token when the Worker does not know its own commit", async () => {
     delete env.PKEY_GIT_SHA;
     const res = await hook(await token());
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({ claim: "sha" });
   });
 
-  it("refuses a body that repoints the system trusted publisher (SEC-SUP-1)", async () => {
+  it("refuses a body that repoints the system trusted publisher", async () => {
     const res = await hook(await token(), {
       files: {
         ...FILES,

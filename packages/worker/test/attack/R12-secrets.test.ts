@@ -1125,7 +1125,7 @@ describe("R12-08 committed prod resource IDs", () => {
     expect(toml).toContain("REPLACE_ME_DEV_D1_ID");
   });
 
-  it("FIXED (SEC-PRV-14): Workers Logs no longer record invocation URLs", () => {
+  it("FIXED: Workers Logs no longer record invocation URLs", () => {
     const toml = readFileSync(join(HERE, "..", "..", "wrangler.toml"), "utf8");
     const logs = toml.slice(toml.indexOf("[observability.logs]"));
     expect(logs).toMatch(/enabled = true/);

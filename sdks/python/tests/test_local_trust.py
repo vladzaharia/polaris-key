@@ -2,7 +2,8 @@
 # @pkey-feature core.cache
 # @pkey-feature license.gate
 # @pkey-feature core.verify
-"""SEC-WP-16 slice C: the local-trust set (SEC-CLI-1/2/4/8, SEC-LIC-16, SEC-CRY-25, SEC-CRY-6).
+"""The local-trust set: a hard refusal deletes the document it answered for, the licence gate
+input, the effective clock, device binding, the required floor and ``typ``, canonical base64url.
 
 Each test fails on the parent commit's source."""
 
@@ -46,7 +47,7 @@ def _cfg(r: httpx.Request) -> str:
     return sign_config(r.headers["X-PKey-Device"])
 
 
-# ── SEC-CLI-2 ───────────────────────────────────────────────────────────────────────
+# ── a hard refusal deletes the document ─────────────────────────────────────────────
 def test_hard_401_deletes_the_document_it_answered_for(tmp_path) -> None:
     state = {"revoked": False}
     base = routes(license_jws=_lic, config_jws=_cfg)
@@ -104,7 +105,7 @@ def test_403_build_block_deletes_the_licence_document(tmp_path) -> None:
     c2.close()
 
 
-# ── SEC-CLI-4 ───────────────────────────────────────────────────────────────────────
+# ── the licence gate input ──────────────────────────────────────────────────────────
 def test_unsigned_discovery_cannot_switch_the_licence_gate_off() -> None:
     c = make_client(routes())
     c.core.set_services({"license": {"enabled": False}, "config": {"enabled": True}})
@@ -127,7 +128,7 @@ def test_a_config_only_build_declares_it_with_expected_services() -> None:
     c.close()
 
 
-# ── SEC-CLI-8 ───────────────────────────────────────────────────────────────────────
+# ── the effective clock ─────────────────────────────────────────────────────────────
 def test_network_path_verification_runs_on_the_effective_clock() -> None:
     # A document issued 10 days "ahead" of the wall clock is far-future on the raw wall, but the
     # signed floor (here raised by a verified artifact) says real time is at least that late.
@@ -138,7 +139,7 @@ def test_network_path_verification_runs_on_the_effective_clock() -> None:
     assert c.license.doc is not None
 
 
-# ── SEC-CLI-1 (part 1) ──────────────────────────────────────────────────────────────
+# ── device binding ──────────────────────────────────────────────────────────────────
 def test_stored_device_id_that_disagrees_with_the_anchor_is_discarded(tmp_path) -> None:
     from polaris_key.core.device_binding import bind_device_id
 
@@ -180,7 +181,7 @@ def test_core_init_binds_the_device_id(tmp_path, monkeypatch) -> None:
     c.close()
 
 
-# ── SEC-LIC-16 / SEC-CRY-25 / SEC-CRY-6 ─────────────────────────────────────────────
+# ── required floor, required typ, canonical base64url ───────────────────────────────
 def test_the_anti_replay_floor_is_a_required_argument() -> None:
     with pytest.raises(TypeError):
         verify_license_doc("a.b.c", TRUST, expected_aud=PRODUCT, device_id="d")  # type: ignore[call-arg]

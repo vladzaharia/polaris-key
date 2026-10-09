@@ -1,4 +1,4 @@
-// SEC-WP-18: the baseline migration, replayed on a populated device_fingerprints table.
+// The baseline migration, replayed on a populated device_fingerprints table.
 import Database from "better-sqlite3";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";

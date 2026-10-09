@@ -6,7 +6,7 @@ import {
   purgePrivacyResidue,
 } from "../src/privacyResidue.js";
 
-describe("privacy residue sweep (SEC-PRV-6, SEC-PRV-17)", () => {
+describe("privacy residue sweep", () => {
   it("scrubs relink name/email after the undo window and purges old merge tombstones", async () => {
     const db = await makeTestDb();
     await seedProduct(db, "p1");

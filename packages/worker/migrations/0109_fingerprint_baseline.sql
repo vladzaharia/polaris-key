@@ -1,4 +1,4 @@
--- SEC-WP-18 (CRY-12/13): an immutable fingerprint baseline. Drift is measured against the first
+-- An immutable fingerprint baseline. Drift is measured against the first
 -- usable fingerprint bound to a device, never against the last one tolerated. A NULL baseline
 -- means the next usable fingerprint sets it.
 ALTER TABLE device_fingerprints ADD COLUMN baseline_components_json TEXT;

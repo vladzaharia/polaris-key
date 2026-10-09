@@ -204,7 +204,7 @@ describe("a host-side re-register on 401 (P1b-06)", () => {
       return reregistered();
     });
     bridge.refresh = hostSync;
-    // CLI-4: a config-only build says so; a reported-off licence service never ungates a
+    // A config-only build says so; a reported-off licence service never ungates a
     // build that expects it.
     const adapter = desktopAdapter({
       bridge,

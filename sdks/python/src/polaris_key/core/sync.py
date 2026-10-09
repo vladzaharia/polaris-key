@@ -130,7 +130,7 @@ def sync(deps: SyncDeps, *, force: bool = False) -> SyncResult:
             patch["pin_revocations"] = evidence
 
     outcomes = (license_outcome, config_outcome)
-    # SEC-CLI-2: the unsigned hints are for display; no verdict depends on them. What makes a
+    # The unsigned hints are for display; no verdict depends on them. What makes a
     # revocation (or a build block) hold offline is that the document it answered for is REMOVED
     # in the same write, so clearing a hint yields `needs-activation`, not a usable document.
     # The token is kept, so the gate still reports `revoked` / the block.
@@ -283,7 +283,7 @@ def _sync_license(deps: SyncDeps, force: bool) -> DocOutcome:
             expected_aud=ctx.product,
             device_id=ctx.device_id,
             last_accepted_issued_at=held.issuedAt if held else None,
-            # SEC-CLI-8: the effective clock (never below the signed floor), not the raw wall.
+            # The effective clock (never below the signed floor), not the raw wall.
             now=ctx.now(),
         )
         if doc is None:
@@ -318,7 +318,7 @@ def _sync_config(deps: SyncDeps, force: bool) -> DocOutcome:
             expected_aud=ctx.product,
             device_id=ctx.device_id,
             last_accepted_issued_at=held.issuedAt if held else None,
-            # SEC-CLI-8: the effective clock (never below the signed floor), not the raw wall.
+            # The effective clock (never below the signed floor), not the raw wall.
             now=ctx.now(),
         )
         if doc is None:

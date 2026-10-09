@@ -12,7 +12,7 @@ head_sampling_rate = 1
 enabled = true
 head_sampling_rate = 1
 persist = true
-# SEC-PRV-14: invocation logs record request URLs, which carry single-use tokens and codes.
+# Invocation logs record request URLs, which carry single-use tokens and codes.
 invocation_logs = false
 
 [observability.traces]

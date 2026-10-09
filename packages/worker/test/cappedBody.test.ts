@@ -1,6 +1,6 @@
 /**
- * SEC-WP-14: the shared capped body reader, the limit clamps, the sweep cursors and the IN-list
- * helper (SEC-WEB-2, SEC-ADM-7, SEC-CFG-11, SEC-WEB-9, SEC-INF-10, SEC-INF-11), plus the
+ * The shared capped body reader, the limit clamps, the sweep cursors and the IN-list
+ * helper, plus the
  * recurrence lint: no bare `req.text()` / `.json()` / `.arrayBuffer()` in route code.
  */
 
@@ -79,7 +79,7 @@ describe("readBodyBytes / readBodyText", () => {
   });
 });
 
-describe("SEC-WEB-2: chunked bodies are cut at the cap", () => {
+describe("chunked bodies are cut at the cap", () => {
   it("the GitHub webhook answers 413 before HMAC, pulling a bounded amount", async () => {
     const env = makeEnv(new KvMock(), []);
     env.GITHUB_WEBHOOK_SECRET = "s";
@@ -101,7 +101,7 @@ describe("SEC-WEB-2: chunked bodies are cut at the cap", () => {
   });
 });
 
-describe("SEC-ADM-7: activity limit is an integer in 1..200", () => {
+describe("activity limit is an integer in 1..200", () => {
   it("listAudit never runs unbounded or with a fractional limit", async () => {
     const db = makeTestDb();
     await seedProduct(db, "acme");
@@ -130,7 +130,7 @@ describe("SEC-ADM-7: activity limit is an integer in 1..200", () => {
   });
 });
 
-describe("SEC-CFG-11: device metadata is capped and unchanged touches are skipped", () => {
+describe("device metadata is capped and unchanged touches are skipped", () => {
   it("caps client-supplied header text", () => {
     const m = deviceMetadata(
       new Request("https://x/", {
@@ -169,7 +169,7 @@ describe("SEC-CFG-11: device metadata is capped and unchanged touches are skippe
   });
 });
 
-describe("SEC-WEB-9 / SEC-INF-10: the alarm sweeps walk the whole key space", () => {
+describe("the alarm sweeps walk the whole key space", () => {
   it("RateLimitDO reaches stale counters behind a full batch of live ones", async () => {
     vi.useFakeTimers({ now: NOW * 1000 });
     const storage = new StorageMock();
@@ -209,7 +209,7 @@ describe("SEC-WEB-9 / SEC-INF-10: the alarm sweeps walk the whole key space", ()
   });
 });
 
-describe("SEC-INF-11: IN lists bind one parameter", () => {
+describe("IN lists bind one parameter", () => {
   it("matches more than 100 values", async () => {
     const db = makeTestDb();
     const vals = Array.from({ length: 250 }, (_, i) => `k${i}`);

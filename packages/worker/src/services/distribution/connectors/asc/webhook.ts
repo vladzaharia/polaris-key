@@ -134,7 +134,7 @@ export async function handleAscWebhook(
   const body = await readBody(req);
   if (!body)
     return errorResponse(413, "body_too_large", "webhook body too large");
-  // SEC-DST-6: unauthenticated traffic is limited per client IP; the product bucket is charged
+  // Unauthenticated traffic is limited per client IP; the product bucket is charged
   // only once the HMAC checked out, so junk cannot lock Apple's deliveries out.
   if (
     !(await rateLimitOk(
@@ -204,7 +204,7 @@ export async function handleAscWebhook(
     (seen !== null && seen.outcome !== "failed")
   )
     return json({ ok: true, duplicate: true });
-  // SEC-INF-3: the KV get above is a fast path only; the atomic claim is the Durable Object's.
+  // The KV get above is a fast path only; the atomic claim is the Durable Object's.
   if (!(await claimOnce(env, "webhook-claim", kvk, 86_400)))
     return json({ ok: true, duplicate: true });
   await env.HOT.put(kvk, "1", { expirationTtl: ASC_DELIVERY_TTL_SECONDS });

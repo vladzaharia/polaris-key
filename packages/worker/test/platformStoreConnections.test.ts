@@ -1150,7 +1150,7 @@ describe("platform store connections: custody", () => {
       json(
         await handleAdmin(
           await (async () => {
-            // A proven step-up: POST /kek is in SEC-WP-09's step-up table.
+            // A proven step-up: POST /kek is in the step-up table.
             const { token, session } = await issueSession(
               env,
               {

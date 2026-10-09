@@ -11,7 +11,7 @@ permissions:
 
 # Only the canonical repo deploys (forks/PRs run CI but never deploy).
 jobs:
-  # SEC-SUP-5 / SEC-SUP-19: everything that runs repository or dependency code beyond the
+  # Everything that runs repository or dependency code beyond the
   # deploy itself (dependency install scripts, test, lint, typecheck) runs HERE, on a job with
   # no environment, no secrets and no id-token, so a compromised dependency or test cannot
   # reach CLOUDFLARE_API_TOKEN or mint a deploy-audience OIDC token. The tag/ancestry gate is
@@ -77,7 +77,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # SEC-SUP-5: no dependency lifecycle script runs beside CLOUDFLARE_API_TOKEN and the
+      # No dependency lifecycle script runs beside CLOUDFLARE_API_TOKEN and the
       # id-token (as sync-worker-secrets.yml). The build below is repository code; test, lint
       # and typecheck already passed in `verify`.
       - run: pnpm install --frozen-lockfile --ignore-scripts
@@ -138,7 +138,7 @@ jobs:
           npx wrangler queues info "pkey-deltas-dlq-$ENV"
           npx wrangler queues info "pkey-assets-$ENV"
           npx wrangler queues info "pkey-assets-dlq-$ENV"
-      # SEC-WP-21: required secrets (names only) and the bytes/registry/image origins, before
+      # Required secrets (names only) and the bytes/registry/image origins, before
       # anything changes.
       - name: Config preflight
         env:

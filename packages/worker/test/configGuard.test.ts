@@ -13,12 +13,12 @@ const good = {
   BLOB_ORIGIN: "https://dl.example.test",
 } as unknown as Env;
 
-describe("SEC-WP-21 config guard", () => {
+describe("config guard", () => {
   it("accepts a complete deployed config and exempts test envs", () => {
     expect(configProblems(good)).toEqual([]);
     expect(configProblems({} as Env)).toEqual([]);
   });
-  it("names a missing pepper, weak secret and portal fallback (LIC-11, CRY-17/18, IDN-20)", () => {
+  it("names a missing pepper, weak secret and portal fallback", () => {
     const bad = {
       ...good,
       KEY_HASH_PEPPER: undefined,
@@ -33,7 +33,7 @@ describe("SEC-WP-21 config guard", () => {
       "PORTAL_SESSION_SECRET",
     ]);
   });
-  it("rejects a bare-hostname origin (WEB-19)", () => {
+  it("rejects a bare-hostname origin", () => {
     expect(
       configProblems({ ...good, PKG_ORIGIN: "pkg.plrs.im" } as unknown as Env),
     ).toEqual(["PKG_ORIGIN"]);
@@ -50,7 +50,7 @@ describe("SEC-WP-21 config guard", () => {
   });
 });
 
-describe("SEC-IDN-20 portal session has no admin fallback", () => {
+describe("portal session has no admin fallback", () => {
   it("refuses to sign without PORTAL_SESSION_SECRET even when ADMIN_SESSION_SECRET is set", async () => {
     const { issuePortalSession } =
       await import("../src/services/identity/portal/session.js");
@@ -64,7 +64,7 @@ describe("SEC-IDN-20 portal session has no admin fallback", () => {
   });
 });
 
-describe("SEC-SUP-22 webhook secret rotation", () => {
+describe("webhook secret rotation", () => {
   async function sig(secret: string, body: string) {
     const { hmacSha256, importHmacKey } =
       await import("../src/platform/hash.js");

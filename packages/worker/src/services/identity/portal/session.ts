@@ -52,7 +52,7 @@ export interface PortalSessionIdentity {
 const PORTAL_SESSION_DOMAIN = "pkey.portal.v1|";
 
 /**
- * SEC-IDN-20: signs with `PORTAL_SESSION_SECRET` ONLY. The old fallback to `ADMIN_SESSION_SECRET`
+ * Signs with `PORTAL_SESSION_SECRET` ONLY. The old fallback to `ADMIN_SESSION_SECRET`
  * is removed: one secret must not key two realms. Absent, it fails closed.
  */
 async function sessionKey(env: Env): Promise<CryptoKey> {

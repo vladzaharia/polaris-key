@@ -146,7 +146,7 @@ export function windowBounded(range: AllowedRange): boolean {
 }
 
 /** Is `version` inside `range`? `compareSemver` calls an unparseable version equal to every
- *  bound, so a truly bounded window refuses a version it cannot order (SEC-LIC-6); an open
+ *  bound, so a truly bounded window refuses a version it cannot order; an open
  *  window (no max, min absent or 0.0.0) admits anything, as before. */
 export function versionInWindow(version: string, range: AllowedRange): boolean {
   if (windowBounded(range) && !parseSemver(version)) return false;

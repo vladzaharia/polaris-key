@@ -83,7 +83,7 @@ export function parseFingerprint(input: unknown): PresentedFingerprint | null {
 }
 
 /** Fewest components, anchor included, a fingerprint needs to bind a machine (server policy,
- *  not wire; SEC-WP-18). A thinner one proves nothing and is treated as absent. */
+ *  not wire). A thinner one proves nothing and is treated as absent. */
 export const FINGERPRINT_MIN_COMPONENTS = 3;
 
 /** The anchor plus enough other components to mean something. Unusable = absent. */
@@ -186,7 +186,7 @@ export function matchFingerprint(
     stored.anchorHash !== null &&
     presented.components[FINGERPRINT_ANCHOR] === stored.anchorHash;
   const raw = base + (base > 0 && anchorHeld ? 1 : 0);
-  // Never more than half of the baseline may change, anchor bonus included (CRY-13); strict
+  // Never more than half of the baseline may change, anchor bonus included; strict
   // stays 0 and `off` never enforces.
   const n = Object.keys(stored.components).length;
   const tolerance = mode === "off" ? raw : Math.min(raw, Math.floor(n / 2));

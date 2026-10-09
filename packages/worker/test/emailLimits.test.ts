@@ -503,12 +503,12 @@ describe("send side", () => {
   });
 });
 
-describe("SEC-WP-15 lockout keys", () => {
+describe("lockout keys", () => {
   const addr = { product: "djdl", recipient: "v@example.com", flowId: "f" };
   const attacker = reqFrom("198.51.100.7");
   const victim = reqFrom("203.0.113.9");
 
-  it("an attacker's strikes do not lock the victim's network out (SEC-IDN-8)", async () => {
+  it("an attacker's strikes do not lock the victim's network out", async () => {
     vi.useFakeTimers({ now: T * 1000 });
     const e = env();
     for (let i = 0; i < EMAIL_LOCKOUT_THRESHOLD; i++) {
@@ -542,7 +542,7 @@ describe("SEC-WP-15 lockout keys", () => {
     ).toBe(true);
   });
 
-  it("guesses with no live code do not strike or extend a lock (SEC-CRY-16)", async () => {
+  it("guesses with no live code do not strike or extend a lock", async () => {
     vi.useFakeTimers({ now: T * 1000 });
     const e = env();
     for (let i = 0; i < EMAIL_LOCKOUT_THRESHOLD * 2; i++)

@@ -292,7 +292,7 @@ describe("pkey sdk --lang", () => {
     expect(io.out()).toBe(renderSdkConfig("node", await facts()));
   });
 
-  it("warns on stderr when discovery lists one signing key, and not when it lists two (SEC-CRY-3)", async () => {
+  it("warns on stderr when discovery lists one signing key, and not when it lists two", async () => {
     const cwd = await tempDir();
     const args = [
       "sdk",

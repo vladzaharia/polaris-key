@@ -341,7 +341,7 @@ export async function finalizeSession(
   }
   const session = await readSession(db, key);
   if (!session) return { ok: false, skipped: true };
-  // SEC-DST-3: the credential that gathered the files must still be live at publish time. A
+  // The credential that gathered the files must still be live at publish time. A
   // token revoked after the upload began (a leaked publish credential, found and revoked) can
   // not land a version through the settle or the sweep.
   const result = !(await principalStillLive(db, session.principal))
@@ -392,7 +392,7 @@ export async function finalizeSession(
   return result;
 }
 
-/** SEC-DST-3: is the session's publishing token (registry or CI) still unrevoked? */
+/** Is the session's publishing token (registry or CI) still unrevoked? */
 async function principalStillLive(
   db: Db,
   p: PublishPrincipal,

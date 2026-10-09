@@ -211,7 +211,7 @@ export function windowsPowerShellPath(
   return WINDOWS_CIM_COMMAND.program;
 }
 
-/** Anchor probes run by ABSOLUTE path, never through PATH (CLI-1, D4): a writable directory
+/** Anchor probes run by ABSOLUTE path, never through PATH: a writable directory
  *  early in PATH holding a fake `ioreg` or `reg` would otherwise choose the device id. */
 export const DARWIN_IOREG = "/usr/sbin/ioreg";
 

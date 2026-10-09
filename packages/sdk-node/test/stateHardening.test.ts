@@ -1,8 +1,8 @@
 // @pkey-feature core.store
 // @pkey-feature core.errors
-// SEC-WP-16 slice A2 — Node hardening: CLI-3 (the §5 redirect rule), CLI-9 (atomic, 0600/0700
-// state), CLI-10 (no symlink reads, keyring before file, validated device id), CLI-11 (a token
-// never prints), CLI-13 (origin-only baseUrl, slug shape), CLI-17 (the bridge's default sender).
+// Node hardening: the §5 redirect rule, atomic 0600/0700 state, reads (no symlinks, keyring
+// before file, a validated device id), a token never prints, an origin-only baseUrl and the
+// slug shape, and the bridge's default sender.
 
 import {
   chmodSync,
@@ -50,7 +50,7 @@ const H = {
   accept: "application/json",
 };
 
-describe("CLI-3: the §5 redirect rule", () => {
+describe("the §5 redirect rule", () => {
   it("asks the transport not to follow, and keeps the headers on a same-origin hop", async () => {
     const c = chain([{ status: 302, location: "/other" }, { status: 200 }]);
     const res = await c.f("https://k.test/p/a", { headers: H });
@@ -168,7 +168,7 @@ describe("CLI-3: the §5 redirect rule", () => {
   });
 });
 
-describe("CLI-13: baseUrl and slug", () => {
+describe("baseUrl and slug", () => {
   it("normalizeBaseUrl keeps only the origin", () => {
     expect(normalizeBaseUrl("https://key.plrs.im/x/y?z=1#f")).toBe(
       "https://key.plrs.im",
@@ -201,7 +201,7 @@ describe("CLI-13: baseUrl and slug", () => {
 const tmp = (): string => realpathSync(mkdtempSync(join(tmpdir(), "pkey-a2-")));
 const mode = (p: string): number => statSync(p).mode & 0o777;
 
-describe("CLI-9: state directory and files", () => {
+describe("state directory and files", () => {
   it("chmods an existing wide directory and its files on init", () => {
     const root = tmp();
     const dir = join(root, "djdl");
@@ -248,7 +248,7 @@ describe("CLI-9: state directory and files", () => {
   });
 });
 
-describe("CLI-10: reads", () => {
+describe("reads: no symlinks, keyring first, a validated device id", () => {
   it("does not read a token through a symlink", async () => {
     const root = tmp();
     const s = new FileStore("djdl", root);
@@ -294,7 +294,7 @@ describe("CLI-10: reads", () => {
   });
 });
 
-describe("CLI-11: a token never prints", () => {
+describe("a token never prints", () => {
   it("console.log, util.inspect and JSON.stringify show no token", () => {
     const r = redactOnPrint(
       { kind: "ok", token: "pkeyt_live", schemaVersion: 1 },
@@ -306,7 +306,7 @@ describe("CLI-11: a token never prints", () => {
   });
 });
 
-describe("CLI-17: the bridge's default sender", () => {
+describe("the bridge's default sender", () => {
   function bridge(opts: { appOrigin?: string | string[] } = {}) {
     const handlers = new Map<string, (e: IpcMainInvokeEventLike) => unknown>();
     exposePolarisBridge(

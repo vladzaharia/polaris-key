@@ -513,7 +513,7 @@ export interface Env {
    */
   GITHUB_WEBHOOK_SECRET?: string;
   /**
-   * The previous webhook secret, still accepted during a rotation (SEC-SUP-22).
+   * The previous webhook secret, still accepted during a rotation.
    * @inventory secret delivery
    */
   GITHUB_WEBHOOK_SECRET_PREVIOUS?: string;

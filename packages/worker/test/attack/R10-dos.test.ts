@@ -980,7 +980,7 @@ describe("R10-05 /<p>/auth/* is unauthenticated, unrate-limited and writes durab
 // ═════════════════════════════════════════════════════════════════════════════
 
 describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () => {
-  it("SEC-WEB-2: an oversize unsigned body is refused at the cap (413), before any HMAC", async () => {
+  it("an oversize unsigned body is refused at the cap (413), before any HMAC", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), []);
     env.GITHUB_WEBHOOK_SECRET = "s3cret";
@@ -1088,7 +1088,7 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     const token = await activate(env, db, product, key, "dev-1");
 
     const big = "U".repeat(16 * 1024);
-    // Still 16 KiB, but a parseable version: SEC-WP-22 refuses an unparseable version under the
+    // Still 16 KiB, but a parseable version: the Worker refuses an unparseable version under the
     // product's bounded compat window, and this case is about what reaches the write.
     const bigVersion = `1.0.0+${big}`.slice(0, 16 * 1024);
     const res = await handleLicenseDocument(
@@ -1109,7 +1109,7 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     expect(res.status).toBe(200);
 
     const row = await getDevice(db, "djdl", "dev-1");
-    // SEC-CFG-11: every client-supplied column is now capped at 128 characters.
+    // Every client-supplied column is now capped at 128 characters.
     expect(row?.ua?.length).toBeLessThanOrEqual(128);
     expect(row?.platform?.length).toBeLessThanOrEqual(128);
     expect(row?.arch?.length).toBeLessThanOrEqual(128);
@@ -1128,7 +1128,7 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     await activate(env, db, product, key, "dev-big", { "user-agent": big });
     expect(
       (await getDevice(db, "djdl", "dev-big"))?.ua?.length,
-    ).toBeLessThanOrEqual(128); // SEC-CFG-11
+    ).toBeLessThanOrEqual(128);
   });
 });
 
@@ -1192,7 +1192,7 @@ describe("R10-10 GET /<p>/{license,config}/document: no rate limit, one D1 write
       );
       expect(res.status).toBe(200);
     }
-    // SEC-CFG-11: an unchanged, freshly-stamped device row is no longer rewritten per poll.
+    // An unchanged, freshly-stamped device row is no longer rewritten per poll.
     expect(counted.writes).toBe(0);
     expect(counted.reads).toBeGreaterThanOrEqual(5);
     // Recorded for the finding write-up; not an assertion target.

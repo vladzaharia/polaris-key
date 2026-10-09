@@ -133,7 +133,7 @@ export async function sync(
   // A successful authenticated exchange — 200 OR 304 — clears both hints. They are DISPLAY
   // state (§4.1): no verdict depends on them, because the document they answered for is
   // already gone (below), so clearing them on evidence of a healthy session loosens nothing.
-  // CLI-2 (D3): a hard 401 deletes the slice it answered for, and a 403 build block deletes
+  // A hard 401 deletes the slice it answered for, and a 403 build block deletes
   // the licence document, IN THE SAME WRITE that sets the hint. Without that, deleting the
   // hint from the plain-JSON record would hand back a usable cached document offline.
   if (license.outcome.kind === "unauthorized" || blockedOutcome)
@@ -297,7 +297,7 @@ function syncLicense(deps: SyncDeps, force: boolean): Promise<DocSync> {
         trust: trust.effective,
         expectedAud: ctx.product,
         deviceId: ctx.deviceId,
-        // LIC-16: the floor is explicit; null = nothing held yet. CLI-8: the effective clock.
+        // The floor is explicit; null = nothing held yet. `now` is the effective clock.
         lastAcceptedIssuedAt: cache.state.license?.doc.issuedAt ?? null,
         now: ctx.now(),
       });

@@ -7,7 +7,7 @@
 //
 //   licenseServiceEnabled  `ctx.licenseGateEnabled()`: the build's `expectedServices` (default
 //                          licence + config) OR a discovery loaded this session. Unsigned
-//                          discovery can switch the gate on, never off (CLI-4). FALSE
+//                          discovery can switch the gate on, never off. FALSE
 //                          short-circuits the machine to `not-applicable` with `isUsable:
 //                          true`, which is how a config-only product (one that names
 //                          `expectedServices` without `license`) boots usable (D-08).

@@ -24,7 +24,7 @@ function parsePayload(json: string | null | undefined): ManagedPayload {
 
 const STATES = new Set(["default", "enforced", "hidden"]);
 
-/** SEC-CFG-7/8: a stored layer is untrusted JSON; keep only well-formed entries with a known state. */
+/** A stored layer is untrusted JSON; keep only well-formed entries with a known state. */
 function cleanMap(m: unknown): Record<string, ManagedEntry> {
   const out: Record<string, ManagedEntry> = {};
   if (m === null || typeof m !== "object" || Array.isArray(m)) return out;

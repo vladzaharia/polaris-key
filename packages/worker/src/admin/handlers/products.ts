@@ -160,7 +160,7 @@ export async function handleProducts(
   // Product wizard (F16), and whether a slug is taken is already public (`/<slug>/.well-known/
   // polaris.json` answers for every product).
   if (segments.length === 1 && segments[0] === "slug-check") {
-    // SEC-ADM-5: the CURRENT platform group, not whatever the cookie was minted with.
+    // The CURRENT platform group, not whatever the cookie was minted with.
     if (!isPlatformAdmin(env, session))
       return forbidden("platform admin required");
     if (req.method !== "GET")
@@ -1674,7 +1674,7 @@ async function handleKeys(
       );
     }
     const status = action === "retire" ? "retired" : "revoked";
-    // SEC-CRY-1: revoked is terminal and retire only leaves staged; the UPDATE is conditional
+    // Revoked is terminal and retire only leaves staged; the UPDATE is conditional
     // on the transition table, so a lost race (or a revoked kid) changes 0 rows -> 409.
     if (!keyTransitionAllowed(action, row.status)) return keyStateConflict(kid);
     // `revoked_at` opens the §2.3 explicit-revocation window: the trust manifest keeps

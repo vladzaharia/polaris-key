@@ -236,7 +236,7 @@ export function licenseUsable(
 function toStoredFingerprint(row: FingerprintRow): StoredFingerprint {
   let components: ComponentMap = {};
   try {
-    // SEC-WP-18: drift is always measured against the immutable baseline; a row without one
+    // Drift is always measured against the immutable baseline; a row without one
     // (unverified, or too thin to ever have been usable) has nothing to compare.
     const parsed: unknown = JSON.parse(row.baseline_components_json ?? "{}");
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
@@ -562,7 +562,7 @@ export async function bindDevice(
   };
   if (relicensed) await clearDeviceInheritance(db, product.slug, deviceId);
   await upsertDevice(db, device);
-  // SEC-LIC-12: a row changing licence is the trace of a seat moving; record both licence ids
+  // A row changing licence is the trace of a seat moving; record both licence ids
   // (never a key or token) so a victim's lost seat is explicable.
   if (relicensed) {
     await appendAudit(db, {
@@ -838,7 +838,7 @@ export async function validateDeviceToken(
   return { tokenHash, license, device };
 }
 
-/** SEC-LIC-3: the rotation's compare-and-set found the device changed under it. */
+/** The rotation's compare-and-set found the device changed under it. */
 export class DeviceTokenRotationLost extends Error {
   constructor() {
     super("device changed during token rotation");
@@ -854,7 +854,7 @@ export async function rotateDeviceToken(
 ): Promise<string> {
   const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
-  // SEC-LIC-3: a compare-and-set, not a full-row upsert from the snapshot `validateDeviceToken`
+  // A compare-and-set, not a full-row upsert from the snapshot `validateDeviceToken`
   // read. A deauthorize, a revoke or another rotation that landed in between leaves the row
   // alone, and the new credential is never minted for a device that is no longer live.
   const swapped = await db.runChanges(
@@ -905,7 +905,7 @@ export async function touchDeviceMetadata(
     sdk_name: meta.sdkName ?? device.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? device.sdk_version ?? null,
   };
-  // SEC-CFG-11: a device row whose metadata is unchanged and was stamped recently is not
+  // A device row whose metadata is unchanged and was stamped recently is not
   // rewritten, so a tight poll loop costs no D1 writes.
   const unchanged =
     next.ua === device.ua &&
@@ -915,7 +915,7 @@ export async function touchDeviceMetadata(
     next.sdk_name === (device.sdk_name ?? null) &&
     next.sdk_version === (device.sdk_version ?? null);
   if (unchanged && now - device.last_seen < TOUCH_MIN_INTERVAL_SEC) return;
-  // SEC-LIC-3 / SEC-CFG-6: narrow UPDATE of the metadata columns only, guarded by the state the
+  // Narrow UPDATE of the metadata columns only, guarded by the state the
   // caller authenticated against. A full-row upsert from the stale snapshot resurrected a device
   // deauthorized (or re-tokened) while the request was in flight.
   await db.run(
@@ -937,10 +937,10 @@ export async function touchDeviceMetadata(
   );
 }
 
-/** SEC-CFG-11: the least gap between `last_seen` stamps for a device whose metadata is unchanged. */
+/** The least gap between `last_seen` stamps for a device whose metadata is unchanged. */
 const TOUCH_MIN_INTERVAL_SEC = 300;
 
-/** SEC-CFG-11: longest stored value for a client-supplied metadata header. */
+/** Longest stored value for a client-supplied metadata header. */
 const MAX_META_LEN = 128;
 const capMeta = (v: string | null): string | null =>
   v === null ? null : v.slice(0, MAX_META_LEN);

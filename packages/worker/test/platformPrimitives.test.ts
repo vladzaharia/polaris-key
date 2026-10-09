@@ -117,7 +117,7 @@ const PORTAL_FALLBACK_PIN =
 
 const FALLBACK_ENV = {
   ADMIN_SESSION_SECRET: "shared-secret-for-both",
-  // SEC-IDN-20: the fallback is gone; the same material is now set explicitly so the pins
+  // The fallback is gone; the same material is now set explicitly so the pins
   // (and the domain-tag test below, which needs one shared key) still hold.
   PORTAL_SESSION_SECRET: "shared-secret-for-both",
 } as unknown as Env;

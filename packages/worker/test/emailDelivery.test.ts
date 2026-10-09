@@ -305,7 +305,7 @@ describe("provider failures and Apple private relay", () => {
   });
 });
 
-describe("SEC-PRV-3: only a bare addr-spec is mailed", () => {
+describe("only a bare addr-spec is mailed", () => {
   it("refuses a display-name wrapped recipient before the provider", async () => {
     const { env, db, sent } = await (async () => {
       const sent: unknown[] = [];

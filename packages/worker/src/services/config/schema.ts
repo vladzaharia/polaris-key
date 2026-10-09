@@ -4,7 +4,7 @@ import type { Product } from "../../core/products.js";
 import { getActiveSchema } from "../../core/data.js";
 import { errorResponse } from "../../core/errors.js";
 
-/** SEC-CFG-10: anonymous callers get the catalog without `default`/`examples` of secret entries. */
+/** Anonymous callers get the catalog without `default`/`examples` of secret entries. */
 export function publicCatalogJson(json: string): string {
   try {
     const c = JSON.parse(json) as { entries?: unknown };

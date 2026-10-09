@@ -115,7 +115,7 @@ const signLicense = (over: Partial<LicenseDoc> = {}): Promise<string> =>
 const signConfig = (over: Partial<ConfigDoc> = {}): Promise<string> =>
   signJws(configDoc(over), PEM, KID, "pkey-config+jws");
 
-describe("LIC-16 — the anti-replay floor is a required argument", () => {
+describe("the anti-replay floor is a required argument", () => {
   it("a call that omits the floor is rejected (fails closed); an explicit null means no floor", async () => {
     const { lastAcceptedIssuedAt: _omitted, ...noFloor } = baseOpts();
     void _omitted;

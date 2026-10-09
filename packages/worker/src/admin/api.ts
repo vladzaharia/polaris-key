@@ -450,7 +450,7 @@ export async function handleAdminApi(
     // `SameSite=Lax` (the usual fix for post-OIDC redirects) would quietly remove.
     if (req.method !== "POST")
       return err(405, "method_not_allowed", "logout requires POST");
-    // SEC-CRY-21 / SEC-ADM-5: sign-out also voids the cookie server-side, for every browser
+    // Sign-out also voids the cookie server-side, for every browser
     // this operator holds; a replay of the old cookie is a 401.
     let revoked = true;
     try {

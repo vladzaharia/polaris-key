@@ -205,7 +205,7 @@ describe("gitDescribe", () => {
     expect(gitDescribe(d)).toEqual({ latestTag: "v0.8.12", distance: 3 });
   });
 
-  it("ignores a malformed nearer tag and takes the highest strict reachable tag (SEC-SUP-18)", () => {
+  it("ignores a malformed nearer tag and takes the highest strict reachable tag", () => {
     const d = repo();
     const git = (...args: string[]) =>
       execFileSync("git", args, { cwd: d, stdio: "ignore" });

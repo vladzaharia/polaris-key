@@ -98,7 +98,7 @@ const clearPasskeyFlow = (): string =>
   clearAccountRealmCookie(PASSKEY_FLOW_COOKIE);
 
 /** The body as a JSON object (`{}` when empty), or `null` when it is not one, is not same-origin
- *  JSON, or is too large (SEC-IDN-2). */
+ *  JSON, or is too large. */
 function readBoundedJson(
   req: Request,
 ): Promise<Record<string, unknown> | null> {

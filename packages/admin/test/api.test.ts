@@ -167,7 +167,7 @@ describe("api — request shaping", () => {
   });
 });
 
-describe("api — step-up refusals (SEC-ADM-4)", () => {
+describe("api — step-up refusals", () => {
   afterEach(() => setStepUpRedirectForTests());
 
   it("a gated action refused for a stale step-up goes to the step-up sign-in", async () => {

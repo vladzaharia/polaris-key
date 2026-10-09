@@ -161,7 +161,7 @@ describe("the sender identities", () => {
   });
 });
 
-describe("SEC-PRV-7 mixed-script names", () => {
+describe("mixed-script names", () => {
   it("refuses Latin mixed with a look-alike script", () => {
     expect(checkSenderAppName("Acme Рay")).toEqual({
       ok: false,

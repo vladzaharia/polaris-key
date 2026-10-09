@@ -1,5 +1,5 @@
 /**
- * SEC-WP-13 — commerce hook hardening. Fakes only (`commerceFake.ts`); the routes run through the
+ * Commerce hook hardening. Fakes only (`commerceFake.ts`); the routes run through the
  * real router.
  */
 
@@ -37,7 +37,7 @@ const hook = (cw: CommerceWorld, signedPayload: unknown, ip?: string) =>
 const uuid = (n: number) =>
   `1b6e2f6a-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
-describe("SEC-CRY-7: a key that is not a curve point is a refusal, not a crash", () => {
+describe("a key that is not a curve point is a refusal, not a crash", () => {
   it("certificateKey throws X509Error for an invalid EC point", async () => {
     const bad = {
       spki: new Uint8Array(91).fill(7),
@@ -47,7 +47,7 @@ describe("SEC-CRY-7: a key that is not a curve point is a refusal, not a crash",
   });
 });
 
-describe("SEC-CRY-8 / SEC-COM-13 / SEC-COM-12: App Store hook", () => {
+describe("App Store hook", () => {
   it("refuses a notification signed more than 24 h ago, with a bare 401", async () => {
     const cw = await world();
     const old = await cw.fakes.apple.signNotification(
@@ -65,7 +65,7 @@ describe("SEC-CRY-8 / SEC-COM-13 / SEC-COM-12: App Store hook", () => {
   });
 });
 
-describe("SEC-COM-1: only notifications that cost a Server API call spend the product bucket", () => {
+describe("only notifications that cost a Server API call spend the product bucket", () => {
   it("120+ Apple-signed notifications for another app cannot 429 a real refund", async () => {
     const cw = await world();
     const binding = await bindingOf(cw, cw.tokenA);
@@ -92,7 +92,7 @@ describe("SEC-COM-1: only notifications that cost a Server API call spend the pr
   });
 });
 
-describe("SEC-COM-8: an unresolved notification is retried, not deduped", () => {
+describe("an unresolved notification is retried, not deduped", () => {
   it("the same notification applies on redelivery once the binding exists", async () => {
     const cw = await world();
     const tx = { transactionId: "2000000222" }; // no appAccountToken: unbound
@@ -137,7 +137,7 @@ describe("Play hook", () => {
     },
   };
 
-  it("SEC-COM-12: a rejected push is a bare 401", async () => {
+  it("a rejected push is a bare 401", async () => {
     const cw = await world();
     const res = await route(cw, "POST", "/distribution/hooks/play-rtdn", {
       body: cw.fakes.google.pushBody("m-1", { packageName: "gg.acme.djdl" }),
@@ -146,7 +146,7 @@ describe("Play hook", () => {
     expect(JSON.stringify(await res.json())).not.toContain("no_token");
   });
 
-  it("SEC-COM-9: a store reporting pending after active does not regress the purchase", async () => {
+  it("a store reporting pending after active does not regress the purchase", async () => {
     const cw = await world();
     const binding = await bindingOf(cw, cw.tokenA);
     cw.fakes.google.purchases.set(`${PLAY_SKU}/${TOKEN}`, {
@@ -170,7 +170,7 @@ describe("Play hook", () => {
     expect(await grants(cw, cw.licenseA)).toEqual([`play:${FLAG}`]);
   });
 
-  it("SEC-COM-11: a reused messageId with different content is not dropped as a duplicate", async () => {
+  it("a reused messageId with different content is not dropped as a duplicate", async () => {
     const cw = await world();
     expect(
       (await push(cw, "same-id", { testNotification: { version: "1.0" } }))
@@ -188,7 +188,7 @@ describe("Play hook", () => {
   });
 });
 
-describe("SEC-COM-4: one failing Steam row does not block the weekly re-check", () => {
+describe("one failing Steam row does not block the weekly re-check", () => {
   it("later refunded rows are still revoked", async () => {
     const cw = await world();
     const A = "76561198000000001";
@@ -222,7 +222,7 @@ describe("SEC-COM-4: one failing Steam row does not block the weekly re-check", 
   });
 });
 
-describe("SEC-COM-1 / SEC-COM-3: the weekly App Store re-read revokes a refund no notification delivered", () => {
+describe("the weekly App Store re-read revokes a refund no notification delivered", () => {
   it("revokes an active purchase Apple now reports refunded", async () => {
     const cw = await world();
     const tx = {

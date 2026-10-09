@@ -174,7 +174,7 @@ export class CacheManager {
       trust: this.trust.effective,
       expectedAud: this.ctx.product,
       deviceId: this.ctx.deviceId,
-      // Reload: no floor (LIC-16, explicit); the floors are DERIVED from what verifies here.
+      // Reload: no floor (explicit); the floors are DERIVED from what verifies here.
       lastAcceptedIssuedAt: null,
       // A cached document is EXPECTED to be past its short `expiresAt`; its signed outer bound
       // is `graceUntil`, which the gate enforces against the monotonic floor (§4.2). Asserting
@@ -283,7 +283,7 @@ export class CacheManager {
   }
 
   /**
-   * CLI-2 (D3): the server answered for this slice with a hard 401 (or, for the licence, a 403
+   * The server answered for this slice with a hard 401 (or, for the licence, a 403
    * build block), so the document is no longer a grant. Removes it — payload, artifact and ETag
    * — from the derived state AND the record, so the `flush()` that persists the display hint
    * persists the removal in the same write. The token is untouched: the gate still reports

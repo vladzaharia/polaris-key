@@ -1,5 +1,5 @@
 // @pkey-feature core.sync core.cache core.verify core.store
-// The client-local trust rules (SEC-WP-16 slice D): a hard 401 or a 403 build block REMOVES the
+// The client-local trust rules: a hard 401 or a 403 build block REMOVES the
 // slice it answered for, discovery can turn the licence gate on but never off, the network paths
 // run on the effective clock, and a desktop file store re-derives its device id from the
 // platform anchor at every start.
@@ -64,7 +64,7 @@ final class LocalTrustTests: XCTestCase {
         return (store, jws)
     }
 
-    // ── CLI-2 ───────────────────────────────────────────────────────────────────────
+    // ── a hard refusal deletes the document ─────────────────────────────────────────
     func testHardUnauthorizedRemovesTheLicenceSliceAndItsEtagInTheSameWrite() async throws {
         let (store, _) = await seeded()
         let c = try await client(store: store)
@@ -135,7 +135,7 @@ final class LocalTrustTests: XCTestCase {
         XCTAssertEqual(after?.etags[.license], "v1")
     }
 
-    // ── CLI-4 ───────────────────────────────────────────────────────────────────────
+    // ── the licence gate input ──────────────────────────────────────────────────────
     private let discoveryOff = #"""
         {"version":2,"protocolVersion":4,"product":"djdl","slug":"djdl","name":"DJDL",
          "baseUrl":"https://key.example",
@@ -187,7 +187,7 @@ final class LocalTrustTests: XCTestCase {
         XCTAssertEqual(state, .needsActivation, "not .notApplicable")
     }
 
-    // ── CLI-8 ───────────────────────────────────────────────────────────────────────
+    // ── the effective clock ─────────────────────────────────────────────────────────
     func testTrustManifestRefreshRunsOnTheEffectiveClock() async throws {
         let t = nowSec()
         let store = InMemoryStore(deviceId: "dev")
@@ -210,7 +210,7 @@ final class LocalTrustTests: XCTestCase {
         XCTAssertTrue(ok, "the manifest is judged at the effective clock, not the rolled-back wall")
     }
 
-    // ── CLI-1 ───────────────────────────────────────────────────────────────────────
+    // ── device binding ──────────────────────────────────────────────────────────────
     private func derived(_ raw: String) -> String { DeviceID.fromRaw(productSlug: "djdl", raw: raw) }
 
     private func seededRebindable(id: String) async -> RebindableStore {

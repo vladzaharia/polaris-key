@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * SEC-WP-21 deploy preflight. Fails the deploy while a required secret is not set on the target
+ * Deploy preflight. Fails the deploy while a required secret is not set on the target
  * environment or an origin var in wrangler.toml is not an absolute https URL. Reads NAMES only:
  * `wrangler secret list` output on stdin (JSON), never a value. Strength (length) is enforced at
  * runtime by src/core/configGuard.ts.

@@ -73,7 +73,7 @@ export interface AdminSession {
    */
   authAt?: number;
   /**
-   * SEC-ADM-3: when the operator re-authenticated through a `prompt=login` step-up flow that the
+   * When the operator re-authenticated through a `prompt=login` step-up flow that the
    * IdP proved with `auth_time`. An ordinary sign-in never sets it, so only an explicit step-up
    * satisfies `isSteppedUp`.
    */
@@ -112,7 +112,7 @@ async function sessionKey(env: Env): Promise<CryptoKey> {
  * Domain-separation tag mixed into the signed message (R1-02).
  *
  * The admin and portal realms once shared a raw key (the portal fell back to
- * `ADMIN_SESSION_SECRET`; removed in SEC-WP-21). Before this tag, the only thing stopping a portal
+ * `ADMIN_SESSION_SECRET`; that fallback is gone). Before this tag, the only thing stopping a portal
  * cookie (obtainable by anyone with an email address) from being replayed as an admin cookie
  * was that the two JSON bodies happened to carry different field names: add a `sub` and a
  * `groups` array to `PortalSession` — both natural next features — and the realms collapse.
@@ -136,7 +136,7 @@ export interface SessionIdentity {
   groups: string[];
   /** The ID token's `auth_time` (epoch seconds), when the IdP sent one. */
   authTime?: number;
-  /** The callback ran a step-up flow and the IdP proved a fresh `auth_time` (SEC-ADM-3). */
+  /** The callback ran a step-up flow and the IdP proved a fresh `auth_time`. */
   stepUp?: boolean;
 }
 
@@ -240,6 +240,6 @@ export async function sessionFromRequest(
     now,
   );
   if (!session) return null;
-  // SEC-CRY-21: sign-out is server-side.
+  // Sign-out is server-side.
   return (await isAdminSessionRevoked(env, session)) ? null : session;
 }

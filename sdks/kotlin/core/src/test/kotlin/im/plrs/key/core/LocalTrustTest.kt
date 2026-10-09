@@ -1,15 +1,15 @@
 // @pkey-feature core.cache core.sync license.gate
 //
-// SEC-WP-16 slice 16-E: no UNSIGNED input may loosen the gate.
+// No UNSIGNED input may loosen the gate.
 //
-//   CLI-2  a hard 401 deletes the document it answered for and a 403 build block deletes the
+//   - a hard 401 deletes the document it answered for and a 403 build block deletes the
 //          licence document, in the write that sets the (display-only) hint; so clearing the hint
 //          in the plain-JSON record hands back no usable document
-//   CLI-4  the licence gate is the build's own declaration OR discovery's: unsigned discovery can
+//   - the licence gate is the build's own declaration OR discovery's: unsigned discovery can
 //          switch it on, never off
-//   CLI-1  a stored device id that disagrees with the platform anchor is discarded with the token
+//   - a stored device id that disagrees with the platform anchor is discarded with the token
 //          and the grant slices; the update slices stay; anchor probes run by absolute path
-//   CLI-8  the trust manifest is verified at the effective clock
+//   - the trust manifest is verified at the effective clock
 
 package im.plrs.key.core
 
@@ -134,7 +134,7 @@ class LocalTrustTest {
         assertEquals(LicenseStatus.ok, core.licenseStatus().status)
     }
 
-    // ── CLI-1 ────────────────────────────────────────────────────────────────────────────────
+    // ── device binding ───────────────────────────────────────────────────────────────────────
 
     /** A desktop-style store whose anchor-derived id is [anchored]; the stored id starts as [stored]. */
     private class AnchoredStore(private val inner: InMemoryStore, stored: String, private val anchored: String?) : Store by inner {
@@ -212,7 +212,7 @@ class LocalTrustTest {
         assertTrue(ran.isEmpty())
     }
 
-    // ── CLI-8 ────────────────────────────────────────────────────────────────────────────────
+    // ── effective clock ──────────────────────────────────────────────────────────────────────
 
     private fun trustManifest(issuedAt: Long, expiresAt: Long): String = signer.sign(
         "pkey-trust+jws",

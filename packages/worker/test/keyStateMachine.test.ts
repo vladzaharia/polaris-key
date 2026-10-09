@@ -1,4 +1,4 @@
-/** SEC-WP-07: signing-key state machine (SEC-CRY-1, SEC-CRY-2, SEC-ADM-2). */
+/** Signing-key state machine. */
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -28,7 +28,7 @@ async function world(): Promise<World> {
   env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   await seedProduct(db, SLUG);
-  // A proven step-up: the transitions below use `breakGlass`, which SEC-WP-09 gates on one.
+  // A proven step-up: the transitions below use `breakGlass`, which is gated on one.
   const { token, session } = await issueSession(
     env,
     {
@@ -138,7 +138,7 @@ describe("transition table", () => {
   });
 });
 
-describe("SEC-CRY-1: revoked is terminal", () => {
+describe("revoked is terminal", () => {
   it("retire/activate/revoke on a revoked kid is 409 and revoked_at is preserved", async () => {
     const w = await world();
     const kid = await stage(w);
@@ -160,7 +160,7 @@ describe("SEC-CRY-1: revoked is terminal", () => {
   });
 });
 
-describe("SEC-CRY-2: activate vs revoke is atomic", () => {
+describe("activate vs revoke is atomic", () => {
   it("a target revoked after the handler's read leaves the old key active (no zero-active)", async () => {
     const w = await world();
     const kid = await stage(w);

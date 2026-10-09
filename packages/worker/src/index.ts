@@ -47,7 +47,7 @@ export default {
     // their own.
     // `ctx` lets a handler answer first and finish afterwards (P5-02: a store webhook's
     // follow-up API read), through `ServiceContext.waitUntil`.
-    // SEC-WP-21: a missing or weak required secret, or a malformed origin, refuses every request
+    // A missing or weak required secret, or a malformed origin, refuses every request
     // on a deployed environment. Names are not logged (no console in src).
     const bad = configProblems(env);
     if (bad.length > 0) {

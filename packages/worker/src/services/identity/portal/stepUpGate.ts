@@ -1,5 +1,5 @@
 /**
- * SEC-WP-09 (SEC-IDN-10, SEC-PRV-2): the portal's step-up gate for irreversible or
+ * The portal's step-up gate for irreversible or
  * credential-minting self-service actions: erase the account, remove a licence from the
  * library, mint a registry token. The session must have been signed in within
  * `STEP_UP_MAX_AGE_SECONDS`; an older 14-day cookie answers 401 `step_up_required`, the same

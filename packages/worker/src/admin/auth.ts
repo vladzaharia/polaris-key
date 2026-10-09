@@ -78,11 +78,11 @@ interface FlowRecord {
   returnTo?: string;
   /** I-12: a step-up re-authentication (`prompt=login`, `max_age=0`) for the relink tool. */
   stepUp?: boolean;
-  /** SEC-ADM-6: hash of the `ADMIN_FLOW_COOKIE` value of the browser that started the flow. */
+  /** Hash of the `ADMIN_FLOW_COOKIE` value of the browser that started the flow. */
   bindingHash: string;
 }
 
-/** SEC-ADM-6: binds an admin sign-in to the browser that started it (as the portal's I-17). */
+/** Binds an admin sign-in to the browser that started it (as the portal's I-17). */
 export const ADMIN_FLOW_COOKIE = "__Host-pkey_admin_flow";
 
 /**
@@ -185,7 +185,7 @@ const joseIdTokenVerifier: IdTokenVerifier = {
         issuer: cfg.issuer,
         audience: cfg.clientId,
         algorithms: ALLOWED_ID_TOKEN_ALGS,
-        // SEC-CRY-20: same freshness rules as the portal and product sign-ins; `exp` alone is
+        // Same freshness rules as the portal and product sign-ins; `exp` alone is
         // the IdP's choice.
         clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
         maxTokenAge: ID_TOKEN_MAX_AGE,
@@ -232,7 +232,7 @@ function htmlError(status: number, message: string): Response {
   );
 }
 
-/** SEC-ADM-15: the configured `CONSOLE_ORIGIN` (https, origin-only) when set, else the request's. */
+/** The configured `CONSOLE_ORIGIN` (https, origin-only) when set, else the request's. */
 function adminOrigin(env: Env, url: URL): string {
   try {
     const u = new URL(env.CONSOLE_ORIGIN ?? "");
@@ -341,7 +341,7 @@ export async function handleAdminCallback(
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   if (!code || !state) return htmlError(400, "Missing authorization code.");
-  // SEC-ADM-6 / SEC-IDN-9: only the browser that started the flow may finish it, checked
+  // Only the browser that started the flow may finish it, checked
   // before the single-use consume so another browser cannot burn the flow either.
   const flowKey = await adminFlowKey(state, env);
   const peeked = await getArtefact(env, flowKey);
@@ -406,7 +406,7 @@ export async function handleAdminCallback(
     );
   }
 
-  // SEC-ADM-3: only a step-up flow whose ID token carries `auth_time` records a step-up.
+  // Only a step-up flow whose ID token carries `auth_time` records a step-up.
   const { token } = await issueSession(
     env,
     { ...identity, stepUp: flow.stepUp === true },

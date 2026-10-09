@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * SEC-WP-23: the shared outbound-URL guard for fetches whose URL a repo or operator wrote and
+ * The shared outbound-URL guard for fetches whose URL a repo or operator wrote and
  * whose request carries a secret (the custom-OIDC token POST) or decides trust (the JWKS fetch).
  *
  *   https only (http only to the exact dev loopback names) · no userinfo · no private, loopback,

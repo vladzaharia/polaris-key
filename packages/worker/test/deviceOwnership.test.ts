@@ -208,7 +208,7 @@ describe("device-id ownership (SEC-WP-01)", () => {
       expect(await tokenStillValid(token)).toBe(false);
     });
 
-    it("audits a legitimate move to another licence with both licence ids (SEC-LIC-12)", async () => {
+    it("audits a legitimate move to another licence with both licence ids", async () => {
       await victimActivates();
       const res = await activate(attacker.key, VICTIM_DEVICE, VICTIM_HW);
       expect(res.status).toBe(200);

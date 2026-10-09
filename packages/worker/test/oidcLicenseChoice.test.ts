@@ -838,7 +838,7 @@ describe("I-26 browser binder", () => {
     const before = await licenseCount();
     const flow = await startDeviceFlow();
     const cb = await callback(flow.state, flow.nonce, null);
-    // SEC-IDN-4: refused before the flow is touched, so it is neither finished nor burned.
+    // Refused before the flow is touched, so it is neither finished nor burned.
     expect(cb.status).toBe(400);
     expect(await licenseCount()).toBe(before);
     expect((await devicePoll(flow, NOW + 10)).status).toBe("pending");
@@ -937,7 +937,7 @@ describe("I-26 outside the trigger", () => {
     await signsInAsToday();
   });
 
-  it("a provider: custom product: a binder (SEC-IDN-4) but no chooser", async () => {
+  it("a provider: custom product: a binder but no chooser", async () => {
     await setProvider("custom");
     product = (await loadProduct(env, db, "djdl"))!;
     await insertLic({ id: "lic_std", tier: "std", account: accountId });

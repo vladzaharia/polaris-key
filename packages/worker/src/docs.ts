@@ -160,7 +160,7 @@ export async function handleDocs(
 
   const session = await sessionFromRequest(env, req, now);
   if (!session) return loginRedirect(url.pathname);
-  // SEC-ADM-5: the current platform group, not the groups the cookie was minted with.
+  // The current platform group, not the groups the cookie was minted with.
   if (!isPlatformAdmin(env, session))
     return new Response(null, {
       status: 403,

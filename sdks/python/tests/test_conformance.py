@@ -129,7 +129,7 @@ def _doc_kwargs(case: Dict[str, Any]) -> Dict[str, Any]:
         "expected_iss": case["expectedIss"],
         "device_id": case["deviceId"],
         "now": case["now"],
-        # SEC-LIC-16: the floor is a required argument; a case that names none passes an
+        # The floor is a required argument; a case that names none passes an
         # explicit None.
         "last_accepted_issued_at": case.get("lastAcceptedIssuedAt"),
     }

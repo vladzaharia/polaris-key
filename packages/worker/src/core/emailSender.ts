@@ -171,7 +171,7 @@ export function checkSenderAppName(raw: unknown): SenderNameCheck {
   )
     return { ok: false, reason: "reserved" };
   // Latin mixed with a script whose letters imitate Latin ones is a skeleton the fold table
-  // cannot be trusted to cover (UTS #39 mixed-script restriction; SEC-PRV-7).
+  // cannot be trusted to cover (UTS #39 mixed-script restriction).
   if (CONFUSABLE_MIX_LATIN.test(name) && CONFUSABLE_MIX_OTHER.test(name))
     return { ok: false, reason: "forbidden_character" };
   return { ok: true, name };

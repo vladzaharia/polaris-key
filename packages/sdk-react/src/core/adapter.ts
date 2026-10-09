@@ -101,7 +101,7 @@ export interface ProjectFlags {
   error?: ServiceErrorMap;
   localOverrides?: Record<string, JSONValue>;
   capabilities: ServicesMap;
-  /** The licence GATE's input (CLI-4): the build's expectation OR a loaded discovery that says
+  /** The licence GATE's input: the build's expectation OR a loaded discovery that says
    *  on, never switched off by discovery. Omitted: `capabilities.license.enabled`. */
   licenseGate?: boolean;
 }

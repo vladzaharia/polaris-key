@@ -1,9 +1,7 @@
-// SEC-WP-16 slice A1 — client-local trust: CLI-1 (device binding), CLI-2 (a hard 401 or a build
-// block deletes the document it answered for), CLI-8 (the network path runs on the effective
-// clock) and the probe-by-absolute-path half of CLI-1. CLI-4 (the gate input) is pinned in
-// capabilities.test.ts, LIC-16 (the required floor) in client-core's verify.test.ts.
-//
-// Every test below fails on the parent commit (see the slice report).
+// Client-local trust: device binding to the hardware anchor, a hard 401 or a build block
+// deleting the document it answered for, the network path running on the effective clock,
+// and anchor probes run by absolute path. The gate input is pinned in capabilities.test.ts,
+// the required anti-replay floor in client-core's verify.test.ts.
 
 import { chmodSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -107,7 +105,7 @@ async function activatedStore(
 }
 
 // @pkey-feature core.cache core.sync license.gate
-describe("CLI-2 — a hard 401 / a build block deletes the document it answered for", () => {
+describe("a hard 401 / a build block deletes the document it answered for", () => {
   it("401 on the licence deletes docs.license and its ETag; clearing the hint yields needs-activation, not ok", async () => {
     const at = nowSec() - 60;
     const { store } = await activatedStore(at);
@@ -203,7 +201,7 @@ describe("CLI-2 — a hard 401 / a build block deletes the document it answered 
   });
 });
 
-describe("CLI-8 — the network path runs on the effective clock", () => {
+describe("the network path runs on the effective clock", () => {
   afterEach(() => vi.useRealTimers());
 
   async function clientBehindFloor(
@@ -244,7 +242,7 @@ describe("CLI-8 — the network path runs on the effective clock", () => {
   });
 });
 
-describe("CLI-1 — the device id is bound to the hardware anchor", () => {
+describe("the device id is bound to the hardware anchor", () => {
   const ANCHOR = "HW-ANCHOR-1";
   const dirs = () => mkdtempSync(join(tmpdir(), "pkey-bind-"));
 
@@ -332,7 +330,7 @@ describe("CLI-1 — the device id is bound to the hardware anchor", () => {
   });
 });
 
-describe("CLI-1 — anchor probes run by absolute path, never through PATH", () => {
+describe("anchor probes run by absolute path, never through PATH", () => {
   function recorder(): { io: FingerprintIo; cmds: string[] } {
     const cmds: string[] = [];
     return {

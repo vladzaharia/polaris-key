@@ -4139,7 +4139,7 @@ export function setCsrf(token: string): void {
   csrf = token;
 }
 
-/** SEC-ADM-4: a gated action refused for a stale step-up goes to the step-up sign-in and back. */
+/** A gated action refused for a stale step-up goes to the step-up sign-in and back. */
 let redirectToStepUp = (): void => {
   const back = `/manage/${window.location.hash}`;
   window.location.href = `/manage/login?stepUp=1&returnTo=${encodeURIComponent(back)}`;

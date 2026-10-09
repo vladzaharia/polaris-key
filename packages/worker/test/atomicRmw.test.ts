@@ -1,5 +1,6 @@
-// SEC-WP-06: read-modify-write races closed (SEC-LIC-3/CFG-6, SEC-LIC-4, SEC-CRY-10/INF-4,
-// SEC-INF-3, SEC-ADM-14). Each test fails on the code before this change.
+// Read-modify-write races closed: the metadata touch and token rotation, the dormant-seat
+// release, the attestation challenge, the webhook claim and the override-migration audit id.
+// Each test fails on the code before this change.
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -27,7 +28,7 @@ import {
 import { claimOnce } from "../src/core/atomicClaim.js";
 import { SEAT_DORMANCY_SECONDS } from "../src/repo.js";
 
-describe("atomic read-modify-write (SEC-WP-06)", () => {
+describe("atomic read-modify-write", () => {
   let db: SqliteDb;
   let env: Env;
   let product: Product;
@@ -49,7 +50,7 @@ describe("atomic read-modify-write (SEC-WP-06)", () => {
     );
   });
 
-  it("SEC-LIC-3/CFG-6: a stale touch does not resurrect a deauthorized device", async () => {
+  it("a stale touch does not resurrect a deauthorized device", async () => {
     const stale = (await getDevice(db, "djdl", DEV))!;
     await setDeviceStatus(db, "djdl", DEV, "deauthorized");
     await touchDeviceMetadata(
@@ -68,7 +69,7 @@ describe("atomic read-modify-write (SEC-WP-06)", () => {
     expect((await getDevice(db, "djdl", DEV))?.status).toBe("deauthorized");
   });
 
-  it("SEC-LIC-3: rotation after a deauthorize mints nothing and leaves the row", async () => {
+  it("rotation after a deauthorize mints nothing and leaves the row", async () => {
     const stale = (await getDevice(db, "djdl", DEV))!;
     await setDeviceStatus(db, "djdl", DEV, "deauthorized");
     await expect(
@@ -85,7 +86,7 @@ describe("atomic read-modify-write (SEC-WP-06)", () => {
     expect(row?.token_hash).toBe("h1");
   });
 
-  it("SEC-LIC-4: a dormant-released seat takes the old token with it", async () => {
+  it("a dormant-released seat takes the old token with it", async () => {
     const later = NOW + SEAT_DORMANCY_SECONDS + 10;
     expect(await releaseDormantSeats(db, "djdl", later)).toBe(1);
     const row = await getDevice(db, "djdl", DEV);
@@ -97,7 +98,7 @@ describe("atomic read-modify-write (SEC-WP-06)", () => {
     );
   });
 
-  it("SEC-INF-3/CRY-10: a claim is granted to exactly one concurrent caller", async () => {
+  it("a claim is granted to exactly one concurrent caller", async () => {
     const r = await Promise.all(
       Array.from({ length: 5 }, () =>
         claimOnce(env, "webhook-claim", "same", 60),

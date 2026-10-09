@@ -1,4 +1,4 @@
-// SEC-WP-19: nightly removal of personal data that outlives its purpose (SEC-PRV-6, SEC-PRV-17).
+// Nightly removal of personal data that outlives its purpose.
 import type { Db } from "./core/platform.js";
 
 const DAY = 24 * 60 * 60;

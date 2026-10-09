@@ -316,7 +316,7 @@ describe("capabilities — the expectedServices fallback (D-08/D-21)", () => {
 // The expectation is what this BUILD believed; the document is what the PRODUCT says. Once
 // loaded, the document wins in both directions — it can take a service away and it can grant one.
 describe("capabilities — a discovery document wins (D-21)", () => {
-  // CLI-4 (D2): discovery is unsigned, so it can switch the licence gate ON but never OFF. It
+  // Discovery is unsigned, so it can switch the licence gate ON but never OFF. It
   // still governs which sub-clients exist (the `capabilities()` assertion below).
   it("does NOT turn the licence gate off against a build that expected it", async () => {
     const m = mockFetch({
@@ -587,7 +587,7 @@ describe("getSyncState() — the React bridge contract", () => {
     expect(client.license.status().status).toBe("ok");
   });
 
-  it("(c) a recorded hard 401 sets lastSyncUnauthorized AND deletes the document it answered for (CLI-2)", async () => {
+  it("(c) a recorded hard 401 sets lastSyncUnauthorized AND deletes the document it answered for", async () => {
     const issuedAt = nowSec();
     let phase: "live" | "revoked" = "live";
     const m = mockFetch({

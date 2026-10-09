@@ -92,7 +92,7 @@ const ownUid = (): number | null =>
 /** Write `data` to `path` atomically: a 0600 temp file in the same directory (created
  *  exclusively, so a planted file or symlink at its name is refused), flushed, then renamed
  *  over the target. A crash leaves the old file or the new one, never a torn one, and a
- *  symlink planted at `path` is replaced, never followed (CLI-9). */
+ *  symlink planted at `path` is replaced, never followed. */
 function writeSecure(path: string, data: string): void {
   const tmp = `${path}.${randomUUID()}.tmp`;
   const fd = openSync(
@@ -115,7 +115,7 @@ function writeSecure(path: string, data: string): void {
   }
 }
 
-/** Read a regular file we own without following a symlink at `path` (CLI-10). Anything else
+/** Read a regular file we own without following a symlink at `path`. Anything else
  *  reads as absent. */
 function readMaybe(path: string): string | null {
   let fd: number;
@@ -137,7 +137,7 @@ function readMaybe(path: string): string | null {
 }
 
 /** Create the state directory at 0700 and make an existing one so; refuse a symlink or a
- *  directory another user owns (CLI-9). Files already in it are brought to 0600. */
+ *  directory another user owns. Files already in it are brought to 0600. */
 function secureDir(dir: string, files: string[]): void {
   mkdirSync(dir, { recursive: true, mode: 0o700 });
   if (isWindows) return;
@@ -208,11 +208,11 @@ export class FileStore implements Store {
     writeSecure(this.devicePath, id);
     return id;
   }
-  /** The hardware anchor this store binds its device id to (CLI-1). */
+  /** The hardware anchor this store binds its device id to. */
   readAnchor() {
     return this.anchor();
   }
-  /** Rewrite the stored id (device binding, CLI-1). */
+  /** Rewrite the stored id (device binding). */
   async setDeviceId(id: string) {
     writeSecure(this.devicePath, id);
   }
@@ -286,7 +286,7 @@ export interface KeyringStoreOptions {
  * a VERIFIED keyring write (set, then read back) removes it. So:
  *
  * - reads are keyring-first: a token the keyring holds wins over the file, so a plaintext file
- *   planted or left stale beside a working keyring never shadows it (CLI-10), and the stale
+ *   planted or left stale beside a working keyring never shadows it, and the stale
  *   file is removed. The file is read only when the keyring has no token or cannot be read;
  * - a fallen-back write also deletes the keyring entry, best effort, so no older token stays
  *   there for another reader;

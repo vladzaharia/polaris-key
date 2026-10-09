@@ -116,7 +116,7 @@ async function call(
   body?: unknown,
   groups: string[] = [PLATFORM_GROUP],
 ): Promise<{ status: number; body: Record<string, unknown>; raw: string }> {
-  // A proven step-up: product delete and the KEK sweep are in SEC-WP-09's step-up table.
+  // A proven step-up: product delete and the KEK sweep are in the step-up table.
   const { token, session } = await issueSession(
     env,
     {

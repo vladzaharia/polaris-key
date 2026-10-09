@@ -42,7 +42,7 @@ WHAT v4 ADDED (WIRE-CONTRACT-V4 §1.1–§1.2), for every ``typ``
 
 WHAT v3 ADDED
 
-* ``typ``: REQUIRED, with no default (SEC-CRY-25). A header carrying NO ``typ``, or a
+* ``typ``: REQUIRED, with no default. A header carrying NO ``typ``, or a
   different one, is REJECTED (§2), and a caller cannot opt out by omitting the argument.
 * ``max_payload_bytes``: a RAISE-ONLY cap for ``pkey-bundle+jws`` alone (262 144 bytes,
   §1). It can only ever raise — the effective cap is ``max(MAX_DOC_BYTES, requested)`` —
@@ -336,7 +336,7 @@ def verify_jws(
     if header.get("alg") != "EdDSA":
         return None
 
-    # 8. Domain separation (§2). The expected ``typ`` is a REQUIRED argument (CRY-25): a
+    # 8. Domain separation (§2). The expected ``typ`` is a REQUIRED argument: a
     #    caller cannot opt out of the check by omitting it, and a header with no ``typ``
     #    or a different one is rejected.
     header_typ = header.get("typ")

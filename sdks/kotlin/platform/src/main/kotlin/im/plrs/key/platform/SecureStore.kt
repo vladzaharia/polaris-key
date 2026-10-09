@@ -226,7 +226,7 @@ public class SecureStore(
     private fun encrypt(account: String, plain: ByteArray, retry: Boolean): ByteArray {
         var key = keyOrRetry()
         if (key == null) {
-            // Blobs from a previous key can never be read again (quarantined, not deleted: CLI-12).
+            // Blobs from a previous key can never be read again (quarantined, not deleted).
             quarantineBlobs()
             key = keys.create(alias)
         }
@@ -254,7 +254,7 @@ public class SecureStore(
         wipeBlobs()
     }
 
-    /** CLI-12: a transient null from the Keystore must not read as "key gone": ask once more. */
+    /** A transient null from the Keystore must not read as "key gone": ask once more. */
     private fun keyOrRetry(): SecretKey? = keys.get(alias) ?: keys.get(alias)
 
     /** Moves the blobs aside instead of deleting them, so a key that comes back can still open them. */

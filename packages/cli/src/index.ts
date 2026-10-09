@@ -1244,7 +1244,7 @@ async function cmdSdk(
       : {}),
     ...(fetchImpl ? { fetchImpl } : {}),
   });
-  // SEC-CRY-3: with one pinned key there is no remote recovery from its compromise.
+  // With one pinned key there is no remote recovery from its compromise.
   if (Object.keys(facts.pinnedKeys).length === 1)
     stderr.write(
       "warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.\n",

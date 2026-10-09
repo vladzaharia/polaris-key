@@ -125,7 +125,7 @@ export async function handleConfigDocument(
   if (licenseBound && !licenseUsable(valid.license, now))
     return wireError(401, ErrorCode.LicenseUnusable);
 
-  // SEC-CFG-11: a per-device ceiling well above any SDK's schedule.
+  // A per-device ceiling well above any SDK's schedule.
   if (
     !(await rateLimitOk(
       env,

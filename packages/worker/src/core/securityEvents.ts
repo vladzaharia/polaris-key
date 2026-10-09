@@ -1,4 +1,4 @@
-// SEC-WP-20: best-effort security-event rows for detection (who/what/when, never a secret).
+// Best-effort security-event rows for detection (who/what/when, never a secret).
 // The worker has no console logging (test/attack/R12-secrets.test.ts), so a signal is an audit
 // row. A row never carries a token, key, credential or address: `redactSummary` strips the
 // shapes that could slip in through a caller's free text, and callers pass ids, never values.

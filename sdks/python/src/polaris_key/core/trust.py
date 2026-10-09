@@ -453,7 +453,7 @@ class TrustManager:
                 # disk counter (R4-03 — `lastTrustIssuedAt` used to be an attacker-writable
                 # JSON field).
                 last_trust_issued_at=self.last_issued_at,
-                # SEC-CLI-8: the effective clock, so a rolled-back system clock cannot make a
+                # The effective clock, so a rolled-back system clock cannot make a
                 # fresh manifest look stale (or a stale one fresh).
                 now=self._ctx.now(),
             )

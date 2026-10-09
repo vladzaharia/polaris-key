@@ -321,7 +321,7 @@ async function applyRepoManifest(
   if (!screened.ok) return { ok: false, error: screened.error };
   const incomingCatalog = screened.catalog;
   if (catalogChanged) {
-    // SEC-CFG-2: a delivery downgrade of a stored serverOnly secret is not applied silently.
+    // A delivery downgrade of a stored serverOnly secret is not applied silently.
     const refusal = await declassifyRefusal(
       db,
       slug,

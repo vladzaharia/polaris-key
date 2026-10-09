@@ -498,7 +498,7 @@ export class BearerSession {
       expectedAud: this.opts.product,
       deviceId: this.deviceIdValue,
       now: this.opts.now(),
-      // Reload: no floor (LIC-16, explicit); the floors are derived from what verifies here.
+      // Reload: no floor (explicit); the floors are derived from what verifies here.
       lastAcceptedIssuedAt: null,
       checkFreshness: false as const,
     };
@@ -1086,7 +1086,7 @@ export class BearerSession {
       if (Object.keys(this.evidence).length > 0)
         patch.pinRevocations = { ...this.evidence };
     }
-    // CLI-2: a hard 401 deletes the slice it answered for, and a 403 build block deletes the
+    // A hard 401 deletes the slice it answered for, and a 403 build block deletes the
     // licence document, in the SAME write that sets the hint (hints are display-only: clearing
     // one must not hand back a usable cached document). The token and the floor stay.
     const revoked: Array<"license" | "config"> = [];

@@ -214,7 +214,7 @@ describe("fingerprinted activation", () => {
   });
 });
 
-describe("fingerprint baseline (SEC-WP-18)", () => {
+describe("fingerprint baseline", () => {
   let db: SqliteDb;
   let env: Env;
   let product: Product;

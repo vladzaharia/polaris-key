@@ -213,7 +213,7 @@ describe("CI routes: authentication and scope", () => {
 });
 
 describe("CI routes: operations", () => {
-  it("a CI token never moves a channel back to an older release (SEC-SUP-3)", async () => {
+  it("a CI token never moves a channel back to an older release", async () => {
     const { env, db, gh } = await setup();
     const fwd = await ci(env, db, gh, "/channels/beta/promote", PROMOTER, {
       releaseId: "v1.1.0",

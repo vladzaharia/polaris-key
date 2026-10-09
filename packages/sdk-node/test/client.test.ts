@@ -500,7 +500,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     expect(client.isLicensed()).toBe(false);
   });
 
-  it("304 keeps the cached documents; a 200 after a block restores the licence (CLI-2)", async () => {
+  it("304 keeps the cached documents; a 200 after a block restores the licence", async () => {
     const m = mockFetch();
     const client = await PolarisKeyClient.create({
       ...base,

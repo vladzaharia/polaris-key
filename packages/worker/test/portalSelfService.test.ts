@@ -682,7 +682,7 @@ describe("POST /api/licenses/:p/:id/keys (G7)", () => {
   });
 });
 
-describe("SEC-IDN-10: irreversible self-service needs a recent sign-in", () => {
+describe("irreversible self-service needs a recent sign-in", () => {
   async function stale() {
     const db = makeTestDb();
     const env = portalEnv(new KvMock());

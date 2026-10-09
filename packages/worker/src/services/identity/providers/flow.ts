@@ -445,7 +445,7 @@ export async function handleProviderCallback(
   if (!state) return signInPage.tookTooLong();
   // Atomic and single-use: of two racing callbacks for one state, one gets the flow. A
   // cancelled or failed provider response still burns it.
-  // SEC-IDN-9: read first, check the mix-up and the binding, and only then consume, so a
+  // Read first, check the mix-up and the binding, and only then consume, so a
   // callback from another browser (or provider) cannot burn the flow of the one that started it.
   const flowKey = await signInFlowKey(env, state);
   const raw = await getArtefact(env, flowKey);

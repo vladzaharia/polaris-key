@@ -232,7 +232,7 @@ export interface FingerprintRow {
   last_seen: number;
   last_drift_at: number | null;
   last_drift_count: number | null;
-  /** SEC-WP-18: the first usable fingerprint bound to this device; never rewritten by drift. */
+  /** The first usable fingerprint bound to this device; never rewritten by drift. */
   baseline_components_json?: string | null;
   baseline_anchor_hash?: string | null;
   baseline_at?: number | null;
@@ -1395,7 +1395,7 @@ export async function releaseDormantSeats(
   now: number,
   licenseId?: string,
 ): Promise<number> {
-  // SEC-LIC-4: the credential goes with the seat. A released row keeps `status = 'authorized'`,
+  // The credential goes with the seat. A released row keeps `status = 'authorized'`,
   // so its old token would otherwise keep validating with no seat while another device holds it.
   const base = `UPDATE devices SET seat_no = NULL, token_hash = NULL
       WHERE product = ? AND status = 'authorized'
@@ -2127,7 +2127,7 @@ export async function listAudit(
     limit?: number;
   } & AuditFilters = {},
 ): Promise<AuditRow[]> {
-  // SEC-ADM-7: an integer in 1..200; -1 (SQLite: no limit) and fractions never reach the query.
+  // An integer in 1..200; -1 (SQLite: no limit) and fractions never reach the query.
   const rawLimit = Math.floor(opts.limit ?? 50);
   const limit = Math.min(
     Number.isFinite(rawLimit) ? Math.max(rawLimit, 1) : 50,

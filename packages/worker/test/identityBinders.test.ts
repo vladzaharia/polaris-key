@@ -1,5 +1,5 @@
 /**
- * SEC-WP-10: returnTo shape, same-origin JSON on the card endpoints, the browser-session cookie
+ * The `returnTo` shape, same-origin JSON on the card endpoints, the browser-session cookie
  * and key exchange, the portal logout, and the admin sign-in's origin and timeout.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -30,7 +30,7 @@ import { bindAdminFlow } from "./flowBinderHelper.js";
 const ORIGIN = "https://key.plrs.im";
 const here = new Request(`${ORIGIN}/signin`) as unknown as Request;
 
-describe("SEC-IDN-1 returnTo never yields a protocol-relative redirect", () => {
+describe("returnTo never yields a protocol-relative redirect", () => {
   const hostile = [
     "//evil.com",
     "//evil.com/x",
@@ -75,7 +75,7 @@ describe("SEC-IDN-1 returnTo never yields a protocol-relative redirect", () => {
   });
 });
 
-describe("SEC-IDN-2 card JSON endpoints", () => {
+describe("card JSON endpoints", () => {
   const post = (init: RequestInit & { body?: string }) =>
     new Request(`${ORIGIN}/api/signin/email/start`, {
       method: "POST",
@@ -137,7 +137,7 @@ async function productFixture() {
   return { db, env, product };
 }
 
-describe("SEC-IDN-3 /session/license is same-origin only", () => {
+describe("/session/license is same-origin only", () => {
   it("opens a session for same-origin JSON and refuses a cross-site POST", async () => {
     const { db, env, product } = await productFixture();
     const { key } = await seedLicenseWithKey(db, "djdl");
@@ -167,7 +167,7 @@ describe("SEC-IDN-3 /session/license is same-origin only", () => {
   });
 });
 
-describe("SEC-IDN-13 / SEC-WEB-12 product session cookie parsing", () => {
+describe("product session cookie parsing", () => {
   const get = (cookie: string) =>
     new Request(`${ORIGIN}/djdl/identity/session`, {
       headers: { cookie },
@@ -216,7 +216,7 @@ describe("SEC-IDN-13 / SEC-WEB-12 product session cookie parsing", () => {
   });
 });
 
-describe("SEC-WEB-8 portal logout", () => {
+describe("portal logout", () => {
   const out = (headers: Record<string, string>) =>
     new Request(`${ORIGIN}/logout`, {
       method: "POST",
@@ -236,7 +236,7 @@ describe("SEC-WEB-8 portal logout", () => {
   });
 });
 
-describe("SEC-ADM-15 admin sign-in origin and timeouts", () => {
+describe("admin sign-in origin and timeouts", () => {
   afterEach(() => vi.unstubAllGlobals());
   const adminEnvFor = () => {
     const env = makeEnv(new KvMock(), []);

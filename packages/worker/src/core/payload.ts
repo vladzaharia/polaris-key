@@ -236,7 +236,7 @@ export function validatePayload(
       // signed into a device document. Every document path funnels through this prune
       // (config document and the bundles that reuse buildConfigDoc), so enforcing it here
       // is what makes the catalog declaration true rather than descriptive.
-      // SEC-CFG-1: and `edgeMint` values are minted, never signed raw — for EVERY kind, since a
+      // And `edgeMint` values are minted, never signed raw — for EVERY kind, since a
       // `delivery` on a config entry is still a declaration of intent the prune must honour.
       if (
         catalogEntry.delivery === "serverOnly" ||

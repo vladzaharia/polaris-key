@@ -13,7 +13,7 @@ public data class VerifyOptions(
     val trust: TrustSet,
     val expectedAud: String,
     val deviceId: String,
-    /** Per-TYPE anti-replay floor: reject a document not strictly newer (§3). Required: "no floor" is an explicit null (LIC-16). */
+    /** Per-TYPE anti-replay floor: reject a document not strictly newer (§3). Required: "no floor" is an explicit null. */
     val lastAcceptedIssuedAt: Long?,
     val expectedIss: String = POLARIS_ISSUER,
     /** Epoch seconds; pass the client's floored `effectiveNow` (§4.2). */

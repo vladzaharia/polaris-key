@@ -1,4 +1,4 @@
-// Device-id binding to the hardware anchor — wire contract §6 (CLI-1, part 1; decision D4).
+// Device-id binding to the hardware anchor — wire contract §6.
 //
 // The stored device id is a plain file next to the token and the cache. Copy that directory to
 // another machine and, before this, the clone kept the original's identity: the server saw one

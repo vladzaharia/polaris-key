@@ -1627,7 +1627,7 @@ describe("R9-11 edge-mint auth page", () => {
       "<script>alert(document.domain)</script>",
     );
 
-    // SEC-CFG-14: an unapproved recipe is a 404.
+    // An unapproved recipe is a 404.
     expect((await handleMintAuth(db, makeProduct(), "musickit")).status).toBe(
       404,
     );

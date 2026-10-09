@@ -119,7 +119,7 @@ function sessionKey(product: string, hash: string): string {
 function readCookie(req: Request, name: string): string | null {
   const raw = req.headers.get("cookie");
   if (!raw) return null;
-  // SEC-IDN-13: a duplicate may be a planted copy (cookie tossing), so it fails closed; a
+  // A duplicate may be a planted copy (cookie tossing), so it fails closed; a
   // malformed percent-encoding is "no cookie", not a 500.
   const values = new Set<string>();
   for (const part of raw.split(";")) {
@@ -367,7 +367,7 @@ async function browserDoc(
     try {
       const catalog = new Catalog(JSON.parse(schemaRow.catalog_json));
       payload = validatePayload(payload, catalog);
-      // SEC-CFG-5: a `kind: "config"` entry flagged `secret: true` is a secret too; page JS
+      // A `kind: "config"` entry flagged `secret: true` is a secret too; page JS
       // never sees it.
       payload = {
         ...payload,
@@ -486,7 +486,7 @@ export async function handleBrowserSessionLicense(
   settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
-  // SEC-IDN-3: a cross-site page must not be able to open a session for a key it holds.
+  // A cross-site page must not be able to open a session for a key it holds.
   if (!isSameOriginRequest(req))
     return errorResponse(403, "forbidden", "cross-site request refused");
   if (

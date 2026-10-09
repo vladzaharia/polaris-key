@@ -6,7 +6,7 @@ import {
   type SingleUseKind,
 } from "./singleUse.js";
 
-// SEC-WP-06: one atomic "first caller wins" claim over the single-use store, for the places that
+// One atomic "first caller wins" claim over the single-use store, for the places that
 // used KV `get` then `put`/`delete` as a replay or redemption guard (webhook deliveries, attestation
 // challenges). KV is not atomic across isolates; the Durable Object serialises the writes.
 

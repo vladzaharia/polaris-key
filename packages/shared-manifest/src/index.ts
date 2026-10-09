@@ -5612,7 +5612,7 @@ export function issuerUrlProblem(value: unknown): string | null {
     // the issuer silently swallows the path it is supposed to prefix.
     return "must not carry a query string or fragment";
   }
-  // SEC-IDN-7: the dev carve-out is plain http to the exact loopback names only; https to a
+  // The dev carve-out is plain http to the exact loopback names only; https to a
   // loopback host (or a trailing-dot spelling of one) gets no exemption.
   const loopback =
     url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
@@ -5686,7 +5686,7 @@ function isReservedIpv6(b: Uint8Array): boolean {
   if (leadingZeros(12)) {
     return isReservedIpv4([b[12]!, b[13]!, b[14]!, b[15]!]);
   }
-  // SEC-IDN-7: 64:ff9b::/96 (NAT64) and 2002::/16 (6to4) embed an IPv4 address; Teredo
+  // 64:ff9b::/96 (NAT64) and 2002::/16 (6to4) embed an IPv4 address; Teredo
   // (2001:0::/32) is refused outright.
   if (b[0] === 0x00 && b[1] === 0x64 && b[2] === 0xff && b[3] === 0x9b) {
     if (b.subarray(4, 12).every((x) => x === 0))

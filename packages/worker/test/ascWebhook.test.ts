@@ -693,7 +693,7 @@ describe("rate limit", () => {
     expect(opened).toHaveLength(60);
   });
 
-  // SEC-DST-6: unsigned junk is limited per client IP; it cannot spend the product budget that
+  // Unsigned junk is limited per client IP; it cannot spend the product budget that
   // Apple's real (HMAC-valid) deliveries draw on.
   it("junk from one address cannot lock out a signed delivery from another", async () => {
     const w = await ascWorld();

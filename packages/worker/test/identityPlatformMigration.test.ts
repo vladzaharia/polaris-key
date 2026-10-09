@@ -1599,7 +1599,7 @@ describe("the portal's single sign-on", () => {
         "SELECT COUNT(*) AS n FROM account_links WHERE kind = 'oidc'",
       ),
     ).toBe(0);
-    // SEC-IDN-9: the refused attempt did not spend the flow, so the starting browser finishes
+    // The refused attempt did not spend the flow, so the starting browser finishes
     // it, and only once.
     expect((await finishPortalLogin(starter, flow, { sub: SUB })).status).toBe(
       302,

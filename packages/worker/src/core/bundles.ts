@@ -226,7 +226,7 @@ export async function handleBundleMint(
 
   if (fields.length > 0) return badRequest("invalid bundle request", fields);
 
-  // SEC-CRY-3: sign the whole bundle with another live key, for a device whose app pins only
+  // Sign the whole bundle with another live key, for a device whose app pins only
   // that one. A revoked or unknown kid is refused, never silently replaced by the active key.
   let signerKid = product.signingKid;
   let signerPem = product.signingKeyPem;

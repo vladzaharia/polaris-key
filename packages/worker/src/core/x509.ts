@@ -412,7 +412,7 @@ export function ecdsaDerToRaw(der: Uint8Array, size: number): Uint8Array {
 export async function certificateKey(
   cert: X509Certificate,
 ): Promise<CryptoKey> {
-  // SEC-CRY-7: a key that is not a valid curve point makes WebCrypto throw a DataError; that is a
+  // A key that is not a valid curve point makes WebCrypto throw a DataError; that is a
   // refused certificate, not a crash.
   try {
     return await crypto.subtle.importKey(

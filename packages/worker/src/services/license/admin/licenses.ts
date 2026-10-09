@@ -410,15 +410,15 @@ export async function handleLicenses(
         now,
         "license.create",
         { kind: "license", id: licenseId },
-        // SEC-PRV-6: the id, never the buyer's email or name (an audit row outlives erasure by up
-        // to 180 days). SEC-PRV-5: nor whether an account took the licence.
+        // The id, never the buyer's email or name (an audit row outlives erasure by up
+        // to 180 days), nor whether an account took the licence.
         `Created license ${licenseId} (${email !== null ? "assigned" : "floating"})`,
       );
       return adminJson(
         {
           licenseId,
           key,
-          // SEC-PRV-5: the answer is built as if no account had taken the licence, so a create
+          // The answer is built as if no account had taken the licence, so a create
           // is not an oracle for "does this address have an account" (no `inAccount`, no
           // `ownerSubject`, whatever the association found).
           license: row
@@ -635,7 +635,7 @@ export async function handleLicenses(
           now,
           "license.holder.assign",
           { kind: "license", id },
-          // SEC-PRV-6: the id, never the address.
+          // The id, never the address.
           `Assigned ${id} to a new holder`,
         );
       }

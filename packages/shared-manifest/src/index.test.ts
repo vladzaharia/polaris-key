@@ -541,7 +541,7 @@ describe("OIDC issuer safety (R9-01)", () => {
     }
   });
 
-  it("SEC-IDN-7: refuses https loopback, NAT64, 6to4, Teredo and malformed hosts", () => {
+  it("refuses https loopback, NAT64, 6to4, Teredo and malformed hosts", () => {
     for (const issuer of [
       "https://localhost:8443",
       "https://127.0.0.1/",

@@ -290,7 +290,7 @@ async function getOidcConfig(
  */
 function issuerHostAllowed(env: Env, issuer: string): boolean {
   const raw = secret(env, "OIDC_ISSUER_ALLOWLIST");
-  // SEC-IDN-7: in production an unset allowlist refuses every custom issuer rather than
+  // In production an unset allowlist refuses every custom issuer rather than
   // letting any public https host receive the client secret.
   const prod = env.PKEY_ENVIRONMENT?.trim().toLowerCase() === "prod";
   if (!raw) return !prod;
@@ -532,7 +532,7 @@ async function deleteUserCodeIndex(
 /**
  * Whether the computed `redirectUri` is permitted by the product's `redirect_uris_json`
  * allowlist. The computed URI MUST be a member — otherwise an attacker-chosen host/path could
- * exfiltrate the authorization code. An unset column fails closed (SEC-IDN-16, was R8-07):
+ * exfiltrate the authorization code. An unset column fails closed (R8-07):
  * no shipped writer leaves it NULL, so a NULL is a damaged row, not a policy of "allow all".
  */
 function redirectUriAllowed(oidc: OidcConfigRow, redirectUri: string): boolean {
@@ -1514,7 +1514,7 @@ async function beginAuthFlow(
   let binderCookie: string | undefined;
   if ((oidc.row.provider ?? "platform") === "platform")
     flow.binderEligible = true;
-  // SEC-IDN-3: every browser flow, whatever the issuer, is bound to the browser that started it;
+  // Every browser flow, whatever the issuer, is bound to the browser that started it;
   // the callback refuses any other browser (login CSRF / session fixation).
   if (opts.browser) {
     const binder = randomToken(32);
@@ -1726,7 +1726,7 @@ async function confirmDeviceFlow(
   // I-26: the confirming browser is the one the licence chooser will answer (delegated decision
   // 13). Minted here, never at `/device/start`: that request comes from the device, not from
   // the browser that signs in.
-  // SEC-IDN-4: every device-code flow is bound to its confirming browser, so the IdP leg can
+  // Every device-code flow is bound to its confirming browser, so the IdP leg can
   // only finish where the human confirmed, not in a victim's browser the starter phished.
   const binder = randomToken(32);
   const stamped = await updateArtefact(env, stateKey, {
@@ -2129,7 +2129,7 @@ export async function handleAuthCallback(
   );
   if (limited) return limited;
   const stateKey = await flowKey(env, product.slug, state);
-  // SEC-IDN-3 / SEC-IDN-9: the browser binder is checked BEFORE the single-use claim, so a
+  // The browser binder is checked BEFORE the single-use claim, so a
   // callback from another browser neither finishes the flow nor burns it.
   const pending = await getArtefact(env, stateKey);
   const pendingFlow = pending ? parseFlowRecord<FlowRecord>(pending) : null;
@@ -2174,7 +2174,7 @@ export async function handleAuthCallback(
     return platformSignInEndedPage();
   }
 
-  // SEC-IDN-6: the issuer is repo-written and this POST carries the client secret, so it goes
+  // The issuer is repo-written and this POST carries the client secret, so it goes
   // through the shared outbound guard (no redirects with the body, timeout, size cap).
   let tokenRes: { ok: boolean; body: string };
   try {
@@ -2219,7 +2219,7 @@ export async function handleAuthCallback(
   }
 
   // The JWKS GET carries no secret; jose 5's remote set takes no custom fetch, so it keeps
-  // jose's own fetch (deferred: SEC-IDN-6 covers the secret-bearing token POST).
+  // jose's own fetch (deferred: the guard covers the secret-bearing token POST).
   const jwks = createRemoteJWKSet(
     new URL(`${oidc.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
   );

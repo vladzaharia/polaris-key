@@ -1,11 +1,11 @@
 /**
- * SEC-WP-09: admin session revocation, the step-up flag, and the dangerous-route table.
+ * Admin session revocation, the step-up flag, and the dangerous-route table.
  *
- *   - SEC-ADM-3: an ordinary sign-in is NOT a step-up; only a `stepUp=1` flow with `auth_time` is;
- *   - SEC-ADM-4: platform routes that erase, export, delete or force a key need the step-up;
- *   - SEC-CRY-21 / SEC-ADM-5: sign-out voids the cookie server-side; /docs and slug-check read the
- *     CURRENT platform group;
- *   - SEC-CRY-20: the console's ID-token verification carries the same freshness options.
+ *   - an ordinary sign-in is NOT a step-up; only a `stepUp=1` flow with `auth_time` is;
+ *   - platform routes that erase, export, delete or force a key need the step-up;
+ *   - sign-out voids the cookie server-side; /docs and slug-check read the CURRENT platform
+ *     group;
+ *   - the console's ID-token verification carries the same freshness options.
  */
 import { describe, expect, it } from "vitest";
 import { bindAdminFlow } from "./flowBinderHelper.js";
@@ -58,7 +58,7 @@ async function login(env: Env, opts: { stepUp?: boolean; authTime?: number }) {
     }),
   };
   const res = await handleAdminCallback(
-    // The browser that started the sign-in (SEC-WP-10's console flow binder).
+    // The browser that started the sign-in (the console flow binder).
     new Request(`https://key.plrs.im/manage/callback?code=c&state=${state}`, {
       headers: { cookie: await bindAdminFlow(env, state) },
     }) as unknown as Request,
@@ -99,7 +99,7 @@ async function api(
   );
 }
 
-describe("SEC-ADM-3: step-up is a proven re-authentication", () => {
+describe("step-up is a proven re-authentication", () => {
   it("an ordinary sign-in, even a brand new one, is not stepped up", async () => {
     const env = adminEnv();
     const { session } = await login(env, { authTime: NOW });
@@ -116,7 +116,7 @@ describe("SEC-ADM-3: step-up is a proven re-authentication", () => {
   });
 });
 
-describe("SEC-ADM-4: dangerous platform routes", () => {
+describe("dangerous platform routes", () => {
   it("lists the gated routes in one table", () => {
     expect(STEP_UP_ROUTES.map((r) => `${r.method} ${r.path}`)).toEqual(
       expect.arrayContaining([
@@ -172,7 +172,7 @@ describe("SEC-ADM-4: dangerous platform routes", () => {
   });
 });
 
-describe("SEC-CRY-21 / SEC-ADM-5: server-side sign-out", () => {
+describe("server-side sign-out", () => {
   it("a cookie replayed after logout is a 401, for every cookie that operator holds", async () => {
     const env = adminEnv();
     const db = makeTestDb();

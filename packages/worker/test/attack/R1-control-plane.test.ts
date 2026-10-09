@@ -49,7 +49,7 @@ const PLATFORM_GROUP = "platform-admins";
 function adminEnv(kv: KvMock, slugs: string[] = []): Env {
   const env = makeEnv(kv, slugs);
   env.ADMIN_SESSION_SECRET = ADMIN_SECRET;
-  // SEC-IDN-20: no fallback; the shared key is set explicitly to keep exercising the domain tags.
+  // No fallback; the shared key is set explicitly to keep exercising the domain tags.
   env.PORTAL_SESSION_SECRET = ADMIN_SECRET;
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   env.PLATFORM_OIDC_ISSUER = "https://id.example";
@@ -97,7 +97,7 @@ async function hmacB64url(secret: string, body: string): Promise<string> {
 // ───────────────────────────────────────────────────────────────────────────────
 
 describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
-  it("R1-01a: FIXED (SEC-ADM-6) /manage/login binds the flow to the starting browser (host-only cookie)", async () => {
+  it("R1-01a: FIXED /manage/login binds the flow to the starting browser (host-only cookie)", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = adminEnv(kv);
@@ -136,7 +136,7 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
     ]);
   });
 
-  it("R1-01b: FIXED (SEC-ADM-6) an attacker-run flow cannot be redeemed in a VICTIM browser", async () => {
+  it("R1-01b: FIXED an attacker-run flow cannot be redeemed in a VICTIM browser", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = adminEnv(kv);
@@ -544,7 +544,7 @@ describe("R1-05 /<product>/mint/<id>/auth renders stored HTML with no CSP and no
       "music.apple.com",
       payload,
     );
-    // SEC-CFG-14: the page is served only for an approved recipe.
+    // The page is served only for an approved recipe.
     const unapproved = (await loadProduct(env, db, "djdl"))!;
     expect((await handleMintAuth(db, unapproved, "music")).status).toBe(404);
     await approveEdgeMintRecipe(db, "djdl", "music", {

@@ -230,7 +230,7 @@ export type LinkSystemProduct =
  * provider. Checked by the deploy hook before anything is written, and again by the link.
  */
 /**
- * SEC-SUP-1: the system product's trusted publisher is fixed in the Worker, never taken from the
+ * The system product's trusted publisher is fixed in the Worker, never taken from the
  * deploy hook's body: the one reusable workflow every platform publish runs through, in its
  * environment. A body naming anything else is refused, so code in the deploy job cannot repoint
  * the identity that is later handed `release:publish` tokens.

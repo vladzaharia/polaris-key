@@ -205,7 +205,7 @@ describe("matchFingerprint", () => {
       bootVolumeUuid: hash("boot2"),
       machineModel: hash("model2"),
     };
-    // 5 changed, anchor intact => 4 + 1 = 5, capped at floor(7 / 2) = 3 of the baseline (CRY-13).
+    // 5 changed, anchor intact => 4 + 1 = 5, capped at floor(7 / 2) = 3 of the baseline.
     expect(
       matchFingerprint(stored(), { components: presented }, "lenient"),
     ).toMatchObject({ kind: "mismatch", drift: 5 });

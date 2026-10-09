@@ -479,7 +479,7 @@ describe("who may push: the token service and the mint", () => {
       createdBy: "admin:a",
       now: NOW,
     });
-    // SEC-DST-4: without the publish scope it is no registry credential at all (401, not 403).
+    // Without the publish scope it is no registry credential at all (401, not 403).
     expect((await ociToken(basic(promoteOnly.token))).status).toBe(401);
   });
 

@@ -113,7 +113,7 @@ export async function handleLicenseDocument(
   settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
-  // SEC-LIC-13: a per-network bucket (generous: a NAT holds many devices) before any D1 work.
+  // A per-network bucket (generous: a NAT holds many devices) before any D1 work.
   if (
     !(await rateLimitOk(
       env,

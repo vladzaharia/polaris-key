@@ -211,7 +211,7 @@ describe("clientNetwork", () => {
     // A neighbouring /64 is a different client.
     expect(net("2001:db8:abcd:13::1")).toBe("2001:db8:abcd:13::/64");
     expect(net("::1")).toBe("0:0:0:0::/64");
-    // SEC-WEB-3: an IPv4-mapped address is its IPv4 address, not one shared ::/64 bucket.
+    // An IPv4-mapped address is its IPv4 address, not one shared ::/64 bucket.
     expect(net("::ffff:192.0.2.1")).toBe("192.0.2.1");
     expect(net("::ffff:c000:201")).toBe("192.0.2.1");
     expect(net("2001:db8::")).toBe("2001:db8:0:0::/64");
@@ -268,7 +268,7 @@ describe("register rate limiting", () => {
     expect(await blocked.json()).toEqual({ error: { code: "rate_limited" } });
   });
 
-  it("SEC-WEB-3: rotating addresses inside one IPv6 /64 does not mint fresh budgets", async () => {
+  it("rotating addresses inside one IPv6 /64 does not mint fresh budgets", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
@@ -369,7 +369,7 @@ describe("activate rate limiting", () => {
   });
 });
 
-describe("deauthorize rate limiting (SEC-LIC-13)", () => {
+describe("deauthorize rate limiting", () => {
   it("429s a /64 after 30 attempts, before any token work", async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), ["djdl"]);

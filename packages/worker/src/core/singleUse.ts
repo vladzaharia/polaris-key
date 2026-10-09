@@ -26,7 +26,7 @@ export type SingleUseKind =
   | "provider-flow"
   /** Console (admin) OIDC sign-in, by `state`. */
   | "admin-flow"
-  /** Console sign-out mark (SEC-WP-09): an operator's sessions minted at or before it are void. */
+  /** Console sign-out mark: an operator's sessions minted at or before it are void. */
   | "admin-revoked"
   /** Product OIDC sign-in, by `state`. */
   | "oidc-flow"
@@ -58,9 +58,9 @@ export type SingleUseKind =
   | "method-flow"
   /** Link an existing account (PX-W12): the two accounts' proofs, by the browser's flow secret. */
   | "link-flow"
-  /** SEC-WP-06: a webhook delivery already processed, by delivery id / body hash. */
+  /** A webhook delivery already processed, by delivery id / body hash. */
   | "webhook-claim"
-  /** SEC-WP-06: an attestation challenge already redeemed, by product + challenge. */
+  /** An attestation challenge already redeemed, by product + challenge. */
   | "attest-claim";
 
 /** The address of one artefact. */

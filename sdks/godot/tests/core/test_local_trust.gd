@@ -1,5 +1,5 @@
 extends RefCounted
-# The local-trust set (SEC-WP-16 slice F): the anti-replay floor is a required option, a hard 401
+# The local-trust set: the anti-replay floor is a required option, a hard 401
 # or a 403 build block removes the document it answered for in the same write as the hint, the
 # licence gate follows the build and discovery can only switch it on, network verification runs
 # on the effective clock, a desktop file store's device id is re-derived from the platform anchor
@@ -58,7 +58,7 @@ func _synced(clock: Array) -> Array:
 	return [sdk, store]
 
 
-# LIC-16
+# The anti-replay floor is a required option
 
 func _required_floor(t: PKeyTestContext) -> void:
 	var opts := {"trust": F["trust"], "expected_aud": F["product"], "device_id": F["device_id"], "now": F["now"], "check_freshness": false}
@@ -67,7 +67,7 @@ func _required_floor(t: PKeyTestContext) -> void:
 	t.check("floor: an explicit null means no floor", await PKeyVerify.verify_license_doc(F["license"], opts) != null)
 
 
-# CLI-2
+# A hard refusal deletes the document it answered for
 
 func _revocation_removes_the_slice(t: PKeyTestContext) -> void:
 	var clock := [F["now"]]
@@ -111,7 +111,7 @@ func _block_removes_the_licence(t: PKeyTestContext) -> void:
 	sdk.queue_free()
 
 
-# CLI-4
+# The licence gate input
 
 func _gate_follows_the_build(t: PKeyTestContext) -> void:
 	var opts := PKeyOptions.new()
@@ -136,7 +136,7 @@ func _gate_follows_the_build(t: PKeyTestContext) -> void:
 	t.check("gate: a forged discovery that disables licensing leaves a licensed product gated", st["status"] == "needs-activation", str(st))
 
 
-# CLI-8
+# The effective clock
 
 func _effective_clock(t: PKeyTestContext) -> void:
 	# The cached trust manifest raises the floor on load; the system clock then reads far behind
@@ -161,7 +161,7 @@ func _effective_clock(t: PKeyTestContext) -> void:
 	sdk.queue_free()
 
 
-# CLI-1
+# Device binding to the hardware anchor
 
 func _binding(t: PKeyTestContext) -> void:
 	var product := "diceroll"
@@ -231,7 +231,7 @@ class _NoHost:
 		return null
 
 
-# CLI-16
+# The keyring switch and secret-tool follow the shipped-build rules
 
 func _keyring_rules(t: PKeyTestContext) -> void:
 	var p := PKeyHeaders.platform()

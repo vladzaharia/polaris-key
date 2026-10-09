@@ -84,7 +84,7 @@ beforeEach(async () => {
   env.PORTAL_EMAIL_FROM = "noreply@key.plrs.im";
   await seedProduct(db, SLUG);
   ctx = { db, env, now: NOW, origin: "https://key.plrs.im" };
-  // A proven step-up: Reassign… is in SEC-WP-09's step-up table.
+  // A proven step-up: Reassign… is in the step-up table.
   const { token, session } = await issueSession(
     env,
     {
@@ -336,7 +336,7 @@ describe("association at creation (S-24 D3, D4)", () => {
       name: "Ada",
       email: "  Ada@Example.com ",
     });
-    // SEC-PRV-5: the create answer never says an account took it.
+    // The create answer never says an account took it.
     expect(created.license.holder).toEqual({
       kind: "assigned",
       inAccount: false,
@@ -353,7 +353,7 @@ describe("association at creation (S-24 D3, D4)", () => {
     ]);
     const audit = await listAudit(db, SLUG);
     const row = audit.find((a) => a.action === "license.create");
-    // SEC-PRV-5/6: no email, no account oracle in the audit row or the answer.
+    // No email, no account oracle in the audit row or the answer.
     expect(row?.summary).toBe(
       `Created license ${created.licenseId} (assigned)`,
     );
@@ -418,13 +418,13 @@ describe("association at creation (S-24 D3, D4)", () => {
     const known = await create({ name: "A", email: "ada@example.com" });
     const unknown = await create({ name: "B", email: "nobody@example.com" });
     expect(shape(known)).toEqual(shape(unknown));
-    // SEC-PRV-5: values too, not just member names: no inAccount / ownerSubject oracle.
+    // Values too, not just member names: no inAccount / ownerSubject oracle.
     const inAcct = (c: typeof known) =>
       (c.license.holder as { inAccount: boolean }).inAccount;
     expect(inAcct(known)).toBe(false);
     expect(inAcct(unknown)).toBe(false);
     expect(known.license.ownerSubject).toBeNull();
-    // SEC-PRV-6: the audit rows carry no buyer email.
+    // The audit rows carry no buyer email.
     const rows = await listAudit(db, SLUG);
     expect(JSON.stringify(rows)).not.toContain("ada@example.com");
     expect(JSON.stringify(rows)).not.toContain("nobody@example.com");

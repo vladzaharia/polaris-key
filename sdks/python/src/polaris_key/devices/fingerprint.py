@@ -338,7 +338,7 @@ def _primary_mac() -> Optional[str]:
     return ":".join(raw[i : i + 2] for i in range(0, 12, 2))
 
 
-#: Anchor probes run by absolute path, never through ``PATH`` (SEC-CLI-1): a planted ``ioreg`` or
+#: Anchor probes run by absolute path, never through ``PATH``: a planted ``ioreg`` or
 #: ``reg`` earlier on ``PATH`` would otherwise choose the device's identity.
 IOREG_PATH = "/usr/sbin/ioreg"
 

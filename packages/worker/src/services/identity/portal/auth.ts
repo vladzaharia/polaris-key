@@ -352,7 +352,7 @@ export async function handlePortalCallback(
   if (!caps.portalEnabled || !caps.oidcEnabled) {
     return signInPage.off();
   }
-  // SEC-IDN-9: the binding is checked on a read, BEFORE the atomic single-use consume, so a
+  // The binding is checked on a read, BEFORE the atomic single-use consume, so a
   // callback from another browser cannot burn the flow of the one that started it.
   const flowKey = await portalFlowKey(env, state);
   const peeked = await getArtefact(env, flowKey);
@@ -607,7 +607,7 @@ export async function handlePortalLogout(
   db?: Db,
   now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
-  // SEC-WEB-8: a cross-site form POST must not sign the visitor out.
+  // A cross-site form POST must not sign the visitor out.
   if (
     req.method === "POST"
       ? !isSameOriginRequest(req)

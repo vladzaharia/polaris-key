@@ -120,7 +120,7 @@ export async function handleTrustManifest(
   now: number,
 ): Promise<Response> {
   const url = new URL(req.url);
-  // `?signer=<kid>`: the same manifest under another live key (SEC-CRY-3). An unknown, revoked
+  // `?signer=<kid>`: the same manifest under another live key. An unknown, revoked
   // or active kid falls through to the default, so the parameter never turns into an oracle.
   const want = url.searchParams.get("signer");
   const signer =

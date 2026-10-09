@@ -418,7 +418,7 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
         ?.value,
     ).toBe(sealedToken);
     const after = await configDoc(w, token, RUN_AT);
-    // SEC-CFG-3: the owner's secrets no longer reach a key-only device; config is unchanged.
+    // The owner's secrets no longer reach a key-only device; config is unchanged.
     expect(after.doc.config).toEqual(before.doc.config);
     expect(after.doc.secrets).toEqual({});
     // And the device's licence no longer delivers config or secrets itself (step 5).
@@ -1560,7 +1560,7 @@ describe("U-03: GET and PUT users/<subject>/overrides", () => {
     expect(audit).toHaveLength(1);
     expect(audit[0]!.summary).toContain("theme, api.token, cfg.password");
     expect(audit[0]!.summary).not.toContain("dark");
-    // SEC-CFG-3: the key-entry device of Ada's licence does NOT receive her secrets.
+    // The key-entry device of Ada's licence does NOT receive her secrets.
     const key = await licence(w, "lic-2", { owner: ada.id });
     const token = await activate(w, key, "dev-1");
     const { doc } = await configDoc(w, token);
@@ -1648,7 +1648,7 @@ describe("U-03: provisioned secrets and the nightly step", () => {
     expect(Object.keys(row.secrets)).toEqual(["api.token"]);
   });
 
-  it("SEC-CFG-4: provisioning writes only while the signing-in identity is linked to the owner account", async () => {
+  it("provisioning writes only while the signing-in identity is linked to the owner account", async () => {
     const w = await world();
     const ada = await account(w.db, "ada@example.com");
     const args = [

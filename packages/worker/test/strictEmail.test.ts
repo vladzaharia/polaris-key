@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseEmail } from "../src/services/identity/card/http.js";
 
-describe("parseEmail (SEC-IDN-15, SEC-PRV-3)", () => {
+describe("parseEmail", () => {
   it("accepts a bare addr-spec, normalised", () => {
     expect(parseEmail("  User+x@Example.COM ")).toBe("user+x@example.com");
   });

@@ -1,5 +1,5 @@
 /**
- * SEC-WP-21: required secrets and origins fail closed instead of degrading silently.
+ * Required secrets and origins fail closed instead of degrading silently.
  *
  * `configProblems` returns the NAMES (never values) of what is missing or weak. `index.ts` refuses
  * every request on a deployed environment (prod, staging, dev) while the list is non-empty; the

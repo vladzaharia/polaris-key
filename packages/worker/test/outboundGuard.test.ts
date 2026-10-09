@@ -1,4 +1,4 @@
-/** SEC-WP-23: the shared outbound guard and the safeFetch guard gaps (IDN-6, DST-8, WEB-14). */
+/** The shared outbound guard and the safeFetch guard gaps. */
 import { describe, expect, it } from "vitest";
 import {
   outboundFetch,
@@ -6,7 +6,7 @@ import {
 } from "../src/core/outboundGuard.js";
 import { guardUrl, safeFetch, type FetchImpl } from "../src/core/safeFetch.js";
 
-describe("guardUrl trailing dots and deny list (SEC-DST-8, SEC-WEB-14)", () => {
+describe("guardUrl trailing dots and deny list", () => {
   it("strips every trailing dot", () => {
     expect(guardUrl("https://key.plrs.im../x")).not.toBeNull();
     expect(guardUrl("https://printer.local../x")).not.toBeNull();
@@ -20,7 +20,7 @@ describe("guardUrl trailing dots and deny list (SEC-DST-8, SEC-WEB-14)", () => {
   });
 });
 
-describe("safeFetch redirect headers (SEC-WEB-14)", () => {
+describe("safeFetch redirect headers", () => {
   it("drops cookie and key headers on a hop", async () => {
     const seen: Headers[] = [];
     const impl: FetchImpl = async (input, init) => {
@@ -44,7 +44,7 @@ describe("safeFetch redirect headers (SEC-WEB-14)", () => {
   });
 });
 
-describe("outboundFetch (SEC-IDN-6)", () => {
+describe("outboundFetch", () => {
   const post = {
     method: "POST",
     body: new URLSearchParams({ client_secret: "S" }),
