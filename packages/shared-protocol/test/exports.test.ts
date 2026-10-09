@@ -10,6 +10,7 @@ import * as distribution from "../src/distribution.js";
 import * as identity from "../src/identity.js";
 import * as packs from "../src/packs.js";
 import * as release from "../src/release.js";
+import * as trust from "../src/trust.js";
 import * as update from "../src/update.js";
 import { DEFAULT_RELEASE_ACCESS } from "../src/release.js";
 
@@ -267,6 +268,20 @@ describe("@polaris-key/protocol layout", () => {
     expect(barrel.PACK_TYPES).toBe(packs.PACK_TYPES);
     expect(barrel.MAX_FILES_INDEX_BYTES).toBe(core.MAX_FILES_INDEX_BYTES);
     expect(barrel.RECORD_KINDS).toBe(release.RECORD_KINDS);
+  });
+
+  it("the trust custody constants (WIRE-CONTRACT-V4 §1, §2.3)", () => {
+    expect(trust.TRUST_LIVE_STATUSES).toEqual(["active", "staged", "retired"]);
+    // 400 days: the 365-day grace plus the 30-day bundle import window, with room to spare.
+    expect(trust.REVOKED_KEY_LISTING_SECONDS).toBe(400 * 86400);
+    expect(trust.REVOKED_KEY_LISTING_SECONDS).toBeGreaterThan(
+      (365 + 30) * 86400,
+    );
+    expect(core.MAX_TRUST_SIGNER_ATTEMPTS).toBe(4);
+    expect(barrel.TRUST_LIVE_STATUSES).toBe(trust.TRUST_LIVE_STATUSES);
+    expect(barrel.MAX_TRUST_SIGNER_ATTEMPTS).toBe(
+      core.MAX_TRUST_SIGNER_ATTEMPTS,
+    );
   });
 
   it("the delegation constants (plans/P4-19.md §2.2, §2.5)", () => {

@@ -24,12 +24,16 @@ export const CACHE_VERSION = 3;
  * against a live server (R4-03), or invent a licence outright with no signature anywhere
  * (R2-03/R4-01). Those counters are now DERIVED from re-verified content.
  *
- * `blocked` and `lastSyncUnauthorized` remain unsigned deliberately: they only ever make the
- * gate STRICTER, so clearing them gains an attacker nothing that deleting the file would not.
+ * `blocked` and `lastSyncUnauthorized` remain unsigned deliberately: they are DISPLAY state. No
+ * verdict depends on them, because the document each answered for is deleted in the same write
+ * that sets it (WIRE-CONTRACT-V4 §4.3), so clearing one yields `needs-activation`, never a
+ * usable document.
  *
  * v3 change: `configJws`/`etag` become per-service SLICES (`docs`/`etags`), because license
- * and config are now two independently-fetched, independently-ETagged documents; and
- * `importedBundle` records an offline activation (§7).
+ * and config are now two independently-fetched, independently-ETagged documents. An offline
+ * activation (§7) is recorded as the imported bundle's own signed JWS (`bundle`), and a pinned
+ * key's revocation as the signed manifest that revoked it (`pinRevocations`): both additive,
+ * re-verified on every load, so `CACHE_VERSION` stays 3.
  */
 export interface CacheRecordV3 {
   v: typeof CACHE_VERSION;
@@ -40,9 +44,14 @@ export interface CacheRecordV3 {
   docs?: { license?: string; config?: string };
   /** Non-security hints: the per-document conditional-request validators. */
   etags?: { license?: string; config?: string };
-  /** Set by `importBundle` (§7). Present with a verified license doc ⇒ `activation: "bundle"`;
-   *  a later online activation supersedes it with `activation: "token"`. */
-  importedBundle?: { bundleId: string; importedAt: number };
+  /**
+   * WIRE-CONTRACT-V4 §4.1, §7: the imported `pkey-bundle+jws`, verbatim. `activation: "bundle"`
+   * holds only when no token is held, this bundle re-verifies on the RELOAD profile against the
+   * usable pins, and `docs.license` is byte-identical to the bundle's own `docs.license`. A
+   * later online activation supersedes it with `activation: "token"`. It replaced the unsigned
+   * `importedBundle: {bundleId, importedAt}` marker, which is no longer read at all.
+   */
+  bundle?: string;
   /** A recorded hard 401 — the offline revocation signal (§4.3). */
   lastSyncUnauthorized?: boolean;
   /** The last 403 version/channel block from `GET /<p>/license/document`. */
@@ -61,6 +70,15 @@ export interface CacheRecordV3 {
    * only while a committed feed's target for this platform pins the hash.
    */
   releaseRecords?: Record<string, string>;
+  /**
+   * WIRE-CONTRACT-V4 §1, §4.1: the tombstones of revoked PINNED keys, as signed evidence — kid →
+   * the verified `pkey-trust+jws` (verbatim) in which another usable pin listed that kid's
+   * exact pinned bytes as `revoked`. Re-verified on every load by `loadPinRevocations`, in
+   * ascending manifest `issuedAt`; an entry that fails, or whose signer is already tombstoned,
+   * is dropped. Security state, not a grant: carried through `replace()` and `clear()` like
+   * `feeds`, and kept when a device id is re-bound. Additive, so `CACHE_VERSION` stays 3.
+   */
+  pinRevocations?: Record<string, string>;
 }
 
 /**

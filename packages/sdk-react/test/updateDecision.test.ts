@@ -421,7 +421,8 @@ describe("BrowserAdapter.decideUpdate() — the slices across a reload", () => {
     const a = adapterFor(srv, store);
     (a as unknown as { offlineState: unknown }).offlineState = {
       deviceId: "dev_1",
-      importedBundle: { bundleId: "b", importedAt: 1 },
+      bundle: { bundleId: "b", docs: ["license"], activates: true },
+      pinRevocations: {},
     };
     await a.signOut().catch(() => undefined);
     expect(store.records.get(PRODUCT)).toEqual({
@@ -578,12 +579,51 @@ describe("BrowserAdapter.decideUpdate() — the effective clock", () => {
       productKey,
       "pkey-config+jws",
     );
+    // The imported bundle that carried it: re-verified on the reload profile at load, and it
+    // counts because its config document is the cached one, byte for byte.
+    const trust = await signCompact(
+      {
+        schemaVersion: 1,
+        aud: PRODUCT,
+        iss: "key.plrs.im",
+        issuedAt: FLOOR,
+        expiresAt: FLOOR + 300,
+        jwksUrl: `${BASE}/${PRODUCT}/.well-known/jwks.json`,
+        cacheSeconds: 300,
+        keys: [
+          {
+            kid: productKey.kid,
+            alg: "EdDSA",
+            kty: "OKP",
+            crv: "Ed25519",
+            publicKey: productKey.raw,
+            status: "active",
+          },
+        ],
+      },
+      productKey,
+      "pkey-trust+jws",
+    );
+    const bundle = await signCompact(
+      {
+        bundleId: "b",
+        aud: PRODUCT,
+        deviceId: "dev_1",
+        issuedAt: FLOOR,
+        expiresAt: FLOOR + 30 * 86_400,
+        docs: { config },
+        trust,
+      },
+      productKey,
+      "pkey-bundle+jws",
+    );
     return memoryStore({
       deviceId: "dev_1",
       cache: {
         v: 3,
+        trustJws: trust,
         docs: { config },
-        importedBundle: { bundleId: "b", importedAt: FLOOR },
+        bundle,
         ...cache,
       },
     } as OfflineRecord);

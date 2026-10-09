@@ -192,8 +192,9 @@ Capabilities are **fail-closed**: a discovery document loaded this session wins,
 `expectedServices`, else the suite default (License + Config on, the rest off). A sub-client
 whose service is off throws `PolarisError` with code `service-unavailable`, and a product with
 License off gates `not-applicable` with `isLicensed() === true` — a config-only product boots
-usable instead of sitting on `needs-activation` forever. Name `expectedServices` for what the
-build ships against, so an unreachable control plane cannot silently take a service away.
+usable instead of sitting on `needs-activation` forever. A config-only product must name
+`expectedServices` without `license`: discovery alone can switch the licence gate on but never
+off, so an unreachable or hostile control plane cannot take the gate away.
 
 ## 5. Engine + app changes (in the djdl repo)
 

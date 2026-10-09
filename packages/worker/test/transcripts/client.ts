@@ -74,10 +74,18 @@ const RECORDER_FACTS = {
 /** `GET /<p>/.well-known/polaris-trust.jws` — Core's trust refresh. Public, so nothing but the
  *  path is held; clients differ on whether they send metadata here and the contract does not
  *  require it. */
-export async function trust(s: StepRecorder, product: string): Promise<void> {
+export async function trust(
+  s: StepRecorder,
+  product: string,
+  /** `?signer=<kid>` (WIRE-CONTRACT-V4 §2.3): the same manifest signed by that key. */
+  signer?: string,
+): Promise<void> {
   const res = await s.send({
     method: "GET",
-    path: `/${product}/.well-known/polaris-trust.jws`,
+    path:
+      signer === undefined
+        ? `/${product}/.well-known/polaris-trust.jws`
+        : `/${product}/.well-known/polaris-trust.jws?signer=${encodeURIComponent(signer)}`,
     metadata: false,
     headers: { accept: "application/jose" },
   });

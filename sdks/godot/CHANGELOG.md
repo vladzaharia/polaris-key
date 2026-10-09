@@ -9,6 +9,27 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+Local-trust fixes.
+
+- **Revocation and a build block end offline use at once.** A hard 401 deletes the document it
+  answered for, and its ETag, in the same cache write that records it; a 403 build block deletes
+  the licence document. The token stays, so the gate reports `revoked` or the block. The
+  `blocked` and `lastSyncUnauthorized` hints are display-only: clearing one gives
+  `needs-activation`, never a usable document.
+- **Discovery can switch the licence gate on, never off.** The gate follows the build's
+  `expected_services` (default: licence and config) or a discovery document loaded this session
+  that enables licensing. A product that does not license must pass `expected_services` without
+  `license` (`PKeyCore.license_gate_enabled()`). Which sub-clients exist still follows discovery.
+- **Breaking: `PKeyVerify.verify_*` requires `last_accepted_issued_at`.** Pass an explicit `null`
+  for "no floor"; a call that omits the key is refused.
+- **A desktop device whose stored id differs from its platform anchor re-activates once.** The
+  file and keyring stores re-derive the id from MachineGuid, IOPlatformUUID or the machine-id at
+  every start; a stored id that disagrees is discarded with the token and the grant cache (the
+  feed and release-record slices stay). `ioreg` and `reg.exe` run by absolute path.
+- Licence, config and trust-manifest verification on the network path use the effective clock.
+- **`PKEY_DESKTOP_KEYRING=0` is honoured only in debug builds**; a shipped build ignores it. On
+  Linux the Secret Service tool is run as `/usr/bin/secret-tool`, never found through `PATH`.
+
 The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
 
 - **Desktop keyring store** (SP-27). On macOS, Windows and Linux the token is kept in the OS

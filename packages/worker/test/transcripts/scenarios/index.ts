@@ -34,7 +34,12 @@ import {
   releaseFetchGated,
 } from "./release.js";
 import { edgeMint } from "./mint.js";
-import { syncConfigLicenseUnusable, syncErrors, syncEtag304 } from "./sync.js";
+import {
+  syncConfigLicenseUnusable,
+  syncErrors,
+  syncEtag304,
+  trustSignerRetry,
+} from "./sync.js";
 import { updateFeedRollback, updateRecordByHash } from "./update.js";
 import { commerceClaim } from "./commerce.js";
 import { packsChunkRange } from "./packs.js";
@@ -77,4 +82,5 @@ export const SCENARIOS: Scenario[] = [
   keyentryRefusalsOff,
   keyentryIdentityOff,
   discoveryPresentation,
+  trustSignerRetry,
 ];

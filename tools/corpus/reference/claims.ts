@@ -11,6 +11,7 @@ import {
   MAX_WIRE_INTEGER_REF,
   type TypV3,
 } from "../common.js";
+import { refCanonicalB64url } from "./b64url.js";
 import { PLAIN_INTEGER_REF, refNumberTokens } from "./tokens.js";
 
 // ── The generator's own claim checks, for all six typs ────────────────────────────────────────
@@ -159,12 +160,29 @@ export function refDocClaims(
   return isObj(doc.config) && isObj(doc.secrets);
 }
 
-/** V3 §1 / §2.3's trust-manifest claims; the keys and the substitution rule. */
+/** The statuses that keep a published key (V4 §1), restated rather than imported. */
+const REF_LIVE_STATUSES: ReadonlySet<unknown> = new Set([
+  "active",
+  "staged",
+  "retired",
+]);
+
+/** V3 §1 / §2.3's trust-manifest claims; the keys, the substitution rule and V4 §1's key
+ *  custody: the status allow-list, canonical published keys, and pinned-key tombstones (a
+ *  pinned kid listed `revoked` with its exact bytes by another pin; never by its own signer).
+ *  `signer` is the verified header `kid` (absent in the per-claim self-check, which never
+ *  revokes a pin); `tombstones` are the pinned kids already tombstoned. */
 export function refTrustClaims(
   doc: unknown,
   ctx: ClaimCtx,
-  o: { pinned: Record<string, string>; now: number; checkFreshness?: boolean },
-): Record<string, string> | null {
+  o: {
+    pinned: Record<string, string>;
+    now: number;
+    checkFreshness?: boolean;
+    signer?: string;
+    tombstones?: ReadonlySet<string>;
+  },
+): { discovered: Record<string, string>; revoked: string[] } | null {
   if (!isObj(doc)) return null;
   const t = "trust";
   if (
@@ -180,7 +198,9 @@ export function refTrustClaims(
     if ((doc.expiresAt as number) <= o.now - CLOCK_SKEW) return null;
   }
   if (!Array.isArray(doc.keys)) return null;
+  const tombstones = o.tombstones ?? new Set<string>();
   const out: Record<string, string> = {};
+  const revoked = new Set<string>();
   for (const key of doc.keys) {
     if (
       !isObj(key) ||
@@ -188,21 +208,34 @@ export function refTrustClaims(
       typeof key.publicKey !== "string"
     )
       return null;
-    if (hasOwn(o.pinned, key.kid) && o.pinned[key.kid] !== key.publicKey)
-      return null;
-    if (key.status === "revoked") continue;
+    const pinned = hasOwn(o.pinned, key.kid);
+    if (pinned && o.pinned[key.kid] !== key.publicKey) return null;
+    if (key.status === "revoked") {
+      if (pinned) {
+        if (key.kid === o.signer) return null;
+        if (!tombstones.has(key.kid)) revoked.add(key.kid);
+      }
+      continue;
+    }
+    if (!REF_LIVE_STATUSES.has(key.status)) continue;
     if (key.alg !== "EdDSA" || key.kty !== "OKP" || key.crv !== "Ed25519")
       continue;
+    if (!refCanonicalB64url(key.publicKey)) continue;
     out[key.kid] = key.publicKey;
   }
-  return out;
+  for (const kid of [...tombstones, ...revoked]) delete out[kid];
+  return { discovered: out, revoked: [...revoked].sort(refByteOrder) };
 }
+
+/** Ascending byte order of the UTF-8 encodings. */
+export const refByteOrder = (a: string, b: string): number =>
+  Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
 
 /** V3 §7 step 2: the bundle's own claims, and the `docs` shapes (V4 §3 presence). */
 export function refBundleClaims(
   doc: unknown,
   ctx: ClaimCtx,
-  o: { now: number; deviceId: string },
+  o: { now: number; deviceId: string; reload?: boolean },
 ): boolean {
   if (!isObj(doc)) return false;
   if (typeof doc.bundleId !== "string" || doc.bundleId === "") return false;
@@ -210,8 +243,11 @@ export function refBundleClaims(
   if (doc.aud !== AUD_V3 || doc.deviceId !== o.deviceId) return false;
   if (!refInt(ctx, "bundle", doc.issuedAt, "/issuedAt")) return false;
   if (!refInt(ctx, "bundle", doc.expiresAt, "/expiresAt")) return false;
-  if ((doc.issuedAt as number) > o.now + CLOCK_SKEW) return false;
-  if (o.now > (doc.expiresAt as number) + CLOCK_SKEW) return false;
+  // V4 §7: the reload profile is step 2 without its two import-window comparisons.
+  if (!o.reload) {
+    if ((doc.issuedAt as number) > o.now + CLOCK_SKEW) return false;
+    if (o.now > (doc.expiresAt as number) + CLOCK_SKEW) return false;
+  }
   if (!isObj(doc.docs)) return false;
   const docs = doc.docs;
   for (const k of ["license", "config"])

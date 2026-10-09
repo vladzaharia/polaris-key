@@ -143,6 +143,7 @@ async function licenseDoc(w: World, token: string, device = "dev-1") {
   });
   expect(res.status).toBe(200);
   const doc = await verifyLicenseDoc(await res.text(), {
+    lastAcceptedIssuedAt: null,
     trust: TRUST,
     expectedAud: SLUG,
     deviceId: device,
@@ -158,6 +159,7 @@ async function configDoc(w: World, token: string, device = "dev-1") {
   });
   expect(res.status).toBe(200);
   const doc = await verifyConfigDoc(await res.text(), {
+    lastAcceptedIssuedAt: null,
     trust: TRUST,
     expectedAud: SLUG,
     deviceId: device,
@@ -352,6 +354,8 @@ async function mintBundle(
   const inspection = await inspectBundle(bundle, {
     pinned: TRUST,
     product: SLUG,
+    floors: { license: null, config: null },
+    profile: "import",
     deviceId: BUNDLE_DEVICE,
     now: NOW,
   });

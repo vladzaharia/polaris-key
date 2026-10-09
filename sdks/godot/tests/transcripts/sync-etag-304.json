@@ -216,6 +216,7 @@
             "response": {
               "status": 304,
               "headers": {
+                "cache-control": "no-store",
                 "etag": "\"gfSC92lGm84iu7-bJm0XC6nAfTZZWMlF3gKQw8oZcY8\""
               },
               "body": ""
@@ -366,6 +367,7 @@
             "response": {
               "status": 304,
               "headers": {
+                "cache-control": "no-store",
                 "etag": "\"gfSC92lGm84iu7-bJm0XC6nAfTZZWMlF3gKQw8oZcY8\""
               },
               "body": ""

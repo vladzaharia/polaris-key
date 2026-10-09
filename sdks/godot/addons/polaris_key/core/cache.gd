@@ -113,6 +113,7 @@ func load_record() -> void:
 	var reload := {
 		"trust": trust.effective(), "expected_aud": product, "device_id": device_id, "now": now,
 		"check_freshness": false,
+		"last_accepted_issued_at": null,
 	}
 	var newest := 0.0
 	var docs: Dictionary = _record.get("docs", {})
@@ -279,6 +280,20 @@ func _stage(slice: String, jws: String, p_etag: String) -> void:
 		_record.erase("etags")
 	else:
 		_record["etags"] = etags
+
+
+## Remove one document slice (document, ETag, derived state) in memory, for the next `flush` to
+## persist: the server said, in so many words, that this device must no longer hold it (a hard
+## 401 for the slice it answered, a 403 build block for the licence). The clock floor is NOT
+## lowered: the dropped document's `issuedAt` stays a signed lower bound on real time.
+func revoke_slice(slice: String) -> void:
+	if not (_record is Dictionary):
+		_record = {"v": VERSION}
+	_drop_slice(slice)
+	if slice == "license":
+		license = null
+	elif slice == "config":
+		config = null
 
 
 func _drop_slice(slice: String) -> void:

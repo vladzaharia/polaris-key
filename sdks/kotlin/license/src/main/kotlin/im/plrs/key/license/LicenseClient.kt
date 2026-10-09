@@ -97,7 +97,7 @@ public class LicenseClient(
         val cache = core.cache()
         return licenseState(
             GateInput(
-                licenseServiceEnabled = core.enabled(ServiceSlug.license),
+                licenseServiceEnabled = core.licenseGateEnabled(),
                 activation = activation(),
                 doc = cache.license?.doc,
                 now = core.now(now),

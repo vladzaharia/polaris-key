@@ -121,7 +121,7 @@ def verify_trust_manifest(
     not fatal (carried v2 semantics): a future-alg key in the manifest must not brick
     current verifiers.
     """
-    verified = verify_jws(jws, pinned, typ=typ, require_typ=True)
+    verified = verify_jws(jws, pinned, typ=typ)
     if verified is None:
         return _REJECTED
     doc = verified.payload
@@ -271,6 +271,9 @@ class TrustManager:
             # disk counter (R4-03 — `lastTrustIssuedAt` used to be an attacker-writable
             # JSON field).
             last_trust_issued_at=self.last_issued_at,
+            # SEC-CLI-8: the effective clock, so a rolled-back system clock cannot make a
+            # fresh manifest look stale (or a stale one fresh).
+            now=self._ctx.now(),
         )
         return jws if self._install(result) else None
 

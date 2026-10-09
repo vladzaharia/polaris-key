@@ -17,7 +17,7 @@ import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleTrustManifest } from "../src/core/trust.js";
-import { REVOKED_KEY_LISTING_SECONDS } from "../src/core/trustSigners.js";
+import { REVOKED_KEY_LISTING_SECONDS } from "@polaris-key/protocol/trust";
 import { insertProductKey } from "../src/repo.js";
 import { seal } from "../src/keyvault.js";
 import { b64urlDecodeStrict, b64urlEncode } from "../src/platform/bytes.js";
@@ -206,6 +206,8 @@ describe("bundle mint signer choice (SEC-CRY-3)", () => {
     const r = await inspectBundle(bundle, {
       pinned: { "kid-staged": pub },
       product: SLUG,
+      floors: { license: null, config: null },
+      profile: "import",
       deviceId: "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
       now: NOW,
     });

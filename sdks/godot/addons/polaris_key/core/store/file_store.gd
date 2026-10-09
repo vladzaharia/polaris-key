@@ -77,6 +77,17 @@ func get_device_id() -> String:
 	return _device_id
 
 
+## A desktop file store is bindable; the same files on mobile or web have no hardware anchor
+## (PKeyDeviceBinding then keeps the stored id).
+func bindable() -> bool:
+	return true
+
+
+func set_device_id(id: String) -> bool:
+	_device_id = id
+	return _write(DEVICE_FILE, id)
+
+
 func read_cache() -> Variant:
 	var text = _read(CACHE_FILE)
 	if not (text is String):

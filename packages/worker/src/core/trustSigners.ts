@@ -13,10 +13,6 @@ import type { Env } from "../env.js";
 import { open } from "../keyvault.js";
 import { listVerificationProductKeys } from "../repo.js";
 
-/** Revoked keys stay LISTED in the trust manifest this long (400 days): the 365-day grace
- *  plus the 30-day bundle import window, so a lagging client still reads a positive removal. */
-export const REVOKED_KEY_LISTING_SECONDS = 34_560_000;
-
 export interface TrustSigner {
   kid: string;
   pem: string;

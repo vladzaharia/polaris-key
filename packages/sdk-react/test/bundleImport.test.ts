@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// Offline bundle import in both React transports (P1b-07, wire contract v3 §7).
+// Offline bundle import in both React transports (P1b-07, WIRE-CONTRACT-V4 §7).
 //
 // @pkey-feature core.bundle
 //
@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { IDBFactory } from "fake-indexeddb";
 import { inspectBundle } from "@polaris-key/client-core";
+import { signJws } from "@polaris-key/jws";
 import { browserAdapter } from "../src/browser/browserAdapter.js";
 import {
   indexedDbOfflineStore,
@@ -52,25 +53,79 @@ const CASES_PATH = join(
 interface BundleCase {
   id: string;
   pinned: Record<string, string>;
+  pinRevocations?: Record<string, string>;
   expectedAud: string;
   deviceId: string;
   now: number;
+  floors?: { license: number | null; config: number | null };
+  profile?: "import" | "reload";
   bundleJws: string;
   expect:
     | { imports: true; docs: ("license" | "config")[] }
     | { imports: false; reason: string };
 }
 
-const BUNDLE_CASES = (
-  JSON.parse(readFileSync(CASES_PATH, "utf8")) as { bundleCases: BundleCase[] }
-)["bundleCases"];
+const CORPUS = JSON.parse(readFileSync(CASES_PATH, "utf8")) as {
+  bundleCases: BundleCase[];
+  keys: { kid: string; privateKeyPkcs8Pem: string }[];
+};
+const BUNDLE_CASES = CORPUS.bundleCases;
+const PIN = CORPUS.keys.find((k) => k.kid === "pkey-test-prod-2026")!;
+const decode = <T>(jws: string): T =>
+  JSON.parse(
+    Buffer.from(jws.split(".")[1] ?? "", "base64url").toString("utf8"),
+  ) as T;
 
 const VALID = BUNDLE_CASES.find((c) => c.id === "bundle-valid-full")!;
 
-/** A fresh fake IndexedDB, with the vector's device id already minted. */
+/** A verified document of `typ` issued at `t`, bound to the vector's device (corpus key). */
+function docAt(c: BundleCase, typ: "license" | "config", t: number) {
+  const env = {
+    iss: "key.plrs.im",
+    aud: c.expectedAud,
+    deviceId: c.deviceId,
+    issuedAt: t,
+    expiresAt: t + 3600,
+    graceUntil: t + 30 * 86_400,
+  };
+  return typ === "license"
+    ? signJws(
+        { ...env, licenseId: "lic-held", entitlements: {} },
+        PIN.privateKeyPkcs8Pem,
+        PIN.kid,
+        "pkey-license+jws",
+      )
+    : signJws(
+        { ...env, schemaVersion: 1, config: {}, secrets: {} },
+        PIN.privateKeyPkcs8Pem,
+        PIN.kid,
+        "pkey-config+jws",
+      );
+}
+
+/**
+ * A fresh fake IndexedDB, with the vector's device id already minted, and the cache the vector
+ * presupposes: its pin evidence, and a held document at each non-null floor.
+ */
 async function seededStore(c: BundleCase): Promise<OfflineStore> {
   const store = indexedDbOfflineStore(new IDBFactory())!;
-  await store.write(c.expectedAud, { deviceId: c.deviceId });
+  const docs: Record<string, string> = {};
+  if (c.floors?.license != null)
+    docs.license = await docAt(c, "license", c.floors.license);
+  if (c.floors?.config != null)
+    docs.config = await docAt(c, "config", c.floors.config);
+  const cache =
+    c.pinRevocations || Object.keys(docs).length > 0
+      ? {
+          v: 3 as const,
+          ...(c.pinRevocations ? { pinRevocations: c.pinRevocations } : {}),
+          ...(Object.keys(docs).length > 0 ? { docs } : {}),
+        }
+      : undefined;
+  await store.write(c.expectedAud, {
+    deviceId: c.deviceId,
+    ...(cache ? { cache } : {}),
+  });
   return store;
 }
 
@@ -110,10 +165,12 @@ async function settled(adapter: PolarisAdapter): Promise<void> {
     await new Promise((r) => setTimeout(r, 0));
 }
 
-describe("browser importBundle() over every corpus bundleCases vector", () => {
-  for (const c of BUNDLE_CASES) {
+describe("browser importBundle() over every corpus bundleCases import vector", () => {
+  // The reload-profile vectors are the cached bundle at start, below.
+  for (const c of BUNDLE_CASES.filter((v) => v.profile !== "reload")) {
     it(`${c.id}`, async () => {
       const store = await seededStore(c);
+      const seeded = await store.read(c.expectedAud);
       const adapter = browserFor(c, store);
       await settled(adapter);
       if (c.expect.imports) {
@@ -122,7 +179,8 @@ describe("browser importBundle() over every corpus bundleCases vector", () => {
           imported: c.expect.docs,
         });
         const record = await store.read(c.expectedAud);
-        expect(record?.cache?.importedBundle?.importedAt).toBe(c.now);
+        expect(record?.cache?.bundle).toBe(c.bundleJws);
+        expect(record?.cache).not.toHaveProperty("importedBundle");
         // §7: a bundle carrying a licence activates; the gate reads "bundle".
         if (c.expect.docs.includes("license")) {
           expect(adapter.snapshot().activation).toBe("bundle");
@@ -134,14 +192,83 @@ describe("browser importBundle() over every corpus bundleCases vector", () => {
           wireCode: c.expect.reason,
         });
         // All-or-nothing: the refusal wrote nothing, and the gate did not move.
-        expect(await store.read(c.expectedAud)).toEqual({
-          deviceId: c.deviceId,
-        });
+        expect(await store.read(c.expectedAud)).toEqual(seeded);
         expect(adapter.snapshot().activation).toBeNull();
         expect(adapter.snapshot().error.license?.code).toBe("bundle-rejected");
       }
     });
   }
+});
+
+describe("the cached bundle at start — the reload-profile vectors (§7)", () => {
+  for (const c of BUNDLE_CASES.filter((v) => v.profile === "reload")) {
+    const activates = c.expect.imports && c.expect.docs.includes("license");
+    it(`${c.id} → activation ${activates ? "bundle" : "null"}`, async () => {
+      const payload = decode<{ trust: string; docs: Record<string, string> }>(
+        c.bundleJws,
+      );
+      const store = indexedDbOfflineStore(new IDBFactory())!;
+      await store.write(c.expectedAud, {
+        deviceId: c.deviceId,
+        cache: {
+          v: 3,
+          trustJws: payload.trust,
+          docs: payload.docs,
+          bundle: c.bundleJws,
+        },
+      });
+      const adapter = browserFor(c, store);
+      await settled(adapter);
+      expect(adapter.snapshot().activation).toBe(activates ? "bundle" : null);
+    });
+  }
+});
+
+describe("the cached bundle is a signed fact, not a marker (§4.1)", () => {
+  async function imported(): Promise<OfflineStore> {
+    const store = await seededStore(VALID);
+    const adapter = browserFor(VALID, store);
+    await settled(adapter);
+    await adapter.importBundle(VALID.bundleJws);
+    expect(adapter.snapshot().activation).toBe("bundle");
+    return store;
+  }
+
+  it("the retired importedBundle marker activates nothing", async () => {
+    const store = await imported();
+    const record = (await store.read(VALID.expectedAud))!;
+    const { bundle: _dropped, ...rest } = record.cache!;
+    await store.write(VALID.expectedAud, {
+      ...record,
+      cache: {
+        ...rest,
+        importedBundle: { bundleId: "b", importedAt: VALID.now },
+      } as typeof rest,
+    });
+    const second = browserFor(VALID, store);
+    await settled(second);
+    expect(second.snapshot().activation).toBeNull();
+  });
+
+  it("a byte-identical re-import succeeds and writes nothing", async () => {
+    const store = await imported();
+    const before = await store.read(VALID.expectedAud);
+    let writes = 0;
+    const counting: OfflineStore = {
+      read: (p) => store.read(p),
+      write: async (p, r) => {
+        writes += 1;
+        await store.write(p, r);
+      },
+    };
+    const again = browserFor(VALID, counting);
+    await settled(again);
+    await expect(again.importBundle(VALID.bundleJws)).resolves.toMatchObject({
+      imported: ["license", "config"],
+    });
+    expect(writes).toBe(0);
+    expect(await store.read(VALID.expectedAud)).toEqual(before);
+  });
 });
 
 describe("the imported bundle across a reload", () => {
@@ -269,6 +396,8 @@ describe("desktop importBundle() through the host bridge (protocol v3)", () => {
           product: c.expectedAud,
           deviceId: c.deviceId,
           now: c.now,
+          floors: { license: null, config: null },
+          profile: "import",
         });
         if (!r.ok)
           throw Object.assign(new Error("refused"), { code: r.reason });

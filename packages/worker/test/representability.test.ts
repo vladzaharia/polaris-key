@@ -584,6 +584,7 @@ describe("a stored config value that predates the checks is pruned from the conf
     );
     expect(res.status).toBe(200);
     const doc = await verifyConfigDoc(await res.text(), {
+      lastAcceptedIssuedAt: null,
       trust: TRUST,
       expectedAud: SLUG,
       deviceId: "dev-prune",

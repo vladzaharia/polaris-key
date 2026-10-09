@@ -162,7 +162,7 @@ function readMaybe(path: string): string | null {
 
 function tempStore(): { dir: string; store: FileStore; cachePath: string } {
   const dir = mkdtempSync(join(tmpdir(), "pkey-r2-"));
-  const store = new FileStore(PRODUCT, dir);
+  const store = new FileStore(PRODUCT, dir, { readAnchor: () => null });
   return { dir, store, cachePath: join(dir, PRODUCT, "managed.json") };
 }
 
@@ -508,7 +508,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
           "product-key-2026",
           "pkey-license+jws",
         ),
-        { trust, expectedAud: PRODUCT, deviceId },
+        { lastAcceptedIssuedAt: null, trust, expectedAud: PRODUCT, deviceId },
       ),
     ).toBeNull();
     expect(
@@ -519,7 +519,7 @@ describe("R2-03 · no client-side key revocation: the trust set only ever GROWS"
           "product-key-2026",
           "pkey-config+jws",
         ),
-        { trust, expectedAud: PRODUCT, deviceId },
+        { lastAcceptedIssuedAt: null, trust, expectedAud: PRODUCT, deviceId },
       ),
     ).toBeNull();
     client.close();
@@ -769,6 +769,7 @@ describe("R2-04 · the cached document is NEVER re-verified when it is loaded", 
     const trust = { [PINNED_KID]: PINNED_PUB };
     expect(
       await verifyLicenseDoc(replayedLicense, {
+        lastAcceptedIssuedAt: null,
         trust,
         expectedAud: PRODUCT,
         deviceId,
@@ -851,6 +852,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
       trust: { [PINNED_KID]: PINNED_PUB },
       expectedAud: PRODUCT,
       deviceId,
+      lastAcceptedIssuedAt: null,
     };
 
     // The control: identical documents, correct issuer, genuinely signed → accepted.
@@ -1017,6 +1019,7 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
     );
     // A client up to CLOCK_SKEW seconds fast still accepts a brand-new document.
     const doc = await verifyLicenseDoc(jws, {
+      lastAcceptedIssuedAt: null,
       trust: { [PINNED_KID]: PINNED_PUB },
       expectedAud: PRODUCT,
       deviceId,
@@ -1032,7 +1035,12 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
         PINNED_KID,
         "pkey-license+jws",
       ),
-      { trust: { [PINNED_KID]: PINNED_PUB }, expectedAud: PRODUCT, deviceId },
+      {
+        lastAcceptedIssuedAt: null,
+        trust: { [PINNED_KID]: PINNED_PUB },
+        expectedAud: PRODUCT,
+        deviceId,
+      },
     );
     expect(future).toBeNull();
     // The config document shares the envelope (§2), so it shares the bound.
@@ -1044,7 +1052,12 @@ describe("R2-08 · verifyDoc omits iss / expiresAt / schemaVersion / licenseId +
           PINNED_KID,
           "pkey-config+jws",
         ),
-        { trust: { [PINNED_KID]: PINNED_PUB }, expectedAud: PRODUCT, deviceId },
+        {
+          lastAcceptedIssuedAt: null,
+          trust: { [PINNED_KID]: PINNED_PUB },
+          expectedAud: PRODUCT,
+          deviceId,
+        },
       ),
     ).toBeNull();
   });

@@ -383,7 +383,7 @@ public actor CoreContext {
     /// offline-first host must be able to render its gate before it has ever reached the
     /// control plane.
     public func start() async throws {
-        deviceIdValue = try await store.getDeviceId()
+        deviceIdValue = try await bindDeviceId(productSlug: product, store: store)
         tokenValue = try await store.getToken()
         tokenSourceValue = nil
         loadCache(await store.readCache())
@@ -476,7 +476,8 @@ public actor CoreContext {
             jws,
             options: VerifyTrustManifestOptions(
                 pinned: pinnedTrust, expectedAud: product,
-                now: systemClock(),
+                // The effective clock (never below the signed floor), not the raw wall clock.
+                now: now(),
                 lastTrustIssuedAt: manifest?.issuedAt, checkFreshness: checkFreshness))
         guard let doc = result.doc else { return false }
         // PRUNE (§1 rule 2): the discovered set is REPLACED, so a kid the server stops
@@ -536,6 +537,18 @@ public actor CoreContext {
 
     public func enabled(_ slug: ServiceSlug) -> Bool {
         services()[slug] ?? false
+    }
+
+    /// Whether the licence GATE runs: the build's own declaration (`expectedServices`, default
+    /// licence and config) OR a discovery document loaded this session that enables it. Discovery
+    /// is unsigned, so it may switch the gate ON but never OFF: a forged
+    /// `services.license.enabled: false` cannot turn a licensed product into `notApplicable`.
+    /// Discovery still governs which sub-clients exist (`enabled`, D-21). A config-only product
+    /// says so with an `expectedServices` that lacks `license`.
+    public func licenseGateEnabled() -> Bool {
+        let built = expectedServices.map { $0.contains(.license) } ?? (DEFAULT_SERVICES[.license] ?? false)
+        let discovered = discoveredServices?[.license] ?? false
+        return built || discovered
     }
 
     /// Refuse a sub-client whose service this product does not run (D-21). The refusal carries
@@ -823,6 +836,7 @@ public actor CoreContext {
             jws, spec: spec,
             options: VerifyOptions(
                 trust: trust, expectedAud: product, deviceId: deviceIdValue,
+                lastAcceptedIssuedAt: nil,
                 now: Swift.max(now(), peek.issuedAt), checkFreshness: false))
     }
 
@@ -1157,13 +1171,37 @@ public actor CoreContext {
             }
         }
         // A successful authenticated exchange — 200 OR 304 — clears both unsigned hints. They
-        // can only ever tighten the gate (§4.1), so clearing them on evidence of a healthy
-        // session is safe; SETTING them requires the server to have said so.
+        // are display-only (§4.1: no verdict depends on them), so clearing them on evidence of a
+        // healthy session is safe; SETTING them requires the server to have said so.
         let healthy = outcomes.values.contains { $0 == .applied || $0 == .unchanged }
         if patch == nil, healthy { patch = .some(nil) }
 
+        // A hard 401 on a slice, or a 403 build block on the licence, REMOVES that slice (document
+        // and ETag) in the SAME write as the hint. The hints are display-only: what makes a
+        // revocation hold offline is that the document is gone, so clearing a hint yields
+        // `needsActivation`, never a usable document. The token is kept (the gate then reports
+        // `revoked` / the block) and the clock floor is not lowered.
+        var revoked: [DocumentSlice] = []
+        for (slice, outcome) in outcomes {
+            switch outcome {
+            case .unauthorized: revoked.append(slice)
+            case .blocked where slice == .license: revoked.append(slice)
+            default: break
+            }
+        }
+        for slice in revoked {
+            switch slice {
+            case .license: loaded.license = nil
+            case .config: loaded.config = nil
+            }
+        }
+
         // ── One write ────────────────────────────────────────────────────────────────────
         await patchCache { rec in
+            for slice in revoked {
+                rec.docs[slice] = nil
+                rec.etags[slice] = nil
+            }
             if let trustJws { rec.trustJws = trustJws }
             if result.unauthorized {
                 rec.lastSyncUnauthorized = true

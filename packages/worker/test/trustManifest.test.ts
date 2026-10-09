@@ -16,7 +16,7 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, mkReq, NOW, seedProduct } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleJwks, handleTrustManifest } from "../src/core/trust.js";
-import { REVOKED_KEY_LISTING_SECONDS } from "../src/core/trustSigners.js";
+import { REVOKED_KEY_LISTING_SECONDS } from "@polaris-key/protocol/trust";
 
 const TRUST_WINDOW = 2 * 300; // 2 × cacheSeconds (a revocation this old is still listed)
 

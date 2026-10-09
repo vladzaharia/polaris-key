@@ -112,6 +112,7 @@ describe("licensing", () => {
     });
 
     const doc = await verifyLicenseDoc(jws, {
+      lastAcceptedIssuedAt: null,
       trust: TRUST,
       expectedAud: "djdl",
       deviceId: "dev-1",
@@ -186,6 +187,7 @@ describe("licensing", () => {
     });
 
     const doc = await verifyConfigDoc(jws, {
+      lastAcceptedIssuedAt: null,
       trust: TRUST,
       expectedAud: "djdl",
       deviceId: "dev-1",
@@ -612,6 +614,7 @@ describe("licensing", () => {
       NOW,
     );
     const doc = await verifyConfigDoc(await cfg.text(), {
+      lastAcceptedIssuedAt: null,
       trust: TRUST,
       expectedAud: "djdl",
       deviceId: "dev-1",

@@ -44,6 +44,18 @@ func has_device_id() -> bool:
 	return false
 
 
+## Whether this store keeps the device id in a desktop file that can be copied to another machine,
+## so Core re-derives the id from the platform anchor at every start (PKeyDeviceBinding). The
+## Keychain, Keystore, in-memory and host stores say false and keep their stored id.
+func bindable() -> bool:
+	return false
+
+
+## Replace the stored device id (PKeyDeviceBinding only). False when it could not be written.
+func set_device_id(_id: String) -> bool:
+	return false
+
+
 ## The cache record as parsed JSON (a Dictionary), or null when absent or unreadable.
 func read_cache() -> Variant:
 	return null

@@ -147,7 +147,7 @@ final class KeychainStoreTests: XCTestCase {
         XCTAssertEqual(dirs.cache.path, "/tmp/group.example/Library/Caches/polaris-key/djdl")
     }
 
-    func testEntitledWritesGoToTheDataProtectionKeychainWithAfterFirstUnlock() async throws {
+    func testEntitledWritesGoToTheDataProtectionKeychainWithAfterFirstUnlockThisDeviceOnly() async throws {
         let fake = FakeKeychain()
         fake.legacy = Data("pkeyt_old".utf8)
         let s = store(fake)
@@ -157,7 +157,7 @@ final class KeychainStoreTests: XCTestCase {
         let dpWrite = try XCTUnwrap(fake.writes.first { $0.dataProtection })
         XCTAssertEqual(
             dpWrite.attributes[kSecAttrAccessible as String] as? String,
-            kSecAttrAccessibleAfterFirstUnlock as String)
+            kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
         let token = try await s.getToken()
         XCTAssertEqual(token, "pkeyt_dp")
         let status = await s.status()

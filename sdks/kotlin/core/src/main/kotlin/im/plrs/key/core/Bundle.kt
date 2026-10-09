@@ -94,6 +94,7 @@ public fun inspectBundle(jws: String, options: BundleOptions): BundleInspection 
     // 4. Each inner document against the EFFECTIVE set, reload profile, the LOCAL device id.
     val reload = VerifyOptions(
         trust = effectiveTrust, expectedAud = options.product, deviceId = options.deviceId,
+        lastAcceptedIssuedAt = null, // per-type bundle floors are the wire batch (16-W, CLI-5)
         now = options.now, clockSkewSeconds = skew, checkFreshness = false,
     )
     val license = bundle.docs.license?.let { j ->

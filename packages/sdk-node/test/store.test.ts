@@ -500,7 +500,7 @@ describe("KeyringStore.status() — degraded when the keyring is missing or fail
   });
 });
 
-describe("KeyringStore — one read rule: the file, when present, is the newest token", () => {
+describe("KeyringStore — one read rule: the keyring, when it holds a token, wins", () => {
   let dir: string;
   beforeEach(() => {
     dir = realpathSync(mkdtempSync(join(tmpdir(), "pkey-readrule-")));
@@ -526,12 +526,15 @@ describe("KeyringStore — one read rule: the file, when present, is the newest 
     expect(await store.getToken()).toBe("pkeyt_new");
   });
 
-  it("a stale keyring token and a newer file token: the file's wins", async () => {
+  it("a token in the keyring and a plaintext file beside it: the keyring's wins and the file is removed", async () => {
     const k = fakeKeyring();
-    k.state.secret = "pkeyt_stale";
-    await new FileStore(PRODUCT, dir).setToken("pkeyt_newer");
+    k.state.secret = "pkeyt_keyring";
+    const files = new FileStore(PRODUCT, dir);
+    await files.setToken("pkeyt_planted");
     const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
-    expect(await store.getToken()).toBe("pkeyt_newer");
+    expect(await store.getToken()).toBe("pkeyt_keyring");
+    expect(await files.getToken()).toBeNull();
+    expect((await store.status()).backend).toBe("keyring");
   });
 
   it("a fallback write deletes the keyring entry", async () => {
@@ -544,7 +547,7 @@ describe("KeyringStore — one read rule: the file, when present, is the newest 
     expect(k.state.secret).toBeUndefined();
   });
 
-  it("a failed file removal after a verified write leaves the SAME token in the file", async () => {
+  it("a failed file removal after a verified write does not throw and the keyring still wins", async () => {
     const k = fakeKeyring();
     const files = new FileStore(PRODUCT, dir);
     await files.setToken("pkeyt_older");
@@ -555,7 +558,6 @@ describe("KeyringStore — one read rule: the file, when present, is the newest 
       const store = new KeyringStore(PRODUCT, dir, { loadKeyring: k.load });
       await store.setToken("pkeyt_current");
       expect(k.state.secret).toBe("pkeyt_current");
-      expect(await files.getToken()).toBe("pkeyt_current");
       expect(await store.getToken()).toBe("pkeyt_current");
     } finally {
       chmodSync(productDir, 0o700);

@@ -210,7 +210,17 @@ Prepare a new key, wait out (or break-glass through) the trust window, activate 
 the old one — the same shape as a `PLATFORM_KEK` compromise response in [Operating: the KEK
 keyring](/docs/admin/kek/) → _KEK compromise (containment)_, one level down: that runbook
 rotates the KEK that seals every product's keys; this rotates one product's own signing key.
+
+A revoked key stays listed as revoked in the trust manifest for 400 days. A client that pins
+both keys tombstones the revoked one when it reads that manifest: it never trusts it again,
+even for a key its app compiled in. A client that pinned **only** the revoked key cannot be
+told, and needs an app update.
 :::
+
+**Pin at least two keys.** Prepare a second key before you build, so the app ships with both
+pinned and one can revoke the other. `pkey sdk` warns when discovery lists only one key. An app
+whose pins predate a rotation still updates its keys: it asks for the trust manifest signed by
+a key it pins (`?signer=<kid>`), which any active, staged or retired key can sign.
 
 ## CI publishing
 

@@ -1,4 +1,5 @@
-// `cases.json#/bundleCases`: offline activation bundles (§7) and the v4 bundle claim cases.
+// `cases.json#/bundleCases`: offline activation bundles (§7), the v4 bundle claim cases, and
+// V4 §7's per-type floors, reload profile and tombstoned pins.
 
 import { signJws } from "@polaris-key/jws";
 import {
@@ -31,6 +32,7 @@ import {
   withNonWire,
   type WithNonWire,
 } from "./nonwire.js";
+import { refBundleOutcome } from "./reference/trust.js";
 
 // ── §7 offline activation bundles ────────────────────────────────────────────
 // Every case is a complete, signed `pkey-bundle+jws` plus the outcome of running §7's
@@ -55,10 +57,18 @@ interface BundleCase {
   bundleJws: string;
   /** Bundles verify against PINNED keys only (§7.1) — never the effective set. */
   pinned: Record<string, string>;
+  /** V4 §4.1: the `pinRevocations` evidence held (kid → the revoking manifest). Absent: none.
+   *  The tombstones it proves leave the usable pins for the bundle and its manifest. */
+  pinRevocations?: Record<string, string>;
   expectedAud: string;
   /** The importing device's LOCAL id. */
   deviceId: string;
   now: number;
+  /** V4 §7 step 4: the `issuedAt` of the verified cached document of each type, or null.
+   *  Absent: both null. */
+  floors?: { license: number | null; config: number | null };
+  /** V4 §7: `import` (absent) or `reload` (step 2 without the import window). */
+  profile?: "import" | "reload";
   /** §1 — the raised cap the bundle verifier must pass at step 1. */
   maxPayloadBytes: number;
   expect:
@@ -113,7 +123,7 @@ export async function buildBundleCases(): Promise<BundleCase[]> {
   const [ih, , is] = innerLicense.split(".") as [string, string, string];
   const tamperedInnerLicense = `${ih}.${encSeg(licenseDoc({ entitlements: { "license.tier": { state: "enforced", value: "enterprise", updatedAt: 1699990000 } } }))}.${is}`;
 
-  return [
+  const all: BundleCase[] = [
     {
       ...common,
       id: "bundle-valid-full",
@@ -213,7 +223,18 @@ export async function buildBundleCases(): Promise<BundleCase[]> {
     },
     // Wire contract v4 §3: the bundle claim cases, after the family's last case.
     ...(await buildBundleCasesV4()).map(placeNonWire),
+    // V4 §7: floors, the reload profile and tombstoned pins, after the claim cases.
+    ...(await buildBundleCustodyCases()),
   ];
+  // Recompute every outcome with the reference (V4 §7's order, both profiles, floors).
+  for (const c of all) {
+    const want = refBundleOutcome(c);
+    if (JSON.stringify(want) !== JSON.stringify(c.expect))
+      throw new Error(
+        `bundleCases: the reference disagrees on ${c.id}: ${JSON.stringify(want)}`,
+      );
+  }
+  return all;
 }
 
 async function buildBundleCasesV4(): Promise<WithNonWire<BundleCase>[]> {
@@ -307,5 +328,134 @@ async function buildBundleCasesV4(): Promise<WithNonWire<BundleCase>[]> {
       "V4 §3 minimums: the bundle's `issuedAt` −1.",
       { issuedAt: -1 },
     ),
+  ];
+}
+
+// ── V4 §7: per-type floors, the reload profile, tombstoned pins ──────────────────────────────
+
+async function buildBundleCustodyCases(): Promise<BundleCase[]> {
+  const DAY = 86400;
+  const BUNDLE_EXPIRES = V3_ISSUED + 30 * DAY;
+  const innerTrust = await signAs(
+    trustManifestV3({
+      keys: [
+        keyEntry(PIN_KID, pub(PIN_KID), "active"),
+        keyEntry(ALT_KID, pub(ALT_KID), "staged"),
+      ],
+    }),
+    PIN_KID,
+    "pkey-trust+jws",
+  );
+  const innerLicense = await signAs(licenseDoc(), PIN_KID, "pkey-license+jws");
+  const innerConfig = await signAs(configDoc(), ALT_KID, "pkey-config+jws");
+  const bundle = (
+    over: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    bundleId: "01JBUNDLE0000000000000001",
+    aud: AUD_V3,
+    deviceId: DEVICE_V3,
+    issuedAt: V3_ISSUED,
+    expiresAt: BUNDLE_EXPIRES,
+    docs: { license: innerLicense, config: innerConfig },
+    trust: innerTrust,
+    ...over,
+  });
+  const common = {
+    pinned: PINNED_V3,
+    expectedAud: AUD_V3,
+    deviceId: DEVICE_V3,
+    now: V3_NOW,
+    maxPayloadBytes: MAX_BUNDLE_BYTES,
+  };
+  const sign = (payload: unknown, kid = PIN_KID): Promise<string> =>
+    signAs(payload, kid, "pkey-bundle+jws");
+  const both: BundleCase["expect"] = {
+    imports: true,
+    docs: ["license", "config"],
+  };
+  // The inner documents are both issued at V3_ISSUED.
+  return [
+    {
+      ...common,
+      id: "bundle-floor-license-not-newer",
+      description:
+        "V4 §7 step 4: the device already holds a verified licence document issued at the same second as the bundle's. Each inner document must be STRICTLY newer than the cached one of its type, so the import is `inner-doc-rejected` and nothing lands: an old bundle cannot roll a device back.",
+      bundleJws: await sign(bundle()),
+      floors: { license: V3_ISSUED, config: null },
+      expect: { imports: false, reason: "inner-doc-rejected" },
+    },
+    {
+      ...common,
+      id: "bundle-floor-config-not-newer",
+      description:
+        "V4 §7 step 4: the config floor alone. The licence document is newer than nothing; the config document is not newer than the cached one, so the whole import is refused.",
+      bundleJws: await sign(bundle()),
+      floors: { license: null, config: V3_ISSUED + 60 },
+      expect: { imports: false, reason: "inner-doc-rejected" },
+    },
+    {
+      ...common,
+      id: "bundle-floor-newer-imports",
+      description:
+        "V4 §7 step 4, the control: both inner documents are one second newer than the cached ones, so both import.",
+      bundleJws: await sign(bundle()),
+      floors: { license: V3_ISSUED - 1, config: V3_ISSUED - 1 },
+      expect: both,
+    },
+    {
+      ...common,
+      id: "bundle-reload-past-import-window",
+      description:
+        "V4 §7 reload profile: the cached bundle re-verified at start, long after its 30-day import window closed. The reload profile is steps 1–3 without step 2's two import-window comparisons, so it still verifies; the import profile refuses the same bytes (`bundle-expired`).",
+      bundleJws: await sign(bundle()),
+      now: BUNDLE_EXPIRES + SKEW + 200 * DAY,
+      profile: "reload",
+      expect: both,
+    },
+    {
+      ...common,
+      id: "bundle-reload-wrong-device",
+      description:
+        "V4 §7 reload profile, the control: everything in step 2 but the window still binds. A cached bundle minted for another device does not reload.",
+      bundleJws: await sign(bundle({ deviceId: "dev_not_this_machine" })),
+      profile: "reload",
+      expect: { imports: false, reason: "bundle-claims-rejected" },
+    },
+    {
+      ...common,
+      id: "bundle-reload-issued-in-future",
+      description:
+        "V4 §7 reload profile: a bundle whose `issuedAt` is a day past the device clock. The import profile refuses it (`issuedAt > now + skew`); the reload profile has no window, so it reloads. A wound-back clock cannot strand a bundle-activated install.",
+      bundleJws: await sign(
+        bundle({
+          issuedAt: V3_NOW + DAY,
+          expiresAt: V3_NOW + DAY + 30 * DAY,
+        }),
+      ),
+      profile: "reload",
+      expect: both,
+    },
+    {
+      ...common,
+      id: "bundle-signed-by-tombstoned-pin-refused",
+      description:
+        "V4 §1 tombstone rule 3: the device holds evidence (`pinRevocations`) that ALT revoked PIN. PIN is no longer a usable pin for anything, so a bundle it signed is refused at step 1, however well-formed.",
+      pinned: { [PIN_KID]: pub(PIN_KID), [ALT_KID]: pub(ALT_KID) },
+      pinRevocations: {
+        [PIN_KID]: await signAs(
+          trustManifestV3({
+            issuedAt: V3_ISSUED - 1000,
+            keys: [
+              keyEntry(PIN_KID, pub(PIN_KID), "revoked"),
+              keyEntry(ALT_KID, pub(ALT_KID), "active"),
+            ],
+          }),
+          ALT_KID,
+          "pkey-trust+jws",
+        ),
+      },
+      bundleJws: await sign(bundle()),
+      expect: { imports: false, reason: "bundle-jws-rejected" },
+    },
   ];
 }

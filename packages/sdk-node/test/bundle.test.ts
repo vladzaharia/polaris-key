@@ -1,5 +1,5 @@
 // @pkey-feature core.bundle
-// Offline bundle import THROUGH THE SDK — wire contract v3 §7, step 5.
+// Offline bundle import THROUGH THE SDK — WIRE-CONTRACT-V4 §7, step 5.
 //
 // Steps 1–4 belong to `@polaris-key/client-core`'s `inspectBundle` and are pinned there (and by the
 // conformance runner). What this suite pins is the half that only a HOST can have: the cache.
@@ -46,9 +46,12 @@ interface BundleCase {
   id: string;
   description: string;
   pinned: Record<string, string>;
+  pinRevocations?: Record<string, string>;
   expectedAud: string;
   deviceId: string;
   now: number;
+  floors?: { license: number | null; config: number | null };
+  profile?: "import" | "reload";
   bundleJws: string;
   expect:
     | { imports: true; docs: ("license" | "config")[] }
@@ -236,14 +239,50 @@ const configOnlyBundle = async (): Promise<string> =>
 
 // ══════════════════════════════════════════════════════════════════════════════════════════
 
+/**
+ * The cache a vector presupposes, built the way a real install would hold it: the evidence it
+ * names (`pinRevocations`), and for each non-null floor a verified document of that type issued
+ * at exactly the floor (signed with the corpus key, bound to the vector's device).
+ */
+async function seedFor(c: BundleCase): Promise<CacheRecordV3 | null> {
+  const rec: CacheRecordV3 = { v: CACHE_VERSION };
+  if (c.pinRevocations) rec.pinRevocations = { ...c.pinRevocations };
+  const docs: NonNullable<CacheRecordV3["docs"]> = {};
+  const at = (t: number) => ({
+    deviceId: c.deviceId,
+    issuedAt: t,
+    expiresAt: t + 3600,
+    graceUntil: t + 30 * 86_400,
+  });
+  if (c.floors?.license != null)
+    docs.license = await signJws(
+      licenseDoc(at(c.floors.license)),
+      PEM,
+      KID,
+      "pkey-license+jws",
+    );
+  if (c.floors?.config != null)
+    docs.config = await signJws(
+      configDoc(at(c.floors.config)),
+      PEM,
+      KID,
+      "pkey-config+jws",
+    );
+  if (Object.keys(docs).length > 0) rec.docs = docs;
+  return Object.keys(rec).length > 1 ? rec : null;
+}
+
 describe("importBundle — the corpus vectors, driven through the SDK", () => {
-  for (const c of CASES.filter((v) => v.expect.imports)) {
+  // The reload-profile vectors are not imports: they are the cached bundle at start (below).
+  const IMPORTS = CASES.filter((v) => v.profile !== "reload");
+  for (const c of IMPORTS.filter((v) => v.expect.imports)) {
     it(`${c.id} imports exactly its documents and mints NO credential`, async () => {
       const expected = c.expect as {
         imports: true;
         docs: ("license" | "config")[];
       };
       const store = new FakeStore(c.deviceId);
+      store.cache = await seedFor(c);
       const client = clientOver(store, {
         pinned: c.pinned,
         product: c.expectedAud,
@@ -254,14 +293,12 @@ describe("importBundle — the corpus vectors, driven through the SDK", () => {
       expect(result.imported).toEqual(expected.docs);
       expect(result.bundleId).toBe(decode<BundleDoc>(c.bundleJws).bundleId);
 
-      // §7 step 5 — the atomic write: cache v3, the manifest artifact, the audit anchor.
+      // §7 step 5 — the atomic write: cache v3, the manifest artifact, the signed bundle.
       const record = await store.readCache();
       expect(record?.v).toBe(CACHE_VERSION);
       expect(record?.trustJws).toBe(decode<BundleDoc>(c.bundleJws).trust);
-      expect(record?.importedBundle).toEqual({
-        bundleId: result.bundleId,
-        importedAt: c.now,
-      });
+      expect(record?.bundle).toBe(c.bundleJws);
+      expect(record).not.toHaveProperty("importedBundle");
       // EXACTLY the expected slices — an implementation that wrote an empty `config` key would
       // pass a `toMatchObject` and fail here.
       expect(Object.keys(record?.docs ?? {}).sort()).toEqual(
@@ -275,11 +312,13 @@ describe("importBundle — the corpus vectors, driven through the SDK", () => {
     });
   }
 
-  for (const c of CASES.filter((v) => !v.expect.imports)) {
+  for (const c of IMPORTS.filter((v) => !v.expect.imports)) {
     const reason = (c.expect as { imports: false; reason: string }).reason;
 
-    it(`${c.id} throws ${reason} and writes NOTHING to an empty cache`, async () => {
+    it(`${c.id} throws ${reason} and writes NOTHING to the cache it presupposes`, async () => {
       const store = new FakeStore(c.deviceId);
+      const seeded = await seedFor(c);
+      store.cache = structuredClone(seeded);
       const client = clientOver(store, {
         pinned: c.pinned,
         product: c.expectedAud,
@@ -295,10 +334,11 @@ describe("importBundle — the corpus vectors, driven through the SDK", () => {
       await expect(
         client.importBundle(c.bundleJws, c.now),
       ).rejects.toMatchObject({ code: reason });
-      expect(await store.readCache()).toBeNull();
+      expect(await store.readCache()).toEqual(seeded);
       expect(await store.getToken()).toBeNull();
     });
 
+    if (c.floors || c.pinRevocations) continue;
     it(`${c.id} leaves a POPULATED cache untouched — all-or-nothing does not clobber`, async () => {
       // The interesting half of all-or-nothing: a device that is already provisioned must not
       // lose what it has because someone handed it a bad `.pkeybundle`.
@@ -334,6 +374,136 @@ describe("importBundle — the corpus vectors, driven through the SDK", () => {
       expect(client.getSyncState().doc?.licenseId).toBe("lic-incumbent");
     });
   }
+});
+
+describe("the cached bundle at start — the reload-profile vectors (§7)", () => {
+  for (const c of CASES.filter((v) => v.profile === "reload")) {
+    const activates = c.expect.imports && c.expect.docs.includes("license");
+    it(`${c.id} → activation ${activates ? "bundle" : "null"}`, async () => {
+      // The record an import would have written, read back by a new process.
+      const payload = decode<BundleDoc>(c.bundleJws);
+      const store = new FakeStore(c.deviceId);
+      store.cache = {
+        v: CACHE_VERSION,
+        trustJws: payload.trust,
+        docs: { ...payload.docs },
+        bundle: c.bundleJws,
+      };
+      const client = clientOver(store, {
+        pinned: c.pinned,
+        product: c.expectedAud,
+      });
+      await client.init();
+      expect(client.license.activation()).toBe(activates ? "bundle" : null);
+    });
+  }
+});
+
+describe("the cached bundle — a signed fact, not a marker (§4.1)", () => {
+  async function imported() {
+    const store = new FakeStore(DEVICE);
+    const client = clientOver(store);
+    await client.init();
+    await client.importBundle(FULL.bundleJws, NOW);
+    expect(client.license.activation()).toBe("bundle");
+    return store;
+  }
+
+  it("the retired `importedBundle` marker activates nothing", async () => {
+    const store = await imported();
+    const { bundle: _dropped, ...rest } = (await store.readCache())!;
+    store.cache = {
+      ...rest,
+      importedBundle: {
+        bundleId: "01JBUNDLE0000000000000001",
+        importedAt: NOW,
+      },
+    } as CacheRecordV3;
+    const client = clientOver(store);
+    await client.init();
+    expect(client.license.activation()).toBeNull();
+    expect(client.license.status(NOW).status).toBe("needs-activation");
+  });
+
+  it("a bundle whose licence is not the cached one, byte for byte, activates nothing", async () => {
+    const store = await imported();
+    const other = await signJws(
+      licenseDoc({ licenseId: "lic-swapped" }),
+      PEM,
+      KID,
+      "pkey-license+jws",
+    );
+    store.cache = {
+      ...(await store.readCache())!,
+      docs: { license: other },
+    };
+    const client = clientOver(store);
+    await client.init();
+    expect(client.getSyncState().doc?.licenseId).toBe("lic-swapped");
+    expect(client.license.activation()).toBeNull();
+  });
+
+  it("a tampered cached bundle activates nothing", async () => {
+    const store = await imported();
+    const [h, p, sig] = FULL.bundleJws.split(".") as [string, string, string];
+    store.cache = {
+      ...(await store.readCache())!,
+      bundle: `${h}.${p}.${sig.slice(0, -2)}AA`,
+    };
+    const client = clientOver(store);
+    await client.init();
+    expect(client.license.activation()).toBeNull();
+  });
+
+  it("a byte-identical re-import succeeds without a write", async () => {
+    const store = await imported();
+    const before = structuredClone(await store.readCache());
+    const writes = vi.spyOn(store, "writeCache");
+    const client = clientOver(store);
+    await client.init();
+    const again = await client.importBundle(FULL.bundleJws, NOW + 400 * 86_400);
+    expect(again.imported).toEqual(["license", "config"]);
+    expect(writes).not.toHaveBeenCalled();
+    expect(await store.readCache()).toEqual(before);
+  });
+
+  it("a byte-identical re-import of a config-only bundle succeeds without a write", async () => {
+    const store = new FakeStore(DEVICE);
+    const client = clientOver(store);
+    await client.init();
+    const jws = await configOnlyBundle();
+    await client.importBundle(jws, NOW);
+    const writes = vi.spyOn(store, "writeCache");
+    const again = clientOver(store);
+    await again.init();
+    await expect(again.importBundle(jws, NOW)).resolves.toEqual({
+      bundleId: "01JBUNDLECONFIGONLY00000",
+      imported: ["config"],
+    });
+    expect(writes).not.toHaveBeenCalled();
+    expect(again.license.activation()).toBeNull();
+  });
+
+  it("the held trust manifest wins when it is newer than the bundle's (§7 step 5)", async () => {
+    const store = new FakeStore(DEVICE);
+    const newer = await signJws(
+      manifest({ issuedAt: MINTED + 9_000, expiresAt: MINTED + 9_300 }),
+      PEM,
+      KID,
+      "pkey-trust+jws",
+    );
+    store.cache = { v: CACHE_VERSION, trustJws: newer };
+    const client = clientOver(store);
+    await client.init();
+    await client.importBundle(
+      await mint({
+        license: await signJws(licenseDoc(), PEM, KID, "pkey-license+jws"),
+      }),
+      NOW,
+    );
+    expect((await store.readCache())?.trustJws).toBe(newer);
+    expect(client.license.activation()).toBe("bundle");
+  });
 });
 
 describe("importBundle — the imported install is gated, offline", () => {
@@ -381,14 +551,14 @@ describe("importBundle — a config-only bundle grants nothing (D-08, §7)", () 
     expect(result.imported).toEqual(["config"]);
 
     // §7: "`activation: \"bundle\"` arises only from a bundle whose license document verified."
-    // An `importedBundle` marker on its own is NOT activation.
+    // A cached bundle without a licence document is NOT activation.
     expect(client.license.activation()).toBeNull();
     expect(client.getSyncState().activation).toBeNull();
     expect(client.license.status(NOW).status).toBe("needs-activation");
     expect(client.license.isLicensed(NOW)).toBe(false);
     // …while the settings it carried are live.
     expect(client.config.getConfig("run.mode", "??")).toBe("air-gapped");
-    expect((await store.readCache())?.importedBundle?.bundleId).toBe(
+    expect(decode<BundleDoc>((await store.readCache())!.bundle!).bundleId).toBe(
       "01JBUNDLECONFIGONLY00000",
     );
   });
@@ -407,10 +577,8 @@ describe("importBundle — a token supersedes a bundle (§7)", () => {
     const online = clientOver(store);
     await online.init();
     expect(online.getSyncState().activation).toBe("token");
-    // The import marker is still on disk — superseded, not erased.
-    expect((await store.readCache())?.importedBundle?.bundleId).toBe(
-      decode<BundleDoc>(FULL.bundleJws).bundleId,
-    );
+    // The bundle is still on disk — superseded, not erased.
+    expect((await store.readCache())?.bundle).toBe(FULL.bundleJws);
   });
 });
 

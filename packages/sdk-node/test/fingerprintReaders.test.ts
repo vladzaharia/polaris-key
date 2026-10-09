@@ -80,6 +80,7 @@ const DMI = {
   "/sys/class/dmi/id/product_uuid": "4C4C4544-0042-3510-8048-B4C04F4E3732\n",
   "/sys/class/dmi/id/board_serial": ".CN1234567890.\n",
 };
+const REG = "C:\\Windows\\System32\\reg.exe";
 const PS = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
 
 describe("Windows: one PowerShell CIM call, no wmic", () => {
@@ -88,7 +89,7 @@ describe("Windows: one PowerShell CIM call, no wmic", () => {
       {},
       {
         [PS]: '{"boardSerial":"  PF2ABCDE ","machineModel":"XPS 15 9530"}\r\n',
-        reg: "    MachineGuid    REG_SZ    1111-2222\r\n",
+        [REG]: "    MachineGuid    REG_SZ    1111-2222\r\n",
       },
     );
     const raw = rawComponents({

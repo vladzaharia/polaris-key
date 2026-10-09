@@ -49,6 +49,7 @@ from polaris_key.core.bundle import (
 from polaris_key.core.clock import effective_now, high_water_mark
 from polaris_key.core.feed import FeedFloor, feed_claims, verify_feed
 from polaris_key.core.jws import sign_jws, verify_jws
+from polaris_key.core.models import TYP_LICENSE
 from polaris_key.core.release_record import (
     ReleaseRecordPin,
     release_record_claims,
@@ -102,7 +103,6 @@ def test_jws_case(case: Dict[str, Any]) -> None:
         case["jws"],
         case["trust"],
         typ=case.get("typ"),
-        require_typ=True,
         max_payload_bytes=case.get("maxPayloadBytes"),
     )
     expect = case["expect"]
@@ -123,9 +123,10 @@ def _doc_kwargs(case: Dict[str, Any]) -> Dict[str, Any]:
         "expected_iss": case["expectedIss"],
         "device_id": case["deviceId"],
         "now": case["now"],
+        # SEC-LIC-16: the floor is a required argument; a case that names none passes an
+        # explicit None.
+        "last_accepted_issued_at": case.get("lastAcceptedIssuedAt"),
     }
-    if "lastAcceptedIssuedAt" in case:
-        kwargs["last_accepted_issued_at"] = case["lastAcceptedIssuedAt"]
     if "checkFreshness" in case:
         kwargs["check_freshness"] = case["checkFreshness"]
     return kwargs
@@ -208,6 +209,7 @@ def test_clock_floor_case(case: Dict[str, Any]) -> None:
         device_id=case["deviceId"],
         now=case["systemClock"],
         check_freshness=False,
+        last_accepted_issued_at=None,
     )
     license_doc = None
     if case.get("licenseJws") is not None:
@@ -302,13 +304,13 @@ def test_sign_roundtrips_against_the_corpus_key() -> None:
     keys = {k["kid"]: k for k in _CORPUS["keys"]}
     entry = keys["pkey-test-prod-2026"]
     payload = {"hello": "world", "n": 7}
-    jws = sign_jws(payload, entry["privateKeyPkcs8Pem"], "pkey-test-prod-2026")
+    jws = sign_jws(payload, entry["privateKeyPkcs8Pem"], "pkey-test-prod-2026", TYP_LICENSE)
     trust = {"pkey-test-prod-2026": entry["publicKeyRaw"]}
-    v = verify_jws(jws, trust)
+    v = verify_jws(jws, trust, typ=TYP_LICENSE)
     assert v is not None and v.kid == "pkey-test-prod-2026" and v.payload == payload
     # And the published valid-stable JWS must re-verify under the same key.
     valid = next(c for c in _JWS_CASES if c["id"] == "valid-stable")
-    assert verify_jws(valid["jws"], valid["trust"], require_typ=True) is not None
+    assert verify_jws(valid["jws"], valid["trust"], typ=valid["typ"]) is not None
 
 
 def test_python_signer_reproduces_the_non_ascii_corpus_vector_byte_for_byte() -> None:
@@ -408,7 +410,7 @@ _POINTER_VIEWS = _family_views()
 )
 def test_non_wire_integer_pointer_set(view: Any) -> None:
     _family, case, jws, keys, typ, cap = view
-    result = verify_jws(jws, keys, typ=typ, require_typ=True, max_payload_bytes=cap)
+    result = verify_jws(jws, keys, typ=typ, max_payload_bytes=cap)
     if "nonWireIntegers" in case:
         assert result is not None, f"{case['id']} carries nonWireIntegers, so it must verify"
     if result is None:
@@ -471,7 +473,7 @@ def _feed_claims_cases() -> List[Dict[str, Any]]:
 def test_feed_claims_case(case: Dict[str, Any]) -> None:
     """Steps 4–6 alone, after ``verify_jws``: the case's reason where it fails there, no
     refusal otherwise."""
-    v = verify_jws(case["jws"], case["trust"], typ="pkey-feed+jws", require_typ=True)
+    v = verify_jws(case["jws"], case["trust"], typ="pkey-feed+jws")
     assert v is not None, f"{case['id']} reaches the claims step"
     reason = None if case["expect"]["verify"] == "ok" else case["expect"]["reason"]
     got = feed_claims(
@@ -533,7 +535,7 @@ def test_release_record_claims_case(case: Dict[str, Any]) -> None:
     header = json.loads(b64url_decode(case["jws"].split(".")[0]))
     kid = header["kid"]
     v = verify_jws(
-        case["jws"], {kid: case["releaseKeys"][kid]}, typ="pkey-release+jws", require_typ=True
+        case["jws"], {kid: case["releaseKeys"][kid]}, typ="pkey-release+jws"
     )
     assert v is not None, f"{case['id']} reaches the claims step"
     ok = release_record_claims(v.payload, expected_aud=case["expectedAud"])
@@ -593,7 +595,7 @@ def test_pack_record_case(case: Dict[str, Any]) -> None:
 def test_pack_record_claims_case(case: Dict[str, Any]) -> None:
     """Step 14 alone over every pack-record case that reaches it."""
     kid = json.loads(b64url_decode(case["jws"].split(".")[0]))["kid"]
-    v = verify_jws(case["jws"], {kid: case["releaseKeys"][kid]}, typ="pkey-release+jws", require_typ=True)
+    v = verify_jws(case["jws"], {kid: case["releaseKeys"][kid]}, typ="pkey-release+jws")
     assert v is not None, f"{case['id']} reaches the claims step"
     ok = release_record_claims(v.payload, expected_aud=case["expectedAud"])
     assert ok == (case["expect"]["verify"] == "ok" or case["expect"]["step"] != "claims")

@@ -25,6 +25,7 @@ export {
   DATA_ONLY_HEAD_BYTES,
   DATA_ONLY_TAIL_BYTES,
   MAX_DELEGATIONS_PER_CHECK,
+  MAX_TRUST_SIGNER_ATTEMPTS,
   MAX_BUNDLE_BYTES,
   FINGERPRINT_COMPONENTS,
   FINGERPRINT_ANCHOR,
@@ -241,6 +242,7 @@ export type {
   ContentStampDoc,
 } from "./packs.js";
 
+export { TRUST_LIVE_STATUSES, REVOKED_KEY_LISTING_SECONDS } from "./trust.js";
 export type {
   SigningKeyStatus,
   TrustManifestKey,
