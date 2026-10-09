@@ -241,6 +241,11 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
    and deletion to maintainers). The trusted publisher requires `ref_protected` (P2-02), so an
    unprotected ref cannot publish. The `production` environment's deploy job (deploy.yml) relies
    on the same tag ruleset.
+   Also add a **branch/tag ruleset requiring review on `.github/**`, `actions/publish/**`, `.pkey/**`and`tools/**`** (`.github/CODEOWNERS` names the owner; SEC-SUP-20), and verify the `production`
+   environment has the same deployment-ref limits: `sync-worker-secrets.yml` also refuses to run
+   off `main` itself (SEC-SUP-6), but the environment is the authority. `deploy.yml` runs
+   install, build, typecheck, test and lint in an unprivileged `verify` job (no environment, no
+   secrets, no `id-token`); the privileged `deploy-worker` job installs with `--ignore-scripts`.
 4. Nothing to register by hand. `deploy.yml`'s "Register the platform packages" step calls the
    deploy hook (`POST /webhooks/deploy`, `packages/worker/src/platformDeploy.ts`) on every
    production deploy, authenticated by the deploy job's own GitHub OIDC token (the job has
