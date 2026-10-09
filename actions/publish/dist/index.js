@@ -22431,6 +22431,58 @@ async function resolveCiToken(opts) {
   );
 }
 
+// src/logo.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var LOGO_COLS = 22;
+var LOGO_ART = [
+  "       ⣀⡄     ⢀",
+  "   ⣀⠤⠖⠍⠅⡇    ⢠⣿⣆",
+  "   ⡇⠁⠅⠅⠅⡇  ⣤⣶⣿⣿⣿⣷⣦⡄",
+  "   ⡇⠁⠅⠅⠅⡇   ⠉⢻⣿⡿⠋⠁",
+  "   ⡇⠁⠅⠅⠅⡇     ⠻⠁",
+  "   ⡇⠁⠅⠅⠅⡇⡏⠝⢍⠝⢕⢄",
+  "   ⡇⠁⠅⠅⠅⡇⠣⡕⢅⠕⢕⢕⢕⢄",
+  "   ⡇⠁⠅⠅⠅⡇ ⠈⠣⡕⢕⢕⢕⢝⢕⡄",
+  "   ⡇⠁⠅⢅⣅⠇   ⠈⠳⣕⢕⡽⠋",
+  "   ⡧⠕⠋⠁       ⠈⠋"
+];
+var LOGO_STAR = [
+  "0000000000000010000000",
+  "0000000000000111000000",
+  "0000000000011111111000",
+  "0000000000001111110000",
+  "0000000000000011000000",
+  "0000000000000000000000",
+  "0000000000000000000000",
+  "0000000000000000000000",
+  "0000000000000000000000",
+  "0000000000000000000000"
+];
+var LOGO_STAR_GLYPH = "✦";
+var MIN_COLUMNS2 = 50;
+var MIN_ROWS = 24;
+function logoMode(term) {
+  const { caps } = term;
+  if (!caps.tty || !caps.unicode || caps.json || caps.ci || caps.dumb)
+    return null;
+  return caps.columns >= MIN_COLUMNS2 && caps.rows >= MIN_ROWS ? "art" : "star";
+}
+function logoLines(term) {
+  if (logoMode(term) !== "art") return null;
+  return LOGO_ART.map((row2, r) => {
+    const line = [];
+    let i = 0;
+    for (const ch of row2) {
+      const role = ch === " " ? null : LOGO_STAR[r][i] === "1" ? "strong" : "muted";
+      i += 1;
+      const last = line[line.length - 1];
+      if (last && (last.style?.[0] ?? null) === role) last.text += ch;
+      else line.push(role ? { text: ch, style: [role] } : { text: ch });
+    }
+    return line;
+  });
+}
+
 // src/help.ts
 var GROUPS = [
   ["manifest", "Manifest"],
@@ -22980,6 +23032,22 @@ function termColumn(term, terms, cap = term.caps.columns < 70 ? 18 : 26) {
     Math.max(0, ...terms.map(cellWidth).filter((w) => w <= cap))
   );
 }
+function logoHeader(term, art2, block) {
+  const gap = 2;
+  const room = Math.max(1, term.caps.columns - LOGO_COLS - gap);
+  const text = block.flatMap((l) => l.length ? wrapSpans(l, room) : [l]);
+  const top = Math.max(0, Math.floor((art2.length - text.length) / 2));
+  const rows = Math.max(art2.length, top + text.length);
+  const out = [];
+  for (let r = 0; r < rows; r++) {
+    const left = art2[r] ?? [];
+    const right = text[r - top] ?? [];
+    const pad2 = LOGO_COLS + gap - cellWidth(left.map((x) => x.text).join(""));
+    const spans = right.length ? [...left, { text: " ".repeat(pad2) }, ...right] : left;
+    out.push(term.painter.line(spans));
+  }
+  return out;
+}
 function renderHelp(term) {
   const { painter, symbols } = term;
   const line = (spans) => painter.line(spans);
@@ -22988,22 +23056,26 @@ function renderHelp(term) {
     ...allRows.map(([t]) => t),
     ...COMMON_OPTIONS.map(([t]) => t)
   ]);
-  const out = [
-    ...wrapSpans(
-      [
-        { text: "pkey", style: ["strong"] },
-        {
-          text: ` ${symbols.separator} Polaris Key platform CLI`,
-          style: ["muted"]
-        }
-      ],
-      term.caps.columns
-    ).map(line),
+  const art2 = logoLines(term);
+  const mode = logoMode(term);
+  const name = [
+    ...mode === "star" ? [{ text: `${LOGO_STAR_GLYPH} `, style: ["strong"] }] : [],
+    { text: "pkey", style: ["strong"] }
+  ];
+  const tagline = [
+    {
+      text: `${mode === "art" ? "" : ` ${symbols.separator} `}Polaris Key platform CLI`,
+      style: ["muted"]
+    }
+  ];
+  const usage = [
+    { text: "Usage", style: ["muted"] },
+    { text: "  pkey <command> [options]" }
+  ];
+  const out = art2 ? logoHeader(term, art2, [name, tagline, [], usage]) : [
+    ...wrapSpans([...name, ...tagline], term.caps.columns).map(line),
     "",
-    line([
-      { text: "Usage", style: ["muted"] },
-      { text: "  pkey <command> [options]" }
-    ])
+    line(usage)
   ];
   for (const [group, heading] of GROUPS) {
     const rows = COMMANDS.filter((c) => c.group === group).flatMap(
