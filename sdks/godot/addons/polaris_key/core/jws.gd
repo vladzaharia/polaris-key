@@ -203,10 +203,11 @@ static func finish(p: Dictionary) -> Variant:
 	return {"kid": p["kid"], "payload": parsed["value"], "non_wire_integers": parsed["non_wire_integers"]}
 
 
-## The trust-set value decoded (leniently, as shared-jws `importVerifyKey` does) and prepared
+## The trust-set value decoded (canonical base64url only, as shared-jws `importVerifyKey` does,
+## WIRE-CONTRACT-V4 §1: a key spelled any other way is refused, never normalised) and prepared
 ## once per key. [] when it is not a valid Ed25519 public key.
 static func _prepared_key(encoded: String) -> Array:
-	var raw = PKeyB64Url.decode_lenient(encoded)
+	var raw = PKeyB64Url.decode_strict(encoded)
 	if raw == null or (raw as PackedByteArray).size() != 32:
 		return []
 	var id := (raw as PackedByteArray).hex_encode()

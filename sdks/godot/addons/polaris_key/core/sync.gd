@@ -70,6 +70,10 @@ static func run(core: PKeyCore, force := false) -> PKeySyncResult:
 	var changes := {}
 	if trust_jws != "":
 		changes["trustJws"] = trust_jws
+		# §4.1: a manifest that tombstoned a pin is that tombstone's evidence, in the same write.
+		var evidence := core.trust.pin_revocations()
+		if not evidence.is_empty():
+			changes["pinRevocations"] = evidence
 	var unauthorized := false
 	var blocked_outcome = null
 	var rate_limited := false

@@ -68,6 +68,8 @@ static func check_envelope(doc: Dictionary, opts: Dictionary, now: float, non_wi
 	if not opts.has("last_accepted_issued_at"):
 		return false
 	var floor_at = opts.get("last_accepted_issued_at")
+	if floor_at != null and not PKeyClaims.is_number(floor_at):
+		return false
 	if floor_at != null and issued <= floor_at:
 		return false
 	if grace < expires:

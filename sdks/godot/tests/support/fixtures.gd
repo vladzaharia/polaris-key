@@ -67,6 +67,17 @@ static func bundle_case(id: String) -> Variant:
 	return null
 
 
+## The corpus trustCase `id`, or null.
+static func trust_case(id: String) -> Variant:
+	var c = read_json(CASES)
+	if not (c is Dictionary):
+		return null
+	for b in c.get("trustCases", []):
+		if b.get("id") == id:
+			return b
+	return null
+
+
 ## The corpus jwsCase `id`, or null.
 static func jws_case(id: String) -> Variant:
 	var c = read_json(CASES)

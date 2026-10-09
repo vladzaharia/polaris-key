@@ -9,10 +9,10 @@ extends RefCounted
 ##   - no anchor readable (mobile, web, a sandbox that refuses the probe): the stored id stands;
 ##   - a stored id that agrees: nothing changes;
 ##   - a stored id that disagrees is not this machine's: it is discarded together with the token
-##     and every grant slice of the cache (`trustJws`, `docs`, `etags`, `importedBundle`, any
+##     and every grant slice of the cache (`trustJws`, `docs`, `etags`, `bundle`, any
 ##     `lastSyncUnauthorized` and `blocked` hint), exactly a deactivate without the network call.
 ##     The update slices (`feeds`, `releaseRecords`) are signed public documents and carry each
-##     channel's `seq` floor, so they stay. Re-activation seats this machine once.
+##     channel's `seq` floor, and `pinRevocations` is security state, not a grant: they stay. Re-activation seats this machine once.
 ##
 ## The Keychain, Keystore, in-memory and host stores keep their stored id.
 
@@ -30,7 +30,7 @@ static func bind(store: PKeyStore, product: String, stored: String) -> String:
 	var rec = store.read_cache()
 	var kept := {}
 	if rec is Dictionary:
-		for slice in PKeyCache.UPDATE_SLICES:
+		for slice in PKeyCache.UPDATE_SLICES + ["pinRevocations"]:
 			if rec.get(slice) is Dictionary and not rec[slice].is_empty():
 				kept[slice] = rec[slice]
 	if kept.is_empty():
