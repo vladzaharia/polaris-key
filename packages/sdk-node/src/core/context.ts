@@ -45,6 +45,8 @@ import {
 import { ErrorCode, Feature, SdkId } from "../constants.generated.js";
 import { SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
+import { withRedirectPolicy } from "./redirect.js";
+import { assertProductSlug } from "./slug.js";
 import { resolveAppVersion } from "./appVersion.js";
 import { bindDeviceId } from "./deviceBinding.js";
 import { classifyResponse, transportError } from "./http.js";
@@ -95,7 +97,8 @@ export function normalizeBaseUrl(raw: string): string {
         "plaintext http:// is only accepted for localhost/127.0.0.1.",
     );
   }
-  return raw.replace(/\/+$/, "");
+  // The origin only (CLI-13): a path, query, fragment or userinfo would ride into every URL.
+  return url.origin;
 }
 
 /** What Core needs. Per-service inputs live in that service's own option bag. */
@@ -202,6 +205,7 @@ export class CoreContext {
   private floor = 0;
 
   constructor(opts: CoreOptions & { localOnly?: boolean }) {
+    assertProductSlug(opts.productSlug);
     this.product = opts.productSlug;
     this.deviceNameOption = opts.deviceName;
     this.baseUrl = normalizeBaseUrl(opts.baseUrl ?? DEFAULT_BASE);
@@ -344,7 +348,8 @@ export class CoreContext {
         "This client is in local-only mode; network calls are refused.",
       );
     }
-    return this.fetchImpl ?? fetch;
+    // Every product-scoped call follows the §5 redirect rule (CLI-3).
+    return withRedirectPolicy(this.fetchImpl ?? ((...a) => fetch(...a)));
   }
 
   /** A fresh deadline for one request. */
@@ -427,7 +432,7 @@ export class CoreContext {
     } catch (e) {
       return {
         kind: "error",
-        code: ErrorCode.networkError,
+        code: e instanceof PolarisError ? e.code : ErrorCode.networkError,
         status: 0,
         message: transportError(e, path).message,
       };
