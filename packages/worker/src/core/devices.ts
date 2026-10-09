@@ -562,6 +562,23 @@ export async function bindDevice(
   };
   if (relicensed) await clearDeviceInheritance(db, product.slug, deviceId);
   await upsertDevice(db, device);
+  // SEC-LIC-12: a row changing licence is the trace of a seat moving; record both licence ids
+  // (never a key or token) so a victim's lost seat is explicable.
+  if (relicensed) {
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: null,
+      actor_name: null,
+      actor_email: null,
+      action: "device.rebind",
+      target_kind: "device",
+      target_id: deviceId,
+      parent_id: license.id,
+      summary: `Device moved from licence ${existing.license_id} to ${license.id} (was ${existing.status})`,
+    });
+  }
   if (opts.subject) {
     await writeDeviceSubject(db, product.slug, deviceId, opts.subject);
     device.subject = opts.subject;

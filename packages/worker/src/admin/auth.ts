@@ -15,6 +15,7 @@
  * independent of any single product's OIDC client.
  */
 
+import { recordPlatformSecurityEvent } from "../core/securityEvents.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
   ALLOWED_ID_TOKEN_ALGS,
@@ -367,12 +368,24 @@ export async function handleAdminCallback(
   }
 
   const identity = await verifier.verify({ code, flow, env });
-  if (!identity || !identity.sub)
+  if (!identity || !identity.sub) {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.failed",
+      summary: "Admin sign-in: ID token could not be verified",
+      now,
+    });
     return htmlError(401, "Sign-in could not be verified.");
+  }
 
   // Admin authority is platform-wide, so the gate needs no product list — the `listProducts`
   // read that used to feed the (ignored) `_products` parameter is gone.
   if (!hasAnyAdminGrant(env, identity.groups)) {
+    await recordPlatformSecurityEvent(db, {
+      action: "admin.signin.refused",
+      sub: identity.sub,
+      summary: "Admin sign-in refused: no administrator grant",
+      now,
+    });
     return htmlError(
       403,
       "Your account is not an administrator of any product.",
@@ -399,6 +412,12 @@ export async function handleAdminCallback(
     { ...identity, stepUp: flow.stepUp === true },
     now,
   );
+  await recordPlatformSecurityEvent(db, {
+    action: "admin.signin",
+    sub: identity.sub,
+    summary: flow.stepUp ? "Admin sign-in (step-up)" : "Admin sign-in",
+    now,
+  });
   // Re-validated on read: the flow record is server-written, but a defense-in-depth re-check
   // costs nothing and keeps "the callback only ever redirects to an allowlisted path" a local
   // property of this function rather than a cross-file invariant.
