@@ -12,7 +12,7 @@
     "One primary that names the device ('Remove Booth PC'); the consequence is said once (in the aside); Go back to DJDL returns to the app's hand-off.",
     "Short desktop (≥1024 wide, ≤820 tall, the 1024×768 render): two columns, so Remove is in the first viewport; otherwise one 640px column.",
     "Phone: one column, the buttons full width; the bottom bar stays (B12).",
-    "Round 2 (UX review): The title leads (above the frame), then the identity row, then the choice; the consequence ('Booth PC signs out of DJDL. Add it back any time.') sits beside Remove; two columns on a desktop up to 900px tall (M6).",
+    "Round 2 (UX review): The title leads (above the frame), then the identity row, then the choice; the consequence ('Booth PC signs out of DJDL.') sits beside Remove; two columns on a desktop up to 900px tall (M6).",
     "Round 2 (UX review): Phone bar: the selected tab is a neutral fill with a 3:1 edge; Activate is a plain tab (M5)."
   ],
   "status": "mockup",
