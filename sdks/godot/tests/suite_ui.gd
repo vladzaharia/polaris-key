@@ -287,6 +287,7 @@ func _behaviour(t: PKeyTestContext) -> void:
 	await _settings(t)
 	await _update_prompt(t)
 	await _dialogs_take_focus(t)
+	await _gate_limit_focus(t)
 	await _focus_follows_screen(t)
 	await _never_covering(t)
 	_activation_copy(t)
@@ -410,6 +411,94 @@ func _dialogs_take_focus(t: PKeyTestContext) -> void:
 		t.check("dialog focus: %s, a pad's B closes it and the game's control has the focus again" % name, not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game, "%s visible %s focus %s" % [name, dialog.is_visible_in_tree(), _tree().root.gui_get_focus_owner()])
 		_free(dialog)
 		_free(game)
+
+
+## A stand-in SDK whose license answers the device limit after a short wait (the real busy -> await
+## -> result path, not a direct `show_result`).
+class LimitLicense:
+	extends RefCounted
+
+	func activate_with_key(_key: String) -> PKeyActivationResult:
+		await (Engine.get_main_loop() as SceneTree).create_timer(0.3).timeout
+		var r := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
+		r.limit = 3
+		r.device_count = 3
+		r.manage_url = "https://key.plrs.im/activate?product=djdl"
+		return r
+
+
+class LimitSdk:
+	extends Node
+	signal state_changed(s)
+	var license := LimitLicense.new()
+
+	func status() -> Dictionary:
+		return {"status": "needs-activation"}
+
+
+static func _key_event(vp: Viewport, code: int) -> void:
+	for pressed in [true, false]:
+		var e := InputEventKey.new()
+		e.keycode = code
+		e.physical_keycode = code
+		e.pressed = pressed
+		vp.push_input(e)
+
+
+static func _joy_in(vp: Viewport, button: int) -> void:
+	for pressed in [true, false]:
+		var e := InputEventJoypadButton.new()
+		e.button_index = button
+		e.pressed = pressed
+		vp.push_input(e)
+
+
+## The device limit reached through the gate (type a key, Activate by pad A, Enter in the field, or a
+## result handed in directly): the limit view's primary has the focus, with its ring, afterwards.
+## The activation panel sits inside the gate, which owns the focus (it was `<none>` before).
+func _gate_limit_focus(t: PKeyTestContext) -> void:
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = true
+	PKeyUiView.mobile_override = false
+	PKeyUiView.pad_only_override = false
+	PKeyUiView.ensure_pad_bindings()
+	for how in ["pad A on Activate", "Enter in the key field", "a result handed in directly"]:
+		var sdk := LimitSdk.new()
+		_tree().root.add_child(sdk)
+		var vp := SubViewport.new()
+		vp.size = Vector2i(1280, 720)
+		_tree().root.add_child(vp)
+		var g := PKeyGateView.new()
+		g.auto_sdk = false
+		g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, true, false))
+		vp.add_child(g)
+		g.sdk = sdk
+		g.activation.sdk = sdk
+		g.show_state({"status": "needs-activation"})
+		await _tree().create_timer(0.1).timeout
+		var key := g.find_child("KeyInput", true, false) as LineEdit
+		key.grab_focus()
+		key.text = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV"
+		await _tree().process_frame
+		match how:
+			"pad A on Activate":
+				(g.find_child("Activate", true, false) as Button).grab_focus()
+				await _tree().process_frame
+				_joy_in(vp, JOY_BUTTON_A)
+			"Enter in the key field":
+				_key_event(vp, KEY_ENTER)
+			_:
+				var r: PKeyActivationResult = await sdk.license.activate_with_key("k")
+				g.activation.show_result(r, "k")
+		await _tree().create_timer(0.8).timeout
+		var f := vp.gui_get_focus_owner()
+		var shows := not g.activation.limit.is_empty()
+		t.check("gate limit focus: %s reaches the device limit" % how, shows)
+		t.check("gate limit focus: %s, the limit view's primary has the focus" % how, shows and f != null and f.name == "FreeDevice", str(f))
+		var ring := f != null and f.has_focus() and f.focus_mode != Control.FOCUS_NONE and not (f.get_theme_stylebox("focus") is StyleBoxEmpty) and f.is_visible_in_tree() and g.get_global_rect().encloses(f.get_global_rect())
+		t.check("gate limit focus: %s, the focused control draws a ring and is on screen" % how, ring, "%s %s %s %s" % [f, f.get_theme_stylebox("focus") if f else null, f.get_global_rect() if f else null, g.get_global_rect()])
+		vp.queue_free()
+		sdk.queue_free()
 
 
 ## The sign-in starts with focus on Cancel (nothing else exists yet); when the code arrives, and

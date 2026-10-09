@@ -441,6 +441,9 @@ func show_result(r: PKeyActivationResult, key := "", slot := "key") -> void:
 		message = ""
 		message_ok = false
 		refresh_view()
+		# The view that was focused (the key field, Activate) is hidden now: the limit view's
+		# primary takes the focus (never a game's own control, never after a mouse).
+		outer_view().ensure_focus.call_deferred()
 		return
 	limit = {}
 	_message_is_data = false

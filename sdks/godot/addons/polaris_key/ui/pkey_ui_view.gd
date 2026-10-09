@@ -288,6 +288,11 @@ func refresh_view() -> void:
 		if held != null and held_at >= 0 and not held.has_focus() and _lost_index < 0:
 			_lost_index = held_at
 		_manage_focus.call_deferred()
+	elif is_inside_tree():
+		# A view nested in another (the activation panel in the gate) changed what it shows: the
+		# outermost view owns the focus, and asks for it again when the screen it shows differs
+		# (a device limit replaced the key field the focus was on).
+		outer_view()._manage_focus.call_deferred()
 
 
 ## Hide every container under `n` marked AUTO_HIDE_META whose children are all hidden, innermost
