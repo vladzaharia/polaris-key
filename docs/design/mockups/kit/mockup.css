@@ -20755,10 +20755,11 @@ span.dash::before {
 .cm2 .dialog-head {
   align-items: flex-start;
 }
+/* A block, not a flex row: a flex title drops the spaces around an inline mono value
+   ("Add holiday_bundle to an offer"). One line still centres on the 32px close button. */
 .cm2 .dialog-head > h2 {
-  display: flex;
-  align-items: center;
-  min-height: 32px;
+  display: block;
+  padding-block: max(0px, calc((32px - var(--lh-section)) / 2));
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -21885,8 +21886,10 @@ span.dash::before {
   display: flex;
   align-items: stretch;
 }
+/* The rail's link tile is as tall as its content: stretched to the main card, a tile that is an
+   icon and a title is mostly empty. */
 .mk-with-rail.g84 > .mk-rail > .card {
-  flex: 1 1 auto;
+  flex: none;
 }
 .acct-line {
   display: flex;

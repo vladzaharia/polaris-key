@@ -3648,8 +3648,9 @@ block gap (32), card padding (24) and row height (56) already existed as `--page
 - **Device-code story (cli-login).** `.story` is two rows of two equal-height frames; `.related` is the
   open Related commands block; `.strip-3` is the three-note strip; `.term-body.scroll-x` scrolls
   sideways on phone (give it `tabindex="0"`, `role="region"` and an `aria-label`).
-- **Message pages.** `.mk-with-rail.g84` is an 8/4 grid of equal-height cards, `.g-stretch` makes the
-  rail card as tall as the main one, `.acct-line` carries the quiet "Use another account" link.
+- **Message pages.** `.mk-with-rail.g84` is an 8/4 grid whose rail link tile is as tall as its
+  content, `.g-stretch` makes the rail card as tall as the main one, `.acct-line` carries the quiet
+  "Use another account" link.
 - **`.root-rule`, `.icon-hint`** (a tooltip glyph after a title), `.key-chip`.
 
 Not done: the 1280px right rail for Platform ready on platform-settings. The 1136px form cap cannot
