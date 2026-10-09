@@ -26,6 +26,8 @@ export type SingleUseKind =
   | "provider-flow"
   /** Console (admin) OIDC sign-in, by `state`. */
   | "admin-flow"
+  /** Console sign-out mark (SEC-WP-09): an operator's sessions minted at or before it are void. */
+  | "admin-revoked"
   /** Product OIDC sign-in, by `state`. */
   | "oidc-flow"
   /** The legacy sign-in's licence chooser (I-26): the browser binder's hash → the flow's `state`. */

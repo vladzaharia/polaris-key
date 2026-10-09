@@ -115,6 +115,7 @@ async function world(): Promise<World> {
         email: "ada@studio.example",
         groups: [PLATFORM_GROUP],
         authTime: opts.authAt ?? now,
+        stepUp: true,
       },
       now,
     );
@@ -565,6 +566,28 @@ describe("actions", () => {
     );
   });
 
+  it("SEC-ADM-4: export, data delete and detach need a proven step-up, not just a fresh sign-in", async () => {
+    const w = await world();
+    const f = await fixture(w);
+    // Signed in this second, but never through a step-up flow: `authAt` is current, `stepUpAt` absent.
+    const plain = { authAt: NOW - 3600 };
+    for (const [method, path] of [
+      ["GET", `/alpha/users/${f.adaAlpha}/export`],
+      ["POST", `/alpha/users/${f.adaAlpha}/data/delete`],
+      ["POST", `/alpha/users/${f.adaAlpha}/licenses/lic-alpha-ada/detach`],
+    ] as const) {
+      const r = await w.json(method, path, undefined, plain);
+      expect(r.status, path).toBe(403);
+      expect((r.body as { code?: string }).code, path).toBe("step_up_required");
+    }
+    // Nothing changed: the licence is still attached.
+    const row = await w.json<{ user: { licenses: unknown[] } }>(
+      "GET",
+      `/alpha/users/${f.adaAlpha}`,
+    );
+    expect(row.body.user.licenses.length).toBeGreaterThan(0);
+  });
+
   it("detach makes the licence floating and keeps the device binding", async () => {
     const w = await world();
     const f = await fixture(w);
@@ -917,15 +940,23 @@ describe("operator step-up", () => {
     const env = makeEnv(new KvMock(), []);
     env.ADMIN_SESSION_SECRET = "s";
     const base = { sub: "op", groups: ["g"] };
-    const a = await issueSession(env, { ...base, authTime: NOW - 100 }, NOW);
+    const a = await issueSession(
+      env,
+      { ...base, authTime: NOW - 100, stepUp: true },
+      NOW,
+    );
     expect(a.session.authAt).toBe(NOW - 100);
     expect(isSteppedUp(a.session, NOW)).toBe(true);
-    const b = await issueSession(env, { ...base, authTime: NOW + 999 }, NOW);
+    const b = await issueSession(
+      env,
+      { ...base, authTime: NOW + 999, stepUp: true },
+      NOW,
+    );
     expect(b.session.authAt).toBe(NOW);
     expect(isSteppedUp(b.session, NOW + 301)).toBe(false);
     const verified = await verifySession(env, a.token, NOW);
     expect(verified?.authAt).toBe(NOW - 100);
-    expect(isSteppedUp({ ...a.session, authAt: undefined }, NOW)).toBe(false);
+    expect(isSteppedUp({ ...a.session, stepUpAt: undefined }, NOW)).toBe(false);
   });
 
   it("asks the IdP for a fresh sign-in and refuses a stale auth_time", async () => {

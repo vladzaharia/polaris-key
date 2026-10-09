@@ -16,6 +16,11 @@
  */
 
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import {
+  ALLOWED_ID_TOKEN_ALGS,
+  ID_TOKEN_CLOCK_TOLERANCE,
+  ID_TOKEN_MAX_AGE,
+} from "../services/identity/idToken.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { hashKey } from "../crypto.js";
@@ -166,7 +171,12 @@ const joseIdTokenVerifier: IdTokenVerifier = {
       const verified = await jwtVerify(tokens.id_token, jwks, {
         issuer: cfg.issuer,
         audience: cfg.clientId,
-        algorithms: ["RS256", "ES256", "EdDSA"],
+        algorithms: ALLOWED_ID_TOKEN_ALGS,
+        // SEC-CRY-20: same freshness rules as the portal and product sign-ins; `exp` alone is
+        // the IdP's choice.
+        clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
+        maxTokenAge: ID_TOKEN_MAX_AGE,
+        requiredClaims: ["sub", "exp", "iat"],
       });
       const claims = verified.payload as Record<string, unknown>;
       // Reject unconditionally on a missing or mismatched nonce — a token with no nonce
@@ -333,7 +343,12 @@ export async function handleAdminCallback(
     );
   }
 
-  const { token } = await issueSession(env, identity, now);
+  // SEC-ADM-3: only a step-up flow whose ID token carries `auth_time` records a step-up.
+  const { token } = await issueSession(
+    env,
+    { ...identity, stepUp: flow.stepUp === true },
+    now,
+  );
   // Re-validated on read: the flow record is server-written, but a defense-in-depth re-check
   // costs nothing and keeps "the callback only ever redirects to an allowlisted path" a local
   // property of this function rather than a cross-file invariant.

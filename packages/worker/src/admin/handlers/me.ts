@@ -61,7 +61,7 @@ export async function handleMe(
     sessionExpiresAt: session.exp,
     // I-12: when the operator last signed in interactively, for the relink tool's step-up (a
     // sign-in no older than `stepUpMaxAgeSeconds`). `null` for a session minted before I-12.
-    authAt: session.authAt ?? null,
+    authAt: session.stepUpAt ?? null,
     stepUpMaxAgeSeconds: STEP_UP_MAX_AGE_SECONDS,
   });
 }

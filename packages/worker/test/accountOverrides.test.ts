@@ -200,6 +200,7 @@ async function world(
         email: "ops@studio.example",
         groups: [PLATFORM_GROUP],
         authTime: o.authAt ?? now,
+        stepUp: true,
       },
       now,
     );
