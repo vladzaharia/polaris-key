@@ -43,6 +43,7 @@ export {
   type BitColor,
   type MarkTheme,
 } from "./marks/core.js";
+export * from "./tokens/icons.js";
 export { serviceAccent, sectionBit } from "./tokens/services.js";
 export {
   COLOR_RULES,

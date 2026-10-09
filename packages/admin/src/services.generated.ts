@@ -66,9 +66,9 @@ export type ServiceAccentToken =
  *  component, so a new icon here is a type error until it is imported there. */
 export type ServiceIconName =
   | "KeyRound"
-  | "Settings2"
+  | "SlidersHorizontal"
   | "Package"
-  | "Truck"
+  | "Waypoints"
   | "CircleArrowUp"
   | "UserRound"
   | "Cloud";
@@ -105,7 +105,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     summary:
       "The managed config catalog, profiles, overrides, and secret delivery.",
     accent: "config",
-    icon: "Settings2",
+    icon: "SlidersHorizontal",
     docs: "/docs/services/config/",
     defaultEnabled: true,
     requires: [],
@@ -127,7 +127,7 @@ export const SERVICE_TABLE: readonly ServiceTableRow[] = [
     summary:
       "How releases reach devices and outlets — transports, availability, and rollouts.",
     accent: "distribution",
-    icon: "Truck",
+    icon: "Waypoints",
     docs: "/docs/services/distribution/",
     defaultEnabled: false,
     requires: ["release"],

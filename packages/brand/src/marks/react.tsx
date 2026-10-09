@@ -21,6 +21,15 @@ import {
   type MarkOptions,
 } from "./svg.js";
 import { BADGE_TEMPLATES } from "../generated/layouts.js";
+import {
+  serviceIconInner,
+  serviceIconTileInner,
+  type ServiceIconOptions,
+  type ServiceIconTileOptions,
+} from "./icons.js";
+import { SERVICE_ICON_GRID, type ServiceIconId } from "../tokens/icons.js";
+import { serviceIconStroke } from "../tokens/icons.js";
+import type { Theme } from "../tokens/source.js";
 import { POWERED_BY } from "../tokens/primitives.js";
 import { badgeSize } from "./core.js";
 
@@ -81,12 +90,13 @@ export function PolarisLockup({
   layout,
   theme,
   height,
+  trim,
   signed,
   bit,
   title,
   ...rest
 }: PolarisLockupProps) {
-  const opts = { kind, layout, theme, height, signed, bit, title };
+  const opts = { kind, layout, theme, height, trim, signed, bit, title };
   const m = lockupMetrics(opts);
   const name = title ?? m.template.title;
   return (
@@ -94,7 +104,7 @@ export function PolarisLockup({
       xmlns={SVG_NS}
       width={round(m.width)}
       height={round(m.height)}
-      viewBox={`0 0 ${m.template.width} ${m.template.height}`}
+      viewBox={`${m.view.x} ${m.view.y} ${m.view.width} ${m.view.height}`}
       role={name ? "img" : undefined}
       aria-label={name || undefined}
       aria-hidden={name ? undefined : true}
@@ -152,6 +162,73 @@ export function PoweredByBadge({
       {...rest}
       dangerouslySetInnerHTML={{
         __html: poweredByInner({ layout, treatment, theme, width, title }),
+      }}
+    />
+  );
+}
+
+export type ServiceIconProps = SvgProps &
+  ServiceIconOptions & {
+    /** The service (or commerce, packs) the icon names. */
+    id: ServiceIconId;
+    /**
+     * Draw the §7.8 tile (a raised square with an accent border) instead of the bare glyph. The
+     * tile sizes are 64, 48, 28 and 20; `theme` picks the ground.
+     */
+    tile?: boolean;
+    theme?: Theme;
+  };
+
+/**
+ * A service icon (BRAND.md §1.1): lucide's glyph on a 24 grid in currentColor, the stroke 2 up to
+ * 20 px and 1.6 above. It never stands alone: the service's name sits beside it, so it is
+ * decorative unless `title` is given. With `tile`, the size is one of the tile sizes and the
+ * colours come from the section's accent.
+ */
+export function ServiceIcon({
+  id,
+  size,
+  title,
+  tile,
+  theme,
+  ...rest
+}: ServiceIconProps) {
+  if (tile) {
+    const s = (size ?? 48) as ServiceIconTileOptions["size"] & number;
+    return (
+      <svg
+        xmlns={SVG_NS}
+        width={s}
+        height={s}
+        viewBox={`0 0 ${s} ${s}`}
+        role={title ? "img" : undefined}
+        aria-label={title || undefined}
+        aria-hidden={title ? undefined : true}
+        {...rest}
+        dangerouslySetInnerHTML={{
+          __html: serviceIconTileInner(id, { size: s, theme, title }),
+        }}
+      />
+    );
+  }
+  const px = size ?? 24;
+  return (
+    <svg
+      xmlns={SVG_NS}
+      width={px}
+      height={px}
+      viewBox={`0 0 ${SERVICE_ICON_GRID} ${SERVICE_ICON_GRID}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={serviceIconStroke(px)}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role={title ? "img" : undefined}
+      aria-label={title || undefined}
+      aria-hidden={title ? undefined : true}
+      {...rest}
+      dangerouslySetInnerHTML={{
+        __html: serviceIconInner(id, { size: px, title }),
       }}
     />
   );

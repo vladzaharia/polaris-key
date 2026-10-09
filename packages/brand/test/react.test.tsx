@@ -6,8 +6,19 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { PolarisLockup, PolarisMark, PoweredByBadge } from "../src/react.js";
-import { lockupSvg, markSvg, poweredBySvg } from "../src/svg.js";
+import {
+  PolarisLockup,
+  PolarisMark,
+  PoweredByBadge,
+  ServiceIcon,
+} from "../src/react.js";
+import {
+  lockupSvg,
+  markSvg,
+  poweredBySvg,
+  serviceIconSvg,
+  serviceIconTileSvg,
+} from "../src/svg.js";
 
 const render = (el: React.ReactElement) => renderToStaticMarkup(el);
 
@@ -46,6 +57,9 @@ describe(`React ${React.version}`, () => {
     { height: 60 },
     { bit: "config" as const },
     { bit: "section" as const, title: "" },
+    { trim: true, height: 48 },
+    { kind: "delivery" as const, trim: true, theme: "light" as const },
+    { trim: true, height: 48, bit: "release" as const },
   ];
   it.each(lockupCases.map((c) => [JSON.stringify(c), c] as const))(
     "PolarisLockup %s renders lockupSvg's markup",
@@ -90,4 +104,30 @@ describe(`React ${React.version}`, () => {
     expect(html).toContain('class="polaris-mark"');
     expect(html).toContain('data-testid="m"');
   });
+
+  it.each([
+    ["license", {}],
+    ["distribution", { size: 16 }],
+    ["commerce", { size: 20, title: "Commerce" }],
+    ["sync", { size: 32 }],
+    ["packs", { size: 64 }],
+  ] as const)("ServiceIcon %s renders serviceIconSvg's markup", (id, props) => {
+    expect(render(<ServiceIcon id={id} {...props} />)).toBe(
+      serviceIconSvg(id, props),
+    );
+  });
+
+  it.each([
+    ["core", 64, "dark"],
+    ["update", 48, "light"],
+    ["packs", 28, "dark"],
+    ["identity", 20, "light"],
+  ] as const)(
+    "ServiceIcon tile %s %i %s renders the tile markup",
+    (id, size, theme) => {
+      expect(
+        render(<ServiceIcon id={id} tile size={size} theme={theme} />),
+      ).toBe(serviceIconTileSvg(id, { size, theme }));
+    },
+  );
 });

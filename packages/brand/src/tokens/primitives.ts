@@ -78,6 +78,16 @@ export const POWERED_BY = {
 
 export type BadgeLayout = keyof typeof POWERED_BY.minimum;
 
+/**
+ * The trimmed horizontal lockup (`lockupSvg({ trim: true })`, for the 64 px console header): the
+ * kit's horizontal canvas without its margin. The glyph keeps its place and size, so the
+ * glyph-to-wordmark gap and ratio are the kit's byte for byte; only the canvas is cropped to the
+ * glyph's 96-unit box on the left, top and bottom and to the wordmark's end on the right. Clear
+ * space is the host's (8 px around the 48 px glyph in a 64 px header). test/lockup-trim.test.ts
+ * proves these numbers against every horizontal template.
+ */
+export const LOCKUP_TRIM = { x: 16, y: 32, height: 96, right: 40 } as const;
+
 /** Clear space around standalone marks and lockups, as a fraction of the glyph height. */
 export const CLEAR_SPACE_RATIO = 0.25;
 

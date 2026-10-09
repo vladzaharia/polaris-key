@@ -17,6 +17,7 @@ import {
   ALT,
   BRAND,
   CUT_GRID,
+  LOCKUP_TRIM,
   OPTICAL,
   type BadgeLayout,
   type LockupKind,
@@ -243,6 +244,12 @@ export interface LockupOptions {
   /** Rendered height in CSS px. Default: the kit's natural size. Width follows the aspect ratio. */
   height?: number;
   /**
+   * Crop the horizontal lockup's canvas to its glyph box and wordmark (LOCKUP_TRIM), for a header
+   * that supplies its own clear space. `height` is then the glyph's height: 48 in the 64 px
+   * console header. Horizontal only; any other layout throws.
+   */
+  trim?: boolean;
+  /**
    * Show the kit-gold terminal bit. Off by default: the default Polaris Key lockup has no bit
    * (owner decision 2026-10-03), although the kit's own horizontal and stacked files carry it
    * (`kitLockupSvg` still reproduces those byte for byte). It never shows below a 48 px glyph.
@@ -254,20 +261,32 @@ export interface LockupOptions {
   title?: string;
 }
 
-/** The lockup's geometry at a given height: size, the glyph's rendered edge and whether the bit shows. */
+/** The lockup's geometry at a given height: size, viewBox, the glyph's rendered edge and whether the bit shows. */
 export function lockupMetrics(opts: LockupOptions = {}) {
   const { kind = "key", layout = "horizontal" } = opts;
   const t = LOCKUP_TEMPLATES[kind][layout];
-  const height = opts.height ?? t.height;
-  const width = (t.width * height) / t.height;
+  if (opts.trim && layout !== "horizontal")
+    throw new RangeError(
+      `lockup: trim applies to the horizontal layout, not ${layout}`,
+    );
+  const view = opts.trim
+    ? {
+        x: LOCKUP_TRIM.x,
+        y: LOCKUP_TRIM.y,
+        width: t.width - LOCKUP_TRIM.x - LOCKUP_TRIM.right,
+        height: LOCKUP_TRIM.height,
+      }
+    : { x: 0, y: 0, width: t.width, height: t.height };
+  const height = opts.height ?? view.height;
+  const width = (view.width * height) / view.height;
   const glyph = LOCKUP_GLYPHS[kind][layout];
-  const glyphPx = (glyph.size * height) / t.height;
+  const glyphPx = (glyph.size * height) / view.height;
   const bit =
     kind === "key" &&
     glyph.cut === "display" &&
     glyphPx >= OPTICAL.goldMinimumGlyphSize &&
     wantsBit(opts.signed, opts.bit);
-  return { template: t, width, height, glyphPx, cut: glyph.cut, bit };
+  return { template: t, view, width, height, glyphPx, cut: glyph.cut, bit };
 }
 
 /** The inner markup a lockup renders (shared by `lockupSvg` and `<PolarisLockup>`). */
@@ -294,7 +313,7 @@ export function lockupSvg(opts: LockupOptions = {}): string {
   const m = lockupMetrics(opts);
   const title = opts.title ?? m.template.title;
   const head = a11y(title);
-  return `<svg xmlns="${SVG_NS}" width="${fmt(m.width)}" height="${fmt(m.height)}" viewBox="0 0 ${m.template.width} ${m.template.height}"${head.attrs}>${lockupInner(opts)}</svg>`;
+  return `<svg xmlns="${SVG_NS}" width="${fmt(m.width)}" height="${fmt(m.height)}" viewBox="${m.view.x} ${m.view.y} ${m.view.width} ${m.view.height}"${head.attrs}>${lockupInner(opts)}</svg>`;
 }
 
 /** One of the kit's lockup files (kit/02-lockups), byte for byte. */

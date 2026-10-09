@@ -18,6 +18,17 @@
 //   lockups/delivery/*.svg              the "Polaris Key Delivery" lockups, every layout and kit
 //                                       colour variant (scripts/delivery.ts sets the wordmark
 //                                       from kit/source/fonts/Rubik-Bold.ttf)
+//   icons/services/*.svg                the ten service icons (<id>.svg at stroke 1.6, <id>-compact.svg
+//                                       at stroke 2) and sprite.svg, from src/marks/icons.ts
+//   marks/delivery/*.svg                the kit's Star Cut marks named "Polaris Key Delivery"
+//   web/delivery/*                      the kit's Update web files named "Polaris Key Delivery": the
+//                                       manifest and head snippet rewritten, the icon bytes copied
+//   social/delivery/*.svg               the kit's Update social cards with the wordmark re-set to
+//                                       "Polaris Key Delivery" (scripts/assets.ts)
+//   social/{key,delivery}/portrait-*.svg  the 1080 x 1350 portrait cards (the square on a taller
+//                                       canvas)
+//   GENERATED.sha256                    SHA-256 of every text asset above, the lockups, the CSS and
+//                                       tokens.json, for a consumer to pin this package's revision
 //   sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd    GDScript constants
 //   sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift         Swift constants
 //   sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisBrandTokens.generated.kt
@@ -61,7 +72,8 @@
 // `--check` is the drift gate (CI, AGENTS.md's green gate). Like gen:constants, the TypeScript,
 // JSON and CSS outputs are prettier-formatted here so `pnpm lint` and `pnpm format` agree.
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
@@ -97,7 +109,22 @@ import {
   type ServiceId,
   type Theme,
 } from "../src/tokens/source.js";
+import {
+  CARD_KINDS,
+  MARK_CUTS,
+  MARK_VARIANTS,
+  THEMES as CARD_THEMES,
+  deliveryCard,
+  deliveryHeadSnippet,
+  deliveryManifest,
+  deliveryMark,
+  loadWordmarkFont,
+  portraitOf,
+  proveCards,
+} from "./assets.js";
 import { DELIVERY_TITLE, deliveryLockups } from "./delivery.js";
+import { serviceIconFile, serviceIconSprite } from "../src/marks/icons.js";
+import { SERVICE_ICON_IDS } from "../src/tokens/icons.js";
 import {
   accentVectorsJson,
   csharpBrand,
@@ -1298,6 +1325,16 @@ const VARIABLE_FONTS: [string, string][] = [
  * module's assets (a TARGET below), so they ship inside every app that bundles the fonts.
  */
 const KOTLIN_UI = "sdks/kotlin/ui/src/main";
+const KIT_DIR = join(PKG, "kit");
+const WORDMARK_FONT = loadWordmarkFont(KIT_DIR);
+proveCards(KIT_DIR, WORDMARK_FONT);
+
+/** The kit's web icon files the Delivery web folder reuses byte for byte (everything but the two
+ *  files that carry the name). */
+const DELIVERY_WEB_COPIES = readdirSync(join(KIT_DIR, "04-web", "update"))
+  .filter((f) => f !== "site.webmanifest" && f !== "head-snippet.html")
+  .sort();
+
 const COPIES: Copy[] = [
   {
     path: `${KOTLIN_UI}/res/font/polaris_rubik_regular.ttf`,
@@ -1312,6 +1349,11 @@ const COPIES: Copy[] = [
   ...VARIABLE_FONTS.map(([ttf, res]) => ({
     path: `${KOTLIN_UI}/res/font/${res}`,
     pkgPath: `fonts/ttf/${ttf}`,
+  })),
+  // The Delivery web folder's icons are the kit's Update icons, unchanged.
+  ...DELIVERY_WEB_COPIES.map((f) => ({
+    path: `packages/brand/web/delivery/${f}`,
+    kitPath: `04-web/update/${f}`,
   })),
   // The Python wheel's fonts (polaris_key/ui/fonts), for the Qt kit.
   ...VARIABLE_FONTS.map(([ttf]) => ({
@@ -1470,6 +1512,55 @@ const TARGETS: Target[] = [
       render: () => renderTemplate(DELIVERY[layout], KIT_PALETTES[variant]),
     })),
   ),
+  // ── Service icons, Delivery-named marks, web and social files, portrait cards ──
+  ...SERVICE_ICON_IDS.flatMap((id) => [
+    {
+      path: `packages/brand/icons/services/${id}.svg`,
+      render: () => serviceIconFile(id),
+    },
+    {
+      path: `packages/brand/icons/services/${id}-compact.svg`,
+      render: () => serviceIconFile(id, true),
+    },
+  ]),
+  {
+    path: "packages/brand/icons/services/sprite.svg",
+    render: serviceIconSprite,
+  },
+  ...MARK_CUTS.flatMap((cut) =>
+    MARK_VARIANTS.map((variant) => ({
+      path: `packages/brand/marks/delivery/delivery-${cut}-${variant}.svg`,
+      render: () => deliveryMark(KIT_DIR, cut, variant),
+    })),
+  ),
+  {
+    path: "packages/brand/web/delivery/site.webmanifest",
+    render: () => deliveryManifest(KIT_DIR),
+  },
+  {
+    path: "packages/brand/web/delivery/head-snippet.html",
+    render: () => deliveryHeadSnippet(KIT_DIR),
+  },
+  ...CARD_KINDS.flatMap((card) =>
+    CARD_THEMES.map((theme) => ({
+      path: `packages/brand/social/delivery/${card}-${theme}.svg`,
+      render: () => deliveryCard(KIT_DIR, WORDMARK_FONT, card, theme),
+    })),
+  ),
+  ...CARD_THEMES.flatMap((theme) =>
+    (["key", "delivery"] as const).map((kind) => ({
+      path: `packages/brand/social/${kind}/portrait-${theme}.svg`,
+      render: () =>
+        portraitOf(
+          kind === "key"
+            ? readFileSync(
+                join(KIT_DIR, "07-social/key", `square-${theme}.svg`),
+                "utf8",
+              )
+            : deliveryCard(KIT_DIR, WORDMARK_FONT, "square", theme),
+        ),
+    })),
+  ),
   {
     path: "sdks/godot/addons/polaris_key/ui/theme/brand_tokens_generated.gd",
     render: gdScript,
@@ -1612,7 +1703,39 @@ export async function renderAll(root = ROOT): Promise<Map<string, string>> {
     else if (!content.endsWith("\n")) content += "\n";
     out.set(target.path, content);
   }
+  out.set(MANIFEST_PATH, hashManifest(out));
   return out;
+}
+
+const MANIFEST_PATH = "packages/brand/GENERATED.sha256";
+
+/** The text assets the manifest pins (BRAND.md §2): path prefixes relative to packages/brand. */
+const MANIFEST_PREFIXES = [
+  "lockups/delivery/",
+  "marks/delivery/",
+  "web/delivery/",
+  "social/delivery/",
+  "social/key/portrait-",
+  "icons/services/",
+  "css/",
+  "tokens.json",
+];
+
+/**
+ * `sha256sum`-format lines (`<hash>  <path>`, sorted by path) for every generated text asset, so
+ * the website's provenance file can pin this package's revision. Only text is hashed (SVG, CSS,
+ * JSON, the manifest and the head snippet), which is byte-identical on every platform.
+ */
+function hashManifest(out: Map<string, string>): string {
+  const lines: string[] = [];
+  for (const [path, content] of out) {
+    const rel = path.replace(/^packages\/brand\//, "");
+    if (rel === path || !MANIFEST_PREFIXES.some((p) => rel.startsWith(p)))
+      continue;
+    lines.push(`${createHash("sha256").update(content).digest("hex")}  ${rel}`);
+  }
+  lines.sort((a, b) => (a.slice(66) < b.slice(66) ? -1 : 1));
+  return `${lines.join("\n")}\n`;
 }
 
 /** Every path the generator owns: the rendered targets and the byte-for-byte copies. */

@@ -2,6 +2,8 @@ export {
   PolarisLockup,
   PolarisMark,
   PoweredByBadge,
+  ServiceIcon,
+  type ServiceIconProps,
   type PolarisLockupProps,
   type PolarisMarkProps,
   type PoweredByBadgeProps,

@@ -23,7 +23,7 @@
       "legacyModules": ["edgeMint"],
       "console": {
         "accent": "config",
-        "icon": "Settings2"
+        "icon": "SlidersHorizontal"
       },
       "docs": "/docs/services/config/"
     },
@@ -49,7 +49,7 @@
       "legacyModules": ["releases"],
       "console": {
         "accent": "distribution",
-        "icon": "Truck"
+        "icon": "Waypoints"
       },
       "docs": "/docs/services/distribution/"
     },
