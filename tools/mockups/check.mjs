@@ -404,7 +404,7 @@ async function b17Focus(p) {
       }
       return null;
     };
-    const focusables = [...document.querySelectorAll('a[href], button, [tabindex]:not([tabindex="-1"]), input, select, textarea, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="checkbox"], .btn')];
+    const focusables = [...document.querySelectorAll('a[href], button, summary, [tabindex]:not([tabindex="-1"]), input, select, textarea, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="checkbox"], .btn')];
     for (const el of focusables) {
       if (inKit(el) || !visible(el) || el.closest("[inert], [aria-hidden='true']")) continue;
       el.focus({ focusVisible: true, preventScroll: true });

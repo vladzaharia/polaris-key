@@ -6703,12 +6703,19 @@ pre.code-plain {
  * an arrow (an id, a name in a sentence) adds its own underline. Add a service to these
  * selectors when its accent collides with a tone.
  */
-[data-service="commerce"] :is(.link, .btn.link) {
-  color: var(--pk-text-strong);
-}
-[data-service="commerce"] :is(.link, .btn.link):hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+/* Config's yellow reads as a warning (and sits near the signed gold) in the same way, so its links
+   follow the same rule. The rule stops at a nested service (B17): a license field inside an offer
+   draws its links in lime. */
+@scope ([data-service="commerce"], [data-service="config"]) to ([data-service]:not([data-service="commerce"], [data-service="config"])) {
+  :scope :is(.link, .btn.link),
+  :scope:is(.link, .btn.link) {
+    color: var(--pk-text-strong);
+  }
+  :scope :is(.link, .btn.link):hover,
+  :scope:is(.link, .btn.link):hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 /* A typed confirmation for an action that loses nothing (a price change): a neutral chip. */
@@ -24183,4 +24190,32 @@ dd .mono {
 .choice.on::before,
 .step.done .step-mark::after {
   background: var(--pk-surface-raised);
+}
+
+/* B17 fixes found in the renders. */
+/* A guide step's tint (its row and its pane) follows the step's own service. */
+.guide-step {
+  --guide-tint: color-mix(in oklab, var(--pk-accent) 7%, var(--pk-surface-raised));
+}
+/* A route tab sits in a sideways scroller, which would cut an outside ring: its ring is inset. */
+.tabs > .tab:focus-visible,
+.code-tabs > :focus-visible,
+.docs-doors > a:focus-visible {
+  outline-offset: -2px;
+  border-radius: var(--pk-radius-sm);
+}
+/* A link stretched over its stat, card or row: the container draws the one ring. */
+.stat > .stat-label > a:focus-visible,
+.feature-card > .feature-card-head a:focus-visible,
+.guide-row button:focus-visible {
+  outline: none;
+}
+/* A disclosure rings like every control. */
+summary:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+/* .chg (a status that carries a glyph) is for inline words; a changed table row keeps its cells. */
+tr.chg {
+  display: table-row;
 }
