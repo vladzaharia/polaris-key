@@ -1,4 +1,4 @@
-// @pkey-feature core.transport
+// @pkey-feature core.sync
 // The redirect rule for product-scoped calls (WIRE-CONTRACT-V4 §5) and the ephemeral session.
 
 import Foundation
