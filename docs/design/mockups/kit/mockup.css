@@ -16911,6 +16911,12 @@ a.card:focus-visible {
 .hint-slot {
   min-height: 20px;
 }
+/* One column: an empty slot has no row partner to line up with. */
+@container screen (max-width: 639px) {
+  .hint-slot:empty {
+    display: none;
+  }
+}
 
 /* Table rows at 48px, blank cells as an em dash (span.dash: div.dash is overview-a's dashboard). */
 @container screen (min-width: 640px) {
@@ -23170,6 +23176,10 @@ kbd {
   font-size: var(--fs-small);
   line-height: var(--lh-small);
   color: var(--pk-text-muted);
+}
+/* One fact per line: each sentence of a hosted callout is its own span, on its own line. */
+.hosted-callout > div > span {
+  display: block;
 }
 /* The device code: big mono groups, entered or echoed, never wrapping inside a group. */
 .code-entry {
