@@ -823,6 +823,7 @@ public actor CoreContext {
             jws, spec: spec,
             options: VerifyOptions(
                 trust: trust, expectedAud: product, deviceId: deviceIdValue,
+                lastAcceptedIssuedAt: nil,
                 now: Swift.max(now(), peek.issuedAt), checkFreshness: false))
     }
 

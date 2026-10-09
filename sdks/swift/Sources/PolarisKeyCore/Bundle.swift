@@ -172,6 +172,7 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     func reload() -> VerifyOptions {
         VerifyOptions(
             trust: effectiveTrust, expectedAud: options.product, deviceId: options.deviceId,
+            lastAcceptedIssuedAt: nil,
             now: options.now, clockSkewSeconds: skew, checkFreshness: false)
     }
 

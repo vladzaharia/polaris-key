@@ -289,7 +289,7 @@ final class ConformanceTests: XCTestCase {
             let reload = { (t: TrustSet) in
                 VerifyOptions(
                     trust: t, expectedAud: c.expectedAud, deviceId: c.deviceId,
-                    now: c.systemClock, checkFreshness: false)
+                    lastAcceptedIssuedAt: nil, now: c.systemClock, checkFreshness: false)
             }
             var license: LicenseDoc?
             if let jws = c.licenseJws, let doc = verifyLicenseDoc(jws, options: reload(trust)) {
