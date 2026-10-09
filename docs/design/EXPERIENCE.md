@@ -116,7 +116,7 @@ AS 2.2 or PJ B4.
 - [5. Navigation chrome](#5-navigation-chrome)
 - [6. Tables, lists, forms and settings rows](#6-tables-lists-forms-and-settings-rows)
 - [7. Confirmations, status, pills and toasts](#7-confirmations-status-pills-and-toasts) (and
-  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys), [7.2 Motion](#72-motion))
+  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys), [7.2 Motion](#72-motion), [7.3 Screen acceptance](#73-screen-acceptance))
 - [8. The shared sign-in](#8-the-shared-sign-in)
 - [9. Empty, loading and error states](#9-empty-loading-and-error-states)
 - [10. Consolidation list](#10-consolidation-list)
