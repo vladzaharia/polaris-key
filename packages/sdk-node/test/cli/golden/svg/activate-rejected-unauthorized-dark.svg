@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="706" height="152" viewBox="0 0 706 152">
-<rect width="706" height="152" rx="12" fill="#101114" stroke="#26282e"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="706" height="168" viewBox="0 0 706 168">
+<rect width="706" height="168" rx="12" fill="#101114" stroke="#26282e"/>
 <line x1="0" y1="34" x2="706" y2="34" stroke="#26282e"/>
 <circle cx="20" cy="17" r="6" fill="#ff5f57"/><circle cx="40" cy="17" r="6" fill="#febc2e"/><circle cx="60" cy="17" r="6" fill="#28c840"/>
 <text x="353" y="21" text-anchor="middle" font-family="Rubik, system-ui, sans-serif" font-size="12" font-weight="500" fill="#7f848e">tidewater — 80 × 24</text>
@@ -15,7 +15,11 @@
 <text x="285.6 294.0 302.4 310.8 319.2 327.6" y="97.0" fill="#d7dae0">••••••</text>
 <text x="16.8" y="113.8" fill="#ef6b73">✗</text>
 <text x="42.0 50.4 58.8 75.6 84.0 92.4 109.2 117.6 126.0 134.4 142.8 151.2 159.6 168.0" y="113.8" fill="#ffffff" font-weight="600">Keynotaccepted</text>
-<text x="16.8" y="130.6" fill="#878a8e">└</text>
-<text x="42.0 50.4 58.8 67.2 84.0 92.4 100.8 109.2 117.6 126.0 134.4 151.2 159.6 168.0 184.8 193.2 201.6 210.0 218.4 226.8 243.6 252.0 260.4 268.8 277.2 285.6 294.0 302.4 310.8 327.6 336.0 344.4 352.8 361.2 378.0 386.4 403.2 411.6 420.0 436.8 445.2 453.6 470.4 478.8 487.2 495.6 504.0 512.4" y="130.6" fill="#d7dae0">Thatlicensekeywasn'taccepted.Checkitandtryagain.</text>
+<text x="16.8" y="130.6" fill="#878a8e">│</text>
+<text x="42.0 50.4 58.8 67.2 84.0 92.4 100.8 117.6 126.0 134.4 142.8 151.2 159.6 176.4 184.8 193.2 201.6 210.0 218.4 226.8 235.2 243.6 260.4 268.8 277.2 285.6 294.0 310.8 319.2 336.0 344.4 352.8 369.6 378.0 386.4 394.8 403.2 411.6 428.4 436.8 453.6 462.0 470.4 478.8 495.6 504.0 512.4 520.8 529.2 537.6 554.4 562.8 579.6 588.0 596.4 613.2 621.6 630.0 638.4" y="130.6" fill="#d7dae0">Thatkeywasn'taccepted.Checkitfortypos.Ifit'sright,itmayhave</text>
+<text x="16.8" y="147.4" fill="#878a8e">└</text>
+<text x="42.0 50.4 58.8 67.2 75.6 84.0 92.4 109.2 117.6 134.4 142.8 151.2 159.6 176.4 184.8 193.2 201.6 210.0 218.4 235.2 243.6 252.0 260.4 277.2 285.6 294.0" y="147.4" fill="#d7dae0">expiredorbeenturnedoff:see</text>
+<text x="310.8 319.2 327.6 336.0 344.4 352.8 361.2 369.6 378.0 386.4 394.8 403.2 411.6 420.0 428.4 436.8 445.2 453.6 462.0 470.4 478.8 487.2 495.6 504.0 512.4 520.8 529.2 537.6 546.0 554.4 562.8 571.2 579.6 588.0 596.4 604.8 613.2 621.6" y="147.4" fill="#d7dae0" text-decoration="underline">key.plrs.im/activate?product=tidewater</text>
+<text x="630.0" y="147.4" fill="#d7dae0">.</text>
 </g>
 </svg>

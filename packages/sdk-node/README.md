@@ -93,7 +93,7 @@ what changed: `license`, `config`, `updateAvailable`, `packs` and `store`.
 | Install an update      | `update.install(decision)` through a driver (below), answering `restartRequired`, `handedOff`, `storeOpened` or `unsupported{reason}`.                                                                                          |
 | Boot guard             | `update.markBootAttempt()` at start-up, `update.confirmBoot()` once healthy; after `MAX_FAILED_BOOTS` the driver's rollback runs, else `boot_rolled_back` is reported and the version is skipped.                               |
 | Update health          | decide, packs, downloads, drivers and the guard journal P6-03 events in the state directory; each device report carries at most 16 and marks them sent.                                                                         |
-| Server-side check      | `verifyLicenseDocument(jws, { trust, product, deviceId })` from `@polaris-key/node/server` for a backend a client presents its licence to.                                                                                      |
+| Server-side check      | `verifyLicenseDocument(jws, { trust, product, deviceId })` from `@polaris-key/node/server` for a backend a client presents its license to.                                                                                      |
 | Crash reporting        | `client.crashTags()` → `{ release, environment, "pkey.outlet" }` for a Sentry init (`release`, `environment`, and a tag).                                                                                                       |
 | Build stamp and outlet | `.polaris_key/build.json` (P1-11) is autoloaded; `readWindowsSignatureKind()` feeds the attested Windows signal.                                                                                                                |
 
@@ -177,7 +177,7 @@ decrypts.
 | —                     | `@polaris-key/node/server`       | `verifyLicenseDocument` for a backend                                                                                       |
 
 `client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
-or `["stable"]` when the licence carries none — the Worker's own answer, and every SDK's for the
+or `["stable"]` when the license carries none — the Worker's own answer, and every SDK's for the
 same document. `client.config.fetchSchema()` returns the product's catalog (`ProductCatalog`) or
 `null` on any failure; it is unsigned and diagnostic, so it never throws. `client.release`
 refuses with `service-unavailable` when the product does not run Release, forwards the device
@@ -194,7 +194,7 @@ one implementation, and every JS host consumes it.
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `productSlug`      | The product slug; also the document `aud`. Scopes every route + the cache.                                                                   |
 | `version`          | The **host application's** semver. Sent as `X-PKey-Version`; the channel derives from it.                                                    |
-| `trust.pinnedKeys` | `{ kid -> rawEd25519PubBase64url }`. Core-owned: it verifies licence documents, config documents, trust manifests and offline bundles alike. |
+| `trust.pinnedKeys` | `{ kid -> rawEd25519PubBase64url }`. Core-owned: it verifies license documents, config documents, trust manifests and offline bundles alike. |
 | `baseUrl`          | Control-plane origin (default `https://key.plrs.im`). Must be `https:` or loopback.                                                          |
 | `channel`          | Override `X-PKey-Channel` (default derived from `version`): `stable`, `beta`, `pr`/`pr-<n>`, `dev` or a manual name; `staging` is accepted.  |
 | `trustRefresh`     | Refresh the trust manifest on Core's own cadence inside `sync()` (default true).                                                             |
@@ -245,7 +245,7 @@ The CLI `status` command prints the same as a `Token store:` line.
 
 The fingerprint anchor and the device id read `/etc/machine-id`, else
 `/var/lib/dbus/machine-id`; DMI files are never read, so root and non-root agree. A container
-with neither file has no anchor and cannot enrol without a licence key: mount the host's
+with neither file has no anchor and cannot enrol without a license key: mount the host's
 `/etc/machine-id` read-only, or create one and keep it in a volume. Never bake one into an
 image.
 
@@ -328,7 +328,7 @@ read-modify-write of the cache record → the clock floor → best-effort teleme
 `POST /<product>/devices/report`. A 401 gets exactly **one** `POST /<product>/license/token`
 re-acquire for the whole pass, then one retry of the failed fetch.
 
-A registered device without a licence **re-registers** instead: when License is off for the
+A registered device without a license **re-registers** instead: when License is off for the
 product, or the token came from `devices.register()` in this process, the one attempt is
 `POST /<product>/devices/register` (the same request as `register()`: the fingerprint, and no
 `Authorization` header). It shares the single-attempt budget, so two parallel 401s still make one
@@ -394,12 +394,12 @@ poll (`pending`, `slow-down` with an `interval`, `ready`, `expired` or `error`) 
 paces itself — an Electron bridge, say.
 
 `prompt.deviceCode` is the poll credential: never show it. A sign-in yields the signed-in
-identity's **own** licence; it does not attach a licence this device already held.
+identity's **own** license; it does not attach a license this device already held.
 
 **After `ready`, show on the device which account signed in.** Anyone holding the user code can
 complete the sign-in on the verification page, so the player must be able to see a mis-binding:
 `ready` carries no identity itself, but the post-acquisition sync has already run, so
-`client.license.getProfile()` returns the signed licence profile (`name`, `email`) to show — for
+`client.license.getProfile()` returns the signed license profile (`name`, `email`) to show — for
 example "Signed in as Ada Lovelace <ada@example.com>" with a way to sign out.
 
 A prompt from `beginSignIn` and a `MintedToken` print with the credential redacted:
@@ -414,7 +414,7 @@ device token) and resolves `{ token, expiresAt }`. The result is cached **in mem
 in the cache file or the keyring — and reused until 30 seconds before `expiresAt`, so asking on
 every API call costs one mint per lifetime. A cached token counts only while the client still
 holds the device token it was minted with: `deactivate()`, a cleared token or a different sign-in
-drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a licence re-registers), and one retry.
+drops it. A 401 gets the usual single re-acquire, on the same route a document 401 takes (so a registered device without a license re-registers), and one retry.
 Failures throw `PolarisError`: `service-unavailable` (Config off) and `bad_request` (an id
 outside `[a-z0-9-]`) before any request, `unauthorized` (no token, or still 401), or one of the
 [error codes](#errors): `not_found` for an unknown recipe, `rate_limited`, or `server-error` (a
@@ -718,7 +718,7 @@ passes `kit: false`.
 ## Samples and recipes
 
 Runnable samples live in the repository's `examples/` directory:
-`node-express` (verify a client's licence on a backend), `node-cli` (a commander CLI with the full
+`node-express` (verify a client's license on a backend), `node-cli` (a commander CLI with the full
 kit and sign-in), `node-electron` (main, preload and the React kit over the bridge) and
 `ui/terminal-node` (`tidewater`, the terminal kit's sample, on fixtures or `--live`).
 

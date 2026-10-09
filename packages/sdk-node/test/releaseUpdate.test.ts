@@ -158,7 +158,7 @@ describe("ReleaseClient — the truth store's public face (§R1)", () => {
   });
 
   it("surfaces a 403 as the server's own code, not as a generic failure", async () => {
-    // An entitled feed refusing a stable-only licence is a licensing answer the host should
+    // An entitled feed refusing a stable-only license is a licensing answer the host should
     // render ("upgrade to reach the beta channel"), not a network error to retry.
     const mock = mockFetch({
       "/release/changelog": () =>

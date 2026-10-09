@@ -20,6 +20,7 @@ import {
 import type { ClientFactory } from "./commands.js";
 import { ttyProgress } from "./commander.js";
 import { VERB_OPTIONS } from "./help.js";
+import { titleizeSlug } from "./theme.js";
 import { argName, CLI_VERBS, type CliIO, type CliVerb } from "./kit.js";
 import type { ServiceSlug } from "../discovery.js";
 
@@ -100,7 +101,10 @@ export function polarisCommandModule(
     aliases: verb.aliases ?? [],
     describe: `[${verb.group}] ${verb.describe}`,
     builder: (y: Argv<CommonArgs>) => {
-      if (!kit) return y;
+      if (!kit)
+        return verb.path[0] === "secret" || verb.path[0] === "mint"
+          ? y.option("reveal", { type: "boolean" })
+          : y;
       let b = y
         .option("json", {
           type: "boolean",
@@ -121,7 +125,10 @@ export function polarisCommandModule(
       const bag = argv as unknown as Record<string, unknown>;
       const positional = verb.args.map((a) => bag[argName(a)]);
       if (!kit) {
-        const r = await verb.run(await buildClient(argv), positional, io);
+        const r = await verb.run(await buildClient(argv), positional, {
+          ...io,
+          reveal: bag.reveal === true,
+        });
         print(r.message);
         setExitCode(r.ok ? 0 : 1);
         return;
@@ -140,6 +147,7 @@ export function polarisCommandModule(
           yes: bag.yes === true,
           deviceCode: bag.deviceCode === true,
           allowWorkflowCommands: bag.allowWorkflowCommands === true,
+          reveal: bag.reveal === true,
         },
         () => buildClient(argv),
         {
@@ -160,7 +168,10 @@ export function polarisCommandModule(
 
   return {
     command: "polaris-key <command>",
-    describe: "Polaris Key commands",
+    // Named for the product the program is, not the service behind it.
+    describe: options.productSlug
+      ? `${titleizeSlug(options.productSlug)} commands`
+      : "License and update commands",
     builder: (yargs: Argv<CommonArgs>) => {
       const groups = new Map<string, CliVerb[]>();
       let y = yargs;

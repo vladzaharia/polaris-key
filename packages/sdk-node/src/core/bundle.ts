@@ -10,7 +10,7 @@
 // That is structural rather than disciplinary: a refusal hands back no documents at all, so
 // there is no partial result to write. The write itself REPLACES the record rather than merging
 // into it, because importing a bundle is a re-provisioning: a stale license slice surviving an
-// air-gapped re-import would be a device running on a licence its operator deliberately
+// air-gapped re-import would be a device running on a license its operator deliberately
 // replaced. Three things are carried: the update slices, the pin evidence, and the held trust
 // manifest when it is NEWER than the bundle's (an old bundle cannot re-teach a key the device
 // has seen revoked). Each inner document must be strictly newer than the verified cached one of

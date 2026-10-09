@@ -322,6 +322,46 @@ export const SCENARIOS: Scenario[] = [
     },
   },
   {
+    // A device that holds a key license is asked before that license goes to the account: the
+    // question replaces the wait, and the answer is No unless the person says yes.
+    name: "sign-in-handoff-finishing-attach",
+    opts: { interactive: true },
+    data: [...COMMON, "login", "Mara Fennick", "mara@fennick.studio"],
+    run: async (h) => {
+      const done = loginFlow(
+        h.ctx,
+        stubClient({
+          identity: {
+            waitForSignIn: async (
+              _p: unknown,
+              o: {
+                confirm: (
+                  who: { name: string; email: string },
+                  attachable: boolean,
+                ) => Promise<boolean>;
+              },
+            ) => {
+              const who = {
+                name: "Mara Fennick",
+                email: "mara@fennick.studio",
+              };
+              const attach = await o.confirm(who, true);
+              return {
+                status: "ready",
+                identity: who,
+                ...(attach ? { attached: "claimed" } : {}),
+              };
+            },
+          },
+        }),
+      );
+      await settle();
+      h.snap();
+      h.stdin.press("n");
+      await done;
+    },
+  },
+  {
     name: "sign-in-handoff-no-browser",
     opts: { interactive: true, openUrl: false },
     data: [...COMMON, "login", "key.plrs.im/device", "WDJB-MJHT", "4:12"],
@@ -692,6 +732,170 @@ export const SCENARIOS: Scenario[] = [
       updateApplyFlow(
         h.ctx,
         stubClient({
+          update: {
+            decide: async () => ({
+              decision: {
+                action: "binary",
+                method: "full",
+                release,
+                build: "b",
+                mandatory: false,
+                critical: false,
+                prestage: [],
+                discardStaged: false,
+              },
+            }),
+            install: async (
+              _d: unknown,
+              o: { onProgress(done: number, total: number): void },
+            ) => {
+              o.onProgress(61_000_000, 61_000_000);
+              return { kind: "restartRequired", version: "2.5.0" };
+            },
+          },
+        }),
+      ),
+  },
+  // ── update apply: the next step when the kit cannot install the update itself ─────────────
+  ...(
+    [
+      ["npm", "npm install -g tidewater-cli@latest"],
+      ["pnpm", "pnpm add -g tidewater-cli@latest"],
+      ["homebrew", "brew upgrade tidewater"],
+      ["npx", "npx tidewater-cli@latest"],
+    ] as const
+  ).map(
+    ([subkind, command]): Scenario => ({
+      name: `update-prompt-platform-${subkind}`,
+      data: [...COMMON, "update apply", "2.5.0", command],
+      run: (h) =>
+        updateApplyFlow(
+          h.ctx,
+          stubClient({
+            update: {
+              outlet: { id: subkind, kind: "direct", subkind },
+              packageName: "tidewater-cli",
+              decide: async () => ({
+                decision: {
+                  action: "platform",
+                  release,
+                  mandatory: false,
+                  critical: false,
+                  discardStaged: false,
+                },
+              }),
+            },
+          }),
+        ),
+    }),
+  ),
+  {
+    // A direct build with no install driver: a download link, and a non-zero exit.
+    name: "update-prompt-blocked-no-driver",
+    data: [
+      ...COMMON,
+      "update apply",
+      "2.5.0",
+      "key.plrs.im/tidewater/download",
+    ],
+    run: (h) =>
+      updateApplyFlow(
+        h.ctx,
+        stubClient({
+          update: {
+            driver: null,
+            check: async () => ({
+              updateAvailable: true,
+              version: "2.5.0",
+              url: "https://key.plrs.im/tidewater/download",
+            }),
+            decide: async () => ({
+              decision: {
+                action: "binary",
+                method: "full",
+                release,
+                build: "b",
+                mandatory: false,
+                critical: false,
+                prestage: [],
+                discardStaged: false,
+              },
+            }),
+          },
+        }),
+      ),
+  },
+  {
+    // A build with no signed update feed: it says so and names the command that still works.
+    name: "update-prompt-blocked-not-configured",
+    data: [...COMMON, "update apply", "update check"],
+    run: (h) =>
+      updateApplyFlow(h.ctx, stubClient({ update: { decidable: false } })),
+  },
+  {
+    // Every byte is here and the build is being checked: a spinner, not a bar at 100 %.
+    name: "update-progress-installing-verifying",
+    opts: { interactive: true },
+    data: [...COMMON, "update apply", "2.5.0"],
+    run: async (h) => {
+      const gate = deferred<unknown>();
+      const done = updateApplyFlow(
+        h.ctx,
+        stubClient({
+          update: {
+            decide: async () => ({
+              decision: {
+                action: "binary",
+                method: "full",
+                release,
+                build: "b",
+                mandatory: false,
+                critical: false,
+                prestage: [],
+                discardStaged: false,
+              },
+            }),
+            install: async (
+              _d: unknown,
+              o: { onProgress(done: number, total: number): void },
+            ) => {
+              o.onProgress(61_000_000, 61_000_000);
+              return gate.promise;
+            },
+          },
+        }),
+      );
+      await settle();
+      h.snap();
+      gate.resolve({ kind: "restartRequired", version: "2.5.0" });
+      await done;
+    },
+  },
+  {
+    // Ready, with up to three lines of what is new when the release carries notes.
+    name: "update-prompt-ready-whats-new",
+    data: [
+      ...COMMON,
+      "update apply",
+      "2.5.0",
+      "Stem export in one click, with loudness matching.",
+      "Track freeze now works with every plug-in.",
+      "Faster project loading.",
+    ],
+    run: (h) =>
+      updateApplyFlow(
+        h.ctx,
+        stubClient({
+          release: {
+            changelog: async () => [
+              {
+                version: "2.5.0",
+                date: "2026-10-01T00:00:00Z",
+                summary:
+                  "- Stem export in one click, with loudness matching.\n- Track freeze now works with every plug-in.\n- Faster project loading.\n- A fourth line that is not shown.",
+              },
+            ],
+          },
           update: {
             decide: async () => ({
               decision: {

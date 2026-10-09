@@ -1,18 +1,18 @@
 // The Commerce sub-client (SDK parity pass §3.9, `commerce.receipt`, the Worker side is P6-01):
-// a store purchase becomes a licence flag.
+// a store purchase becomes a license flag.
 //
-//   binding()            GET  /<p>/distribution/commerce/binding — the licence's opaque binding
+//   binding()            GET  /<p>/distribution/commerce/binding — the license's opaque binding
 //                        UUID and the store products the operator mapped. Hand the binding to the
 //                        store BEFORE buying: Apple `appAccountToken`, Play `obfuscatedAccountId`,
 //                        or the identity of a Steam web-API ticket.
 //   claim(store, …)      POST /<p>/distribution/commerce/claim — forward what the store handed the
-//                        device; on `ok` the next licence document carries the flag. The bare
+//                        device; on `ok` the next license document carries the flag. The bare
 //                        claim does not sync (the commerce-claim transcript pins one request);
 //                        pass `{ sync: true }`, or use a store helper, which syncs by default.
 //   claimSteam(ticket)   the Steam claim, with no Steamworks dependency: the host passes the hex
 //                        ticket from `ISteamUser::GetAuthTicketForWebApi` (identity = bindingId).
 //
-// Both calls need a device token: a device with no licence is refused `not_entitled`
+// Both calls need a device token: a device with no license is refused `not_entitled`
 // (`no_license`), and the SDK never enrols on its own — the host decides (`license.enroll()`).
 // A refusal is a value, never a throw; only local-only mode and the D-21 gate throw.
 
@@ -25,7 +25,7 @@ import type { TokenManager } from "../core/token.js";
 /** The stores the claim accepts (the Worker's `isStore`). */
 export type CommerceStore = "app-store" | "play" | "steam";
 
-/** One store product the operator mapped to a licence flag. */
+/** One store product the operator mapped to a license flag. */
 export interface CommerceProduct {
   store: CommerceStore | string;
   productId: string;
@@ -81,7 +81,7 @@ export class CommerceClient {
     private readonly onClaimed: ClaimedListener,
   ) {}
 
-  /** The licence's purchase binding and the products on sale. */
+  /** The license's purchase binding and the products on sale. */
   async binding(): Promise<BindingResult> {
     const res = await this.call("GET", "distribution/commerce/binding");
     if ("kind" in res) return res;
@@ -188,7 +188,7 @@ export class CommerceClient {
         code: ErrorCode.notEntitled,
         reason: "no_license",
         status: 0,
-        message: "this device holds no licence to grant to: enrol first",
+        message: "this device holds no license to grant to: enrol first",
       };
     let res: Response;
     try {

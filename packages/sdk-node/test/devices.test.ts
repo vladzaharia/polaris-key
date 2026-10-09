@@ -1,7 +1,7 @@
 // The Devices sub-client — the Core device principal's own surface (wire contract v3 §6).
 //
 // §6 is the change that stopped "device" being a licensing concept. Until v3 the only way to
-// become a device was to present a licence key; D-08 gives a config-only product's installs an
+// become a device was to present a license key; D-08 gives a config-only product's installs an
 // identity to fetch a document AS and a credential to fetch it WITH, keylessly, through
 // `POST /<p>/devices/register`. The rest of the surface — list / rename / deauthorize / report —
 // is Core's under EVERY registration policy, which is why it lives here rather than under

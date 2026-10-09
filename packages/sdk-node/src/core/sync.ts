@@ -134,7 +134,7 @@ export async function sync(
   // state (§4.1): no verdict depends on them, because the document they answered for is
   // already gone (below), so clearing them on evidence of a healthy session loosens nothing.
   // A hard 401 deletes the slice it answered for, and a 403 build block deletes
-  // the licence document, IN THE SAME WRITE that sets the hint. Without that, deleting the
+  // the license document, IN THE SAME WRITE that sets the hint. Without that, deleting the
   // hint from the plain-JSON record would hand back a usable cached document offline.
   if (license.outcome.kind === "unauthorized" || blockedOutcome)
     cache.revokeSlice("license");

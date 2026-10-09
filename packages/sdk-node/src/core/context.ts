@@ -292,13 +292,13 @@ export class CoreContext {
   }
 
   /**
-   * The licence GATE's input — deliberately NOT `enabled("license")`.
+   * The license GATE's input — deliberately NOT `enabled("license")`.
    *
-   * `enabled()` answers "may this product call the licence sub-client", and discovery wins
+   * `enabled()` answers "may this product call the license sub-client", and discovery wins
    * there. The gate is a security decision, and discovery is an UNSIGNED network read: a
    * network attacker answering `services.license.enabled: false` must not be able to turn a
    * licensed build into `not-applicable`. So the gate is ON when the BUILD declares the
-   * licence service (`expectedServices`, default licence + config) OR a discovery loaded this
+   * license service (`expectedServices`, default license + config) OR a discovery loaded this
    * session says it is on. Unsigned discovery can switch the gate on, never off. A config-only
    * product names `expectedServices` without `license`.
    */

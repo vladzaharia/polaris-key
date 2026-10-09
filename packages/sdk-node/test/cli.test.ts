@@ -24,11 +24,11 @@
 //
 //   * `register` is new and the reason the grouping matters. It is a DEVICES verb: a
 //     config-only product (D-08) has no `activate` to run and its entire provisioning story is
-//     `register`, which under a licence-shaped CLI would have had nowhere to live. Its refusal
+//     `register`, which under a license-shaped CLI would have had nowhere to live. Its refusal
 //     modes are reported AS THEMSELVES — a `requires-license` product answering
 //     `registration_closed` is told to activate instead, never silently retried against
 //     `activate`, because those are two different operator intents.
-//   * `status` on a product with the licence service DISABLED is `ok: true` with
+//   * `status` on a product with the license service DISABLED is `ok: true` with
 //     `not-applicable` (the D-08 CLI pin). A config-only product must exit 0, not sit on
 //     `needs-activation` forever.
 //   * config values are resolved through `client.config.*`, and overrides ride
@@ -81,7 +81,7 @@ const jsonResponse = (body: unknown, status = 200): Response =>
     headers: { "content-type": "application/json" },
   });
 
-/** The signed licence document (`pkey-license+jws`) the stub server hands back. */
+/** The signed license document (`pkey-license+jws`) the stub server hands back. */
 function licenseJws(deviceId: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const doc: LicenseDoc = {
@@ -338,10 +338,10 @@ describe("cli/commands — fingerprint-required and the token store (P1b-09)", (
   });
 });
 
-describe("cli/commands — status under D-08 (licence service disabled)", () => {
+describe("cli/commands — status under D-08 (license service disabled)", () => {
   it("is ok:true with not-applicable, so a config-only product exits 0", async () => {
     // The whole D-08 promise at the CLI: a product that does not license must not be held
-    // hostage by a licence gate. `ok` maps to the exit code, so `false` here would break every
+    // hostage by a license gate. `ok` maps to the exit code, so `false` here would break every
     // `pkey status || exit 1` in a config-only product's installer.
     const client = await makeClient(stubFetch().impl, {
       expectedServices: ["config"],
@@ -384,7 +384,7 @@ describe("cli/commands — register (devices, §6)", () => {
 
     expect(r.ok).toBe(false);
     expect(r.message).toContain("does not accept keyless registration");
-    expect(r.message).toContain("Activate with a licence key instead");
+    expect(r.message).toContain("Activate with a license key instead");
     expect(r.data).toMatchObject({ kind: "registration-closed" });
     // No sync, and emphatically no silent retry against `/license/activate`.
     expect(calls).not.toContain("POST /djdl/license/activate");

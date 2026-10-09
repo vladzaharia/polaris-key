@@ -6,7 +6,7 @@
 // "Tolerate" is pinned on the three surfaces the audit names:
 //   cache       the new document is applied, the accessors read it, and it is what a fresh
 //               client restores from the same store while offline;
-//   telemetry   the `/devices/report` after the refresh carries the NEW licence's grants, and
+//   telemetry   the `/devices/report` after the refresh carries the NEW license's grants, and
 //               the current device reports the new `licenseId`;
 //   activation  the device stays activated on the SAME token: no re-activation, no wipe, and
 //               the gate stays usable.
@@ -123,7 +123,7 @@ describe("LX-17: a licenseId change on a plain refresh", () => {
     expect(client.license.getLicenseId()).toBe("lic_trial");
     expect(client.license.isEntitled("pro")).toBe(false);
 
-    // The server re-anchors this device on another licence. Nothing on the client asks for it:
+    // The server re-anchors this device on another license. Nothing on the client asks for it:
     // the next plain sync just receives a document with a different licenseId.
     licenseId = "lic_pro";
     tier = "pro";
@@ -154,7 +154,7 @@ describe("LX-17: a licenseId change on a plain refresh", () => {
     ).toBe("pro");
     expect(client.getCurrentDevice().licenseId).toBe("lic_pro");
 
-    // The following refresh revalidates the new licence's document normally.
+    // The following refresh revalidates the new license's document normally.
     const again = await client.sync();
     expect(again.documents.license?.kind).toBe("unchanged");
     expect(client.license.getLicenseId()).toBe("lic_pro");

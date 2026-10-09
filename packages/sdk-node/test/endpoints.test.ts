@@ -9,7 +9,7 @@
 // ── WHY THE ROUTES ARE ASSERTED LITERALLY ───────────────────────────────────────────────────
 //
 // v3 moved every licensing verb under `/<p>/license/` and relocated telemetry from
-// `POST /<p>/config/report` to `POST /<p>/devices/report` (§6 — it was licence anti-fraud data
+// `POST /<p>/config/report` to `POST /<p>/devices/report` (§6 — it was license anti-fraud data
 // living under a config path, and a config-only product reports too). A path typo does not fail
 // loudly: it 404s, `activationLike` maps 404 to `enroll-disabled`, and the operator is told
 // their product does not offer keyless enrollment. Spelling the URLs out here is what keeps
@@ -488,7 +488,7 @@ describe("deauthorize — POST /<p>/license/deauthorize", () => {
 // @pkey-feature devices.report
 describe("reportSnapshot — POST /<p>/devices/report", () => {
   it("POSTs the JSON snapshot to the DEVICES route, not the retired /config/report", async () => {
-    // §6: telemetry moved off the config service. It is licence anti-fraud data that had been
+    // §6: telemetry moved off the config service. It is license anti-fraud data that had been
     // living under a config path, and a config-only product reports on it too.
     const { impl, calls } = fakeFetch([{ status: 200, json: {} }]);
     const ok = await reportSnapshot(await makeCtx(impl), "pkeyt_x", {

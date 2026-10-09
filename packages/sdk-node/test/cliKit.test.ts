@@ -63,7 +63,7 @@ async function client(routes = {}, token: string | null = "pkeyt_seed") {
 
 describe("identity verbs", () => {
   it("sign-in prints the code, the URL and a QR, then waits for ready", async () => {
-    const licence = await signedLicense({ pro: true });
+    const license = await signedLicense({ pro: true });
     const { client: c } = await client({
       "POST /djdl/identity/auth/device/start": () =>
         json({
@@ -81,7 +81,7 @@ describe("identity verbs", () => {
           token: "pkeyt_signed",
           identity: { email: "ada@example.com" },
         }),
-      "GET /djdl/license/document": () => new Response(licence),
+      "GET /djdl/license/document": () => new Response(license),
       "GET /djdl/config/document": () => new Response("", { status: 404 }),
       "POST /djdl/devices/report": () => json({}),
     });
@@ -170,7 +170,9 @@ describe("config verbs", () => {
         }),
     });
     expect(secret(c, "api.key").ok).toBe(false);
-    const m = await mint(c, "maps");
+    // A token is minted and printed only when asked for.
+    expect(await mint(c, "maps")).toMatchObject({ ok: false });
+    const m = await mint(c, "maps", true);
     expect(m).toMatchObject({ ok: true, message: "tok_live" });
   });
 });

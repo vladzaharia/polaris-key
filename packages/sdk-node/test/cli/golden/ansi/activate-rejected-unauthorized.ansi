@@ -3,67 +3,82 @@
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mKey not accepted[22m
-[2m└[22m  That license key wasn't accepted. Check it and try again.
+[2m│[22m  That key wasn't accepted. Check it for typos. If it's right, it may have
+[2m└[22m  expired or been turned off: see ]8;;https://key.plrs.im/activate?product=tidewater\[4mkey.plrs.im/activate?product=tidewater[24m]8;;\.
 
 #### truecolor-80-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mKey not accepted[22m
-[2m└[22m  That license key wasn't accepted. Check it and try again.
+[2m│[22m  That key wasn't accepted. Check it for typos. If it's right, it may have
+[2m└[22m  expired or been turned off: see ]8;;https://key.plrs.im/activate?product=tidewater\[4mkey.plrs.im/activate?product=tidewater[24m]8;;\.
 
 #### ansi16-80
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mKey not accepted[22m
-[2m└[22m  That license key wasn't accepted. Check it and try again.
+[2m│[22m  That key wasn't accepted. Check it for typos. If it's right, it may have
+[2m└[22m  expired or been turned off: see ]8;;https://key.plrs.im/activate?product=tidewater\[4mkey.plrs.im/activate?product=tidewater[24m]8;;\.
 
 #### no-color-80
 ┌  [7m Tidewater Studio [27m · activate
 │
 ◇  [1mLicense key[22m · pkey_tidewater_••••••
 ✗  [1mKey not accepted[22m
-└  That license key wasn't accepted. Check it and try again.
+│  That key wasn't accepted. Check it for typos. If it's right, it may have
+└  expired or been turned off: see ]8;;https://key.plrs.im/activate?product=tidewater\key.plrs.im/activate?product=tidewater]8;;\.
 
 #### ascii-80
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - activate[22m
 [2m|[22m
 [2mo[22m  [1mLicense key[22m [2m- pkey_tidewater_[22m******
 [31mx[39m  [1mKey not accepted[22m
-[2m`[22m  That license key wasn't accepted. Check it and try again.
+[2m|[22m  That key wasn't accepted. Check it for typos. If it's right, it may have
+[2m`[22m  expired or been turned off: see ]8;;https://key.plrs.im/activate?product=tidewater\[4mkey.plrs.im/activate?product=tidewater[24m]8;;\.
 
 #### truecolor-60-dark
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mKey not accepted[22m
-[2m└[22m  That license key wasn't accepted. Check it and try again.
+[2m│[22m  That key wasn't accepted. Check it for typos. If it's
+[2m│[22m  right, it may have expired or been turned
+[2m└[22m  off: see ]8;;https://key.plrs.im/activate?product=tidewater\[4mkey.plrs.im/activate?product=tidewater[24m]8;;\.
 
 #### truecolor-60-light
 [2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mKey not accepted[22m
-[2m└[22m  That license key wasn't accepted. Check it and try again.
+[2m│[22m  That key wasn't accepted. Check it for typos. If it's
+[2m│[22m  right, it may have expired or been turned
+[2m└[22m  off: see ]8;;https://key.plrs.im/activate?product=tidewater\[4mkey.plrs.im/activate?product=tidewater[24m]8;;\.
 
 #### ansi16-60
 [2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · activate[22m
 [2m│[22m
 [2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mKey not accepted[22m
-[2m└[22m  That license key wasn't accepted. Check it and try again.
+[2m│[22m  That key wasn't accepted. Check it for typos. If it's
+[2m│[22m  right, it may have expired or been turned
+[2m└[22m  off: see ]8;;https://key.plrs.im/activate?product=tidewater\[4mkey.plrs.im/activate?product=tidewater[24m]8;;\.
 
 #### no-color-60
 ┌  [7m Tidewater Studio [27m · activate
 │
 ◇  [1mLicense key[22m · pkey_tidewater_••••••
 ✗  [1mKey not accepted[22m
-└  That license key wasn't accepted. Check it and try again.
+│  That key wasn't accepted. Check it for typos. If it's
+│  right, it may have expired or been turned
+└  off: see ]8;;https://key.plrs.im/activate?product=tidewater\key.plrs.im/activate?product=tidewater]8;;\.
 
 #### ascii-60
 [2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - activate[22m
 [2m|[22m
 [2mo[22m  [1mLicense key[22m [2m- pkey_tidewater_[22m******
 [31mx[39m  [1mKey not accepted[22m
-[2m`[22m  That license key wasn't accepted. Check it and try again.
+[2m|[22m  That key wasn't accepted. Check it for typos. If it's
+[2m|[22m  right, it may have expired or been turned
+[2m`[22m  off: see ]8;;https://key.plrs.im/activate?product=tidewater\[4mkey.plrs.im/activate?product=tidewater[24m]8;;\.

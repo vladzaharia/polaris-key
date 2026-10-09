@@ -7,6 +7,8 @@
 // visible string is a catalog key (copy.ts). Masked key entry never shows a character of the
 // secret, and a key is never printed, logged or put in the JSON.
 
+import { canonicalPlatform } from "@polaris-key/client-core";
+import { fstatSync } from "node:fs";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { PolarisKeyClient } from "../client.js";
 import type {
@@ -177,21 +179,60 @@ async function busy<T>(
   }
 }
 
-/** Read a line from a piped stdin (the key, when there is no terminal to ask on). */
-async function readPiped(ctx: KitContext): Promise<string> {
-  const it = ctx.stdin[Symbol.asyncIterator];
-  if (!it) return "";
-  let buf = "";
-  for await (const chunk of ctx.stdin as AsyncIterable<Buffer | string>) {
-    buf += chunk.toString();
-    if (buf.length > 4096) break;
+/** How long `activate` waits for a piped key before it gives up (a headless server must never
+ *  sit on a hidden prompt). */
+export const PIPED_KEY_WAIT_MS = 2000;
+
+/** stdin is something that ends or delivers a line (a file or a FIFO), not an open terminal,
+ *  socket or device. A stream with no descriptor (a test's) counts as a pipe. */
+function stdinIsPipeLike(stdin: object): boolean {
+  const fd = (stdin as { fd?: unknown }).fd;
+  if (typeof fd !== "number") return true;
+  try {
+    const st = fstatSync(fd);
+    return st.isFile() || st.isFIFO();
+  } catch {
+    return false;
   }
-  return (
-    buf
-      .split(/\r?\n/)
-      .find((l) => l.trim() !== "")
-      ?.trim() ?? ""
-  );
+}
+
+const firstLine = (text: string): string =>
+  text
+    .split(/\r?\n/)
+    .find((l) => l.trim() !== "")
+    ?.trim() ?? "";
+
+/**
+ * Read the key from a piped stdin: only when stdin is a file or a FIFO, stopping at the first
+ * non-empty line (it does not wait for the writer to close), and giving up after about two
+ * seconds, so `activate` on a headless server with an open, silent stdin ends in "no key" (exit
+ * 2) instead of hanging.
+ */
+async function readPiped(ctx: KitContext): Promise<string> {
+  if (!stdinIsPipeLike(ctx.stdin)) return "";
+  const open = ctx.stdin[Symbol.asyncIterator];
+  if (!open) return "";
+  const it = open.call(ctx.stdin) as AsyncIterator<Buffer | string>;
+  const timeout = Symbol("timeout");
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<typeof timeout>((resolve) => {
+    timer = setTimeout(() => resolve(timeout), PIPED_KEY_WAIT_MS);
+    timer.unref?.();
+  });
+  let buf = "";
+  try {
+    for (;;) {
+      const next = await Promise.race([it.next(), expired]);
+      if (next === timeout || next.done) break;
+      buf += next.value.toString();
+      // A whole line has arrived (a newline after some text), or more than a key could be.
+      if (/\S[^\n]*\n/.test(buf) || buf.length > 4096) break;
+    }
+  } finally {
+    clearTimeout(timer);
+    void it.return?.();
+  }
+  return firstLine(buf);
 }
 
 /**
@@ -297,9 +338,7 @@ export async function statusFlow(
   const store = await client.storeStatus().catch(() => null);
   const services = client.capabilities();
   // Signed in is a fact of the account on this device, not of the license profile.
-  const identity = await client.identity
-    .current()
-    .catch(() => null);
+  const identity = await client.identity.current().catch(() => null);
   const view = statusView({
     status: st.status,
     ...(st.graceUntil !== undefined ? { graceUntil: st.graceUntil } : {}),
@@ -371,9 +410,7 @@ export async function statusFlow(
           label: t("cli.status.license"),
           value: [
             unit(view.tier ?? t("part.status.ok"), ["strong"]),
-            ...(holderText
-              ? [sepSpan, unit(holderText, ["muted"])]
-              : []),
+            ...(holderText ? [sepSpan, unit(holderText, ["muted"])] : []),
           ],
         },
       ];
@@ -452,12 +489,20 @@ export async function statusFlow(
       break;
     case "StatusScreen": {
       const shown = view.fixes.filter((f) => f.verb !== null);
+      // A device activated with a key alone was never "signed out": its key stopped working.
+      const keyOnly = view.state === "revoked" && identity === null;
       rows.push(
-        ...problemRows(
-          "fail",
-          t(`core.gate.${view.state}.title`),
-          t(`core.gate.${view.state}.message`),
-        ),
+        ...(keyOnly
+          ? problemRows(
+              "fail",
+              t("cli.status.keyRevoked.title"),
+              withLink(ctx, "cli.status.keyRevoked.message", portalUrl(client)),
+            )
+          : problemRows(
+              "fail",
+              t(`core.gate.${view.state}.title`),
+              t(`core.gate.${view.state}.message`),
+            )),
       );
       if (shown.length)
         rows.push(
@@ -537,10 +582,21 @@ function deviceLimitRows(
   return rows;
 }
 
+/**
+ * The product's page on Polaris Key (where a license is checked, renewed or replaced): the root
+ * portal the Worker serves at its own origin, opened on this product. The refusals that carry
+ * no `manageUrl` of their own link here.
+ */
+function portalUrl(client: PolarisKeyClient): string {
+  const base = client.core.baseUrl.replace(/\/+$/, "");
+  return `${base}/activate?product=${encodeURIComponent(client.product)}`;
+}
+
 /** Rows for an activation outcome other than the device limit. */
 function outcomeRows(
   ctx: KitContext,
   o: Exclude<ActivateOutcome, { state: "device-limit" }>,
+  portal: string,
 ): RailRow[] {
   const t = ctx.copy.t.bind(ctx.copy);
   if (o.state === "done")
@@ -567,7 +623,11 @@ function outcomeRows(
   const [title, message] = o.kind
     ? [
         t(`core.activation.${o.kind}.title`),
-        t(`core.activation.${o.kind}.message`),
+        // The server answers a wrong key, an expired one and a disabled one with the same 401, so
+        // the copy covers all three and links to where the license is checked.
+        o.kind === "unauthorized"
+          ? withLink(ctx, "cli.activate.unauthorized", portal)
+          : t(`core.activation.${o.kind}.message`),
       ]
     : [ctx.copy.code(o.code, "title"), ctx.copy.code(o.code, "message")];
   return problemRows(NETWORK.has(o.code) ? "warn" : "fail", title, message);
@@ -801,7 +861,7 @@ export async function activateFlow(
     }
     const o = activationOutcome(r, client.license.licenseInfo());
     if (o.state !== "device-limit") {
-      show(ctx, [...hist, ...outcomeRows(ctx, o), endRow()]);
+      show(ctx, [...hist, ...outcomeRows(ctx, o, portalUrl(client)), endRow()]);
       return {
         exitCode: outcomeExit(o),
         state: o.state,
@@ -875,7 +935,7 @@ export async function enrollFlow(
   const o = activationOutcome(r, client.license.licenseInfo());
   if (o.state === "device-limit")
     show(ctx, [...deviceLimitRows(ctx, o.deviceLimit), endRow()]);
-  else show(ctx, [...outcomeRows(ctx, o), endRow()]);
+  else show(ctx, [...outcomeRows(ctx, o, portalUrl(client)), endRow()]);
   return {
     exitCode: outcomeExit(o),
     state: o.state,
@@ -890,7 +950,8 @@ function signedInLine(ctx: KitContext, who: ShownIdentity): string | Line {
   const name = present(who.name);
   const email = present(who.email);
   const t = ctx.copy.t.bind(ctx.copy);
-  if (name && email) return unitLine(ctx, "signin.cli.signedIn", { name, email });
+  if (name && email)
+    return unitLine(ctx, "signin.cli.signedIn", { name, email });
   if (email) return t("cli.signin.signedInEmail", { email });
   if (name) return t("cli.signin.signedInName", { name });
   return t("signInHandoff.ok");
@@ -1308,6 +1369,19 @@ export async function deactivateFlow(
 
 // ── devices ────────────────────────────────────────────────────────────────────────────────
 
+/** "Linux x64": the platform by its catalog name (`macos` is macOS), then the architecture. */
+function platformText(
+  ctx: KitContext,
+  platform: string | null | undefined,
+  arch: string | null | undefined,
+): string | null {
+  const canonical = platform ? canonicalPlatform(platform) : null;
+  const name = canonical
+    ? ctx.copy.t(`cli.platform.${canonical}`)
+    : present(platform);
+  return [name, present(arch)].filter(Boolean).join(" ") || null;
+}
+
 /** Epoch seconds for how long ago, in days ("today", "yesterday", "3 days ago"). */
 function relative(ctx: KitContext, epochSeconds: number): string {
   const days = Math.round((epochSeconds - ctx.now() / 1000) / 86_400);
@@ -1336,7 +1410,7 @@ export async function devicesListFlow(
     sorted.map((d) => ({
       id: d.id,
       label: d.label ?? null,
-      platform: [d.platform, d.arch].filter(Boolean).join(" ") || null,
+      platform: platformText(ctx, d.platform, d.arch),
       current: d.current,
       // The roster's `lastSeen` is epoch seconds for every device; this device's own
       // `lastVerifiedAt` is epoch MILLISECONDS and only the fallback when the roster has none.
@@ -1561,6 +1635,82 @@ export async function registerFlow(
 
 // ── update, changelog, packs ───────────────────────────────────────────────────────────────
 
+/** What an update that this kit cannot install itself asks the person to do next. */
+async function downloadLink(client: PolarisKeyClient): Promise<string | null> {
+  try {
+    const v = await client.update.check();
+    if (typeof v.url === "string" && /^https:\/\//.test(v.url)) return v.url;
+  } catch {
+    // No version page: the install page, if the product has one.
+  }
+  try {
+    return client.release.installUrl();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The next step for an update the platform installs: the upgrade command when a package manager
+ * put this program here (npm, pnpm, Homebrew; npx fetches the newest each run), else the generic
+ * line. The command names the product's package (`update.packageName`), else the program.
+ */
+function platformRows(
+  ctx: KitContext,
+  client: PolarisKeyClient,
+  version: string | null,
+): RailRow[] {
+  const t = ctx.copy.t.bind(ctx.copy);
+  const subkind =
+    client.update.outlet?.subkind ?? client.update.detected?.subkind ?? null;
+  const pkg = client.update.packageName ?? ctx.bin;
+  const commands: Record<string, string> = {
+    npm: `npm install -g ${pkg}@latest`,
+    pnpm: `pnpm add -g ${pkg}@latest`,
+    homebrew: `brew upgrade ${ctx.bin}`,
+    npx: `npx ${pkg}@latest`,
+  };
+  const command = subkind ? commands[subkind] : undefined;
+  if (command && subkind === "npx")
+    return [
+      textRow(
+        unitLine(ctx, "cli.update.npx", { command, version: version ?? "" }),
+      ),
+    ];
+  if (command)
+    return [textRow(unitLine(ctx, "update.platform.command", { command }))];
+  return [textRow(t("update.platform.generic", { product: ctx.product.name }))];
+}
+
+/** The "Download 2.5.0 from …" rows of an install this kit cannot do for the person. */
+async function downloadRows(
+  ctx: KitContext,
+  client: PolarisKeyClient,
+  version: string,
+): Promise<RailRow[]> {
+  const url = await downloadLink(client);
+  if (!url)
+    return [
+      textRow(
+        ctx.copy.t("update.platform.generic", { product: ctx.product.name }),
+      ),
+    ];
+  const mark = "\u0000";
+  const [before = "", after = ""] = ctx.copy
+    .t("cli.update.download", { version, url: mark })
+    .split(mark);
+  return [
+    {
+      ...textRow([
+        ...(before ? [{ text: before }] : []),
+        linkSpan(url),
+        ...(after ? [{ text: after }] : []),
+      ]),
+      keep: true,
+    },
+  ];
+}
+
 /** `update check`: the signed decision, or the plain version check. */
 export async function updateCheckFlow(
   ctx: KitContext,
@@ -1674,7 +1824,6 @@ export async function updateCheckFlow(
         );
         break;
       case "store":
-      case "platform":
         rows.push(
           stepRow(
             "active",
@@ -1682,6 +1831,15 @@ export async function updateCheckFlow(
           ),
           textRow(t("update.platform.generic", { product })),
           ...(view.storeUrl ? [textRow([linkSpan(view.storeUrl)])] : []),
+        );
+        break;
+      case "platform":
+        rows.push(
+          stepRow(
+            "active",
+            t("update.title", { product, version: view.version! }),
+          ),
+          ...platformRows(ctx, client, view.version),
         );
         break;
       case "ready":
@@ -1828,6 +1986,31 @@ function progressRows(
   ];
 }
 
+/** Up to three lines of what changed in `version`, when the release carries notes. */
+async function whatsNewRows(
+  ctx: KitContext,
+  client: PolarisKeyClient,
+  version: string,
+): Promise<RailRow[]> {
+  let notes: string[] = [];
+  try {
+    const entries = await client.release.changelog();
+    const entry = entries.find((e) => e.version === version);
+    notes = (entry?.summary ?? "")
+      .split(/\r?\n/)
+      .map((l) => l.replace(/^\s*(?:[-*•]\s+)?/, "").trim())
+      .filter((l) => l !== "")
+      .slice(0, 3);
+  } catch {
+    // No notes: the ready line stands alone.
+  }
+  if (notes.length === 0) return [];
+  return [
+    textRow(ctx.copy.t("update.whatsNew"), ["strong"]),
+    ...notes.map((n) => textRow(n, ["muted"])),
+  ];
+}
+
 /** `update apply`: decide, then download with a redrawn bar, then install. */
 export async function updateApplyFlow(
   ctx: KitContext,
@@ -1837,6 +2020,30 @@ export async function updateApplyFlow(
   const product = ctx.product.name;
   const header = () => productHeader(ctx, "update apply");
   await ensureDiscovery(client);
+  // A build with no signed update feed cannot decide anything: say so and what to run instead.
+  if (!client.update.decidable) {
+    const title = t("cli.update.notConfiguredTitle");
+    const message = t("cli.update.notConfigured", {
+      command: cmd(ctx, "update check"),
+    });
+    show(ctx, [
+      ...header(),
+      ...problemRows(
+        "warn",
+        title,
+        unitLine(ctx, "cli.update.notConfigured", {
+          command: cmd(ctx, "update check"),
+        }),
+      ),
+      endRow(),
+    ]);
+    return {
+      exitCode: EXIT.failed,
+      state: "not-configured",
+      result: { state: "not-configured" },
+      error: { code: "not-configured", title, message },
+    };
+  }
   let r;
   try {
     r = await busy(
@@ -1868,6 +2075,10 @@ export async function updateApplyFlow(
                   ? t("update.title", { product, version: view.version })
                   : t("updateProgress.contentTitle"),
               ),
+              // The platform installs it: the upgrade command when a package manager does.
+              ...(d.action === "platform"
+                ? platformRows(ctx, client, view.version)
+                : []),
             ]),
       endRow(),
     ]);
@@ -1877,12 +2088,41 @@ export async function updateApplyFlow(
       result: { state: view.state, decision: r.decision, channel: r.channel },
     };
   }
+  // A program that can neither update itself nor hand off to a store has a download to follow.
+  if (d.action === "binary" && client.update.driver === null) {
+    show(ctx, [
+      ...header(),
+      stepRow(
+        "active",
+        t("update.title", { product, version: d.release.version }),
+      ),
+      ...(await downloadRows(ctx, client, d.release.version)),
+      endRow(),
+    ]);
+    return {
+      exitCode: EXIT.failed,
+      state: "blocked",
+      result: {
+        state: "blocked",
+        decision: d,
+        channel: r.channel,
+        installed: "unsupported",
+      },
+      error: codeError(ctx, "unsupported"),
+    };
+  }
   const live = quiet(ctx) ? null : ctx.live();
   const abort = new AbortController();
   const started = ctx.now();
   let last = 0;
   let lastDone = 0;
   let lastTotal = 0;
+  // Once every byte is here the build is checked before it is installed: a spinner, not a bar
+  // that sits at 100 % (and never "up to date" while a restart is still to come).
+  let verifying = false;
+  let spinFrame = 0;
+  let stopSpin: () => void = () => undefined;
+  const frames = spinnerFrames(ctx.caps.unicode);
   const title = () =>
     stepRow(
       "active",
@@ -1892,9 +2132,19 @@ export async function updateApplyFlow(
   const screen = (): RailRow[] => [
     ...header(),
     title(),
-    ...(ctx.caps.animate
-      ? progressRows(ctx, lastDone, lastTotal, started)
-      : []),
+    ...(verifying
+      ? [
+          {
+            mark: ctx.caps.animate
+              ? { glyph: frames[spinFrame % frames.length]! }
+              : ("active" as const),
+            spans: [{ text: t("update.verifying") }],
+            role: "spinner" as const,
+          },
+        ]
+      : ctx.caps.animate
+        ? progressRows(ctx, lastDone, lastTotal, started)
+        : []),
     ...(ctx.keys ? [hintsRow(ctx, t("cli.keys.download"))] : []),
   ];
   const redraw = () => live?.draw(screen);
@@ -1928,6 +2178,19 @@ export async function updateApplyFlow(
         lastDone = done;
         lastTotal = total;
         emitProgress(ctx, "update apply", done, total);
+        if (!verifying && total > 0 && done >= total) {
+          verifying = true;
+          stopSpin = animate(
+            ctx.caps,
+            (f) => {
+              spinFrame = f;
+              redraw();
+            },
+            ctx.ticker,
+          );
+          redraw();
+          return;
+        }
         const now = ctx.now();
         // Redraw at most ten times a second (UI-KITS §4.8).
         if (ctx.caps.animate && now - last >= 100) {
@@ -1938,6 +2201,7 @@ export async function updateApplyFlow(
       signal: abort.signal,
     });
   } catch (e) {
+    stopSpin();
     const cancelled = abort.signal.aborted;
     abort.abort();
     await keyLoop;
@@ -1977,22 +2241,18 @@ export async function updateApplyFlow(
       error: code ? error : { ...error, code: "internal" },
     };
   }
+  stopSpin();
   abort.abort();
   await keyLoop;
   const view = installView(out);
   const version = "version" in out ? out.version : d.release.version;
   switch (view.state) {
     case "ready": {
-      // One result block replaces the title and the bar; the chip already names the product.
-      const size = lastTotal > 0 ? formatBytes(ctx, lastTotal) : null;
+      // One result block replaces the title and the bar: the version is ready and a restart
+      // finishes it (installed only after that), with up to three lines of what is new.
       finish([
-        stepRow(
-          "ok",
-          size
-            ? t("cli.update.ready", { version, size })
-            : t("cli.update.readyNoSize", { version }),
-        ),
-        textRow(t("cli.update.restart")),
+        stepRow("ok", t("cli.update.readyRestart", { version })),
+        ...(await whatsNewRows(ctx, client, version)),
         endRow(),
       ]);
       break;
@@ -2012,7 +2272,14 @@ export async function updateApplyFlow(
       break;
     case "blocked": {
       const error = codeError(ctx, "unsupported");
-      finish([...problemRows("fail", error.title, error.message), endRow()]);
+      // Say why nothing was installed and what to do instead.
+      finish([
+        ...problemRows("fail", error.title, error.message),
+        ...(d.action === "binary"
+          ? await downloadRows(ctx, client, d.release.version)
+          : []),
+        endRow(),
+      ]);
       return {
         exitCode: EXIT.failed,
         state: "blocked",
@@ -2270,14 +2537,62 @@ function sourceLabel(
   source: string,
   enforced = false,
 ): string {
-  if (enforced) return ctx.copy.t("a11y.locked");
-  const key =
-    source === "local" || source === "user"
-      ? "settings.source.local"
-      : source === "env"
-        ? "settings.source.env"
-        : "settings.source.default";
-  return ctx.copy.t(key);
+  if (enforced || source === "enforced") return ctx.copy.t("a11y.locked");
+  switch (source) {
+    case "local":
+    case "user":
+      return ctx.copy.t("settings.source.local");
+    case "env":
+      return ctx.copy.t("settings.source.env");
+    case "remote-default":
+      // The developer's default, which the person can change: named by the developer.
+      return ctx.product.developer
+        ? ctx.copy.t("settings.fromDeveloper", {
+            developer: ctx.product.developer,
+          })
+        : ctx.copy.t("settings.source.default");
+    default:
+      return ctx.copy.t("settings.source.default");
+  }
+}
+
+/** What the product's catalog calls a setting and its choices (best effort: offline it is none). */
+interface SettingNames {
+  label?: string;
+  optionLabels?: Record<string, string>;
+}
+
+async function settingNames(
+  ctx: KitContext,
+  client: PolarisKeyClient,
+): Promise<Map<string, SettingNames>> {
+  const names = new Map<string, SettingNames>();
+  const catalog = await busy(ctx, ctx.copy.t("common.loading"), () =>
+    Promise.resolve(client.config.fetchSchema?.() ?? null).catch(() => null),
+  );
+  for (const e of catalog?.entries ?? [])
+    names.set(e.key, {
+      ...(e.label ? { label: e.label } : {}),
+      ...(e.ui?.optionLabels ? { optionLabels: e.ui.optionLabels } : {}),
+    });
+  return names;
+}
+
+/** A setting by its catalog label, else its key. */
+const settingLabel = (names: Map<string, SettingNames>, key: string): string =>
+  names.get(key)?.label ?? key;
+
+/** A value as a person reads it: On or Off, a choice by its label, else the value itself. */
+function settingValue(
+  ctx: KitContext,
+  names: Map<string, SettingNames>,
+  key: string,
+  v: unknown,
+): string {
+  if (typeof v === "boolean")
+    return ctx.copy.t(v ? "settings.on" : "settings.off");
+  if (typeof v === "string") return names.get(key)?.optionLabels?.[v] ?? v;
+  return valueText(v);
 }
 
 function valueText(v: unknown): string {
@@ -2285,13 +2600,15 @@ function valueText(v: unknown): string {
 }
 
 /** `config get`. */
-export function configGetFlow(
+export async function configGetFlow(
   ctx: KitContext,
   client: PolarisKeyClient,
   key: string,
-): FlowResult {
+): Promise<FlowResult> {
+  await ensureDiscovery(client);
   const r = getConfig(client, key);
   show(ctx, productHeader(ctx, "config get"));
+  const names = r.ok ? await settingNames(ctx, client) : new Map();
   if (!r.ok) {
     const message = ctx.copy.t("cli.config.unset", { name: key });
     show(ctx, [stepRow("active", [{ text: message }]), endRow()]);
@@ -2306,9 +2623,13 @@ export function configGetFlow(
     tableRows(ctx, [
       {
         mark: "active",
-        label: d.key,
+        label: settingLabel(names, d.key),
         value: [
-          { text: valueText(d.value), style: ["strong"], keep: true },
+          {
+            text: settingValue(ctx, names, d.key, d.value),
+            style: ["strong"],
+            keep: true,
+          },
           {
             text: `  ${ctx.symbols.separator} ${sourceLabel(ctx, d.source)}`,
             style: ["muted"],
@@ -2326,15 +2647,17 @@ export function configGetFlow(
 }
 
 /** `config list`: the Settings list, locked rows marked. */
-export function configListFlow(
+export async function configListFlow(
   ctx: KitContext,
   client: PolarisKeyClient,
-): FlowResult {
+): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
+  await ensureDiscovery(client);
   const rows = client.config
     .listUserConfig()
     .map((e) => ({ ...e, source: client.config.getConfigSource(e.key) }));
   show(ctx, productHeader(ctx, "config list"));
+  const names = rows.length ? await settingNames(ctx, client) : new Map();
   if (rows.length === 0) {
     show(ctx, [stepRow("active", t("settings.empty")), endRow()]);
     return { exitCode: EXIT.ok, state: "list", result: { settings: [] } };
@@ -2344,9 +2667,13 @@ export function configListFlow(
     ...tableRows(
       ctx,
       rows.map((r) => ({
-        label: r.key,
+        label: settingLabel(names, r.key),
         value: [
-          { text: valueText(r.value), style: ["strong"], keep: true },
+          {
+            text: settingValue(ctx, names, r.key, r.value),
+            style: ["strong"],
+            keep: true,
+          },
           {
             text: `  ${ctx.symbols.separator} ${sourceLabel(ctx, r.source, r.enforced)}`,
             style: ["muted"],
@@ -2391,13 +2718,18 @@ export async function configWriteFlow(
   const d = r.ok
     ? (r.data as { key: string; value: unknown; source: string })
     : null;
+  const names = d ? await settingNames(ctx, client) : new Map();
   show(ctx, [
     stepRow("ok", t("settings.saved")),
     textRow(
       d
         ? [
-            { text: `${key}  ` },
-            { text: valueText(d.value), style: ["strong"], keep: true },
+            { text: `${settingLabel(names, key)}  ` },
+            {
+              text: settingValue(ctx, names, key, d.value),
+              style: ["strong"],
+              keep: true,
+            },
             {
               text: `  ${ctx.symbols.separator} ${sourceLabel(ctx, d.source)}`,
               style: ["muted"],
@@ -2417,6 +2749,8 @@ export async function configWriteFlow(
 }
 
 export interface OutputArgs {
+  /** `--reveal`: print the value. Without it `secret` and `mint` print nothing. */
+  reveal?: boolean;
   /** `--allow-workflow-commands`: print a value even when a CI log would run a line of it. */
   allowWorkflowCommands?: boolean;
 }
@@ -2446,7 +2780,7 @@ function logCommandWithheld(
  *  value), naming the same command with the flag. */
 function logCommandRefusal(ctx: KitContext, verb: string, arg: string): void {
   const message = ctx.copy.t("cli.output.workflowCommand", {
-    command: `${ctx.bin} ${verb} ${arg} --allow-workflow-commands`,
+    command: `${ctx.bin} ${verb} ${arg} --reveal --allow-workflow-commands`,
   });
   ctx.stderr.write(
     `${ctx.render([stepRow("fail", [{ text: message }])]).join("\n")}\n`,
@@ -2474,8 +2808,19 @@ export function secretFlow(
     };
   }
   // A script gets the value as stored; a terminal never gets a control character from it. The
-  // `--json` line never carries the value (the Python kit's `key` and `present`).
+  // `--json` line never carries the value (the Python kit's `key` and `present`), and neither does
+  // a run without `--reveal`: a value reaches a screen, a log or a shell history only when asked.
   if (!quiet(ctx)) {
+    if (flags.reveal !== true) {
+      const message = ctx.copy.t("cli.secret.hidden", {
+        name: key,
+        command: `${ctx.bin} secret ${key} --reveal`,
+      });
+      ctx.stderr.write(
+        `${ctx.render([stepRow("ok", [{ text: message }])]).join("\n")}\n`,
+      );
+      return { exitCode: EXIT.ok, result: { key, present: true } };
+    }
     if (logCommandWithheld(ctx, value, flags)) {
       logCommandRefusal(ctx, "secret", key);
       return {
@@ -2496,6 +2841,21 @@ export async function mintFlow(
   recipeId: string,
   flags: OutputArgs = {},
 ): Promise<FlowResult> {
+  await ensureDiscovery(client);
+  // Minting prints a token and nothing else, so without `--reveal` it asks the server for none.
+  if (flags.reveal !== true && !quiet(ctx)) {
+    const message = ctx.copy.t("cli.mint.hidden", {
+      command: `${ctx.bin} mint ${recipeId} --reveal`,
+    });
+    ctx.stderr.write(
+      `${ctx.render([stepRow("warn", [{ text: message }])]).join("\n")}\n`,
+    );
+    return {
+      exitCode: EXIT.usage,
+      state: "error",
+      result: { recipe: recipeId },
+    };
+  }
   try {
     const tk = await client.config.mintToken(recipeId);
     if (!quiet(ctx)) {

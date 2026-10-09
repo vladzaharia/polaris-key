@@ -61,14 +61,14 @@ describe("commerce", () => {
 
   it("claimSteam posts the ticket and syncs so the flag is readable", async () => {
     let bodies: unknown[] = [];
-    let licence = await signedLicense({});
+    let license = await signedLicense({});
     const { client, seen } = await seededClient({
-      license: licence,
+      license: license,
       extra: services,
       routes: {
         "POST /djdl/distribution/commerce/claim": async (req) => {
           bodies.push(JSON.parse(req.body!));
-          licence = await signedLicense({ "extras.skins": true }, nowSec() + 1);
+          license = await signedLicense({ "extras.skins": true }, nowSec() + 1);
           return json({
             ok: true,
             store: "steam",
@@ -80,7 +80,7 @@ describe("commerce", () => {
           });
         },
         "GET /djdl/license/document": () =>
-          new Response(licence, { status: 200 }),
+          new Response(license, { status: 200 }),
         "GET /djdl/config/document": () => new Response("", { status: 404 }),
         "POST /djdl/devices/report": () => json({}),
       },

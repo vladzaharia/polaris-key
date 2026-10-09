@@ -14,8 +14,8 @@ const GRANTS = {
   channels: ["stable", "beta"],
 };
 
-describe("licence conveniences (§3.3)", () => {
-  it("a usable licence answers its grants", async () => {
+describe("license conveniences (§3.3)", () => {
+  it("a usable license answers its grants", async () => {
     const { client } = await seededClient({
       license: await signedLicense(GRANTS),
     });

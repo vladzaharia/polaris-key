@@ -527,7 +527,7 @@ export class PacksClient {
     return out;
   }
 
-  /** The licence's granted boolean flags, or null when the product runs no License service. */
+  /** The license's granted boolean flags, or null when the product runs no License service. */
   private entitlements(): ReadonlySet<string> | null {
     if (!this.w.ctx.licenseGateEnabled()) return null;
     const granted = new Set<string>();

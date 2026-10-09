@@ -195,7 +195,7 @@ export function activationOutcome(
       component: "Activate",
       state: "done",
       copy: ["core.activation.ok.title", "core.activation.ok.message"],
-      tier: info?.tierLabel ?? info?.tier ?? null,
+      tier: tierName(info),
     };
   if (r.kind === "device-limit") {
     const manageUrl = r.manageUrl ?? null;
@@ -396,14 +396,12 @@ export function present(v: string | null | undefined): string | null {
 
 /** `pro` is shown as `Pro` when the server sent no label for the tier. */
 function titleCase(v: string | null): string | null {
-  return v === null
-    ? null
-    : v.charAt(0).toUpperCase() + v.slice(1); // ui-lint: allow terminal-uppercase initial capital of a tier id
+  return v === null ? null : v.charAt(0).toUpperCase() + v.slice(1); // ui-lint: allow terminal-uppercase initial capital of a tier id
 }
 
 /** The tier as a person reads it: the server's label, else its id with a capital. */
 export function tierName(
-  info: Pick<LicenseInfo, "tier" | "tierLabel"> | null | undefined,
+  info: Partial<Pick<LicenseInfo, "tier" | "tierLabel">> | null | undefined,
 ): string | null {
   return present(info?.tierLabel) ?? titleCase(present(info?.tier));
 }

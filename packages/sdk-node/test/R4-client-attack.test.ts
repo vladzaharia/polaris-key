@@ -99,7 +99,7 @@ function makeLicenseDoc(over: Partial<LicenseDoc> = {}): LicenseDoc {
   };
 }
 
-/** §2.2 — the CONFIG document: config + secrets, and no licence fields whatsoever. */
+/** §2.2 — the CONFIG document: config + secrets, and no license fields whatsoever. */
 function makeConfigDoc(over: Partial<ConfigDoc> = {}): ConfigDoc {
   const now = nowSec();
   return {
@@ -537,7 +537,7 @@ describe("R4-03: anti-replay counters are attacker-controlled in both directions
       pro: { state: "enforced" as const, value: true, updatedAt: 0 },
     };
 
-    // A current doc, and the same user's year-old captured doc from when they had a licence.
+    // A current doc, and the same user's year-old captured doc from when they had a license.
     const current = await signLicense(
       makeLicenseDoc({ issuedAt: now, entitlements: entitled }),
     );
@@ -740,7 +740,7 @@ describe("R4-04: clock rollback / grace extension", () => {
 // ═══════════════════════════════════════════════════════════════════════════════════════
 // R4-05 — A tampered cache was echoed verbatim to the server. (The route moved in v3:
 //   `POST /<p>/config/report` is gone; telemetry is a Core surface at
-//   `POST /<p>/devices/report`, because it was always licence anti-fraud data.)
+//   `POST /<p>/devices/report`, because it was always license anti-fraud data.)
 // ═══════════════════════════════════════════════════════════════════════════════════════
 describe("R4-05: forged cache is reported to the control plane as ground truth", () => {
   // FIXED (R4-05, as a consequence of R4-01) — the snapshot is built from the RE-VERIFIED
@@ -883,7 +883,7 @@ describe("R4-06: transport hardening gaps", () => {
 // ═══════════════════════════════════════════════════════════════════════════════════════
 // R4-09 (NEW in v3) — Offline activation bundles (§7). The air-gapped path is the one place
 //   a client installs a whole cache record from a single file an operator carried in by hand,
-//   so it is the one place a partial write would be a licence granted by a failed import.
+//   so it is the one place a partial write would be a license granted by a failed import.
 // ═══════════════════════════════════════════════════════════════════════════════════════
 describe("R4-09: offline bundle import is all-or-nothing", () => {
   /** Mint a `pkey-bundle+jws` around whatever inner artifacts the caller supplies. */
@@ -929,7 +929,7 @@ describe("R4-09: offline bundle import is all-or-nothing", () => {
     const now = nowSec();
     // A device with real, previously-established state. This is what must survive intact.
     // Issued before the bundle's documents: §7 step 4's per-type floor admits only a strictly
-    // newer licence, so the control import below is about the tamper alone.
+    // newer license, so the control import below is about the tamper alone.
     const priorLicense = await signLicense(
       makeLicenseDoc({ licenseId: "lic_PRIOR", issuedAt: now - 60 }),
     );

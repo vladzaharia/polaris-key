@@ -58,11 +58,11 @@ export type ActivationResult =
       drift?: number;
       changed?: string[];
     }
-  /** This machine's free licence now belongs to an identity: sign in to use it. */
+  /** This machine's free license now belongs to an identity: sign in to use it. */
   | { kind: "enroll-claimed"; code: string }
-  /** An operator disabled the licence. */
+  /** An operator disabled the license. */
   | { kind: "license-disabled"; code: string }
-  /** The licence has expired. */
+  /** The license has expired. */
   | { kind: "license-expired"; code: string }
   /** The product's device-trust policy wants an attested device (Node cannot attest). */
   | { kind: "attestation-required"; code: string }
@@ -315,7 +315,7 @@ async function activationLike(
   return refusal;
 }
 
-/** `POST /<p>/license/enroll` — obtain a licence with no key and no sign-in.
+/** `POST /<p>/license/enroll` — obtain a license with no key and no sign-in.
  *  Returns the same shape `activateWithKey` does, so callers need no new branching; a product
  *  that has not opted in answers 404, surfaced as `enroll-disabled`. */
 export function enroll(
@@ -325,7 +325,7 @@ export function enroll(
   return activationLike(ctx, "license/enroll", ctx.headers(), fingerprint);
 }
 
-/** `POST /<p>/license/activate` — exchange a licence key for a per-device `pkeyt_` token. */
+/** `POST /<p>/license/activate` — exchange a license key for a per-device `pkeyt_` token. */
 export function activateWithKey(
   ctx: CoreContext,
   key: string,

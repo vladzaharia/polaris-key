@@ -111,7 +111,7 @@ function license(signer: Signer, issuedAt = now()): Promise<string> {
   );
 }
 
-/** A fake Worker: the trust route (default and `?signer=`), the licence document, the report. */
+/** A fake Worker: the trust route (default and `?signer=`), the license document, the report. */
 function server(opts: {
   trust: () => Promise<string | null>;
   signers?: Record<string, () => Promise<string | null>>;
@@ -176,7 +176,7 @@ describe("pinned-key tombstones in the Node SDK (§1, §4.1)", () => {
     const r = await c.sync();
     expect(store.cache?.trustJws).toBe(revoking);
     expect(store.cache?.pinRevocations).toEqual({ [PIN.kid]: revoking });
-    // A licence document signed by the tombstoned pin no longer verifies.
+    // A license document signed by the tombstoned pin no longer verifies.
     expect(r.documents.license?.kind).toBe("error");
     expect(c.license.status().status).toBe("needs-activation");
   });
@@ -255,7 +255,7 @@ describe("the ?signer= retry (§2.3)", () => {
       `/${PRODUCT}/.well-known/polaris-trust.jws`,
       `/${PRODUCT}/.well-known/polaris-trust.jws?signer=${ALT.kid}`,
     ]);
-    // The ALT-signed manifest publishes the active key, so PIN's licence now verifies.
+    // The ALT-signed manifest publishes the active key, so PIN's license now verifies.
     expect(r.documents.license?.kind).toBe("applied");
   });
 

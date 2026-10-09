@@ -146,7 +146,7 @@ export class ReleaseClient {
     if (c.message === undefined && (res.status === 401 || res.status === 403))
       c.message =
         res.status === 401
-          ? `${path} refused: this feed needs a usable licence.`
+          ? `${path} refused: this feed needs a usable license.`
           : `${path} refused: this build is not entitled to that feed.`;
     throw errorFrom(c, path);
   }
