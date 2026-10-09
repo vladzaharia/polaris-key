@@ -8,8 +8,8 @@
 <text x="201.6" y="26.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· login</text>
 <rect x="20.5" y="30.8" width="1" height="16.8" fill="#d7dae0"/>
 <text x="21" y="60.2" text-anchor="middle" fill="#5fd38d">◇</text>
-<text x="42" y="60.2" textLength="294" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Opening Polaris Key in your browser</text>
-<text x="340.2" y="60.2" text-anchor="middle" fill="#d7dae0">…</text>
+<text x="42" y="60.2" textLength="168" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Opening your browser</text>
+<text x="214.2" y="60.2" text-anchor="middle" fill="#d7dae0">…</text>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
 <text x="42" y="77" textLength="201.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">If it didn&#x27;t open, go to</text>
 <text x="252" y="77" textLength="319.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" text-decoration="underline">key.plrs.im/device?user_code=WDJB-MJHT</text>
