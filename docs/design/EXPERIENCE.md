@@ -1142,23 +1142,39 @@ swap**: no slide, no burst, no shimmer. The CSP stays as it is: motion is styles
 
 ### 7.3 Screen acceptance
 
-The one acceptance block for every screen in the console, the portal, the hosted pages and the kits
-(copied into the brief of every package with a UI surface; UI-KITS §7.4 and PORTAL §9 link here).
-A row's measure lives where it is cited; nothing is restated.
+Done when every row holds for each screen and state a package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. This is the one home; kits also follow DL1–DL18, and UI-KITS §7.4 and
+PORTAL §9 link here.
 
-| Row                     | Accepted when                                                                                                                                                                                                                                                                                |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Keyboard**            | Order follows reading; focus is visible (DL9) and never trapped outside a modal; Escape cancels; focus returns to the invoker; a route change (URL, focus to the h1, page announced) is distinct from an inline mutation (focus stays, one polite announcement).                             |
-| **Screen readers**      | Landmarks; icon actions named; help and errors linked to their field; live regions restrained; real table headings (`th` with `scope`); status never by colour alone (§7.1).                                                                                                                 |
-| **Sizing**              | Works at 200% text and reflows at 400% browser zoom (320 CSS px); targets per DL10; a dense table scrolls only inside a labelled focusable region, never the page; the §7.1 matrix of UI-KITS holds.                                                                                         |
-| **Themes**              | Light, dark, a custom accent, `forced-colors` and `prefers-contrast: more` (console and portal); contrast measured, not assumed; the theme-completeness list of §3.                                                                                                                          |
-| **States**              | A render for loading, empty, filtered-empty, permission-refused, expired or stale, partial failure, retry and success; input preserved; a change since open is named with Reload wherever the API sends `expectedVersion` (settings rows, catalog), last-write-wins is documented elsewhere. |
-| **Motion**              | Only the S-23 tokens (§6.5–6.6): no celebration on refund, revocation, removal, deletion or consent; no layout jump when an error appears; real progress only; a failure stops every indicator; reduced motion swaps instantly.                                                              |
-| **Hierarchy and copy**  | One h1, one filled primary (neutral ink), copy by §2 and the glossary, each fact once; accent marks context and never status; weights 400/500/600.                                                                                                                                           |
-| **Native input** (kits) | Dynamic Type, VoiceOver and TalkBack, gamepad or D-pad, TV safe areas and terminal keys are checked on the platform; an HTML screenshot proves nothing native.                                                                                                                               |
-
-The UX review in BUILT mode (`pkey-ux-reviewer`) passes the running screen against this block. A
-failed background task also has a durable home (§0.3 J-2).
+- [ ] **Keyboard:** tab order follows reading order; focus always visible (DL9); no trap outside a
+      modal; Escape or Cancel backs out of every overlay and step; focus returns to the opener (or
+      the heading when it is gone); a route change changes the URL and moves focus to the h1, an
+      inline mutation changes neither.
+- [ ] **Screen readers:** landmarks and exactly one h1; every icon-only control named; help and
+      errors linked (`aria-describedby`); one polite announcement per change, none while typing;
+      tables use `th` with `scope`; status is a word and an icon, never colour alone.
+- [ ] **Sizing:** this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px
+      reflow) with no page-level sideways scroll; a dense table scrolls only inside a labelled,
+      focusable region; targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in
+      the console.
+- [ ] **Themes:** dark and light; a custom product accent on a light and a dark ground (kits,
+      hosted sign-in); forced-colors; `prefers-contrast: more`; reduced transparency; contrast
+      measured on the render (text 4.5:1, UI 3:1).
+- [ ] **States:** loading (skeleton after the grace), first-run empty, filtered empty, permission
+      refused, expired or stale, network and API error with Try again, partial failure, success;
+      input survives a failed save; where the API sends `expectedVersion`, a changed-since-open
+      conflict is named with Reload.
+- [ ] **Motion:** tokens only; reduced motion is an instant swap and the outcome still reads;
+      errors appear without moving content; progress is real (no invented percentage, nothing
+      loops after a failure); no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] **Hierarchy and copy:** one filled primary per state; the section accent marks context only,
+      never success, warning or failure; copy from the catalog, each fact once; no decorative
+      numbers or taglines; no text drawn over customer art.
+- [ ] **Native (kits):** Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack,
+      gamepad and D-pad focus, TV and title-safe insets, terminal keys with `NO_COLOR`, ascii and
+      `--json` paths.
+- [ ] `pkey-ux-reviewer` passes the built screens (BUILT mode).
 
 ## 8. The shared sign-in
 
