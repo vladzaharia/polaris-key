@@ -165,3 +165,32 @@ export const TYPE_SCALE = {
 
 /** Heading tracking: Rubik sits slightly loose at display sizes. */
 export const LETTER_SPACING = { tight: "-0.015em", normal: "0" } as const;
+
+/**
+ * Display scale (B7, B11). Display type exists for marketing and the docs landing only; the
+ * console never sets an h1 at display size. Sizes start at 40 px: the product tracking floor
+ * (`DISPLAY_TRACKING.product`, -0.02em) applies only from that size up, and below it tracking
+ * stays at 0 (`normal`). Each entry is [font-size, line-height]. The viewport-fluid marketing
+ * ramp clamps between the first and last of these steps.
+ */
+export const DISPLAY_SCALE = {
+  sm: ["2.5rem", "1.1"],
+  md: ["3.5rem", "1.05"],
+  lg: ["4.5rem", "1.02"],
+  xl: ["6rem", "1"],
+} as const satisfies Record<string, readonly [string, string]>;
+
+/** The smallest displayed size (px) at which any display tracking is allowed. */
+export const DISPLAY_MIN_PX = 40;
+
+/**
+ * Display and heading tracking. `product` is the most negative tracking the product may use
+ * (-0.02em, from 40 px up). `marketing` takes the site's values; CJK text sets tracking 0 in both.
+ */
+export const DISPLAY_TRACKING = {
+  product: "-0.02em",
+  display: "-0.03em",
+  heading: "-0.015em",
+  eyebrow: "0.08em",
+  cjk: "0",
+} as const;

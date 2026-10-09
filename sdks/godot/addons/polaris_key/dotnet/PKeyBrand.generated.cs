@@ -157,9 +157,9 @@ namespace PolarisKey.Brand
         private static readonly Dictionary<string, BrandAccent> AccentsLight = new Dictionary<string, BrandAccent>
         {
             ["core"] = new BrandAccent(new BrandColor(0x7A2FFF), new BrandColor(0x7A2FFF), new BrandColor(0xFFFFFF), new BrandColor(0xEAE4FF)),
-            ["license"] = new BrandAccent(new BrandColor(0x708D00), new BrandColor(0x556E00), new BrandColor(0x060912), new BrandColor(0xE9EDE6)),
+            ["license"] = new BrandAccent(new BrandColor(0x6D8600), new BrandColor(0x556E00), new BrandColor(0x060912), new BrandColor(0xE8EDE6)),
             ["config"] = new BrandAccent(new BrandColor(0x8B6902), new BrandColor(0x866500), new BrandColor(0xFFFFFF), new BrandColor(0xEBEAE6)),
-            ["release"] = new BrandAccent(new BrandColor(0x0390A6), new BrandColor(0x007487), new BrandColor(0x060912), new BrandColor(0xDEEEF6)),
+            ["release"] = new BrandAccent(new BrandColor(0x008CA3), new BrandColor(0x007487), new BrandColor(0x060912), new BrandColor(0xDDEDF6)),
             ["distribution"] = new BrandAccent(new BrandColor(0x05773B), new BrandColor(0x05773B), new BrandColor(0xFFFFFF), new BrandColor(0xDEEBEB)),
             ["update"] = new BrandAccent(new BrandColor(0xB95800), new BrandColor(0xAA5000), new BrandColor(0xFFFFFF), new BrandColor(0xF0E8E6)),
             ["identity"] = new BrandAccent(new BrandColor(0x9E34AE), new BrandColor(0x9E34AE), new BrandColor(0xFFFFFF), new BrandColor(0xEDE4F7)),

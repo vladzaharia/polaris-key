@@ -37,6 +37,7 @@
     "./tokens.css": "./css/tokens.css",
     "./theme.css": "./css/theme.css",
     "./kit.css": "./css/kit.css",
+    "./marketing.css": "./css/marketing.css",
     "./accent-vectors.json": "./fixtures/accent-vectors.json",
     "./fonts.css": "./fonts/fonts.css",
     "./fonts/*": "./fonts/*",

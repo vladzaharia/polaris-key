@@ -1,0 +1,95 @@
+/*
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/gen.ts) from
+ * packages/brand/src/tokens/ and the launch kit copy in packages/brand/kit/.
+ * `pnpm gen:brand -- --check` fails the green gate on any difference. To change a value, edit
+ * its source and regenerate.
+ */
+
+/*
+ * Polaris Key marketing expression: the display type scale, display and heading tracking and the
+ * eyebrow, for marketing pages (plrs.im) and the docs landing ONLY. Never import this into the
+ * console, the portal, the hosted sign-in, a table, a form or a kit (BRAND.md §14.3, B6, B11).
+ * Import after tokens.css:
+ *
+ *   @import "@polaris-key/brand/tokens.css";
+ *   @import "@polaris-key/brand/marketing.css";
+ *
+ * Product chrome that needs a large heading takes --pk-tracking-product-display: at most -0.02em
+ * and only from 40 px up; below 40 px tracking stays at 0. The display scale starts at
+ * 40 px. CJK text sets every tracking token to 0 (:lang(ja|zh|ko)).
+ */
+
+:root {
+  --pk-display-size-sm: 2.5rem;
+  --pk-display-line-height-sm: 1.1;
+  --pk-display-size-md: 3.5rem;
+  --pk-display-line-height-md: 1.05;
+  --pk-display-size-lg: 4.5rem;
+  --pk-display-line-height-lg: 1.02;
+  --pk-display-size-xl: 6rem;
+  --pk-display-line-height-xl: 1;
+  --pk-tracking-display: -0.03em;
+  --pk-tracking-heading: -0.015em;
+  --pk-tracking-eyebrow: 0.08em;
+  --pk-tracking-product-display: -0.02em;
+}
+
+/* Tracking compresses Latin letterforms; CJK glyphs are set solid, so tracking is 0. */
+:lang(ja),
+:lang(zh),
+:lang(ko) {
+  --pk-tracking-display: 0;
+  --pk-tracking-heading: 0;
+  --pk-tracking-eyebrow: 0;
+  --pk-tracking-product-display: 0;
+}
+
+.pk-display-sm {
+  font-family: var(--pk-font-sans);
+  font-weight: var(--pk-font-weight-semibold);
+  font-size: var(--pk-display-size-sm);
+  line-height: var(--pk-display-line-height-sm);
+  letter-spacing: var(--pk-tracking-display);
+}
+
+.pk-display-md {
+  font-family: var(--pk-font-sans);
+  font-weight: var(--pk-font-weight-semibold);
+  font-size: var(--pk-display-size-md);
+  line-height: var(--pk-display-line-height-md);
+  letter-spacing: var(--pk-tracking-display);
+}
+
+.pk-display-lg {
+  font-family: var(--pk-font-sans);
+  font-weight: var(--pk-font-weight-semibold);
+  font-size: var(--pk-display-size-lg);
+  line-height: var(--pk-display-line-height-lg);
+  letter-spacing: var(--pk-tracking-display);
+}
+
+.pk-display-xl {
+  font-family: var(--pk-font-sans);
+  font-weight: var(--pk-font-weight-semibold);
+  font-size: var(--pk-display-size-xl);
+  line-height: var(--pk-display-line-height-xl);
+  letter-spacing: var(--pk-tracking-display);
+}
+
+/* The mono uppercase eyebrow: 12 px, never smaller. */
+.pk-eyebrow {
+  font-family: var(--pk-font-mono);
+  font-weight: var(--pk-font-weight-medium);
+  font-size: var(--pk-font-size-xs);
+  line-height: var(--pk-line-height-xs);
+  letter-spacing: var(--pk-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--pk-accent-fg);
+}
+
+.pk-heading {
+  font-weight: var(--pk-font-weight-semibold);
+  letter-spacing: var(--pk-tracking-heading);
+}

@@ -80,6 +80,9 @@ import {
   ELEVATION,
   FONT,
   FONT_WEIGHT,
+  DISPLAY_MIN_PX,
+  DISPLAY_SCALE,
+  DISPLAY_TRACKING,
   LETTER_SPACING,
   MOTION,
   MOTION_EASING_FALLBACK,
@@ -171,6 +174,28 @@ const bitOf = (theme: Theme, id: ServiceId): string => sectionBit(theme, id)!;
 
 const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
+/** The B17 state tokens of one theme, flat: [camelCase kind, service id, hex]. */
+const STATE_KINDS = [
+  "ring",
+  "selectedFill",
+  "hoverTint",
+  "checkedFill",
+  "checkedOn",
+  "checkedEdge",
+  "contextEdge",
+] as const;
+
+function stateEntries(theme: Theme): [string, ServiceId, string][] {
+  return SERVICE_IDS.flatMap((id) =>
+    STATE_KINDS.map((k): [string, ServiceId, string] => [
+      k,
+      id,
+      T[theme].state[id][k],
+    ]),
+  );
+}
+const cap = (s: string) => s[0]!.toUpperCase() + s.slice(1);
+
 function themeVars(theme: Theme): [string, string][] {
   const t: ResolvedTheme = T[theme];
   const v: [string, string][] = [];
@@ -178,6 +203,10 @@ function themeVars(theme: Theme): [string, string][] {
   for (const [k, x] of Object.entries(t.text)) v.push([`text-${kebab(k)}`, x]);
   for (const [k, x] of Object.entries(t.border)) v.push([`border-${k}`, x]);
   v.push(["focus", t.focus]);
+  v.push(["action", t.action.fill]);
+  v.push(["action-on", t.action.on]);
+  for (const [k, id, hex] of stateEntries(theme))
+    v.push([`state-${id}-${kebab(k)}`, hex]);
   v.push(["brand-violet", BRAND.violet[theme]]);
   v.push(["brand-gold", BRAND.gold[theme]]);
   v.push(["brand-star", BRAND.star[theme]]);
@@ -221,6 +250,9 @@ const sectionDecl = (id: ServiceId) =>
     `  --pk-accent-fg: var(--pk-service-${id}-fg);`,
     `  --pk-accent-on: var(--pk-service-${id}-on);`,
     `  --pk-accent-subtle: var(--pk-service-${id}-subtle);`,
+    ...STATE_KINDS.map(
+      (k) => `  --pk-state-${kebab(k)}: var(--pk-state-${id}-${kebab(k)});`,
+    ),
     id === "core"
       ? `  --pk-section-bit: none;`
       : `  --pk-section-bit: var(--pk-service-${id}-bit);`,
@@ -242,6 +274,7 @@ function scaleVars(): [string, string][] {
   }
   for (const [k, x] of Object.entries(LETTER_SPACING))
     v.push([`tracking-${k}`, x]);
+
   for (const [k, x] of Object.entries(MOTION.duration))
     v.push([`duration-${k}`, x]);
   for (const [k, x] of Object.entries(MOTION.easing)) v.push([`ease-${k}`, x]);
@@ -328,7 +361,10 @@ ${decl(themeVars("light"))}
 ${sectionDecl("core")}
 }
 ${SERVICE_IDS.filter((id) => id !== "core")
-  .map((id) => `\n[data-service="${id}"] {\n${sectionDecl(id)}\n}`)
+  .map(
+    (id) =>
+      `\n[data-service="${id}"]${id === "distribution" ? ',\n[data-service="commerce"]' : ""} {\n${sectionDecl(id)}\n}`,
+  )
   .join("\n")}
 
 /* Where linear() is unsupported, the spring easing falls back to standard. */
@@ -389,6 +425,78 @@ ${reduced("  ")}
 `;
 }
 
+function marketingCss(): string {
+  const sizes = Object.entries(DISPLAY_SCALE)
+    .map(
+      ([k, [size, lh]]) =>
+        `  --pk-display-size-${k}: ${size};\n  --pk-display-line-height-${k}: ${lh};`,
+    )
+    .join("\n");
+  const classes = Object.keys(DISPLAY_SCALE)
+    .map(
+      (k) => `.pk-display-${k} {
+  font-family: var(--pk-font-sans);
+  font-weight: var(--pk-font-weight-semibold);
+  font-size: var(--pk-display-size-${k});
+  line-height: var(--pk-display-line-height-${k});
+  letter-spacing: var(--pk-tracking-display);
+}`,
+    )
+    .join("\n\n");
+  return `${cssBanner}
+
+/*
+ * Polaris Key marketing expression: the display type scale, display and heading tracking and the
+ * eyebrow, for marketing pages (plrs.im) and the docs landing ONLY. Never import this into the
+ * console, the portal, the hosted sign-in, a table, a form or a kit (BRAND.md §14.3, B6, B11).
+ * Import after tokens.css:
+ *
+ *   @import "@polaris-key/brand/tokens.css";
+ *   @import "@polaris-key/brand/marketing.css";
+ *
+ * Product chrome that needs a large heading takes --pk-tracking-product-display: at most -0.02em
+ * and only from ${DISPLAY_MIN_PX} px up; below ${DISPLAY_MIN_PX} px tracking stays at 0. The display scale starts at
+ * ${DISPLAY_MIN_PX} px. CJK text sets every tracking token to 0 (:lang(ja|zh|ko)).
+ */
+
+:root {
+${sizes}
+  --pk-tracking-display: ${DISPLAY_TRACKING.display};
+  --pk-tracking-heading: ${DISPLAY_TRACKING.heading};
+  --pk-tracking-eyebrow: ${DISPLAY_TRACKING.eyebrow};
+  --pk-tracking-product-display: ${DISPLAY_TRACKING.product};
+}
+
+/* Tracking compresses Latin letterforms; CJK glyphs are set solid, so tracking is 0. */
+:lang(ja),
+:lang(zh),
+:lang(ko) {
+  --pk-tracking-display: ${DISPLAY_TRACKING.cjk};
+  --pk-tracking-heading: ${DISPLAY_TRACKING.cjk};
+  --pk-tracking-eyebrow: ${DISPLAY_TRACKING.cjk};
+  --pk-tracking-product-display: ${DISPLAY_TRACKING.cjk};
+}
+
+${classes}
+
+/* The mono uppercase eyebrow: 12 px, never smaller. */
+.pk-eyebrow {
+  font-family: var(--pk-font-mono);
+  font-weight: var(--pk-font-weight-medium);
+  font-size: var(--pk-font-size-xs);
+  line-height: var(--pk-line-height-xs);
+  letter-spacing: var(--pk-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--pk-accent-fg);
+}
+
+.pk-heading {
+  font-weight: var(--pk-font-weight-semibold);
+  letter-spacing: var(--pk-tracking-heading);
+}
+`;
+}
+
 function themeCss(): string {
   const colors: [string, string][] = [];
   for (const k of ["page", "raised", "overlay", "sunken"])
@@ -401,6 +509,10 @@ function themeCss(): string {
   colors.push(["border", "border-subtle"]);
   colors.push(["border-strong", "border-strong"]);
   colors.push(["focus", "focus"]);
+  colors.push(["action", "action"]);
+  colors.push(["action-on", "action-on"]);
+  for (const k of STATE_KINDS)
+    colors.push([`state-${kebab(k)}`, `state-${kebab(k)}`]);
   for (const k of ["", "-fg", "-on", "-subtle"])
     colors.push([`accent${k}`, `accent${k}`]);
   colors.push(["section-bit", "section-bit"]);
@@ -518,6 +630,8 @@ function tokenModel() {
     fontWeight: FONT_WEIGHT,
     typeScale: TYPE_SCALE,
     letterSpacing: LETTER_SPACING,
+    displayScale: DISPLAY_SCALE,
+    displayTracking: DISPLAY_TRACKING,
     kit: kitModel(),
   };
 }
@@ -629,6 +743,10 @@ function gdTheme(theme: Theme): string {
   for (const [k, x] of Object.entries(t.text)) c(`TEXT_${upper(k)}`, x);
   for (const [k, x] of Object.entries(t.border)) c(`BORDER_${upper(k)}`, x);
   c("FOCUS", t.focus);
+  c("ACTION", t.action.fill);
+  c("ACTION_ON", t.action.on);
+  for (const [k, id, hex] of stateEntries(theme))
+    c(`STATE_${upper(id)}_${upper(k)}`, hex);
   for (const s of STATUS_IDS) {
     const st = t.status[s];
     c(upper(s), st.fg);
@@ -794,6 +912,10 @@ function swiftTheme(theme: Theme): string {
   for (const [k, x] of Object.entries(t.border))
     c(`border${k[0]!.toUpperCase()}${k.slice(1)}`, x);
   c("focus", t.focus);
+  c("action", t.action.fill);
+  c("actionOn", t.action.on);
+  for (const [k, id, hex] of stateEntries(theme))
+    c(`state${cap(id)}${cap(k)}`, hex);
   for (const s of STATUS_IDS) {
     const st = t.status[s];
     c(s, st.fg);
@@ -947,6 +1069,10 @@ function ktTheme(theme: Theme): string {
   for (const [k, x] of Object.entries(t.border))
     c(`border${k[0]!.toUpperCase()}${k.slice(1)}`, x);
   c("focus", t.focus);
+  c("action", t.action.fill);
+  c("actionOn", t.action.on);
+  for (const [k, id, hex] of stateEntries(theme))
+    c(`state${cap(id)}${cap(k)}`, hex);
   for (const s of STATUS_IDS) {
     const st = t.status[s];
     c(s, st.fg);
@@ -1448,6 +1574,11 @@ ${consts}
 const TARGETS: Target[] = [
   { path: "packages/brand/css/tokens.css", render: tokensCss, parser: "css" },
   { path: "packages/brand/css/theme.css", render: themeCss, parser: "css" },
+  {
+    path: "packages/brand/css/marketing.css",
+    render: marketingCss,
+    parser: "css",
+  },
   { path: "packages/brand/tokens.json", render: tokensJson, parser: "json" },
   {
     path: "packages/brand/src/generated/tokens.ts",

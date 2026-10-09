@@ -168,11 +168,11 @@ SERVICE_ACCENTS = {
             "bit": None,
         },
         "license": {
-            "solid": "#708d00",
+            "solid": "#6d8600",
             "fg": "#556e00",
             "on": "#060912",
-            "subtle": "#e9ede6",
-            "bit": "#708d00",
+            "subtle": "#e8ede6",
+            "bit": "#6d8600",
         },
         "config": {
             "solid": "#8b6902",
@@ -182,11 +182,11 @@ SERVICE_ACCENTS = {
             "bit": "#8b6902",
         },
         "release": {
-            "solid": "#0390a6",
+            "solid": "#008ca3",
             "fg": "#007487",
             "on": "#060912",
-            "subtle": "#deeef6",
-            "bit": "#0390a6",
+            "subtle": "#ddedf6",
+            "bit": "#008ca3",
         },
         "distribution": {
             "solid": "#05773b",

@@ -127,6 +127,27 @@ export interface AccentSpec {
 
 export const SUBTLE_ALPHA: Record<Theme, number> = { dark: 0.12, light: 0.1 };
 
+/**
+ * The hover tint is a lighter step than the selected fill (B17): the family's `solid` at this
+ * alpha over the page ground, flattened. It carries the same text pair as the selected fill.
+ */
+export const HOVER_ALPHA: Record<Theme, number> = { dark: 0.07, light: 0.06 };
+
+/**
+ * The action-neutral role (B2): the primary action in the console, portal and hosted sign-in is
+ * neutral ink, not an accent. `fill` is the button; `on` is its label. Kits keep the host or
+ * product accent as their primary (DL13), so this role is not a kit colour. Danger stays red.
+ */
+export interface ActionSpec {
+  fill: ColorSpec;
+  on: ColorSpec;
+}
+
+export const ACTION: Record<Theme, ActionSpec> = {
+  dark: { fill: BRAND.page.light, on: BRAND.page.dark },
+  light: { fill: BRAND.page.dark, on: BRAND.mono.white },
+};
+
 export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
   // The platform accent is the kit violet itself in both themes.
   violet: {
@@ -150,7 +171,10 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
       on: BRAND.mono.black,
     },
     light: {
-      solid: oklch(0.6, 0.15, 123),
+      // Darkened from L 0.60 (#708d00) to L 0.58 so a checked control and a bar clear 3.4:1 on
+      // every surface (B17). The proposed #678200 is darker but lands 17.4 from the Distribution
+      // green; the 17.5 floor is not lowered, so chroma rises to 0.15 instead (ΔE00 18.7).
+      solid: oklch(0.58, 0.15, 122),
       fg: oklch(0.5, 0.125, 124),
       on: BRAND.mono.black,
     },
@@ -180,7 +204,10 @@ export const ACCENTS: Record<AccentFamily, Record<Theme, AccentSpec>> = {
       on: BRAND.mono.black,
     },
     light: {
-      solid: oklch(0.6, 0.105, 214),
+      // Darkened from L 0.60 (#0390a6) to L 0.59, which clears 3.4:1 on every surface and keeps
+      // ΔE00 18.2 from the nearest accent (the proposed #03879c sits 16.3 from Cloud Sync teal,
+      // under the 17.5 floor, so it is not used) (B17).
+      solid: oklch(0.59, 0.105, 214),
       fg: oklch(0.515, 0.105, 214),
       on: BRAND.mono.black,
     },

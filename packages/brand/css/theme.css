@@ -33,6 +33,15 @@
   --color-border: var(--pk-border-subtle);
   --color-border-strong: var(--pk-border-strong);
   --color-focus: var(--pk-focus);
+  --color-action: var(--pk-action);
+  --color-action-on: var(--pk-action-on);
+  --color-state-ring: var(--pk-state-ring);
+  --color-state-selected-fill: var(--pk-state-selected-fill);
+  --color-state-hover-tint: var(--pk-state-hover-tint);
+  --color-state-checked-fill: var(--pk-state-checked-fill);
+  --color-state-checked-on: var(--pk-state-checked-on);
+  --color-state-checked-edge: var(--pk-state-checked-edge);
+  --color-state-context-edge: var(--pk-state-context-edge);
   --color-accent: var(--pk-accent);
   --color-accent-fg: var(--pk-accent-fg);
   --color-accent-on: var(--pk-accent-on);

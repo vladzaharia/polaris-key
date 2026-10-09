@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { contrastRatio } from "../src/color.js";
+import { contrastRatio, deltaEOK } from "../src/color.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
 import { BRAND } from "../src/tokens/primitives.js";
 import {
@@ -129,6 +129,50 @@ function pairs(): Pair[] {
     add(theme, "text.default", t.text.default, "signed.subtle", sg.subtle, 4.5);
     add(theme, "signed.border", sg.border, "surface.page", t.surface.page, 3);
     add(theme, "signed.border", sg.border, "signed.subtle", sg.subtle, 3);
+    // The action-neutral role (B2).
+    add(theme, "action.on", t.action.on, "action.fill", t.action.fill, 4.5);
+    for (const [sn, sv] of surfaces)
+      add(theme, "action.fill", t.action.fill, `surface.${sn}`, sv, 3);
+    // The per-service state tokens (B17).
+    for (const id of SERVICE_IDS) {
+      const st = t.state[id];
+      const n = `state.${id}`;
+      for (const [sn, sv] of surfaces) {
+        add(theme, `${n}.ring`, st.ring, `surface.${sn}`, sv, 3);
+        add(theme, `${n}.checkedFill`, st.checkedFill, `surface.${sn}`, sv, 3);
+        add(theme, `${n}.checkedEdge`, st.checkedEdge, `surface.${sn}`, sv, 3);
+        add(theme, `${n}.contextEdge`, st.contextEdge, `surface.${sn}`, sv, 3);
+      }
+      for (const fill of ["selectedFill", "hoverTint"] as const) {
+        add(theme, `${n}.ring`, st.ring, `${n}.${fill}`, st[fill], 3);
+        add(
+          theme,
+          `${n}.checkedEdge`,
+          st.checkedEdge,
+          `${n}.${fill}`,
+          st[fill],
+          3,
+        );
+        add(
+          theme,
+          `${n}.contextEdge`,
+          st.contextEdge,
+          `${n}.${fill}`,
+          st[fill],
+          3,
+        );
+        for (const k of ["strong", "default"] as const)
+          add(theme, `text.${k}`, t.text[k], `${n}.${fill}`, st[fill], 4.5);
+      }
+      add(
+        theme,
+        `${n}.checkedOn`,
+        st.checkedOn,
+        `${n}.checkedFill`,
+        st.checkedFill,
+        4.5,
+      );
+    }
     // The kit's own pairs, as the marks use them.
     add(
       theme,
@@ -149,6 +193,39 @@ function pairs(): Pair[] {
   }
   return out;
 }
+
+describe("state tokens (B17)", () => {
+  it("hover is a lighter step than selected: closer to the ground, per service and theme", () => {
+    for (const theme of THEMES)
+      for (const id of SERVICE_IDS) {
+        const st = THEME_TOKENS[theme].state[id];
+        const page = THEME_TOKENS[theme].surface.page;
+        expect(deltaEOK(st.hoverTint, page)).toBeLessThan(
+          deltaEOK(st.selectedFill, page),
+        );
+      }
+  });
+
+  it("status colours never alias a service accent", () => {
+    for (const theme of THEMES)
+      for (const id of SERVICE_IDS)
+        for (const s of STATUS_IDS) {
+          const a = SERVICE_ACCENTS[theme][id];
+          // Info is violet by design (BRAND.md §5): it is the one status that meets Core's hue.
+          if (s === "info" && id === "core") continue;
+          expect(THEME_TOKENS[theme].status[s].fg).not.toBe(a.fg);
+          expect(THEME_TOKENS[theme].status[s].fg).not.toBe(a.solid);
+        }
+  });
+
+  it("light license and release bases clear 3.4:1 on every surface (darkened, not thresholds lowered)", () => {
+    for (const id of ["license", "release"] as const)
+      for (const sv of Object.values(THEME_TOKENS.light.surface))
+        expect(
+          contrastRatio(SERVICE_ACCENTS.light[id].solid, sv),
+        ).toBeGreaterThanOrEqual(3.4);
+  });
+});
 
 describe("WCAG AA contrast", () => {
   it.each(

@@ -254,11 +254,22 @@ describe("tokens.css", () => {
 
   it("re-points the accent and section bit per data-service", () => {
     for (const id of SERVICE_IDS.filter((s) => s !== "core")) {
-      const b = block(`[data-service="${id}"]`);
+      const b = block(
+        id === "distribution"
+          ? `[data-service="distribution"],\n[data-service="commerce"]`
+          : `[data-service="${id}"]`,
+      );
       expect(b).toContain(`--pk-accent: var(--pk-service-${id});`);
       expect(b).toContain(`--pk-section-bit: var(--pk-service-${id}-bit);`);
       expect(b).toContain(`--pk-section-bit-display: inline;`);
     }
+  });
+
+  it("commerce takes the Distribution state tokens (B1, B17): one rule, no ninth family", () => {
+    expect(css).toContain(
+      `[data-service="distribution"],\n[data-service="commerce"] {`,
+    );
+    expect(css).not.toContain("--pk-service-commerce");
   });
 
   it("core defines no section bit: no gold, and the live bit is not displayed", () => {
