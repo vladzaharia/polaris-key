@@ -328,11 +328,12 @@ Application Support and Caches come from `FileManager` (the container's inside a
 ### What the cache holds
 
 Only **signed artifacts** (§4.1): the compact JWS of each per-service document and of the trust
-manifest, per-document ETags, an offline-bundle import marker, two fail-closed hints
+manifest, per-document ETags, the imported offline bundle (`bundle`, verbatim), the evidence for any
+tombstoned pin (`pinRevocations`), two fail-closed hints
 (`blocked`, `lastSyncUnauthorized`), and wire v4's two update slices — `feeds` (each committed
 `pkey-feed+jws`, keyed by its own `channel` claim) and `releaseRecords` (each `pkey-release+jws`,
 keyed by its SHA-256, kept only while a committed feed pins it). Every JWS is re-verified on load — the manifest against the
-**pinned** keys only — and every counter (the per-type anti-replay floors, the monotonic clock
+**usable pinned** keys only (pins minus the tombstoned ones) — and every counter (the per-type anti-replay floors, the monotonic clock
 floor, `lastVerifiedAt`, each channel's feed `seq` floor) is derived from that re-verified
 content; `core.feedFloors` shows the floors. A record from any other cache
 version is **discarded, never migrated**.
@@ -394,7 +395,9 @@ Three depths, all first-class:
 1. **Online with grace** (default) — post-activation zero-network operation to `graceUntil`.
 2. **Air-gapped activation** (§7) — an operator mints a `.pkeybundle` against this device's id;
    `try await client.importBundle(jws)` verifies it against the **pins** all-or-nothing and
-   writes the cache atomically. No token is created; the gate reads `activation: .bundle`. A
+   writes the cache atomically. No token is created; the gate reads `activation: .bundle` while
+   the stored bundle still re-verifies and carries the cached licence document. A bundle must
+   be strictly newer than the documents already held, and re-importing the same bytes is a no-op. A
    refusal throws `PolarisError` carrying the §7 step that refused, because the step is the
    operator's remedy.
 3. **Local-only** (§7.3) — `PolarisKeyClient.createLocal(options:)` substitutes `NoNetworkTransport`,

@@ -219,9 +219,10 @@ final class LocalTrustTests: XCTestCase {
         await store.writeCache(
             CacheRecord(
                 trustJws: "t.t.t", docs: [.license: "a.b.c"], etags: [.license: "v1"],
-                importedBundle: ImportedBundle(bundleId: "b", importedAt: 1),
+                bundle: "b.b.b",
                 lastSyncUnauthorized: true, blocked: BlockInfoRecord(reason: .versionTooOld),
-                feeds: ["stable": "f.f.f"], releaseRecords: ["ab": "r.r.r"]))
+                feeds: ["stable": "f.f.f"], releaseRecords: ["ab": "r.r.r"],
+                pinRevocations: ["k": "p.p.p"]))
         return store
     }
 
@@ -238,11 +239,12 @@ final class LocalTrustTests: XCTestCase {
         XCTAssertNil(cache.trustJws)
         XCTAssertTrue(cache.docs.isEmpty)
         XCTAssertTrue(cache.etags.isEmpty)
-        XCTAssertNil(cache.importedBundle)
+        XCTAssertNil(cache.bundle)
         XCTAssertNil(cache.lastSyncUnauthorized)
         XCTAssertNil(cache.blocked)
         XCTAssertEqual(cache.feeds, ["stable": "f.f.f"], "feeds carry the seq floors")
         XCTAssertEqual(cache.releaseRecords, ["ab": "r.r.r"])
+        XCTAssertEqual(cache.pinRevocations, ["k": "p.p.p"], "a tombstone is not a grant")
     }
 
     func testMatchingOrAnchorlessOrNonRebindableStoresKeepTheirState() async throws {

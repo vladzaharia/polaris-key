@@ -413,7 +413,7 @@ public actor PolarisKeyClient {
         let cache = await core.cache()
         let activation: ActivationSource? =
             await core.token != nil
-            ? .token : (cache.importedBundle != nil && cache.license != nil ? .bundle : nil)
+            ? .token : (cache.bundle?.activates == true && cache.license != nil ? .bundle : nil)
         return licenseState(
             GateInput(
                 licenseServiceEnabled: licenseOn, activation: activation, doc: cache.license?.doc,
