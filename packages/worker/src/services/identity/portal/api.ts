@@ -72,6 +72,7 @@ import {
   type PortalSession,
 } from "./session.js";
 import { handleMagicStart } from "./auth.js";
+import { portalStepUpGate } from "./stepUpGate.js";
 import { licenseGrants } from "./entitlements.js";
 import {
   checkAccountSession,
@@ -622,6 +623,8 @@ async function handleMeDelete(
 ): Promise<Response> {
   const account = await getPortalAccount(db, session.accountId);
   if (!account) return unauthorized();
+  const stale = portalStepUpGate(session, now);
+  if (stale) return stale;
   const limited = await requireActionRateLimit(
     req,
     env,
@@ -860,6 +863,8 @@ async function handleRegistryTokens(
       },
     });
   if (req.method !== "POST") return err(405, "method_not_allowed");
+  const stale = portalStepUpGate(session, now);
+  if (stale) return stale;
   const limited = await requireActionRateLimit(
     req,
     env,

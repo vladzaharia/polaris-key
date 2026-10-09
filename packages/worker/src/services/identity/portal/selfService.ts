@@ -91,6 +91,7 @@ import {
   licenseKeyReplacedNotice,
   type NoticeMessage,
 } from "./notices.js";
+import { portalStepUpGate } from "./stepUpGate.js";
 import {
   err,
   notFound,
@@ -686,6 +687,8 @@ export async function handleLicenseRemove(
     licenseId,
   );
   if (!license) return notFound();
+  const stale = portalStepUpGate(session, now);
+  if (stale) return stale;
   // Only a licence its key can bring back may leave (lead decision, 2026-10-06): refused before
   // anything is charged or written.
   const keys = await listVisibleKeys(db, product, licenseId);

@@ -6105,8 +6105,8 @@ and 12 (cross-tenant correlation) are the deltas.
   support code stays unlisted until it holds a licence, a signed-in device or a sign-in.
 - **Relink (item 9).** The target is named only by a subject of THIS product (`target_not_found`
   otherwise; never an email, never another product's subject). The operator needs an interactive
-  sign-in no older than 5 minutes (`session.authAt`, set from the ID token's `auth_time` when the
-  IdP sends one, else the callback time; `isSteppedUp`); `/manage/login?stepUp=1` sends
+  sign-in no older than 5 minutes (`session.stepUpAt`, set only by a `stepUp=1` flow whose ID token
+  carries `auth_time`; an ordinary sign-in never sets it, SEC-ADM-3; `isSteppedUp`); `/manage/login?stepUp=1` sends
   `prompt=login` and `max_age=0`, and the callback refuses a step-up whose `auth_time` is already
   stale. A reason (1 to 500 characters) is mandatory. Both accounts are emailed at their verified
   addresses BEFORE the owner pointer moves; the move is a conditional reassign (a concurrent change
@@ -8252,3 +8252,26 @@ session (served at `/docs` only).
 **Residual.** Anything placed under `/assets/` in the admin build is public by design. The
 developer docs become public with DOC-03b; that change flips the gate in `docs.ts`, not this
 allowlist.
+
+### Admin and portal sessions and the step-up table (SEC-WP-09)
+
+**What arrived.** The admin cookie is a stateless HMAC token, so sign-out did nothing server-side
+and a stolen cookie lived 8 hours; "stepped up" meant any sign-in in the last 5 minutes; and
+several irreversible or personal-data routes had no step-up at all.
+
+**Control.** `admin/sessionRevocation.ts`: logout writes a per-operator mark (`admin-revoked`,
+single-use store) and `sessionFromRequest` refuses any session minted at or before it, so
+replaying an old cookie is a 401 and sign-out ends every cookie that operator holds. `/docs` and
+`slug-check` re-read the current `PLATFORM_ADMIN_GROUP`. `session.stepUpAt` is set only by a
+`stepUp=1` flow whose ID token carries `auth_time`. `admin/stepUp.ts` lists the gated routes
+(user export, user data delete, licence detach, product delete, break-glass key activation, KEK
+re-seal, relink and holder moves); the portal gates `DELETE /api/me`, licence removal and
+registry-token mint on a sign-in from the last 5 minutes (`portal/stepUpGate.ts`). The console's
+ID-token check has the portal's `maxTokenAge`, `clockTolerance` and `requiredClaims`.
+
+**Residual.** The revocation read fails open if the store is unreachable (the 8 h expiry still
+bounds it). Group membership is re-read from config, not from the IdP, so an operator removed
+only at the IdP keeps access until sign-out or expiry. The portal still falls back to
+`ADMIN_SESSION_SECRET` when `PORTAL_SESSION_SECRET` is unset (the realm tags keep the tokens
+apart); an owner step is to set a separate secret. Portal sessions are already revocable
+(`account_sessions`).

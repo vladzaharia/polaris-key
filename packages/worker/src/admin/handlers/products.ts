@@ -81,6 +81,7 @@ import {
 } from "../../fingerprint.js";
 import { audit, platformAudit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
+import { requireStepUp } from "../stepUp.js";
 import type { AdminSession } from "../session.js";
 import {
   adminJson,
@@ -156,6 +157,9 @@ export async function handleProducts(
   // Product wizard (F16), and whether a slug is taken is already public (`/<slug>/.well-known/
   // polaris.json` answers for every product).
   if (segments.length === 1 && segments[0] === "slug-check") {
+    // SEC-ADM-5: the CURRENT platform group, not whatever the cookie was minted with.
+    if (!isPlatformAdmin(env, session))
+      return forbidden("platform admin required");
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     const slug = (new URL(req.url).searchParams.get("slug") ?? "").trim();
@@ -482,6 +486,8 @@ export async function handleProducts(
         "the system product cannot be deleted",
         { reason: "system_product" },
       );
+    const gate = requireStepUp(session, now);
+    if (gate) return gate;
     const body = await readBody(req);
     if (body.confirmSlug !== slug) {
       return err(422, ErrorCode.BadRequest, "confirmSlug must match product", {
@@ -1129,6 +1135,10 @@ async function handleKekKeyring(
 ): Promise<Response> {
   if (req.method !== "GET" && req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  if (req.method === "POST") {
+    const gate = requireStepUp(session, now);
+    if (gate) return gate;
+  }
 
   let active: string;
   let kids: string[];
@@ -1610,6 +1620,10 @@ async function handleKeys(
 
   if (action === "activate") {
     const breakGlass = body.breakGlass === true;
+    if (breakGlass) {
+      const gate = requireStepUp(session, now);
+      if (gate) return gate;
+    }
     if (row.status !== "staged") {
       return err(
         409,
