@@ -7,7 +7,8 @@
 //   * a stored id is used only when no anchor is readable;
 //   * a stored id that disagrees with the derived one is discarded together with the token and
 //     the grant slices of the cache: `clearAll()` without the network call. The update slices
-//     (feeds, releaseRecords) are kept, because they carry each channel's `seq` floor.
+//     (feeds, releaseRecords) are kept, because they carry each channel's `seq` floor, and so is the
+//     pin evidence (`pinRevocations`): a tombstone is security state, not a grant.
 //
 // Stores that hold the id somewhere a copy cannot reach (the iOS/tvOS Keychain-backed host
 // store, an in-memory store, a host's own store) do not conform to `DeviceIdRebindable` and keep
@@ -37,9 +38,13 @@ func bindDeviceId(
     // The stored id is not this machine's: a copied or restored state directory. Drop every
     // credential and grant it carried; re-activation seats this machine once.
     try await store.clearToken()
-    if let cache = await store.readCache(), !cache.feeds.isEmpty || !cache.releaseRecords.isEmpty {
+    if let cache = await store.readCache(),
+        !cache.feeds.isEmpty || !cache.releaseRecords.isEmpty || !cache.pinRevocations.isEmpty
+    {
         try await store.writeCache(
-            CacheRecord(feeds: cache.feeds, releaseRecords: cache.releaseRecords))
+            CacheRecord(
+                feeds: cache.feeds, releaseRecords: cache.releaseRecords,
+                pinRevocations: cache.pinRevocations))
     } else {
         try await store.clearCache()
     }
