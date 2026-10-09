@@ -35,9 +35,6 @@
     }
   }
   /* The Not set up status is a pill beside the title. */
-  [data-screen="distribution.channel-setup"] .status-pill {
-    margin-left: var(--sp-1);
-  }
   /* Back is the secondary outline: its border reaches 3:1 in both themes. */
   [data-screen="distribution.channel-setup"] .wizard-foot .btn.outline {
     border-color: var(--pk-border-strong);
@@ -88,13 +85,13 @@
         <a class="nav-item" href="#"><i class="ic ic-package-open"></i><span class="nav-text">Obtainium</span></a>
         <a class="nav-item" href="#"><i class="ic ic-square-terminal"></i><span class="nav-text">Scoop</span></a>
         <a class="nav-item" href="#"><i class="ic ic-terminal"></i><span class="nav-text">winget</span></a>
-        <a class="nav-item active" aria-current="page" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
+        <a class="nav-item active" aria-current="page" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span role="img" class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
       </div>
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -104,8 +101,8 @@
 
   <main class="main">
     <div class="page columns cap">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Channels</a><i class="ic ic-chevron-right"></i>Steam</nav>
+      <header class="page-head record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Channels</a></nav>
         <div class="page-icon"><span class="icon-tile xl neutral"><i class="ic ic-steam"></i></span></div>
         <div class="page-heading"><h1>Steam</h1><span class="pill status-pill">Not set up</span></div>
         <p class="page-sub">Store · Windows x64 and Linux x86_64</p>

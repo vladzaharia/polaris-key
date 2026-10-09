@@ -20,7 +20,6 @@
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
-      column-gap: var(--sp-2);
     }
   }
   [data-screen="distribution.channel-app-store"] .lane-tbl .c-lane {
@@ -69,13 +68,13 @@
         <a class="nav-item" href="#"><i class="ic ic-package-open"></i><span class="nav-text">Obtainium</span></a>
         <a class="nav-item" href="#"><i class="ic ic-square-terminal"></i><span class="nav-text">Scoop</span></a>
         <a class="nav-item" href="#"><i class="ic ic-terminal"></i><span class="nav-text">winget</span></a>
-        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span role="img" class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
       </div>
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -85,8 +84,8 @@
 
   <main class="main">
     <div class="page cap">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Channels</a><i class="ic ic-chevron-right"></i>App Store</nav>
+      <header class="page-head record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Channels</a></nav>
         <div class="page-icon"><span class="icon-tile xl neutral"><i class="ic ic-app-store"></i></span></div>
         <div class="page-heading"><h1>App Store</h1><span class="status"><i class="ic ic-circle-check"></i>Live</span></div>
         <p class="page-sub"><span class="meta-seps"><span>Store</span><span>iOS</span><span class="rating"><i class="ic ic-star" aria-hidden="true"></i>4.6 from 1,284 ratings</span></span></p>
@@ -185,7 +184,7 @@
             <div class="card-head"><div class="title"><h2 id="getit-title">What customers do</h2></div></div>
             <div class="card-body">
               <div class="mk-media">
-                <figure class="qr-figure hide-phone"><span class="qr sm" aria-label="QR code for the App Store link"><svg viewBox="0 0 29 29" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h7v1h-7zM10 2h4v1h-4zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM12 3h3v1h-3zM17 3h2v1h-2zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h2v1h-2zM15 4h3v1h-3zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM16 5h2v1h-2zM20 5h1v1h-1zM22 5h3v1h-3zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM13 6h2v1h-2zM20 6h1v1h-1zM22 6h3v1h-3zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM14 7h2v1h-2zM17 7h2v1h-2zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h7v1h-7zM11 9h2v1h-2zM14 9h1v1h-1zM16 9h1v1h-1zM18 9h1v1h-1zM2 10h2v1h-2zM5 10h2v1h-2zM8 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h3v1h-3zM19 10h3v1h-3zM23 10h2v1h-2zM4 11h1v1h-1zM6 11h2v1h-2zM9 11h1v1h-1zM15 11h1v1h-1zM17 11h2v1h-2zM20 11h2v1h-2zM24 11h1v1h-1zM4 12h1v1h-1zM8 12h8v1h-8zM18 12h2v1h-2zM21 12h1v1h-1zM24 12h2v1h-2zM3 13h3v1h-3zM9 13h1v1h-1zM12 13h1v1h-1zM20 13h2v1h-2zM25 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM8 14h2v1h-2zM12 14h3v1h-3zM16 14h1v1h-1zM18 14h1v1h-1zM22 14h1v1h-1zM24 14h2v1h-2zM3 15h4v1h-4zM9 15h5v1h-5zM17 15h2v1h-2zM22 15h1v1h-1zM25 15h2v1h-2zM2 16h1v1h-1zM8 16h1v1h-1zM11 16h1v1h-1zM15 16h1v1h-1zM18 16h2v1h-2zM23 16h2v1h-2zM4 17h3v1h-3zM10 17h3v1h-3zM15 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM25 17h1v1h-1zM4 18h3v1h-3zM8 18h3v1h-3zM15 18h2v1h-2zM18 18h5v1h-5zM24 18h1v1h-1zM10 19h1v1h-1zM13 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM22 19h1v1h-1zM25 19h2v1h-2zM2 20h7v1h-7zM11 20h1v1h-1zM14 20h1v1h-1zM16 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM25 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM12 21h1v1h-1zM14 21h5v1h-5zM22 21h1v1h-1zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM10 22h3v1h-3zM14 22h11v1h-11zM2 23h1v1h-1zM4 23h3v1h-3zM8 23h1v1h-1zM13 23h3v1h-3zM17 23h3v1h-3zM21 23h1v1h-1zM23 23h2v1h-2zM2 24h1v1h-1zM4 24h3v1h-3zM8 24h1v1h-1zM11 24h1v1h-1zM14 24h5v1h-5zM20 24h1v1h-1zM22 24h2v1h-2zM25 24h1v1h-1zM2 25h1v1h-1zM8 25h1v1h-1zM11 25h2v1h-2zM14 25h1v1h-1zM20 25h1v1h-1zM23 25h1v1h-1zM2 26h7v1h-7zM13 26h1v1h-1zM16 26h1v1h-1zM23 26h3v1h-3z"/></svg></span><figcaption>Scan with your iPhone</figcaption></figure>
+                <figure class="qr-figure hide-phone"><span role="img" class="qr sm" aria-label="QR code for the App Store link"><svg viewBox="0 0 29 29" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h7v1h-7zM10 2h4v1h-4zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM12 3h3v1h-3zM17 3h2v1h-2zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h2v1h-2zM15 4h3v1h-3zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM16 5h2v1h-2zM20 5h1v1h-1zM22 5h3v1h-3zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM13 6h2v1h-2zM20 6h1v1h-1zM22 6h3v1h-3zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM14 7h2v1h-2zM17 7h2v1h-2zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h7v1h-7zM11 9h2v1h-2zM14 9h1v1h-1zM16 9h1v1h-1zM18 9h1v1h-1zM2 10h2v1h-2zM5 10h2v1h-2zM8 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h3v1h-3zM19 10h3v1h-3zM23 10h2v1h-2zM4 11h1v1h-1zM6 11h2v1h-2zM9 11h1v1h-1zM15 11h1v1h-1zM17 11h2v1h-2zM20 11h2v1h-2zM24 11h1v1h-1zM4 12h1v1h-1zM8 12h8v1h-8zM18 12h2v1h-2zM21 12h1v1h-1zM24 12h2v1h-2zM3 13h3v1h-3zM9 13h1v1h-1zM12 13h1v1h-1zM20 13h2v1h-2zM25 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM8 14h2v1h-2zM12 14h3v1h-3zM16 14h1v1h-1zM18 14h1v1h-1zM22 14h1v1h-1zM24 14h2v1h-2zM3 15h4v1h-4zM9 15h5v1h-5zM17 15h2v1h-2zM22 15h1v1h-1zM25 15h2v1h-2zM2 16h1v1h-1zM8 16h1v1h-1zM11 16h1v1h-1zM15 16h1v1h-1zM18 16h2v1h-2zM23 16h2v1h-2zM4 17h3v1h-3zM10 17h3v1h-3zM15 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM25 17h1v1h-1zM4 18h3v1h-3zM8 18h3v1h-3zM15 18h2v1h-2zM18 18h5v1h-5zM24 18h1v1h-1zM10 19h1v1h-1zM13 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM22 19h1v1h-1zM25 19h2v1h-2zM2 20h7v1h-7zM11 20h1v1h-1zM14 20h1v1h-1zM16 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM25 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM12 21h1v1h-1zM14 21h5v1h-5zM22 21h1v1h-1zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM10 22h3v1h-3zM14 22h11v1h-11zM2 23h1v1h-1zM4 23h3v1h-3zM8 23h1v1h-1zM13 23h3v1h-3zM17 23h3v1h-3zM21 23h1v1h-1zM23 23h2v1h-2zM2 24h1v1h-1zM4 24h3v1h-3zM8 24h1v1h-1zM11 24h1v1h-1zM14 24h5v1h-5zM20 24h1v1h-1zM22 24h2v1h-2zM25 24h1v1h-1zM2 25h1v1h-1zM8 25h1v1h-1zM11 25h2v1h-2zM14 25h1v1h-1zM20 25h1v1h-1zM23 25h1v1h-1zM2 26h7v1h-7zM13 26h1v1h-1zM16 26h1v1h-1zM23 26h3v1h-3z"/></svg></span><figcaption>Scan with your iPhone</figcaption></figure>
                 <div class="mk-stack-3">
                   <p class="type-small muted">Shown on your download page and in Library</p>
                   <div class="value-chip block" title="apps.apple.com/app/id6478123905"><i class="ic ic-external-link"></i><span class="mid"><span>apps.apple.com/app/</span><span>id6478123905</span></span><button class="btn ghost icon xs" aria-label="Copy the App Store link"><i class="ic ic-copy"></i></button></div>

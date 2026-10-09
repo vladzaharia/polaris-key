@@ -66,7 +66,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -77,6 +77,7 @@
   <main class="main">
     <div class="page table-page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a></nav>
         <div class="page-heading"><h1>Entitlements</h1></div>
         <p class="page-sub"><span>Declared in <code>.pkey/product</code></span></p>
         <div class="page-actions">
@@ -85,92 +86,94 @@
       </header>
 
       <section class="section" aria-label="Diceroll’s entitlements">
-        <div class="toolbar">
-          <div class="search-field"><i class="ic ic-search"></i><span>Filter entitlements</span></div>
-          <div class="segmented sm scroll-row" role="radiogroup" aria-label="Kind">
-            <span class="on" role="radio" aria-checked="true">All<span class="count">7</span></span><span role="radio" aria-checked="false">On/off</span><span role="radio" aria-checked="false">Quantities</span><span role="radio" aria-checked="false">Consumables</span>
+        <div class="workbench">
+          <div class="toolbar">
+            <div class="search-field"><i class="ic ic-search"></i><span>Filter entitlements</span></div>
+            <div class="segmented sm scroll-row" role="radiogroup" aria-label="Kind">
+              <span class="on" role="radio" aria-checked="true">All<span class="count">7</span></span><span role="radio" aria-checked="false">On/off</span><span role="radio" aria-checked="false">Quantities</span><span role="radio" aria-checked="false">Consumables</span>
+            </div>
           </div>
-        </div>
-        <!-- Both tables share one set of column widths, so Free and Premium line up between them. A name opens the entitlement's edit drawer. -->
-        <div class="table-card">
-          <table class="table fixed no-head-phone rows-57">
-            <colgroup><col class="c-name"><col class="c-kind"><col class="c-tier"><col class="c-tier"><col class="c-wide"><col class="c-act"></colgroup>
-            <thead>
-              <tr>
-                <th>Entitlement</th>
-                <th class="hide-phone">Kind<span class="info-tip" tabindex="0" role="img" aria-label="Kinds: On/off, Quantity, Consumable" data-tip="On/off: off unless the tier, the license or an add-on turns it on.&#10;Quantity: the license’s value, else the tier’s, plus each add-on’s.&#10;Consumable: units a player spends, with a balance per license."><i class="ic ic-info"></i></span></th>
-                <th class="hide-phone">Free</th>
-                <th class="hide-phone">Premium</th>
-                <th class="hide-phone">Add-ons</th>
-                <th class="end"><span class="sr-only">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-title"><a href="#">No ads</a></div><div class="cell-sub"><span class="mono">ads.off</span></div>
-                  <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span>On in Premium</span></div></div></td>
-                <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
-                <td class="hide-phone"><span class="val-off">Off</span></td>
-                <td class="hide-phone"><span class="val-on">On</span></td>
-                <td class="hide-phone"><span class="subtle">—</span></td>
-                <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for ads.off"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Obsidian dice</a></div><div class="cell-sub"><span class="mono">pack.obsidian</span><span class="hide-phone">&nbsp;· <span class="nowrap">opens a pack</span></span></div>
-                  <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span><span class="nowrap">On in Premium</span>&nbsp;· <span class="nowrap">add-on</span> <a class="link" href="#">Obsidian dice pack</a></span></div></div></td>
-                <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
-                <td class="hide-phone"><span class="val-off">Off</span></td>
-                <td class="hide-phone"><span class="val-on">On</span></td>
-                <td class="hide-phone"><span class="links"><a class="link" href="#">Obsidian dice pack</a></span></td>
-                <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for pack.obsidian"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Neon dice</a></div><div class="cell-sub"><span class="mono">pack.neon</span><span class="hide-phone">&nbsp;· <span class="nowrap">opens a pack</span></span></div>
-                  <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span><span class="nowrap">Add-on</span> <a class="link" href="#">Neon dice pack</a></span></div></div></td>
-                <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
-                <td class="hide-phone"><span class="val-off">Off</span></td>
-                <td class="hide-phone"><span class="val-off">Off</span></td>
-                <td class="hide-phone"><span class="links"><a class="link" href="#">Neon dice pack</a></span></td>
-                <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for pack.neon"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Supporter skins</a></div><div class="cell-sub"><span class="mono">extras.diceSkins</span></div>
-                  <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span><span class="nowrap">Add-on</span> <a class="link" href="#">Supporter skins</a></span></div></div></td>
-                <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
-                <td class="hide-phone"><span class="val-off">Off</span></td>
-                <td class="hide-phone"><span class="val-off">Off</span></td>
-                <td class="hide-phone"><span class="links"><a class="link" href="#">Supporter skins</a></span></td>
-                <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for extras.diceSkins"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Season pass</a></div><div class="cell-sub"><span class="mono">pass.season</span><span class="hide-phone">&nbsp;· <span class="nowrap">while its subscription renews</span></span></div>
-                  <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span><span class="nowrap">Add-on</span> <a class="link" href="#">Season pass</a></span></div></div></td>
-                <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
-                <td class="hide-phone"><span class="val-off">Off</span></td>
-                <td class="hide-phone"><span class="val-off">Off</span></td>
-                <td class="hide-phone"><span class="links"><a class="link" href="#">Season pass</a></span></td>
-                <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for pass.season"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Loadout slots</a></div><div class="cell-sub"><span class="mono">loadouts</span><span class="hide-phone">&nbsp;· <span class="nowrap">dice sets a player can save</span></span></div>
-                  <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-layers" role="img" aria-label="Quantity"></i><span><span class="nowrap">Free 2</span>&nbsp;· <span class="nowrap">Premium 6</span>&nbsp;· <span class="nowrap"><a class="link" href="#">Loadout pack</a> +2</span>&nbsp;· <span class="nowrap"><a class="link" href="#">Neon dice pack</a> +1</span></span></div></div></td>
-                <td class="hide-phone"><span class="icon-text"><i class="ic ic-layers"></i>Quantity</span></td>
-                <td class="hide-phone tnum">2</td>
-                <td class="hide-phone tnum">6</td>
-                <td class="hide-phone"><span class="links"><span class="pill sm muted">Set here</span><span class="nowrap"><a class="link" href="#">Loadout pack</a> <span class="muted tnum">+2</span></span><span class="nowrap"><a class="link" href="#">Neon dice pack</a> <span class="muted tnum">+1</span></span></span></td>
-                <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for loadouts"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Gems</a></div><div class="cell-sub"><span class="mono">gems</span></div>
-                  <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-coins" role="img" aria-label="Consumable"></i><span><span class="nowrap">Add-ons</span> <a class="link" href="#">500 gems</a>, <a class="link" href="#">1,200 gems</a></span></div></div></td>
-                <td class="hide-phone"><span class="icon-text"><i class="ic ic-coins"></i>Consumable</span></td>
-                <td class="hide-phone"><span class="subtle">—</span></td>
-                <td class="hide-phone"><span class="subtle">—</span></td>
-                <td class="hide-phone"><span class="links"><a class="link" href="#">500 gems</a><a class="link" href="#">1,200 gems</a></span></td>
-                <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for gems"><i class="ic ic-ellipsis"></i></button></td>
-              </tr>
-            </tbody>
-          </table>
+          <!-- Both tables share one set of column widths, so Free and Premium line up between them. A name opens the entitlement's edit drawer. -->
+          <div class="table-card" role="region" aria-label="Entitlements table" tabindex="0">
+            <table class="table fixed no-head-phone rows-57">
+              <colgroup><col class="c-name"><col class="c-kind"><col class="c-tier"><col class="c-tier"><col class="c-wide"><col class="c-act"></colgroup>
+              <thead>
+                <tr>
+                  <th>Entitlement</th>
+                  <th class="hide-phone">Kind<span class="info-tip" tabindex="0" role="img" aria-label="Kinds: On/off, Quantity, Consumable" data-tip="On/off: off unless the tier, the license or an add-on turns it on.&#10;Quantity: the license’s value, else the tier’s, plus each add-on’s.&#10;Consumable: units a player spends, with a balance per license."><i class="ic ic-info"></i></span></th>
+                  <th class="hide-phone">Free</th>
+                  <th class="hide-phone">Premium</th>
+                  <th class="hide-phone">Add-ons</th>
+                  <th class="end"><span class="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-title"><a href="#">No ads</a></div><div class="cell-sub"><span class="mono">ads.off</span></div>
+                    <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span>On in Premium</span></div></div></td>
+                  <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
+                  <td class="hide-phone"><span class="val-off">Off</span></td>
+                  <td class="hide-phone"><span class="val-on">On</span></td>
+                  <td class="hide-phone"><span class="subtle">—</span></td>
+                  <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for ads.off"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Obsidian dice</a></div><div class="cell-sub"><span class="mono">pack.obsidian</span><span class="hide-phone">&nbsp;· <span class="nowrap">opens a pack</span></span></div>
+                    <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span><span class="nowrap">On in Premium</span>&nbsp;· <span class="nowrap">add-on</span> <a class="link" href="#">Obsidian dice pack</a></span></div></div></td>
+                  <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
+                  <td class="hide-phone"><span class="val-off">Off</span></td>
+                  <td class="hide-phone"><span class="val-on">On</span></td>
+                  <td class="hide-phone"><span class="links"><a class="link" href="#">Obsidian dice pack</a></span></td>
+                  <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for pack.obsidian"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Neon dice</a></div><div class="cell-sub"><span class="mono">pack.neon</span><span class="hide-phone">&nbsp;· <span class="nowrap">opens a pack</span></span></div>
+                    <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span><span class="nowrap">Add-on</span> <a class="link" href="#">Neon dice pack</a></span></div></div></td>
+                  <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
+                  <td class="hide-phone"><span class="val-off">Off</span></td>
+                  <td class="hide-phone"><span class="val-off">Off</span></td>
+                  <td class="hide-phone"><span class="links"><a class="link" href="#">Neon dice pack</a></span></td>
+                  <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for pack.neon"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Supporter skins</a></div><div class="cell-sub"><span class="mono">extras.diceSkins</span></div>
+                    <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span><span class="nowrap">Add-on</span> <a class="link" href="#">Supporter skins</a></span></div></div></td>
+                  <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
+                  <td class="hide-phone"><span class="val-off">Off</span></td>
+                  <td class="hide-phone"><span class="val-off">Off</span></td>
+                  <td class="hide-phone"><span class="links"><a class="link" href="#">Supporter skins</a></span></td>
+                  <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for extras.diceSkins"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Season pass</a></div><div class="cell-sub"><span class="mono">pass.season</span><span class="hide-phone">&nbsp;· <span class="nowrap">while its subscription renews</span></span></div>
+                    <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-toggle-right" role="img" aria-label="On/off"></i><span><span class="nowrap">Add-on</span> <a class="link" href="#">Season pass</a></span></div></div></td>
+                  <td class="hide-phone"><span class="icon-text"><i class="ic ic-toggle-right"></i>On/off</span></td>
+                  <td class="hide-phone"><span class="val-off">Off</span></td>
+                  <td class="hide-phone"><span class="val-off">Off</span></td>
+                  <td class="hide-phone"><span class="links"><a class="link" href="#">Season pass</a></span></td>
+                  <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for pass.season"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Loadout slots</a></div><div class="cell-sub"><span class="mono">loadouts</span><span class="hide-phone">&nbsp;· <span class="nowrap">dice sets a player can save</span></span></div>
+                    <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-layers" role="img" aria-label="Quantity"></i><span><span class="nowrap">Free 2</span>&nbsp;· <span class="nowrap">Premium 6</span>&nbsp;· <span class="nowrap"><a class="link" href="#">Loadout pack</a> +2</span>&nbsp;· <span class="nowrap"><a class="link" href="#">Neon dice pack</a> +1</span></span></div></div></td>
+                  <td class="hide-phone"><span class="icon-text"><i class="ic ic-layers"></i>Quantity</span></td>
+                  <td class="hide-phone tnum">2</td>
+                  <td class="hide-phone tnum">6</td>
+                  <td class="hide-phone"><span class="links"><span class="pill sm muted">Set here</span><span class="nowrap"><a class="link" href="#">Loadout pack</a> <span class="muted tnum">+2</span></span><span class="nowrap"><a class="link" href="#">Neon dice pack</a> <span class="muted tnum">+1</span></span></span></td>
+                  <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for loadouts"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Gems</a></div><div class="cell-sub"><span class="mono">gems</span></div>
+                    <div class="show-phone"><div class="cell-sub icon-line"><i class="ic ic-coins" role="img" aria-label="Consumable"></i><span><span class="nowrap">Add-ons</span> <a class="link" href="#">500 gems</a>, <a class="link" href="#">1,200 gems</a></span></div></div></td>
+                  <td class="hide-phone"><span class="icon-text"><i class="ic ic-coins"></i>Consumable</span></td>
+                  <td class="hide-phone"><span class="subtle">—</span></td>
+                  <td class="hide-phone"><span class="subtle">—</span></td>
+                  <td class="hide-phone"><span class="links"><a class="link" href="#">500 gems</a><a class="link" href="#">1,200 gems</a></span></td>
+                  <td class="end on-title"><button class="btn ghost icon xs" aria-label="More for gems"><i class="ic ic-ellipsis"></i></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

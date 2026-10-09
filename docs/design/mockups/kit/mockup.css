@@ -1514,7 +1514,8 @@
   --lh-mono: 20px;
 }
 
-/* Commerce is a service (owner, 2026-10-07) drawn in the distribution green. */
+/* Commerce is a service (owner, 2026-10-07) drawn in the Distribution green family (lead B1,
+   2026-10-09: no ninth family); its glyph is the shopping bag. */
 [data-service="commerce"] {
   --pk-accent: var(--pk-service-distribution);
   --pk-accent-fg: var(--pk-service-distribution-fg);
@@ -1588,7 +1589,7 @@ hr {
 }
 strong,
 b {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 code,
@@ -1768,21 +1769,21 @@ kbd,
 .type-page {
   font-size: var(--fs-page);
   line-height: var(--lh-page);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
 .type-section {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
 .type-card {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .type-body {
@@ -1914,7 +1915,7 @@ kbd,
   color: var(--pk-danger);
 }
 .bold {
-  font-weight: 700;
+  font-weight: 600;
 }
 .small {
   font-size: var(--fs-small);
@@ -2049,7 +2050,7 @@ kbd,
   --svc-glyph: var(--ic-cloud);
 }
 [data-service="commerce"] {
-  --svc-glyph: var(--ic-store);
+  --svc-glyph: var(--ic-shopping-bag);
 }
 
 /* A row of service glyphs (a product card) and its phone form, one dot per service. */
@@ -2130,7 +2131,7 @@ kbd,
   background: var(--pk-surface-sunken) center / cover no-repeat;
   box-shadow: inset 0 0 0 1px var(--mk-line);
   color: var(--pk-text-muted);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 17px;
   line-height: 1;
   text-transform: uppercase;
@@ -2224,7 +2225,7 @@ kbd,
   border-radius: 50%;
   background: var(--mk-avatar-bg);
   color: var(--mk-avatar-fg);
-  font-weight: 700;
+  font-weight: 600;
   font-size: 12px;
   letter-spacing: 0.02em;
 }
@@ -2278,7 +2279,7 @@ kbd,
   align-items: center;
   gap: var(--sp-3);
   min-width: 0;
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--fs-card);
   color: var(--pk-text-strong);
   white-space: nowrap;
@@ -2296,7 +2297,7 @@ kbd,
   background: var(--pk-warning-subtle);
   color: var(--pk-warning);
   font-size: var(--fs-meta);
-  font-weight: 700;
+  font-weight: 500;
 }
 .env.dev {
   border-color: var(--pk-info-border);
@@ -2382,7 +2383,7 @@ kbd,
   flex: 1;
 }
 .ctx-name {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2423,12 +2424,12 @@ kbd,
 .nav-item.active {
   background: var(--mk-fill);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
   box-shadow: inset 2px 0 0 var(--pk-accent);
 }
 .nav-item.active > .ic,
 .nav-item.active > .svc {
-  color: var(--pk-accent);
+  color: var(--pk-accent-fg);
 }
 .nav-item .count,
 .nav-item .pill {
@@ -2459,7 +2460,7 @@ kbd,
   border: 0;
   border-radius: var(--pk-radius-md);
   background: none;
-  font: 700 var(--fs-small) / var(--lh-small) var(--pk-font-sans);
+  font: 500 var(--fs-small) / var(--lh-small) var(--pk-font-sans);
   text-align: left;
   color: var(--pk-text-muted);
   cursor: pointer;
@@ -2639,7 +2640,7 @@ kbd,
 .page-head h1 {
   font-size: var(--fs-page);
   line-height: var(--lh-page);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
@@ -2696,7 +2697,7 @@ kbd,
 .section-head h2 {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -2783,7 +2784,7 @@ kbd,
 .card-head h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 /* Peers share a step: a card straight on the page (or in its aside) titles at the block step,
@@ -2908,7 +2909,7 @@ kbd,
   margin-top: var(--sp-1);
   font-size: var(--fs-stat);
   line-height: var(--lh-stat);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
@@ -3061,7 +3062,7 @@ kbd,
 .product-card h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3173,7 +3174,7 @@ kbd,
   border-color: var(--pk-border-strong);
   background: var(--pk-surface-raised);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .btn.action > .ic {
   color: var(--pk-accent-fg);
@@ -3266,7 +3267,7 @@ kbd,
 .segmented > .on {
   background: var(--pk-surface-raised);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
   box-shadow: 0 0 0 1px var(--mk-line), var(--pk-elevation-1);
 }
 .segmented.sm {
@@ -3508,7 +3509,7 @@ kbd,
   padding: 0 var(--sp-4);
   text-align: left;
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
   white-space: nowrap;
   background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
@@ -3618,7 +3619,7 @@ kbd,
   background: color-mix(in oklab, var(--mk-fill) 60%, transparent);
 }
 .cell-title {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -3748,7 +3749,7 @@ kbd,
   gap: var(--sp-2);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .field-label .optional {
@@ -3939,7 +3940,7 @@ kbd,
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .setting-desc {
@@ -3971,7 +3972,7 @@ kbd,
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .choice-desc {
@@ -4070,7 +4071,7 @@ kbd,
 .tab.active {
   border-bottom-color: var(--pk-accent);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .tab .count {
   height: 18px;
@@ -4143,14 +4144,14 @@ kbd,
   border: 1px solid var(--pk-border-strong);
   color: var(--pk-text-muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .step-mark::after {
   content: counter(step);
 }
 .step.current {
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .step.current .step-mark {
   border: 2px solid var(--pk-accent);
@@ -4229,7 +4230,7 @@ kbd,
 .wizard-body h2 {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   letter-spacing: -0.01em;
 }
@@ -4311,7 +4312,7 @@ kbd,
   mask: var(--ic-x) center / contain no-repeat;
 }
 .task-title {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .task.done .task-title {
@@ -4532,7 +4533,7 @@ kbd,
   color: var(--pk-text-muted);
 }
 .callout-title {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .callout-text {
@@ -4627,7 +4628,7 @@ kbd,
   align-items: center;
   gap: var(--sp-2);
   min-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -4668,7 +4669,7 @@ kbd,
 .empty h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .empty p {
@@ -4929,7 +4930,7 @@ kbd,
   flex: 1;
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   letter-spacing: -0.01em;
 }
@@ -4996,7 +4997,7 @@ kbd,
   flex: 1;
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .drawer-body {
@@ -5052,7 +5053,7 @@ kbd,
   color: var(--pk-info);
 }
 .toast-title {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .toast-text {
@@ -5119,7 +5120,7 @@ kbd,
 .code-tabs > .active {
   border-bottom-color: var(--pk-accent);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 /* A tab's qualifier, e.g. the platform an SDK fits: <span>Swift<small>macOS</small></span>. */
 .code-tabs small {
@@ -5317,7 +5318,7 @@ pre.code-plain {
   color: var(--mk-term-dim);
 }
 .c-b {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .c-u {
@@ -5375,7 +5376,7 @@ pre.code-plain {
   align-items: center;
   gap: var(--sp-3);
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -5395,7 +5396,7 @@ pre.code-plain {
 .portal-nav > a.active {
   border-bottom-color: var(--pk-accent);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .portal-actions {
   display: flex;
@@ -5431,7 +5432,7 @@ pre.code-plain {
 .portal-page h1 {
   font-size: 40px;
   line-height: 44px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
@@ -5481,7 +5482,7 @@ pre.code-plain {
 }
 .ptile-name {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .ptile-body {
@@ -5525,7 +5526,7 @@ pre.code-plain {
 }
 .license-card h2 {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .key-field {
@@ -5584,7 +5585,7 @@ pre.code-plain {
 .board-title h1 {
   font-size: 24px;
   line-height: 32px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .board-title p {
@@ -5709,7 +5710,7 @@ pre.code-plain {
   height: 54px;
   padding: var(--sp-2) var(--sp-8) 0 var(--sp-10);
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .device-status > .row .ic {
@@ -5744,7 +5745,7 @@ pre.code-plain {
   border-bottom: 1px solid var(--mk-line);
   background: var(--pk-surface-raised);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
 }
 .window-bar > .term-dots {
@@ -5828,7 +5829,7 @@ pre.code-plain {
   border-radius: 50%;
   background: var(--pk-brand-gold);
   color: #060912;
-  font: 700 12px/1 var(--pk-font-sans);
+  font: 500 12px/1 var(--pk-font-sans);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--pk-brand-gold) 30%, transparent);
 }
 .anno.at {
@@ -5895,7 +5896,7 @@ pre.code-plain {
   margin-bottom: var(--sp-2);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -5960,7 +5961,7 @@ pre.code-plain {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -5997,7 +5998,7 @@ pre.code-plain {
 .feature-fold h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .feature-fold.add {
@@ -6559,7 +6560,7 @@ pre.code-plain {
   .portal-tabbar > a.active {
     background: var(--mk-fill);
     color: var(--pk-text-strong);
-    font-weight: 700;
+    font-weight: 500;
   }
   /* Activate is the outlined pill in the middle of the bar, not a tab (PORTAL.md §3.2). */
   .portal-tabbar > a.act {
@@ -6889,7 +6890,7 @@ pre.code-plain {
   padding: var(--sp-3) var(--sp-2) var(--sp-1);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -7035,7 +7036,7 @@ pre.code-plain {
 .diff-old::before,
 .diff-new::before {
   font-family: var(--pk-font-mono);
-  font-weight: 700;
+  font-weight: 500;
 }
 .diff-old {
   background: var(--pk-danger-subtle);
@@ -7051,7 +7052,7 @@ pre.code-plain {
 .diff-new {
   background: var(--pk-success-subtle);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .diff-new::before {
   content: "+";
@@ -7215,7 +7216,7 @@ pre.code-plain {
   min-width: 0;
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .feature-card-head h3 > a {
@@ -7425,7 +7426,7 @@ pre.code-plain {
   border-radius: var(--pk-radius-xs);
   background: var(--pk-accent);
   color: var(--pk-accent-on);
-  font: 700 11px/16px var(--pk-font-sans);
+  font: 500 11px/16px var(--pk-font-sans);
 }
 .domain.wait {
   border-color: transparent;
@@ -7641,7 +7642,7 @@ pre.code-plain {
 .toc-nav > a.on {
   background: var(--mk-fill);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 @container screen (max-width: 1279px) {
   .with-toc {
@@ -7693,7 +7694,7 @@ pre.code-plain {
   height: 32px;
   font-size: 18px;
   line-height: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-muted);
 }
 .hosted-card {
@@ -7748,7 +7749,7 @@ pre.code-plain {
 .hosted-body h1 {
   font-size: var(--fs-stat);
   line-height: var(--lh-stat);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.015em;
   color: var(--pk-text-strong);
 }
@@ -7766,7 +7767,7 @@ pre.code-plain {
   font-size: 15px;
 }
 .hosted-card .btn.primary.block {
-  font-weight: 700;
+  font-weight: 500;
 }
 /* An organization as the step's title: its tile, then the name at the h1 step. */
 .hosted-org {
@@ -7941,7 +7942,7 @@ pre.code-plain {
   border: 1px solid var(--pk-border-strong);
   border-radius: var(--pk-radius-lg);
   background: var(--pk-surface-sunken);
-  font: 700 20px/1 var(--pk-font-mono);
+  font: 500 20px/1 var(--pk-font-mono);
   color: var(--pk-text-strong);
 }
 .code-cells > span.on {
@@ -8299,7 +8300,7 @@ pre.code-plain {
 /* A section with unsaved changes: a dot at the end of its nav entry. */
 .toc-nav > a > .dot {
   margin-left: auto;
-  color: var(--pk-accent);
+  color: var(--pk-accent-fg);
 }
 /* Cards on a .with-toc page are page-level blocks: they title at the block step. */
 :is(.toc-body, .toc-aside) > .card > .card-head :is(h2, h3) {
@@ -8406,7 +8407,7 @@ pre.code-plain {
   border-radius: var(--pk-radius-md);
   background: var(--pk-accent-subtle);
   color: var(--pk-accent-fg);
-  font: 700 var(--fs-mono) / 1 var(--pk-font-mono);
+  font: 500 var(--fs-mono) / 1 var(--pk-font-mono);
   font-variant-ligatures: none;
   white-space: nowrap;
 }
@@ -8431,11 +8432,11 @@ pre.code-plain {
   color: var(--pk-success);
 }
 
-/* The stat step for a value outside a stat tile (a track's current version): 24/32 700. */
+/* The stat step for a value outside a stat tile (a track's current version): 24/32 600. */
 .type-stat {
   font-size: var(--fs-stat);
   line-height: var(--lh-stat);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
   font-variant-numeric: tabular-nums;
@@ -8704,7 +8705,7 @@ pre.code-plain {
   font-variant-numeric: tabular-nums;
 }
 .timeline-what {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .timeline-desc {
@@ -8975,7 +8976,7 @@ pre.code-plain {
 }
 .check-name {
   margin-top: calc((var(--card-media) - var(--lh-body)) / 2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .check-sub {
@@ -9419,7 +9420,7 @@ pre.code-plain {
 .guide-title :is(h3, h4) {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .guide-title button {
@@ -9773,7 +9774,7 @@ pre.code-plain {
   padding-bottom: var(--sp-2);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -10279,7 +10280,7 @@ a.card:focus-visible {
   color: var(--pk-text-muted);
 }
 .match-code > strong {
-  font: 700 20px/28px var(--pk-font-mono);
+  font: 500 20px/28px var(--pk-font-mono);
   letter-spacing: 0.08em;
   color: var(--pk-text-strong);
   white-space: nowrap;
@@ -10472,7 +10473,7 @@ a.card:focus-visible {
   flex: none;
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -10559,7 +10560,7 @@ a.card:focus-visible {
 .ptile.end-tile > :is(h2, h3) {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -10637,7 +10638,7 @@ a.card:focus-visible {
 }
 .product-hero-title a {
   color: var(--pk-accent-fg);
-  font-weight: 700;
+  font-weight: 600;
 }
 .product-hero-actions {
   display: flex;
@@ -10773,7 +10774,7 @@ a.card:focus-visible {
   border-color: var(--pk-accent);
   background: var(--pk-accent-subtle);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 @container screen (max-width: 639px) {
   .jump-nav {
@@ -10807,7 +10808,7 @@ a.card:focus-visible {
 .md h3 {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .md ul {
@@ -10869,7 +10870,7 @@ a.card:focus-visible {
   position: absolute;
   left: var(--term-today);
   transform: translateX(calc(-1 * var(--term-anchor, 0%)));
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
@@ -10989,7 +10990,7 @@ a.card:focus-visible {
     box-shadow: inset 2px 0 0 var(--pk-accent);
   }
   .console > .sidebar .nav-item:has(+ .nav-sub .nav-item.active) > .ic {
-    color: var(--pk-accent);
+    color: var(--pk-accent-fg);
   }
 }
 
@@ -11206,7 +11207,7 @@ a.card:focus-visible {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .item-title > small {
@@ -11298,7 +11299,7 @@ a.card:focus-visible {
   border-radius: 50%;
   background: var(--mk-fill);
   font-size: var(--fs-meta);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-muted);
 }
 .num-list > li > * {
@@ -11615,7 +11616,7 @@ a.card:focus-visible {
   background: var(--mk-fill);
   color: var(--pk-text-muted);
   font-size: var(--fs-meta);
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .rank.on,
@@ -11736,7 +11737,7 @@ a.card:focus-visible {
 .form-section-label h3 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .form-section-label p {
@@ -12258,7 +12259,7 @@ a.card:focus-visible {
 .board-head h1 {
   font-size: var(--fs-page);
   line-height: var(--lh-page);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
@@ -12439,7 +12440,7 @@ a.card:focus-visible {
   color: var(--pk-text-muted);
 }
 .symbol-key-sym {
-  font: 700 15px/20px var(--pk-font-mono);
+  font: 600 15px/20px var(--pk-font-mono);
   text-align: center;
   color: var(--pk-text-strong);
 }
@@ -12554,7 +12555,7 @@ a.card:focus-visible {
 .ide-tabs > .on {
   background: var(--mk-term-bar);
   color: var(--mk-term-fg);
-  font-weight: 700;
+  font-weight: 500;
 }
 .ide-tabs > .end {
   margin-left: auto;
@@ -12604,7 +12605,7 @@ a.card:focus-visible {
   width: calc(var(--docs-side-w) - var(--sp-6) - var(--sp-5));
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .docs-tag {
@@ -12615,7 +12616,7 @@ a.card:focus-visible {
   border-radius: var(--pk-radius-full);
   background: var(--mk-fill);
   font-size: var(--fs-meta);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
 }
 .docs-search {
@@ -12668,7 +12669,7 @@ a.card:focus-visible {
   margin-bottom: var(--sp-2);
   font-size: var(--fs-meta);
   line-height: var(--lh-meta);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -12696,7 +12697,7 @@ a.card:focus-visible {
 .docs-item.on {
   background: var(--pk-accent-subtle);
   color: var(--pk-accent-fg);
-  font-weight: 700;
+  font-weight: 500;
 }
 .docs-content {
   display: grid;
@@ -12725,7 +12726,7 @@ a.card:focus-visible {
   gap: var(--sp-3);
 }
 .docs-crumb {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-accent-fg);
 }
 .docs-crumb + h1 {
@@ -12734,7 +12735,7 @@ a.card:focus-visible {
 .docs-header h1 {
   font-size: 36px;
   line-height: 44px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--pk-text-strong);
 }
@@ -12791,7 +12792,7 @@ a.card:focus-visible {
   background: var(--pk-accent-subtle);
   color: var(--pk-accent-fg);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .docs-step-body,
 .docs-section {
@@ -12803,7 +12804,7 @@ a.card:focus-visible {
 :is(.docs-step-body, .docs-section) > h2 {
   font-size: 22px;
   line-height: 32px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -12860,7 +12861,7 @@ a.card:focus-visible {
   gap: var(--sp-2);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .docs-card-title > .ic-arrow-right {
@@ -12884,7 +12885,7 @@ a.card:focus-visible {
 .docs-dl > dt {
   font-size: 15px;
   line-height: 24px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .docs-foot {
@@ -12946,7 +12947,7 @@ a.card:focus-visible {
 .docs-toc > a.on {
   border-left-color: var(--pk-accent);
   color: var(--pk-accent-fg);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 /*
@@ -12989,7 +12990,7 @@ a.card:focus-visible {
   gap: var(--sp-3);
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .docs-main .lane-desc,
@@ -13240,7 +13241,7 @@ a.card:focus-visible {
   align-items: flex-start;
   gap: var(--sp-2);
   font: var(--pk-kit-type-label-weight) var(--pk-kit-type-label-size) / var(--pk-kit-type-label-line-height) var(--pk-kit-type-label-family);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .kit-title {
@@ -14001,7 +14002,7 @@ a.card:focus-visible {
   gap: var(--sp-2);
   padding: 0 var(--sp-1);
   margin-bottom: var(--sp-3);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .host-nav {
@@ -14015,7 +14016,7 @@ a.card:focus-visible {
 .host-nav.on {
   background: var(--mk-fill);
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 /* The kit's account part, at the foot of the host's sidebar. */
 .host-account {
@@ -14048,7 +14049,7 @@ a.card:focus-visible {
 .host-head > h3 {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .host-head > span {
@@ -14075,7 +14076,7 @@ a.card:focus-visible {
   color: var(--pk-text-muted);
 }
 .host-rows > .th {
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--pk-text-subtle);
@@ -14120,7 +14121,7 @@ a.card:focus-visible {
   margin-top: var(--sp-16);
   font-size: 52px;
   line-height: 56px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--kit-accent, var(--pk-accent));
   text-shadow: 0 3px 0 color-mix(in oklab, var(--kit-accent, var(--pk-accent)) 35%, transparent);
@@ -14142,7 +14143,7 @@ a.card:focus-visible {
   background: var(--kit-accent, var(--pk-accent));
   box-shadow: 0 5px 0 color-mix(in oklab, var(--kit-accent, var(--pk-accent)) 60%, var(--pk-text-strong));
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--kit-accent-on, var(--pk-accent-on));
 }
 .host-game-btn.alt {
@@ -14375,7 +14376,7 @@ a.card:focus-visible {
   grid-column: 2 / -1;
 }
 .change-title {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .change-to {
@@ -14590,7 +14591,7 @@ a.card:focus-visible {
 .feature-rows > * + * {
   border-top: 1px solid var(--mk-line);
 }
-/* The column names over the rows, drawn like a table header (40 high, 13/20 700, the tinted
+/* The column names over the rows, drawn like a table header (40 high, 13/20 500, the tinted
    band): "Feature" over the glyph and the text, "Status" over the status column. Hidden on a
    narrow card, where the status drops under the text.
      <div class="feature-rows-head" aria-hidden="true"><span>Feature</span><span>Status</span></div> */
@@ -14605,7 +14606,7 @@ a.card:focus-visible {
   background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
   font-size: var(--fs-small);
   line-height: var(--lh-small);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
   white-space: nowrap;
 }
@@ -14650,7 +14651,7 @@ a.card:focus-visible {
 .feature-row-name {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .feature-row.off .feature-row-name {
@@ -14756,7 +14757,7 @@ a.card:focus-visible {
 }
 .reqs > .req.unmet {
   color: var(--pk-text-default);
-  font-weight: 700;
+  font-weight: 500;
 }
 .reqs > .req.unmet::before {
   background: var(--pk-text-default);
@@ -14821,7 +14822,7 @@ a.card:focus-visible {
   margin-bottom: var(--sp-3);
 }
 .choice-foot > b {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-default);
 }
 
@@ -15319,7 +15320,7 @@ a.card:focus-visible {
   min-width: 0;
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .ov-feature-main > h3 > a {
@@ -16278,7 +16279,7 @@ a.card:focus-visible {
 .legend-name {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .legend-rule {
@@ -16683,7 +16684,7 @@ a.card:focus-visible {
   .kit-next .save-bar > .save-bar-msg {
     flex: 1 1 0;
     align-items: center;
-    font-weight: 700;
+    font-weight: 500;
     color: var(--pk-text-strong);
   }
   .kit-next .save-bar > .save-bar-msg > .ic {
@@ -17252,7 +17253,7 @@ span.dash::before {
   .table.stack-phone.two-line tbody tr > td:nth-child(2) {
     grid-area: value;
     text-align: right;
-    font-weight: 700;
+    font-weight: 500;
   }
   .table.stack-phone.two-line tbody tr > td:nth-child(3) {
     grid-area: source;
@@ -18730,7 +18731,7 @@ span.dash::before {
   height: 28px;
   padding: 0 var(--sp-3);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
 }
 [data-theme="dark"] .portal .pill.warning {
   color: color-mix(in oklab, var(--pk-warning) 70%, white);
@@ -18806,7 +18807,7 @@ span.dash::before {
   padding-bottom: var(--sp-3);
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .help-row {
@@ -18823,7 +18824,7 @@ span.dash::before {
 }
 .help-row > .help-q {
   color: var(--pk-text-strong);
-  font-weight: 700;
+  font-weight: 500;
 }
 .help-row.between {
   display: flex;
@@ -18913,7 +18914,7 @@ span.dash::before {
   padding: 0 var(--card-px);
   border-top: 1px solid var(--mk-line);
   font-size: var(--fs-small);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
   list-style: none;
   cursor: pointer;
@@ -19032,7 +19033,7 @@ span.dash::before {
 .entry-text > :is(h2, h3) {
   font-size: 20px;
   line-height: 24px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -19165,12 +19166,12 @@ span.dash::before {
   height: 16px;
 }
 .device-name {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 /* "This device" ends the meta line, in the accent, so the row keeps two lines in a 384px column. */
 .device-meta > .this {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-accent-fg);
 }
 .device-meta {
@@ -19517,7 +19518,7 @@ span.dash::before {
   font-size: var(--fs-section);
   line-height: var(--lh-section);
   letter-spacing: -0.01em;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .int-summary-plats {
@@ -19716,7 +19717,7 @@ span.dash::before {
   display: none;
 }
 .np-sum-bar > summary > .strong {
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .np-sum-bar > summary > .ic {
@@ -19767,7 +19768,7 @@ span.dash::before {
   }
   .stepper-progress > .strong {
     font-size: var(--fs-small);
-    font-weight: 700;
+    font-weight: 500;
     color: var(--pk-text-strong);
   }
   .stepper-progress > .segs {
@@ -20447,7 +20448,7 @@ span.dash::before {
   margin-bottom: var(--sp-3);
   font-size: var(--fs-section);
   line-height: var(--lh-section);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: -0.01em;
   color: var(--pk-text-strong);
 }
@@ -21290,7 +21291,7 @@ span.dash::before {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .role-tile > .rt-name > .ic {
@@ -21453,7 +21454,7 @@ span.dash::before {
 .root-rule h2 {
   font-size: var(--fs-card);
   line-height: var(--lh-card);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--pk-text-strong);
 }
 .root-rule .rr-sub {
@@ -21590,7 +21591,7 @@ span.dash::before {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  font-weight: 700;
+  font-weight: 500;
 }
 .chg > .ic {
   width: 14px;
@@ -21687,7 +21688,7 @@ span.dash::before {
 [data-screen^="admin."] .drawer .field-label {
   font-size: 12px;
   line-height: 16px;
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-muted);
 }
 @container screen (max-width: 639px) {
@@ -21781,7 +21782,7 @@ span.dash::before {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-weight: 700;
+  font-weight: 500;
   color: var(--pk-text-strong);
 }
 .related > .related-head > .ic {
@@ -22070,3 +22071,850 @@ span.dash::before {
   }
 }
 /* END identity-multi-review (part 11) */
+
+/* ══ Brand v2: the lead's decisions B1–B8 (2026-10-09) ═════════════════════════════════════════
+ *
+ * Appended last, so it wins over every earlier layer at equal specificity. It re-skins the kit
+ * once and every screen inherits it: the neutral ink primary (B2), the selected nav (B3), the
+ * console shell v2 (B4: inset canvas, condensed masthead, head bands, underline tabs, workbench,
+ * dialog heads), Ship builds as one identity (B5), nothing glows (B6), weights 400/500/600 (B7)
+ * and the hosted card's neutral surfaces (B8). kit/README.md "Brand v2" documents each class.
+ */
+
+/* ── Tokens ───────────────────────────────────────────────────────────────────────────────── */
+
+/* --mk-action is the neutral ink action (B2): the one filled primary in the console, the portal
+   and the hosted card. It mirrors the action-neutral role UK-58 adds to packages/brand; when that
+   role is generated, these two lines point at it. --mk-band is the one raised step a card head, a
+   workbench toolbar or a dialog head sits on (B4). */
+:root,
+[data-theme="dark"] {
+  --mk-action: #f6f8ff;
+  --mk-action-on: #060912;
+  --mk-band: var(--pk-surface-overlay);
+}
+[data-theme="light"] {
+  --mk-action: #060912;
+  --mk-action-on: #ffffff;
+  --mk-band: color-mix(in oklab, var(--pk-surface-sunken) 55%, var(--pk-surface-raised));
+}
+/* The masthead's h1: 36/44 on a collection, 32/40 on a record (.page-head.record), 24/32 on a
+   phone. Never a display size in the console (B4, B6). */
+:root {
+  --fs-page: 36px;
+  --lh-page: 44px;
+}
+
+/* ── Weights (B7): 400 body, 500 labels, buttons, tabs and nav, 600 headings; 700 never ─────── */
+
+.btn {
+  font-weight: 500;
+}
+.btn.link {
+  font-weight: 400;
+}
+
+/* ── The primary is ink (B2); danger stays red; the accent marks context only ─────────────── */
+
+.btn.primary {
+  border-color: transparent;
+  background: var(--mk-action);
+  color: var(--mk-action-on);
+  box-shadow: none;
+}
+.btn.primary > .ic {
+  color: inherit;
+}
+.btn.danger {
+  box-shadow: none;
+}
+/* A disabled primary is a quiet sunken fill with a 3:1 edge, never a dimmed ink. */
+.btn.primary:is([disabled], .disabled, .is-disabled) {
+  opacity: 1;
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-muted);
+}
+
+/* Selection is neutral too: a switch, a check, a radio, a chosen card or chip is drawn in ink, so
+   a coloured fill never reads as success (Commerce green, Cloud Sync teal) or as the section. */
+.switch.on {
+  border-color: var(--mk-action);
+  background: var(--mk-action);
+}
+.switch.on::after {
+  background: var(--mk-action-on);
+}
+.check.on > .box,
+.check.mixed > .box {
+  border-color: var(--mk-action);
+  background: var(--mk-action);
+}
+.check.on > .box::after,
+.check.mixed > .box::after {
+  background: var(--mk-action-on);
+}
+.radio.on > .box {
+  border-color: var(--mk-action);
+  background: var(--mk-action-on);
+}
+.choice.on {
+  border-color: var(--mk-action);
+  background: var(--mk-fill);
+  box-shadow: inset 0 0 0 1px var(--mk-action);
+}
+.choice.on::after {
+  border-color: var(--mk-action);
+  background: var(--mk-action);
+}
+.choice.on::before {
+  background: var(--mk-action-on);
+}
+.chip.on,
+.filter.on {
+  border-style: solid;
+  border-color: var(--mk-action);
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+.chip.on::before {
+  background: var(--pk-text-strong);
+}
+.filter.on > .ic {
+  color: var(--pk-text-strong);
+}
+.step.done .step-mark {
+  border-color: var(--mk-action);
+  background: var(--mk-action);
+  color: var(--mk-action-on);
+}
+.card.selected {
+  border-color: var(--mk-action);
+  box-shadow: 0 0 0 1px var(--mk-action);
+}
+
+/* ── Nothing glows (B6): no wash, glow or gradient in product chrome ───────────────────────── */
+
+.hero.attention > .hero-main,
+.ov-hero.attention > .ov-hero-main {
+  background: none;
+}
+.entry-art {
+  background: var(--pk-surface-sunken);
+}
+.entry-mark {
+  box-shadow: inset 0 0 0 1px var(--mk-line);
+}
+.card.tint {
+  border-color: var(--mk-line);
+}
+
+/* ── Console shell v2 (B4): borderless frame, inset canvas ─────────────────────────────────── */
+
+/* The top bar and the sidebar sit on the page, with no rule between them and the work. */
+.topbar {
+  border-bottom: 0;
+}
+.sidebar {
+  border-right: 0;
+}
+/* The canvas: the work on a raised surface with a 3px rule in the context's accent along its top
+   edge (the console's data-service: core, a feature, Ship builds' Release cyan). From 1024px it is
+   inset 16px from the window's end and bottom, rounded 18px, with a hairline; below 1024 it runs
+   edge to edge with the rule kept. Flat: no glow, no wash. */
+.console > .main {
+  --mk-tabs-bg: var(--pk-surface-raised);
+  min-width: 0;
+  border-top: 3px solid var(--pk-accent);
+  background: var(--pk-surface-raised);
+}
+@container screen (min-width: 1024px) {
+  .console > .main {
+    margin: 0 var(--sp-4) var(--sp-4) 0;
+    border: 1px solid var(--mk-line);
+    border-top: 3px solid var(--pk-accent);
+    border-radius: var(--pk-radius-xl);
+  }
+}
+/* A table header and a sticky bar inside the canvas take the canvas's surfaces. */
+.console > .main .card .tabs {
+  --mk-tabs-bg: var(--pk-surface-raised);
+}
+
+/* ── Sidebar (B3): selected = subtle accent fill + a 3px marker; neutral group labels ──────── */
+
+.nav-item.active {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+  font-weight: 500;
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+.nav-item.active > :is(.ic, .svc) {
+  color: var(--pk-accent-fg);
+}
+/* A count keeps its own status colour inside the selected item (badges mean attention only). */
+.nav-item.active > .count:not(.danger, .warning) {
+  background: color-mix(in oklab, var(--pk-surface-page) 55%, transparent);
+}
+.nav-label {
+  font-weight: 500;
+  color: var(--pk-text-muted);
+}
+.nav-label::before {
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+}
+@container screen (min-width: 1024px) and (max-width: 1279px) {
+  .console > .sidebar .nav-item:has(+ .nav-sub .nav-item.active) {
+    background: var(--pk-accent-subtle);
+    box-shadow: inset 3px 0 0 var(--pk-accent);
+  }
+}
+
+/* ── Masthead (B4): one orientation line, a capped h1, a 48px context tile on landing pages ── */
+
+/*
+ * <header class="page-head">
+ *   <nav class="crumbs" aria-label="Breadcrumb">
+ *     <span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span>
+ *     <a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a>
+ *   </nav>
+ *   <div class="page-heading"><h1>Licenses</h1></div> …
+ * The chip names the context once: a feature's glyph on its accent, the product's icon on its own
+ * pages (.crumb-chip.product), the Pinned K on Platform pages (.crumb-chip.platform). The crumbs
+ * are the ancestors; the h1 is the page. Never 'Platform' on a product page, never an eyebrow
+ * that repeats the path, never 'Workspace'.
+ */
+.page-head > .crumbs {
+  min-height: 20px;
+  margin-bottom: var(--sp-3);
+  color: var(--pk-text-muted);
+}
+.page-head > .crumbs a {
+  color: var(--pk-text-muted);
+}
+.crumb-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--pk-accent);
+}
+.crumb-chip > .svc {
+  width: 14px;
+  height: 14px;
+  vertical-align: 0;
+  background-color: var(--pk-accent-on);
+}
+.crumb-chip.product {
+  background: none;
+}
+.crumb-chip.product > .logo.xs {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+}
+.crumb-chip.platform {
+  background: var(--pk-service-core-subtle);
+  color: var(--pk-service-core-fg);
+}
+.crumb-chip.platform > .ic {
+  width: 14px;
+  height: 14px;
+}
+/* Long names wrap to two lines, then end in an ellipsis (the full name is the document title). */
+.page-head h1 {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.page-head.record {
+  --fs-page: 32px;
+  --lh-page: 40px;
+}
+/* The 48px masthead tile: a feature's glyph, flat on its accent, on a feature's landing page; the
+   product's icon on the product's own pages. Never on a dense data page, never with a glow. From
+   1024px only; below that the orientation chip carries the context. With the tile shown, the
+   chip hides, so the header carries one mark. */
+.mast-tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--pk-accent);
+}
+.mast-tile > .svc,
+.mast-tile > .ic {
+  width: 24px;
+  height: 24px;
+  vertical-align: 0;
+  background-color: var(--pk-accent-on);
+}
+.mast-tile > .ic {
+  background-color: transparent;
+  color: var(--pk-accent-on);
+}
+.page-icon.mast > .logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+.page-head:has(> .page-icon.mast) {
+  column-gap: var(--sp-4);
+}
+@container screen (min-width: 1024px) {
+  .page-head:has(> .page-icon.mast) > .crumbs > .crumb-chip {
+    display: none;
+  }
+}
+@container screen (max-width: 1023px) {
+  .page-head > .page-icon.mast {
+    display: none;
+  }
+  .page-head:has(> .page-icon.mast) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "crumbs crumbs"
+      "heading actions"
+      "sub sub";
+    column-gap: var(--sp-6);
+  }
+}
+@container screen (max-width: 639px) {
+  .page-head,
+  .page-head.record {
+    --fs-page: 24px;
+    --lh-page: 32px;
+  }
+  .page-head:has(> .page-icon.mast) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "crumbs crumbs"
+      "heading icon-action"
+      "fresh fresh"
+      "sub sub";
+    column-gap: var(--sp-3);
+  }
+}
+
+/* ── Head bands (B4): a card's head is a band on the raised step, a hairline under it ──────── */
+
+/* Titles keep the kit's steps (18/24 for a page-level card, 16/24 nested). No numerals: a number
+   only marks a real order (wizard and setup steps). */
+.card > .card-head:not(.plain) {
+  min-height: 56px;
+  background: var(--mk-band);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+}
+.card > .card-head:not(.plain):last-child {
+  border-bottom: 0;
+  border-radius: inherit;
+}
+.card.flat > .card-head:not(.plain),
+.card.sunken > .card-head:not(.plain) {
+  background: none;
+}
+
+/* ── Route tabs (B4): an underline tablist with a 3px indicator; the fade only while it scrolls ── */
+
+.tab {
+  border-bottom-width: 3px;
+}
+.tab.active {
+  font-weight: 500;
+}
+
+/* ── The workbench (B4): one bordered band holds the filters and the table ─────────────────── */
+
+/*
+ * <div class="workbench">
+ *   <div class="toolbar">search · facet chips · <span class="end">Columns · Export</span></div>
+ *   <div class="table-card" role="region" aria-label="Licenses table" tabindex="0">…</div>
+ * </div>
+ * The toolbar is the table's head band (the --mk-band step, a hairline under it); facets are
+ * solid-outline chips with their counts; rows stay 56px; headers stay sentence case. From 640 to
+ * 1279px a wide table scrolls inside its region with the first column pinned.
+ */
+.workbench {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--mk-line);
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-surface-raised);
+  box-shadow: var(--mk-card-shadow);
+}
+.workbench > .toolbar {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--mk-line);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  background: var(--mk-band);
+}
+.workbench > .table-card,
+.workbench > .card {
+  border: 0;
+  border-radius: 0 0 calc(var(--pk-radius-xl) - 1px) calc(var(--pk-radius-xl) - 1px);
+  box-shadow: none;
+}
+.workbench > .table-card:first-child {
+  border-radius: inherit;
+}
+.filter {
+  border-style: solid;
+}
+.filter > .count {
+  height: 18px;
+  min-width: 18px;
+  margin-left: var(--sp-1);
+}
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  .workbench > .table-card .table :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+  .workbench > .table-card .table td:first-child {
+    background: var(--pk-surface-raised);
+    box-shadow: 1px 0 0 var(--mk-line);
+  }
+}
+
+/* ── Fields (B4): recessed, a 3:1 edge; an invalid field keeps its danger edge under the ring ── */
+
+.input,
+.select,
+.textarea,
+.search-field {
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-sunken);
+}
+:is(.input, .select, .textarea).invalid.focus,
+.field.invalid :is(.input, .select, .textarea).focus {
+  border-color: var(--pk-danger);
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+/* An inline error is one wrapped sentence beside its icon, never columns: a suggestion in mono
+   stays inline (admin-1-27). */
+.error-text {
+  display: block;
+  position: relative;
+  padding-left: calc(16px + var(--sp-2));
+}
+.error-text > .ic:first-child {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  margin-top: 0;
+}
+
+/* ── Dialogs and drawers (B4): a 3px rule in the origin's accent, a head band, one glyph ───── */
+
+/* Confirmations that are destructive or cautious have no rule (.danger, .caution): the severity
+   glyph leads. A record dialog or drawer leads with its subject's mark, never a service tile.
+   Titles stay at or under 20/28. The backdrop is blurred; with reduced transparency it is flat. */
+.dialog,
+.drawer {
+  border-top: 3px solid var(--pk-accent);
+}
+.dialog:is(.danger, .caution),
+.drawer:is(.danger, .caution) {
+  border-top: 1px solid var(--mk-line);
+}
+.dialog-head {
+  padding: var(--sp-5) var(--sp-4) var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--mk-line);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  background: var(--mk-band);
+}
+.dialog-body {
+  padding-top: var(--sp-5);
+}
+.drawer-head {
+  background: var(--mk-band);
+}
+.drawer-head h2 {
+  font-size: var(--fs-section);
+  line-height: var(--lh-section);
+}
+.dialog.danger .dialog-head > .ic:first-child {
+  color: var(--pk-danger);
+}
+@media (prefers-reduced-transparency: reduce) {
+  .overlay,
+  .overlay.sheet::before {
+    backdrop-filter: none;
+  }
+}
+@container screen (max-width: 639px) {
+  .dialog-head {
+    padding: var(--sp-4) var(--sp-3) var(--sp-3) var(--sp-5);
+  }
+  .dialog-body {
+    padding-top: var(--sp-4);
+  }
+  /* A sheet's grab handle sits on its head band. */
+  .overlay.sheet > :is(.dialog, .drawer)::before {
+    position: absolute;
+    z-index: 1;
+    top: var(--sp-2);
+    left: calc(50% - 18px);
+    margin: 0;
+  }
+  .overlay.sheet > :is(.dialog, .drawer) {
+    border-top-width: 3px;
+  }
+  .overlay.sheet .dialog-head {
+    padding: var(--sp-5) var(--sp-3) var(--sp-3) var(--sp-5);
+  }
+  .overlay.sheet .drawer-head {
+    padding-top: var(--sp-5);
+  }
+  .overlay.sheet .dialog-body {
+    padding-top: var(--sp-4);
+  }
+}
+
+/* ── Labels in sentence case (B4, B6): no uppercase transform on a label, an id or a name ──── */
+
+.eyebrow,
+.list-nav-label {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--pk-text-muted);
+}
+
+/* ── Home (B4): Needs attention 2/3 beside Platform ready 1/3 from 1280px only ─────────────── */
+
+/* <div class="page columns dash">: below 1280 one column in source order; from 1280 the aside
+   takes a third, top-aligned, never stretched. Product cards carry a 72px cover banner in the
+   Cards view only (.product-card > .art.banner): hosted art, else the stored flat tint. */
+@container screen (min-width: 1280px) {
+  .page.columns.dash {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    grid-auto-flow: row dense;
+    align-items: start;
+    gap: var(--section-gap);
+  }
+  .page.columns.dash > * {
+    grid-column: 1 / -1;
+  }
+  .page.columns.dash > .page-head {
+    grid-column: 1 / -1;
+  }
+  .page.columns.dash > .dash-main {
+    grid-column: 1;
+  }
+  .page.columns.dash > .aside {
+    grid-column: 2;
+    grid-row: span 1;
+  }
+}
+.product-card > .art.banner {
+  height: 72px;
+  aspect-ratio: auto;
+  border-radius: 13px 13px 0 0;
+}
+.product-card > .art.banner + .product-card-head {
+  padding-top: var(--sp-4);
+}
+.product-card > .art.banner.flat {
+  background: var(--tint, var(--pk-surface-sunken));
+}
+
+/* ── Customer portal (B12): display h1, docked header, outlined tile actions ───────────────── */
+
+.portal .portal-page h1,
+.portal-page h1 {
+  font-size: 48px;
+  line-height: 52px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+@container screen (max-width: 639px) {
+  .portal .portal-page h1,
+  .portal-page h1 {
+    font-size: 32px;
+    line-height: 36px;
+  }
+}
+.portal-nav > a.active,
+.portal-tabbar > a.active {
+  font-weight: 500;
+}
+
+/* A one-page feature is one sidebar row (B5: Cloud Sync): the group label is the link, no
+   chevron; selected, it takes the subtle fill and its bar is the marker.
+   <div class="nav-group closed single" data-service="sync"><a class="nav-label active" href="#" aria-current="page">Cloud Sync</a></div> */
+.nav-group.single > .nav-label.active {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+}
+
+/* A dialog or drawer is the overlay surface, so its head band steps up from it. */
+:root,
+[data-theme="dark"] {
+  --mk-band-overlay: color-mix(in oklab, var(--pk-surface-overlay) 45%, var(--mk-fill-strong));
+}
+[data-theme="light"] {
+  --mk-band-overlay: color-mix(in oklab, var(--pk-surface-sunken) 55%, var(--pk-surface-overlay));
+}
+.dialog-head,
+.drawer-head {
+  background: var(--mk-band-overlay);
+}
+
+/* A scrolling table holds its visually hidden labels: they never widen the page. */
+.table-card {
+  position: relative;
+}
+
+/* ── Screen layouts moved out of the screens (the kit rule: a screen sets no spacing) ──────────
+   Each rule keeps its screen scope and is on the spacing scale. A later pass may turn a repeated one
+   into a named primitive. */
+/* admin.cli-login */
+[data-screen="admin.cli-login"] .states-grid3 {
+  gap: var(--sp-6);
+}
+/* admin.invite */
+[data-screen="admin.invite"] .board.below {
+  margin-top: var(--sp-8);
+}
+/* config.approve-recipe-approved */
+[data-screen="config.approve-recipe-approved"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+/* config.approve-recipe-open-access */
+[data-screen="config.approve-recipe-open-access"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+/* config.approve-recipe-passkey-failed */
+[data-screen="config.approve-recipe-passkey-failed"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+/* config.approve-recipe-stale */
+[data-screen="config.approve-recipe-stale"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+[data-screen="config.approve-recipe-stale"] .diff ins + del {
+  margin-top: var(--sp-1);
+}
+/* config.approve-recipe */
+[data-screen="config.approve-recipe"] details.unchanged > summary {
+  padding: 0 var(--sp-4);
+}
+/* config.catalog-empty */
+[data-screen="config.catalog-empty"] .adds-group > summary {
+  gap: var(--sp-2);
+  padding: 0 var(--card-px);
+}
+[data-screen="config.catalog-empty"] .adds-toggle {
+  gap: var(--sp-1);
+}
+[data-screen="config.catalog-empty"] .choice-title .pill {
+  margin-left: var(--sp-2);
+}
+/* config.cloud-sync-paused */
+[data-screen="config.cloud-sync-paused"] .icon-line {
+  gap: var(--sp-3);
+}
+[data-screen="config.cloud-sync-paused"] .icon-line > .ic {
+  margin-top: var(--sp-0-5);
+}
+/* config.cloud-sync-product-role */
+[data-screen="config.cloud-sync-product-role"] .icon-line {
+  gap: var(--sp-3);
+}
+[data-screen="config.cloud-sync-product-role"] .icon-line > .ic {
+  margin-top: var(--sp-0-5);
+}
+/* config.cloud-sync-usage */
+[data-screen="config.cloud-sync-usage"] .stack-bar > i + i {
+  margin-left: var(--sp-0-5);
+}
+/* config.cloud-sync */
+[data-screen="config.cloud-sync"] .icon-line {
+  gap: var(--sp-3);
+}
+[data-screen="config.cloud-sync"] .icon-line > .ic {
+  margin-top: var(--sp-0-5);
+}
+/* config.effective */
+[data-screen="config.effective"] .page {
+  margin-inline: 0;
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff tr > td:nth-child(1) {
+    padding-bottom: 0;
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff tr > td:nth-child(2) {
+    padding-block: var(--sp-1) 0;
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff tr > td:nth-child(4) {
+    padding-top: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff tr > td:nth-child(3) {
+    padding-top: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .trail td {
+    padding-block: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff .trail tr > td:nth-child(1) {
+    padding-block: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff .trail tr > td:nth-child(2) {
+    padding-block: var(--sp-1);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="config.effective"] .eff .trail tr > td:nth-child(4) {
+    padding-top: 0;
+    padding-left: calc(var(--card-media) + var(--sp-2));
+  }
+}
+/* distribution.channel-app-store */
+@container screen (max-width: 639px) {
+  [data-screen="distribution.channel-app-store"] .lane-tbl td > div:has(> .cell-title + .cell-sub) {
+    column-gap: var(--sp-2);
+  }
+}
+/* distribution.channel-setup */
+[data-screen="distribution.channel-setup"] .status-pill {
+  margin-left: var(--sp-1);
+}
+/* distribution.download-page */
+@container screen (min-width: 640px) {
+  [data-screen="distribution.download-page"] .portal-page {
+    padding-inline: var(--sp-8);
+  }
+}
+@container screen (min-width: 640px) {
+  [data-screen="distribution.download-page"] :is(.portal-top, .portal-foot) {
+    padding-inline: max(var(--sp-8), calc((100% - var(--portal-max)) / 2));
+  }
+}
+[data-screen="distribution.download-page"] .portal-hero-body > .logo {
+  margin-top: calc(-1 * var(--sp-10));
+}
+[data-screen="distribution.download-page"] .item-row > .icon-tile {
+  margin-top: var(--sp-0-5);
+}
+[data-screen="distribution.download-page"] .item-end > .qr.xs {
+  margin-block: calc(-1 * var(--sp-2));
+}
+@container screen (max-width: 639px) {
+  [data-screen="distribution.download-page"] .portal-hero-body:has(> .hero-action-phone) > .hero-action-phone {
+    gap: var(--sp-3);
+  }
+}
+@container screen (max-width: 639px) {
+  [data-screen="distribution.download-page"] .portal-hero-body > .logo.xl {
+    margin-top: calc(-1 * var(--sp-8));
+  }
+}
+/* distribution.publish-result */
+[data-screen="distribution.publish-result"] .item-row.fail-row {
+  padding-block: var(--sp-3);
+  padding-inline: var(--sp-3);
+  margin-inline: calc(-1 * var(--sp-3));
+}
+@container (max-width: 559px) {
+  [data-screen="distribution.publish-result"] .item-title {
+    gap: var(--sp-3);
+  }
+}
+@container (max-width: 559px) {
+  [data-screen="distribution.publish-result"] .dialog .callout > .grow ~ * {
+    margin-left: auto;
+  }
+}
+@container screen (min-width: 640px) {
+  [data-screen="distribution.publish-result"] .overlay.sheet {
+    padding-block: var(--sp-8) var(--sp-12);
+  }
+}
+/* distribution.publish */
+[data-screen="distribution.publish"] .dialog-body {
+  gap: var(--sp-4);
+}
+[data-screen="distribution.publish"] .dialog .field {
+  gap: var(--sp-3);
+}
+[data-screen="distribution.publish"] .dialog .callout > .grow {
+  gap: var(--sp-1);
+}
+[data-screen="distribution.publish"] .dialog .callout > .btn {
+  margin-right: calc(-1 * var(--sp-2));
+}
+[data-screen="distribution.publish"] .dialog .item-row.lead > .item-label > .check {
+  margin-top: calc((var(--lh-body) - 24px) / 2);
+}
+@container screen (min-width: 640px) {
+  [data-screen="distribution.publish"] .overlay.sheet {
+    padding-block: var(--sp-8) var(--sp-12);
+  }
+}
+@container screen (max-width: 639px) {
+  [data-screen="distribution.publish"] .dialog .item-row {
+    padding-block: var(--sp-2);
+  }
+}
+@container screen (max-width: 639px) {
+  [data-screen="distribution.publish"] .dialog .callout > .grow ~ * {
+    margin-left: 0;
+  }
+}
+/* products.sidebar-contexts */
+[data-screen="products.sidebar-contexts"] .menu-item .count-text {
+  margin-left: var(--sp-2);
+}
+/* sdk.swiftui-sign-in */
+[data-screen="sdk.swiftui-sign-in"] .kit-devices.dense .kit-device {
+  padding-block: var(--sp-2);
+}
+
+/* ── Brand v2: contrast fixes (axe, both themes) ───────────────────────────────────────────── */
+/* The destructive red takes its own dark label in dark (white on the light red is 3.5:1). */
+:root:not([data-theme="light"]) .dialog .btn.danger,
+:root:not([data-theme="light"]) .btn.danger {
+  color: var(--pk-danger-on);
+}
+/* Light terminals and code: dim text, the cyan accent and comments at 4.5:1 on their surfaces. */
+[data-theme="light"] {
+  --mk-term-dim: #5d6579;
+  --mk-term-cyan: #006e80;
+  --mk-syn-com: #5d6679;
+}
+/* A Review row's action is its own description cell (a dl row holds dt and dd only). */
+.kv-rows dd.kv-action {
+  display: block;
+}

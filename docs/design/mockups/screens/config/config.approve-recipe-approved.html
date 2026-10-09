@@ -102,7 +102,6 @@
     align-items: center;
     justify-content: space-between;
     min-height: 40px;
-    padding: 0 var(--sp-4);
     list-style: none;
     cursor: pointer;
     border-top: 1px solid var(--mk-line);
@@ -150,7 +149,7 @@
     </div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -159,12 +158,12 @@
 
   <main class="main">
     <div class="toast-clear page">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a><i class="ic ic-chevron-right"></i>Edit</nav>
+      <header class="page-head record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="config" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Managed config</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a></nav>
         <div class="page-heading"><h1>Edit catalog</h1></div>
         <p class="page-sub"><span>v9 from <code>.pkey/schema</code> · Oct 6</span></p>
         <div class="page-actions row-phone">
-          <div class="segmented sm" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
+          <div role="group" class="segmented sm" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
           <button class="btn ghost hide-phone">Close editor</button>
           <button class="btn ghost icon show-phone" aria-label="More: edit as form or JSON, close editor"><i class="ic ic-ellipsis"></i></button>
         </div>
@@ -308,7 +307,7 @@
               <span class="hint">Decoded, for a token minted now</span>
               <div class="code">
                 <div class="code-head"><span class="code-file">applemusic.token · JWT</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-c">// Header</span>
+<pre tabindex="0"><span class="t-c">// Header</span>
 <span class="t-o">{</span> <span class="t-p">"alg"</span><span class="t-o">:</span> <span class="t-s">"ES256"</span><span class="t-o">,</span> <span class="t-p">"kid"</span><span class="t-o">:</span> <span class="t-s">"3HWR8C2N6T"</span><span class="t-o">,</span> <span class="t-p">"typ"</span><span class="t-o">:</span> <span class="t-s">"JWT"</span> <span class="t-o">}</span>
 <span class="t-c">// Claims: minted Oct 7, 2026 17:00 UTC</span>
 <span class="t-o">{</span> <span class="t-p">"iss"</span><span class="t-o">:</span> <span class="t-s">"K7Q2M9X4PL"</span><span class="t-o">,</span> <span class="t-p">"iat"</span><span class="t-o">:</span> <span class="t-n">1791392400</span><span class="t-o">,</span>
@@ -318,8 +317,8 @@
             <div class="field">
               <label class="field-label">In your app</label>
               <div class="code">
-                <div class="code-head"><div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-c">// A fresh token each time; don’t store it.</span>
+                <div class="code-head"><div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre tabindex="0"><span class="t-c">// A fresh token each time; don’t store it.</span>
 <span class="t-k">let</span> token = <span class="t-k">try await</span> client.<span class="t-p">config</span>.<span class="t-f">mintToken</span>(<span class="t-s">"applemusic"</span>)
 request.<span class="t-f">setValue</span>(<span class="t-s">"Bearer </span>\(token)<span class="t-s">"</span>,
                  forHTTPHeaderField: <span class="t-s">"Authorization"</span>)</pre>

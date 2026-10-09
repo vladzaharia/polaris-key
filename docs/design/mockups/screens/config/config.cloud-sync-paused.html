@@ -46,11 +46,7 @@
   [data-screen="config.cloud-sync-paused"] .icon-line {
     display: grid;
     grid-template-columns: 20px minmax(0, 1fr);
-    gap: 12px;
     align-items: start;
-  }
-  [data-screen="config.cloud-sync-paused"] .icon-line > .ic {
-    margin-top: 2px;
   }
   @container screen (max-width: 639px) {
     [data-screen="config.cloud-sync-paused"] .page > .mk-pair.loose {
@@ -116,10 +112,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group" data-service="sync">
-      <button class="nav-label" aria-expanded="true">Cloud Sync<i class="ic ic-chevron-down sm"></i></button>
-      <a class="nav-item active" href="#"><i class="ic ic-cloud"></i><span class="nav-text">Cloud Sync</span></a>
-    </div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label active" href="#" aria-current="page">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -130,7 +123,8 @@
   <main class="main">
     <div class="page columns">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Cloud Sync</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="sync" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a></nav>
+<div class="page-icon mast" data-service="sync" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Cloud Sync</h1></div>
         <p class="page-sub"><span class="status"><i class="ic ic-circle-check"></i>Verified on iOS, Android and Steam</span><span class="status muted"><i class="ic ic-circle-dashed"></i>itch.io not seen yet</span></p>
         <div class="page-actions">
@@ -165,7 +159,7 @@
             <tr>
               <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-globe"></i></span><div class="grow"><div class="mk-cluster"><span class="cell-title">Default</span><span class="pill sm"><i class="ic ic-polaris"></i>Platform</span></div><div class="cell-sub">For tiers that don’t set their own</div></div><span class="show-narrow"><button class="btn ghost sm">Change…</button></span></div></td>
               <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">256&nbsp;MiB</span></td>
-              <td class="hide-narrow"><span class="dash" aria-label="None"></span></td>
+              <td class="hide-narrow"><span role="img" class="dash" aria-label="None"></span></td>
               <td class="end hide-narrow"><button class="btn ghost sm">Change…</button></td>
             </tr>
             <tr>
@@ -244,10 +238,10 @@
           <div class="card-body tight">
             <div class="code">
               <div class="code-head">
-                <div class="code-tabs"><span class="active">GDScript<small>Godot</small></span><span>Swift<small>iOS</small></span><span>Kotlin<small>Android</small></span></div>
+                <div class="code-tabs" tabindex="0"><span class="active">GDScript<small>Godot</small></span><span>Swift<small>iOS</small></span><span>Kotlin<small>Android</small></span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
-<pre>PolarisKey.config.<span class="t-f">set_value</span>(<span class="t-s">"audio.music"</span>, <span class="t-n">0.6</span>)
+<pre tabindex="0">PolarisKey.config.<span class="t-f">set_value</span>(<span class="t-s">"audio.music"</span>, <span class="t-n">0.6</span>)
 
 <span class="t-c"># Save slot 1, with what the load screen shows.</span>
 <span class="t-k">var</span> saves := PolarisKey.cloud_sync.saves

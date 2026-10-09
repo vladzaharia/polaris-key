@@ -42,15 +42,29 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
   screen's own style block use `@container screen (…)` for the page and `@container (max-width:
 559px)` for a row inside a card, never `@media`.
 
-- **Weights.** Rubik at 400 and 700 only, as the console draws it. Radii: controls 6px, tiles
-  10–14px, cards 18px, pills fully round.
+- **Weights.** 400 body, 500 labels, buttons, tabs, nav and row titles, 600 headings, titles and
+  values; never 700 (BRAND §1.6, DL12, lead decision B7). Radii: controls 6px, tiles 10–14px,
+  cards 18px, pills fully round.
 - **Pills mean attention.** A pill is an issue or a neutral fact, always with an icon or a dot. A
   healthy state is `.status` text, never a pill (ADMIN.md §5.11).
 - **Accent.** `data-service` on any element re-points the accent (`--pk-accent*`) and the service
   glyph for its subtree: `core`, `license`, `config`, `release`, `distribution`, `update`,
-  `identity`, `sync`, `commerce` (commerce takes the distribution green).
-  Inside `[data-service="commerce"]` `.link` and `.btn.link` are drawn in the strong text colour,
-  because that green is close to the success green: the accent stays on chrome only.
+  `identity`, `sync`, `commerce` (commerce takes the Distribution green and the shopping-bag glyph,
+  B1). Inside `[data-service="commerce"]` `.link` and `.btn.link` are drawn in the strong text
+  colour, because that green is close to the success green: the accent stays on chrome only.
+  **The accent marks context, never an action or a state** (B2): the canvas rule, the selected nav
+  marker, the orientation chip and the masthead tile, links. The one filled primary is ink; a
+  selection (switch, check, radio, chosen card or chip) is ink; danger stays red. Text in the
+  accent uses `--pk-accent-fg` (the light theme's text-safe step), fills and rules `--pk-accent`.
+- **Ship builds is one identity** (B5): Releases, Release tracks, Rollouts, Channels (and each
+  channel), Packages, Updates and Health all take `data-service="release"` (the Package glyph,
+  Release cyan) on the console, the nav group and every dialog they open. No per-page green or
+  tangerine accent inside it; Distribution green stays on Commerce surfaces. Cloud Sync, a
+  one-page feature, is one nav row (`.nav-group.single`).
+- **Nothing glows** (B6): no gradient, glow, wash or coloured shadow in product chrome, no section
+  numerals (a number marks a real order only: wizard and setup steps), no uppercase transform on
+  a label, a table head, an id or a name. Product-owned art (covers, icons, save thumbnails) is
+  exempt.
 - **Content.** Real names only: Polaris Key (the system product), DJDL and Diceroll; people on
   `example.com`; dates in October 2026. No lorem ipsum. Copy follows EXPERIENCE.md, ADMIN.md and
   PORTAL.md, in the words of the consolidation glossary.
@@ -219,7 +233,7 @@ element at the same point (a band that replaces a table header's counts).
 
 | Component    | Spacing                                                                                                                                                                                      |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page header  | crumbs 12 above; title row 36px high (= button height, so title and actions centre on one line); description 8 below; `.page-icon` spans both; actions gap 8                                 |
+| Page header  | the orientation line (chip + crumbs, 20 high) 12 above; title row 44px (40 on a record); description 8 below; `.page-icon` (the 48px masthead tile from 1024px) spans both; actions gap 8; at most 140px on a collection and 176px on a record at 1440 |
 | Section      | title (18/24) → content 16; title → its description 4                                                                                                                                        |
 | Card         | head 16 × 24 (56 high); body 24; `.tight` band 16 × 24; rows 8 × 24, min 56; foot 12 × 24; hairlines between parts. A count sits 8 after the title; the head's right side holds actions only |
 | Media column | 28 (`--card-media`): task marks (20, centred), list avatars, row tiles, head tiles. Text after it starts at card-px + 28 + 12                                                                |
@@ -237,13 +251,13 @@ element at the same point (a band that replaces a table header's counts).
 
 | Step  | Size / line         | Weight                 | Where                                                                                                                                               |
 | ----- | ------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page  | 28/36 (phone 24/32) | 700, -0.02em           | `.page-head h1`, `.type-page`                                                                                                                       |
-| Block | 18/24               | 700, -0.01em           | Every page-level block title: `.section-head h2`, the h2 of a card straight on `.page` (or in its aside), dialog and wizard titles, `.type-section` |
-| Stat  | 24/32               | 700                    | `.stat-value`                                                                                                                                       |
-| Card  | 16/24               | 700                    | A nested card's title (in a section, grid, drawer or card), product card and drawer titles, `.type-card`                                            |
-| Body  | 14/20               | 400 (700 for emphasis) | Everything else, `.type-body`                                                                                                                       |
+| Page  | 36/44 collection, 32/40 record (`.page-head.record`), phone 24/32 | 600, -0.02em | `.page-head h1`, `.type-page`; two lines at most, then an ellipsis (the console never uses a display size) |
+| Block | 18/24               | 600, -0.01em           | Every page-level block title: `.section-head h2`, the h2 of a card straight on `.page` (or in its aside), dialog and wizard titles, `.type-section` |
+| Stat  | 24/32               | 600                    | `.stat-value`                                                                                                                                       |
+| Card  | 16/24               | 600                    | A nested card's title (in a section, grid, drawer or card), product card titles, `.type-card`                                                      |
+| Body  | 14/20               | 400 (600 for emphasis; 500 for a row title or a label) | Everything else, `.type-body`                                                                     |
 | Small | 13/20               | 400                    | Descriptions, hints, cell subs, status words, `.type-small`                                                                                         |
-| Meta  | 12/16               | 400                    | Times, versions, counts, `.meta`, `.type-meta`; `.eyebrow` is 12/16 700 uppercase                                                                   |
+| Meta  | 12/16               | 400                    | Times, versions, counts, `.meta`, `.type-meta`; `.eyebrow` (a label over a block in a card) is 13/20 500, sentence case                          |
 | Mono  | 13/20               | 400                    | Ids, slugs in headings, code, `.type-mono`                                                                                                          |
 
 Tokens: `--fs-page` `--lh-page`, `--fs-section` `--lh-section`, `--fs-card`, `--fs-stat`,
@@ -304,7 +318,8 @@ Gaps `.gap-0` `-1` `-2` `-3` `-4` `-6` `-8` (0–32px); margins `.mt-1` … `.mt
 
 `.svc` reads `data-service` from itself or any ancestor. Service glyphs: license key-round, config
 sliders-horizontal, release package, distribution the Star Cut, update circle-arrow-up, identity
-user-round, sync cloud, commerce store.
+user-round, sync cloud, commerce shopping-bag. `ic-boxes` draws packs on marketing and docs pages
+only; the console has no packs service (packs live under Releases, in Ship builds).
 
 Platform and store marks: `ic-apple` `ic-windows` `ic-linux` `ic-android` `ic-steam` `ic-itch`
 `ic-godot` `ic-app-store` `ic-google-play` `ic-microsoft-store`; brand: `ic-polaris` `ic-star-cut`.
@@ -391,8 +406,12 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
   Activity, then one `.nav-group[data-service]` per enabled feature (`.closed` folds it to its
   label), Settings last in `.sidebar-foot`.
 - A feature group's `.nav-label` is a `<button aria-expanded>`, 32px high, its chevron at the end:
-  muted, sentence case, 13/20 700, no icon (a section header carries none); the 2px service bar is
-  its only colour.
+  muted, sentence case, 13/20 500, no icon (a section header carries none); the 3px service bar is
+  its only colour. A one-page feature (Cloud Sync) is one row: `<div class="nav-group closed single"
+  data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>`, `.active` when open.
+- The selected item (`.nav-item.active`) is the subtle accent fill with a 3px accent marker on its
+  start edge, 500 (B3); never a solid accent pill. A count keeps its own status colour inside it.
+- No "Workspace" label above the context switcher (it says Platform or the product already).
 - `.sidebar-foot` sticks to the bottom of the first viewport, as in the console.
 - Tablet (1024–1279): the sidebar is the 56px icon rail, drawn from the same markup. The words
   hide (they stay the accessible names), the context header is its logo, each item is a 40×40
@@ -424,6 +443,27 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
   </div>
 </header>
 
+<!-- the orientation line leads every console page head (B4): a chip that names the context once
+     (a feature's glyph, the product's icon on its own pages, the Pinned K on Platform), then the
+     ancestors as links; the h1 is the page. Never an eyebrow that repeats the path. -->
+<header class="page-head">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span
+    ><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a>
+  </nav>
+  <div class="page-heading"><h1>Licenses</h1></div>
+  <div class="page-actions">…</div>
+</header>
+<!-- .crumb-chip.product holds <span class="logo xs" data-product="djdl">; .crumb-chip.platform
+     holds <i class="ic ic-polaris"></i>. A feature's landing page adds the 48px masthead tile, and
+     a product's own pages (Overview … Settings) the product's icon; from 1024px the tile replaces
+     the chip, below it hides: -->
+<div class="page-icon mast" data-service="sync" aria-hidden="true">
+  <span class="mast-tile"><i class="svc"></i></span>
+</div>
+<div class="page-icon mast" aria-hidden="true"><span class="logo lg" data-product="djdl"></span></div>
+<!-- a record: .page-head.record (h1 32/40) -->
+
 <!-- a record with its identity: the icon spans the title and the identity line -->
 <header class="page-head">
   <div class="page-icon"><span class="logo lg" data-product="djdl"></span></div>
@@ -436,7 +476,10 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
 </header>
 ```
 
-The title row is as tall as a button, so the title and the actions centre on one line. On phone
+The orientation line names the context once: never "Platform" on a product page, never an
+eyebrow repeating the crumbs, never a 76px decorative tile; no tile on a dense data page (a
+list), a record or a state page. The h1 wraps to two lines at most, then ends in an ellipsis.
+The title row is as tall as the h1's line, so the title and the actions centre on one line. On phone
 the title row ends in the header's one icon-only action (More, Refresh), where the thumb reaches
 it after the primary; `.freshness` becomes the 12/16 meta line under the h1; then the
 description; then each text action takes a full-width row. A header carries at most one icon
@@ -642,6 +685,12 @@ accessible name including the issue.
 Sizes `.sm` `.xs` `.lg`; `.block` fills the width; states `.busy` `.disabled` (or `[disabled]`)
 `.focus`; `.btn-row` lays out a group. `.link` is an inline text link with an arrow.
 
+**The primary is ink** (B2): `--mk-action` (dark: #f6f8ff with #060912 label; light: #060912 with
+a white label), the same in every section, in the console, the portal and the hosted card. The
+accent never fills a button. One filled primary per screen; `.danger` stays red for a destructive
+action; a disabled primary is a sunken fill with a 3:1 edge and muted words, and says why beside
+it. In-app UI kit frames (`.kit-btn`) keep the host's or product's accent (DL13).
+
 ## Pills, status, counts
 
 ```html
@@ -674,6 +723,21 @@ Status tones `.warning` `.danger` `.info` `.muted` (default is success). Count t
 `.danger` `.accent`. `.dot` (`.lg`) takes the current colour.
 
 ## Tables
+
+The **workbench** (B4) is one bordered container: the toolbar is the table's head band (search,
+counted facet chips with a solid outline, then Columns and Export at the end), the table under a
+hairline. Rows stay 56px (compact 40), heads sentence case at 500, never uppercase. The table is a
+labelled focusable region; from 640 to 1279px a wide table scrolls inside it with the first
+column pinned; below 640 it stacks (`.stack-phone`).
+
+```html
+<div class="workbench">
+  <div class="toolbar">…</div>
+  <div class="table-card" role="region" aria-label="Licenses table" tabindex="0">…</div>
+</div>
+```
+
+The toolbar alone (above a grid of cards, not a table):
 
 ```html
 <div class="toolbar">
@@ -822,6 +886,10 @@ are drawn, not real inputs. `.choice.disabled`, `.choice.nocheck`.
   ><a class="tab" href="#">Tiers</a>
 </nav>
 ```
+
+Route tabs are an underline tablist (B4): a 3px accent indicator under the selected tab (3:1 in
+both themes), 500, never a boxed or segmented tray; the end fade shows only while the strip
+scrolls. `.segmented` is for a view or filter switch, never navigation.
 
 ## Wizard, steps and progress
 
@@ -1059,6 +1127,13 @@ A confirmation names what else changes (a requirement turning off its dependents
 says exactly what happens. Toast tones `.success` `.danger` `.warning` `.info`; `.toasts` sits at
 the bottom right of the first viewport (in a shot of a longer page, at the page's end). In dark, a neutral `.btn` (Cancel) inside a dialog, drawer
 or popover takes `--mk-fill-strong` and a hairline, because the plain fill is the overlay surface.
+
+**Heads** (B4): a dialog or drawer carries a 3px rule in its origin's accent along its top edge and
+a head band (`--mk-band-overlay`) with a hairline under it; its title stays at or under 20/28; it
+leads with ONE glyph or none: the severity glyph on a confirmation, the subject's mark (a store, a
+provider) on a record, never a service tile beside it. A destructive or cautious confirmation
+(`.danger`, `.caution`) has no rule: the severity glyph leads. The backdrop is blurred; with
+`prefers-reduced-transparency` it is a flat scrim.
 
 `.dialog.caution` (L1, ConfirmDialog `intent="caution"`) colours a leading `.ic` in the head
 warning; `.dialog.danger` colours it danger.

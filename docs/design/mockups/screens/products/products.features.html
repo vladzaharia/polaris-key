@@ -35,7 +35,8 @@
     <!-- One column, capped at 1200 and left-aligned with the title: no aside. -->
     <div class="page cap">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Settings</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip product" aria-hidden="true"><span class="logo xs" data-product="diceroll"></span></span><a href="#">Diceroll</a></nav>
+<div class="page-icon mast" aria-hidden="true"><span class="logo lg" data-product="diceroll"></span></div>
         <div class="page-heading"><h1>Settings</h1></div>
         <div class="page-actions">
           <button class="btn ghost hide-phone"><i class="ic ic-history"></i>History</button>
@@ -139,7 +140,7 @@
             <div class="feature-row-text">
               <div class="feature-row-name">Cloud Sync</div>
               <p class="feature-row-desc">Each player’s saves and settings, the same on every device.</p>
-              <div class="reqs"><span>Needs</span><span class="req met" aria-label="Managed config is on">Managed config</span><span class="req unmet" aria-label="Sign-in is off">Sign-in</span></div>
+              <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Managed config is on">Managed config</span><span role="img" class="req unmet" aria-label="Sign-in is off">Sign-in</span></div>
             </div>
             <div class="feature-row-status"><span class="status muted"><i class="ic ic-circle"></i>Off</span></div>
             <span class="switch touch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="Cloud Sync, needs Sign-in"></span>
@@ -150,7 +151,7 @@
             <div class="feature-row-text">
               <div class="feature-row-name">Commerce</div>
               <p class="feature-row-desc">Sell tiers and add-ons as offers, with a SKU on each store.</p>
-              <div class="reqs"><span>Needs</span><span class="req met" aria-label="Licensing is on">Licensing</span></div>
+              <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Licensing is on">Licensing</span></div>
             </div>
             <div class="feature-row-status"><span class="status"><i class="ic ic-circle-check"></i>3 of 4 storefronts ready</span></div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Commerce"></span>

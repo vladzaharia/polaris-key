@@ -31,7 +31,6 @@
   }
   [data-screen="config.effective"] .page {
     max-width: 1600px;
-    margin-inline: 0;
   }
   [data-screen="config.effective"] .eff tr.grp td {
     height: var(--row-h-head);
@@ -150,22 +149,18 @@
     [data-screen="config.effective"] .eff tr > td:nth-child(1) {
       grid-column: 1 / -1;
       grid-row: 1;
-      padding-bottom: 0;
     }
     [data-screen="config.effective"] .eff tr > td:nth-child(2) {
       grid-column: 1 / -1;
       grid-row: 2;
-      padding-block: var(--sp-1) 0;
     }
     [data-screen="config.effective"] .eff tr > td:nth-child(4) {
       grid-column: 1;
       grid-row: 3;
-      padding-top: var(--sp-1);
     }
     [data-screen="config.effective"] .eff tr > td:nth-child(3) {
       grid-column: 2;
       grid-row: 3;
-      padding-top: var(--sp-1);
     }
     [data-screen="config.effective"] .eff tr > td.end {
       grid-column: 1 / -1;
@@ -205,23 +200,18 @@
       display: block;
       height: auto;
       border: 0;
-      padding-block: var(--sp-1);
     }
     [data-screen="config.effective"] .eff .trail tr > td:nth-child(1) {
       grid-column: 1;
       grid-row: 1;
-      padding-block: var(--sp-1);
     }
     [data-screen="config.effective"] .eff .trail tr > td:nth-child(2) {
       grid-column: 2;
       grid-row: 1;
-      padding-block: var(--sp-1);
     }
     [data-screen="config.effective"] .eff .trail tr > td:nth-child(4) {
       grid-column: 1 / -1;
       grid-row: 2;
-      padding-top: 0;
-      padding-left: 36px;
       font-size: var(--fs-small);
     }
     [data-screen="config.effective"] .trail td:nth-child(4):empty {
@@ -265,7 +255,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -274,8 +264,8 @@
 
   <main class="main">
     <div class="page">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Mara Fennick</nav>
+      <header class="page-head record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a><i class="ic ic-chevron-right"></i><a href="#">Licenses</a></nav>
         <div class="page-heading"><h1>Mara Fennick</h1><span class="pill"><i class="ic ic-award"></i>Studio</span></div>
         <p class="page-sub"><span>mara@example.com</span><span>In an account</span><span class="id"><i class="ic ic-key-round"></i>lic_4MQ7…J2KD<i class="ic ic-copy"></i></span></p>
         <div class="page-actions">
@@ -342,200 +332,202 @@
 
       <div class="mk-with-rail" data-service="config">
         <section class="section" aria-label="Values">
-          <div class="toolbar">
-            <div class="search-field"><i class="ic ic-search"></i><span>Search values</span></div>
-            <div class="segmented sm" role="tablist" aria-label="Show">
-              <span class="on">All 22</span><span>This license 2</span><span>Locked 3</span><span>Secrets 6</span>
+          <div class="workbench">
+            <div class="toolbar">
+              <div class="search-field"><i class="ic ic-search"></i><span>Search values</span></div>
+              <div class="segmented sm" role="group" aria-label="Show">
+                <span class="on">All 22</span><span>This license 2</span><span>Locked 3</span><span>Secrets 6</span>
+              </div>
+              <div class="end"><button class="btn outline sm"><i class="ic ic-plus"></i>Add override</button></div>
             </div>
-            <div class="end"><button class="btn outline sm"><i class="ic ic-plus"></i>Add override</button></div>
-          </div>
-          <div class="table-card">
-            <table class="table fixed eff row-48">
-              <colgroup><col style="width: 29%"><col style="width: 17%"><col style="width: 15%"><col style="width: 26%"><col style="width: 13%"></colgroup>
-              <thead><tr><th>Key</th><th>Value on devices</th><th>In the app</th><th>From</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
-              <tbody>
-                <tr class="grp"><td colspan="5">Quality</td></tr>
-                <tr class="here-row">
-                  <td><div class="cell-title mono">quality.floor</div><div class="cell-sub">Minimum quality</div></td>
-                  <td><code>flac</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip s"></i><i class="pip w"></i><i class="pip"></i></span><span>This license</span></span></td>
-                  <td class="end"><button class="btn ghost icon sm" aria-label="Edit override"><i class="ic ic-pencil"></i></button></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">quality.losslessOnly</div><div class="cell-sub">Lossless only</div></td>
-                  <td><code>false</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">quality.bestQuality</div><div class="cell-sub">Try for best quality</div></td>
-                  <td><code>true</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">quality.upgrade.enabled</div><div class="cell-sub">Upgrade existing files</div></td>
-                  <td><code>false</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr class="grp"><td colspan="5">Run</td></tr>
-                <tr class="open">
-                  <td><div class="cell-title mono">run.concurrency</div><div class="cell-sub">Parallel downloads</div></td>
-                  <td><code>6</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip x"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
-                  <td class="end"><button class="btn ghost icon sm" aria-label="Hide where it comes from" aria-expanded="true"><i class="ic ic-chevron-up"></i></button></td>
-                </tr>
-                <tr class="detail">
-                  <td colspan="5">
-                    <div class="card compact sunken">
-                      <table class="table compact trail" aria-label="Where run.concurrency comes from">
-                        <tbody>
-                          <tr><td><span class="mk-cluster no-wrap"><span class="num">1</span><span>Catalog default</span></span></td><td><code>3</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td><td class="muted">Replaced by step 3</td></tr>
-                          <tr><td><span class="mk-cluster no-wrap"><span class="num">2</span><span>Default profile</span></span></td><td class="subtle">Not set</td><td></td><td></td></tr>
-                          <tr class="won"><td><span class="mk-cluster no-wrap"><span class="num">3</span><span><strong class="strong">Studio profile</strong></span></span></td><td><code>6</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td><td class="strong">Locks it; devices get 6</td></tr>
-                          <tr class="skip"><td><span class="mk-cluster no-wrap"><span class="num">4</span><span>This license</span></span></td><td><code class="struck">3</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td><td class="text-warning">Not applied</td></tr>
-                          <tr><td><span class="mk-cluster no-wrap"><span class="num">5</span><span>Mara’s account</span></span></td><td class="subtle">Not set</td><td></td><td></td></tr>
-                        </tbody>
-                      </table>
-                      <div class="card-foot between">
-                        <span></span>
-                        <a class="btn link" href="#">Open Studio profile<i class="ic ic-arrow-right"></i></a>
+            <div class="table-card" role="region" aria-label="Mara Fennick table" tabindex="0">
+              <table class="table fixed eff row-48">
+                <colgroup><col style="width: 29%"><col style="width: 17%"><col style="width: 15%"><col style="width: 26%"><col style="width: 13%"></colgroup>
+                <thead><tr><th>Key</th><th>Value on devices</th><th>In the app</th><th>From</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+                <tbody>
+                  <tr class="grp"><td colspan="5">Quality</td></tr>
+                  <tr class="here-row">
+                    <td><div class="cell-title mono">quality.floor</div><div class="cell-sub">Minimum quality</div></td>
+                    <td><code>flac</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip s"></i><i class="pip w"></i><i class="pip"></i></span><span>This license</span></span></td>
+                    <td class="end"><button class="btn ghost icon sm" aria-label="Edit override"><i class="ic ic-pencil"></i></button></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">quality.losslessOnly</div><div class="cell-sub">Lossless only</div></td>
+                    <td><code>false</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">quality.bestQuality</div><div class="cell-sub">Try for best quality</div></td>
+                    <td><code>true</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">quality.upgrade.enabled</div><div class="cell-sub">Upgrade existing files</div></td>
+                    <td><code>false</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr class="grp"><td colspan="5">Run</td></tr>
+                  <tr class="open">
+                    <td><div class="cell-title mono">run.concurrency</div><div class="cell-sub">Parallel downloads</div></td>
+                    <td><code>6</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip x"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
+                    <td class="end"><button class="btn ghost icon sm" aria-label="Hide where it comes from" aria-expanded="true"><i class="ic ic-chevron-up"></i></button></td>
+                  </tr>
+                  <tr class="detail">
+                    <td colspan="5">
+                      <div class="card compact sunken">
+                        <table class="table compact trail" aria-label="Where run.concurrency comes from">
+                          <tbody>
+                            <tr><td><span class="mk-cluster no-wrap"><span class="num">1</span><span>Catalog default</span></span></td><td><code>3</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td><td class="muted">Replaced by step 3</td></tr>
+                            <tr><td><span class="mk-cluster no-wrap"><span class="num">2</span><span>Default profile</span></span></td><td class="subtle">Not set</td><td></td><td></td></tr>
+                            <tr class="won"><td><span class="mk-cluster no-wrap"><span class="num">3</span><span><strong class="strong">Studio profile</strong></span></span></td><td><code>6</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td><td class="strong">Locks it; devices get 6</td></tr>
+                            <tr class="skip"><td><span class="mk-cluster no-wrap"><span class="num">4</span><span>This license</span></span></td><td><code class="struck">3</code></td><td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td><td class="text-warning">Not applied</td></tr>
+                            <tr><td><span class="mk-cluster no-wrap"><span class="num">5</span><span>Mara’s account</span></span></td><td class="subtle">Not set</td><td></td><td></td></tr>
+                          </tbody>
+                        </table>
+                        <div class="card-foot between">
+                          <span></span>
+                          <a class="btn link" href="#">Open Studio profile<i class="ic ic-arrow-right"></i></a>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">run.searchCount</div><div class="cell-sub">Results per source</div></td>
-                  <td><code>8</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
-                  <td class="end"><button class="btn outline xs">Override</button></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">run.toleranceSec</div><div class="cell-sub">Duration tolerance (s)</div></td>
-                  <td><code>10</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-eye-off sm"></i>Hidden</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">run.searchTimeoutSec</div><div class="cell-sub">Per-source timeout (s)</div></td>
-                  <td><code>30</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">run.cooloffHours</div><div class="cell-sub">Failed-track cool-off (h)</div></td>
-                  <td><code>24</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr class="grp"><td colspan="5">Interface and output</td></tr>
-                <tr>
-                  <td><div class="cell-title mono">ui.theme</div><div class="cell-sub">Theme</div></td>
-                  <td><code>dark</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">outputDir</div><div class="cell-sub">Download folder</div></td>
-                  <td><code>~/Music/DJDL</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr class="grp"><td colspan="5">Identity</td></tr>
-                <tr>
-                  <td><div class="cell-title mono">identity.enabled</div><div class="cell-sub">Identity enrichment</div></td>
-                  <td><code>true</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">identity.strict</div><div class="cell-sub">Strict identity</div></td>
-                  <td><code>false</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr class="grp"><td colspan="5">VPN</td></tr>
-                <tr>
-                  <td><div class="cell-title mono">proxy.enabled</div><div class="cell-sub">Route through VPN</div></td>
-                  <td><code>true</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">proxy.select</div><div class="cell-sub">Exit node</div></td>
-                  <td><code>ams-2</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip w"></i></span><span>Mara’s account</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">proxy.refreshHours</div><div class="cell-sub">Subscription refresh (h)</div></td>
-                  <td><code>12</code></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr class="grp"><td colspan="5">Secrets, never listed</td></tr>
-                <tr class="missing">
-                  <td><div class="cell-title mono">identity.acoustidKey</div><div class="cell-sub">AcoustID API key</div></td>
-                  <td><div class="status-stack"><span class="status warning"><i class="ic ic-triangle-alert"></i>Not set</span><span class="meta">Required secret</span></div></td>
-                  <td><span class="dash" aria-label="Not listed"></span></td>
-                  <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
-                  <td class="end"><a class="btn link" href="#">Set secret<i class="ic ic-arrow-right"></i></a></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">proxy.subscriptionUrl</div><div class="cell-sub">VPN subscription URL</div></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
-                  <td><span class="dash" aria-label="Not listed"></span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">serviceA.oauth</div><div class="cell-sub">Service A OAuth token</div></td>
-                  <td><span class="subtle">Not set</span></td>
-                  <td><span class="dash" aria-label="Not listed"></span></td>
-                  <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">serviceB.clientId</div><div class="cell-sub">Service B client ID</div></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
-                  <td><span class="dash" aria-label="Not listed"></span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">serviceB.refreshToken</div><div class="cell-sub">Service B refresh token</div></td>
-                  <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
-                  <td><span class="dash" aria-label="Not listed"></span></td>
-                  <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip w"></i></span><span>Mara’s account, at sign-in</span></span></td>
-                  <td class="end"></td>
-                </tr>
-                <tr>
-                  <td><div class="cell-title mono">serviceC.userToken</div><div class="cell-sub">Service C user token</div></td>
-                  <td><span class="subtle">Not set</span></td>
-                  <td><span class="dash" aria-label="Not listed"></span></td>
-                  <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
-                  <td class="end"></td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="table-foot"><span>A minted token isn’t stored, so <span class="mono">applemusic.token</span> isn’t listed.</span></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">run.searchCount</div><div class="cell-sub">Results per source</div></td>
+                    <td><code>8</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                    <td class="end"><button class="btn outline xs">Override</button></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">run.toleranceSec</div><div class="cell-sub">Duration tolerance (s)</div></td>
+                    <td><code>10</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-eye-off sm"></i>Hidden</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">run.searchTimeoutSec</div><div class="cell-sub">Per-source timeout (s)</div></td>
+                    <td><code>30</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">run.cooloffHours</div><div class="cell-sub">Failed-track cool-off (h)</div></td>
+                    <td><code>24</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr class="grp"><td colspan="5">Interface and output</td></tr>
+                  <tr>
+                    <td><div class="cell-title mono">ui.theme</div><div class="cell-sub">Theme</div></td>
+                    <td><code>dark</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">outputDir</div><div class="cell-sub">Download folder</div></td>
+                    <td><code>~/Music/DJDL</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr class="grp"><td colspan="5">Identity</td></tr>
+                  <tr>
+                    <td><div class="cell-title mono">identity.enabled</div><div class="cell-sub">Identity enrichment</div></td>
+                    <td><code>true</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">identity.strict</div><div class="cell-sub">Strict identity</div></td>
+                    <td><code>false</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Catalog default</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr class="grp"><td colspan="5">VPN</td></tr>
+                  <tr>
+                    <td><div class="cell-title mono">proxy.enabled</div><div class="cell-sub">Route through VPN</div></td>
+                    <td><code>true</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock-keyhole sm"></i>Read-only</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">proxy.select</div><div class="cell-sub">Exit node</div></td>
+                    <td><code>ams-2</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip w"></i></span><span>Mara’s account</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">proxy.refreshHours</div><div class="cell-sub">Subscription refresh (h)</div></td>
+                    <td><code>12</code></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-pencil sm"></i>Editable</span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip s"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr class="grp"><td colspan="5">Secrets, never listed</td></tr>
+                  <tr class="missing">
+                    <td><div class="cell-title mono">identity.acoustidKey</div><div class="cell-sub">AcoustID API key</div></td>
+                    <td><div class="status-stack"><span class="status warning"><i class="ic ic-triangle-alert"></i>Not set</span><span class="meta">Required secret</span></div></td>
+                    <td><span role="img" class="dash" aria-label="Not listed"></span></td>
+                    <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
+                    <td class="end"><a class="btn link" href="#">Set secret<i class="ic ic-arrow-right"></i></a></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">proxy.subscriptionUrl</div><div class="cell-sub">VPN subscription URL</div></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
+                    <td><span role="img" class="dash" aria-label="Not listed"></span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i></span><span>Studio profile</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">serviceA.oauth</div><div class="cell-sub">Service A OAuth token</div></td>
+                    <td><span class="subtle">Not set</span></td>
+                    <td><span role="img" class="dash" aria-label="Not listed"></span></td>
+                    <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">serviceB.clientId</div><div class="cell-sub">Service B client ID</div></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
+                    <td><span role="img" class="dash" aria-label="Not listed"></span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip w"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span>Default profile</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">serviceB.refreshToken</div><div class="cell-sub">Service B refresh token</div></td>
+                    <td><span class="mk-cluster no-wrap vis"><i class="ic ic-lock sm"></i>Configured</span></td>
+                    <td><span role="img" class="dash" aria-label="Not listed"></span></td>
+                    <td><span class="mk-cluster no-wrap from"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip w"></i></span><span>Mara’s account, at sign-in</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                  <tr>
+                    <td><div class="cell-title mono">serviceC.userToken</div><div class="cell-sub">Service C user token</div></td>
+                    <td><span class="subtle">Not set</span></td>
+                    <td><span role="img" class="dash" aria-label="Not listed"></span></td>
+                    <td><span class="mk-cluster no-wrap from subtle"><span class="pips" aria-hidden="true"><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i></span><span class="sr-only">No step sets it</span></span></td>
+                    <td class="end"></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="table-foot"><span>A minted token isn’t stored, so <span class="mono">applemusic.token</span> isn’t listed.</span></div>
+            </div>
           </div>
         </section>
 

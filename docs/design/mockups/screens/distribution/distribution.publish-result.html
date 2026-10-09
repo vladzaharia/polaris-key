@@ -46,9 +46,6 @@
     font-weight: 600;
   }
   [data-screen="distribution.publish-result"] .item-row.fail-row {
-    padding-block: var(--sp-3);
-    padding-inline: var(--sp-3);
-    margin-inline: calc(-1 * var(--sp-3));
     border-radius: var(--pk-radius-md);
   }
   [data-screen="distribution.publish-result"] .plat-sub {
@@ -59,7 +56,6 @@
       display: flex;
       align-items: baseline;
       justify-content: space-between;
-      gap: var(--sp-3);
     }
     [data-screen="distribution.publish-result"] .item-title > small,
     [data-screen="distribution.publish-result"] .item-title > .subtle {
@@ -68,14 +64,10 @@
     [data-screen="distribution.publish-result"] .plat-sub {
       display: inline;
     }
-    [data-screen="distribution.publish-result"] .dialog .callout > .grow ~ * {
-      margin-left: auto;
-    }
   }
   @container screen (min-width: 640px) {
     [data-screen="distribution.publish-result"] .overlay.sheet {
       align-items: center;
-      padding-block: var(--sp-8) 6vh;
     }
   }
 </style>
@@ -118,13 +110,13 @@
         <a class="nav-item" href="#"><i class="ic ic-package-open"></i><span class="nav-text">Obtainium</span></a>
         <a class="nav-item" href="#"><i class="ic ic-square-terminal"></i><span class="nav-text">Scoop</span></a>
         <a class="nav-item" href="#"><i class="ic ic-terminal"></i><span class="nav-text">winget</span></a>
-        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span role="img" class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
       </div>
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -135,11 +127,12 @@
   <main class="main">
     <div class="page">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i>Channels</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
+<div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Channels</h1></div>
         <!-- The platforms Diceroll builds decide which channels show; the scope is stated once, here. -->
         <div class="page-sub">
-          <div class="mk-cluster" aria-label="Diceroll's platforms">
+          <div role="group" class="mk-cluster" aria-label="Diceroll's platforms">
             <span class="pill"><i class="ic ic-apple"></i>iOS</span>
             <span class="pill"><i class="ic ic-android"></i>Android</span>
             <span class="pill"><i class="ic ic-windows"></i>Windows x64</span>

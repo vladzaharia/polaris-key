@@ -176,7 +176,7 @@
     </div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -185,12 +185,12 @@
 
   <main class="main">
     <div class="page">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a><i class="ic ic-chevron-right"></i>Edit</nav>
+      <header class="page-head record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="config" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Managed config</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a></nav>
         <div class="page-heading"><h1>Edit catalog</h1><span class="pill"><i class="dot"></i>Draft v10</span></div>
         <p class="page-sub"><span>v9 came from <code>.pkey/schema</code> in example-org/djdl on Oct 6. Commit your edits there too, or the next resync replaces them.</span></p>
         <div class="page-actions">
-          <div class="segmented sm hide-phone" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
+          <div role="group" class="segmented sm hide-phone" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
           <button class="btn ghost">Discard draft</button>
           <button class="btn primary">Review 1 change<i class="ic ic-arrow-right"></i></button>
           <button class="btn ghost icon show-phone" aria-label="More: edit as form or JSON"><i class="ic ic-ellipsis"></i></button>
@@ -434,7 +434,7 @@
           <span class="check on"><span class="box"></span>Put the device id in the token as sub, so the server can rate-limit each Mac and PC</span>
           <div class="code">
             <div class="code-head"><span class="code-file">metadata.token · decoded preview</span></div>
-<pre><span class="t-o">{</span> <span class="t-p">"alg"</span><span class="t-o">:</span> <span class="t-s">"ES256"</span><span class="t-o">,</span> <span class="t-p">"kid"</span><span class="t-o">:</span> <span class="t-s">"djdl-meta-2026-10"</span><span class="t-o">,</span> <span class="t-p">"typ"</span><span class="t-o">:</span> <span class="t-s">"JWT"</span> <span class="t-o">}</span>
+<pre tabindex="0"><span class="t-o">{</span> <span class="t-p">"alg"</span><span class="t-o">:</span> <span class="t-s">"ES256"</span><span class="t-o">,</span> <span class="t-p">"kid"</span><span class="t-o">:</span> <span class="t-s">"djdl-meta-2026-10"</span><span class="t-o">,</span> <span class="t-p">"typ"</span><span class="t-o">:</span> <span class="t-s">"JWT"</span> <span class="t-o">}</span>
 <span class="t-o">{</span> <span class="t-p">"iss"</span><span class="t-o">:</span> <span class="t-s">"djdl"</span><span class="t-o">,</span> <span class="t-p">"aud"</span><span class="t-o">:</span> <span class="t-s">"https://meta.example.com"</span><span class="t-o">,</span>
   <span class="t-p">"sub"</span><span class="t-o">:</span> <span class="t-s">"dev_9F2KQ7"</span><span class="t-o">,</span> <span class="t-p">"iat"</span><span class="t-o">:</span> <span class="t-n">1791392400</span><span class="t-o">,</span> <span class="t-p">"exp"</span><span class="t-o">:</span> <span class="t-n">1791393300</span> <span class="t-o">}</span></pre>
           </div>

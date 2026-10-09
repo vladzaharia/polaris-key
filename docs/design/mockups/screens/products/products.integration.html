@@ -33,7 +33,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -44,6 +44,8 @@
     <!-- From 1440 Your app is a sticky rail beside the feature cards; below that it is one summary row above them. -->
     <div class="page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip product" aria-hidden="true"><span class="logo xs" data-product="djdl"></span></span><a href="#">DJDL</a></nav>
+<div class="page-icon mast" aria-hidden="true"><span class="logo lg" data-product="djdl"></span></div>
         <div class="page-heading"><h1>Integration</h1></div>
         <div class="page-actions">
           <button class="btn ghost hide-phone"><i class="ic ic-book-open"></i>Guide</button>
@@ -103,10 +105,10 @@
           <div>
             <div class="code">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
                   <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                 </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
 
 <span class="t-c">// Activation and the license gate, before DJDL opens.</span>
 <span class="t-t">WindowGroup</span> {
@@ -167,10 +169,10 @@
           <div>
             <div class="code">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
                   <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                 </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
 
 <span class="t-c">// Sparkle's update window, on DJDL's signed feed</span>
 <span class="t-c">// and the license's release track.</span>
@@ -207,10 +209,10 @@
           <div>
             <div class="code">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
                   <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                 </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
 
 <span class="t-c">// Browser sign-in; sign-out is in the account menu.</span>
 <span class="t-t">PolarisAccount</span>()</pre>
@@ -248,10 +250,10 @@
           <div>
             <div class="code">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
                   <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                 </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
 
 <span class="t-c">// DJDL's editable settings, synced, with the sync state.</span>
 <span class="t-t">PolarisSettings</span>()</pre>
@@ -289,7 +291,7 @@
                 <p class="eyebrow">Add the SDK<span class="end"><span class="segmented sm"><span class="on">One command</span><span>By hand</span></span></span></p>
                 <div class="code">
                   <div class="code-head"><span class="code-file">Terminal</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> \
+<pre tabindex="0"><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> \
     --product djdl \
     --expect <span class="t-s">djdl-2026@sha256:3f9a…</span></pre>
                 </div>

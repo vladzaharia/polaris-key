@@ -83,9 +83,9 @@
               <p>In your app’s folder, run the command Integration shows. It adds the SDK, writes <code>polaris-key.json</code> and pins Tidewater’s keys.</p>
               <div class="code wrap-phone">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
                 </div>
-<pre><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> --product tidewater \
+<pre tabindex="0"><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> --product tidewater \
     --expect <span class="ph">&lt;fingerprint from Integration&gt;</span></pre>
               </div>
               <div class="docs-disclose"><i class="ic ic-chevron-right sm"></i>What <code>polaris-key.json</code> holds</div>
@@ -99,13 +99,13 @@
               <h2>Start the SDK</h2>
               <p><code>fromConfig()</code> reads <code>polaris-key.json</code>; <code>boot()</code> checks the license, syncs managed config and registers the device.</p>
               <div class="lanes">
-                <div class="lanes-head"><div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div></div>
+                <div class="lanes-head"><div class="code-tabs" tabindex="0"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="active">Swift</span><span class="hide-phone">Kotlin</span><span class="hide-phone">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div></div>
                 <div class="lane">
                   <div class="lane-title"><span class="icon-tile sm"><i class="ic ic-layout-grid"></i></span>Drop-in UI kit</div>
                   <p class="lane-desc">Sign-in, activation and device limits as ready screens, in your product’s look.</p>
                   <div class="code wrap-phone">
                     <div class="code-head"><span class="code-file">ContentView.swift</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
 
 <span class="t-k">let</span> pk = <span class="t-k">try await</span>
   <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
@@ -121,7 +121,7 @@
                   <p class="lane-desc">Call the SDK and draw every screen yourself.</p>
                   <div class="code wrap-phone">
                     <div class="code-head"><span class="code-file">App.swift</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
 
 <span class="t-k">let</span> pk = <span class="t-k">try await</span>
   <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
@@ -162,7 +162,7 @@
               <p>Run your app. A feature shows <strong>Verified</strong> once the SDK gets an answer on that platform; <code>pkey doctor</code> shows the same.</p>
               <div class="term">
                 <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — tidewater</span></div>
-<pre class="term-body hide-phone"><span class="c-prompt">❯</span> pkey doctor
+<pre tabindex="0" class="term-body hide-phone"><span class="c-prompt">❯</span> pkey doctor
 <span class="c-b">Tidewater Studio</span> <span class="c-dim">(tidewater) · key.plrs.im</span>
 
 <span class="c-b">Integration</span>        <span class="c-b">macOS</span>
@@ -171,7 +171,7 @@
   Windows          <span class="c-dim"><span class="g">○</span> Not seen yet</span>
 
 <span class="c-chip clear">0 to do</span> <span class="c-dim">· run it on Windows next · 0.9 s</span></pre>
-<pre class="term-body show-phone"><span class="c-prompt">❯</span> pkey doctor
+<pre tabindex="0" class="term-body show-phone"><span class="c-prompt">❯</span> pkey doctor
 <span class="c-b">Tidewater Studio</span> <span class="c-dim">(tidewater)
 key.plrs.im</span>
 

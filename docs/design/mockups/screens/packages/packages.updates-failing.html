@@ -1,4 +1,4 @@
-<div class="console" data-service="core">
+<div class="console" data-service="release">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -30,11 +30,11 @@
       <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
       <a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a>
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
-      <a class="nav-item active" href="#" data-service="update"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span><span class="count danger">1</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span><span class="count danger">1</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -45,6 +45,8 @@
     <!-- Wide (≥ 1600): the updaters in the main column, the update rules in the aside. -->
     <div class="page columns sticky-rail">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
+<div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Updates</h1></div>
         <!-- A-20: scoped to what DJDL builds; only those get a card. -->
         <p class="page-sub">For DJDL’s builds</p>
@@ -94,7 +96,7 @@
             <p class="eyebrow">In your app</p>
             <div class="code fade-x wrap-phone">
               <div class="code-head">
-                <div class="code-tabs"><span class="active">Swift<small>PolarisKeyUpdate</small></span><span>Info.plist<small role="img" aria-label="also required">•</small></span></div>
+                <div class="code-tabs" tabindex="0"><span class="active">Swift<small>PolarisKeyUpdate</small></span><span>Info.plist<small role="img" aria-label="also required">•</small></span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
 <pre tabindex="0" role="region" aria-label="Code"><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
@@ -154,7 +156,7 @@ updates.<span class="t-f">startUpdater</span>()</pre>
             <p class="eyebrow">In your app</p>
             <div class="code fade-x wrap-phone">
               <div class="code-head">
-                <div class="code-tabs"><span class="active">Kotlin<small>WinSparkle via JNA</small></span><span>C++</span></div>
+                <div class="code-tabs" tabindex="0"><span class="active">Kotlin<small>WinSparkle via JNA</small></span><span>C++</span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
 <pre tabindex="0" role="region" aria-label="Code"><span class="t-c">// Before DJDL’s main window opens, after PolarisKey starts.</span>

@@ -32,7 +32,7 @@
         <div class="section-head"><h2>The file</h2></div>
         <div class="code wrap-phone" data-service="core">
           <div class="code-head"><span class="code-file">polaris-key.json</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-o">{</span>
+<pre tabindex="0"><span class="t-o">{</span>
   <span class="t-p">"$schema"</span><span class="t-o">:</span> <span class="t-s">"https://key.plrs.im/schemas/v1/sdk-config.schema.json"</span><span class="t-o">,</span>
   <span class="t-p">"configVersion"</span><span class="t-o">:</span> <span class="t-n">1</span><span class="t-o">,</span>
   <span class="t-p">"productSlug"</span><span class="t-o">:</span> <span class="t-s">"djdl"</span><span class="t-o">,</span>
@@ -74,10 +74,10 @@
       <!-- Phone: one block, Swift's tab with the other five behind “5 more”. -->
       <div class="code show-phone wrap-phone" data-service="core">
         <div class="code-head">
-          <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span class="more">5 more<i class="ic ic-chevron-down"></i></span></div>
+          <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span class="more">5 more<i class="ic ic-chevron-down"></i></span></div>
           <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
         </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
 
 <span class="hl"><span class="t-k">let</span> pk = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</span>
 <span class="hl"><span class="t-k">await</span> pk.<span class="t-f">boot</span>()</span>
@@ -94,7 +94,7 @@
       <div class="board-aside hide-phone">
         <div class="code wrap-phone" data-service="core">
           <div class="code-head"><span class="code-file">Swift · App.swift (macOS)</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
 
 <span class="hl"><span class="t-k">let</span> pk = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</span>
 <span class="hl"><span class="t-k">await</span> pk.<span class="t-f">boot</span>()</span>
@@ -108,7 +108,7 @@
         </div>
         <div class="code wrap-phone" data-service="core">
           <div class="code-head"><span class="code-file">Node · main.ts</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-k">import</span> { <span class="t-t">PolarisKeyClient</span> }
+<pre tabindex="0"><span class="t-k">import</span> { <span class="t-t">PolarisKeyClient</span> }
   <span class="t-k">from</span> <span class="t-s">"@polaris-key/node"</span>;
 
 <span class="t-k">const</span> pk = <span class="t-k">await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>();
@@ -120,7 +120,7 @@
         </div>
         <div class="code wrap-phone" data-service="core">
           <div class="code-head"><span class="code-file">React · main.tsx</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
+<pre tabindex="0"><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
 <span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> }
   <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
 
@@ -133,7 +133,7 @@
         </div>
         <div class="code wrap-phone" data-service="core">
           <div class="code-head"><span class="code-file">Python · app.py</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-k">from</span> polaris_key <span class="t-k">import</span> <span class="t-t">PolarisKeyClient</span>
+<pre tabindex="0"><span class="t-k">from</span> polaris_key <span class="t-k">import</span> <span class="t-t">PolarisKeyClient</span>
 
 pk = <span class="t-t">PolarisKeyClient</span>.<span class="t-f">from_config</span>(
     <span class="t-s">"polaris-key.json"</span>, <span class="t-p">version</span>=<span class="t-s">"4.2.1"</span>
@@ -145,7 +145,7 @@ pk.<span class="t-f">boot</span>()
         </div>
         <div class="code wrap-phone" data-service="core">
           <div class="code-head"><span class="code-file">Kotlin · Main.kt (Windows)</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-c">// Android: PolarisKeyAndroid.client(context)</span>
+<pre tabindex="0"><span class="t-c">// Android: PolarisKeyAndroid.client(context)</span>
 <span class="t-k">val</span> pk = <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
 pk.<span class="t-f">boot</span>()
 
@@ -153,7 +153,7 @@ pk.<span class="t-f">boot</span>()
         </div>
         <div class="code wrap-phone" data-service="core">
           <div class="code-head"><span class="code-file">Godot · main.gd</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-c"># The PolarisKey autoload reads</span>
+<pre tabindex="0"><span class="t-c"># The PolarisKey autoload reads</span>
 <span class="t-c"># res://polaris-key.json itself.</span>
 <span class="t-k">func</span> <span class="t-f">_ready</span>() <span class="t-o">-></span> <span class="t-t">void</span>:
   <span class="t-k">await</span> PolarisKey.<span class="t-f">boot</span>()

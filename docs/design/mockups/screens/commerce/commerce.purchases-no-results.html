@@ -46,7 +46,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group" data-service="commerce">
       <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
@@ -62,6 +62,7 @@
   <main class="main">
     <div class="page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="commerce" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Commerce</a></nav>
         <div class="page-heading"><h1>Purchases</h1></div>
         <div class="page-actions">
           <button class="btn outline hide-phone"><i class="ic ic-download"></i>Export CSV</button>
@@ -74,28 +75,30 @@
           <a class="tab" href="#"><span class="hide-phone">Refunds and chargebacks</span><span class="show-phone">Refunds</span> <span class="count">15</span></a>
           <a class="tab" href="#">Added nothing <span class="count warning">3</span></a>
         </nav>
-        <div class="toolbar">
-          <div class="search-field typed"><i class="ic ic-search"></i><span class="grow mono">lic_9ZQX…4TBA</span><button class="btn ghost icon xs" aria-label="Clear search"><i class="ic ic-x"></i></button></div>
-          <span class="filter on"><i class="ic ic-check"></i>Last 28 days</span>
-          <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
-          <span class="filter"><i class="ic ic-plus"></i>Offer</span>
-        </div>
-
-        <!-- Filtered to nothing (EXPERIENCE.md §9): what matched nothing, and the way out. -->
-        <div class="table-card">
-          <table class="table fixed stack-phone flush" aria-label="Purchases in the last 28 days">
-            <colgroup><col style="width: 23%"><col style="width: 13%"><col style="width: 22%"><col style="width: 14%"><col style="width: 17%"><col style="width: 11%"></colgroup>
-            <thead>
-              <tr><th>Offer</th><th>Storefront</th><th>Account</th><th>License</th><th>State</th><th>Bought</th></tr>
-            </thead>
-          </table>
-          <div class="empty">
-            <span class="empty-icon muted"><i class="ic ic-search"></i></span>
-            <h3>No purchase in the last 28 days has <span class="mono">lic_9ZQX…4TBA</span></h3>
-            <p>The license may have no store purchases, or bought earlier.</p>
-            <div class="btn-row">
-              <button class="btn outline">Search all time</button>
-              <button class="btn ghost">Clear search</button>
+        <div class="workbench">
+          <div class="toolbar">
+            <div class="search-field typed"><i class="ic ic-search"></i><span class="grow mono">lic_9ZQX…4TBA</span><button class="btn ghost icon xs" aria-label="Clear search"><i class="ic ic-x"></i></button></div>
+            <span class="filter on"><i class="ic ic-check"></i>Last 28 days</span>
+            <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
+            <span class="filter"><i class="ic ic-plus"></i>Offer</span>
+          </div>
+  
+          <!-- Filtered to nothing (EXPERIENCE.md §9): what matched nothing, and the way out. -->
+          <div class="table-card" role="region" aria-label="Purchases table" tabindex="0">
+            <table class="table fixed stack-phone flush" aria-label="Purchases in the last 28 days">
+              <colgroup><col style="width: 23%"><col style="width: 13%"><col style="width: 22%"><col style="width: 14%"><col style="width: 17%"><col style="width: 11%"></colgroup>
+              <thead>
+                <tr><th>Offer</th><th>Storefront</th><th>Account</th><th>License</th><th>State</th><th>Bought</th></tr>
+              </thead>
+            </table>
+            <div class="empty">
+              <span class="empty-icon muted"><i class="ic ic-search"></i></span>
+              <h3>No purchase in the last 28 days has <span class="mono">lic_9ZQX…4TBA</span></h3>
+              <p>The license may have no store purchases, or bought earlier.</p>
+              <div class="btn-row">
+                <button class="btn outline">Search all time</button>
+                <button class="btn ghost">Clear search</button>
+              </div>
             </div>
           </div>
         </div>
