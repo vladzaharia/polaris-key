@@ -928,8 +928,10 @@ describe("R4-09: offline bundle import is all-or-nothing", () => {
     const configDir = tempConfigDir();
     const now = nowSec();
     // A device with real, previously-established state. This is what must survive intact.
+    // Issued before the bundle's documents: §7 step 4's per-type floor admits only a strictly
+    // newer licence, so the control import below is about the tamper alone.
     const priorLicense = await signLicense(
-      makeLicenseDoc({ licenseId: "lic_PRIOR", issuedAt: now }),
+      makeLicenseDoc({ licenseId: "lic_PRIOR", issuedAt: now - 60 }),
     );
     plantCache(
       configDir,
@@ -995,11 +997,11 @@ describe("R4-09: offline bundle import is all-or-nothing", () => {
       "inner-doc-rejected",
     ]).toContain((caught as PolarisError).code);
 
-    // NOTHING was written: not the config document that verified, not an `importedBundle`
-    // marker, not the bundle's trust manifest.
+    // NOTHING was written: not the config document that verified, not the `bundle` slice,
+    // not the bundle's trust manifest.
     expect(readFileSync(cachePathIn(configDir), "utf8")).toBe(before);
     const onDisk = readCacheFile(configDir);
-    expect(onDisk?.importedBundle).toBeUndefined();
+    expect(onDisk?.bundle).toBeUndefined();
     expect(onDisk?.trustJws).toBeUndefined();
     expect(onDisk?.docs?.config).toBeUndefined();
     // …and the live client is untouched too.
@@ -1027,7 +1029,7 @@ describe("R4-09: offline bundle import is all-or-nothing", () => {
     expect(c2.config.getSecret("beatport.apiKey")).toBe("sk_from_bundle");
     const after = readCacheFile(configDir);
     expect(after?.v).toBe(CACHE_VERSION);
-    expect(after?.importedBundle?.bundleId).toBe("01HZZBUNDLE0000000000000000");
+    expect(after?.bundle).toBe(good);
     expect(after?.docs?.license).toBe(innerLicense);
     // The replaced record carries no stale slice from the pre-import state (§7 step 5 is a
     // re-provisioning, not a merge).

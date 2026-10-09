@@ -95,10 +95,10 @@ export class LicenseClient {
   /** How this install became activated, or null. §7: a token supersedes a bundle. */
   activation(): ActivationSource | null {
     if (this.tokens.current !== null) return "token";
-    // A bundle activates ONLY if its licence document actually verified — a config-only
-    // bundle imports settings and grants nothing.
-    if (this.cache.state.importedBundle && this.cache.state.license)
-      return "bundle";
+    // A bundle activates ONLY when the cached bundle re-verified on the reload profile and its
+    // licence document is the cached one, byte for byte (WIRE-CONTRACT-V4 §4.1, §7) — a
+    // config-only bundle imports settings and grants nothing.
+    if (this.cache.state.bundle && this.cache.state.license) return "bundle";
     return null;
   }
 

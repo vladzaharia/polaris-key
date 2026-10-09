@@ -118,7 +118,12 @@ export async function sync(
 
   // ── 6. One write ────────────────────────────────────────────────────────────────────────
   const patch: Partial<CacheRecordV3> = {};
-  if (trustJws) patch.trustJws = trustJws;
+  if (trustJws) {
+    patch.trustJws = trustJws;
+    // §4.1: a manifest that tombstoned a pin is that tombstone's evidence, in the same write.
+    const evidence = trust.pinRevocations;
+    if (Object.keys(evidence).length > 0) patch.pinRevocations = evidence;
+  }
 
   const outcomes = [license.outcome, config.outcome];
   const unauthorized = outcomes.some((o) => o.kind === "unauthorized");

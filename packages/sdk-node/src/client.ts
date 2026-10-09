@@ -508,7 +508,7 @@ export class PolarisKeyClient {
    */
   async importBundle(jws: string, now = nowSec()): Promise<ImportBundleResult> {
     const beforeValues = this.config.snapshot();
-    const r = await importBundle(this.core, this.cache, jws, now);
+    const r = await importBundle(this.core, this.cache, this.trust, jws, now);
     this.config.emitChanges(beforeValues);
     this.noteLicense();
     return r;

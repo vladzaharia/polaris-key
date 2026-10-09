@@ -44,7 +44,6 @@ const GRANT_KEYS = [
   "trustJws",
   "docs",
   "etags",
-  "importedBundle",
   "bundle",
   "lastSyncUnauthorized",
   "blocked",

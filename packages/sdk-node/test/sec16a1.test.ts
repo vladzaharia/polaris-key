@@ -258,7 +258,7 @@ describe("CLI-1 — the device id is bound to the hardware anchor", () => {
       trustJws: "t.t.t",
       docs: { license: "a.b.c", config: "d.e.f" },
       etags: { license: '"l"' },
-      importedBundle: { bundleId: "b", importedAt: 1 },
+      bundle: "b.b.b",
       lastSyncUnauthorized: true,
       feeds: { stable: "f.f.f" },
       releaseRecords: { abc: "r.r.r" },
@@ -279,7 +279,7 @@ describe("CLI-1 — the device id is bound to the hardware anchor", () => {
       "trustJws",
       "docs",
       "etags",
-      "importedBundle",
+      "bundle",
       "lastSyncUnauthorized",
     ])
       expect(rec[k], k).toBeUndefined();
