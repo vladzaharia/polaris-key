@@ -40,9 +40,6 @@
     font-weight: 600;
     letter-spacing: 0;
   }
-  [data-screen="config.mint-wizard"] .textarea.two {
-    min-height: 64px;
-  }
   [data-screen="config.mint-wizard"] .field-label > .btn.icon.xs {
     width: 24px;
     min-width: 24px;
@@ -189,7 +186,7 @@
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="config" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Managed config</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a></nav>
         <div class="page-icon mast" data-service="config" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Edit catalog</h1><span class="pill"><i class="dot"></i>Draft v10</span></div>
-        <p class="page-sub"><span>v9 came from <code>.pkey/schema</code> in example-org/djdl on Oct 6. Commit your edits there too, or the next resync replaces them.</span></p>
+        <p class="page-sub"><span>v9 from <code>.pkey/schema</code> · Oct 6</span></p>
         <div class="page-actions">
           <div role="group" class="segmented sm hide-phone" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
           <button class="btn ghost">Discard draft</button>
@@ -246,7 +243,6 @@
           <div class="card-head">
             <div class="title">
               <div class="mk-cluster baseline"><h2 id="entry-title" class="mono">quality.floor</h2><span class="pill sm"><i class="dot"></i>Changed in draft</span></div>
-              <p>The key can’t change after publish</p>
             </div>
             <button class="btn ghost icon sm hide-phone" aria-label="More"><i class="ic ic-ellipsis"></i></button>
           </div>
@@ -263,22 +259,25 @@
             </div>
             <div class="field">
               <label class="field-label">Description <span class="optional">Optional</span></label>
-              <div class="textarea two">Skip a track when no source has it at this quality. People see this under the setting in DJDL’s settings.</div>
+              <div class="textarea one">Skip a track when no source has it at this quality.</div>
+              <span class="hint">Shown under the setting in DJDL’s settings</span>
             </div>
             <div class="field">
               <label class="field-label">Type<button class="btn ghost icon xs" aria-label="How types and in-app visibility combine"><i class="ic ic-circle-help"></i></button></label>
               <div class="choices cols-3" role="radiogroup" aria-label="Type">
                 <div class="choice on" role="radio" aria-checked="true">
                   <div class="choice-title"><i class="ic ic-sliders-horizontal"></i>Setting</div>
-                  <div class="choice-desc">A value DJDL reads. You decide whether people can change it.</div>
+                  <div class="choice-desc">A value DJDL reads</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-lock"></i>Secret</div>
-                  <div class="choice-desc">Write-only here. DJDL reads it in code; it’s never listed.</div>
+                  <div class="choice-desc">Write-only here</div>
+                  <div class="choice-desc">Never listed in DJDL</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-stamp"></i>Minted token</div>
-                  <div class="choice-desc">Signed on request from a recipe. Never stored.</div>
+                  <div class="choice-desc">Signed on request from a recipe</div>
+                  <div class="choice-desc">Never stored</div>
                 </div>
               </div>
             </div>
@@ -291,13 +290,12 @@
                 <span class="chip">any<span class="chip-note">Default</span><i class="ic ic-x"></i></span>
                 <span class="chip add"><i class="ic ic-plus"></i>Add</span>
               </div>
-              <span class="hint">Text, one of these values. Removing one in use asks where its people move. <a class="nlink" href="#">Edit as JSON schema</a></span>
+              <span class="hint"><a class="nlink" href="#">Edit as JSON schema</a></span>
             </div>
             <div class="mk-grid-2">
               <div class="field">
                 <label class="field-label">Default</label>
                 <div class="select mono"><span class="grow">any</span><i class="ic ic-chevrons-up-down"></i></div>
-                <span class="hint">What devices get when nothing else sets it</span>
               </div>
             </div>
             <div class="field">
@@ -305,18 +303,18 @@
               <div class="choices cols-3" role="radiogroup" aria-label="In the app">
                 <div class="choice on" role="radio" aria-checked="true">
                   <div class="choice-title"><i class="ic ic-pencil"></i>Editable</div>
-                  <div class="choice-desc">Listed in DJDL’s settings. People can change it, and their choice syncs.</div>
+                  <div class="choice-desc">People can change it in DJDL’s settings</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-lock-keyhole"></i>Read-only</div>
-                  <div class="choice-desc">Listed, but only you can change it, here or in a profile.</div>
+                  <div class="choice-desc">People see it but can’t change it</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-eye-off"></i>Hidden</div>
-                  <div class="choice-desc">Not listed in DJDL. The app still reads the value.</div>
+                  <div class="choice-desc">Not listed in DJDL</div>
+                  <div class="choice-desc">DJDL still reads it</div>
                 </div>
               </div>
-              <span class="hint">A profile, license or account can still lock it for the devices it covers.</span>
             </div>
             <!-- Only for an Editable setting, and only while Cloud Sync is on for DJDL. -->
             <div class="card compact sunken" data-service="sync">
@@ -324,7 +322,6 @@
                 <div class="setting-row">
                   <div>
                     <div class="setting-title"><i class="svc"></i>Syncs with Cloud Sync</div>
-                    <div class="setting-desc">A person’s choice follows them to every Mac and PC they sign in on. Read-only and Hidden settings don’t sync.</div>
                   </div>
                   <span class="switch on" role="switch" aria-checked="true" aria-label="Syncs with Cloud Sync"></span>
                 </div>
@@ -337,7 +334,6 @@
                     <div class="field">
                       <label class="field-label">When two devices disagree</label>
                       <div class="fixed-value"><i class="ic ic-clock"></i><span>The latest change wins</span></div>
-                      <span class="hint">The only rule for a value from a list</span>
                     </div>
                   </div>
                 </div>
@@ -346,7 +342,6 @@
           </div>
           <div class="card-foot between">
             <button class="btn danger-outline sm"><i class="ic ic-trash-2"></i>Remove from catalog</button>
-            <span class="type-small muted">Nothing reaches devices until you publish v10.</span>
           </div>
         </section>
 
@@ -407,7 +402,7 @@
               <span class="hint">Can’t change after publish</span>
             </div>
             <div class="field">
-              <label class="field-label">Recipe id <span class="optional">What the app asks for</span></label>
+              <label class="field-label">Recipe id</label>
               <div class="input mono"><span class="grow">metadata</span></div>
               <span class="hint hint-slot"></span>
             </div>
@@ -429,10 +424,10 @@
             <div class="field">
               <label class="field-label">Lifetime</label>
               <div class="select"><span class="grow">15 minutes</span><i class="ic ic-chevrons-up-down"></i></div>
-              <span class="hint">Short is safer: a leaked token stops working sooner</span>
+              <span class="hint">A leaked token works until it expires</span>
             </div>
           </div>
-          <span class="check on"><span class="box"></span>Put the device id in the token as sub, so the server can rate-limit each Mac and PC</span>
+          <div class="field"><span class="check on"><span class="box"></span>Put the device id in the token as sub</span><span class="hint">Lets the server rate-limit each Mac and PC</span></div>
           <div class="code">
             <div class="code-head"><span class="code-file">metadata.token · decoded preview</span></div>
 <pre tabindex="0"><span class="t-o">{</span> <span class="t-p">"alg"</span><span class="t-o">:</span> <span class="t-s">"ES256"</span><span class="t-o">,</span> <span class="t-p">"kid"</span><span class="t-o">:</span> <span class="t-s">"djdl-meta-2026-10"</span><span class="t-o">,</span> <span class="t-p">"typ"</span><span class="t-o">:</span> <span class="t-s">"JWT"</span> <span class="t-o">}</span>
@@ -442,7 +437,7 @@
         </div>
       </div>
       <div class="drawer-foot">
-        <span class="grow type-small muted foot-note">Added to draft v10, approved. Publish to let DJDL mint it.</span>
+        <span class="grow type-small muted foot-note">DJDL can mint it once v10 is published</span>
         <button class="btn ghost">Back</button>
         <button class="btn primary"><i class="ic ic-fingerprint"></i>Save and approve</button>
       </div>

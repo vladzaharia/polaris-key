@@ -14,7 +14,7 @@
     "The signing key is never shown, only its state (Sealed Oct 2).",
     "The only confirm is the passkey (step-up); P0-12 holds: nothing mints until the approval is recorded.",
     "Phone: the drawer fills the screen, the comparison stays a three-column table inside its card with values on one line, and the buttons fill the width.",
-    "An info callout at the top of the body replaces the opening line: \"The recipe changed while you were reviewing\", who pushed which commit and when (with its link), that this is the new comparison, and that nothing was approved.",
+    "An info callout at the top of the body replaces the opening line: \"The recipe changed while you were reviewing\", then \"Nothing was approved.\" and, on its own line, who pushed again and when, with the commit link; the new comparison below needs no sentence.",
     "The comparison, the widening warning (24 hours) and the commit link all show the new recipe; the drawer never approves a recipe the person didn't see.",
     "An approval sent for a recipe that has since changed is refused, and this is what the console shows then; Approve with passkey stays the action, for the new recipe.",
     "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful.",

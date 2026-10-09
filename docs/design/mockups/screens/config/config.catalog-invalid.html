@@ -154,7 +154,8 @@
         <i class="ic ic-circle-x"></i>
         <div class="grow">
           <div class="callout-title">Resync from <span class="mono">7c41d0e</span> failed: 2 errors in <span class="mono">.pkey/schema</span></div>
-          <div class="callout-text">Devices still get v9. Fix the entries marked below in the repository, then push or resync.</div>
+          <div class="callout-text">Devices still get v9.</div>
+          <div class="callout-text">Fix them in the repository, then push or resync.</div>
           <ul class="bullets type-small">
             <li><span class="mono">quality.floor</span>, line 14: the default <span class="mono">lossless</span> isn’t one of its allowed values.</li>
             <li><span class="mono">run.concurrency</span>, line 22: <span class="mono">max</span> is 0, below <span class="mono">min</span> 1.</li>
@@ -211,7 +212,6 @@
           <div class="card-head">
             <div class="title">
               <div class="mk-cluster baseline"><h2 id="entry-title" class="mono">quality.floor</h2></div>
-              <p>The key can’t change after publish</p>
             </div>
             <button class="btn ghost icon sm hide-phone" aria-label="More"><i class="ic ic-ellipsis"></i></button>
           </div>
@@ -228,22 +228,25 @@
             </div>
             <div class="field">
               <label class="field-label">Description <span class="optional">Optional</span></label>
-              <div class="textarea one">Skip a track when no source has it at this quality. People see this under the setting in DJDL’s settings.</div>
+              <div class="textarea one">Skip a track when no source has it at this quality.</div>
+              <span class="hint">Shown under the setting in DJDL’s settings</span>
             </div>
             <div class="field">
               <label class="field-label">Type<button class="btn ghost icon xs" aria-label="How types and in-app visibility combine"><i class="ic ic-circle-help"></i></button></label>
               <div class="choices cols-3 brief" role="radiogroup" aria-label="Type">
                 <div class="choice on" role="radio" aria-checked="true">
                   <div class="choice-title"><i class="ic ic-sliders-horizontal"></i>Setting</div>
-                  <div class="choice-desc">A value DJDL reads. You decide whether people can change it.</div>
+                  <div class="choice-desc">A value DJDL reads</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-lock"></i>Secret</div>
-                  <div class="choice-desc">Write-only here. DJDL reads it in code; it’s never listed.</div>
+                  <div class="choice-desc">Write-only here</div>
+                  <div class="choice-desc">Never listed in DJDL</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-stamp"></i>Minted token</div>
-                  <div class="choice-desc">Signed on request from a recipe. Never stored.</div>
+                  <div class="choice-desc">Signed on request from a recipe</div>
+                  <div class="choice-desc">Never stored</div>
                 </div>
               </div>
             </div>
@@ -255,13 +258,13 @@
                 <span class="chip">any<span class="chip-note">Default</span><i class="ic ic-x"></i></span>
                 <span class="chip add"><i class="ic ic-plus"></i>Add</span>
               </div>
-              <span class="hint">Removing one in use asks where its people move. <a class="nlink" href="#">Edit as JSON schema</a></span>
+              <span class="hint"><a class="nlink" href="#">Edit as JSON schema</a></span>
             </div>
             <div class="mk-grid-2">
               <div class="field">
                 <label class="field-label">Default</label>
                 <div class="select mono invalid" aria-invalid="true" aria-describedby="def-err"><span class="grow">lossless</span><i class="ic ic-chevrons-up-down"></i></div>
-                <p class="error-text" id="def-err"><i class="ic ic-circle-x"></i>From <span class="mono">.pkey/schema</span> line 14: <span class="mono">lossless</span> isn’t an allowed value. Devices keep v9’s <span class="mono">any</span>.</p>
+                <p class="error-text" id="def-err"><i class="ic ic-circle-x"></i><span class="mono">lossless</span> isn’t an allowed value</p>
               </div>
             </div>
             <div class="field">
@@ -271,7 +274,7 @@
                 <span role="radio" aria-checked="false"><i class="ic ic-lock-keyhole sm"></i>Read-only</span>
                 <span role="radio" aria-checked="false"><i class="ic ic-eye-off sm"></i>Hidden</span>
               </div>
-              <div class="seg-help">Listed in DJDL’s settings. People can change it, and their choice syncs.</div>
+              <div class="seg-help">People can change it in DJDL’s settings</div>
             </div>
             <!-- Only for an Editable setting, and only while Cloud Sync is on for DJDL. -->
             <div class="card compact sunken" data-service="sync">
@@ -279,7 +282,6 @@
                 <div class="setting-row">
                   <div>
                     <div class="setting-title"><i class="svc"></i>Syncs with Cloud Sync</div>
-                    <div class="setting-desc">Follows the person to every device</div>
                   </div>
                   <span class="switch on" role="switch" aria-checked="true" aria-label="Syncs with Cloud Sync"></span>
                 </div>
@@ -292,7 +294,6 @@
                     <div class="field">
                       <label class="field-label">When two devices disagree</label>
                       <div class="fixed-value"><i class="ic ic-clock"></i><span>The latest change wins</span></div>
-                      <span class="hint">The only rule for a value from a list</span>
                     </div>
                   </div>
                 </div>

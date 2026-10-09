@@ -198,7 +198,6 @@
           <div class="card-head">
             <div class="title">
               <div class="mk-cluster baseline"><h2 id="entry-title" class="mono">applemusic.token</h2><span class="pill sm warning"><i class="ic ic-key-round"></i>Needs a signing key</span></div>
-              <p>Last approved Oct 7, 10:20 by Ana Lima</p>
             </div>
             <a class="btn link hide-phone" href="#">Approval history<i class="ic ic-arrow-right"></i></a>
           </div>
@@ -222,15 +221,17 @@
               <div class="choices cols-3 brief" role="radiogroup" aria-label="Type">
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-sliders-horizontal"></i>Setting</div>
-                  <div class="choice-desc">A value DJDL reads. You decide whether people can change it.</div>
+                  <div class="choice-desc">A value DJDL reads</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-lock"></i>Secret</div>
-                  <div class="choice-desc">Write-only here. DJDL reads it in code; it’s never listed.</div>
+                  <div class="choice-desc">Write-only here</div>
+                  <div class="choice-desc">Never listed in DJDL</div>
                 </div>
                 <div class="choice on" role="radio" aria-checked="true">
                   <div class="choice-title"><i class="ic ic-stamp"></i>Minted token</div>
-                  <div class="choice-desc">Signed on request from a recipe. Never stored.</div>
+                  <div class="choice-desc">Signed on request from a recipe</div>
+                  <div class="choice-desc">Never stored</div>
                 </div>
               </div>
             </div>
@@ -238,14 +239,13 @@
               <label class="field-label">In the app</label>
               <div class="callout code-only">
                 <i class="ic ic-code-xml"></i>
-                <div class="grow callout-text"><strong class="strong">Code only.</strong> DJDL calls <code>mintToken("applemusic")</code>; it’s never listed or synced.</div>
+                <div class="grow callout-text"><strong class="strong">Code only.</strong> DJDL calls <code>mintToken("applemusic")</code></div>
               </div>
             </div>
           </div>
           <div class="card-body form">
             <div class="mk-stack-1">
               <h3 class="type-card">Recipe</h3>
-              <p class="type-small muted">Signed with your key; it never leaves Polaris Key</p>
             </div>
             <div class="field">
               <label class="field-label">Template</label>
@@ -254,7 +254,7 @@
             <div class="mk-grid-2">
               <div class="field">
                 <label class="field-label">Recipe id</label>
-                <div class="fixed-value"><i class="ic ic-lock"></i><span class="mono">applemusic</span><span class="meta">What the app asks for</span></div>
+                <div class="fixed-value"><i class="ic ic-lock"></i><span class="mono">applemusic</span></div>
               </div>
               <div class="field">
                 <label class="field-label">Algorithm</label>
@@ -271,7 +271,6 @@
               <div class="field">
                 <label class="field-label">Lifetime</label>
                 <div class="select"><span class="grow">12 hours</span><i class="ic ic-chevrons-up-down"></i></div>
-                <span class="hint">How long each token works</span>
               </div>
             </div>
             <div class="field">
@@ -279,16 +278,15 @@
               <div class="card compact sunken nokey">
                 <div class="card-row stack-narrow">
                   <span class="icon-tile sm muted"><i class="ic ic-file-lock"></i></span>
-                  <div class="grow"><div class="strong">No key yet</div><div class="type-small muted">Download the .p8 for Key ID 3HWR8C2N6T from your Apple Developer account. Until it’s added, mintToken calls fail.</div></div>
+                  <div class="grow"><div class="strong">No key yet</div><div class="type-small muted">Until it’s added, mintToken calls fail.</div><div class="type-small muted">Download the .p8 for Key ID 3HWR8C2N6T from your Apple Developer account.</div></div>
                   <button class="btn outline sm"><i class="ic ic-upload"></i>Add the .p8 key…</button>
                 </div>
               </div>
             </div>
             <div class="field">
               <label class="field-label">What DJDL receives</label>
-              <span class="hint">Preview: a token minted once the key is added, decoded</span>
               <div class="code">
-                <div class="code-head"><span class="code-file">applemusic.token · JWT</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+                <div class="code-head"><span class="code-file">applemusic.token · decoded preview</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
 <pre tabindex="0"><span class="t-c">// Header</span>
 <span class="t-o">{</span> <span class="t-p">"alg"</span><span class="t-o">:</span> <span class="t-s">"ES256"</span><span class="t-o">,</span> <span class="t-p">"kid"</span><span class="t-o">:</span> <span class="t-s">"3HWR8C2N6T"</span><span class="t-o">,</span> <span class="t-p">"typ"</span><span class="t-o">:</span> <span class="t-s">"JWT"</span> <span class="t-o">}</span>
 <span class="t-c">// Claims: if minted Oct 7, 2026 17:00 UTC</span>
@@ -309,7 +307,6 @@ request.<span class="t-f">setValue</span>(<span class="t-s">"Bearer </span>\(tok
           </div>
           <div class="card-foot between">
             <button class="btn danger-outline sm"><i class="ic ic-trash-2"></i>Remove from catalog</button>
-            <span class="type-small muted">Recipe edits here are approved when you save, with your passkey.</span>
           </div>
         </section>
 
@@ -328,15 +325,11 @@ request.<span class="t-f">setValue</span>(<span class="t-s">"Bearer </span>\(tok
               <div class="title"><h2 id="who-title">Who can get one</h2></div>
             </div>
             <div class="card-body">
-              <p class="type-small">Devices on a Standard or Studio license, up to each license’s device limit, and people in the <span class="mono">members</span> group, who get Standard at sign-in.</p>
-            </div>
-          </section>
-          <section class="card" aria-labelledby="used-title">
-            <div class="card-head">
-              <div class="title"><h2 id="used-title">Where it’s used</h2></div>
-            </div>
-            <div class="card-body">
-              <p class="type-small">DJDL calls <code>mintToken("applemusic")</code>. Never listed or synced.</p>
+              <ul class="icon-lines">
+                <li><i class="ic ic-key-round"></i><span>Devices on a Standard or Studio license</span></li>
+                <li><i class="ic ic-monitor-smartphone"></i><span>Up to each license’s device limit</span></li>
+                <li><i class="ic ic-users-round"></i><span>People in the <span class="mono">members</span> group</span></li>
+              </ul>
             </div>
           </section>
         </div>
