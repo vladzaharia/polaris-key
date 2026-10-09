@@ -63,12 +63,6 @@
         <a class="tab" href="#">Advanced</a>
       </nav>
 
-      <!-- Saves are per switch; what turning a feature off takes with it is in the confirm dialog. -->
-      <div class="callout">
-        <i class="ic ic-info"></i>
-        <div class="grow"><div class="callout-text">Each switch saves on its own.</div></div>
-      </div>
-
       <!-- Canonical order: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce.
            Requirements come from tools/services.json; a feature's own switches nest under it. -->
       <section class="card" aria-label="Features">
@@ -77,7 +71,6 @@
             <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Licensing</div>
-              <p class="feature-row-desc">Tiers, add-ons, entitlements and who gets a license automatically.</p>
             </div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Licensing"></span>
           </div>
@@ -86,12 +79,11 @@
             <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Managed config</div>
-              <p class="feature-row-desc">Settings, secrets and minted tokens, with a profile per tier.</p>
             </div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Managed config"></span>
             <div class="feature-subs">
               <div class="setting-row">
-                <div><div class="setting-title">Minted tokens</div><div class="setting-desc">Follows DJDL’s token recipes: 1 approved</div></div>
+                <div><div class="setting-title">Minted tokens</div><div class="setting-desc">1 approved token recipe</div></div>
                 <span class="status"><i class="ic ic-circle-check"></i>On</span>
               </div>
             </div>
@@ -101,16 +93,15 @@
             <span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Ship builds</div>
-              <p class="feature-row-desc">Releases from CI, DJDL’s channels and the download page.</p>
             </div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Ship builds"></span>
             <div class="feature-subs">
               <div class="setting-row">
-                <div><div class="setting-title">In-app updates</div><div class="setting-desc">Sparkle on macOS and WinSparkle on Windows check DJDL’s signed feed.</div></div>
+                <div><div class="setting-title">In-app updates</div><div class="setting-desc">Sparkle on macOS, WinSparkle on Windows</div></div>
                 <span class="switch touch on" role="switch" aria-checked="true" aria-label="In-app updates"></span>
               </div>
               <div class="setting-row">
-                <div><div class="setting-title">Package feeds</div><div class="setting-desc">Packages on pkg.plrs.im for DJDL’s customers.</div></div>
+                <div><div class="setting-title">Package feeds</div><div class="setting-desc">On pkg.plrs.im</div></div>
                 <span class="switch touch" role="switch" aria-checked="false" aria-label="Package feeds"></span>
               </div>
             </div>
@@ -120,12 +111,11 @@
             <span class="icon-tile sm" data-service="identity"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Sign-in</div>
-              <p class="feature-row-desc">People sign in to DJDL with their Polaris Key account.</p>
             </div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Sign-in"></span>
             <div class="feature-subs">
               <div class="setting-row">
-                <div><div class="setting-title">Customer portal</div><div class="setting-desc">key.plrs.im/djdl, where people see their license, devices and downloads.</div></div>
+                <div><div class="setting-title">Customer portal</div><div class="setting-desc">key.plrs.im/djdl</div></div>
                 <span class="switch touch on" role="switch" aria-checked="true" aria-label="Customer portal"></span>
               </div>
             </div>
@@ -135,7 +125,6 @@
             <span class="icon-tile sm" data-service="sync"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Cloud Sync</div>
-              <p class="feature-row-desc">Each person’s settings and crates, the same on every Mac and PC.</p>
               <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Managed config is on">Managed config</span><span role="img" class="req met" aria-label="Sign-in is on">Sign-in</span></div>
             </div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Cloud Sync"></span>
@@ -146,15 +135,11 @@
             <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Commerce</div>
-              <p class="feature-row-desc">Sell tiers and add-ons on the App Store, Steam, Microsoft Store and itch.io.</p>
               <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Licensing is on">Licensing</span></div>
               <div class="feature-row-note"><span class="status muted"><i class="ic ic-circle-dashed"></i>No storefront ready yet</span><a class="link" href="#">Set up a storefront<i class="ic ic-arrow-right"></i></a></div>
             </div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Commerce"></span>
           </div>
-        </div>
-        <div class="card-foot start">
-          <span class="type-small muted">Service names and the registration policy are read-only under <a class="link" href="#">Advanced</a>.</span>
         </div>
       </section>
     </div>
