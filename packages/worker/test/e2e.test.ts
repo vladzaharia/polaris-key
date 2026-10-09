@@ -151,6 +151,7 @@ async function sync(w: World, token: string, now = NOW): Promise<Cache> {
     new Request(
       "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
     ) as unknown as Request,
+    w.env,
     w.db,
     w.product,
     now,

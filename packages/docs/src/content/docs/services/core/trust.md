@@ -42,6 +42,10 @@ verification path treats a JWKS response as a key source.
 
 ## `GET /<p>/.well-known/polaris-trust.jws`
 
+`?signer=<kid>` serves the same manifest signed by another active, staged or retired key, so a
+client that pinned only an older key can still verify it after a rotation. A revoked or unknown
+`kid` is ignored and the active key signs.
+
 The signed trust manifest — `typ: "pkey-trust+jws"`, `content-type: application/jose`, served
 with `cache-control: public, max-age=300`. Its payload:
 
@@ -87,12 +91,10 @@ The manifest is built from the product's verification keys — `active`, `staged
 in that priority order. `retired` and `staged` keys are trusted for **verification**; only the
 active key signs.
 
-:::caution
-Revoked keys are filtered out of the query entirely, so this worker's manifest never carries a
-`status: "revoked"` entry. Revocation reaches clients as **absence** (see below), not as an
-explicit prune signal. The wire contract (§2.3) describes servers emitting revoked keys
-explicitly for at least `2 × cacheSeconds`; the client honours such entries if it sees them, but
-this server does not produce them.
+:::note
+A revoked key stays in the manifest with `status: "revoked"` for 400 days
+(`REVOKED_KEY_LISTING_SECONDS`), so a lagging client reads a positive removal. After that,
+absence takes over.
 :::
 
 ## How a manifest is verified

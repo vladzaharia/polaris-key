@@ -651,6 +651,7 @@ describe("every signing route answers a guard refusal as 500 document_not_repres
       new Request(
         `https://key.plrs.im/${SLUG}/.well-known/pkey-trust`,
       ) as unknown as Request,
+      w.env,
       w.db,
       w.product,
       NOW + 0.5,
