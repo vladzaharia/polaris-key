@@ -72,6 +72,12 @@ namespace PolarisKey.Brand
             public static readonly BrandColor BorderSubtle = new BrandColor(0x212633);
             public static readonly BrandColor BorderStrong = new BrandColor(0x61697B);
             public static readonly BrandColor Focus = new BrandColor(0x9A5CFF);
+            public static readonly BrandColor Action = new BrandColor(0xF6F8FF);
+            public static readonly BrandColor ActionOn = new BrandColor(0x060912);
+            public static readonly BrandColor ActionHover = new BrandColor(0xDEE0E7);
+            public static readonly BrandColor ActionPressed = new BrandColor(0xC1C3CB);
+            public static readonly BrandColor ActionDisabled = new BrandColor(0x2C2F38);
+            public static readonly BrandColor ActionDisabledOn = new BrandColor(0x969EB2);
             public static readonly BrandColor Success = new BrandColor(0x56D57B);
             public static readonly BrandColor SuccessOn = new BrandColor(0x060912);
             public static readonly BrandColor SuccessBorder = new BrandColor(0x3B9555);
@@ -114,6 +120,12 @@ namespace PolarisKey.Brand
             public static readonly BrandColor BorderSubtle = new BrandColor(0xDADEE9);
             public static readonly BrandColor BorderStrong = new BrandColor(0x7E8699);
             public static readonly BrandColor Focus = new BrandColor(0x7A2FFF);
+            public static readonly BrandColor Action = new BrandColor(0x060912);
+            public static readonly BrandColor ActionOn = new BrandColor(0xFFFFFF);
+            public static readonly BrandColor ActionHover = new BrandColor(0x23262E);
+            public static readonly BrandColor ActionPressed = new BrandColor(0x444750);
+            public static readonly BrandColor ActionDisabled = new BrandColor(0xD4D7DE);
+            public static readonly BrandColor ActionDisabledOn = new BrandColor(0x5D667B);
             public static readonly BrandColor Success = new BrandColor(0x167337);
             public static readonly BrandColor SuccessOn = new BrandColor(0xFFFFFF);
             public static readonly BrandColor SuccessBorder = new BrandColor(0x348F4F);
@@ -157,9 +169,9 @@ namespace PolarisKey.Brand
         private static readonly Dictionary<string, BrandAccent> AccentsLight = new Dictionary<string, BrandAccent>
         {
             ["core"] = new BrandAccent(new BrandColor(0x7A2FFF), new BrandColor(0x7A2FFF), new BrandColor(0xFFFFFF), new BrandColor(0xEAE4FF)),
-            ["license"] = new BrandAccent(new BrandColor(0x708D00), new BrandColor(0x556E00), new BrandColor(0x060912), new BrandColor(0xE9EDE6)),
+            ["license"] = new BrandAccent(new BrandColor(0x6D8600), new BrandColor(0x556E00), new BrandColor(0x060912), new BrandColor(0xE8EDE6)),
             ["config"] = new BrandAccent(new BrandColor(0x8B6902), new BrandColor(0x866500), new BrandColor(0xFFFFFF), new BrandColor(0xEBEAE6)),
-            ["release"] = new BrandAccent(new BrandColor(0x0390A6), new BrandColor(0x007487), new BrandColor(0x060912), new BrandColor(0xDEEEF6)),
+            ["release"] = new BrandAccent(new BrandColor(0x008CA3), new BrandColor(0x007487), new BrandColor(0x060912), new BrandColor(0xDDEDF6)),
             ["distribution"] = new BrandAccent(new BrandColor(0x05773B), new BrandColor(0x05773B), new BrandColor(0xFFFFFF), new BrandColor(0xDEEBEB)),
             ["update"] = new BrandAccent(new BrandColor(0xB95800), new BrandColor(0xAA5000), new BrandColor(0xFFFFFF), new BrandColor(0xF0E8E6)),
             ["identity"] = new BrandAccent(new BrandColor(0x9E34AE), new BrandColor(0x9E34AE), new BrandColor(0xFFFFFF), new BrandColor(0xEDE4F7)),

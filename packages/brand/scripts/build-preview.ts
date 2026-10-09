@@ -27,6 +27,7 @@ import {
   SERVICE_ICON_TILE,
   SERVICE_ICONS,
 } from "../src/tokens/icons.js";
+import { expressionPage } from "./preview-expression.js";
 import { BRAND, POWERED_BY } from "../src/tokens/primitives.js";
 import {
   ELEVATION,
@@ -372,6 +373,7 @@ const html = `<!doctype html>
 <header class="top">
   ${lockupSvg({ layout: "compact", height: 40, theme: "mono", title: "Polaris Key" }).replace("<svg", '<svg style="color:var(--pk-text-strong)"')}
   <h1>Brand preview</h1>
+  <a href="expression.html">Expression</a>
   <span role="group" aria-label="Theme" class="row" style="margin:0 0 0 auto">
     <button type="button" data-theme-pick="system">System</button>
     <button type="button" data-theme-pick="dark">Dark</button>
@@ -439,4 +441,5 @@ ${scales()}
 `;
 
 writeFileSync(join(OUT, "index.html"), html);
+writeFileSync(join(OUT, "expression.html"), expressionPage());
 console.log(`wrote ${join(OUT, "index.html")}`);

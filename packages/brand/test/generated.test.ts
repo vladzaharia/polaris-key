@@ -261,6 +261,13 @@ describe("tokens.css", () => {
     }
   });
 
+  it("commerce takes the Distribution state tokens (B1, B17): same declarations, no ninth family", () => {
+    const body = (id: string) =>
+      block(`[data-service="${id}"]`).replace(/^[^{]*/, "");
+    expect(body("commerce")).toBe(body("distribution"));
+    expect(css).not.toContain("--pk-service-commerce");
+  });
+
   it("core defines no section bit: no gold, and the live bit is not displayed", () => {
     expect(css).not.toContain("--pk-service-core-bit");
     const core = block(`:root,\n[data-theme],\n[data-service="core"]`);
