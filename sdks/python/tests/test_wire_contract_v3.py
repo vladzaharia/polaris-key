@@ -456,17 +456,19 @@ def test_c3_usable_statuses_are_installed(status: str) -> None:
     c.close()
 
 
-def test_c3_only_revoked_is_excluded_by_status() -> None:
-    """§1 rule 2: the set is ``pinned ∪ {manifest keys whose status != revoked}``.
+def test_c3_only_live_statuses_are_kept() -> None:
+    """§1/§3.2: the set is ``usable pins ∪ {manifest keys whose status is exactly active,
+    staged or retired}``.
 
-    Exactly ``revoked``, not an allow-list — a future status must not silently drop a key
-    that the server still considers usable. A non-EdDSA/OKP/Ed25519 entry is skipped on
-    its algorithm, independently of status, and must never be FATAL: a future-alg key in
-    the manifest cannot be allowed to brick current verifiers.
+    An allow-list: a status outside it (here ``quarantined``) skips the entry, and is never
+    fatal. A non-EdDSA/OKP/Ed25519 entry is skipped on its algorithm, independently of
+    status, and must never be FATAL: a future-alg key in the manifest cannot be allowed to
+    brick current verifiers.
     """
     m = sign_manifest(
         [
-            key_entry("rot", ROTATED_PUB, "quarantined"),
+            key_entry("rot", ROTATED_PUB, "staged"),
+            key_entry("quar", ROTATED_PUB, "quarantined"),
             key_entry("gone", ATTACKER_PUB, "revoked"),
             {**key_entry("future", ATTACKER_PUB), "alg": "ML-DSA-65"},
         ]
@@ -474,6 +476,7 @@ def test_c3_only_revoked_is_excluded_by_status() -> None:
     c = make_client(routes(trust_jws=m))
     assert c._trust.refresh() is not None
     assert c._trust.effective.get("rot") == ROTATED_PUB
+    assert "quar" not in c._trust.effective, "an unknown status is skipped, not trusted"
     assert "gone" not in c._trust.effective
     assert "future" not in c._trust.effective, "unknown alg is SKIPPED, not fatal"
     assert KID in c._trust.effective, "and the rest of the manifest still installed"
@@ -1577,24 +1580,27 @@ def test_v3_bundle_cap_and_missing_typ_are_step_1_refusals() -> None:
     at step 1 rather than becoming a document that could be replayed elsewhere."""
     untyped = sign_bundle("dev-1", typ=None)
     result = inspect_bundle(
-        untyped, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW
+        untyped, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW,
+        floors={"license": None, "config": None},
     )
     assert result.ok is False and result.reason == BUNDLE_JWS_REJECTED
 
     oversized = sign_bundle("dev-1", padding="x" * (MAX_BUNDLE_BYTES + 1024))
     result = inspect_bundle(
-        oversized, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW
+        oversized, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW,
+        floors={"license": None, "config": None},
     )
     assert result.ok is False and result.reason == BUNDLE_JWS_REJECTED
 
 
 def test_v3_a_vacuous_bundle_is_refused() -> None:
     """§7: a bundle carrying NEITHER document can grant nothing and configure nothing, so
-    importing it would write an ``importedBundle`` marker with no content behind it — an
+    importing it would write a ``bundle`` slice with no content behind it — an
     install that LOOKS provisioned and is not."""
     empty = sign_bundle("dev-1", docs={})
     result = inspect_bundle(
-        empty, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW
+        empty, pinned=TRUST, product=PRODUCT, device_id="dev-1", now=NOW,
+        floors={"license": None, "config": None},
     )
     assert result.ok is False and result.reason == BUNDLE_CLAIMS_REJECTED
 
