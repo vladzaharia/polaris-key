@@ -32,7 +32,7 @@
 //                                and none for `blocked`. `packs` is applied by the boot's
 //                                fetch and renders nothing, like `none`.
 
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { useCtx, usePolarisTheme } from "../react/hooks.js";
 import {
   useLatestVersion,
@@ -47,7 +47,7 @@ import {
 import { SPACE } from "@polaris-key/brand";
 import { Button } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
-import { bannerStyle, mutedText } from "./primitives/card.js";
+import { bannerStyle } from "./primitives/card.js";
 import { screenLogo } from "./brand.js";
 import { knownProductName, type PolarisTheme } from "./theme.js";
 import { formatCopy } from "./format.js";
@@ -130,11 +130,13 @@ function UpdateBanner(props: {
   );
 }
 
-/** The "You're up to date." line: the banner's inset, without its strip. */
-const currentLine = {
-  ...mutedText,
-  padding: `${SPACE["2"]} ${SPACE["4"]}`,
-} as const;
+/** The "You're up to date." line, and the line a failed check leaves: the banner's strip, so the
+ *  words sit on the kit's own surface and not on the host page's ground. */
+const currentLine: CSSProperties = {
+  ...bannerStyle("neutral"),
+  justifyContent: "flex-start",
+  textAlign: "start",
+};
 
 export interface UpdatePromptSlots {
   /** Replace the whole prompt. Receives the live check plus a dismiss callback. */
@@ -217,7 +219,7 @@ function VersionPrompt(
           className={className}
           role="status"
           aria-live="polite"
-          style={{ ...currentLine, display: "flex", gap: SPACE["3"] }}
+          style={currentLine}
           data-polaris-update="failed"
         >
           <span style={{ flex: "1 1 auto", minWidth: 0 }}>

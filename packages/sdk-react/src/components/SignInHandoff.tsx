@@ -20,7 +20,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
 } from "react";
-import { SPACE, KIT_TOKENS } from "@polaris-key/brand";
+import { FONT, SPACE, KIT_TOKENS } from "@polaris-key/brand";
 import type { OidcSignInHandle } from "../core/index.js";
 import { Button } from "./primitives/buttons.js";
 import { actionPanel, mutedText, prettyText } from "./primitives/card.js";
@@ -35,18 +35,18 @@ export function clock(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-/** The code: as large as the title beside it (DL10), in a monospace face, never cut inside a
- *  group (it breaks at its hyphen). */
+/** The code (the kit's `code` role): in the kit mono, as large as the title beside it or larger
+ *  (DL10), never cut inside a group (it breaks at its hyphen). */
 const codeStyle: CSSProperties = {
   margin: 0,
   padding: `${SPACE["3"]} ${SPACE["4"]}`,
   textAlign: "center",
-  fontFamily:
-    'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
-  fontSize: KIT_TOKENS.typeScale.web.title.size,
-  lineHeight: KIT_TOKENS.typeScale.web.title.lineHeight,
-  fontWeight: 500,
-  letterSpacing: "0.06em",
+  fontFamily: FONT.mono,
+  // The title is clamp(1.625rem, 1rem + 2.4cqi, 2.125rem); this is never below it.
+  fontSize: "clamp(1.75rem, 1rem + 3cqi, 2.5rem)",
+  lineHeight: 1.2,
+  fontWeight: KIT_TOKENS.typeScale.web.code.weight,
+  letterSpacing: `${KIT_TOKENS.typeScale.web.code.tracking}em`,
   color: "var(--pk-text-strong, var(--pk-text))",
   background: "var(--pk-surface-sunken, var(--pk-surface))",
   borderRadius: "var(--pk-control-radius, var(--pk-radius))",
