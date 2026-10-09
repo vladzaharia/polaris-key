@@ -903,10 +903,12 @@ export function deviceMetadata(req: Request): {
 } {
   return {
     userAgent: capMeta(req.headers.get("user-agent")),
-    platform: normalizePlatformHeader(req.headers.get(HEADER_PLATFORM)),
-    arch: normalizeArchHeader(req.headers.get(HEADER_ARCH)),
+    platform: capMeta(
+      normalizePlatformHeader(req.headers.get(HEADER_PLATFORM)),
+    ),
+    arch: capMeta(normalizeArchHeader(req.headers.get(HEADER_ARCH))),
     appVersion: capMeta(req.headers.get(HEADER_VERSION)),
-    sdkName: normalizeSdkHeader(req.headers.get(HEADER_SDK_NAME)),
+    sdkName: capMeta(normalizeSdkHeader(req.headers.get(HEADER_SDK_NAME))),
     sdkVersion: capMeta(req.headers.get(HEADER_SDK_VERSION)),
   };
 }
