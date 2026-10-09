@@ -126,11 +126,11 @@ The `status` field layers a positive signal on top of it:
 | `retired` | Trusted for verification — documents signed by it are still in caches               |
 | `revoked` | **Dropped.** Never enters the discovered set                                        |
 
-The contract asks a server to keep emitting explicitly `revoked` entries for at least
-`2 × cacheSeconds` after a revocation, so a client that refreshes on its cache cadence receives
+The Worker keeps emitting explicitly `revoked` entries for 400 days after a revocation
+(`REVOKED_KEY_LISTING_SECONDS`: the 365-day grace plus the 30-day bundle import window), so a client that refreshes on its cache cadence receives
 a positive prune signal rather than only an absence (spec §2.3), and the Worker does exactly
 that: `product_keys.revoked_at` is stamped by the revoke action, and the manifest lists keys
-revoked within the window with `status: "revoked"` before absence takes over. A client must
+revoked within that window with `status: "revoked"` before absence takes over. A client must
 nonetheless **not depend on ever seeing one** — wholesale replacement already prunes an absent
 key, and that is the guarantee the contract rests on.
 
