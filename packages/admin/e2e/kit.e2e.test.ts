@@ -594,9 +594,14 @@ describe("overlay exit animations (MO-02)", () => {
           { name: "pk-fade-out", duration: 200 },
         ]);
       }
-      expect(await running(page), `${o.name}: nothing left running`).toEqual(
-        [],
-      );
+      // Closing returns focus to the trigger, and a pointer resting over it starts hover/focus
+      // transitions (unnamed) up to ~100 ms later; they must still all end.
+      await expect
+        .poll(() => running(page), {
+          message: `${o.name}: nothing left running`,
+          timeout: 3000,
+        })
+        .toEqual([]);
     }
     expect(await violations(page)).toEqual([]);
     await page.context().close();
