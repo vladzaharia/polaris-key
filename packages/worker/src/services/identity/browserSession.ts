@@ -74,6 +74,7 @@ import { graceClampFor } from "../../core/graceClamp.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
 import { resolveAccount } from "./accounts/repo.js";
 import { platformSubjectAccountRefused } from "./accounts/platformMigration.js";
+import { readBodyJson } from "../../core/cappedBody.js";
 
 /** The platform-IdP subject a `provider: platform` sign-in verified (the OIDC return path). */
 export interface BrowserSessionSubject {
@@ -484,7 +485,7 @@ export async function handleBrowserSessionLicense(
   }
   let body: { key?: unknown };
   try {
-    body = (await req.json()) as { key?: unknown };
+    body = (await readBodyJson(req)) as { key?: unknown };
   } catch {
     return errorResponse(400, ErrorCode.BadRequest, "invalid body");
   }

@@ -106,6 +106,7 @@ import {
 import type { ServiceHooks } from "./hooks.js";
 import { assertIdentityBindable } from "./identityGate.js";
 import { boundedPackInstalls, recordPackInstalls } from "./deltaDemand.js";
+import { BodyTooLargeError, readBodyJson, readBodyText } from "./cappedBody.js";
 
 /**
  * What a valid device token proves, at CORE's level of authority: this token belongs to this
@@ -858,7 +859,7 @@ export async function touchDeviceMetadata(
   meta: ReturnType<typeof deviceMetadata>,
   now: number,
 ): Promise<void> {
-  await upsertDevice(db, {
+  const next = {
     ...device,
     last_seen: now,
     ua: meta.userAgent ?? device.ua,
@@ -867,8 +868,27 @@ export async function touchDeviceMetadata(
     app_version: meta.appVersion ?? device.app_version ?? null,
     sdk_name: meta.sdkName ?? device.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? device.sdk_version ?? null,
-  });
+  };
+  // SEC-CFG-11: a device row whose metadata is unchanged and was stamped recently is not
+  // rewritten, so a tight poll loop costs no D1 writes.
+  const unchanged =
+    next.ua === device.ua &&
+    next.platform === (device.platform ?? null) &&
+    next.arch === (device.arch ?? null) &&
+    next.app_version === (device.app_version ?? null) &&
+    next.sdk_name === (device.sdk_name ?? null) &&
+    next.sdk_version === (device.sdk_version ?? null);
+  if (unchanged && now - device.last_seen < TOUCH_MIN_INTERVAL_SEC) return;
+  await upsertDevice(db, next);
 }
+
+/** SEC-CFG-11: the least gap between `last_seen` stamps for a device whose metadata is unchanged. */
+const TOUCH_MIN_INTERVAL_SEC = 300;
+
+/** SEC-CFG-11: longest stored value for a client-supplied metadata header. */
+const MAX_META_LEN = 128;
+const capMeta = (v: string | null): string | null =>
+  v === null ? null : v.slice(0, MAX_META_LEN);
 
 /** The client metadata headers as stored (WIRE-CONTRACT-V3 §5.2 rule 3): platform, arch and SDK
  *  canonical where the spelling is known (`core/clientMetadata.ts`), and an empty header absent,
@@ -882,12 +902,12 @@ export function deviceMetadata(req: Request): {
   sdkVersion: string | null;
 } {
   return {
-    userAgent: req.headers.get("user-agent"),
+    userAgent: capMeta(req.headers.get("user-agent")),
     platform: normalizePlatformHeader(req.headers.get(HEADER_PLATFORM)),
     arch: normalizeArchHeader(req.headers.get(HEADER_ARCH)),
-    appVersion: req.headers.get(HEADER_VERSION),
+    appVersion: capMeta(req.headers.get(HEADER_VERSION)),
     sdkName: normalizeSdkHeader(req.headers.get(HEADER_SDK_NAME)),
-    sdkVersion: req.headers.get(HEADER_SDK_VERSION),
+    sdkVersion: capMeta(req.headers.get(HEADER_SDK_VERSION)),
   };
 }
 
@@ -919,15 +939,13 @@ export async function readDeviceBody(req: Request): Promise<{
   label: string | null;
 }> {
   const none = { fingerprint: null, label: null };
-  const declared = req.headers.get("content-length");
-  if (declared && Number(declared) > MAX_ACTIVATE_BODY) return none;
   let raw: string;
   try {
-    raw = await req.text();
+    raw = await readBodyText(req, MAX_ACTIVATE_BODY);
   } catch {
     return none;
   }
-  if (!raw.trim() || raw.length > MAX_ACTIVATE_BODY) return none;
+  if (!raw.trim()) return none;
   try {
     const body = JSON.parse(raw) as Record<string, unknown> | null;
     if (body === null || typeof body !== "object") return none;
@@ -1043,7 +1061,7 @@ export async function handleDevices(
   if (req.method === "PATCH") {
     let body: Record<string, unknown>;
     try {
-      body = (await req.json()) as Record<string, unknown>;
+      body = (await readBodyJson(req)) as Record<string, unknown>;
     } catch {
       return errorResponse(400, ErrorCode.BadRequest, "invalid json");
     }
@@ -1319,12 +1337,14 @@ export async function handleReport(
   const valid = await validateDeviceToken(env, db, product, token, now);
   if ("error" in valid || !coreDeviceAllowed(product, valid, now))
     return errorResponse(401, ErrorCode.Unauthorized);
-  const len = req.headers.get("content-length");
-  if (len && Number(len) > 16 * 1024)
-    return errorResponse(413, "body_too_large", "report body too large");
-  const rawText = await req.text();
-  if (rawText.length > 16 * 1024)
-    return errorResponse(413, "body_too_large", "report body too large");
+  let rawText: string;
+  try {
+    rawText = await readBodyText(req, 16 * 1024);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError)
+      return errorResponse(413, "body_too_large", "report body too large");
+    throw e;
+  }
   let snapshot: unknown;
   try {
     snapshot = rawText.trim() ? (JSON.parse(rawText) as unknown) : {};

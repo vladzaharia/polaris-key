@@ -96,6 +96,7 @@ import {
   wrongCodeMessage,
 } from "./http.js";
 import { verifyTurnstile } from "./turnstile.js";
+import { readBodyText } from "../../../core/cappedBody.js";
 
 /** The rate-limit and email-limit scope of platform (account) sign-in. */
 export const PORTAL_EMAIL_SCOPE = "_portal";
@@ -630,7 +631,7 @@ export async function handleMagicConfirm(
   }
   let token: string | null = null;
   try {
-    const form = new URLSearchParams(await req.text());
+    const form = new URLSearchParams(await readBodyText(req));
     token = form.get("token");
   } catch {
     token = null;

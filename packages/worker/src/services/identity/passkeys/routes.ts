@@ -83,6 +83,7 @@ import {
   verifyRegistration,
   type RelyingParty,
 } from "./webauthn.js";
+import { readBodyText } from "../../../core/cappedBody.js";
 
 /** The rate-limit scope of platform (account) sign-in, as for the email card. */
 const PORTAL_SCOPE = "_portal";
@@ -100,11 +101,9 @@ const clearPasskeyFlow = (): string =>
 async function readBoundedJson(
   req: Request,
 ): Promise<Record<string, unknown> | null> {
-  const declared = Number(req.headers.get("content-length") ?? "0");
-  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return null;
   let raw: string;
   try {
-    raw = await req.text();
+    raw = await readBodyText(req, MAX_BODY_BYTES);
   } catch {
     return null;
   }

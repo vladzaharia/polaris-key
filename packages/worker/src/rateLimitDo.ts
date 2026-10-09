@@ -43,6 +43,12 @@ const SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 /** Max keys examined per sweep, so one alarm can never run unbounded. */
 const SWEEP_BATCH = 2000;
 
+/** Where the sweep resumes; stored beside the data and skipped when sweeping. */
+export const SWEEP_CURSOR_KEY = "__sweep_cursor__";
+
+/** The gap between alarms while a sweep is still walking a large key space. */
+const SWEEP_CONTINUE_MS = 60 * 1000;
+
 export class RateLimitDO implements DurableObject {
   constructor(
     private readonly state: DurableObjectState,
@@ -92,10 +98,14 @@ export class RateLimitDO implements DurableObject {
   async alarm(): Promise<void> {
     const storage = this.state.storage;
     const nowSec = Math.floor(Date.now() / 1000);
-    const entries = await storage.list<Counter>({ limit: SWEEP_BATCH });
+    // SEC-WEB-9 / SEC-INF-10: resume after the last key the previous alarm examined, so a flood
+    // of live keys at the front of the key space cannot starve the rest of the sweep.
+    const cursor = await storage.get<string>(SWEEP_CURSOR_KEY);
+    const entries = await storage.list<Counter>({ limit: SWEEP_BATCH, ...(cursor ? { startAfter: cursor } : {}) });
 
     const stale: string[] = [];
     for (const [key, counter] of entries) {
+      if (key === SWEEP_CURSOR_KEY) continue;
       // A counter written before this change carries no `expiresAt`; it is by definition from
       // an earlier deploy, hence an elapsed window, hence collectable.
       const expiresAt = counter?.expiresAt;
@@ -107,8 +117,16 @@ export class RateLimitDO implements DurableObject {
 
     const remaining = entries.size - stale.length;
     // Re-arm while live counters remain, or while the batch cap may have left more behind.
-    if (remaining > 0 || entries.size === SWEEP_BATCH) {
-      await storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
+    if (entries.size === SWEEP_BATCH) {
+      const last = [...entries.keys()].pop() as string;
+      await storage.put(SWEEP_CURSOR_KEY, last);
+      await storage.setAlarm(Date.now() + SWEEP_CONTINUE_MS);
+    } else {
+      // End of the key space: the next pass starts over. A pass that began mid-space has not seen
+      // the earlier keys this time, so it re-arms once more rather than conclude "empty".
+      if (cursor) await storage.delete(SWEEP_CURSOR_KEY);
+      if (remaining > 0 || cursor)
+        await storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
     }
   }
 }
