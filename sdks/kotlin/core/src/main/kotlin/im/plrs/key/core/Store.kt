@@ -33,9 +33,6 @@ import kotlinx.serialization.json.put
 /** The wire-v4 update slices Core holds (`CoreContext.updateSlices`). */
 public data class UpdateSlices(val feeds: Map<String, String>, val releaseRecords: Map<String, String>)
 
-/** Set by a bundle import (§7). */
-public data class ImportedBundle(val bundleId: String, val importedAt: Long)
-
 /** The unsigned 403 hint, as stored. */
 public data class BlockInfoRecord(val reason: BlockReason, val allowedRange: AllowedRange? = null)
 
@@ -44,13 +41,16 @@ public data class CacheRecord(
     val trustJws: String? = null,
     val docs: Map<DocumentSlice, String> = emptyMap(),
     val etags: Map<DocumentSlice, String> = emptyMap(),
-    val importedBundle: ImportedBundle? = null,
+    /** The imported `pkey-bundle+jws`, verbatim (§7): activation is re-derived from it on every load. */
+    val bundle: String? = null,
     val lastSyncUnauthorized: Boolean? = null,
     val blocked: BlockInfoRecord? = null,
     /** Wire v4: the committed channel feeds, keyed by canonical channel. */
     val feeds: Map<String, String> = emptyMap(),
     /** Wire v4: release records by lowercase hex SHA-256, kept while a feed pins one. */
     val releaseRecords: Map<String, String> = emptyMap(),
+    /** §1, §4.1: kid of a tombstoned pin → the verified trust manifest that revoked it, verbatim. */
+    val pinRevocations: Map<String, String> = emptyMap(),
     val v: Int = CACHE_RECORD_VERSION,
 ) {
     /** The record as the JSON every SDK writes (`{"docs":{"license":"…"}}`, §4.1). */
@@ -59,12 +59,7 @@ public data class CacheRecord(
         trustJws?.let { put("trustJws", it) }
         put("docs", JsonObject(docs.entries.associate { it.key.wire to JsonPrimitive(it.value) }))
         put("etags", JsonObject(etags.entries.associate { it.key.wire to JsonPrimitive(it.value) }))
-        importedBundle?.let {
-            put("importedBundle", buildJsonObject {
-                put("bundleId", it.bundleId)
-                put("importedAt", jsonInt(it.importedAt))
-            })
-        }
+        bundle?.let { put("bundle", it) }
         lastSyncUnauthorized?.let { put("lastSyncUnauthorized", it) }
         blocked?.let { b ->
             put("blocked", buildJsonObject {
@@ -79,6 +74,7 @@ public data class CacheRecord(
         }
         put("feeds", JsonObject(feeds.mapValues { JsonPrimitive(it.value) }))
         put("releaseRecords", JsonObject(releaseRecords.mapValues { JsonPrimitive(it.value) }))
+        if (pinRevocations.isNotEmpty()) put("pinRevocations", JsonObject(pinRevocations.mapValues { JsonPrimitive(it.value) }))
     }
 
     public companion object {
@@ -100,19 +96,16 @@ public data class CacheRecord(
                 val range = b["allowedRange"].objectValue?.let { AllowedRange(it["min"].stringValue, it["max"].stringValue) }
                 BlockInfoRecord(reason, range)
             }
-            val imported = o["importedBundle"].objectValue?.let { b ->
-                val id = b["bundleId"].stringValue ?: return@let null
-                ImportedBundle(id, b["importedAt"].longValue ?: return@let null)
-            }
             return CacheRecord(
                 trustJws = o["trustJws"].stringValue,
                 docs = slices(o["docs"]),
                 etags = slices(o["etags"]),
-                importedBundle = imported,
+                bundle = o["bundle"].stringValue,
                 lastSyncUnauthorized = o["lastSyncUnauthorized"].boolValue,
                 blocked = blocked,
                 feeds = strings(o["feeds"]),
                 releaseRecords = strings(o["releaseRecords"]),
+                pinRevocations = strings(o["pinRevocations"]),
                 v = if (v in Int.MIN_VALUE..Int.MAX_VALUE) v.toInt() else -1,
             )
         }

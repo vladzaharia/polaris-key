@@ -58,6 +58,26 @@ class Base64UrlTest {
         assertEquals(null, Base64Url.decodeStrict("YW+j"))
     }
 
+    /** WIRE-CONTRACT-V4 §1: one spelling per byte string; the unused trailing bits must be zero. */
+    @Test
+    fun strictDecodingRefusesEveryNonCanonicalSpelling() {
+        for ((s, ok) in listOf("" to true, "AA" to true, "AQ" to true, "AB" to false, "AAA" to true, "AAE" to true, "AAB" to false, "A" to false, "AAAAA" to false, "AA==" to false, "AA\n" to false)) {
+            assertEquals(s, ok, Base64Url.isCanonical(s))
+            assertEquals(s, ok, Base64Url.decodeStrict(s) != null)
+        }
+        for (n in 0..70) {
+            val bytes = ByteArray(n) { (it * 37 + n).toByte() }
+            val enc = Base64Url.encode(bytes)
+            assertArrayEquals(bytes, Base64Url.decodeStrict(enc))
+            if (enc.length % 4 == 0) continue
+            val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+            val bad = enc.dropLast(1) + alphabet[alphabet.indexOf(enc.last()) or 1]
+            // The lenient decoder reads the variant as the same bytes; the strict one refuses it.
+            assertArrayEquals(bytes, Base64Url.decode(bad))
+            assertEquals(null, Base64Url.decodeStrict(bad))
+        }
+    }
+
     private fun assertSame(input: String, expected: ByteArray?, actual: ByteArray?) {
         if (expected == null) assertEquals("\"$input\"", null, actual) else assertArrayEquals("\"$input\"", expected, actual)
     }
