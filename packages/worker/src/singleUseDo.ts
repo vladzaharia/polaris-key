@@ -285,7 +285,10 @@ export class SingleUseDO implements DurableObject {
     // SEC-WEB-9 / SEC-INF-10: resume after the last key the previous alarm examined, so a flood
     // of live keys at the front of the key space cannot starve the rest of the sweep.
     const cursor = await storage.get<string>(SWEEP_CURSOR_KEY);
-    const entries = await storage.list<SingleUseRecord>({ limit: SWEEP_BATCH, ...(cursor ? { startAfter: cursor } : {}) });
+    const entries = await storage.list<SingleUseRecord>({
+      limit: SWEEP_BATCH,
+      ...(cursor ? { startAfter: cursor } : {}),
+    });
     const stale: string[] = [];
     for (const [key, rec] of entries) {
       if (key === SWEEP_CURSOR_KEY) continue;

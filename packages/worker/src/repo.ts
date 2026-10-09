@@ -2129,7 +2129,10 @@ export async function listAudit(
 ): Promise<AuditRow[]> {
   // SEC-ADM-7: an integer in 1..200; -1 (SQLite: no limit) and fractions never reach the query.
   const rawLimit = Math.floor(opts.limit ?? 50);
-  const limit = Math.min(Number.isFinite(rawLimit) ? Math.max(rawLimit, 1) : 50, 200);
+  const limit = Math.min(
+    Number.isFinite(rawLimit) ? Math.max(rawLimit, 1) : 50,
+    200,
+  );
   const where: string[] = ["product = ?"];
   const params: DbParam[] = [product];
   if (opts.beforeAt !== undefined && opts.beforeId !== undefined) {

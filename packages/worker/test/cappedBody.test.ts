@@ -13,7 +13,11 @@ import {
   readBodyText,
 } from "../src/core/cappedBody.js";
 import { handleGithubWebhook } from "../src/githubWebhook.js";
-import { readDeviceBody, deviceMetadata, touchDeviceMetadata } from "../src/core/devices.js";
+import {
+  readDeviceBody,
+  deviceMetadata,
+  touchDeviceMetadata,
+} from "../src/core/devices.js";
 import { listAudit, type DeviceRow } from "../src/repo.js";
 import { handleActivity } from "../src/admin/handlers/activity.js";
 import { RateLimitDO } from "../src/rateLimitDo.js";
@@ -69,9 +73,9 @@ describe("readBodyBytes / readBodyText", () => {
       body: "héllo",
     });
     expect(await readBodyText(ok, 64)).toBe("héllo");
-    expect(
-      await readBodyText(new Request("https://key.plrs.im/x"), 64),
-    ).toBe("");
+    expect(await readBodyText(new Request("https://key.plrs.im/x"), 64)).toBe(
+      "",
+    );
   });
 });
 
