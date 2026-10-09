@@ -2,14 +2,17 @@
 // Checks mockup screens in a real browser, without writing screenshots:
 //   - no sideways scroll at every width from 320 to 2560 (WIDTHS below, both themes);
 //   - axe (WCAG 2.2 A/AA rules) at 390, 1024, 1440 and 1920 in both themes: zero violations;
-//   - the kit rule: a screen sets no margin, padding or gap of its own (README "Rules").
+//   - the kit rule: a screen sets no margin, padding or gap of its own (README "Rules");
+//   - layout sanity at 390/1024/1440/1920: no table wider than twice its scroll region, no button
+//     whose label overflows it, the active sidebar item inside the sidebar's viewport (above its
+//     foot), no visible text under 12px and no text at weight 700 (B6, B7).
 //
 //   mise exec node@22 -- node tools/mockups/check.mjs --all
 //   mise exec node@22 -- node tools/mockups/check.mjs --screen identity.sign-in,portal.library
 //   mise exec node@22 -- node tools/mockups/check.mjs --area portal --no-axe
 //
 // Options: --all | --area <key> | --screen <id> (repeatable or comma-separated), --no-axe,
-// --no-widths, --themes dark,light. Exits non-zero on any failure and names the screen, the width,
+// --no-widths, --no-layout, --themes dark,light. Exits non-zero on any failure and names the screen, the width,
 // the theme and the widest element (overflow) or the rule and its first nodes (axe).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -108,6 +111,71 @@ for (const s of screens) {
           return { sw, vw, what: worst?.what };
         });
         if (o) fail(`${s.id} ${w}px ${theme}: page is ${o.sw}px wide (widest: ${o.what ?? "?"})`);
+      }
+    }
+    if (!flag("no-layout")) {
+      for (const [w, h] of AXE_SIZES) {
+        await p.setViewportSize({ width: w, height: h });
+        const res = await p.evaluate(() => {
+          const out = [];
+          const visible = (el) => {
+            const r = el.getBoundingClientRect();
+            if (r.width < 2 || r.height < 2) return false;
+            for (let a = el; a; a = a.parentElement) {
+              const cs = getComputedStyle(a);
+              if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") return false;
+              if (cs.clip === "rect(0px, 0px, 0px, 0px)" || (cs.position === "absolute" && r.width <= 1)) return false;
+            }
+            return true;
+          };
+          const name = (el) => `${el.tagName.toLowerCase()}.${[...el.classList].join(".")}`;
+          // Tables: never wider than twice the region they scroll in.
+          for (const tb of document.querySelectorAll("table")) {
+            if (!visible(tb)) continue;
+            let reg = tb.parentElement;
+            while (reg && !["auto", "scroll"].includes(getComputedStyle(reg).overflowX)) reg = reg.parentElement;
+            if (reg && reg !== document.documentElement && tb.scrollWidth > 2 * reg.clientWidth + 2)
+              out.push(`table ${name(tb)} is ${tb.scrollWidth}px in a ${reg.clientWidth}px region`);
+          }
+          // Buttons: the label fits.
+          for (const b of document.querySelectorAll(".btn, button")) {
+            if (!visible(b) || !(b.textContent || "").trim() || parseFloat(getComputedStyle(b).fontSize) === 0) continue;
+            const cs = getComputedStyle(b);
+            const box = b.getBoundingClientRect();
+            const range = document.createRange();
+            range.selectNodeContents(b);
+            const r = range.getBoundingClientRect();
+            const left = box.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft) - 2;
+            const right = box.right - parseFloat(cs.borderRightWidth) - parseFloat(cs.paddingRight) + 2;
+            if (r.left < left || r.right > right) out.push(`button "${b.textContent.trim().slice(0, 30)}" label overflows its box`);
+          }
+          // The active sidebar item is inside the sidebar's viewport, above its pinned foot.
+          for (const sb of document.querySelectorAll(".console > .sidebar")) {
+            if (!visible(sb)) continue;
+            const act = [...sb.querySelectorAll(".nav-item.active, .nav-label.active")].find(visible);
+            if (!act) continue;
+            const s = sb.getBoundingClientRect();
+            const foot = sb.querySelector(":scope > .sidebar-foot");
+            const limit = foot && visible(foot) && !foot.contains(act) ? foot.getBoundingClientRect().top : s.bottom;
+            const r = act.getBoundingClientRect();
+            if (r.top < s.top - 1 || r.bottom > limit + 1) out.push(`active nav item "${act.textContent.trim()}" is outside the sidebar's viewport`);
+          }
+          // Type: no visible text under 12px, nothing at 700 (B6, B7). In-app kit frames draw native
+          // platform sizes and the host's own art, so they are left out.
+          const seen = new Set();
+          for (const el of document.body.querySelectorAll("*")) {
+            if (el.closest(".device-status, .window-bar, .host-game, .kit-host, .ide-bar, .term-bar, svg, .art")) continue;
+            const own = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+            if (!own || !visible(el)) continue;
+            const cs = getComputedStyle(el);
+            const fs = parseFloat(cs.fontSize);
+            const key = name(el);
+            if (fs > 0 && fs < 11.95 && !seen.has("s" + key)) { seen.add("s" + key); out.push(`text ${fs.toFixed(1)}px in ${key} "${el.textContent.trim().slice(0, 24)}"`); }
+            if (parseInt(cs.fontWeight) >= 700 && !seen.has("w" + key)) { seen.add("w" + key); out.push(`weight ${cs.fontWeight} in ${key} "${el.textContent.trim().slice(0, 24)}"`); }
+          }
+          return out;
+        });
+        for (const v of res) fail(`${s.id} ${w}px ${theme}: ${v}`);
       }
     }
     if (!flag("no-axe")) {

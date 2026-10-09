@@ -12,7 +12,8 @@
     "Each In use row says what it waits for in words ('The first build on stable', 'A Windows x64 installer on stable') and its Delivery is Ready (info dot, default text), never Live and never a pill.",
     "Ship builds is one identity: Release cyan rule, Package chip and tile, crumb 'DJDL › Ship builds' (B5).",
     "Not set up folds into one row; nothing here says 'outlet' or 'storefront feed'.",
-    "Phone: the card's text and snippet stack; the table stacks behind its labels; nothing scrolls sideways."
+    "Phone: the card's text and snippet stack; the table stacks behind its labels; nothing scrolls sideways.",
+    "Round 2 (UX review): No freshness line in the header: the card's title already says there is no build yet."
   ],
   "status": "mockup",
   "designReview": null

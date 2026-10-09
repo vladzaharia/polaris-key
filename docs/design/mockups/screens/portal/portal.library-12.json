@@ -11,7 +11,8 @@
     "Toolbar: search with ⌘K, counted chips (All 12 selected, Updates, Games, Apps), sort, Grid/List as a segmented switch.",
     "Compact tiles: 16:9 art (the product's art or its stored flat tint, never a gradient), the icon over its lower edge, name once, the tier pill, one outlined quick action and More; four up at desktop, two at tablet, one on a phone.",
     "No product name painted over art; status plates at the bottom-left of the art on a narrow compact tile (PORTAL §7).",
-    "The Missing a license? strip stays at the end; the bottom bar on a phone."
+    "The Missing a license? strip stays at the end; the bottom bar on a phone.",
+    "Round 2 (UX review): A product without hosted art shows its icon large and centred on its stored tint, its name starting the body; never a wall of empty colour (M9)."
   ],
   "status": "mockup",
   "designReview": null

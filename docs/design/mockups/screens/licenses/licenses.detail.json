@@ -20,7 +20,8 @@
     "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
     "Preserved (guide Ed. 04): Effective-value provenance is visible on every limit (license, else tier, else platform default)",
     "Preserved (guide Ed. 04): Retained-version rights ('then keeps the last version') are visible",
-    "Preserved (guide Ed. 04): Device and holder semantics are visible (devices count, Automatic grant, holder state)"
+    "Preserved (guide Ed. 04): Device and holder semantics are visible (devices count, Automatic grant, holder state)",
+    "Round 2 (UX review): The override row ('Set on this license') is an ink bar and wash with the words in strong text, never the Licensing lime (B2)."
   ],
   "status": "mockup",
   "designReview": {

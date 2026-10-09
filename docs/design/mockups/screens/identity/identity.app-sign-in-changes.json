@@ -15,7 +15,8 @@
     "The SaveBar sticks to the bottom of the window under the cards column (a mockup draws it where it rests, at the end of the page): the count, each change in words ('Apple off; Email required'), the consequence for players (asked what to share at their next sign-in; the 39% who didn't share their email must share it), 'Discard' and 'Save 2 changes'. Saving shows 'Saving…' and then the toast 'Saved 2 changes to App sign-in'.",
     "Phone: the caution spans the card under the row, and the SaveBar's buttons share its last row.",
     "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
-    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page."
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page.",
+    "Round 2 (UX review): Changed rows are an ink bar and wash with 'Not saved' in strong text; the save bar is neutral (B2)."
   ],
   "status": "mockup",
   "designReview": {

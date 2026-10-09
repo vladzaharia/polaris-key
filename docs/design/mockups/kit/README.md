@@ -105,6 +105,24 @@ pictures; the guide is a reference edition. What changed, and the classes that d
 | B8 hosted card   | a neutral header strip; the passport in a landscape window ≥ 960px; equal Allow/Deny; neutral refusals; white provider buttons in light                                                                                                                       | `.hosted-card.passport`, `.hosted-art`, `.hosted-actions.equal`, `.hosted-callout`, `.code-entry`           |
 | B12 portal       | display h1 48/52 (32/36 phone); the focused task frame (identity row, centred column, two columns on a short desktop)                                                                                                                                         | `.portal-page.task`, `.task-frame`, `.task-aside`, `.task-main`, `.identity-row`, `.hash-row`               |
 
+**Masthead tile allow-list** (lead answer 3, round 2): one 48px tile per service, on its landing
+page only, from 1024px: Cloud Sync; Catalog (its read and Edit states); Channels (Ship builds);
+Packages; App sign-in; Commerce's first run and Storefronts. A product's own Core pages
+(Overview, Integration, Access, Devices, Users, Activity, Settings) carry the product's icon. Never
+on a workbench or list (Licenses, Tiers, Offers, Purchases, Release tracks, Releases, Rollouts,
+Updates, Members), a record, a wizard step or a dialog.
+
+**Round 2 (UX review FIX-FIRST)** adds: the accent never encodes a state (changed rows and fields,
+overrides, "new" marks, selections, recommendations, timeline dots, meters, info pills are ink or
+neutral; status keeps success, warning and danger); `--mk-action` aliases `--pk-action-neutral` with
+hover, pressed and disabled steps; `:focus-visible` draws the violet ring on every control; tables
+at tablet widths take `--table-min` (860px) and scroll in a labelled region with a pinned first
+column; the sidebar rests on its active item; `.art.noart` (a large icon on the stored tint),
+`.hosted-row.choice-row`, `.item-row.profile`, `.label-wide` (a toolbar button's word from 1600px)
+and `.task-title`. `check.mjs` also asserts: no table wider than twice its scroll region, no button
+label overflowing its box, the active sidebar item inside the sidebar's viewport, no text under
+12px and no weight 700.
+
 Also new: `.page.columns.split` (Home: attention 2/3 beside Platform ready 1/3 from 1280px),
 `.product-card > .art.banner` (`.flat` for the stored tint), `:is(.mk-grid-2, .mk-grid-3).top`
 (cards keep their own height), `.docs-doors`, the opt-in `portrait` size (834×1194) in

@@ -11,7 +11,8 @@
     "The cover is the product's art, nothing painted over it; the name sits beside the icon once.",
     "'No license needed' replaces the tier line for an open product; a store-only listing has no Add, only its store links (B12).",
     "Add to my library is the one primary; after it the page says 'In your library' with Open (focus moves there).",
-    "Narrow: the panel moves under the story; the bottom bar's Discover is selected."
+    "Narrow: the panel moves under the story; the bottom bar's Discover is selected.",
+    "Round 2 (UX review): The store names are links."
   ],
   "status": "mockup",
   "designReview": null
