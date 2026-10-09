@@ -27,7 +27,8 @@
     "Preserved (guide Ed. 04): Editable / Read-only / Hidden visibility is unchanged",
     "Preserved (guide Ed. 04): Precedence (Where it's set: catalog default, profiles, licenses, accounts) is unchanged",
     "Masthead mark (lead answer 3): Catalog's read and Edit states carry the Managed config tile from 1024px (the chip hides there); the h1 stays the record step.",
-    "Round 2 (UX review): The draft dot and the 'New' value chip are ink (dot plus label), never the section's yellow (B2)."
+    "Round 2 (UX review): The draft dot and the 'New' value chip are ink (dot plus label), never the section's yellow (B2).",
+    "B17: Where it's set rows carry their owner: profiles config, Licenses license, Accounts core."
   ],
   "status": "mockup",
   "designReview": {

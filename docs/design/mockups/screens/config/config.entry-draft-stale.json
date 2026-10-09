@@ -13,7 +13,8 @@
     "Review 1 change is disabled until every conflict is settled, and the notice explains why (aria-describedby).",
     "The draft dot is the section accent (Config yellow) and conflict uses the warning tone with its own glyph, so changed and conflicting read differently.",
     "Masthead mark (lead answer 3): Catalog's read and Edit states carry the Managed config tile from 1024px (the chip hides there); the h1 stays the record step.",
-    "Round 2 (UX review): The draft dot and the 'New' value chip are ink (dot plus label), never the section's yellow (B2)."
+    "Round 2 (UX review): The draft dot and the 'New' value chip are ink (dot plus label), never the section's yellow (B2).",
+    "B17: Where it's set rows carry their owner: profiles config, Licenses license, Accounts core."
   ],
   "status": "mockup",
   "designReview": null
