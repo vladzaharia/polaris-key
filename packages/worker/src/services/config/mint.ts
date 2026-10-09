@@ -338,7 +338,8 @@ export async function handleMintAuth(
   product: Product,
   mintId: string,
 ): Promise<Response> {
-  const cfg = await getEdgeMintConfig(db, product.slug, mintId);
+  // SEC-CFG-14: an unapproved recipe is indistinguishable from a missing one.
+  const cfg = await getApprovedEdgeMintConfig(db, product, mintId);
   if (!cfg || !cfg.auth_page_template)
     return errorResponse(404, "not_found", "no auth page");
   return new Response(cfg.auth_page_template, {

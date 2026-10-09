@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
+  approveEdgeMintRecipe,
   makeEnv,
   NOW,
   seedLicenseWithKey,
@@ -1618,6 +1619,13 @@ describe("R9-11 edge-mint auth page", () => {
       "<script>alert(document.domain)</script>",
     );
 
+    // SEC-CFG-14: an unapproved recipe is a 404.
+    expect((await handleMintAuth(db, makeProduct(), "musickit")).status).toBe(
+      404,
+    );
+    await approveEdgeMintRecipe(db, SLUG, "musickit", {
+      acknowledgeOpenRegistration: true,
+    });
     const res = await handleMintAuth(db, makeProduct(), "musickit");
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("<script>alert(document.domain)</script>");
