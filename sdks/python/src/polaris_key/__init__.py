@@ -232,7 +232,7 @@ if TYPE_CHECKING:  # pragma: no cover
         boot_transition,
         initial_boot_state,
     )
-    from .core.store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle, Store
+    from .core.store import CACHE_FORMAT_VERSION, CacheRecord, Store
     from .core.sync import DocOutcome, SyncResult
     from .core.token import TokenManager
     from .core.trust import TrustManager, TrustManifestResult, merge_trust, verify_trust_manifest
@@ -534,7 +534,6 @@ _EXPORTS: Dict[str, Tuple[str, ...]] = {
     ".core.store": (
         "CACHE_FORMAT_VERSION",
         "CacheRecord",
-        "ImportedBundle",
         "Store",
     ),
     ".core.sync": (
@@ -896,7 +895,6 @@ __all__ = [
     "FileStore",
     "KeyringStore",
     "CacheRecord",
-    "ImportedBundle",
     "CACHE_FORMAT_VERSION",
     "SYMLINK_GUARD",
     # sync

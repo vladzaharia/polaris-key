@@ -21,7 +21,7 @@ WHAT v3 CHANGED FROM v2
 
 * ``configJws``/``etag`` become per-service SLICES (``docs``/``etags``), because license
   and config are now two independently-fetched, independently-ETagged documents;
-* ``importedBundle`` records an offline activation (§7);
+* ``bundle`` holds an offline activation bundle verbatim (§7), re-verified on every load;
 * ``CACHE_FORMAT_VERSION`` is ``3``, and a record carrying any other value is DISCARDED,
   never migrated — one network round trip is the correct price for not carrying poisoned
   state forward, and an air-gapped install re-imports its bundle.
@@ -42,7 +42,6 @@ from .models import AllowedRange, BlockedState
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
-    "ImportedBundle",
     "CacheRecord",
     "Store",
     "STORE_BACKENDS",
@@ -54,16 +53,6 @@ __all__ = [
 #: Bumped whenever the on-disk shape changes. A record carrying any other value is
 #: dropped on read rather than migrated (§4.1).
 CACHE_FORMAT_VERSION = 3
-
-
-@dataclass(frozen=True)
-class ImportedBundle:
-    """Set by ``import_bundle`` (§7). Present WITH a verified licence document ⇒ the gate
-    reads ``activation="bundle"``; a later online activation supersedes it with
-    ``activation="token"``."""
-
-    bundleId: str
-    importedAt: int
 
 
 @dataclass
@@ -78,7 +67,14 @@ class CacheRecord:
     etags: Dict[str, str] = field(default_factory=dict)
     #: The compact JWS of the trust manifest, verbatim.
     trustJws: Optional[str] = None
-    importedBundle: Optional[ImportedBundle] = None
+    #: The offline activation bundle (``pkey-bundle+jws``) imported on this install, verbatim
+    #: (§7). Re-verified on every load; ``activation="bundle"`` is derived from it, never
+    #: from an unsigned marker.
+    bundle: Optional[str] = None
+    #: WIRE-CONTRACT-V4 §4.1: the evidence for each tombstoned pinned key, ``kid`` -> the
+    #: revoking ``pkey-trust+jws``, verbatim. Re-verified on load. Security state, not a grant:
+    #: it survives a bundle import, a deactivation and a device-id re-binding.
+    pinRevocations: Dict[str, str] = field(default_factory=dict)
     #: A recorded hard 401 — the offline revocation signal (§4.3).
     lastSyncUnauthorized: bool = False
     #: The last 403 version/channel block from ``GET /<p>/license/document``.
@@ -100,11 +96,8 @@ class CacheRecord:
         }
         if self.trustJws is not None:
             out["trustJws"] = self.trustJws
-        if self.importedBundle is not None:
-            out["importedBundle"] = {
-                "bundleId": self.importedBundle.bundleId,
-                "importedAt": self.importedBundle.importedAt,
-            }
+        if self.bundle is not None:
+            out["bundle"] = self.bundle
         if self.blocked is not None:
             b: Dict[str, Any] = {"reason": self.blocked.reason}
             if self.blocked.allowedRange is not None:
@@ -114,6 +107,8 @@ class CacheRecord:
             out["feeds"] = dict(self.feeds)
         if self.releaseRecords:
             out["releaseRecords"] = dict(self.releaseRecords)
+        if self.pinRevocations:
+            out["pinRevocations"] = dict(self.pinRevocations)
         return out
 
     @staticmethod
@@ -145,18 +140,6 @@ class CacheRecord:
                 reason=blocked_raw["reason"],
                 allowedRange=AllowedRange.from_dict(blocked_raw.get("allowedRange")),
             )
-        imported_raw = d.get("importedBundle")
-        imported = None
-        if (
-            isinstance(imported_raw, dict)
-            and isinstance(imported_raw.get("bundleId"), str)
-            and isinstance(imported_raw.get("importedAt"), int)
-            and not isinstance(imported_raw.get("importedAt"), bool)
-        ):
-            imported = ImportedBundle(
-                bundleId=imported_raw["bundleId"],
-                importedAt=imported_raw["importedAt"],
-            )
         def string_entries(key: str) -> Dict[str, str]:
             # A slice read from disk: its string-valued entries, nothing else (unverified
             # here; the update client re-verifies every one before use).
@@ -166,15 +149,17 @@ class CacheRecord:
             return {k: v for k, v in raw.items() if isinstance(k, str) and isinstance(v, str)}
 
         trust_jws = d.get("trustJws")
+        bundle = d.get("bundle")
         return CacheRecord(
             docs=slice_map("docs"),
             etags=slice_map("etags"),
             trustJws=trust_jws if isinstance(trust_jws, str) else None,
-            importedBundle=imported,
+            bundle=bundle if isinstance(bundle, str) else None,
             lastSyncUnauthorized=d.get("lastSyncUnauthorized") is True,
             blocked=blocked,
             feeds=string_entries("feeds"),
             releaseRecords=string_entries("releaseRecords"),
+            pinRevocations=string_entries("pinRevocations"),
         )
 
 

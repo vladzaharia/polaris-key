@@ -55,7 +55,13 @@ from polaris_key.core.release_record import (
     release_record_claims,
     verify_release_record,
 )
-from polaris_key.core.trust import merge_trust, verify_trust_manifest
+from polaris_key.core.trust import (
+    kid_sort_key,
+    load_pin_revocations,
+    merge_trust,
+    usable_pins,
+    verify_trust_manifest,
+)
 from polaris_key.core.verify import verify_config_doc, verify_license_doc
 from polaris_key.license.gate import license_state
 from polaris_key.update.packs import verify_marker
@@ -164,17 +170,29 @@ def test_license_and_config_typs_do_not_cross_verify() -> None:
 # ── §1: trust-set construction ──────────────────────────────────────────────────────
 @pytest.mark.parametrize("case", _TRUST_CASES, ids=[c["id"] for c in _TRUST_CASES])
 def test_trust_case(case: Dict[str, Any]) -> None:
+    # V4 §4.1: the evidence first (ascending manifest issuedAt), then the manifest against
+    # the pins minus those tombstones.
+    held = load_pin_revocations(
+        case.get("pinRevocations"), pinned=case["pinned"], expected_aud="djdl"
+    )
     result = verify_trust_manifest(
         case["manifestJws"],
         pinned=case["pinned"],
+        tombstones=held.tombstones,
         expected_aud="djdl",
         now=case["now"],
         check_freshness=case.get("checkFreshness", True),
     )
     assert (result.doc is not None) is case["expect"]["accepted"], case["id"]
+    tombstones = sorted({*held.tombstones, *result.revokedPins}, key=kid_sort_key)
+    assert tombstones == case["expect"].get("revokedPins", []), f"{case['id']} revokedPins"
     # Accepted => the discovered set REPLACES what was held; rejected => it is untouched.
+    # Either way the pins are the USABLE ones: a tombstoned pin is in no set.
     discovered = result.discovered if result.doc is not None else case["before"]
-    assert merge_trust(case["pinned"], discovered) == case["expect"]["trust"]
+    assert (
+        merge_trust(usable_pins(case["pinned"], tombstones), discovered)
+        == case["expect"]["trust"]
+    ), case["id"]
     # The accepted manifest's `issuedAt` is what §4.2 folds into the clock floor.
     if "issuedAt" in case["expect"]:
         assert result.doc is not None
@@ -249,11 +267,18 @@ def test_bundle_cap_is_pinned_against_the_implementation_constant() -> None:
 
 
 def _import_outcome(case: Dict[str, Any]) -> Dict[str, Any]:
+    # V4 §4.1: the tombstones come from re-verified evidence, never from a list.
+    held = load_pin_revocations(
+        case.get("pinRevocations"), pinned=case["pinned"], expected_aud=case["expectedAud"]
+    )
     opts = dict(
         pinned=case["pinned"],
+        tombstones=held.tombstones,
         product=case["expectedAud"],
         device_id=case["deviceId"],
         now=case["now"],
+        floors=case.get("floors") or {"license": None, "config": None},
+        profile=case.get("profile", "import"),
     )
     result = inspect_bundle(case["bundleJws"], **opts)
     if not result.ok:
@@ -284,6 +309,7 @@ def test_bundle_valid_full_yields_the_artifacts_the_cache_write_needs() -> None:
         product=case["expectedAud"],
         device_id=case["deviceId"],
         now=case["now"],
+        floors={"license": None, "config": None},
     )
     assert bundle is not None
     assert isinstance(bundle.bundleId, str) and bundle.bundleId

@@ -124,6 +124,10 @@ def sync(deps: SyncDeps, *, force: bool = False) -> SyncResult:
     patch: Dict[str, object] = {}
     if trust_jws:
         patch["trust_jws"] = trust_jws
+        # A manifest that tombstoned a pin also changed the evidence: same write (§4.1).
+        evidence = trust.pin_revocations
+        if evidence:
+            patch["pin_revocations"] = evidence
 
     outcomes = (license_outcome, config_outcome)
     # SEC-CLI-2: the unsigned hints are for display; no verdict depends on them. What makes a
