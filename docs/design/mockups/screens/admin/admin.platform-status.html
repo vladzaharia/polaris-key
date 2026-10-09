@@ -78,12 +78,12 @@
         <section class="card" aria-labelledby="areas-title">
           <div class="card-head"><div class="title"><h2 id="areas-title">Health by area</h2></div></div>
           <div class="card-rows">
-            <div class="card-row"><i class="svc" data-service="license"></i><span class="grow">Licensing</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
-            <div class="card-row"><i class="svc" data-service="config"></i><span class="grow">Managed config</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
-            <div class="card-row"><i class="svc" data-service="release"></i><span class="grow">Ship builds</span><span class="status warning"><i class="ic ic-triangle-alert"></i>Behind</span></div>
-            <div class="card-row"><i class="svc" data-service="identity"></i><span class="grow">Sign-in</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
-            <div class="card-row"><i class="svc" data-service="sync"></i><span class="grow">Cloud Sync</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
-            <div class="card-row"><i class="svc" data-service="commerce"></i><span class="grow">Commerce</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row" data-service="license"><i class="svc" data-service="license"></i><span class="grow">Licensing</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row" data-service="config"><i class="svc" data-service="config"></i><span class="grow">Managed config</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row" data-service="release"><i class="svc" data-service="release"></i><span class="grow">Ship builds</span><span class="status warning"><i class="ic ic-triangle-alert"></i>Behind</span></div>
+            <div class="card-row" data-service="identity"><i class="svc" data-service="identity"></i><span class="grow">Sign-in</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row" data-service="sync"><i class="svc" data-service="sync"></i><span class="grow">Cloud Sync</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row" data-service="commerce"><i class="svc" data-service="commerce"></i><span class="grow">Commerce</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
           </div>
         </section>
 
@@ -91,7 +91,7 @@
           <div class="card-head"><div class="title"><h2 id="queue-title">Queues</h2></div></div>
           <div class="card-rows">
             <div class="card-row"><div class="grow"><div class="cell-title">Webhook deliveries</div><div class="cell-sub">In dead letters since 09:14 · the endpoint answered 503</div></div><button class="btn ghost icon sm" aria-label="More for Webhook deliveries: Purge dead letters"><i class="ic ic-ellipsis"></i></button></div>
-            <div class="card-row"><div class="grow"><div class="cell-title">Store uploads</div><div class="cell-sub">0 waiting · last ran 3 min ago</div></div></div>
+            <div class="card-row" data-service="release"><div class="grow"><div class="cell-title">Store uploads</div><div class="cell-sub">0 waiting · last ran 3 min ago</div></div></div>
             <div class="card-row"><div class="grow"><div class="cell-title">Email</div><div class="cell-sub">0 waiting · last sent 1 min ago</div></div></div>
           </div>
         </section>

@@ -46,19 +46,19 @@
           <div class="title mk-cluster baseline"><h2 id="attn-title">Needs attention</h2><span class="count danger">3</span></div>
         </div>
         <div class="card-rows">
-          <div class="attn-row">
+          <div class="attn-row" data-service="release">
             <span class="pill danger"><i class="ic ic-circle-x"></i>Error</span>
             <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
             <span class="attn-text mk-stack-1"><span>Resync failed.</span><span><code>.pkey/release</code> line 14 names “switch”, which Diceroll doesn’t ship.</span></span>
             <a class="link" href="#">Open error<i class="ic ic-arrow-right"></i></a>
           </div>
-          <div class="attn-row">
+          <div class="attn-row" data-service="config">
             <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
             <span class="attn-subject"><span class="logo xs" data-product="djdl"></span>DJDL</span>
             <span class="attn-text">Required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span>
             <a class="link" href="#">Set secret<i class="ic ic-arrow-right"></i></a>
           </div>
-          <div class="attn-row">
+          <div class="attn-row" data-service="release">
             <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
             <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
             <span class="attn-text">Google Play key expires Oct 16.</span>
@@ -126,11 +126,11 @@
             </div>
             <div class="product-card-svcs">
               <div class="svcs">
-                <a href="#" title="Licensing" aria-label="Licensing"><i class="svc" data-service="license"></i></a>
-                <a href="#" class="issue" title="Managed config: 1 needs attention" aria-label="Managed config: 1 needs attention"><i class="svc" data-service="config"></i></a>
-                <a href="#" title="Ship builds" aria-label="Ship builds"><i class="svc" data-service="release"></i></a>
-                <a href="#" title="Sign-in" aria-label="Sign-in"><i class="svc" data-service="identity"></i></a>
-                <a href="#" title="Cloud Sync" aria-label="Cloud Sync"><i class="svc" data-service="sync"></i></a>
+                <a href="#" title="Licensing" aria-label="Licensing" data-service="license"><i class="svc" data-service="license"></i></a>
+                <a href="#" class="issue" title="Managed config: 1 needs attention" aria-label="Managed config: 1 needs attention" data-service="config"><i class="svc" data-service="config"></i></a>
+                <a href="#" title="Ship builds" aria-label="Ship builds" data-service="release"><i class="svc" data-service="release"></i></a>
+                <a href="#" title="Sign-in" aria-label="Sign-in" data-service="identity"><i class="svc" data-service="identity"></i></a>
+                <a href="#" title="Cloud Sync" aria-label="Cloud Sync" data-service="sync"><i class="svc" data-service="sync"></i></a>
               </div>
             </div>
           </article>
@@ -149,10 +149,10 @@
             </div>
             <div class="product-card-svcs">
               <div class="svcs">
-                <a href="#" title="Licensing" aria-label="Licensing"><i class="svc" data-service="license"></i></a>
-                <a href="#" title="Managed config" aria-label="Managed config"><i class="svc" data-service="config"></i></a>
-                <a href="#" class="issue danger" title="Ship builds: 2 need attention (resync failed, Google Play key expires Oct 16)" aria-label="Ship builds: 2 need attention"><i class="svc" data-service="release"></i></a>
-                <a href="#" title="Commerce" aria-label="Commerce"><i class="svc" data-service="commerce"></i></a>
+                <a href="#" title="Licensing" aria-label="Licensing" data-service="license"><i class="svc" data-service="license"></i></a>
+                <a href="#" title="Managed config" aria-label="Managed config" data-service="config"><i class="svc" data-service="config"></i></a>
+                <a href="#" class="issue danger" title="Ship builds: 2 need attention (resync failed, Google Play key expires Oct 16)" aria-label="Ship builds: 2 need attention" data-service="release"><i class="svc" data-service="release"></i></a>
+                <a href="#" title="Commerce" aria-label="Commerce" data-service="commerce"><i class="svc" data-service="commerce"></i></a>
               </div>
             </div>
           </article>
@@ -172,8 +172,8 @@
             </div>
             <div class="product-card-svcs">
               <div class="svcs">
-                <a href="#" title="Ship builds" aria-label="Ship builds"><i class="svc" data-service="release"></i></a>
-                <a href="#" title="Sign-in" aria-label="Sign-in"><i class="svc" data-service="identity"></i></a>
+                <a href="#" title="Ship builds" aria-label="Ship builds" data-service="release"><i class="svc" data-service="release"></i></a>
+                <a href="#" title="Sign-in" aria-label="Sign-in" data-service="identity"><i class="svc" data-service="identity"></i></a>
               </div>
             </div>
           </article>

@@ -88,7 +88,7 @@
                   </div>
                   <div class="setting-control"><div class="input"><span class="grow tnum">5</span><span class="affix">GB</span></div></div>
                 </div>
-                <div class="setting-row changed">
+                <div class="setting-row changed" data-service="release">
                   <div>
                     <div class="setting-title">Default release-file quota<span class="setting-key">assets.quota.releaseBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
                     <div class="setting-desc">Builds, installers and packs, per product.</div>
@@ -97,7 +97,7 @@
                   </div>
                   <div class="setting-control"><div class="input changed"><span class="grow tnum">25</span><span class="affix">GB</span></div></div>
                 </div>
-                <div class="setting-row">
+                <div class="setting-row" data-service="sync">
                   <div>
                     <div class="setting-title">Cloud Sync storage ceiling<span class="setting-key">cloudSync.ceiling.bytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
                     <div class="setting-desc">The most a product can store per account.</div>
@@ -105,7 +105,7 @@
                   </div>
                   <div class="setting-control"><div class="input"><span class="grow tnum">200</span><span class="affix">MB</span></div></div>
                 </div>
-                <div class="setting-row">
+                <div class="setting-row" data-service="license">
                   <div>
                     <div class="setting-title">Key-entry limit ceiling<span class="setting-key">identity.keyEntry.limit<i class="ic ic-copy" aria-hidden="true"></i></span></div>
                     <div class="setting-desc">For a license outside any account.</div>
@@ -179,14 +179,14 @@
                   </div>
                   <span class="switch on" role="switch" aria-checked="true" aria-label="Hosted assets"></span>
                 </div>
-                <div class="setting-row">
+                <div class="setting-row" data-service="release">
                   <div>
                     <div class="setting-title">Package feeds<span class="setting-key">packageFeeds.enabled<i class="ic ic-copy" aria-hidden="true"></i></span></div>
                     <div class="setting-desc">Every product’s feeds on pkg.plrs.im.</div>
                   </div>
                   <span class="switch on" role="switch" aria-checked="true" aria-label="Package feeds"></span>
                 </div>
-                <div class="setting-row">
+                <div class="setting-row" data-service="release">
                   <div>
                     <div class="setting-title">Largest package file<span class="setting-key">packageFeeds.maxFileBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
                     <div class="setting-desc">A publish with a bigger file is refused.</div>
@@ -228,7 +228,7 @@
           </section>
 
           <!-- 7. Licensing: only the reserved-names rule; tiers carry device limits and offline windows. -->
-          <section class="section" id="licensing" aria-labelledby="lic-title">
+          <section class="section" id="licensing" aria-labelledby="lic-title" data-service="license">
             <div class="section-head"><h2 id="lic-title">Licensing</h2></div>
             <div class="card">
               <div class="setting-row">
@@ -247,7 +247,7 @@
             <div class="section-head"><h2 id="jobs-title">Jobs</h2></div>
             <div class="card">
               <div class="card-rows">
-                <div class="setting-row">
+                <div class="setting-row" data-service="release">
                   <div>
                     <div class="setting-title">Lazy deltas<span class="setting-key">deltas.lazy.mode<i class="ic ic-copy" aria-hidden="true"></i></span></div>
                     <div class="setting-desc">Update patches for products that ask for them.</div>
@@ -255,7 +255,7 @@
                   </div>
                   <span class="switch on" role="switch" aria-checked="true" aria-label="Lazy deltas"></span>
                 </div>
-                <div class="setting-row">
+                <div class="setting-row" data-service="release">
                   <div>
                     <div class="setting-title">Largest file to patch<span class="setting-key">deltas.lazy.maxBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
                     <div class="setting-desc">Bigger builds download in full.</div>
@@ -356,7 +356,7 @@
   <figure class="board-item">
     <div class="mk-stack-4">
       <div class="card">
-        <div class="setting-row">
+        <div class="setting-row" data-service="release">
           <div>
             <div class="setting-title">Default release-file quota<span class="setting-key">assets.quota.releaseBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
             <div class="setting-desc">Builds, installers and packs, per product.</div>

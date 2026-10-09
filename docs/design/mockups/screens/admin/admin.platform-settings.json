@@ -14,7 +14,7 @@
     "Product defaults rows each say how many products use the default and name each product that sets its own value with its logo (DJDL sets 8 GB). The licence device-limit and offline-window defaults are gone: tiers carry them.",
     "Every registered platform key has a row with its registry key as a quiet mono chip at the end of the title line; no registry area is missing (the drift test that fails on an unrendered key is the check). Rows that aren't registry keys say so ('Set in code'). Licensing shows only the reserved-names rule.",
     "Sign-in keeps names and terms only; providers, SSO and verified domains live in Connections (no pointer line here); there is no sign-in provider, policy or method-strength editor here, and deploy-time values (console session length) are read-only with where they come from.",
-    "Saving: an edited input or chip list marks its row (accent edge, 'Not saved · was 20 GB') and opens the section's save bar, the one licenses.tiers uses: it says what the change does ('1 change: DJDL gets 25 GB'), that it asks for your passkey, and offers Discard and 'Save <section>'. An invalid value shows an error under the input ('Enter 32 MiB or less.') and the bar can't save. After Save the bar says Saved with Undo for a few seconds. Switches apply at once; turning a platform-wide switch off (Package feeds, a job) asks first and names every product affected.",
+    "Saving: an edited input or chip list marks its row (ink bar, 'Not saved · was 20 GB') and opens the section's save bar, the one licenses.tiers uses: it says what the change does ('1 change: DJDL gets 25 GB'), that it asks for your passkey, and offers Discard and 'Save <section>'. An invalid value shows an error under the input ('Enter 32 MiB or less.') and the bar can't save. After Save the bar says Saved with Undo for a few seconds. Switches apply at once; turning a platform-wide switch off (Package feeds, a job) asks first and names every product affected.",
     "Storefront and hosting: Polaris Key storefront, Hosted assets and Package feeds are switches; the package feeds policy is only the off switch and the size limit (no other feed settings).",
     "Email and alerts: the verified sender, the daily limit with today's count, and alert destinations (email and webhook) as removable chips.",
     "Jobs show each job's switch with its last run in the description (absorbing Platform Status's job facts, UX-30); Advanced is folded, read-only, and counts the deployment values it holds.",
@@ -27,7 +27,8 @@
     "Preserved (guide Ed. 04): Claim and revert are available",
     "Preserved (guide Ed. 04): Scopes are shown",
     "Preserved (guide Ed. 04): Audit history is reachable from every setting",
-    "Round 2 (UX review): An unsaved row is an ink bar and wash with 'Not saved' in strong text; the save bar is neutral (B2)."
+    "Round 2 (UX review): An unsaved row is an ink bar and wash with 'Not saved' in strong text; the save bar is neutral (B2).",
+    "B17: a row carries the service it sets (release-file quota, package feeds, deltas: Ship builds; Cloud Sync ceiling: Cloud Sync; key-entry limit and the Licensing section: Licensing); the rest is core."
   ],
   "status": "mockup",
   "designReview": {

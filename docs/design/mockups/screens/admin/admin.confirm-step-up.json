@@ -13,7 +13,8 @@
     "After the return: the button reads 'Require SSO for students.example.edu' again; a typed confirmation word, where the dialog has one, is kept across the round trip.",
     "Phone: a bottom sheet with the caution row and both buttons pinned, the consequences scrolling above.",
     "Which confirms need step-up is the step-up package's list (admin-3-05); this mockup draws the state, not the policy.",
-    "Round 2 (UX review): The step-up row is a neutral callout (fingerprint glyph), not amber: it asks, it does not warn."
+    "Round 2 (UX review): The step-up row is a neutral callout (fingerprint glyph), not amber: it asks, it does not warn.",
+    "B17: a Platform page (core rule and crumbs); the connection and its dialog are identity; the DJDL Access row is license, the Console row core."
   ],
   "status": "mockup",
   "designReview": null

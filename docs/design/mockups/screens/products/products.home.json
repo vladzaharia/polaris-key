@@ -26,7 +26,8 @@
     "Platform ready's open task is 'Store accounts' (the retired 'Store connections' page name is gone).",
     "Preserved (guide Ed. 04): The Platform and Product sidebar contexts are unchanged",
     "Preserved (guide Ed. 04): The feature model (one glyph per feature, one Ship builds) is unchanged",
-    "Preserved (guide Ed. 04): Home shows attention-only data: no stat tile repeats the attention list"
+    "Preserved (guide Ed. 04): Home shows attention-only data: no stat tile repeats the attention list",
+    "B17: each attention row and card glyph link carries its feature's service (resync and Play key: Ship builds; missing secret: Managed config); product cards and Platform ready are core."
   ],
   "status": "mockup",
   "designReview": {

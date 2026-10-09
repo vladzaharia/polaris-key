@@ -48,7 +48,7 @@
       <section class="card warning" aria-labelledby="attn-title">
         <h2 id="attn-title" class="sr-only">Needs attention</h2>
         <div class="card-rows">
-          <div class="attn-row">
+          <div class="attn-row" data-service="config">
             <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
             <span class="attn-subject" data-service="config"><i class="svc"></i>Managed config</span>
             <span class="attn-text">Required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span>
@@ -81,7 +81,7 @@
         </div>
 
         <ol class="guide" aria-label="Integration steps" style="--guide-steps: 5">
-          <li class="guide-step done">
+          <li class="guide-step done" data-service="license">
             <div class="guide-row">
               <span class="guide-mark"></span>
               <div class="guide-title"><h3><button aria-expanded="false">Licensing</button></h3></div>
@@ -92,7 +92,7 @@
               <i class="ic ic-chevron-right guide-chevron"></i>
             </div>
           </li>
-          <li class="guide-step done">
+          <li class="guide-step done" data-service="config">
             <div class="guide-row">
               <span class="guide-mark"></span>
               <div class="guide-title"><h3><button aria-expanded="false">Managed config</button></h3></div>
@@ -103,7 +103,7 @@
               <i class="ic ic-chevron-right guide-chevron"></i>
             </div>
           </li>
-          <li class="guide-step current open">
+          <li class="guide-step current open" data-service="release">
             <div class="guide-row">
               <span class="guide-mark"></span>
               <div class="guide-title">
@@ -141,7 +141,7 @@
               </div>
             </div>
           </li>
-          <li class="guide-step waiting">
+          <li class="guide-step waiting" data-service="identity">
             <div class="guide-row">
               <span class="guide-mark"></span>
               <div class="guide-title">
@@ -155,7 +155,7 @@
               <i class="ic ic-chevron-right guide-chevron"></i>
             </div>
           </li>
-          <li class="guide-step">
+          <li class="guide-step" data-service="sync">
             <div class="guide-row">
               <span class="guide-mark"></span>
               <div class="guide-title">
@@ -217,23 +217,23 @@
             <a class="btn link" href="#">Open Activity<i class="ic ic-arrow-right"></i></a>
           </div>
           <div class="card-rows">
-            <div class="list-row">
+            <div class="list-row" data-service="license">
               <span class="avatar">MF</span>
               <span class="list-row-text"><strong>Mara Fennick</strong> activated a MacBook Pro</span>
               <span class="list-row-meta">Today, 10:42</span>
             </div>
-            <div class="list-row">
+            <div class="list-row" data-service="release">
               <span class="icon-tile muted"><i class="ic ic-github"></i></span>
               <span class="list-row-text"><strong>CI</strong> published 4.2.0 to stable from <span class="mono">example-org/djdl</span></span>
               <span class="list-row-meta">Oct 6, 16:20</span>
             </div>
-            <div class="list-row">
+            <div class="list-row" data-service="config">
               <span class="avatar violet">AL</span>
               <span class="list-row-text"><strong>Ada Lindqvist</strong> published catalog v4</span>
               <span class="list-row-meta">Oct 6, 11:05</span>
             </div>
             <!-- At wide the aside has room for two more. -->
-            <div class="list-row wide-only">
+            <div class="list-row wide-only" data-service="sync">
               <span class="avatar violet">AL</span>
               <span class="list-row-text"><strong>Ada Lindqvist</strong> turned on Cloud Sync</span>
               <span class="list-row-meta">Oct 5, 09:30</span>
