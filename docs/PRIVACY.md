@@ -22,7 +22,8 @@ call site is named.
    declares the companion apps it cares about as **probes**; the client answers only those.
 4. **Everything is bounded.** The report body is capped at 16 KiB, the probe map at 32
    entries, and the signed config document at 64 KiB. Unknown keys are dropped, not stored.
-5. **Retention is device lifetime.** Fingerprints and software facts are deleted when the
+5. **Retention is device lifetime.** Fingerprints (including the first one bound, kept as the
+   comparison baseline: the same hashed components) and software facts are deleted when the
    device they describe is deauthorized. There is no separate retention job, because there is
    nothing that outlives its device.
 
