@@ -253,7 +253,25 @@ public class CoreContext(options: CoreOptions) {
     }
 
     private suspend fun load() {
-        val (deviceId, token, cached) = onStore { Triple(store.getDeviceId(), store.getToken(), store.readCache()) }
+        var (deviceId, token, cached) = onStore { Triple(store.getDeviceId(), store.getToken(), store.readCache()) }
+        // CLI-1: a stored id that disagrees with the platform anchor is a copied state directory.
+        val anchored = onStore { store.anchoredDeviceId() }
+        if (anchored != null && anchored != deviceId) {
+            // `deactivate()` without the network call: the token and the grant slices go, the update
+            // slices stay (their floors must not reset).
+            deviceId = anchored
+            token = null
+            cached = cached?.let { CacheRecord(feeds = it.feeds, releaseRecords = it.releaseRecords, v = it.v) }
+            try {
+                onStore {
+                    store.clearToken()
+                    store.replaceDeviceId(anchored)
+                    if (cached == null) store.clearCache() else store.writeCache(cached!!)
+                }
+            } catch (e: StoreException) {
+                // The in-memory state is already rebound; the next start repeats the repair.
+            }
+        }
         val channelPreference = io { channelSlot.read() }
         lock.withLock {
             deviceIdValue = deviceId
@@ -340,7 +358,7 @@ public class CoreContext(options: CoreOptions) {
         val result = verifyTrustManifest(
             jws,
             VerifyTrustManifestOptions(
-                pinned = pinnedTrust, expectedAud = product, now = systemClock(),
+                pinned = pinnedTrust, expectedAud = product, now = clock.effectiveNow(systemClock()),
                 lastTrustIssuedAt = manifest?.issuedAt, checkFreshness = checkFreshness,
             ),
         )
@@ -381,6 +399,16 @@ public class CoreContext(options: CoreOptions) {
         discoveredServices ?: expectedServices?.let { servicesFromList(it) } ?: DEFAULT_SERVICES
 
     public suspend fun enabled(slug: ServiceSlug): Boolean = services()[slug] == true
+
+    /**
+     * The licence GATE's input (CLI-4): the build's own declaration (`expectedServices`, default
+     * licence and config) OR what a discovery loaded this session says. Unsigned discovery can
+     * switch the gate on, never off; it still governs sub-client availability ([enabled]).
+     */
+    public suspend fun licenseGateEnabled(): Boolean = lock.withLock {
+        val declared = expectedServices?.let { ServiceSlug.license in it } ?: (DEFAULT_SERVICES[ServiceSlug.license] == true)
+        declared || discoveredServices?.get(ServiceSlug.license) == true
+    }
 
     /** Refuse a sub-client whose service the product does not run (typed `product` N/A). */
     public suspend fun requireService(slug: ServiceSlug, feature: String) {
@@ -580,10 +608,10 @@ public class CoreContext(options: CoreOptions) {
         val trust = mergeTrust(pinnedTrust, manifestKeys)
         val now = clock.effectiveNow(systemClock())
         // A signature-verified peek learns `issuedAt` (never an unauthenticated parse).
-        val peek = verify(jws, VerifyOptions(trust, product, deviceIdValue, now = Long.MAX_VALUE / 2, checkFreshness = false))
+        val peek = verify(jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = null, now = Long.MAX_VALUE / 2, checkFreshness = false))
             ?: return null
         if (peek.issuedAt > saturatingAdd(now, MAX_GRACE_SECONDS)) return null
-        return verify(jws, VerifyOptions(trust, product, deviceIdValue, now = maxOf(now, peek.issuedAt), checkFreshness = false))
+        return verify(jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = null, now = maxOf(now, peek.issuedAt), checkFreshness = false))
     }
 
     /** Read-modify-write the whole record: the ONLY mutation path (§4.1). */
@@ -592,6 +620,8 @@ public class CoreContext(options: CoreOptions) {
             val n = mutate(record ?: CacheRecord()).copy(v = CACHE_RECORD_VERSION)
             record = n
             loaded = loaded.copy(
+                license = loaded.license.takeIf { DocumentSlice.license in n.docs },
+                config = loaded.config.takeIf { DocumentSlice.config in n.docs },
                 lastSyncUnauthorized = n.lastSyncUnauthorized == true,
                 blocked = n.blocked,
                 importedBundle = n.importedBundle,
@@ -706,11 +736,17 @@ public class CoreContext(options: CoreOptions) {
         val healthy = outcomes.values.any { it == DocOutcome.Applied || it == DocOutcome.Unchanged }
         if (!patchSet && healthy) patchSet = true
         val finalPatch = patch
+        // CLI-2: a hard 401 drops the slice it answered for, and a 403 build block drops the licence
+        // document, in the same write that sets the (display-only) hint.
+        val rejected = outcomes.filterValues { it == DocOutcome.Unauthorized }.keys
         patchCache { rec ->
             var r = rec
             if (trustJws != null) r = r.copy(trustJws = trustJws)
             if (unauthorized) r = r.copy(lastSyncUnauthorized = true) else if (healthy) r = r.copy(lastSyncUnauthorized = false)
             if (patchSet) r = r.copy(blocked = finalPatch)
+            val dropped = if (blocked) rejected + DocumentSlice.license else rejected
+            if (dropped.isNotEmpty()) r = r.copy(docs = r.docs - dropped, etags = r.etags - dropped)
+            
             r
         }
         if (applied || !unauthorized) report?.invoke()
@@ -834,7 +870,7 @@ public class CoreContext(options: CoreOptions) {
      * and the resolved services). The licence service's own reads are the :license module's.
      */
     public suspend fun licenseStatus(now: Long? = null): LicenseState {
-        val enabled = enabled(ServiceSlug.license)
+        val enabled = licenseGateEnabled()
         val effective = now(now)
         return locked {
             val activation = when {
