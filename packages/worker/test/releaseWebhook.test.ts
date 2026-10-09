@@ -400,6 +400,15 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
     expect(await snapshot(db)).toEqual(before);
   });
 
+  it("SEC-INF-3: a signed body replayed under a fresh delivery id is ignored", async () => {
+    const { db, env, gh } = await linkedWithV1();
+    const first = await delivery(releasePayload("published"));
+    await post(env, db, gh.fetchImpl, first);
+    const replay = { ...first, deliveryId: crypto.randomUUID() };
+    const { body } = await post(env, db, gh.fetchImpl, replay);
+    expect(body).toMatchObject({ ok: true, ignored: "duplicate-delivery" });
+  });
+
   it("a deleted delivery keeps the release row and marks its health absentUpstream", async () => {
     const { db, env, state, gh } = await linkedWithV1();
     state.releases = [release("v1.1.0"), release("v1.0.0")];
@@ -449,7 +458,11 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
       env,
       db,
       gh.fetchImpl,
-      await delivery(releasePayload("published")),
+      // SEC-INF-3: an identical signed body is a replay; a real re-publish carries new timestamps.
+      await delivery({
+        ...releasePayload("published"),
+        republishedAt: NOW + 180,
+      }),
       NOW + 180,
     );
     expect(

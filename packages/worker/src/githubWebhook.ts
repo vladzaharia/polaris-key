@@ -4,7 +4,8 @@ import type { Env } from "./env.js";
 import type { Db } from "./db/types.js";
 import { errorResponse, json } from "./core/errors.js";
 import { pk } from "./kv.js";
-import { hexDecode } from "./platform/bytes.js";
+import { hexDecode, hexEncode } from "./platform/bytes.js";
+import { claimOnce } from "./core/atomicClaim.js";
 import { constantTimeEqualBytes } from "./platform/compare.js";
 import { hmacSha256, importHmacKey } from "./platform/hash.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
@@ -251,6 +252,18 @@ export async function handleGithubWebhook(
   }
   const deliveryKey = pk(PLATFORM_SCOPE, "gh-delivery", deliveryId);
   if (await env.HOT.get(deliveryKey)) {
+    return json({ ok: true, ignored: "duplicate-delivery", deliveryId });
+  }
+  // SEC-INF-3: the KV marker above is a hint only (get-then-put is not atomic). The claim is the
+  // Durable Object's, on the delivery id AND on the signed body, because the delivery id is an
+  // unsigned header: a replayed body under a fresh GUID is the same delivery.
+  const bodyHash = hexEncode(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", raw)),
+  );
+  if (
+    !(await claimOnce(env, "webhook-claim", `gh:${deliveryId}`, 86_400)) ||
+    !(await claimOnce(env, "webhook-claim", `gh-body:${bodyHash}`, 86_400))
+  ) {
     return json({ ok: true, ignored: "duplicate-delivery", deliveryId });
   }
   await env.HOT.put(deliveryKey, String(now), {
