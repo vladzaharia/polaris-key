@@ -23,6 +23,7 @@
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { createSignInRequest } from "./passthrough/request.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { outboundFetch } from "../../core/outboundGuard.js";
 import {
   ALLOWED_ID_TOKEN_ALGS,
   ID_TOKEN_CLOCK_TOLERANCE,
@@ -289,12 +290,15 @@ async function getOidcConfig(
  */
 function issuerHostAllowed(env: Env, issuer: string): boolean {
   const raw = secret(env, "OIDC_ISSUER_ALLOWLIST");
-  if (!raw) return true;
+  // SEC-IDN-7: in production an unset allowlist refuses every custom issuer rather than
+  // letting any public https host receive the client secret.
+  const prod = env.PKEY_ENVIRONMENT?.trim().toLowerCase() === "prod";
+  if (!raw) return !prod;
   const hosts = raw
     .split(/[\s,]+/)
     .map((h) => h.trim().toLowerCase())
     .filter(Boolean);
-  if (!hosts.length) return true;
+  if (!hosts.length) return !prod;
   try {
     return hosts.includes(new URL(issuer).host.toLowerCase());
   } catch {
@@ -2146,21 +2150,32 @@ export async function handleAuthCallback(
     return platformSignInEndedPage();
   }
 
-  const tokenRes = await fetch(
-    `${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: flow.redirectUri,
-        client_id: oidc.clientId,
-        code_verifier: flow.verifier,
-        ...(oidc.clientSecret ? { client_secret: oidc.clientSecret } : {}),
-      }),
-    },
-  );
+  // SEC-IDN-6: the issuer is repo-written and this POST carries the client secret, so it goes
+  // through the shared outbound guard (no redirects with the body, timeout, size cap).
+  let tokenRes: { ok: boolean; body: string };
+  try {
+    const r = await outboundFetch(
+      `${oidc.issuer.replace(/\/$/, "")}/api/oidc/token`,
+      {
+        init: {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: flow.redirectUri,
+            client_id: oidc.clientId,
+            code_verifier: flow.verifier,
+            ...(oidc.clientSecret ? { client_secret: oidc.clientSecret } : {}),
+          }),
+        },
+      },
+    );
+    tokenRes = { ok: r.status >= 200 && r.status < 300, body: r.body };
+  } catch {
+    await deleteArtefact(env, stateKey);
+    return errorResponse(502, "oidc_error", "token exchange failed");
+  }
   if (!tokenRes.ok) {
     // Delete the flow rather than recording a reason — pollers must not be able to
     // enumerate IdP failure modes (D8). The poll surface returns a generic error.
@@ -2169,7 +2184,7 @@ export async function handleAuthCallback(
   }
   let tokens: { id_token?: string };
   try {
-    tokens = (await tokenRes.json()) as { id_token?: string };
+    tokens = JSON.parse(tokenRes.body) as { id_token?: string };
   } catch {
     await deleteArtefact(env, stateKey);
     return errorResponse(502, "oidc_error", "token response invalid");
@@ -2179,6 +2194,8 @@ export async function handleAuthCallback(
     return errorResponse(502, "oidc_error", "no id_token");
   }
 
+  // The JWKS GET carries no secret; jose 5's remote set takes no custom fetch, so it keeps
+  // jose's own fetch (deferred: SEC-IDN-6 covers the secret-bearing token POST).
   const jwks = createRemoteJWKSet(
     new URL(`${oidc.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
   );
