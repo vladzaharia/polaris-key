@@ -11,7 +11,8 @@
     "The top reason is said in the customer's terms then what they can do (install 2.3.0, or renew), then the second reason, each on its own line; no per-install log on this page (Activity has it).",
     "A healthy feed (PyPI, Swift) has no band and no pill; the count resets after 24 h without refusals.",
     "Ship builds is one identity: Release cyan, Package glyph; crumb 'DJDL › Ship builds' (B5).",
-    "Phone: the band's pill, package and link wrap; the sentence stays one paragraph."
+    "Phone: the band's pill, package and link wrap; the sentence stays one paragraph.",
+    "B17: Service tokens, the CI token rows and Open Access are core; feeds, packages and installs are release."
   ],
   "status": "mockup",
   "designReview": null

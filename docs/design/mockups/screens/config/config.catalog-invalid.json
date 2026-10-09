@@ -11,7 +11,8 @@
     "One danger callout above the editor, role=alert: the commit, the error count, what still serves, the fix (repository, then push or resync), each error with its entry and line. No toast.",
     "Each entry with an error carries a danger glyph in the list (shape, not only colour); the open entry shows the error under the field it concerns, with the danger edge and the reason in words.",
     "No Review or Publish: there is no draft; Resync is the only action, outlined.",
-    "Managed config yellow marks context only (rule, chip, nav); danger is red; nothing in the section accent reads as a warning."
+    "Managed config yellow marks context only (rule, chip, nav); danger is red; nothing in the section accent reads as a warning.",
+    "B17: Where it's set rows carry their owner: profiles config, Licenses license, Accounts core."
   ],
   "status": "mockup",
   "designReview": null

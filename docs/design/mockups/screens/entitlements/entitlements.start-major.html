@@ -10,7 +10,7 @@
   }
 </style>
 <div class="console kit-next ent2 modal-host" data-service="license">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -19,7 +19,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -239,7 +239,7 @@
             <div class="options" role="group" aria-labelledby="copy-label">
               <div><span class="check on" role="checkbox" aria-checked="true"><span class="box"></span>Limits</span><span class="option-desc">5 devices · 30 offline days · stable and beta tracks</span></div>
               <div><span class="check on" role="checkbox" aria-checked="true"><span class="box"></span>Includes</span><span class="option-desc">Lossless audio · stem separation · 250 synced crates · 100 MB of Cloud Sync storage</span></div>
-              <div><span class="check on" role="checkbox" aria-checked="true"><span class="box"></span>Profile</span><span class="option-desc">pro · 3 Managed config values</span></div>
+              <div data-service="config"><span class="check on" role="checkbox" aria-checked="true"><span class="box"></span>Profile</span><span class="option-desc">pro · 3 Managed config values</span></div>
             </div>
           </div>
         </div>

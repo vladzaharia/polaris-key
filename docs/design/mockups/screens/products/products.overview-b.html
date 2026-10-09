@@ -1,5 +1,5 @@
 <div class="console" data-service="core">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -8,7 +8,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -48,7 +48,7 @@
           </header>
 
           <!-- The next step: the first broken thing, else the first open console step, else the first feature's main action. -->
-          <section class="mk-stack-5" aria-labelledby="next-title">
+          <section class="mk-stack-5" aria-labelledby="next-title" data-service="config">
             <div class="mk-stack-3">
               <h2 id="next-title" class="sr-only">Next step</h2>
               <div class="mk-cluster-3">
@@ -87,7 +87,7 @@
         </div>
         <div class="feature-board">
 
-          <article class="card feature-card">
+          <article class="card feature-card" data-service="license">
             <div class="feature-card-head"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span><h3><a href="#">Licensing</a></h3></div>
             <div class="feature-card-stat">
               <span class="stat-value">240 <small>licenses</small></span>
@@ -100,7 +100,7 @@
             </div>
           </article>
 
-          <article class="card feature-card issue">
+          <article class="card feature-card issue" data-service="config">
             <div class="feature-card-head"><span class="icon-tile sm glyph issue" data-service="config"><i class="svc"></i></span><h3><a href="#" aria-label="Managed config: 1 needs attention">Managed config</a></h3></div>
             <div class="feature-card-stat">
               <span class="stat-value">v4 <small>catalog</small></span>
@@ -113,7 +113,7 @@
             </div>
           </article>
 
-          <article class="card feature-card">
+          <article class="card feature-card" data-service="release">
             <div class="feature-card-head"><span class="icon-tile sm" data-service="release"><i class="svc"></i></span><h3><a href="#">Ship builds</a></h3></div>
             <div class="feature-card-stat">
               <span class="stat-value">4.2.0 <small>stable</small></span>
@@ -126,7 +126,7 @@
             </div>
           </article>
 
-          <article class="card feature-card">
+          <article class="card feature-card" data-service="identity">
             <div class="feature-card-head"><span class="icon-tile sm" data-service="identity"><i class="svc"></i></span><h3><a href="#">Sign-in</a></h3></div>
             <div class="feature-card-stat">
               <span class="stat-value">312 <small>accounts</small></span>
@@ -139,7 +139,7 @@
             </div>
           </article>
 
-          <article class="card feature-card">
+          <article class="card feature-card" data-service="sync">
             <div class="feature-card-head"><span class="icon-tile sm" data-service="sync"><i class="svc"></i></span><h3><a href="#">Cloud Sync</a></h3></div>
             <div class="feature-card-stat">
               <span class="stat-value"><small>Not syncing yet</small></span>
@@ -152,7 +152,7 @@
           </article>
 
           <!-- Commerce is off: a dashed card in its canonical place. -->
-          <article class="card feature-card off">
+          <article class="card feature-card off" data-service="commerce">
             <div class="feature-card-head"><span class="icon-tile sm muted" data-service="commerce"><i class="svc"></i></span><h3><a href="#" aria-label="Commerce: off. Turn on">Commerce</a></h3></div>
             <div class="feature-card-stat">
               <span class="stat-value"><small>Off</small></span>
@@ -168,22 +168,22 @@
           <a class="btn link" href="#">Open Activity<i class="ic ic-arrow-right"></i></a>
         </div>
         <div class="card-rows">
-          <div class="list-row">
+          <div class="list-row" data-service="license">
             <span class="avatar">MF</span>
             <span class="list-row-text"><strong>Mara Fennick</strong> activated a MacBook Pro</span>
             <span class="list-row-meta">Today, 10:42</span>
           </div>
-          <div class="list-row">
+          <div class="list-row" data-service="release">
             <span class="icon-tile muted"><i class="ic ic-github"></i></span>
             <span class="list-row-text"><strong>CI</strong> published 4.2.0 to stable from <span class="mono">example-org/djdl</span></span>
             <span class="list-row-meta">Oct 6, 16:20</span>
           </div>
-          <div class="list-row">
+          <div class="list-row" data-service="config">
             <span class="avatar violet">AL</span>
             <span class="list-row-text"><strong>Ada Lindqvist</strong> published catalog v4</span>
             <span class="list-row-meta">Oct 6, 11:05</span>
           </div>
-          <div class="list-row">
+          <div class="list-row" data-service="sync">
             <span class="avatar violet">AL</span>
             <span class="list-row-text"><strong>Ada Lindqvist</strong> turned on Cloud Sync</span>
             <span class="list-row-meta">Oct 5, 09:30</span>

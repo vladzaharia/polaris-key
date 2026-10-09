@@ -13,7 +13,7 @@
     "Amber is kept only for 'unsynced changes' on sign-out (not on this board).",
     "Each frame keeps the product header strip; in a landscape window the same bodies sit in the form pane beside the passport.",
     "Every string comes from packages/brand/kit-copy (deviceLimit.title/heading/lede, signin.choice.title/allFull, signin.choice.tag.full 'No free devices', signin.choice.keyInstead, activate.otherEmail.*, signin.none.otherAccount, signin.key.noEntries); none is invented on the board (M11).",
-    "All full: the licenses are a real radio group (the first, ranked, selected in ink) so Replace a device acts on the chosen one, and 'Use a license key instead' is the way out (M12).",
+    "All full: the licenses are a real radio group (the first, ranked, selected in the hosted card's core violet, B17) so Replace a device acts on the chosen one, and 'Use a license key instead' is the way out (M12).",
     "Each frame has one ink primary and at most one quiet secondary; no amber, no disabled primary."
   ],
   "status": "mockup",

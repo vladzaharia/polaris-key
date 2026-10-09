@@ -35,7 +35,7 @@
   }
 </style>
 <div class="console kit-next ent2" data-service="license">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -45,7 +45,7 @@
   </header>
 
   <!-- Product context (ST-45). Diceroll's Integration page is hidden (verified on every platform). -->
-  <nav class="sidebar" aria-label="Diceroll">
+  <nav class="sidebar" aria-label="Diceroll" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="diceroll"></span>
       <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
@@ -196,14 +196,14 @@
               </tr>
             </thead>
             <tbody>
-              <tr>
+              <tr data-service="release">
                 <td><div class="cell-title">Release tracks</div><div class="cell-sub"><span class="mono">channels</span></div>
                   <div class="cell-sub show-phone"><span class="nowrap">Ship builds</span>&nbsp;· <span class="nowrap">stable for both tiers</span></div>
-                  <div class="cell-sub show-phone"><a class="link" href="#">Playtester access</a> adds beta</div></td>
+                  <div class="cell-sub show-phone"><a class="link" href="#" data-service="license">Playtester access</a> adds beta</div></td>
                 <td class="hide-phone" data-service="release"><span class="icon-text"><i class="svc" role="img" aria-label="Ship builds"></i>Ship builds</span></td>
                 <td class="hide-phone">stable</td>
                 <td class="hide-phone">stable</td>
-                <td class="hide-phone">Tier, license, <a class="link" href="#">Playtester access</a></td>
+                <td class="hide-phone">Tier, license, <a class="link" href="#" data-service="license">Playtester access</a></td>
                 <td class="end"></td>
               </tr>
               <tr>
@@ -235,7 +235,7 @@
                 <td class="hide-phone"><span class="icon-text muted"><i class="ic ic-lock"></i>Set by Polaris Key</span></td>
                 <td class="end"></td>
               </tr>
-              <tr>
+              <tr data-service="sync">
                 <td><div class="cell-title">Cloud Sync storage</div><div class="cell-sub"><span class="mono">pkey.cloudSync.bytes</span></div>
                   <div class="cell-sub show-phone"><span class="nowrap">Cloud Sync</span>&nbsp;· <span class="nowrap">Free 5 MB</span>&nbsp;· <span class="nowrap">Premium 50 MB</span></div></td>
                 <td class="hide-phone" data-service="sync"><span class="icon-text"><i class="svc" role="img" aria-label="Cloud Sync"></i>Cloud Sync</span></td>

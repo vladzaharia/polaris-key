@@ -52,10 +52,12 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
   `identity`, `sync`, `commerce` (commerce takes the Distribution green and the shopping-bag glyph,
   B1). Inside `[data-service="commerce"]` `.link` and `.btn.link` are drawn in the strong text
   colour, because that green is close to the success green: the accent stays on chrome only.
-  **The accent marks context, never an action or a state** (B2): the canvas rule, the selected nav
-  marker, the orientation chip and the masthead tile, links. The one filled primary is ink; a
-  selection (switch, check, radio, chosen card or chip) is ink; danger stays red. Text in the
-  accent uses `--pk-accent-fg` (the light theme's text-safe step), fills and rules `--pk-accent`.
+  **The accent marks context and interaction, never an action or a status** (B2, B17): the canvas
+  rule, the selected nav marker, the orientation chip and the masthead tile, links, and every
+  focus ring, hover tint, checked control and selection, each in the accent of the service it
+  references (see "Interaction follows the service" below). The one filled primary is ink; danger
+  stays red. Text and thin edges in the accent use `--pk-accent-fg` (the light theme's text-safe
+  step), fills, rings and rules `--pk-accent`, tints `--pk-accent-subtle`.
 - **Ship builds is one identity** (B5): Releases, Release tracks, Rollouts, Channels (and each
   channel), Packages, Updates and Health all take `data-service="release"` (the Package glyph,
   Release cyan) on the console, the nav group and every dialog they open. No per-page green or
@@ -102,13 +104,13 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
 
 ## Brand v2 (lead decisions B1–B16, 2026-10-09)
 
-The kit was re-skinned once to the brand and transition decisions ([BRAND-TRANSITION.md](../../../research/2026-09-29-godot-omniplatform/program/BRAND-TRANSITION.md)); every
+The kit was re-skinned once to the brand and transition decisions (`_brand/DECISIONS.md`); every
 screen inherits it. Our mockups, DL1–DL18 and the owner's notes win over the Transition Guide's
 pictures; the guide is a reference edition. What changed, and the classes that draw it:
 
 | Decision         | What a screen gets                                                                                                                                                                                                                                            | Classes                                                                                                     |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| B2 ink primary   | the one filled primary is `--mk-action` ink (light: #060912 / white; dark: #f6f8ff / #060912); switches, checks, radios, chosen cards and chips are ink; danger stays red                                                                                     | `.btn.primary`, `.switch.on`, `.check.on`, `.choice.on`, `.chip.on`, `.filter.on`                           |
+| B2 ink primary   | the one filled primary is `--mk-action` ink (light: #060912 / white; dark: #f6f8ff / #060912); danger stays red; selections follow the service (B17)                                                                                                          | `.btn.primary`                                                                                              |
 | B3 nav           | the selected item is the accent's subtle fill with a 3px marker; group labels neutral with a 3px accent bar; a one-page feature is one row                                                                                                                    | `.nav-item.active`, `.nav-label`, `.nav-group.single`                                                       |
 | B4 canvas        | `.console > .main` is the raised canvas: radius 18, hairline, 3px rule in the console's `data-service`, inset 16 from the window's end and bottom from 1024px, full-bleed below; the sidebar is one viewport tall with its foot pinned and its list scrolling | (automatic)                                                                                                 |
 | B4 masthead      | one orientation line (chip + crumbs), h1 36/44 or 32/40 (`.is-record`), the 48px tile on landing and product pages from 1024px                                                                                                                                | `.crumbs`, `.crumb-chip` (`.product`, `.platform`), `.page-head.is-record`, `.page-icon.mast`, `.mast-tile` |
@@ -129,9 +131,10 @@ on a workbench or list (Licenses, Tiers, Offers, Purchases, Release tracks, Rele
 Updates, Members), a record, a wizard step or a dialog.
 
 **Round 2 (UX review FIX-FIRST)** adds: the accent never encodes a state (changed rows and fields,
-overrides, "new" marks, selections, recommendations, timeline dots, meters, info pills are ink or
-neutral; status keeps success, warning and danger); `--mk-action` aliases `--pk-action-neutral` with
-hover, pressed and disabled steps; `:focus-visible` draws the violet ring on every control; tables
+overrides, "new" marks, recommendations, timeline dots, meters, info pills are ink or neutral;
+status keeps success, warning and danger; selections and focus follow the service since B17);
+`--mk-action` aliases `--pk-action-neutral` with hover, pressed and disabled steps;
+`:focus-visible` draws the ring on every control; tables
 at tablet widths take `--table-min` (860px) and scroll in a labelled region with a pinned first
 column; the sidebar rests on its active item; `.art.noart` (a large icon on the stored tint),
 `.hosted-row.choice-row`, `.item-row.profile`, `.label-wide` (a toolbar button's word from 1600px)
@@ -147,13 +150,43 @@ Also new: `.page.columns.split` (Home: attention 2/3 beside Platform ready 1/3 f
 predated the rule now lives in the kit, scoped to its screen, at the end of `mockup.css`.
 
 The copy pass and the owner's notes (2026-10-09) added: `.choice[data-service]` (a feature card
-edged in its feature's accent; the ink check still says chosen), a search placeholder that ends in
+edged in its feature's accent; chosen, the tint, the 2px edge and the tick), a search placeholder that ends in
 an ellipsis, the device-following `.ua-desk` / `.ua-phone` actions for every portal tile, an empty
 collection (a page head, then one empty-state card) centred across and down the canvas, an empty
 portal page's following strip at its foot, a `.hosted-callout` sentence per line, a 72px
 `.card-head.h56.sub` only while its subtitle is there, and `.hint-slot` reserving nothing in one
 column. The published page now renders each frame with its `data-screen`, so screen-scoped rules
 apply there as they do in `shoot.mjs` and `check.mjs`.
+
+## Interaction follows the service (owner rule B17, 2026-10-09)
+
+"Focus, active, hover, checked, border and accent follow the service they are referencing." The
+nearest `data-service` decides; the kit draws every state from it, so a screen only puts the
+attribute on the right element:
+
+- **Where.** The page root (`.console`, `.board`, `.hosted`, `.portal`), each sidebar group, and in
+  a page any row, card, chip, field group, section, dialog or drawer whose subject is one other
+  service's object (a Config row in a mixed list is config yellow; a release-track picker in a tier
+  is release cyan). The console's top bar and sidebar are `core`; platform pages, the portal and
+  the hosted pages are `core`. Never `update` or `distribution` in product chrome (B5).
+- **What follows it.** The focus ring (`--pk-focus` is `--pk-accent`), the hover tint (`--mk-hover`,
+  the subtle tint), checked controls (`.check`, `.radio`, `.switch`, `.segmented`, `.tab`, `.chip`,
+  `.filter`, `.choice`, done `.step`s), selections (`.nav-item.active`, `.list-nav-item.active`,
+  `.toc-nav .on`, `tr.selected`, `.item-row.marked[aria-current]`, `.card.selected`, `.pick-tile`,
+  `.role-tile`, `.jump-nav`, `.hosted-row.choice-row`, the portal's phone bar), context rules and
+  accent marks. Fills and rings `--pk-accent`, text and 1px edges `--pk-accent-fg`, tints
+  `--pk-accent-subtle`.
+- **What does not.** Status (success, warning, danger, info, signed) keeps its tone and never takes
+  a service accent; the one filled primary stays ink; unsaved, override, "new", "next" and
+  "recommended" marks stay ink (B2); the links inside commerce and config pages stay strong text
+  (green and gold read as status); in-app UI kit frames keep `--kit-accent` (DL13).
+- **Cue.** A selected or checked state never rests on colour: a check, the radio's ring, the knob's
+  side, a 3px bar, a 2px edge or a label says it.
+- **Checked.** `check.mjs` (B17 audit, 390 and 1440, both themes): each checked, selected, active
+  and focused element paints its state in its nearest service's accent (base or `-fg`), never in
+  ink; no status element paints a service accent; rings, edges and bars at least 3:1 against what
+  they sit on and accent text 4.5:1. `--contrast-report` prints the lowest ratio per theme,
+  service and kind.
 
 ## Tokens
 

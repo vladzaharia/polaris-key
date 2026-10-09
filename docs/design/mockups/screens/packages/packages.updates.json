@@ -8,20 +8,21 @@
   "uxRows": [],
   "summary": "DJDL's Updates page under Ship builds, later on Oct 7 than the Integration mockup: updater setup only for the platforms DJDL ships (Sparkle on macOS, Verified from its first update check; WinSparkle on Windows, not seen yet), generated code that authorizes each check with the device's license token, and the page's update rules with access read-only.",
   "compare": [
-    "The page is named Updates, sits under Ship builds and takes the Update accent (tangerine). Under the title only the scope line; no subtitle explains the page.",
+    "The page is named Updates, sits under Ship builds and takes the Release accent (cyan). Under the title only the scope line; no subtitle explains the page.",
     "The scope line names DJDL's builds (macOS Apple silicon and Intel; Windows x64 .msi); only those get a card; no line lists the updaters that aren't shown.",
     "Each card's head names the platform and updater and carries its state under the title: macOS 'Verified' and the time of its first update check (Oct 7, 16:48); Windows 'Not seen yet' (the kit's dashed ring), the same state Integration shows. Setup steps on the left, In your app on the right.",
     "macOS steps match the facts: the Sparkle key made with 'pkey release keys init --sparkle' (public half in .pkey/release, private half a CI secret), the signed appcast per release track, and the first update check from DJDL 4.2.1 on macOS 15.4 ('nothing newer to offer yet'); its time is said once, in the head. The foot counts from there: 64 checks, 41 copies on 4.2.1, 0 signature failures.",
     "The macOS code leads with the Swift PolarisKeyUpdate tab (PolarisSparkle, which sends the device's license token with every check); Info.plist is the second tab, 'also required'. The WinSparkle snippet sets the appcast URL, the EdDSA key and win_sparkle_set_http_header with the device's license token. Only the WinSparkle snippet has a foot, 'Licenses on beta read update/beta/winsparkle.xml.'; who may check is said once, in Update rules ('Customers').",
     "Windows' updater is a saved choice: a band under the head reads 'Updater chosen by Ana Lima on Oct 7' with Change (the title already names WinSparkle), with no hint: the alternatives (Velopack, App Installer) are offered by Change, not shown as tabs.",
-    "Waiting steps use the kit's neutral clock, never the tangerine accent; inline commands don't break mid-command.",
+    "Waiting steps use the kit's neutral clock, never the accent; inline commands don't break mid-command.",
     "Update rules (the aside at wide): the compatibility window with Change, 'Who can check for updates' read-only with 'Change on Access', and the release-track summary linking to Release tracks.",
     "A broken updater looks like packages.updates-failing.",
     "Phone: the sidebar folds into the menu button, each card's status drops under its title, the updater choice wraps above its hint, setup stacks above the code, and the code scrolls sideways inside its block.",
-    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink; focus, hover, checked and selected take the accent of the service the element references (B17), never a status colour; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
     "No masthead tile (lead answer 3): this is a list, record or step, not a service's landing page; the orientation chip carries the context.",
     "Ship builds is one identity (B5): Release cyan rule, chip, tile and nav marker, the Package glyph, crumb '<Product> › Ship builds'; no per-page green or tangerine.",
-    "Updates is a Ship builds page: Release cyan, never Update tangerine (B5)."
+    "Updates is a Ship builds page: Release cyan, never Update tangerine (B5).",
+    "B17: Who can check for updates is core (it lives on Access); the other update rules are release."
   ],
   "status": "mockup",
   "designReview": {

@@ -1,5 +1,5 @@
 <div class="console" data-service="core">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -9,7 +9,7 @@
   </header>
 
   <!-- Lucía is Diceroll admin narrowed to Ship builds and Commerce: the sidebar shows those two areas only. -->
-  <nav class="sidebar" aria-label="Diceroll">
+  <nav class="sidebar" aria-label="Diceroll" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="diceroll"></span>
       <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
@@ -74,8 +74,8 @@
             <div class="card-head"><div class="title"><h2 id="open-title">You can open</h2></div></div>
             <div class="card-body mk-stack-2">
               <div class="mk-stack-2">
-                <button class="btn primary block"><i class="ic ic-package"></i>Diceroll releases</button>
-                <button class="btn outline block"><i class="ic ic-store"></i>Diceroll storefronts</button>
+                <button class="btn primary block" data-service="release"><i class="ic ic-package"></i>Diceroll releases</button>
+                <button class="btn outline block" data-service="commerce"><i class="ic ic-store"></i>Diceroll storefronts</button>
               </div>
               <a class="link" href="#">Open your library<i class="ic ic-arrow-right"></i></a>
             </div>

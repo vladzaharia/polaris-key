@@ -1,5 +1,5 @@
 <div class="console" data-service="release">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -9,7 +9,7 @@
   </header>
 
   <!-- Product context (ST-45). Ship builds is open; Packages sits under it (A-21). -->
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -49,7 +49,7 @@
 <div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Packages</h1><span class="count">3 feeds</span></div>
         <div class="page-actions">
-          <button class="btn outline"><i class="ic ic-key-round"></i>Service tokens</button>
+          <button class="btn outline" data-service="core"><i class="ic ic-key-round"></i>Service tokens</button>
         </div>
       </header>
 
@@ -81,7 +81,7 @@
               <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>38 installs refused</span>
               <span class="attn-subject mono">@djdl/source-kit</span>
               <span class="meta">last 24 h</span>
-              <a class="link" href="#">Open Access<i class="ic ic-arrow-right"></i></a>
+              <a class="link" href="#" data-service="core">Open Access<i class="ic ic-arrow-right"></i></a>
             </div>
             <div class="type-small muted">31 asked for <span class="mono">^2.4.0</span> after their updates ended at 2.3.x.</div>
             <div class="type-small muted">They can install 2.3.0, or renew.</div>
@@ -198,8 +198,8 @@
             <div class="title"><h2 id="ci">Install in CI and on servers</h2></div>
           </div>
           <div class="card-rows">
-            <div class="card-row"><div class="grow"><div class="cell-title">Plugin CI</div><div class="cell-sub mono">pkeyci_…R8VQ</div></div><span class="meta">Used 14 min ago</span></div>
-            <div class="card-row"><div class="grow"><div class="cell-title">Docs build</div><div class="cell-sub mono">pkeyci_…2MDX</div></div><span class="meta">Used Oct 5</span></div>
+            <div class="card-row" data-service="core"><div class="grow"><div class="cell-title">Plugin CI</div><div class="cell-sub mono">pkeyci_…R8VQ</div></div><span class="meta">Used 14 min ago</span></div>
+            <div class="card-row" data-service="core"><div class="grow"><div class="cell-title">Docs build</div><div class="cell-sub mono">pkeyci_…2MDX</div></div><span class="meta">Used Oct 5</span></div>
           </div>
           <div class="card-body">
             <div class="cmd"><span>pkey feeds setup --print --token-env PKEY_TOKEN</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>

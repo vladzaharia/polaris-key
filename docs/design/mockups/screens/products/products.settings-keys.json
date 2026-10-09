@@ -12,7 +12,8 @@
     "Signing is gold only through the signed badge (key glyph and name); the rotation stepper is Prepared → Trust window → Activate → Old key retires, with Activate disabled until the window ends and why in words.",
     "Secrets list names only; a missing required secret says what it breaks.",
     "No line under the tabs announces the step-up: the confirmation (admin.confirm-step-up) asks when a change is made.",
-    "The hub keeps four underline tabs and DJDL's icon as the masthead mark; spelling is 'Keys & secrets' everywhere (admin-4-22)."
+    "The hub keeps four underline tabs and DJDL's icon as the masthead mark; spelling is 'Keys & secrets' everywhere (admin-4-22).",
+    "B17: Secrets are Managed config; CI publishing and Content keys are Ship builds; the key set and signing keys are core."
   ],
   "status": "mockup",
   "designReview": null

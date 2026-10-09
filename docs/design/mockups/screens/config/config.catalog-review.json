@@ -12,7 +12,8 @@
     "Who it reaches is counted once, in the rail: profiles, licenses that move, accounts that keep their own; devices get v10 at their next check.",
     "The repository note appears once, as an info callout with Copy the diff: the console publish doesn't write .pkey/schema.",
     "Publish v10 is the one filled primary (ink); Back to editing is a ghost. States (config.catalog-review-states): nothing to publish, a validation error pinned to its entry, publish failed with nothing lost.",
-    "Managed config yellow marks context only; added and removed use success and danger with + and − glyphs."
+    "Managed config yellow marks context only; added and removed use success and danger with + and − glyphs.",
+    "B17: Who it reaches rows carry their owner: Profiles config, Licenses license, Accounts core."
   ],
   "status": "mockup",
   "designReview": null

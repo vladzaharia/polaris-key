@@ -1,6 +1,6 @@
 <!-- Settings → Features (as products.features) under the confirmation; the page behind can't scroll. -->
 <div class="console kit-prod modal-open" data-service="core">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -10,7 +10,7 @@
   </header>
 
   <!-- Product context (ST-45): Diceroll runs Licensing, Managed config, Ship builds and Commerce. -->
-  <nav class="sidebar" aria-label="Diceroll">
+  <nav class="sidebar" aria-label="Diceroll" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="diceroll"></span>
       <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
@@ -55,7 +55,7 @@
       <section class="card" aria-label="Features">
         <div class="feature-rows-head" aria-hidden="true"><span>Feature</span><span>Status</span></div>
         <div class="feature-rows">
-          <div class="feature-row">
+          <div class="feature-row" data-service="license">
             <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Licensing</div>
@@ -64,7 +64,7 @@
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Licensing"></span>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="config">
             <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Managed config</div>
@@ -82,7 +82,7 @@
             </div>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="release">
             <span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Ship builds</div>
@@ -116,7 +116,7 @@
             </div>
           </div>
 
-          <div class="feature-row off" id="row-signin">
+          <div class="feature-row off" id="row-signin" data-service="identity">
             <span class="icon-tile sm muted" data-service="identity"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Sign-in</div>
@@ -133,7 +133,7 @@
             </div>
           </div>
 
-          <div class="feature-row off">
+          <div class="feature-row off" data-service="sync">
             <span class="icon-tile sm muted" data-service="sync"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Cloud Sync</div>
@@ -143,7 +143,7 @@
             <span class="switch touch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="Cloud Sync, needs Sign-in"></span>
           </div>
 
-          <div class="feature-row">
+          <div class="feature-row" data-service="commerce">
             <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Commerce</div>
@@ -175,7 +175,7 @@
       </div>
       <div class="dialog-body">
         <div class="change-list" id="dlg-changes">
-          <div class="change-item">
+          <div class="change-item" data-service="license">
             <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
             <div class="change-title">Licensing</div>
             <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
@@ -183,7 +183,7 @@
             <p class="change-text">Then no license confirms, Free tier included.</p>
             <p class="meta tnum">11,239 devices checked a license in 30 days</p>
           </div>
-          <div class="change-item">
+          <div class="change-item" data-service="commerce">
             <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
             <div class="change-title">Commerce</div>
             <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>

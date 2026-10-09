@@ -7,7 +7,7 @@
 </style>
 
 <div class="console kit-prod" data-service="core">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -17,7 +17,7 @@
   </header>
 
   <!-- Product context (ST-45): the product's own pages, then its features, Settings last. -->
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -72,7 +72,7 @@
         <div class="int-main">
 
       <!-- One card per enabled feature, canonical order: the console steps beside the drop-in UI kit; one status pill in the head. -->
-      <section class="card int-card fold-phone" aria-labelledby="f-license">
+      <section class="card int-card fold-phone" aria-labelledby="f-license" data-service="license">
         <div class="card-head">
           <span class="icon-tile" data-service="license"><i class="svc"></i></span>
           <div class="title">
@@ -123,7 +123,7 @@
       </section>
 
       <!-- A feature whose console steps are done and which is Verified folds to one row. -->
-      <section class="card feature-fold" aria-labelledby="f-config">
+      <section class="card feature-fold" aria-labelledby="f-config" data-service="config">
         <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
         <div class="title">
           <h2 id="f-config">Managed config</h2>
@@ -132,7 +132,7 @@
         <button class="btn ghost sm">Show<i class="ic ic-chevron-down"></i></button>
       </section>
 
-      <section class="card int-card" aria-labelledby="f-ship">
+      <section class="card int-card" aria-labelledby="f-ship" data-service="release">
         <div class="card-head">
           <span class="icon-tile" data-service="release"><i class="svc"></i></span>
           <div class="title">
@@ -179,7 +179,7 @@
         </div>
       </section>
 
-      <section class="card int-card fold-phone" aria-labelledby="f-signin">
+      <section class="card int-card fold-phone" aria-labelledby="f-signin" data-service="identity">
         <div class="card-head">
           <span class="icon-tile" data-service="identity"><i class="svc"></i></span>
           <div class="title">
@@ -218,7 +218,7 @@
         </div>
       </section>
 
-      <section class="card int-card fold-phone" aria-labelledby="f-sync">
+      <section class="card int-card fold-phone" aria-labelledby="f-sync" data-service="sync">
         <div class="card-head">
           <span class="icon-tile" data-service="sync"><i class="svc"></i></span>
           <div class="title">
@@ -259,7 +259,7 @@
       </section>
 
       <!-- Off features never get a card: one row links to Features. -->
-      <section class="card feature-fold add" aria-labelledby="f-commerce">
+      <section class="card feature-fold add" aria-labelledby="f-commerce" data-service="commerce">
         <span class="icon-tile sm muted" data-service="commerce"><i class="svc"></i></span>
         <div class="title">
           <h2 id="f-commerce">Commerce is off</h2>

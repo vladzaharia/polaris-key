@@ -10,20 +10,11 @@
     text-underline-offset: 3px;
     white-space: nowrap;
   }
-  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
-     text colour, as commerce's are (the arrow says "link"). */
-  [data-screen="config.mint-wizard"] [data-service="config"] :is(.link, .btn.link) {
-    color: var(--pk-text-strong);
-  }
   [data-screen="config.mint-wizard"] .choice-title > .ic {
     color: var(--pk-text-muted);
   }
-  [data-screen="config.mint-wizard"] .choice.on {
-    border-color: var(--pk-text-strong);
-    background: var(--pk-surface-raised);
-  }
   [data-screen="config.mint-wizard"] .choice.on .choice-title > .ic {
-    color: var(--pk-text-strong);
+    color: var(--pk-accent-fg);
   }
   [data-screen="config.mint-wizard"] .list-nav-item > .dot.changed {
     width: 7px;
@@ -144,7 +135,7 @@
 </style>
 
 <div class="console kit-cfg" data-service="config">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -153,7 +144,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -354,8 +345,8 @@
             <div class="card-rows">
               <div class="card-row"><i class="ic ic-layers"></i><span class="grow">Default profile</span><span class="subtle">Not set</span></div>
               <div class="card-row"><i class="ic ic-award"></i><span class="grow">Studio profile</span><code>mp3-320</code></div>
-              <div class="card-row"><i class="ic ic-key-round"></i><span class="grow">Licenses</span><a class="nlink" href="#">3 set their own</a></div>
-              <div class="card-row"><i class="ic ic-user-round"></i><span class="grow">Accounts</span><a class="nlink" href="#">12 set their own</a></div>
+              <div class="card-row" data-service="license"><i class="ic ic-key-round"></i><span class="grow">Licenses</span><a class="nlink" href="#">3 set their own</a></div>
+              <div class="card-row" data-service="core"><i class="ic ic-user-round"></i><span class="grow">Accounts</span><a class="nlink" href="#">12 set their own</a></div>
             </div>
             <div class="card-foot start">
               <button class="btn outline sm"><i class="ic ic-eye"></i>Preview as…</button>

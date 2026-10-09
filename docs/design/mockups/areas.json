@@ -56,7 +56,7 @@
   {
     "key": "sdk",
     "title": "SDKs and UI kits",
-    "accent": "release",
+    "accent": "core",
     "blurb": "polaris-key.json and one start call in six SDKs; doctor() and the CLI flows in the terminal; generated snippets; the must-tier UI kits on their platforms."
   },
   {

@@ -10,20 +10,11 @@
     text-underline-offset: 3px;
     white-space: nowrap;
   }
-  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
-     text colour, as commerce's are (the arrow says "link"). */
-  [data-screen="config.entry-minted-token-no-key"] [data-service="config"] :is(.link, .btn.link) {
-    color: var(--pk-text-strong);
-  }
   [data-screen="config.entry-minted-token-no-key"] .choice-title > .ic {
     color: var(--pk-text-muted);
   }
-  [data-screen="config.entry-minted-token-no-key"] .choice.on {
-    border-color: var(--pk-text-strong);
-    background: var(--pk-surface-raised);
-  }
   [data-screen="config.entry-minted-token-no-key"] .choice.on .choice-title > .ic {
-    color: var(--pk-text-strong);
+    color: var(--pk-accent-fg);
   }
   [data-screen="config.entry-minted-token-no-key"] .list-nav-item > .dot.changed {
     width: 7px;
@@ -100,7 +91,7 @@
 </style>
 
 <div class="console kit-cfg" data-service="config">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -109,7 +100,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -320,7 +311,7 @@ request.<span class="t-f">setValue</span>(<span class="t-s">"Bearer </span>\(tok
               <div class="card-row"><i class="ic ic-circle-check"></i><span class="grow"><span class="strong">Ana Lima</span> approved<br><span class="type-small muted">Oct 7, 10:20</span></span></div>
             </div>
           </section>
-          <section class="card" aria-labelledby="who-title">
+          <section class="card" aria-labelledby="who-title" data-service="license">
             <div class="card-head">
               <div class="title"><h2 id="who-title">Who can get one</h2></div>
             </div>

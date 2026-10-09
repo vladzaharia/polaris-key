@@ -6,7 +6,7 @@
 </style>
 
 <div class="console floor modal-open" data-service="core">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -16,7 +16,7 @@
   </header>
 
   <!-- Access is one product page (P2-10). License -> Enrollment, License -> Settings and Distribution -> Access redirect here. -->
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -102,7 +102,7 @@
                   <div class="callout warning">
                     <i class="ic ic-triangle-alert"></i>
                     <div class="grow"><div class="callout-title">This rule can’t match</div><div class="callout-text">Pocket ID doesn’t send <code>vpnAccess</code>. Add it to Pocket ID’s claim map.</div></div>
-                    <button class="btn outline sm">Open Connections</button>
+                    <button class="btn outline sm" data-service="identity">Open Connections</button>
                   </div>
                 </td>
               </tr>
@@ -124,7 +124,7 @@
       <!-- Two settings: anonymous devices and Discover. Side by side below 1600; the aside at wide. -->
       <div class="mk-grid-2 aside span-3">
         <!-- Anonymous devices: the Anonymous devices tier, anonymous entry's only home (LX-36). -->
-        <section class="card" aria-labelledby="anon-title">
+        <section class="card" aria-labelledby="anon-title" data-service="license">
           <div class="card-head">
             <div class="title"><h2 id="anon-title">Anonymous devices</h2></div>
           </div>
@@ -153,7 +153,7 @@
       </div>
 
       <!-- Delivery gates (P2-10, F-34): one vocabulary for update checks, app downloads, packs and package feeds. -->
-      <section class="card" aria-labelledby="gates-title">
+      <section class="card" aria-labelledby="gates-title" data-service="release">
         <div class="card-head">
           <div class="title"><h2 id="gates-title">Updates, downloads and packages</h2></div>
         </div>
@@ -240,7 +240,7 @@
   <!-- Add a rule (LX-36's RuleEditor and match preview, shared with console.access). -->
   <!-- On phone the kit's .sheet makes it a bottom sheet (ADMIN.md §Overlays): body scrolls, buttons pinned. -->
   <div class="overlay top sheet">
-    <div class="dialog lg scroll fade" role="dialog" aria-modal="true" aria-labelledby="rule-title">
+    <div class="dialog lg scroll fade" role="dialog" aria-modal="true" aria-labelledby="rule-title" data-service="license">
       <div class="dialog-head"><h2 id="rule-title">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
       <div class="dialog-body">
         <div class="form">
@@ -254,7 +254,7 @@
                 <label class="field-label">Group</label>
                 <div class="input mono focus"><span class="grow">djdl-press</span></div>
               </div>
-              <div class="field">
+              <div class="field" data-service="identity">
                 <label class="field-label">From</label>
                 <div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div>
               </div>

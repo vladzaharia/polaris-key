@@ -45,7 +45,7 @@
 </style>
 
 <div class="console kit-next ent2" data-service="license">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -54,7 +54,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="Diceroll">
+  <nav class="sidebar" aria-label="Diceroll" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="diceroll"></span>
       <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
@@ -119,11 +119,11 @@
                 <td class="hide-phone"><span class="pill sm"><i class="ic ic-puzzle"></i>Season pass</span></td></tr>
               <tr><td><div class="cell-title">Loadout slots</div><div class="cell-sub mono">loadouts</div><div class="cell-sub show-phone"><span class="nowrap">Premium 6</span> + <span class="nowrap">Loadout pack +2</span> + <span class="nowrap">Neon dice pack +1</span></div></td><td class="tnum strong">9</td>
                 <td class="hide-phone"><span class="mk-cluster-1"><span class="pill sm"><i class="ic ic-layers"></i>Premium 6</span><span class="pill sm"><i class="ic ic-puzzle"></i>Loadout pack +2</span><span class="pill sm"><i class="ic ic-puzzle"></i>Neon dice pack +1</span></span></td></tr>
-              <tr><td><div class="cell-title">Release tracks</div><div class="cell-sub mono">channels</div><div class="cell-sub show-phone">Premium</div></td><td class="strong">stable</td>
+              <tr data-service="release"><td><div class="cell-title">Release tracks</div><div class="cell-sub mono">channels</div><div class="cell-sub show-phone">Premium</div></td><td class="strong">stable</td>
                 <td class="hide-phone"><span class="pill sm"><i class="ic ic-layers"></i>Premium</span></td></tr>
               <tr><td><div class="cell-title">Device limit</div><div class="cell-sub mono">deviceLimit</div><div class="cell-sub show-phone">Premium</div></td><td class="tnum strong">5</td>
                 <td class="hide-phone"><span class="pill sm"><i class="ic ic-layers"></i>Premium</span></td></tr>
-              <tr><td><div class="cell-title">Cloud Sync storage</div><div class="cell-sub mono">pkey.cloudSync.bytes</div><div class="cell-sub show-phone">Premium</div></td><td class="tnum strong nowrap">50 MB</td>
+              <tr data-service="sync"><td><div class="cell-title">Cloud Sync storage</div><div class="cell-sub mono">pkey.cloudSync.bytes</div><div class="cell-sub show-phone">Premium</div></td><td class="tnum strong nowrap">50 MB</td>
                 <td class="hide-phone"><span class="pill sm"><i class="ic ic-layers"></i>Premium</span></td></tr>
             </tbody>
           </table>
@@ -168,7 +168,7 @@
                 <button class="btn ghost icon xs" aria-label="Actions for 500 gems ×2"><i class="ic ic-ellipsis"></i></button>
               </div>
             </div>
-            <div class="card-foot start"><a class="link" href="#">Purchases in Activity<i class="ic ic-arrow-right"></i></a></div>
+            <div class="card-foot start"><a class="link" href="#" data-service="core">Purchases in Activity<i class="ic ic-arrow-right"></i></a></div>
           </section>
         </div>
       </div>

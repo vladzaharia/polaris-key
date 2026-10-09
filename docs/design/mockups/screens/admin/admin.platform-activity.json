@@ -12,7 +12,8 @@
     "Permission filtering: a Product admin sees only their products' events and no Platform rows; the Product facet lists only those products.",
     "Platform context, the Pinned K chip, 'Platform' crumb; Export CSV is outlined (no filled primary on a read page).",
     "A row opens the detail drawer (admin.platform-activity-event): before and after, who, when, where.",
-    "Round 2 (UX review): Foot '7 of 64 events' (the range is the Last 7 days filter beside it); one actor name for CI ('GitHub Actions'); the selected row is an ink bar and wash, never the accent (lead answer 2)."
+    "Round 2 (UX review): Foot '7 of 64 events' (the range is the Last 7 days filter beside it); one actor name for CI ('GitHub Actions'); the selected row is the tint and a 3px bar in the accent of the service its event references (B17).",
+    "B17: each event row carries the service it references (Commerce on: Commerce; demote and publish: Ship builds); platform and role events are core."
   ],
   "status": "mockup",
   "designReview": null

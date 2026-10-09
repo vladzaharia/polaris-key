@@ -1,5 +1,5 @@
 <div class="console" data-service="core">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -8,7 +8,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -48,7 +48,7 @@
           <!-- Needs attention, one item: no head, the pill names it; a head and count come back at two. -->
           <section class="card alert" aria-label="Needs attention">
             <div class="card-rows">
-              <div class="attn-row">
+              <div class="attn-row" data-service="config">
                 <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
                 <span class="attn-subject" data-service="config"><i class="svc"></i>Managed config</span>
                 <span class="attn-text">Required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span>
@@ -68,29 +68,29 @@
             </div>
 
             <div class="checklist">
-              <div class="check-row">
+              <div class="check-row" data-service="license">
                 <div class="check-feature"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span><span class="check-name">Licensing</span></div>
                 <span class="links"><a class="link" href="#">Drop-in kit</a><a class="link quiet" href="#" aria-label="Integrate Licensing directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span>
                 <span class="plats"><span class="plat verified" title="macOS: Verified Oct 7, 10:42"><i class="ic ic-apple"></i><span class="plat-name">macOS</span><span class="sr-only">: Verified Oct 7, 10:42</span></span><span class="plat unseen" title="Windows: Not seen yet"><i class="ic ic-windows"></i><span class="plat-name">Windows</span><span class="sr-only">: Not seen yet</span></span></span>
               </div>
-              <div class="check-row">
+              <div class="check-row" data-service="config">
                 <div class="check-feature"><span class="icon-tile sm" data-service="config"><i class="svc"></i></span><span class="check-name">Managed config</span></div>
                 <span class="links"><a class="link" href="#">Drop-in kit</a><a class="link quiet" href="#" aria-label="Integrate Managed config directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span>
                 <span class="plats"><span class="plat verified" title="macOS: Verified Oct 7, 10:44"><i class="ic ic-apple"></i><span class="plat-name">macOS</span><span class="sr-only">: Verified Oct 7, 10:44</span></span><span class="plat unseen" title="Windows: Not seen yet"><i class="ic ic-windows"></i><span class="plat-name">Windows</span><span class="sr-only">: Not seen yet</span></span></span>
               </div>
               <!-- The first open step in canonical order: the page's one primary. -->
-              <div class="check-row next">
+              <div class="check-row next" data-service="release">
                 <div class="check-feature"><span class="icon-tile sm" data-service="release"><i class="svc"></i></span><span class="check-name">Ship builds</span><span class="check-sub">First CI publish Oct 6</span></div>
                 <span class="links"><a class="link" href="#">Drop-in kit</a><a class="link quiet" href="#" aria-label="Integrate Ship builds directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span>
                 <span class="plats"><span class="plat after-step" title="macOS: After the console step"><i class="ic ic-apple"></i><span class="plat-name">macOS</span><span class="sr-only">: After the console step</span></span><span class="plat unseen" title="Windows: Not seen yet"><i class="ic ic-windows"></i><span class="plat-name">Windows</span><span class="sr-only">: Not seen yet</span></span></span>
                 <div class="check-next"><button class="btn primary sm">Add Sparkle signing key</button></div>
               </div>
-              <div class="check-row">
+              <div class="check-row" data-service="identity">
                 <div class="check-feature"><span class="icon-tile sm" data-service="identity"><i class="svc"></i></span><span class="check-name">Sign-in</span><span class="check-sub">Waiting for the first sign-in</span></div>
                 <span class="links"><a class="link" href="#">Drop-in kit</a><a class="link quiet" href="#" aria-label="Integrate Sign-in directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span>
                 <span class="plats"><span class="plat waiting" title="macOS: Waiting for the first sign-in"><i class="ic ic-apple"></i><span class="plat-name">macOS</span><span class="sr-only">: Waiting for the first sign-in</span></span><span class="plat unseen" title="Windows: Not seen yet"><i class="ic ic-windows"></i><span class="plat-name">Windows</span><span class="sr-only">: Not seen yet</span></span></span>
               </div>
-              <div class="check-row">
+              <div class="check-row" data-service="sync">
                 <div class="check-feature"><span class="icon-tile sm" data-service="sync"><i class="svc"></i></span><span class="check-name">Cloud Sync</span><span class="check-sub"><span class="open-step"><a class="link" href="#">Set storage per account</a></span></span></div>
                 <span class="links"><a class="link" href="#">Drop-in kit</a><a class="link quiet" href="#" aria-label="Integrate Cloud Sync directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span>
                 <span class="plats"><span class="plat after-step" title="macOS: After the console step"><i class="ic ic-apple"></i><span class="plat-name">macOS</span><span class="sr-only">: After the console step</span></span><span class="plat unseen" title="Windows: Not seen yet"><i class="ic ic-windows"></i><span class="plat-name">Windows</span><span class="sr-only">: Not seen yet</span></span></span>
@@ -149,22 +149,22 @@
               <a class="btn link" href="#">Open Activity<i class="ic ic-arrow-right"></i></a>
             </div>
             <div class="card-rows">
-              <div class="list-row">
+              <div class="list-row" data-service="license">
                 <span class="avatar">MF</span>
                 <span class="list-row-text"><strong>Mara Fennick</strong> activated a MacBook Pro</span>
                 <span class="list-row-meta">Today, 10:42</span>
               </div>
-              <div class="list-row">
+              <div class="list-row" data-service="release">
                 <span class="icon-tile muted"><i class="ic ic-github"></i></span>
                 <span class="list-row-text"><strong>CI</strong> published 4.2.0 to stable from <span class="mono">example-org/djdl</span></span>
                 <span class="list-row-meta">Oct 6, 16:20</span>
               </div>
-              <div class="list-row">
+              <div class="list-row" data-service="config">
                 <span class="avatar violet">AL</span>
                 <span class="list-row-text"><strong>Ada Lindqvist</strong> published catalog v4</span>
                 <span class="list-row-meta">Oct 6, 11:05</span>
               </div>
-              <div class="list-row">
+              <div class="list-row" data-service="sync">
                 <span class="avatar violet">AL</span>
                 <span class="list-row-text"><strong>Ada Lindqvist</strong> turned on Cloud Sync</span>
                 <span class="list-row-meta">Oct 5, 09:30</span>

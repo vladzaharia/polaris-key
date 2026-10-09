@@ -6,7 +6,7 @@
 </style>
 
 <div class="console floor" data-service="core">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -16,7 +16,7 @@
   </header>
 
   <!-- Access is one product page (P2-10). License -> Enrollment, License -> Settings and Distribution -> Access redirect here. -->
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -102,7 +102,7 @@
                   <div class="callout warning">
                     <i class="ic ic-triangle-alert"></i>
                     <div class="grow"><div class="callout-title">This rule can’t match</div><div class="callout-text">Pocket ID doesn’t send <code>vpnAccess</code>. Add it to Pocket ID’s claim map.</div></div>
-                    <button class="btn outline sm">Open Connections</button>
+                    <button class="btn outline sm" data-service="identity">Open Connections</button>
                   </div>
                 </td>
               </tr>
@@ -122,7 +122,7 @@
       </section>
 
       <!-- Delivery gates (P2-10, F-34): one vocabulary for update checks, app downloads, packs and package feeds. -->
-      <section class="card" aria-labelledby="gates-title">
+      <section class="card" aria-labelledby="gates-title" data-service="release">
         <div class="card-head h56">
           <div class="title"><h2 id="gates-title">Updates, downloads and packages</h2></div>
         </div>
@@ -169,7 +169,7 @@
       <!-- The rail from 1280: Anonymous devices, Discover and Check a person; below 1280 the first two sit side by side and Check a person follows. -->
       <div class="rail-cards aside span-3">
         <!-- Anonymous devices: the Anonymous devices tier, anonymous entry's only home (LX-36). -->
-        <section class="card" aria-labelledby="anon-title">
+        <section class="card" aria-labelledby="anon-title" data-service="license">
           <div class="card-head h56">
             <div class="title"><h2 id="anon-title">Anonymous devices</h2></div>
           </div>
@@ -225,7 +225,7 @@
               <ul class="icon-list">
                 <li class="success"><i class="ic ic-check"></i><span>Discover shows DJDL as “Education license”</span></li>
                 <li class="success"><i class="ic ic-check"></i><span>Update checks</span><span class="type-small muted">Customers</span></li>
-                <li class="success"><i class="ic ic-check"></i><span>App downloads</span><span class="type-small accent">Public</span></li>
+                <li class="success"><i class="ic ic-check"></i><span>App downloads</span><span class="type-small strong">Public</span></li>
                 <li class="success"><i class="ic ic-check"></i><span>Controller mappings</span><span class="type-small muted">Public</span></li>
                 <li class="danger"><i class="ic ic-x"></i><span>Stem separation models</span><span class="type-small muted">Holds <code>stems</code></span><span class="sub">Education doesn’t include <code>stems</code></span></li>
                 <li class="success"><i class="ic ic-check"></i><span>npm <code>@djdl</code></span><span class="type-small muted">Public</span></li>

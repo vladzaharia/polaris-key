@@ -15,7 +15,8 @@
     "Preview counting: skeleton head and two skeleton rows in the preview slot; a live region announces the count.",
     "Preview failed: 'Couldn’t count who has djdl-press' / 'Polaris Key didn’t answer in time.' with Retry.",
     "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
-    "The same dialog head and ink primary as licenses.access-rule; inline errors keep the danger edge under the focus ring (admin-1-25, admin-1-27)."
+    "The same dialog head and ink primary as licenses.access-rule; inline errors keep the danger edge under the focus ring (admin-1-25, admin-1-27).",
+    "B17: the board is core (Access); each dialog is license, its From connection identity."
   ],
   "status": "mockup",
   "designReview": {

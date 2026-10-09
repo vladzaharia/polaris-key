@@ -1,5 +1,5 @@
 <div class="console" data-service="release">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -9,7 +9,7 @@
   </header>
 
   <!-- Product context (ST-45). Ship builds is open; Packages sits under it (A-21). On Oct 2 DJDL has 2 feeds. -->
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -130,7 +130,7 @@
      npm to npmjs (OIDC trusted publishing, provenance) and a container image to GHCR (the repository's
      own GITHUB_TOKEN). Maven Central and crates.io follow the same pattern. Docker Hub has no trusted
      publishing, so it would need a stored secret, which F-35 rules out. -->
-<section class="board below" aria-label="Other public registries">
+<section class="board below" aria-label="Other public registries" data-service="release">
   <div class="board-title"><h1>Other public registries</h1></div>
 
   <figure class="board-item">

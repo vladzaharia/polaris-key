@@ -14,7 +14,8 @@
     "Reordering without a mouse: the Order list with Education's ⋯ open above it: Move up (above Standard ↑), Move down (below Trial ↓), Duplicate, and Delete disabled with 'Used by 57 licenses. Move them to another tier first.'",
     "Leaving with a change: 'Discard 1 change to Education?' over the edited Limits ('Offline days goes back to 7 and Studio opens.'), Keep editing and Discard.",
     "Locked stable: stable with a lock and a dashed edge, focused, its 'Always included' tooltip above it; beta chosen.",
-    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency."
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "B17: Release tracks (field and card) is release; the rest is license."
   ],
   "status": "mockup",
   "designReview": {

@@ -1,5 +1,5 @@
 <div class="console cm2" data-service="commerce">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -8,7 +8,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -49,11 +49,11 @@
       </header>
 
       <nav class="tabs" aria-label="Steam">
-        <a class="tab" href="#">Status</a>
-        <a class="tab" href="#">Releases</a>
-        <a class="tab" href="#">Listing</a>
+        <a class="tab" href="#" data-service="release">Status</a>
+        <a class="tab" href="#" data-service="release">Releases</a>
+        <a class="tab" href="#" data-service="release">Listing</a>
         <a class="tab active" href="#" aria-current="page">Sales</a>
-        <a class="tab" href="#">Setup</a>
+        <a class="tab" href="#" data-service="release">Setup</a>
       </nav>
 
       <div class="mk-with-rail">
@@ -71,7 +71,7 @@
               <div class="task-desc">Needs the Steam Direct fee.</div>
               <div class="task-action"><button class="btn primary"><i class="ic ic-external-link"></i>Open Steamworks</button></div>
             </div>
-            <div class="task">
+            <div class="task" data-service="core">
               <span class="task-mark"></span>
               <div class="task-title">Add a publisher key</div>
               <div class="task-desc">Steamworks &gt; Users &amp; Permissions &gt; Manage Groups</div>

@@ -10,20 +10,11 @@
     text-underline-offset: 3px;
     white-space: nowrap;
   }
-  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
-     text colour, as commerce's are (the arrow says "link"). */
-  [data-screen="config.pause-writes"] [data-service="config"] :is(.link, .btn.link) {
-    color: var(--pk-text-strong);
-  }
   [data-screen="config.pause-writes"] .choice-title > .ic {
     color: var(--pk-text-muted);
   }
-  [data-screen="config.pause-writes"] .choice.on {
-    border-color: var(--pk-text-strong);
-    background: var(--pk-surface-raised);
-  }
   [data-screen="config.pause-writes"] .choice.on .choice-title > .ic {
-    color: var(--pk-text-strong);
+    color: var(--pk-accent-fg);
   }
   [data-screen="config.pause-writes"] .card-split .eyebrow .pill {
     letter-spacing: 0;
@@ -60,7 +51,7 @@
 </style>
 
 <div class="console kit-cfg" data-service="sync">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -69,7 +60,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="Diceroll">
+  <nav class="sidebar" aria-label="Diceroll" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="diceroll"></span>
       <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>

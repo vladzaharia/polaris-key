@@ -6,7 +6,7 @@
 </style>
 
 <div class="console kit-prod" data-service="core">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -16,7 +16,7 @@
   </header>
 
   <!-- Product context (ST-45): the product's own pages, then its features, Settings last. -->
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -103,7 +103,7 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="k-secrets">
+      <section class="card" aria-labelledby="k-secrets" data-service="config">
         <div class="card-head">
           <div class="title"><h2 id="k-secrets">Secrets</h2><p>Values are never shown again</p></div>
           <button class="btn outline sm"><i class="ic ic-plus"></i>Set secret</button>
@@ -114,7 +114,7 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="k-ci">
+      <section class="card" aria-labelledby="k-ci" data-service="release">
         <div class="card-head">
           <div class="title"><h2 id="k-ci">CI publishing</h2><p>Tokens are shown once</p></div>
           <button class="btn outline sm"><i class="ic ic-plus"></i>New token</button>
@@ -131,7 +131,7 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="k-content">
+      <section class="card" aria-labelledby="k-content" data-service="release">
         <div class="card-head">
           <div class="title"><h2 id="k-content">Content keys</h2><p>Set by the release pipeline</p></div>
         </div>

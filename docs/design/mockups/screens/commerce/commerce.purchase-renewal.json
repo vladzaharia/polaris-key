@@ -12,7 +12,8 @@
     "No invented rules: the add-on is kept during billing retry and removed at the lapse as LX-23/LX-41 define; nothing celebrates (MO).",
     "One leading glyph in the head (the store's mark), the Commerce green rule; Re-verify is the one action, outlined; the store link leaves the app (↗).",
     "Phone: a bottom sheet, the timeline scrolling, the actions pinned.",
-    "Round 2 (UX review): Timeline dots are ink; the billing retry is warning; nothing in the ledger is drawn in the Commerce green (B2)."
+    "Round 2 (UX review): Timeline dots are ink; the billing retry is warning; nothing in the ledger is drawn in the Commerce green (B2).",
+    "B17: the License row and the ledger's License cells carry license, the Account row core; the rest is commerce."
   ],
   "status": "mockup",
   "designReview": null

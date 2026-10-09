@@ -10,20 +10,11 @@
     text-underline-offset: 3px;
     white-space: nowrap;
   }
-  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
-     text colour, as commerce's are (the arrow says "link"). */
-  [data-screen="config.approve-recipe-stale"] [data-service="config"] :is(.link, .btn.link) {
-    color: var(--pk-text-strong);
-  }
   [data-screen="config.approve-recipe-stale"] .choice-title > .ic {
     color: var(--pk-text-muted);
   }
-  [data-screen="config.approve-recipe-stale"] .choice.on {
-    border-color: var(--pk-text-strong);
-    background: var(--pk-surface-raised);
-  }
   [data-screen="config.approve-recipe-stale"] .choice.on .choice-title > .ic {
-    color: var(--pk-text-strong);
+    color: var(--pk-accent-fg);
   }
   [data-screen="config.approve-recipe-stale"] .list-nav-item > .dot.changed {
     width: 7px;
@@ -194,7 +185,7 @@
 </style>
 
 <div class="console kit-cfg" data-service="config">
-  <header class="topbar">
+  <header class="topbar" data-service="core">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
     <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
@@ -203,7 +194,7 @@
     <span class="avatar violet">AL</span>
   </header>
 
-  <nav class="sidebar" aria-label="DJDL">
+  <nav class="sidebar" aria-label="DJDL" data-service="core">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
       <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
@@ -462,7 +453,7 @@ request.<span class="t-f">setValue</span>(<span class="t-s">"Bearer </span>\(tok
             <div class="callout-text">A leaked one works against Apple Music for that long.</div>
           </div>
         </div>
-        <div>
+        <div data-service="license">
           <p class="eyebrow">Who can get one</p>
           <ul class="icon-lines">
             <li><i class="ic ic-key-round"></i><span>Devices on a Standard or Studio license</span></li>
