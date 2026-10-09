@@ -21,6 +21,7 @@
  */
 
 import { isSameOriginRequest } from "../../core/browserRequestGuard.js";
+import { constantTimeEqual } from "../../platform/compare.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
 import { Catalog } from "@polaris-key/catalog";
 import {
@@ -595,7 +596,7 @@ export async function handleBrowserLogout(
   const session = await loadBrowserSession(req, env, db, product, now);
   if (session) {
     const csrf = req.headers.get("x-csrf-token");
-    if (!csrf || csrf !== session.record.csrf)
+    if (!csrf || !constantTimeEqual(csrf, session.record.csrf))
       return errorResponse(403, ErrorCode.Forbidden, "csrf mismatch");
     const deviceTokenHash = await hashKey(
       session.record.token,

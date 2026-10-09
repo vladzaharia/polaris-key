@@ -58,6 +58,20 @@ export class RateLimitDO implements DurableObject {
   async fetch(request: Request): Promise<Response> {
     const { bucket, id, limit, windowSec, now } =
       (await request.json()) as CheckRequest;
+    // SEC-INF-8: windowSec 0 would divide by zero (a permanent lockout, an uncollectable key).
+    if (
+      typeof bucket !== "string" ||
+      typeof id !== "string" ||
+      !Number.isFinite(limit) ||
+      limit < 0 ||
+      !Number.isInteger(windowSec) ||
+      windowSec < 1 ||
+      !Number.isFinite(now)
+    )
+      return new Response(JSON.stringify({ error: "bad_request" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
     const window = Math.floor(now / windowSec);
     const key = `${bucket}:${id}`;
 

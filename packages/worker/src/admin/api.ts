@@ -40,6 +40,7 @@
  * focused handler modules under ./handlers. Shared helpers live under ./lib.
  */
 
+import { constantTimeEqual } from "../platform/compare.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { getProduct } from "../repo.js";
@@ -420,7 +421,8 @@ export async function handleAdminApi(
   // CSRF on every mutation (double-submit; SameSite=Strict is the primary defense).
   if (isMutation(req.method)) {
     const presented = req.headers.get(CSRF_HEADER);
-    if (!presented || presented !== session.csrf) return forbidden("csrf");
+    if (!presented || !constantTimeEqual(presented, session.csrf))
+      return forbidden("csrf");
   }
 
   const [head, ...rest] = segments;

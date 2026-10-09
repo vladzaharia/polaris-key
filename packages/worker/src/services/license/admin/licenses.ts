@@ -153,6 +153,7 @@ function licenseWriteChecks(body: Record<string, unknown>): Response | null {
     .semver("maxVersion", body.maxVersion)
     .offlineDays("maxOfflineDays", body.maxOfflineDays)
     .wireInteger("deviceLimit", body.deviceLimit)
+    .expiresAt("expiresAt", body.expiresAt)
     .response();
 }
 
