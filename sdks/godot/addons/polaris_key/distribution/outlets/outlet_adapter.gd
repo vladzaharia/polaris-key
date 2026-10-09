@@ -61,7 +61,15 @@ func apply(decision: Dictionary, host: Object, check: PKeyUpdateCheck = null) ->
 		PKeyApplyResult.HOOK:
 			var bridge = host.bridge(p["bridge"]) if host != null else null
 			var r: PKeyApplyResult = PKeyApplyResult.missing_dependency(p["bridge"])
-			if bridge != null:
+			if p["bridge"] == "appimage":
+				if check == null:
+					return PKeyApplyResult.failed(PKeyErrors.INVALID_OPTIONS, "Installing an AppImage needs the PKeyUpdateCheck (its verified record).")
+				if host != null and host.has_method("install_appimage"):
+					r = await host.install_appimage(check)
+				# Integrity and installation errors must stay visible, never become a link success.
+				if not r.ok and r.code != PKeyErrors.UNSUPPORTED:
+					return r
+			elif bridge != null:
 				r = await bridge.install_and_relaunch()
 			if r.ok:
 				return r
