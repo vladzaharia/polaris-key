@@ -354,6 +354,8 @@ async function mintBundle(
   const inspection = await inspectBundle(bundle, {
     pinned: TRUST,
     product: SLUG,
+    floors: { license: null, config: null },
+    profile: "import",
     deviceId: BUNDLE_DEVICE,
     now: NOW,
   });

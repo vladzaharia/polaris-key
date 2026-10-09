@@ -691,7 +691,7 @@ export class BrowserAdapter implements PolarisAdapter {
     if (s.csrfToken) this.csrf = s.csrfToken;
     this.hadSession = s.authenticated;
     // §7: with no session, an imported bundle is the activation. A session supersedes it.
-    if (!s.authenticated && this.offlineState?.importedBundle) {
+    if (!s.authenticated && this.offlineState?.bundle) {
       this.applyOffline(flags);
       return;
     }
@@ -733,7 +733,8 @@ export class BrowserAdapter implements PolarisAdapter {
         "browser",
         { license: o?.license ?? null, config: o?.config?.config ?? {} },
         {
-          activation: o?.license ? "bundle" : null,
+          // The cached bundle re-verified with its licence document cached (§7).
+          activation: o?.bundle?.license && o.license ? "bundle" : null,
           now: this.clock(),
           highWaterMark: o?.highWaterMark ?? 0,
           lastSyncUnauthorized: false,
@@ -862,7 +863,7 @@ export class BrowserAdapter implements PolarisAdapter {
           ? e
           : new PolarisError("network", (e as Error).message);
       // Offline is exactly when an imported bundle matters: it still activates the page.
-      if (this.offlineState?.importedBundle) {
+      if (this.offlineState?.bundle) {
         this.applyOffline({ error: withError(noErrors(), "identity", err) });
         return;
       }
@@ -1157,7 +1158,7 @@ export class BrowserAdapter implements PolarisAdapter {
       this.hadSession = false;
       // A sign-out wipes local state, the imported bundle included (the device id stays: it is
       // this browser's identity, not a credential).
-      if (this.offlineState?.importedBundle && this.offline) {
+      if (this.offlineState?.bundle && this.offline) {
         // The update slices are signed public documents, not credentials: they stay, so a
         // channel's `seq` floor survives a sign-out.
         const prior = await this.offline.read(this.product);
@@ -1165,6 +1166,10 @@ export class BrowserAdapter implements PolarisAdapter {
           ...(prior?.cache?.feeds ? { feeds: prior.cache.feeds } : {}),
           ...(prior?.cache?.releaseRecords
             ? { releaseRecords: prior.cache.releaseRecords }
+            : {}),
+          // A pinned key's revocation is security state, not a grant: it stays too.
+          ...(Object.keys(this.offlineState.pinRevocations).length > 0
+            ? { pinRevocations: this.offlineState.pinRevocations }
             : {}),
         };
         await this.offline.write(this.product, {

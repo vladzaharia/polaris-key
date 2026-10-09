@@ -295,7 +295,9 @@ export async function signCompact(
     | "pkey-feed+jws"
     | "pkey-release+jws"
     | "pkey-config+jws"
-    | "pkey-license+jws",
+    | "pkey-license+jws"
+    | "pkey-trust+jws"
+    | "pkey-bundle+jws",
 ): Promise<string> {
   const enc = new TextEncoder();
   const input =

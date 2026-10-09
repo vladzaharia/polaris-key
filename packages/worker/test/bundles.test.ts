@@ -208,6 +208,8 @@ async function mintAndInspect(
   const inspection = await inspectBundle(payload.bundle, {
     pinned: PINNED,
     product: SLUG,
+    floors: { license: null, config: null },
+    profile: "import",
     deviceId: opts.deviceId ?? DEVICE,
     now: opts.now ?? NOW,
   });
@@ -336,6 +338,8 @@ describe("bundle mint — the artifact a client actually imports", () => {
     const inside = await inspectBundle(jws, {
       pinned: PINNED,
       product: SLUG,
+      floors: { license: null, config: null },
+      profile: "import",
       deviceId: DEVICE,
       now: NOW + BUNDLE_IMPORT_WINDOW_SECONDS,
     });
@@ -347,6 +351,8 @@ describe("bundle mint — the artifact a client actually imports", () => {
     const outside = await inspectBundle(jws, {
       pinned: PINNED,
       product: SLUG,
+      floors: { license: null, config: null },
+      profile: "import",
       deviceId: DEVICE,
       // +301 clears CLOCK_SKEW_SECONDS (300), which the verifier allows on top of expiresAt.
       now: NOW + BUNDLE_IMPORT_WINDOW_SECONDS + 301,
@@ -634,6 +640,8 @@ describe("bundle mint — a bundle is bound to ONE device", () => {
     const elsewhere = await inspectBundle(jws, {
       pinned: PINNED,
       product: SLUG,
+      floors: { license: null, config: null },
+      profile: "import",
       deviceId: "ZZZZYYYYXXXXWWWWVVVVUUUUTTTTSSSS",
       now: NOW,
     });
@@ -652,6 +660,8 @@ describe("bundle mint — a bundle is bound to ONE device", () => {
     const foreign = await inspectBundle(jws, {
       pinned: { "some-other-kid": TEST_PUB },
       product: SLUG,
+      floors: { license: null, config: null },
+      profile: "import",
       deviceId: DEVICE,
       now: NOW,
     });

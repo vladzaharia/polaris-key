@@ -206,6 +206,8 @@ describe("bundle mint signer choice (SEC-CRY-3)", () => {
     const r = await inspectBundle(bundle, {
       pinned: { "kid-staged": pub },
       product: SLUG,
+      floors: { license: null, config: null },
+      profile: "import",
       deviceId: "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH",
       now: NOW,
     });
