@@ -11,7 +11,7 @@
     "One consequence row, Applies: at each person's next sign-in; one action, Open the setting, outlined; no destructive action from Activity.",
     "Drawer head: a 3px Platform violet rule and the head band, no glyph (B4); phone: a bottom sheet with the action pinned.",
     "Before/after renders values the way their setting does (durations, roles, ids in mono).",
-    "Round 2 (UX review): The selected row under the drawer is an ink bar and wash, never the accent (lead answer 2)."
+    "Round 2 (UX review): The selected row under the drawer is the tint and a 3px bar in its event's service accent (B17)."
   ],
   "status": "mockup",
   "designReview": null
