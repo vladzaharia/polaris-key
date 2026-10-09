@@ -326,7 +326,7 @@ The fill is also at least 3:1 on every surface of its theme, and the label 4.5:1
 
 Interactive and context colour follows the service the element references (B17, §5.4). For each of
 `core`, `license`, `config`, `release`, `distribution`, `update`, `identity` and `sync` (`commerce`
-aliases `distribution`: `[data-service="commerce"]` shares its rule), in both themes,
+aliases `distribution`: `[data-service="commerce"]` repeats its rule), in both themes,
 `pnpm gen:brand` writes seven tokens: `--pk-state-<service>-<kind>` for every service, and
 `--pk-state-<kind>` re-pointed by the nearest `data-service` (Tailwind `ring-state-ring`,
 `bg-state-selected-fill`). Native outputs carry `state<Service><Kind>` (Swift, Kotlin) and

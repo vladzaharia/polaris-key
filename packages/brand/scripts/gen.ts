@@ -361,11 +361,13 @@ ${decl(themeVars("light"))}
 ${sectionDecl("core")}
 }
 ${SERVICE_IDS.filter((id) => id !== "core")
-  .map(
-    (id) =>
-      `\n[data-service="${id}"]${id === "distribution" ? ',\n[data-service="commerce"]' : ""} {\n${sectionDecl(id)}\n}`,
-  )
+  .map((id) => `\n[data-service="${id}"] {\n${sectionDecl(id)}\n}`)
   .join("\n")}
+
+/* Commerce shares the Distribution family (B1): same declarations, its own selector. */
+[data-service="commerce"] {
+${sectionDecl("distribution")}
+}
 
 /* Where linear() is unsupported, the spring easing falls back to standard. */
 @supports not (transition-timing-function: linear(0, 1)) {

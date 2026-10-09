@@ -633,8 +633,7 @@
   --pk-section-bit-display: inline;
 }
 
-[data-service="distribution"],
-[data-service="commerce"] {
+[data-service="distribution"] {
   --pk-accent: var(--pk-service-distribution);
   --pk-accent-fg: var(--pk-service-distribution-fg);
   --pk-accent-on: var(--pk-service-distribution-on);
@@ -695,6 +694,23 @@
   --pk-state-checked-edge: var(--pk-state-sync-checked-edge);
   --pk-state-context-edge: var(--pk-state-sync-context-edge);
   --pk-section-bit: var(--pk-service-sync-bit);
+  --pk-section-bit-display: inline;
+}
+
+/* Commerce shares the Distribution family (B1): same declarations, its own selector. */
+[data-service="commerce"] {
+  --pk-accent: var(--pk-service-distribution);
+  --pk-accent-fg: var(--pk-service-distribution-fg);
+  --pk-accent-on: var(--pk-service-distribution-on);
+  --pk-accent-subtle: var(--pk-service-distribution-subtle);
+  --pk-state-ring: var(--pk-state-distribution-ring);
+  --pk-state-selected-fill: var(--pk-state-distribution-selected-fill);
+  --pk-state-hover-tint: var(--pk-state-distribution-hover-tint);
+  --pk-state-checked-fill: var(--pk-state-distribution-checked-fill);
+  --pk-state-checked-on: var(--pk-state-distribution-checked-on);
+  --pk-state-checked-edge: var(--pk-state-distribution-checked-edge);
+  --pk-state-context-edge: var(--pk-state-distribution-context-edge);
+  --pk-section-bit: var(--pk-service-distribution-bit);
   --pk-section-bit-display: inline;
 }
 
