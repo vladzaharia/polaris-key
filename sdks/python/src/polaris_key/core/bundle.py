@@ -154,7 +154,7 @@ def inspect_bundle(
     step 4 hands back no documents at all — not even the ones that verified before it.
     """
     # ── 1. The bundle JWS against PINNED keys only ──────────────────────────────────
-    # `require_typ` closes the replay this artifact would otherwise open: the raised cap
+    # the required `typ` closes the replay this artifact would otherwise open: the raised cap
     # travels with the `typ`, so an untyped 256 KiB blob accepted here could be
     # re-presented at an ordinary document call site. The cap is taken from the protocol
     # constant rather than from the caller — no host gets to choose how big a bundle is.
@@ -162,7 +162,6 @@ def inspect_bundle(
         jws,
         pinned,
         typ=TYP_BUNDLE,
-        require_typ=True,
         max_payload_bytes=MAX_BUNDLE_BYTES,
     )
     if verified is None:
@@ -244,6 +243,7 @@ def inspect_bundle(
             effective_trust,
             expected_aud=product,
             device_id=device_id,
+            last_accepted_issued_at=None,
             now=now,
             check_freshness=False,
         )
@@ -256,6 +256,7 @@ def inspect_bundle(
             effective_trust,
             expected_aud=product,
             device_id=device_id,
+            last_accepted_issued_at=None,
             now=now,
             check_freshness=False,
         )

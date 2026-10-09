@@ -153,6 +153,7 @@ class CacheManager:
                 trust,
                 expected_aud=self._ctx.product,
                 device_id=self._ctx.device_id,
+                last_accepted_issued_at=None,
                 now=now,
                 # A cached document is EXPECTED to be past its short `expiresAt`; its
                 # signed outer bound is `graceUntil`, which the gate enforces against the
@@ -174,6 +175,7 @@ class CacheManager:
                 trust,
                 expected_aud=self._ctx.product,
                 device_id=self._ctx.device_id,
+                last_accepted_issued_at=None,
                 now=now,
                 check_freshness=False,
             )
@@ -215,6 +217,20 @@ class CacheManager:
         self._loaded.config = CachedDoc(jws=jws, doc=doc)
         self._ctx.raise_floor(doc.issuedAt)
         self._stage("config", jws, etag)
+
+    def revoke_slice(self, slice_name: str) -> None:
+        """Remove one document slice (artifact, ETag and derived state) in memory, for the
+        next :meth:`flush` to persist (SEC-CLI-2). Called when the server has said, in
+        so many words, that this device must no longer hold it: a hard 401 for the slice it
+        answered, or a 403 build block for the licence. The monotonic floor is NOT lowered —
+        the dropped document's ``issuedAt`` stays a signed lower bound on real time."""
+        rec = self._ensure_record()
+        rec.docs.pop(slice_name, None)
+        rec.etags.pop(slice_name, None)
+        if slice_name == "license":
+            self._loaded.license = None
+        elif slice_name == "config":
+            self._loaded.config = None
 
     def _stage(self, slice_name: str, jws: str, etag: Optional[str]) -> None:
         rec = self._ensure_record()

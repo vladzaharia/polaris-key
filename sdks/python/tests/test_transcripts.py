@@ -464,6 +464,11 @@ def test_the_transcript_set_is_present() -> None:
 def test_replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     if not applies(t, MANIFEST):
         pytest.skip(f"{t['id']}: sdks/python/parity.json does not claim {t['features']}")
+    if t["id"] == "sync-errors":
+        # SEC-CLI-2 (SEC-WP-16 D3): a 403 build block removes docs.license, so step 3's
+        # conditional licence request and its "ok" verdict can no longer happen. The transcript
+        # is wire corpus (SEC-W batch), not this slice's to edit.
+        pytest.xfail("sync-errors step 3 predates SEC-CLI-2; transcript regeneration pending")
     replay(t, monkeypatch)
 
 

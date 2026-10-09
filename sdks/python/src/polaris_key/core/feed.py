@@ -327,7 +327,7 @@ def verify_feed(
     raises.
     """
     try:
-        v = verify_jws(jws, trust, typ=TYP_FEED, require_typ=True)
+        v = verify_jws(jws, trust, typ=TYP_FEED)
     except Exception:
         v = None
     if v is None:
