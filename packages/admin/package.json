@@ -29,7 +29,7 @@
     "@polaris-key/manifest": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
     "@tanstack/react-query": "^5.104.1",
-    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-table": "^9.2.6",
     "@tanstack/react-virtual": "^3.14.13",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
