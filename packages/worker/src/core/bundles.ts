@@ -305,8 +305,9 @@ export async function handleBundleMint(
       );
       // No build gate. `/license/document` gates on the CLIENT's version/channel headers, and
       // there is no client here — the machine this is for has never spoken to us. Minting is an
-      // operator decision; the window still rides along as enforced entitlements, so the gate
-      // that matters (the client's) still applies to whatever build eventually imports this.
+      // operator decision. The window still rides along as enforced entitlements, but no SDK
+      // evaluates it locally yet (the server is the only enforcement point), so an install that
+      // imports this and never goes online is not held to it until client-side evaluation lands.
       const doc = buildLicenseDoc({
         aud: slug,
         deviceId,

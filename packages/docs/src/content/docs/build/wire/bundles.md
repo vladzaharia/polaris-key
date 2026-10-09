@@ -220,9 +220,11 @@ if it did, a bundle-activated install would be entitled to something subtly diff
 same install online, and the difference would only ever be discovered by a customer.
 
 One deliberate difference: there is **no build gate** at mint. `/license/document` gates on the
-client's version and channel headers, and there is no client here. The version window still
-rides along as enforced entitlements, so the gate that matters — the client's — still applies to
-whatever build eventually imports the file.
+client's version and channel headers, and there is no client here. The version window and
+channels still ride along as enforced entitlements (`app.minVersion`, `app.maxVersion`,
+`channels`), but no SDK evaluates them locally yet: the window is enforced by the server only, so
+an install that imports a bundle and never goes online is not held to it. Client-side evaluation
+of the signed window is a planned follow-up.
 
 The response is `bundleId` plus the compact `bundle` JWS.
 
