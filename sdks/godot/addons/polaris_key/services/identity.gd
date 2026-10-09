@@ -173,7 +173,8 @@ func accept_sign_in(attach_license := false) -> bool:
 ## blockers eat outside an input event, so always render the link and the QR code as well).
 ## Returns the `OS.shell_open` error code.
 func open_in_browser(prompt: PKeySignInPrompt) -> int:
-	if prompt == null or prompt.verification_uri_complete == "":
+	# Only an https link ever reaches the browser, whatever the server sent.
+	if prompt == null or not PKeyOutletAdapter.is_https(prompt.verification_uri_complete):
 		return ERR_INVALID_PARAMETER
 	return OS.shell_open(prompt.verification_uri_complete)
 

@@ -310,6 +310,7 @@ func _rebuild(shown: Array) -> void:
 		b.name = "Section_%d" % i
 		b.text = tr(name_text)
 		b.toggle_mode = true
+		b.theme_type_variation = &"PKeyRailItem"
 		# 0 is the start edge (left to right); the layout direction mirrors it.
 		b.alignment = 0 as HorizontalAlignment
 		b.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED

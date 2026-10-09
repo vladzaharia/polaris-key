@@ -96,7 +96,7 @@ func _bleeds() -> bool:
 
 ## The gate squeezes for the dialog it holds (sign-in, offline activation, the device limit).
 func squeeze_max() -> int:
-	return 3
+	return 4
 
 
 func _build() -> void:
@@ -209,7 +209,12 @@ func _arrange(m: Dictionary) -> void:
 	_body.horizontal_alignment = lead
 	_detail.horizontal_alignment = lead
 	size_glyph(_glyph, 40.0, get_theme_color("font_color", "PKeyWarning"))
-	_spacer.visible = bleed and not _activation_owns_screen()
+	# On a phone the activation form and the product above it sit together in the middle of the page
+	# (no small form floating at the top of an empty screen); a message docks its actions instead.
+	var centred_form := bleed and activation.visible and not _activation_owns_screen()
+	_split.alignment = BoxContainer.ALIGNMENT_CENTER if centred_form else BoxContainer.ALIGNMENT_BEGIN
+	_main.size_flags_vertical = Control.SIZE_FILL if centred_form else Control.SIZE_EXPAND_FILL
+	_spacer.visible = bleed and not _activation_owns_screen() and not centred_form
 	# A dialog the gate holds fills the page on a phone, docking its own actions to the bottom.
 	activation.size_flags_vertical = Control.SIZE_EXPAND_FILL if bleed and _activation_owns_screen() else Control.SIZE_FILL
 	if bleed:

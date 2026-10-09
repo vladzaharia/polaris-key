@@ -9,6 +9,16 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Review round on the drop-in screens.** A pad's A and B work under Godot's default input map
+  (the kit adds `JOY_BUTTON_A` and `JOY_BUTTON_B` to `ui_accept` and `ui_cancel` when they have no
+  joypad binding); a dialog opened over a focused game control takes the focus and gives it back;
+  number settings answer the D-pad and the stick and keep their focus (an unbounded one steps with
+  left and right); the gate's device-limit view takes the whole card and keeps the product header;
+  focus neighbours are wired after the layout moves nodes; **behaviour change:** a QR code shows
+  only on a pad-only device and for the offline request code (never on a desktop, tablet or phone);
+  phone dialogs sit on an opaque bottom sheet; a tablet gets a centred column; the product name is
+  no longer repeated as header and title; a busy button keeps its label and shows an indicator.
+
 - **Responsive drop-in screens.** Every UI kit scene lays itself out for the area it is given:
   side by side in landscape (the device code beside its QR code, the product beside the activation
   form, the offline request beside its import), one column in portrait, following a resize live.

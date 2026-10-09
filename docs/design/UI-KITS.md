@@ -283,6 +283,20 @@ Replace confirm may use the system confirmation (SIGN-IN.md D-80). SIGN-IN.md fr
 35–41 draw both presentations. `DeviceLimit` on the key path follows the same rule. The update prompt and
 Settings are real windows on desktop. This replaces UK-10's "dialogs as real windows".
 
+**Layout rules the Godot kit measures** (tests/ui/matrix.gd; the other kits follow DL1-DL18 on
+`program/ui-language`):
+
+- The scale ladder runs 0.75 to 2 in steps of 1/8 (1 at 1280×720, or 600×1080 in portrait), and the
+  density steps down from spacious to comfortable and compact on a short or narrow screen.
+- The device's safe-area insets are kept clear on a phone or tablet.
+- A QR code is at least 160 physical pixels and at most 42 % of the screen's shorter side, and shows
+  only on a pad-only device (a TV, a console: no browser to open) and for the offline request code.
+- Two columns need a landscape room of at least 680 layout px; the identity-plus-form screens also
+  need an aspect of 1.5 or more.
+- The user code is set in Rubik: the bundled JetBrains Mono draws E, 8 and 0 as boxes in Godot 4.7.
+- A dialog over a running game is an opaque sheet docked to the bottom on a phone, never text on
+  the scrim.
+
 ### 1.5 Nothing dated: the hard rules
 
 Each rule is checked by the visual QA lint (§7.3), a kit test, or the mockup review (§7.4). A screen

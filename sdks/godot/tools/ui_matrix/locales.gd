@@ -3,7 +3,8 @@ extends RefCounted
 ## copy templates it shows), keyed by the English template, for the ui_matrix harness and the
 ## `ui_matrix` suite: they load as Translations so every screen is laid out with real long German
 ## and Japanese strings. Test data, not shipped copy: the shipped translations are the generated
-## locale/*.po packs.
+## locale/*.po packs, which carry the core copy and move with the translators' schedule; the
+## matrix needs fixed, deliberately long German and unspaced Japanese strings for every kit string.
 ##
 ## Placeholders (`%s`, `%d`, `%%` and the core copy's `{name}`) keep the English order, since
 ## GDScript `%` is positional. "Polaris Key" and "SDK" read the same in every locale and have no

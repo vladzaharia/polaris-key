@@ -202,7 +202,7 @@ func _bleeds() -> bool:
 
 
 func squeeze_max() -> int:
-	return 3
+	return 4
 
 
 func _screen_key() -> String:

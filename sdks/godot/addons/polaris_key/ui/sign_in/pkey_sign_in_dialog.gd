@@ -163,7 +163,7 @@ func _bleeds() -> bool:
 
 
 func squeeze_max() -> int:
-	return 3
+	return 4
 
 
 func _scrim_wanted() -> bool:
@@ -410,7 +410,7 @@ func _render() -> void:
 	_email.visible = _email.text != ""
 	var seed := (name_text if name_text != "" else email_text).strip_edges()
 	_initials.text = seed.left(1).capitalize() if seed != "" else ""
-	var has_link := pending and prompt.verification_uri_complete != ""
+	var has_link := pending and PKeyOutletAdapter.is_https(prompt.verification_uri_complete)
 	var pad := _pad()
 	# A pad-only device has no browser: the code and the QR code are the screen, with a way to a key.
 	_open.visible = has_link and not pad
@@ -461,7 +461,7 @@ func _process(delta: float) -> void:
 func _on_open() -> void:
 	if sdk != null and sdk.get("identity") != null:
 		sdk.identity.open_in_browser(prompt)
-	elif prompt != null:
+	elif prompt != null and PKeyOutletAdapter.is_https(prompt.verification_uri_complete):
 		OS.shell_open(prompt.verification_uri_complete)
 
 

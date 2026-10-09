@@ -73,7 +73,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 				var row := {"label": s[0], "physical": s[1], "scale": s[2], "dpr": s[4], "preset": preset}
 				var probs: PackedStringArray = MATRIX.problems(v, entry[3], entry[0], preset in ["dark", "accent-dark", "accent-light"], row)
 				# (A 36 px host font on a 640 px wide canvas is the one tight case; see MATRIX.problems.)
-				if not (preset == "native36" and s[1].x <= 640):
+				if not ([entry[0], preset, s[0]] in MATRIX.TIGHT_CASES and s[1].x <= 640):
 					probs.append_array(_focus(v))
 				if not probs.is_empty():
 					failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
@@ -83,6 +83,8 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	await _pad_flows(t, tree, mx)
 	await _live_resize(t, tree, mx)
 	await _safe_area(t, tree, mx)
+	await _refresh_stability(t, tree, mx)
+	await _offline_qr(t, tree, mx)
 	mx.drop_locales()
 	PKeyUiView.safe_insets_override = null
 	PKeyUiView.mobile_override = null
@@ -256,6 +258,37 @@ func _live_resize(t: PKeyTestContext, tree: SceneTree, mx) -> void:
 		await tree.process_frame
 	t.check("resize: and back to portrait", not v.is_landscape() and MATRIX.problems(v, "full", "gate.sign_in").is_empty() and open.has_focus())
 	vp.free()
+
+
+## Refreshing a view again and again (under the native look, with safe-area insets) never swaps its
+## theme or grows the neutral theme cache: a refresh is cheap and stable.
+func _refresh_stability(t: PKeyTestContext, tree: SceneTree, mx) -> void:
+	var entry := ["sign_in", "sign_in", "pending", "full"]
+	for e in MATRIX.SCREENS:
+		if e[0] == "sign_in":
+			entry = e
+	var st: Dictionary = await mx.stage(tree, entry, Vector2i(2400, 1080), 1.0, [96.0, 0.0, 96.0, 48.0], "native", false, 2.75)
+	var v := st["view"] as PKeyUiView
+	var theme_before := v.theme
+	var cache_before := PKeyUiTheme._neutral_cache.size()
+	for i in 10:
+		v.refresh_view()
+		await tree.process_frame
+	t.check("refresh: ten refreshes keep the theme instance", v.theme == theme_before)
+	t.check("refresh: ten refreshes do not grow the neutral theme cache", PKeyUiTheme._neutral_cache.size() == cache_before, "%d -> %d" % [cache_before, PKeyUiTheme._neutral_cache.size()])
+	(st["vp"] as Node).free()
+	PKeyUiView.safe_insets_override = null
+	PKeyUiView.mobile_override = null
+
+
+## Offline activation shows its request QR code on a desktop screen where it fits, and not on a phone.
+func _offline_qr(t: PKeyTestContext, tree: SceneTree, mx) -> void:
+	var entry := ["offline", "offline", "native", "full"]
+	for sz in [Vector2i(1280, 720), Vector2i(1920, 1080), Vector2i(2560, 1440)]:
+		var st: Dictionary = await mx.stage(tree, entry, sz, 1.0, null, "dark")
+		var qr := (st["view"] as Node).find_child("QrCode", true, false) as Control
+		t.check("offline: the request QR code shows at %dx%d" % [sz.x, sz.y], qr != null and qr.is_visible_in_tree())
+		(st["vp"] as Node).free()
 
 
 ## A notch and a home indicator push the content inside the safe area.

@@ -584,6 +584,10 @@ func _measure() -> Dictionary:
 		density = "compact"
 	elif (u.x < COMFORTABLE_ROOM.x or u.y < COMFORTABLE_ROOM.y) and density == "spacious":
 		density = "comfortable"
+	var density_base := density
+	# The last step of the squeeze ladder (4): everything at the compact density.
+	if _squeeze >= 4:
+		density = "compact"
 	var landscape := room.x > room.y and room.x / k >= COLUMNS_MIN_WIDTH
 	var mobile := is_mobile()
 	return {
@@ -594,6 +598,7 @@ func _measure() -> Dictionary:
 		"physical": physical,
 		"scale": k,
 		"density": density,
+		"density_base": density_base,
 		"landscape": landscape,
 		# A phone's layout: portrait, on a phone or on a panel narrower than a phone.
 		# (A tablet, 600 dp or more on its shorter side, is not one: it gets a centred card.)
@@ -893,7 +898,7 @@ func _fit_squeeze() -> bool:
 	if content == null:
 		return false
 	var m := layout_metrics()
-	var key := "%s|%s|%s|%s|%s" % [m["area"], m["scale"], m["density"], m["landscape"], _screen_key()]
+	var key := "%s|%s|%s|%s|%s" % [m["area"], m["scale"], m["density_base"], m["landscape"], _screen_key()]
 	if key != _squeeze_key:
 		_squeeze_key = key
 		_squeeze = 0
@@ -933,6 +938,21 @@ func _check_sorted() -> void:
 	_checks_left -= 1
 	if _checks_left > 0:
 		_connect_check()
+	else:
+		_reveal_focus()
+
+
+## Once the layout has settled, bring the focused control into view in every scroll area it sits in
+## (a squeezed card that still scrolls must never leave the focused primary off screen).
+func _reveal_focus() -> void:
+	var f := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	if f == null or not (f == self or is_ancestor_of(f)):
+		return
+	var n := f.get_parent()
+	while n != null and n != get_parent():
+		if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			(n as ScrollContainer).ensure_control_visible(f)
+		n = n.get_parent()
 
 
 ## Whether a scroll area's last decision no longer matches its content (measured on a frame whose
@@ -1573,7 +1593,7 @@ func glyph_node(parent: Node, node_name: String, glyph_name: String) -> TextureR
 ## Draw the glyphs of this view for the screen's scale; `px` is the size at scale 1.
 func size_glyph(r: TextureRect, px := 24.0, tint := Color.WHITE) -> void:
 	var k := float(layout_metrics()["scale"]) * float(layout_metrics()["physical"])
-	var side := roundf(px * float(layout_metrics()["scale"]))
+	var side := maxf(16.0, roundf(px * float(layout_metrics()["scale"])))
 	r.texture = PKeyUiTheme.glyph(String(r.get_meta(&"pkey_glyph")), Color.WHITE, px, k * 2.0)
 	r.custom_minimum_size = Vector2(side, side)
 	r.modulate = tint

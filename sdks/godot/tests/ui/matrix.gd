@@ -43,6 +43,65 @@ const STRETCHED := [
 	["4K laptop disabled at 150 %", Vector2i(3840, 2400), "disabled", Vector2i(0, 0), "1.5"],
 ]
 
+## The cases that keep a named exemption ([screen, preset, size label]): a game's own type at 28 or
+## 36 px, or 18-22 px type on a 360 px tall canvas, where the screen keeps its primary reachable
+## through its scroll fallback (asserted: reachable by pad) and does not promise two columns. Every other
+## screen and look, at every size, must show its primary and its user code without scrolling.
+const TIGHT_CASES := [
+	# A game's 22 px theme with unspaced Japanese on a 390 dp wide phone: the reply's Import is a scroll away.
+	["offline", "custom", "1170x2532@3"],
+	["gate.offline", "custom", "1170x2532@3"],
+	["activation", "custom", "pixel-art canvas_items 640x360 keep"],
+	["activation", "native", "pixel-art canvas_items 640x360 keep"],
+	["activation", "native36", "640x360"],
+	["activation.device_limit", "custom", "pixel-art canvas_items 640x360 keep"],
+	["activation.device_limit", "native", "pixel-art canvas_items 640x360 keep"],
+	["activation.device_limit", "native36", "1280x720"],
+	["boot.consent", "custom", "pixel-art canvas_items 640x360 keep"],
+	["boot.consent", "native", "pixel-art canvas_items 640x360 keep"],
+	["boot.offline", "custom", "pixel-art canvas_items 640x360 keep"],
+	["boot.offline", "native", "pixel-art canvas_items 640x360 keep"],
+	["boot.waiting", "native36", "640x360"],
+	["gate", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate", "native36", "640x360"],
+	["gate.device_limit", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.device_limit", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.device_limit_qr", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.device_limit_qr", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.error", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.error", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.error", "native36", "640x360"],
+	["gate.network", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.offline", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.offline", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.offline", "native28", "640x360"],
+	["gate.offline", "native36", "640x360"],
+	["gate.sign_in", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.sign_in", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.sign_in", "native28", "640x360"],
+	["gate.sign_in", "native36", "640x360"],
+	["gate.sign_in_pad", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.sign_in_pad", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.sign_in_pad", "native36", "640x360"],
+	["gate.unavailable", "custom", "pixel-art canvas_items 640x360 keep"],
+	["gate.unavailable", "native36", "640x360"],
+	["offline", "custom", "pixel-art canvas_items 640x360 keep"],
+	["offline", "native", "pixel-art canvas_items 640x360 keep"],
+	["offline", "native28", "640x360"],
+	["offline", "native36", "640x360"],
+	["sign_in", "custom", "pixel-art canvas_items 640x360 keep"],
+	["sign_in", "native", "pixel-art canvas_items 640x360 keep"],
+	["sign_in", "native28", "640x360"],
+	["sign_in", "native36", "640x360"],
+	["sign_in.confirm", "native36", "640x360"],
+	["sign_in.pad", "custom", "pixel-art canvas_items 640x360 keep"],
+	["sign_in.pad", "native", "pixel-art canvas_items 640x360 keep"],
+	["sign_in.pad", "native36", "1280x720"],
+	["sign_in.pad", "native36", "640x360"],
+	["update.banner", "native36", "640x360"],
+]
+
 ## The looks: the Polaris Key theme (dark, light), the native look over a game's own theme
 ## (`game_theme()`), and a game's whole custom theme through `ui_theme` (`custom_theme()`), both
 ## with a larger type and roomier controls than the kit's.
@@ -443,7 +502,7 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 	# (a 28 or 36 px host font, or 18-20 px type on a 360 px tall canvas). The screen then keeps
 	# its primary action reachable through its scroll fallback, and does not promise two columns.
 	var preset: String = row.get("preset", "")
-	var tight := not strict and (preset in ["native28", "native36"] or screen_rect.size.y <= 380.0 or (preset == "custom" and (view as PKeyUiView).is_phone_device()))
+	var tight := [screen, preset, row.get("label", "")] in TIGHT_CASES
 	# The margins are held to the screen's safe area (a strip or a badge is placed within it).
 	var safe := Rect2(screen_rect.position + Vector2(ins[0], ins[1]), screen_rect.size - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	if kind == "full" and not screen_rect.grow(1.0).encloses(r) and not (tight and preset == "native36" and screen_rect.size.x <= 640.0):
@@ -565,7 +624,22 @@ static func _walk(node: Node, view: Control, safe: Rect2, kind: String, out: Pac
 		if _is_leaf(c) and not scrolled:
 			leaves.append(c)
 			_leaf(c, view, safe, kind, out)
+		elif scrolled and c is Label:
+			# Inside a scroll area a word still never breaks across lines.
+			_word_breaks(c as Label, view, out)
 		_walk(c, view, safe, kind, out, leaves)
+
+
+## A word never breaks across lines (a label squeezed to a sliver wraps a letter per line).
+static func _word_breaks(l: Label, view: Control, out: PackedStringArray) -> void:
+	if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART and l.size.x > 0.0:
+		for word in l.text.split(" ", false):
+			# (Unspaced Japanese and Chinese break between any two characters, by design.)
+			if word.unicode_at(word.length() - 1) >= 0x2E80 or word.unicode_at(0) >= 0x2E80:
+				continue
+			if PKeyUiView.text_width(l, word) > l.size.x + 1.0:
+				out.append("%s breaks the word \"%s\" across lines (%.0f px wide)" % [_path(view, l), word, l.size.x])
+				break
 
 
 static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: PackedStringArray) -> void:
@@ -584,15 +658,7 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		var l := c as Label
 		if l.text != "" and l.get_visible_line_count() < l.get_line_count():
 			out.append("%s clips its text (%d of %d lines)" % [_path(view, c), l.get_visible_line_count(), l.get_line_count()])
-		# A word never breaks across lines (a label squeezed to a sliver wraps a letter per line).
-		if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART and l.size.x > 0.0:
-			for word in l.text.split(" ", false):
-				# (Unspaced Japanese and Chinese break between any two characters, by design.)
-				if word.unicode_at(word.length() - 1) >= 0x2E80 or word.unicode_at(0) >= 0x2E80:
-					continue
-				if PKeyUiView.text_width(l, word) > l.size.x + 1.0:
-					out.append("%s breaks the word \"%s\" across lines (%.0f px wide)" % [_path(view, c), word, l.size.x])
-					break
+		_word_breaks(l, view, out)
 		if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_OFF:
 			var w := PKeyUiView.text_width(l, l.text)
 			if w > l.size.x + 1.0:

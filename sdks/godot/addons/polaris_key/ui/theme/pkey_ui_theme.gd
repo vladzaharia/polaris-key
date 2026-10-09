@@ -121,6 +121,7 @@ const VARIATIONS := {
 	"PKeyAvatar": "PanelContainer",
 	"PKeyActionRow": "BoxContainer",
 	"PKeyLink": "Button",
+	"PKeyRailItem": "Button",
 	"PKeyFieldError": "LineEdit",
 	"PKeyQrTile": "PanelContainer",
 	"PKeyScrim": "PanelContainer",
@@ -577,6 +578,7 @@ static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBo
 		t.set_stylebox(item, "PKeyLink", none)
 	for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
 		t.set_color(c, "PKeyLink", text)
+	_rail_item(t, text)
 	var scrim := Color(0, 0, 0, PKeyKitTokens.SCRIM_DARK_OPACITY) if light_text else Color(0, 0, 0, PKeyKitTokens.SCRIM_LIGHT_OPACITY)
 	t.set_stylebox("panel", "PKeyScrim", _box(scrim, scrim, 0, 0, 0))
 	var page_px := roundf(float(DENSITIES[DEFAULT_DENSITY]["page_margin"]) * float(base_size) / TYPE_BODY)
@@ -834,7 +836,8 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, m
 	t.set_color("dark", "PKeyQrRect", Color.BLACK)
 	t.set_color("light", "PKeyQrRect", Color.WHITE)
 	# Its tile: white, rounded, a little padding beyond the code's own quiet zone.
-	t.set_stylebox("panel", "PKeyQrTile", _box(Color.WHITE, Color.WHITE, 0, RADIUS_CONTROL, 6))
+	# (A hairline on the light scheme, where the white tile meets a white page.)
+	t.set_stylebox("panel", "PKeyQrTile", _box(Color.WHITE, Color.WHITE if dark else Color(0, 0, 0, 0.12), 0 if dark else 1, RADIUS_CONTROL, 6))
 	# The tertiary action: a link, no box, in the accent's text colour.
 	var none := StyleBoxEmpty.new()
 	none.content_margin_left = 8
@@ -843,6 +846,7 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, m
 		t.set_stylebox(item, "PKeyLink", none)
 	for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
 		t.set_color(c, "PKeyLink", p.accent_fg)
+	_rail_item(t, p.strong)
 	# A field that holds a rejected value.
 	t.set_stylebox("normal", "PKeyFieldError", _box(p.sunken, p.danger, 2, RADIUS_CONTROL, 0))
 	# The page of a dialog opened over a running game: the scrim token, not an opaque ground.
@@ -1285,6 +1289,21 @@ static func _box(bg: Color, border: Color, width: int, radius: int, pad: int) ->
 	s.set_corner_radius_all(radius)
 	s.set_content_margin_all(pad)
 	return s
+
+
+## A selected item of a rail (the settings sections): a quiet filled chip in `ink`, with no border and
+## no accent, so it never reads as the focus ring (the ring is the one thing that marks focus).
+static func _rail_item(t: Theme, ink: Color) -> void:
+	var base := t.get_stylebox("normal", "Button")
+	for item in ["pressed", "hover_pressed"]:
+		var b := _box(Color(ink, 0.14), Color(ink, 0.14), 0, RADIUS_CONTROL, 0)
+		if base != null:
+			b.content_margin_left = base.get_margin(SIDE_LEFT)
+			b.content_margin_right = base.get_margin(SIDE_RIGHT)
+			b.content_margin_top = base.get_margin(SIDE_TOP)
+			b.content_margin_bottom = base.get_margin(SIDE_BOTTOM)
+		t.set_stylebox(item, "PKeyRailItem", b)
+	t.set_color("font_pressed_color", "PKeyRailItem", ink)
 
 
 ## The focus ring: no fill, `RING_WIDTH` px of `color`, `RING_OFFSET` px outside the control so

@@ -127,7 +127,7 @@ func _bleeds() -> bool:
 
 
 func squeeze_max() -> int:
-	return 3
+	return 4
 
 
 func _scrim_wanted() -> bool:
@@ -198,10 +198,31 @@ func _arrange(m: Dictionary) -> void:
 		var q := qr_side(content_room().y * 0.4)
 		if level >= 1:
 			q = maxf(roundf(q * 0.7), QR_MIN_PHYSICAL / float(m["physical"]))
-		_qr.custom_minimum_size = Vector2(q, q)
-		var fits := _body.get_combined_minimum_size().y + _stack.get_combined_minimum_size().y <= available_height() * 1.6 and _body.get_combined_minimum_size().y <= available_height()
-		_qr.visible = fits
-		_qr.get_parent().visible = fits
+		# Shown at the largest scannable size at which the request column with its QR code still fits
+		# the room: side by side, the reply's column is usually the taller one, so the code costs
+		# little height and balances the two.
+		var tile := _qr.get_parent() as Control
+		tile.visible = false
+		_qr.visible = false
+		var left := _step1.get_combined_minimum_size().y
+		var right := _step2.get_combined_minimum_size().y
+		var rest := _stack.get_combined_minimum_size().y - _body.get_combined_minimum_size().y
+		var pad := tile.get_combined_minimum_size().y
+		var least := QR_MIN_PHYSICAL / float(m["physical"])
+		var fit_q := 0.0
+		var try_q := q
+		while try_q >= least - 0.5:
+			var with_qr := left + pad + try_q + float(_step1.get_theme_constant("separation"))
+			var body_h := maxf(with_qr, right) if side else with_qr + right + float(_body.get_theme_constant("separation"))
+			if rest + body_h <= available_height():
+				fit_q = try_q
+				break
+			try_q -= 8.0
+		if fit_q <= 0.0 and q > least:
+			fit_q = 0.0
+		_qr.custom_minimum_size = Vector2(maxf(fit_q, least), maxf(fit_q, least))
+		_qr.visible = fit_q > 0.0
+		tile.visible = fit_q > 0.0
 	# Close, then Activate (the primary last) along the bottom; a phone stacks them, primary first.
 	var first := _import if phone else _close
 	if _actions.get_child(0) != first:

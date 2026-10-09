@@ -292,7 +292,20 @@ gamepad or a TV remote.
   - _Margins and width._ Content keeps at least `page_margin` (32 px at scale 1) from the screen's
     edges and is capped in width and centred, so it never hugs an edge or floats adrift on 4K. On
     a phone or tablet the device's safe area (`DisplayServer.get_display_safe_area()`) is kept
-    clear too. A QR code is never under 160 physical pixels.
+    clear too. A QR code is at least 160 physical pixels and at most 42 % of the screen's shorter
+    side.
+  - _Two columns._ Side by side needs a landscape room of at least 680 layout px; the product beside
+    the activation form (and the settings rail) also needs an aspect of 1.5 or more.
+  - _Scale ladder._ 0.75 to 2 in steps of 1/8, raised on a phone or tablet until body text is
+    16 dp; the density steps down with it (spacious, comfortable, compact).
+  - _The user code_ is set in Rubik Bold: the bundled JetBrains Mono draws E, 8 and 0 as boxes in
+    Godot 4.7.
+  - _Phones._ A dialog over the running game (sign-in, offline activation, settings, the update
+    prompt) sits on an opaque sheet docked to the bottom; a tablet gets a centred column, not the
+    phone's full-width layout.
+  - _Gamepads._ The kit adds the pad's A and B to `ui_accept` and `ui_cancel` when your input map
+    has no joypad binding on them (yours are kept), and a dialog over the game takes the focus
+    and gives it back when it closes.
   - _Last resort._ A card scrolls (following the focus) only when a theme's type is too large for
     the screen; the Polaris Key look never needs to.
 
@@ -313,8 +326,9 @@ gamepad or a TV remote.
   design system's dark palette and Rubik, with your product's accent (derived from its icon, else
   ink; never the platform violet by default), the kit's own switch, check box and chevron icons,
   and a 3 px focus ring with a gap on every control. The product leads every screen; the kit's
-  own mark appears on none. A QR code stays black on white, and is never shown on a phone (the
-  phone opens the browser itself).
+  own mark appears on none. A QR code stays black on white, and shows only on a TV, a console or
+  any pad-only device (which has no browser to open), and for the offline request code; a phone,
+  a tablet and a desktop open the browser (Open browser, Copy link).
 - **Your game's own look is one option away.** `options.ui_branding = "none"` makes the scenes take
   your game's own theme and font, as the scene's place in the tree resolves them (a Theme on an
   ancestor, else the project's `gui/theme/custom` and `gui/theme/custom_font`, else the engine's),
@@ -697,7 +711,7 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   `#key=` to an `/activate` link and `PKeyManage.with_return(url, return_url)` adds `return=`.
   `PKeyActivationPanel` shows **Replace a device** under the error: a button that calls
   `OS.shell_open`, or a QR code where a joypad is the only input (a console, or a TV). Set
-  `return_url` on the panel, and `manage_mode` to force `button` or `qr`. The QR code never
+  `return_url` on the panel, and `manage_mode` to `button` to keep the button there too. The QR code never
   carries the key (anyone who can see the screen can scan it): `manage_link(..., for_qr = true)`
   leaves `#key=` out, and the phone's page asks for the key. Do the same in a custom QR.
 
