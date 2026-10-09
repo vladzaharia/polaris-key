@@ -4,11 +4,7 @@
   "area": "admin",
   "surface": "console",
   "order": 3,
-  "packages": [
-    "ST-32",
-    "ST-28",
-    "LX-36"
-  ],
+  "packages": ["ST-32", "ST-28", "LX-36"],
   "uxRows": [],
   "summary": "Members → SSO rules: the read-only root rule first, the one-click conversion offer for DJDL's old manifest admin group, then the rules (group, verified email domain or claim → a role, scope and areas) with a new rule open in the same RuleEditor the product Access page uses for license.access, including the preview of who it matches and what changes for each.",
   "compare": [
@@ -65,87 +61,54 @@
         "issue": "The New rule editor was fused under the table, its left column had about 150px of dead space, and the dimmed Add rule left no clear primary action.",
         "resolution": "The editor is its own raised card with a 24px gap; 'They get' fields share the row grid of 'When someone' (two columns from 1000px of card width, stacked below); 'Matches 3 people' runs full width under both columns; Add rule is a solid primary button, hidden while the editor is open.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The root rule pushed the editable content down and the page order differed by width.",
         "resolution": "One order at every width: manifest offer, Rules, editor, Root rule. Root rule is a right rail from 1280px (.page.rail) and a strip under the editor below; the lock sits beside the group label.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The same warning and passkey fact appeared three times; version and mechanism details were developer noise.",
         "resolution": "Rules subtitle 'A person gets every rule they match'; manifest banner 'DJDL's manifest names djdl-admins as its admin group' with the 0.9 clause in a tooltip; footer note 'Passkey required'; the typed confirmation stays in the dialog only; Matches subtitle deleted; warning 'Superadmins can change every role and SSO rule'; empty match 'Nobody matches yet. It applies at their next sign-in.'",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
         "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
         "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "severity": "minor",
         "issue": "Other states left 120 to 700px of dead space beside shorter cards, and the captions narrated layout.",
         "resolution": "Other states sit on one equal-width grid (3 columns from desktop, 2 on tablet, 1 on phone) with the page's card primitive; captions name the state and its trigger.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
         "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "issue": "Date and glossary rules belong to the copy rules and the consolidation plan, not to a spacing pass.",
         "resolution": "declined: Rewrite dates to 'relative within 7 days, else Oct 6, year only when not current' and add the 'Product admin = one product or all' glossary note.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2"
-        ]
+        "raisedBy": ["ux2"]
       }
     ]
   }

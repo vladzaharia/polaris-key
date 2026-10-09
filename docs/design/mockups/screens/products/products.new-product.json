@@ -4,16 +4,8 @@
   "area": "products",
   "surface": "console",
   "order": 2,
-  "packages": [
-    "ST-43",
-    "ST-42",
-    "ST-39"
-  ],
-  "uxRows": [
-    "UX-73",
-    "UX-74",
-    "UX-76"
-  ],
+  "packages": ["ST-43", "ST-42", "ST-39"],
+  "uxRows": ["UX-73", "UX-74", "UX-76"],
   "summary": "Step 2 of 3 of the New product wizard for Diceroll (named in step 1, no repository): the six features as choices that each say what they turn on, the requirement rule live (Cloud Sync locked until Sign-in is chosen, Commerce allowed because Licensing is), planned platforms as chips, and the Free tier switch, beside a running summary of what Create will make and the card Home will show.",
   "compare": [
     "The wizard is page-hosted in the console (Platform context, Home active, crumbs Home › New product) on ST-39's kit: a stepper with Repository or name (done, 'Diceroll, no repository'), What it's for (current), Create ('Review, then create').",
@@ -61,36 +53,21 @@
         "issue": "The rail repeated the left side and narrated state; a tile in a card in a card was three borders for one tile.",
         "resolution": "One 'Creates' card: heading, four lines (signing key, 4 features, default profile and catalog v1, Free tier) and the Home tile with no wrapper card. 'Nothing exists until Create…', 'Then Diceroll's Integration page opens.' and '4 planned platforms' are deleted. It is sticky (top = topbar + 16, 360 wide). The 'Opens Integration' caption belongs on the Create button of step 3, which this mockup does not draw, so it is not placed here.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The summary sat after Continue on tablet and phone; the phone stepper lost two of three labels.",
         "resolution": "Below 1280 the summary is one expandable bar above the footer ('4 features · 4 platforms · Free tier'). On phone the stepper is 'Step 2 of 3: What it's for' plus a 3-segment progress bar, with 2px connectors. 'align-items: stretch' was not applied: with one rail card it would stretch a short card over the wizard's full height and recreate the void the sticky rail removes.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Ragged footer rules, a near-unreadable locked card, duplicated 'change later' promises.",
         "resolution": "Footers are artifact names with no label and a 2-line minimum height so rules align across a row. The locked Cloud Sync card dims only its lock, keeps 4.5:1 text and says 'Select Sign-in to unlock'. 'Change these any time in Settings' is said once, under the heading; the Free tier helper is 'Lifetime, 2 devices.'; the platform helper is 'Channels, storefronts and SDK code follow these.'; Back lines up with the 24px gutter; the wizard caps at 1040px at 1920. The Needs line is 12px apart and stays on one line where the card is wide enough (1920); in a 224px card it wraps. Unselected chips already have a 1px neutral border.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Remove 'Turns on' footers or descriptions, or all footers.",

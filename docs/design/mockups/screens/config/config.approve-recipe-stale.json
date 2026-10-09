@@ -3,9 +3,7 @@
   "title": "Approve a recipe: changed while open",
   "area": "config",
   "surface": "dialog",
-  "packages": [
-    "U-31"
-  ],
+  "packages": ["U-31"],
   "uxRows": [],
   "summary": "The approve drawer after a new commit changed the recipe while it was open: it stays open, says what happened, and shows the new comparison (1 hour to 24 hours); nothing was approved.",
   "compare": [
@@ -30,21 +28,14 @@
         "issue": "Five unchanged rows carried no decision and the change was repeated four times.",
         "resolution": "\"5 fields unchanged\" is a closed disclosure; authorship is one line (Jonah Ortiz · Oct 6 · commit 4f2c9a1); callout \"Tokens will last 12 hours\"; Who-can-get-one is one sentence; editor footer sentence removed; editor banner \"Lifetime changed from 1 to 12 hours in .pkey/schema. Minting is stopped until you approve.\"",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "severity": "major",
         "issue": "A live Approve button on changed content was a flow risk; the stale banner was a one-off colour.",
         "resolution": "The button names the value (\"Approve 24 hours\"); the Lifetime row carries a struck \"was 12 hours\"; the banner uses the warning tier. Not done: a disabled Approve until acknowledged, a scroll area ending 16px above the footer.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX3"]
       }
     ]
   },

@@ -3,15 +3,8 @@
   "title": "Channel page, Sales tab: storefront not set up",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "A-22",
-    "CM-21",
-    "A-18k"
-  ],
-  "uxRows": [
-    "UX-57"
-  ],
+  "packages": ["CM-23", "A-22", "CM-21", "A-18k"],
+  "uxRows": ["UX-57"],
   "summary": "DJDL's Steam channel page opened from a Not set up row on Storefronts: Not set up beside the title, and the Sales tab's storefront wizard with only the human steps (create the app in Steamworks, add the publisher key in Store connections, assign the app to DJDL), each ticking itself when Polaris Key sees it, beside a rail card saying what Steam can and can't sell.",
   "compare": [
     "It is the same channel page as commerce.sales (A-22): the xl Steam tile, the h1 with 'Not set up', tabs Status, Releases, Listing, Sales, Setup; a Not set up row on Storefronts lands here. Crumbs say Storefronts › Steam and the Commerce sidebar entry stays active.",
@@ -33,11 +26,7 @@
         "issue": "Verbose, mechanism-led copy; inconsistent step icons; ungrammatical Releases line.",
         "resolution": "Card subtitle cut; steps 'Create DJDL's app in Steamworks' (Needs the Steam Direct fee.), 'Add a publisher key', 'Pick DJDL's app' (Waiting for steps 1 and 2); one icon for steps not started; rail is three bullets; 'Builds are set up on Releases.'; Check now sits on the task text edge.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   },

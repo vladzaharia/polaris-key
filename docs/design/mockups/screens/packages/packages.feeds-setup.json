@@ -4,11 +4,7 @@
   "area": "packages",
   "surface": "terminal",
   "order": 18,
-  "packages": [
-    "F-37",
-    "F-33",
-    "ST-34"
-  ],
+  "packages": ["F-37", "F-33", "ST-34"],
   "uxRows": [],
   "summary": "Three CLI runs: 'pkey feeds setup --write' setting up a person's machine with its own packages-only pkeyp_ token, the CI form ('--print' with a pkeyci_ service token from the repository's secrets), and a rerun a week later with an expired device code, the machine's token replaced and a scope already sent elsewhere kept.",
   "compare": [
@@ -44,11 +40,7 @@
         "issue": "At 1920 the pane bottoms are 130px apart; on phone the terminals are clipped mid-word.",
         "resolution": "Two equal columns whose bottoms align (.board-grid.equal, each terminal fills its pane); captions are labels 8px above their pane; intro 'Sets up every package manager with its own packages-only token. Never writes into a project.'; three terminal lines dropped; phone terminals wrap at 12px in a focusable region.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "issue": "Move captions into terminal title bars (UX2).",
@@ -60,12 +52,7 @@
         "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
         "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

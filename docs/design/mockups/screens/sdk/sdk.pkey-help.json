@@ -4,11 +4,7 @@
   "area": "sdk",
   "surface": "terminal",
   "order": 4,
-  "packages": [
-    "P0-45",
-    "SP-33a",
-    "UK-14"
-  ],
+  "packages": ["P0-45", "SP-33a", "UK-14"],
   "uxRows": [],
   "summary": "pkey help's overview generated from the one command table, run in DJDL's repository so it names the product and base URL it will use; beside it pkey help sdk add and zsh completion for the same command, all from the same registry.",
   "compare": [
@@ -54,69 +50,48 @@
         "issue": "On phone the terminal titles ran onto the traffic lights (a 4px overlap), and some titles were sizes while others were captions; real terminal titles never describe the state.",
         "resolution": "Every title is what zsh shows (zsh — djdl — 80×64, 68×32, 56×10; zsh — ~/Downloads — 80×12); the state names are bold figcaptions under the windows: Completion, First run without --expect, Outside a repository. The kit's .term-bar is now a 52 · title · 52 grid, so a title never reaches the dots.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "severity": "major",
         "issue": "The 'Words and removals' card was a reviewer note repeating compare items 3–4 and made its column taller.",
         "resolution": "Deleted; compare items 3 and 4 still check the words and the removals.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "severity": "major",
         "issue": "Tablet stretched three short terminals to 928px, each about 60% empty, and wide's third column ended about 840px above the help.",
         "resolution": "Wide uses the desktop's two columns: the 80-column overview | everything else. In the second column: the 68-column help, then completion and the first run two up where the column is about 900px or wider (wide; tablet below the two helps), stacked at desktop, then the outside run across its column with its Here line on one line at 80 columns (a desktop twin wraps it to the narrower column). Rendered: columns end within about 100px at wide and 160px at desktop.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "severity": "major",
         "issue": "--expect took seven lines and four sentences; the footer repeated the help row; the version wrapped onto its own line at 44 columns; the lede explained the mechanism.",
         "resolution": "--expect: 'Required the first time in a folder: the fingerprint Integration shows.' --product: 'Default: from .pkey/product'. Footer: 'Every command and flag: key.plrs.im/docs/reference/cli'. What it does step 3: 'Pins djdl-2026, the staged djdl-2026b and the release key djdl-rk-2026'. At 44 columns 'pkey 0.9.0' is the first line, the description under it. The lede is dropped. The outside run's Here line reads 'no .pkey/product here or above' so it fits 80 columns. Compare items 1, 2, 5, 7 and 8 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "severity": "major",
         "issue": "Captions sit under their terminals, so they read as titles for the next block; the wide columns are unbalanced; the last terminal ends in an ellipsis row.",
         "resolution": "Every terminal has its caption above the window, 8px over it (.cap-top); columns are top-aligned and end within about 30px; the ellipsis row is the real next lines (Start, init).",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["d1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Phone line height and group gap.",
         "resolution": "Line height is 18px on phone (kit default). The 12px group gap was not applied: a blank line in a pre cannot be shortened without restructuring every listing.",
         "round": "multi-review",
-        "raisedBy": [
-          "d1"
-        ]
+        "raisedBy": ["d1"]
       },
       {
         "issue": "Add a Show all commands fold on phone, and a 44-col help listing, and a sticky Jump to control.",
         "resolution": "declined: a fold hides output the page exists to show; the phone listing already re-wraps at 12px.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3",
-          "d1"
-        ]
+        "raisedBy": ["ux3", "d1"]
       }
     ]
   }

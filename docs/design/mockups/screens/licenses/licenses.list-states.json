@@ -3,10 +3,7 @@
   "title": "Licenses list states",
   "area": "licenses",
   "surface": "console",
-  "packages": [
-    "LX-30",
-    "P0-29"
-  ],
+  "packages": ["LX-30", "P0-29"],
   "uxRows": [],
   "summary": "The Licenses list's other four states, drawn from the round-1 review of licenses.list: first run with no licenses, a search and filters that match nothing, the first load as skeleton rows, and a load that failed, inline with Retry.",
   "order": 2,
@@ -45,10 +42,7 @@
         "issue": "Tiles had 120-250px of empty padding.",
         "resolution": "Board is .board.cols-2.start: tiles align to the top and size to their content. The loading tile has no filter-bar skeleton to resize, so none was added.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX4"]
       },
       {
         "issue": "Hide the header New license button in first-run, and move Create keys in bulk into the overflow on phone.",

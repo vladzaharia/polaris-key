@@ -4,10 +4,7 @@
   "area": "admin",
   "surface": "dialog",
   "order": 2,
-  "packages": [
-    "ST-31",
-    "ST-28"
-  ],
+  "packages": ["ST-31", "ST-28"],
   "uxRows": [],
   "summary": "The Invite people drawer over Members: several emails, one of the four roles, a product or All products, and an optional narrowing to areas, with a sentence that says exactly what the people will and won't see. Sending writes a role binding on each email, asks for a passkey first, emails the invitees and tells every Superadmin.",
   "compare": [
@@ -60,94 +57,60 @@
         "issue": "The drawer title ranked no higher than the section labels, and the two footer notes said the same thing.",
         "resolution": "Title is 20/28 (the console draws Rubik at 700 only, so not 600) with the 24px body padding under the head; field labels are one muted 12px bold style; the notes merge into one line above the footer ('Emails each invite and tells every Superadmin. Expires Oct 14.'); 'Passkey required' stays on the primary button only (fingerprint glyph, title and aria-label).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The preview and toast restated the chips and the list; four stacked role cards pushed Products and Areas below the fold on phone.",
         "resolution": "Preview reads 'hana@ and theo@ will manage Ship builds and Commerce in Diceroll' (exclusions sentence dropped); the toast is 'Invited 2 people' with Undo; on phone Role is a 2x2 grid of tiles with the picked role's words once below (.choices.tiles-phone); the drawer foot is sticky on phone (.sticky-foot, rested at the sheet's end in shots); 32px sits under the drawer frame before Other states.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The Members page behind the drawer repeated the Members screen's spacing and duplication defects.",
         "resolution": "The page behind takes the same fixes as Members (56px rows, trimmed banner, no footer, 24px gaps, solid chips, folded last sign-in).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "major",
         "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
         "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
         "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "severity": "minor",
         "issue": "Other states left 120 to 700px of dead space beside shorter cards, and the captions narrated layout.",
         "resolution": "Other states sit on one equal-width grid (3 columns from desktop, 2 on tablet, 1 on phone) with the page's card primitive; captions name the state and its trigger.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Add new states for send failure, duplicate pending invite and too many addresses, and rename the button 'Invite 1 and update 1 member'.",
         "resolution": "declined: The content, states and structure are to be kept in this pass, and the button label is existing copy.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       },
       {
         "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
         "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "issue": "Date and glossary rules belong to the copy rules and the consolidation plan, not to a spacing pass.",
         "resolution": "declined: Rewrite dates to 'relative within 7 days, else Oct 6, year only when not current' and add the 'Product admin = one product or all' glossary note.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2"
-        ]
+        "raisedBy": ["ux2"]
       }
     ]
   }

@@ -3,16 +3,8 @@
   "title": "App Store channel",
   "area": "distribution",
   "surface": "console",
-  "packages": [
-    "A-22",
-    "A-28",
-    "A-26",
-    "P2-08",
-    "CM-23"
-  ],
-  "uxRows": [
-    "UX-57"
-  ],
+  "packages": ["A-22", "A-28", "A-26", "P2-08", "CM-23"],
+  "uxRows": ["UX-57"],
   "order": 2,
   "summary": "Diceroll's App Store channel page on its Status tab, in the Ship builds accent: one page with Status, Releases, Listing, Sales and Setup; each store lane with the release track that feeds it, what is live and what is next; what customers do (link and QR code); the Sales side's own state and summary; and the store identity derived from the platform pin.",
   "compare": [
@@ -72,56 +64,35 @@
         "issue": "On phone 'com.example.diceroll' touched '6478123905' with no gap, and 'Derived' was printed twice.",
         "resolution": "The ids are a .dl.cols.stack (new kit modifier): one column under 560px of card width, so on phone and in the rail the order is Bundle id, Apple ID, Team, and long mono values wrap anywhere. One .source note under the ids reads 'Both derived from the iOS platform pin'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The rail ran 150px past the main column, against the kit rule that the aside is the shorter column; its rows were padded, the chip cut the end of the id, and the heads didn't align in the tablet row.",
         "resolution": "What customers do keeps only 'Shown on dl.plrs.im/diceroll and each player's Library' beside the QR, with the middle-truncated chip under that line ('apps.apple.com/app/' + 'id6478123905'); Sales uses a 28px .icon-tile.sm, so every rail head is 56px, with Open Sales in its head (the kit's new .card-head.one-line keeps it on the title's line in the 320px rail) and no foot; its meta reads '41 purchases in 28 days · 1 refunded and revoked'. The listed trims left the rail about 130px long at 1440, so the rail cards are also .card.compact (16px inset) and the link chip sits beside the QR: the rail now ends at y=1009 against the main column's 1013 at desktop, and 989 against 1013 at wide.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "On phone the QR showed where the visitor already is, the stacked rail cards sat 12px apart beside 24px gaps between main cards, and the From labels sat 6px off their chips.",
         "resolution": "The QR figure is .hide-phone; the rail is .mk-rail.blocks (new: --section-gap between stacked cards on phone); From is .cell-label.on-chip (new: centred on a 24px chip).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux4",
-          "ux3"
-        ]
+        "raisedBy": ["ux2", "ux4", "ux3"]
       },
       {
         "severity": "minor",
         "issue": "The text '★' doubled the gap after the dot, and the header didn't read like Steam's (family · platforms).",
         "resolution": "The meta is the kit's new .meta-seps: 'Store · iOS · ★ 4.6 from 1,284 ratings', even dots; the star is the 16px ic-star (added to the kit's icon set) in brand gold, 4px from the number. Compare item 3 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "minor",
         "issue": "'Live on the App Store' restated the page title and its Live status, and two of its three lanes are TestFlight.",
         "resolution": "Retitled 'Store lanes', first column 'Lane'; the refresh button is named 'Read App Store Connect now', and the compare adds the spinner while reading. Compare item 5 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux2", "ux3"]
       },
       {
         "issue": "Dev lane: show '1.10.0-dev.3 (217)' as one value.",
@@ -148,44 +119,28 @@
         "issue": "At wide the Recent rows ran about 1100px and the lane table's Live and Next columns sat 300px apart.",
         "resolution": "Page capped at 1280 (.page.cap); main column about 830, rail 400. The Recent time is a fixed 96px right column. Rail and main end on their own rows.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "At tablet the three bottom cards stretched with 100 to 130px of empty card and the link chip was cut.",
         "resolution": "The rail cards no longer stretch (dropped .even); the QR stays and the link chip wraps under it with at least 240px.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Repeated facts: team key checked, 'Both derived from the iOS platform pin', the Live pill twice, three Sales lines.",
         "resolution": "Removed 'Team key checked 3 min ago' and the platform-pin line; 'Shown on your download page and in Library'; Live shows once in the header and the Sales header says '3 offers'. The Sales body is '41 purchases in 28 days' with the refund as a muted suffix; '3 offers' is not repeated there.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Phone lane-map link and refresh were on their own line; 'From' was ambiguous; rows had uneven lines.",
         "resolution": "Lane map and refresh stay on the title line (.card-head.one-line); the label is 'Track'; a lane's value and its note share one line, so every lane row is two lines.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX4"]
       },
       {
         "issue": "Cut or reorder the Recent feed, drop the Setup tab, add an error sibling.",

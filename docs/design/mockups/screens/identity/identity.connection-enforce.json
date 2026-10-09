@@ -3,11 +3,7 @@
   "title": "Require SSO for a domain",
   "area": "identity",
   "surface": "dialog",
-  "packages": [
-    "I-30",
-    "I-29",
-    "I-31"
-  ],
+  "packages": ["I-30", "I-29", "I-31"],
   "uxRows": [],
   "summary": "The confirmation an operator gets when turning on SSO required for students.example.edu on Lakeside University's page: what stops (email codes and passkeys for those addresses), who it reaches (31 accounts, 5 of them not yet linked), and the fail-closed consequence when the connection is down.",
   "compare": [
@@ -37,11 +33,7 @@
         "issue": "Title wrapped on phone; bullets of two clauses.",
         "resolution": "Title 'Require SSO for this domain?'; bullets one clause each; background rebuilt on the new Connection layout; Cancel without focus fill.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   },

@@ -3,11 +3,7 @@
   "title": "Cloud Sync writes paused",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-05",
-    "ST-16",
-    "U-32"
-  ],
+  "packages": ["U-05", "ST-16", "U-32"],
   "uxRows": [],
   "summary": "Diceroll's Cloud Sync page while the platform's writes are paused: a banner says since when, by whom and why, with Resume writes; the switch is on and says for how long.",
   "compare": [
@@ -29,76 +25,49 @@
         "issue": "Limits stretched to the Diceroll \"In your game\" row, leaving about 170px dead under the Pause switch; wide stretched the table.",
         "resolution": "Pair is .mk-pair.loose.top (align-items start) so Limits keeps its height; at 1600+ it is the right rail beside Storage and What syncs.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Facts stated twice or mechanism the person does not act on.",
         "resolution": "Storage subtitle \"Per tier. Entitlement pkey.cloudSync.bytes\"; Default subtitle \"For tiers that don't set their own\" with the Platform pill kept; removed the code-card footer, the \"Every Editable setting syncs\" sentence, the first code comment and \"Last used Sep 22, for 14 min\"; pause helper shortened; \"What players see\" became \"See Usage\"; \"13 sync\" became \"13 settings\".",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2"
-        ]
+        "raisedBy": ["UX1", "UX2"]
       },
       {
         "severity": "minor",
         "issue": "\"Updated 2 min ago\" had no role and the header ran about 90px taller than other pages.",
         "resolution": "Removed it; Guide stays right in the title row; verification stays in the title meta only; tab-bar gap tightened by the kit (.kit-cfg .page-head + .tabs).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2"
-        ]
+        "raisedBy": ["UX1", "UX2"]
       },
       {
         "severity": "minor",
         "issue": "Row actions sat about 40px inside the card edge; labels and blank cells were inconsistent.",
         "resolution": "Ghost actions in rows and card heads are inset (-12px) so label text ends at the 24px edge; Change... only where a dialog opens; blank cell is an em dash; \"players with data\" removed from Setup rows (Usage owns the counts); column header is \"Near limit\" in both tabs.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Phone: clipped code tabs, orphaned Guide button, Pause (the urgent control) last.",
         "resolution": "Code tabs show the language only and scroll with a fade, code block scrolls sideways with a fade, Guide is icon-only; Limits (Pause row first) comes directly under the header. Partly done: Guide still renders on its own row under the meta on phone (the kit phone page-actions rule wins over a screen override), not in the title row.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "What syncs used three list styles with dead space under Settings.",
         "resolution": "Both columns align to start; the two icon lines use one 20px icon column and a 12px gap.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1"
-        ]
+        "raisedBy": ["UX1"]
       },
       {
         "severity": "major",
         "issue": "The paused state was told three times (banner, Limits, helper).",
         "resolution": "The banner is the one place for who, when, why and effect; Limits shows only the switch labelled \"Paused\"; \"Paused 12 min\" and the effect helper are gone; the storage table foot says \"Changes apply when you resume\". Not done: no Usage-tab paused screen exists, so the banner is not drawn there.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       }
     ]
   },

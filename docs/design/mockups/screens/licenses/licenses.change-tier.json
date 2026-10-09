@@ -3,12 +3,7 @@
   "title": "Change tier",
   "area": "licenses",
   "surface": "dialog",
-  "packages": [
-    "LX-32",
-    "LX-33",
-    "LX-38",
-    "LX-41"
-  ],
+  "packages": ["LX-32", "LX-33", "LX-38", "LX-41"],
   "uxRows": [],
   "summary": "The Change tier dialog opened from the tier control on licenses.detail: moving Priya Raman's automatic Education license up to Studio (every changed limit, old and new, what stays, and why the move sticks), and down to Free, where a warning says her next sign-in moves it back to Education because an Access rule still covers her.",
   "order": 5,
@@ -42,11 +37,7 @@
         "issue": "Redundant lines, split footer, wrapping delta chips.",
         "resolution": "'Now on Education, 3 of 5.' removed; Unchanged and Still an Automatic grant are one line; the foot is .dialog-foot.std, so on phone Cancel sits beside the primary with Open Access above the pair. The diff rows keep the kit's old-to-new chips; they wrap inside the value column.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "issue": "Relabel the primary 'Move to Free anyway' and use a caution button style for the moving-down variant.",

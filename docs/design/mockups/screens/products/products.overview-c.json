@@ -4,16 +4,8 @@
   "area": "products",
   "surface": "console",
   "order": 2,
-  "packages": [
-    "ST-41",
-    "ST-40",
-    "ST-44"
-  ],
-  "uxRows": [
-    "UX-21",
-    "UX-61",
-    "UX-63"
-  ],
+  "packages": ["ST-41", "ST-40", "ST-44"],
+  "uxRows": ["UX-21", "UX-61", "UX-63"],
   "summary": "Concept C, guided setup first: while Integration is shown, DJDL's Overview leads with a setup stepper (one step per feature on a rail, platform badges, the first open step expanded with its console step and drop-in kit), attention pinned above it, and the features' facts and recent activity in one compact pair under it.",
   "compare": [
     "Concept C, guided setup first. While Integration is shown, the page reads top to bottom: the pinned attention row, the Integration card as the setup stepper, then one compact pair with Features and Recent activity. Once the operator hides Integration, the same page leads with Features (facts first) under the attention row; that state isn't drawn here.",

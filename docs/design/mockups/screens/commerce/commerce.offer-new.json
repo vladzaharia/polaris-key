@@ -3,11 +3,7 @@
   "title": "New offer",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "CM-20",
-    "LX-11"
-  ],
+  "packages": ["CM-23", "CM-20", "LX-11"],
   "uxRows": [],
   "summary": "Diceroll's New offer editor before anything exists on a store: What it sells (Table themes, an add-on, one-time), the base price empty with 'Set a base price', and SKU rows that create the App Store and Google Play products from the offer once it is saved and priced, with Steam as a copy card plus a DLC picker and itch.io explained.",
   "compare": [
@@ -30,23 +26,14 @@
         "issue": "SKU rows uneven, Steam link high, no way to edit territories, SKUs subtitle, Save draft enabled with nothing priced.",
         "resolution": "Same layout as offer (rail from 1200px); Steamworks is an outline button on the button edge; SKUs subtitle deleted; Edit link beside 174 of 175; base price marked required; 'Needs a base price' beside a disabled Save draft; phone bottom bar. Rows in the 360px rail drop their buttons under the text, so heights differ only where a row has two actions.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "major",
         "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
         "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       }
     ]
   },

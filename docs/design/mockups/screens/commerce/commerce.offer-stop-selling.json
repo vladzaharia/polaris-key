@@ -3,10 +3,7 @@
   "title": "Stop selling (typed confirmation)",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "A-17g"
-  ],
+  "packages": ["CM-23", "A-17g"],
   "uxRows": [],
   "summary": "The Stop selling confirmation for Dice skins: what happens on each store (App Store removed from sale now, Google Play deactivated now, Steam stays on sale because it has no API, with the place to change it), that owners keep it, and the typed app name before 'Stop selling on 2 stores', shown mid-typing with the button still disabled.",
   "compare": [
@@ -29,9 +26,7 @@
         "issue": "A green primary signals a positive action for a store-side withdrawal.",
         "resolution": "'Stop selling on 2 stores' uses the danger button (locked while the word is not typed); typed confirm kept.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       }
     ]
   },

@@ -4,12 +4,7 @@
   "area": "admin",
   "surface": "console",
   "order": 7,
-  "packages": [
-    "ST-29",
-    "ST-31",
-    "ST-30",
-    "ST-35"
-  ],
+  "packages": ["ST-29", "ST-31", "ST-30", "ST-35"],
   "uxRows": [],
   "summary": "Home for a member whose only role is Console access: Noor joined through the email-domain rule for studio.example.com. The page says she's in but has nothing yet, names the people who can give her a role with copyable emails, and points to her library and the docs.",
   "compare": [
@@ -48,43 +43,27 @@
         "issue": "The empty state was said three times; the left card was 207px against 327px on the right with a floating footer line.",
         "resolution": "Title 'You don't have access to any product yet' with the subtitle 'Ask one of these people to add you'; the Docs tile is removed; 'Your library' stays as the one secondary action; 'Use another account' sits beside the email; one balanced 8/4 grid with equal-height cards and no orphan line.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
         "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
         "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
         "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   }

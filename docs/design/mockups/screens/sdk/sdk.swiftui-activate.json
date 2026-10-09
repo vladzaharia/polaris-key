@@ -4,11 +4,7 @@
   "area": "sdk",
   "surface": "kit",
   "order": 9,
-  "packages": [
-    "UK-07",
-    "UK-43",
-    "UK-02b"
-  ],
+  "packages": ["UK-07", "UK-43", "UK-02b"],
   "uxRows": [],
   "summary": "Activation with a license key in the SwiftUI kit's gate on iPhone, shown on Diceroll as a labelled fixture: the key field with Paste and the full key, the not-a-key error with the keyboard up, Activating…, key not found, the other answers as an iOS grouped list, and Diceroll is ready with the once-only Keep it in your account recommendation (two reasons, since Diceroll has no Cloud Sync).",
   "compare": [
@@ -50,20 +46,14 @@
         "issue": "Ready sat alone, with about 850×600 empty at desktop and an empty cell at wide; iOS's offline row was only referred to ('the words on sdk.react-activate 1e'), never drawn; the B/8 typo wasn't one of the characters the error lists.",
         "resolution": "An iOS 'Other answers' card in grouped-list style (the four answers and the offline row with Try again, on the kit's .card-answers): two cells beside Ready at desktop (.span-2-desktop), one cell at wide and tablet. Rendered: 3×3 at desktop, 4×2 at wide, 2×4 at tablet, no holes. The 1d fixture is an O typed for a 0 (the key now ends …B60, typed …B6O), captioned 'An O typed for a 0.'",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "severity": "minor",
         "issue": "Ready stacked icon, name, check and title, naming the product four times; '2 · Landscape' appeared long before step 2; the lede and captions repeated 'floating' and 'shows once'.",
         "resolution": "The 'Diceroll' label under the icon is removed on every step; on Ready the check takes the icon's place; the card title is 'Keep it in your account'. Landscape captions '1 · Enter your license key, landscape' and '2 · Diceroll is ready, landscape'. Lede 'The key path, from Have a license key? to Diceroll is ready.' 'pkey_' is in mono, 'Recommended' is neutral and the errored field has a border (kit). Captions are trimmed to one sentence.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "issue": "Keep the B/8 fixture and caption 1d 'A B typed as 8.' (ux1).",
@@ -80,42 +70,26 @@
         "issue": "The wide mosaic has holes and captions at six different y positions; landscape frames repeat states and the notch touches the icon.",
         "resolution": "One order: row 1 is states 1, 1b, 1c, 1d; row 2 is state 2 beside a stack of the landscape key-entry frame (the only landscape) over Other answers, which spans the rest of the row so no cell is left empty; landscape content is inset 24px more from the notch (.land-safe); the last action sits 24px above the frame bottom (.safe-bottom). Other answers shares a column with the landscape frame rather than owning a row, to avoid a 400px hole.",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["d1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Boilerplate callout and narrating captions.",
         "resolution": "One-line chip callout; no subtitle; captions shortened as triaged.",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["d1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Stack frames one per row at full width on phone.",
         "resolution": "declined: full-width frames make the page taller; the current scale stays.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "issue": "Hide states behind chips or use a scroll-snap strip on phone.",
         "resolution": "declined: this removes content and adds interaction.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3",
-          "d1",
-          "ux2"
-        ]
+        "raisedBy": ["ux3", "d1", "ux2"]
       }
     ]
   }

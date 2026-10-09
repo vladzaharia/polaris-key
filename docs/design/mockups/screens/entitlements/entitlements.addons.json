@@ -3,11 +3,7 @@
   "title": "Add-ons",
   "area": "entitlements",
   "surface": "console",
-  "packages": [
-    "LX-35",
-    "LX-44",
-    "CM-23"
-  ],
+  "packages": ["LX-35", "LX-44", "CM-23"],
   "uxRows": [],
   "summary": "Diceroll's License → Add-ons collection: every sub-license a license can hold (dice packs, supporter skins, a loadout pack, gem packs, a monthly season pass, playtester access), what each gives, where it comes from and how many licenses hold it, three lines a row on phone, with the five sources as the kit's dismissible legend.",
   "compare": [
@@ -42,19 +38,14 @@
         "issue": "On phone a row ran to four lines and 'App / Store' and 'Access / rule' broke inside the name; the legend wrapped raggedly at every size (1/2/2 in the aside, 4 plus an orphan at tablet, 1/1/2/1 on phone).",
         "resolution": "Phone rows are three lines: the id is hidden (hide-phone), the key keeps desktop's mono chip, and the sources take their own line with each name kept whole. The legend is the kit's .ref-legend.inline: one source per 32px row in narrow cards, the tablet card and the aside; five equal columns from 1080px of card; still dismissible. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #4"]
       },
       {
         "severity": "major",
         "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
         "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #4"]
       },
       {
         "issue": "Show the 'Where add-ons come from' legend only on the empty page and in the wide aside, with tooltips on the source icons elsewhere.",
@@ -76,12 +67,7 @@
         "issue": "The legend card restated the Comes-from column in different words and its layout changed between sizes; two-line rows broke the 57px rhythm.",
         "resolution": "'Where add-ons come from' card removed; the definitions are a tooltip on the Comes-from header, one noun per source as the column names it (Codes, Comps). Footer is '7 of 8 on sale · Open Offers'. Rows are a fixed 57px: 'Renews monthly' is a pill beside the Gives code, and from 1280 a row's cells stay on one line. The actions column is 40px. Empty filter chips read 'Gives: any' and 'Comes from: any'. Phone shows holders with a 'holders' suffix.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Show only the first three sources as icons with a '+3' chip and make the legend dismissible with remembered state.",
@@ -98,10 +84,7 @@
         "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
         "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux3", "ux4"]
       }
     ]
   },

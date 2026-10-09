@@ -3,10 +3,7 @@
   "title": "Offers: none yet",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "CM-29"
-  ],
+  "packages": ["CM-23", "CM-29"],
   "uxRows": [],
   "summary": "DJDL's Offers before the first offer, right after the App Store connected: the kit's empty state says what an offer is in one sentence, that DJDL already has 3 in-app purchases on the App Store that can become offers, and offers Import from App Store beside New offer.",
   "compare": [
@@ -27,21 +24,14 @@
         "issue": "A 1262px panel with two lines floating at its top-left.",
         "resolution": "Card capped at 640px and offset from the title; Import from App Store is primary, New offer secondary; counts match offers-import (4 found, 3 match).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       },
       {
         "severity": "major",
         "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
         "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       }
     ]
   },

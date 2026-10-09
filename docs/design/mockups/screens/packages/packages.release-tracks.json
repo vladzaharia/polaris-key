@@ -4,13 +4,7 @@
   "area": "packages",
   "surface": "console",
   "order": 7,
-  "packages": [
-    "P2-08",
-    "P2-09",
-    "A-24",
-    "F-36",
-    "LX-33"
-  ],
+  "packages": ["P2-08", "P2-09", "A-24", "F-36", "LX-33"],
   "uxRows": [],
   "summary": "Diceroll's Release tracks page on Oct 7 right after 1.8.0 was demoted from stable at 11:30 and one channel didn't switch back: one lane each for stable, beta, dev and the custom playtest track (now, how it got there, who gets it), the map from each track to Polaris Key and each store's lanes with what goes live by itself, Steam shown as not connected, and the partial-success toast with Retry.",
   "compare": [
@@ -72,44 +66,28 @@
         "issue": "[Wide] The toast covers the Steam column header and duplicates the lane's Retry.",
         "resolution": "Toast is now .toasts.at-end (drawn at the page's end, bottom right, clear of content; the page keeps 72px+ below); the toast's Retry is removed, the lane's 'Retry itch.io' stays.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "severity": "major",
         "issue": "[Phone] The 6-column matrix is clipped with no cue.",
         "resolution": "Phone: .table.stack-phone turns it into one card per track (pill header, label/value rows on the 80px label grid). Tablet: scrolls inside its own container with an edge fade (.table-card.fade-edge).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Lane cards leave 200-300px of dead space above the footer.",
         "resolution": "Equal-height lanes with the footer pinned (.lane-card, margin-top:auto); activity capped (stable shows 2 because of its callout, the others 2) with 'View all' in a cut lane's footer; identical lane padding.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "severity": "minor",
         "issue": "Facts repeat in header, footer, matrix and dialog.",
         "resolution": "Lane meta is 'Built in'; 'also get stable/beta' moves to the footer beside the license count; stable footer 'All 18,240 licenses'; five 'Not sent' cells are an em dash with one legend; 'Destinations'; shorter footnote.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "issue": "Switch lanes to align-self:start or masonry instead of equal heights.",
@@ -121,12 +99,7 @@
         "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
         "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

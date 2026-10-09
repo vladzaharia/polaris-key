@@ -3,9 +3,7 @@
   "title": "Catalog entry: minted token without a key",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-31"
-  ],
+  "packages": ["U-31"],
   "uxRows": [],
   "summary": "applemusic.token when its recipe arrived from .pkey/schema and was approved but no signing key exists yet: the Signing key row is an empty state with Add the .p8 key…, and minting hasn't started.",
   "compare": [
@@ -26,11 +24,7 @@
         "issue": "Duplicate banner and card for the missing key.",
         "resolution": "Deleted the banner; the dashed \"No key yet\" card keeps \"Until it's added, mintToken calls fail\" and holds the Add the .p8 key button beside it; same three-column editor and rail as the minted-token page; recipe subtitle shortened.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "issue": "Hide \"Where it's set\" behind the overflow menu on narrower sizes (UX1)",

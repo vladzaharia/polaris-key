@@ -3,13 +3,8 @@
   "title": "Turn off Licensing (names Commerce)",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "ST-38",
-    "CM-29"
-  ],
-  "uxRows": [
-    "UX-66"
-  ],
+  "packages": ["ST-38", "CM-29"],
+  "uxRows": ["UX-66"],
   "summary": "Diceroll's Features page, dimmed, with the confirmation that appears when Licensing's switch is turned off while Commerce is on: it says what turning Licensing off does, names Commerce as the dependent that turns off in the same change and what that stops, says what is kept, and that turning Licensing back on doesn't turn Commerce back on.",
   "compare": [
     "The confirmation appears before anything changes; behind it the Licensing switch still shows on and Commerce reads 'Selling on App Store, Google Play and Steam'. Focus starts on Cancel (drawn with the focus ring) and returns to the Licensing switch on close.",
@@ -58,10 +53,7 @@
         "issue": "The dialog says the same thing three times and its warning is unclear.",
         "resolution": "Intro sentence deleted; danger button; one-line warning marked advisory; footer facts are one line.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux2", "ux3"]
       },
       {
         "issue": "Add a typed confirm, disable the primary until offers are off sale, or stop selling for the user.",

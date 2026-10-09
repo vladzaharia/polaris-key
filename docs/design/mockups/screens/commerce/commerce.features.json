@@ -3,13 +3,8 @@
   "title": "Features: Commerce turned on",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-29",
-    "ST-38"
-  ],
-  "uxRows": [
-    "UX-66"
-  ],
+  "packages": ["CM-29", "ST-38"],
+  "uxRows": ["UX-66"],
   "summary": "DJDL's Settings → Features right after Commerce was switched on: the six features in canonical order as feature rows, each with its own switches in a box under it and its requirements (Commerce needs ✓ Licensing; Cloud Sync needs ✓ Managed config and ✓ Sign-in), Commerce's fact in the status column (No storefront ready yet) with Set up a storefront, the Commerce group now in the sidebar, and an undo toast.",
   "compare": [
     "Six feature rows in canonical order: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce (the kit's .feature-row: glyph, name at the card step, one sentence, requirements, status column, switch). Every switch on the page has one style (the brand accent with the same knob), so track colour and knob position say on or off; service colours stay on the tiles. On phone each switch is 44×24 (.switch.touch) and the row's label toggles it.",
@@ -54,35 +49,21 @@
         "issue": "The Commerce status breaks the toggle column; dependencies are told twice per row; banner is long; nested box; coloured row tint.",
         "resolution": "Commerce's state is a meta line under its description so the switches share one x; 'Needs X' appears only on the dependent row and 'Needed by' is removed; banner is 'Each switch saves on its own.'; nested switches use row padding and a hairline; the just-on row has a neutral tint and the accent bar; dependency lines are 13px; the page is one column (no rail).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The toast repeats the sidebar.",
         "resolution": "'Commerce turned on' with one action, Undo.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "major",
         "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
         "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Move the footer note about service names and the registration policy into Advanced.",

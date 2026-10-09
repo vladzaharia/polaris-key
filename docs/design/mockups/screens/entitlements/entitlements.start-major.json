@@ -3,10 +3,7 @@
   "title": "Start a 5.x tier",
   "area": "entitlements",
   "surface": "dialog",
-  "packages": [
-    "LX-43",
-    "LX-44"
-  ],
+  "packages": ["LX-43", "LX-44"],
   "uxRows": [],
   "summary": "The dialog behind the new-major notice's Start a 5.x tier…: Pro 5 is created as a copy of Pro 4 covering 5.x, Name over Id with a taken id's inline error and a one-click suggestion, what it copies (limits, includes, profile) listed in words, and the one outcome of list order.",
   "compare": [
@@ -35,20 +32,14 @@
         "issue": "On phone the sheet cut the Profile row and two paragraphs with no cue; on desktop the Id error left a 40px hole under Name (two columns); the closing paragraph explained mechanism (list order, admin API) and a sentence told how to untick.",
         "resolution": "The default 480 dialog with Name over Id, so the error flows under its own field; the overlay's default top; .dialog.scroll.fade, so the phone sheet's body fades above the foot (with the foot's shadow and a focusable body). Cut 'Untick a group to start it empty.'; the closing paragraph is 'A holder of both runs as Pro 5.'; the Id suggestion is a link button 'Use pro-5-2026'; the compare adds the inline error for a major line that overlaps Pro 4's 4.x. The page behind is the converged new-major. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #4",
-          "reviewer #3"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #4", "reviewer #3"]
       },
       {
         "severity": "major",
         "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
         "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #4"]
       },
       {
         "issue": "Update the compares to say the phone dialog feet and the add-on header actions stack full width.",
@@ -60,23 +51,14 @@
         "issue": "The primary was enabled while the Id was invalid and the copy repeated itself.",
         "resolution": "Intro 'Copies Pro 4 for 5.x. Pro 4 stays on 4.x.'; major-line hint '5.0.0 up to 6.0.0, betas included.'; 'A holder of both runs as Pro 5.' deleted; the Id error is one sentence with 'Use pro-5-2026' as a small button inside the field; Create is disabled until the Id is valid; the error keeps its red border and the focus ring is an offset outline; 'Can't change later' is 12px in the AA muted token; the scrolling body has a scroll shadow (.scroll-shadow); Copy-from labels carry the values ('Limits (5 devices, 30 offline days, stable and beta tracks)').",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Dialog geometry as for extend-major.",
         "resolution": "Same viewport-tall screen, 12vh placement, max-height 90vh, pinned foot; phone stays a bottom sheet.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux2", "ux3", "ux4"]
       }
     ]
   },

@@ -3,10 +3,7 @@
   "title": "Add a rule: other states",
   "area": "licenses",
   "surface": "dialog",
-  "packages": [
-    "LX-36",
-    "P2-10"
-  ],
+  "packages": ["LX-36", "P2-10"],
   "uxRows": [],
   "summary": "The Add a rule dialog's states beyond licenses.access-rule: a group no sign-in has sent yet (saves, matches no one), a duplicate of an existing rule (inline error with Edit that rule), a blank group after Add rule, the match preview counting, and the preview failing with Retry.",
   "order": 9,
@@ -40,10 +37,7 @@
         "issue": "Dialog footers 36px and helper text under 13px.",
         "resolution": "Footers are .dialog-foot.std (40px buttons, 12px gap); the board is .floor (13px helpers).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX4"]
       },
       {
         "issue": "Rewrite the warning, error and loading copy.",

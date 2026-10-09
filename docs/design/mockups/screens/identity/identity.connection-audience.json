@@ -3,10 +3,7 @@
   "title": "Change who signs in with a connection",
   "area": "identity",
   "surface": "dialog",
-  "packages": [
-    "I-30",
-    "I-31"
-  ],
+  "packages": ["I-30", "I-31"],
   "uxRows": [],
   "summary": "The caution confirmation an operator gets on Lakeside University's page after picking 'Operators' under 'Who signs in with it': the 88 customer accounts go back to email codes and passkeys, product cards stop routing its domains, DJDL's Access rule narrows, and nobody gains console access.",
   "compare": [
@@ -26,11 +23,7 @@
         "issue": "Title wrapped on phone; bullets of two clauses.",
         "resolution": "Title 'Sign in only operators?'; bullets one clause each; background rebuilt on the new Connection layout; Cancel is an outline button with no first-render focus fill.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   },

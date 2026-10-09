@@ -3,13 +3,7 @@
   "title": "Offers",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "CM-20",
-    "LX-11",
-    "CM-25",
-    "CM-28"
-  ],
+  "packages": ["CM-23", "CM-20", "LX-11", "CM-25", "CM-28"],
   "uxRows": [],
   "summary": "Diceroll's five offers as one parity table: each row is an offer defined once (what it sells, one-time or subscription, a quantity) and each set-up storefront is a column holding that offer's SKU as a chip, including the paid app itself on Steam and itch.io. Import and suggest surfaces an unmapped Google Play product, and the 3.1.3(b) warning asks for an App Store SKU.",
   "compare": [
@@ -56,76 +50,49 @@
         "issue": "App Store header's second line breaks the header baseline and collides with Google Play at 1024.",
         "resolution": "Subtitle removed (tooltip only); every store header is one line; columns are at least 130px wide at the smallest table width.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Tablet header collisions and clipped chips.",
         "resolution": "Below 1040px the matrix is card rows (label 90px, value flex, two columns from 640px); no column dropped.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Needs attention rows are long, repeat the table and word holiday_bundle two ways.",
         "resolution": "'3 players bought holiday_bundle and got nothing' with Add to an offer; 'Neon dice pack needs an in-app purchase (App Review 3.1.3(b))' with Create on App Store; count chip removed for two rows; 'since Oct 5' dropped.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Three phrases for not applicable, duplicated offer name, mismatched legend and Microsoft line.",
         "resolution": "One muted dash with the reason in a title; sub-lines 'Add-on · one-time'; legend and Microsoft Store line share a colour and show at every size.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "minor",
         "issue": "Two equal stacked buttons on phone.",
         "resolution": "New offer is the one full-width primary; Import from stores is a text link under it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "severity": "major",
         "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
         "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Row sub-lines and legends are small, and chevrons and copy icons have small hit areas.",
         "resolution": "Sub-lines and legends are at least 12px (13px here) in the muted token that already passes 4.5:1; icon buttons have a 24px target; one table header token and row height are shared.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux4"]
       },
       {
         "issue": "Drop the Billing filter chip, or the State and Billing chips.",

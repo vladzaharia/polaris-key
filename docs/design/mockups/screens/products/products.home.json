@@ -4,14 +4,8 @@
   "area": "products",
   "surface": "console",
   "order": 1,
-  "packages": [
-    "ST-44",
-    "ST-45"
-  ],
-  "uxRows": [
-    "UX-12",
-    "UX-67"
-  ],
+  "packages": ["ST-44", "ST-45"],
+  "uxRows": ["UX-12", "UX-67"],
   "summary": "The one Home in the Platform sidebar context: attention from one server read, the Platform ready checklist for platform admins while it is incomplete, and the products as ST-36 cards with a Cards/Table toggle and facets. The Products page and the summary tiles are gone.",
   "compare": [
     "The sidebar is the Platform context: a context header (Platform, 3 products, switcher chevrons), then Home, Members, Connections, Settings, Packages, Status, Activity, and no product sections.",
@@ -37,308 +31,203 @@
       {
         "severity": "major",
         "decision": "accepted",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4", "UX5"],
         "issue": "Header subtitle '3 products · 3 things need attention' repeated the sidebar context, the Products count, the Needs attention count and the card pills within 60px.",
         "resolution": "Deleted the .page-sub. Desktop and tablet: one 36px line, 'Home', then 'Updated 1 min ago', Refresh and New product."
       },
       {
         "severity": "minor",
         "decision": "accepted",
-        "raisedBy": [
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX4", "UX5"],
         "issue": "Phone showed Refresh with no freshness, and the icon action sat before the primary.",
         "resolution": "Kit phone header: Refresh (icon) ends the title row, 'Updated 1 min ago' is the 12/16 meta line under the h1, New product takes the full-width row alone. Refresh's aria-label is 'Refresh, updated 1 min ago'."
       },
       {
         "severity": "minor",
         "decision": "accepted",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX5"
-        ],
+        "raisedBy": ["UX1", "UX2", "UX3", "UX5"],
         "issue": "The attention count sat about 1,000px from its title while the Products count sat 8px after its own; row 1 named Diceroll twice, row 3 was two sentences with the page's only year, row 2 opened with a filler 'The'.",
         "resolution": "The count sits 8px after the title in the title cluster as a filled tone chip (kit). Rows: 'Resync failed: .pkey/release line 14 names “switch”, a platform this product doesn't ship.', 'Required secret identity.acoustidKey has no value in the Default profile.', 'Google Play key expires Oct 16; uploads to Play stop then.' Pills keep 'Error' and 'Warning'."
       },
       {
         "severity": "blocking",
         "decision": "accepted",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4", "UX5"],
         "issue": "At 1024 every attention sentence was cut with an ellipsis (53–71% visible), so the card lost the fact it exists to state.",
         "resolution": "Tablet uses the 56px icon rail (kit), so content is 920px. .attn-text wraps in full at every size; the pill, subject and link stay on the first line. At 1024 the resync row wraps to two lines (64px, 12 above and below) with nothing cut; the other two rows are one line at 56px. Product cards go 2 + 1."
       },
       {
         "severity": "major",
         "decision": "accepted",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4", "UX5"],
         "issue": "Platform ready narrated its mechanism ('leaves Home when all nine are done'), had four left edges, a done list of two or three lines, and a 20px '8 steps · Show' target on phone.",
         "resolution": "Head is 'Platform ready' and the '8 of 9 done' meter only (description and rocket tile deleted; the title starts at the card edge). The task mark is centred in the 28px media column, so 'Store connections' starts at card-px + 28 + 12; copy 'Diceroll's Steam uploads need a Steamworks publisher key.'; Connect Steam on the right. Done is one 'Show done steps' disclosure row at every size (chevron in the media column, 24px hit height, aria-expanded, no eyebrow, no count); expanded items wrap from the text column."
       },
       {
         "severity": "major",
         "decision": "accepted",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4", "UX5"],
         "issue": "At 1920 the page only stretched: action links 600–774px from their sentences, the meter 1,278px from its title, cards shrunk to 310px with two empty tracks.",
         "resolution": "The page is .page.columns (kit). At 1600 and up the head spans both columns; the main column (1184px at 1920) holds Needs attention, then Products as three 384px cards; Platform ready is the 400px aside (.aside.span-2), its task putting Connect Steam under the text. Source order is unchanged, so narrower sizes keep today's order."
       },
       {
         "severity": "minor",
         "decision": "accepted",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX1", "UX2", "UX4", "UX5"],
         "issue": "Products' 36px field sat 2px off the 32px chips' centre line; cards used the legacy .row.gap-1; '1 needs attention' differed from the built card; the phone pips dropped the issue from their name.",
         "resolution": "Products title at the block step with its count; the toolbar field is 32px in a toolbar (kit), one centre line with the facets and Cards/Table. Cards use .mk-cluster-1. DJDL's pill reads 'Missing secret'; Diceroll keeps '2 need attention'. Pip rows name the issue ('…, Managed config: 1 needs attention, …'; '…, Ship builds: 2 need attention, …')."
       },
       {
         "severity": "minor",
         "decision": "accepted",
-        "raisedBy": [
-          "UX3",
-          "UX5"
-        ],
+        "raisedBy": ["UX3", "UX5"],
         "issue": "Compare item 4 ('folded into one line') was already false at 1440 and 1024, and nothing described the phone header or the wide layout.",
         "resolution": "Compare rewritten: Platform ready (no description, 'Show done steps' at every size, task title on the text column), the phone header, a wide-layout item, a tablet item, the DJDL pill wording and head counts beside their titles."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX3",
-          "UX5"
-        ],
+        "raisedBy": ["UX3", "UX5"],
         "issue": "States boards (first run with 0 products, attention read failed, all clear, loading, editor without Platform ready, Table view, no filter match).",
         "resolution": "Declined: New content and states; this pass fixes spacing, alignment and hierarchy only. Queued for a states pass, drawn on the new system."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX1",
-          "UX2"
-        ],
+        "raisedBy": ["UX1", "UX2"],
         "issue": "Replace the 'Error'/'Warning' pills with a 16px glyph plus sr-only text, or icon-only pills below 1100px.",
         "resolution": "Declined: Owner rule: issues are pills. With .attn-text wrapping nothing is truncated; subgrid aligns subjects on desktop and the phone 8px gap fixes the jitter."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX5"
-        ],
+        "raisedBy": ["UX1", "UX2", "UX5"],
         "issue": "Drop the product card's attention pill, or shrink it to an icon and a number.",
         "resolution": "Declined: ST-36's card (ADMIN.md §6.1, the built ProductCard) ends its header with one pill that names or counts. Fixed instead with the built wording."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX3",
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX3", "UX4", "UX5"],
         "issue": "Replace the phone pips with 16px glyphs or a '5 features' line, or drop pips and slug.",
         "resolution": "Declined: Plan §2.1 keeps pips on phones (ST-36, kept by ST-44). Only the accessible name was fixed."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX5"
-        ],
+        "raisedBy": ["UX5"],
         "issue": "Draw each feature on the card as a .chip.sm with its name.",
         "resolution": "Declined: Contradicts ST-36's card shape: one row of feature glyphs with tooltips and names, no facts."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX2",
-          "UX3"
-        ],
+        "raisedBy": ["UX2", "UX3"],
         "issue": "Move page-level titles out of the cards, or set them to 20/28.",
         "resolution": "Declined: One 18/24 block step inside the existing card heads (EXPERIENCE §3: panel headers 16–18). Moving titles out would restructure every screen and separate heads from their actions."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX2"
-        ],
+        "raisedBy": ["UX2"],
         "issue": "Show a head count only when the list is cut short ('3 of 12').",
         "resolution": "Declined: With the subtitle gone the head count is the list's only number; sometimes-counts would make identical heads differ."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX2",
-          "UX3",
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX2", "UX3", "UX4", "UX5"],
         "issue": "At wide: cap .page at 1440, put Needs attention and Platform ready side by side above full-width Products, or move Needs attention into a rail.",
         "resolution": "Declined: A 1440 cap plus a rail gives a 944px main column, narrower than desktop. Side by side keeps the empty card tracks. Needs attention is the most urgent block and stays first in the main column. A 1760px page max stops 2560 screens stretching."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX2",
-          "UX3",
-          "UX5"
-        ],
+        "raisedBy": ["UX2", "UX3", "UX5"],
         "issue": "Cap the attention sentence at 72–80ch, or move the action under the sentence below 800–1200px.",
         "resolution": "Declined: Action links stay in one right-hand column; wrapping fixes tablet and the aside fixes wide."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX5"
-        ],
+        "raisedBy": ["UX5"],
         "issue": "Clamp attention text to two lines with an ellipsis.",
         "resolution": "Declined: A clamp still cuts the problem statement; it wraps in full."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4",
-          "UX5"
-        ],
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4", "UX5"],
         "issue": "A 64px rail, a rail from 640 or 768px, or folding the sidebar up to 1199px.",
         "resolution": "Declined: The built console (AppShell defaultRail) starts a 56px rail at 1024–1279 and folds to the drawer below 1024; the mockup matches what ships."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX2",
-          "UX3",
-          "UX5"
-        ],
+        "raisedBy": ["UX2", "UX3", "UX5"],
         "issue": "Make the task and done columns 36px so titles line up with a 36px head icon.",
         "resolution": "Declined: One 28px media column lines up every card; page-level heads lose their decorative tiles."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX2",
-          "UX4"
-        ],
+        "raisedBy": ["UX2", "UX4"],
         "issue": "Remove the slug from the sidebar context or the cards.",
         "resolution": "Declined: ST-45's context header and ST-36's card specify the slug; sidebar chrome isn't page content."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX5",
-          "UX2"
-        ],
+        "raisedBy": ["UX5", "UX2"],
         "issue": "Renames: 'Platform setup', 'Platform packages set up', 'Team invited (6 members)', facet 'Fully verified', a System pill tooltip.",
         "resolution": "Declined: UX-67 and ST-44 names, glossary-checked in round 1; done items are folded by default. Not spacing or duplication."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX3"
-        ],
+        "raisedBy": ["UX3"],
         "issue": "Add Diceroll's missing Steam key as a Needs attention row.",
         "resolution": "Declined: Plan §1: a store channel without credentials shows human steps; nothing has broken, so it is setup. The setup wording was taken instead."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX5"
-        ],
+        "raisedBy": ["UX5"],
         "issue": "Show the toolbar and Cards/Table only above 6 products.",
         "resolution": "Declined: ST-44 acceptance items; the reference screen shows them. A threshold belongs to the built screen's states."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX5"
-        ],
+        "raisedBy": ["UX5"],
         "issue": "Pin Settings in the Platform sidebar foot.",
         "resolution": "Declined: ST-45 fixes the Platform order: Home, Members, Connections, Settings, Packages, Status, Activity."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX4"
-        ],
+        "raisedBy": ["UX4"],
         "issue": "Roving tabindex for card glyphs; tooltips on focus-visible.",
         "resolution": "Declined: Keyboard behaviour of the built card; passed to ST-44's built review."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX1",
-          "UX4"
-        ],
+        "raisedBy": ["UX1", "UX4"],
         "issue": "A six-column :has() rule for five tiles; product cards at minmax(320px, 1fr).",
         "resolution": "Declined: Superseded: generic tiles fill a short last row, and at wide the main column gives three 384px cards."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX5"
-        ],
+        "raisedBy": ["UX5"],
         "issue": "'Updated 1 min ago' in the subtitle slot at every size.",
         "resolution": "Declined: On desktop freshness stays beside Refresh on the title line (EXPERIENCE §4); it moves under the h1 only on phone."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ],
+        "raisedBy": ["UX1", "UX3", "UX4"],
         "issue": "Label the done disclosure 'Show 8 done' or '8 done · Show'.",
         "resolution": "Declined: The meter already carries 8. The label is 'Show done steps'."
       },
@@ -347,10 +236,7 @@
         "issue": "The h1 sat at four different y positions across home, integration, features and new-product.",
         "resolution": "Home opts into .kit-prod: a 24px top pad and a reserved 20px breadcrumb row, so the h1 sits at y=137 on all four pages.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux3"]
       }
     ],
     "previousRounds": [

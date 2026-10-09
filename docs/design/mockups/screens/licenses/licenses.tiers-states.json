@@ -3,12 +3,7 @@
   "title": "Tiers: other states",
   "area": "licenses",
   "surface": "console",
-  "packages": [
-    "LX-44",
-    "LX-41",
-    "LX-33",
-    "LX-43"
-  ],
+  "packages": ["LX-44", "LX-41", "LX-33", "LX-43"],
   "uxRows": [],
   "summary": "The Tiers editor's other states: Trial's 'Moves to another tier' with Then Free, inline validation with the save bar's 'Fix 2 fields', the discard confirmation when leaving a changed tier, a row's menu with Move up, Move down and Delete disabled while used, and the locked stable track with its tooltip.",
   "order": 11,
@@ -42,20 +37,14 @@
         "issue": "Order menu and the Locked-stable tooltip opened upward over the card heading.",
         "resolution": "Both anchor 8px below their trigger (.popover.anchor-below); the tile leaves 160px below (.room-below); 24px between a card and its save bar (mk-stack-6).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "State tiles were as tall as their neighbour; repeated Order summary lines and slugs.",
         "resolution": "Board is .board.cols-2.start (tiles size to content); Order rows lose the summary line; slugs equal to the name are gone.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX4"]
       }
     ]
   }

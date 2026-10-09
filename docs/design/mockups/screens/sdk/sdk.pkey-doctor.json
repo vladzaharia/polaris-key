@@ -4,11 +4,7 @@
   "area": "sdk",
   "surface": "terminal",
   "order": 3,
-  "packages": [
-    "P0-45",
-    "ST-40",
-    "SP-33a"
-  ],
+  "packages": ["P0-45", "ST-40", "SP-33a"],
   "uxRows": [],
   "summary": "pkey doctor run in DJDL's repository: the product from .pkey/product, then Manifest, Keys, Integration (Verified per feature on macOS and Windows, CI under Ship builds) and Left to do, each problem with the command or console page that fixes it; it re-wraps to 44 columns on a narrow terminal.",
   "compare": [
@@ -60,37 +56,28 @@
         "issue": "Factual error: Commerce printed 'needs Licensing' while Licensing is Verified two rows above (Commerce requires Licensing, plan §2.1; products.integration says 'Commerce is off').",
         "resolution": "Both runs print Commerce as 'Commerce   off' with the dim '→ key.plrs.im/manage/#/p/djdl/features' line; 'needs Licensing' shows only while Licensing is off. Compare items 2 and 10 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "d2"
-        ]
+        "raisedBy": ["d2"]
       },
       {
         "severity": "major",
         "issue": "Windows repeated 'Not seen yet' in five identical cells, and five lines at 44 columns; Integration and Overview show it once.",
         "resolution": "80 columns: the Windows column is dropped and '  Windows   ○ Not seen yet' closes the Integration block. 44 columns: one line, 'Integration on Windows  ○ Not seen yet'. Compare items 2 and 8 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "d2"
-        ]
+        "raisedBy": ["d2"]
       },
       {
         "severity": "minor",
         "issue": "The summary carried a mechanism clause that wrapped on phone; 'Waiting: sign-in' repeated the row name; the legend described the layout; How it behaves bullet 3 repeated the frame; the lede repeated what the terminal shows.",
         "resolution": "Summary '2 to do · 1 warning · 1.2 s' in both runs (the Integration parity stays in compare items 2 and 7); Sign-in reads '● Waiting'; the To do legend reads 'a missing console step or key.'; bullet 3 (one fix line per folder) is deleted; lede 'DJDL's setup, checked from its repository.'",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "severity": "minor",
         "issue": "Wide left about 960×380 empty under two 16px-titled cards, and the 44-column wrap of compare item 8 was drawn only on phone.",
         "resolution": "At wide three tracks, tops aligned: the 80-column run | the 44-column run | the aside (at least 400px, the row's remaining width) with Symbols over How it behaves. Desktop, tablet and phone are unchanged. Cards in a board aside now title at the 18/24 block step (kit). Rendered: the aside stays the shorter column.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "issue": "Move the 'same facts as Integration' parity claim into the Symbols card's Summary row (ux1).",
@@ -112,40 +99,26 @@
         "issue": "The same report is drawn twice at wide, leaving a dead band beside the terminal.",
         "resolution": "One terminal per size: 80 columns at wide, desktop and tablet, 44 only on phone. Symbols and How it behaves stack beside it (top-aligned, two-column key at tablet and wide) and join into one card on phone (.board-aside.stack.join-phone).",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["d1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Copy duplicated the terminal (subtitle, header, Summary, --json, long symbol text, Commerce link, Windows/CI under the macOS block).",
         "resolution": "Dropped the subtitle and the header note, gave CI and Commerce their own groups, shortened Symbols to a label plus about four words, folded Summary into one exit-code line, cut --json, merged --product and --base-url, and kept links only on the two to-do rows.",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["d1", "ux2", "ux3"]
       },
       {
         "issue": "Keep both terminals but label them 80 and 44 columns.",
         "resolution": "declined: a fallback only; the primary fix shows one terminal per size.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "issue": "Delete or trim the checks table / fill spare width at 1920 with a sticky note.",
         "resolution": "declined: this adds or removes content; the single terminal and a stacked aside are enough.",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2"
-        ]
+        "raisedBy": ["d1", "ux2"]
       }
     ]
   }

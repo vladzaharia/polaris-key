@@ -4,11 +4,7 @@
   "area": "packages",
   "surface": "dialog",
   "order": 8,
-  "packages": [
-    "P2-09",
-    "A-24",
-    "P2-08"
-  ],
+  "packages": ["P2-09", "A-24", "P2-08"],
   "uxRows": [],
   "summary": "The confirmation behind 'Promote 1.8.1 to stable' on Diceroll's Release tracks, after the 1.8.0 demote: what goes live on each channel (Polaris Key at once, a staged Google Play rollout prefilled to 20%, itch.io, the App Store after review, Steam skipped because it isn't connected) and a typed confirmation of the version.",
   "compare": [
@@ -31,11 +27,7 @@
         "issue": "Row descriptions repeat the lane page.",
         "resolution": "Each row cut to one clause; the facts that change the action stay (percentage input, App Store submit checkbox, Steam Not connected with Connect); phone sheet scrolls under a fade at 90vh; Cancel is a text button on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       }
     ]
   }

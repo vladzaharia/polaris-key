@@ -4,11 +4,7 @@
   "area": "sdk",
   "surface": "code",
   "order": 5,
-  "packages": [
-    "SP-37",
-    "SP-33b",
-    "SP-36"
-  ],
+  "packages": ["SP-37", "SP-33b", "SP-36"],
   "uxRows": [],
   "summary": "The docs site's one start path, Your first product: five steps that mirror the console (create, add the SDK, start it, use each feature, check Verified) with generated code in synced SDK tabs, a short troubleshooting list and the reshaped sidebar (Start here, Build, Features, Reference).",
   "compare": [
@@ -57,39 +53,28 @@
         "issue": "The rail took 56px of a 390px screen; step 5's terminal overflowed by 10px, flush with the right edge, and step 2's command by 26px.",
         "resolution": "Under 640 the step number is a 24px badge inline before the h2, 8px from it; the rail is hidden and the body is flush (358px). Step 5's terminal re-wraps like pkey doctor's 44-column run with a 12px inset; step 2's command now fits. (Both kit.)",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "severity": "major",
         "issue": "At 1024 a page about 3,100px long had no On this page at all.",
         "resolution": "The phone's 44px On this page bar also shows from 640 to 1279 (kit), its words on the article's edge. Compare item 10 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "severity": "major",
         "issue": "'From Integration' appeared three times in step 2; 'in the console's order' described the page; the footer explained a mechanism the reader can't act on.",
         "resolution": "Intro: 'Create a product, add the SDK and see each feature Verified. The examples use Tidewater Studio.' Step 2 lede: 'In your app's folder, run the command Integration shows. It adds the SDK, writes polaris-key.json and pins Tidewater's keys.' The code-foot note is deleted (the placeholder says where the fingerprint comes from); compare item 4 updated. Step 4 keeps only its first sentence. The footer line about Integration's source and the SDKs' CI is deleted.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "severity": "minor",
         "issue": "In a static frame Managed config looked selected; the two lanes' code blocks started 20px apart; wide was pixel-identical to desktop; inline code broke as 'polaris-' / 'key.json'.",
         "resolution": "All six feature cards are drawn at rest (the hover state is in the kit gallery's SDK helpers; compare item 7). The lanes are a subgrid, so code heads and links align. At wide the lanes and step 5's terminal are 920px (.docs-bleed) and the Swift lines are whole. Inline code in the article no longer splits (kit).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "issue": "Trim 'Still stuck' to 'Run a debug build: the SDK prints doctor() on the first refusal.' (d2).",
@@ -101,48 +86,33 @@
         "issue": "Follows from the Windows change accepted on sdk.pkey-doctor (raised there by d2): step 5's excerpt of the same command still drew a Windows column of 'Not seen yet'.",
         "resolution": "The excerpt prints Windows on one line, as pkey doctor now does (80 columns: '  Windows  ○ Not seen yet'; 44 columns: 'Integration on Windows  ○ Not seen yet'). Compare item 8 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "d2"
-        ]
+        "raisedBy": ["d2"]
       },
       {
         "severity": "major",
         "issue": "Three left edges (about 301, 382 and 418px) and a 625px column with dead space on both sides.",
         "resolution": "One content edge: the 920px bleed is gone, so the Step 3 card and the Step 5 terminal sit inside the step column, and \"If something's missing\" and the pager start on the same edge (.on-edge). The article column stays at 760-800px, which was already the wide measure.",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["d1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Integration and Verified are each explained three or four times; the repo callout uses a different border style from the other cards.",
         "resolution": "Subtitle, Step 1, Step 4, Step 5 and the Step 1 \"What it's for\" row shortened as triaged; \"Then pick who draws...\" and \"Not seen yet\" are deleted; Step 4 captions are one line each; the repo callout is a standard inline note at the end of Step 1; phone code wraps at 12px.",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["d1", "ux2", "ux3"]
       },
       {
         "issue": "Mark the drop-in kit card as Recommended with an accent border.",
         "resolution": "declined: the consolidation plan treats kits as recipes, and the accent is reserved for the service colour.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       },
       {
         "issue": "Fill spare width at 1920 with a sidebar note or a sticky On this page plus a note.",
         "resolution": "declined: this adds content; the centered article is enough.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2"
-        ]
+        "raisedBy": ["ux2"]
       }
     ]
   }

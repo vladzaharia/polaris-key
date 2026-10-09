@@ -3,10 +3,7 @@
   "title": "Create your account (FinishStep)",
   "area": "identity",
   "surface": "portal",
-  "packages": [
-    "I-33",
-    "PX-21"
-  ],
+  "packages": ["I-33", "PX-21"],
   "uxRows": [],
   "summary": "The one step every new account finishes through, here after a first Google sign-in from Diceroll on an iPhone, in its default state: the email (confirmed by Google, so plain text and no code), a screen name with one suggestion chip per source, a picture, Polaris Key's and Diceroll's terms unticked, and the primary disabled until both are ticked. No birth date is asked: Google sent none and Diceroll gates nothing.",
   "compare": [
@@ -42,12 +39,7 @@
         "issue": "Footer off-centre; stacked helper lines; the passkey row competed with the terms; weak disabled label.",
         "resolution": "Legal links centred; 'One step before Diceroll.' deleted; the passkey row is quieter (.check.quiet); the disabled primary label is the default text colour.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Merge the two terms checkboxes into one.",

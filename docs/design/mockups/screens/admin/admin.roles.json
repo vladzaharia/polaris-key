@@ -4,11 +4,7 @@
   "area": "admin",
   "surface": "console",
   "order": 4,
-  "packages": [
-    "ST-31",
-    "ST-28",
-    "ST-35"
-  ],
+  "packages": ["ST-31", "ST-28", "ST-35"],
   "uxRows": [],
   "summary": "Members → Roles: the four built-in roles as cards (what each covers, who can give it, how many people hold it) and the read-only role × area matrix generated from the route table, product areas first with their stable ids, then the platform pages.",
   "compare": [
@@ -49,73 +45,47 @@
         "issue": "A Members action (Invite people) sat on the read-only Roles tab and pushed content down on phone.",
         "resolution": "Each tab shows only its own action: Members 'Invite people', SSO rules 'Add rule', Roles none.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux3"]
       },
       {
         "severity": "major",
         "issue": "Four stacked role cards took 600px before the matrix on phone, tablet cells wrapped to 3-4 lines, and card footers were misaligned by about 8px.",
         "resolution": "Phone shows a 2x2 grid of compact role tiles (full names) that pick the matrix column, with the picked role's words under them; prose cells became short labels (Name only, Invite, Create, Most) with the detail in one footnote list; footer words start on one line across cards.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The mono slugs restated the names, Manage appeared 22 to 30 times, and the subtitle and footnote narrated the table.",
         "resolution": "Slugs removed; Manage is a tick alone with 'Manage' in a legend; words only for exceptions; the Area column is fixed (380px from 1280px, 300px below) and the role columns are equal with centred marks; subtitle 'A person's roles add up'; the footnote repeating the Product admin card is deleted.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
         "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
         "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
         "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "issue": "Date and glossary rules belong to the copy rules and the consolidation plan, not to a spacing pass.",
         "resolution": "declined: Rewrite dates to 'relative within 7 days, else Oct 6, year only when not current' and add the 'Product admin = one product or all' glossary note.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2"
-        ]
+        "raisedBy": ["ux2"]
       }
     ]
   }

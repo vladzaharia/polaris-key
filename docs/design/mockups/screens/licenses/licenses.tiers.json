@@ -3,13 +3,7 @@
   "title": "Tiers",
   "area": "licenses",
   "surface": "console",
-  "packages": [
-    "LX-44",
-    "LX-33",
-    "LX-34",
-    "LX-41",
-    "LX-43"
-  ],
+  "packages": ["LX-44", "LX-33", "LX-34", "LX-41", "LX-43"],
   "uxRows": [],
   "summary": "DJDL's Tiers: the ordered list (drag, or each row's menu, to reorder; the higher tier wins) beside the Education tier open in four groups, Duration (fixed 365 days, then keeps the last version), Limits (devices, offline days, release tracks, versions, fingerprint mode), Includes (entitlements and Cloud Sync storage) and Profile, with one unsaved change in the save bar that says how many licenses it reaches.",
   "order": 10,
@@ -53,53 +47,35 @@
         "issue": "Dead rails at wide and a 280px empty strip inside the editor; Order column ran 1000px past its content.",
         "resolution": "Page capped at 1180px of content (.page.cap.cap-1180) so wide adds margin; Order is 300px (272 at tablet) and sticky (.sticky-top, 88px); the form column keeps its 200px label column and 640px field column, so toggles and number fields end at the field column edge.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Order stacked above the editor at tablet, pushing the editor 560px down; phone had no switcher.",
         "resolution": "Two columns down to 900px (Order 272px at tablet); below 900px Order folds into the .mk-editor-switch select and the editor starts the page.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Field rhythm uneven (8, 12, 24); Only 4.x chip off the inputs' line; the two card heads did not share a baseline.",
         "resolution": "One rhythm (.fld-rhythm): 24 between groups, 8 label to control, 6 control to helper; Only 4.x is a 36px button (.btn.match); both heads are .card-head.h56.sub with the title on the same line. The left-rail helper sentences were left as written (they wrap in the 200px label column but never set a section's height).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX3"]
       },
       {
         "severity": "major",
         "issue": "Repeated facts in Order rows and the editor head.",
         "resolution": "Order rows drop the summary line (the editor shows the details) and keep the licence count; the slug is gone (it equals the lowercased name); '57 licenses' stays once, in the editor head; 'Add-ons can add more.' cut.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Order list rows wrapped unevenly (name and count on one line in some rows, two in others).",
         "resolution": "Count under the name in every row (.mk-editor.tiers .item-title > small), so rows share one height.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1"
-        ]
+        "raisedBy": ["UX1"]
       },
       {
         "issue": "Add a live 'What changes' preview card at wide to fill the strip.",

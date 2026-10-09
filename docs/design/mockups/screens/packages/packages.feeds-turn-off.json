@@ -4,9 +4,7 @@
   "area": "packages",
   "surface": "dialog",
   "order": 4,
-  "packages": [
-    "F-34"
-  ],
+  "packages": ["F-34"],
   "uxRows": [],
   "summary": "The confirmation behind 'Turn off package feeds' on DJDL's Packages page: everything that stops across DJDL's 3 feeds (installs, CI publishes, service tokens), what is kept, and a typed confirmation.",
   "compare": [
@@ -28,11 +26,7 @@
         "issue": "Narrated bullets; the destructive reassurance is last at 12px muted.",
         "resolution": "Lead-in removed; bullets 'Installs: 3 packages, 3,132 installs in 30 days', 'CI publishes: release.yml can't publish', 'Service tokens: Plugin CI and Docs build can't install'; 'Nothing is deleted. Copies on PyPI.org stay.' is the first line at 14px. The page behind is the updated Packages page.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "issue": "Remove the Swift 'Declared' step or merge it into one status line.",

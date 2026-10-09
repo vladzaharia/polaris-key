@@ -3,10 +3,7 @@
   "title": "New minted token wizard",
   "area": "config",
   "surface": "dialog",
-  "packages": [
-    "U-32",
-    "U-31"
-  ],
+  "packages": ["U-32", "U-31"],
   "uxRows": [],
   "summary": "Add entry → Minted token in one drawer over the catalog editor: Template, then the signing key sealed as it's added, then claims, then Save and approve under a passkey; drawn on the claims step for a generic ES256 token DJDL presents to its metadata server.",
   "compare": [
@@ -28,12 +25,7 @@
         "issue": "Phone lost the step names, rows misaligned, the footer was 120px tall and the preview was cut.",
         "resolution": "\"Step 3 of 3 · Claims\" as text on phone with aria-labels on every step; Claims and drawer subtitles removed; one \"Can't change after publish\" hint and a reserved hint line under the other fields; footer note \"Added to draft v10, approved. Publish to let DJDL mint it.\" on one line; the decoded preview scrolls sideways with a fade. Not done: at 900px high the preview is below the fold of the static desktop render.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Reword players/people/devices across the area; sentence-case eyebrows (UX2)",

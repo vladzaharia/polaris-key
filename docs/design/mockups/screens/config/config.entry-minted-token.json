@@ -3,11 +3,7 @@
   "title": "Catalog entry: a minted token",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-31",
-    "U-30",
-    "ST-45"
-  ],
+  "packages": ["U-31", "U-30", "ST-45"],
   "uxRows": [],
   "summary": "DJDL's catalog editor with the minted token applemusic.token open: the recipe and its sealed signing key live on the entry, and a lifetime change pushed from the repo waits for approval, with Review and approve… as the one primary and minting stopped until then.",
   "compare": [
@@ -66,12 +62,7 @@
         "issue": "The lifetime change was stated four times and the undo was a manual two-step; minted pages left about 430px dead at wide.",
         "resolution": "Said once in the banner (\"Lifetime changed from 1 hour to 12 hours in .pkey/schema (Jonah Ortiz, Oct 6). Minting is stopped until you approve.\") with a Keep 1 hour button; \"Was 1 hour\" removed; recipe subtitle \"Signed with your key; it never leaves Polaris Key\"; three-column editor at wide (list, form capped 880px, 320px sticky rail of approval history, who can get one, where it is used); list folds to the top selector at tablet; phone keeps Form|JSON beside Review with Discard behind the overflow.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Hide \"Where it's set\" behind the overflow menu on narrower sizes (UX1)",

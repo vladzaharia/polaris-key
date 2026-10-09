@@ -4,10 +4,7 @@
   "area": "packages",
   "surface": "console",
   "order": 13,
-  "packages": [
-    "P4-33",
-    "P4-34"
-  ],
+  "packages": ["P4-33", "P4-34"],
   "uxRows": [],
   "summary": "Diceroll's Releases page on the Packs tab: the four content packs declared in .pkey/release with type, delivery, latest version, gate and size; the supporter pack's manifest gate waiting for one approval on Access; and how packs reach players on each channel, picked automatically, with the CDN fallback said where a store transport can't be used yet.",
   "compare": [
@@ -30,47 +27,28 @@
         "issue": "Lopsided wide layout; the rail is twice the table height and repeats the CDN label four times.",
         "resolution": "'How packs reach players' sits under the table as a two-column list below 1600px and is the sticky rail from there; one 'Polaris Key's CDN' row lists the channels, only exceptions get rows (App Store key, Play Asset Delivery opt-in, Steam not connected); intro and 'Updates is on' sentence deleted; footer 'Override with transports.packs in .pkey/distribution'.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Gate is a dash on three of four rows; the banner repeats the pill.",
         "resolution": "Gate column dropped; Delivery shows 'Essential' or 'On demand' with its muted sub-line, the 'To approve' pill and gate name in the supporter row; banner 'diceroll.supporter.skins 1.4.0 needs one approval' with Approve on Access, full width and 44px on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
         "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "[Wide] Single-column screens hug the left of a 1920 canvas; the rail leaves 600-750px empty.",
         "resolution": "Kit: .page.contained (1280, centred), .page.form.centered, and .sticky-rail (360px rail, sticky at top 88px from 1600px); card pairs use .top (align-items:start).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       }
     ]
   }

@@ -4,9 +4,7 @@
   "area": "packages",
   "surface": "dialog",
   "order": 17,
-  "packages": [
-    "F-33"
-  ],
+  "packages": ["F-33"],
   "uxRows": [],
   "summary": "The confirmation behind Revoke on Account → Packages: it names the token and the machine where package installs stop, how to set that machine up again, and the token that keeps working.",
   "compare": [
@@ -28,12 +26,7 @@
         "issue": "Revoke copy is longer than it needs to be.",
         "resolution": "'Package managers on mara-mbp lose access to DJDL and Diceroll. Run pkey feeds setup --write there to reconnect.'",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

@@ -3,9 +3,7 @@
   "title": "Change price: not a price point",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23"
-  ],
+  "packages": ["CM-23"],
   "uxRows": [],
   "summary": "The Change price dialog with $3.95 typed: the field is invalid and says Apple has no $3.95 price point, offering the nearest two ($3.99 and $3.49) as one-click fixes; the per-store rows wait for a valid price, and Change price on 2 stores stays disabled while the field is invalid and the app name isn't typed.",
   "compare": [
@@ -25,10 +23,7 @@
         "issue": "Dialog title and close misaligned; two icon tile sizes; reassurance copy far from the price; confirm label on two lines; four sample currencies.",
         "resolution": "Title and close share a 32px row; one 24px tile; 'Players who already bought Dice skins keep it' sits under the price field; the confirm label is one line with the product name as a mono chip; two sample currencies.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux3"]
       },
       {
         "issue": "Drop the typed confirmation for price changes.",

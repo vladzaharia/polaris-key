@@ -3,14 +3,8 @@
   "title": "First run: App Store connected",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-29",
-    "CM-21",
-    "CM-23"
-  ],
-  "uxRows": [
-    "UX-54"
-  ],
+  "packages": ["CM-29", "CM-21", "CM-23"],
+  "uxRows": ["UX-54"],
   "summary": "DJDL's Storefronts right after the App Store connected: the setup card reads 1 of 3 done with Connected the App Store ticked (when and with which key), Create an offer is next with Import from App Store beside New offer, and the App Store row reads Ready, waiting for an offer with an App Store SKU.",
   "compare": [
     "The meter is Home's continuous bar at a third; the done step keeps its row with a tick, muted, and says when and with which key it was done, and that store notifications were verified.",
@@ -31,11 +25,7 @@
         "issue": "Same first-run defects; 'Waiting for an offer' said twice.",
         "resolution": "As first-run; 'Waiting for an offer' appears only in the step and the App Store row sub-line is 'Connected Oct 7'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   },

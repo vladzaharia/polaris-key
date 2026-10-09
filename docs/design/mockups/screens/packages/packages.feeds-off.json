@@ -4,9 +4,7 @@
   "area": "packages",
   "surface": "console",
   "order": 5,
-  "packages": [
-    "F-34"
-  ],
+  "packages": ["F-34"],
   "uxRows": [],
   "summary": "DJDL's Packages page after package feeds were turned off: one card that says declared packages aren't served, who turned them off and when, that nothing was deleted, and Turn on, with the three feeds listed as refusing installs or publishes.",
   "compare": [
@@ -27,12 +25,7 @@
         "issue": "The page changes width when the switch flips; about 700px sits empty; per-row status words repeat the title.",
         "resolution": "Uses the page container (.page.contained, 1280); one line under the title 'Installs and publishes are refused'; rows show only the exception (Still on PyPI.org); body 'Turned off by Ana Lima on Oct 7, 14:05. Nothing was deleted.'",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Add a note under the button about what turning feeds on does, plus a failure-toast mock (UX3).",
@@ -44,11 +37,7 @@
         "issue": "[Wide] Single-column screens hug the left of a 1920 canvas; the rail leaves 600-750px empty.",
         "resolution": "Kit: .page.contained (1280, centred), .page.form.centered, and .sticky-rail (360px rail, sticky at top 88px from 1600px); card pairs use .top (align-items:start).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       }
     ]
   }

@@ -4,11 +4,7 @@
   "area": "admin",
   "surface": "console",
   "order": 6,
-  "packages": [
-    "ST-29",
-    "ST-31",
-    "ST-45"
-  ],
+  "packages": ["ST-29", "ST-31", "ST-45"],
   "uxRows": [],
   "summary": "NoAccessPage for a forbidden deep link: Lucía, a Diceroll admin narrowed to Ship builds and Commerce, opens a link to Diceroll's licenses. The page names the area she lacks and her current role, lists the people who can give her access with copyable emails, and offers the places she can open.",
   "compare": [
@@ -43,51 +39,33 @@
         "issue": "The location was stated four times, the cards were staggered by 18px, and 'Use another account' sat in a different place on the two no-access screens.",
         "resolution": "The breadcrumb and the sentence under the path are gone (title plus one small mono path remain); the cards stretch to equal height and the gap under 'You can open' is halved; 'Use another account' is a quiet link in the signed-in line on both screens.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
         "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
         "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "issue": "Make the copy-address chip a mailto link, label the first admin 'Ask first', and show the URL only in dev builds.",
         "resolution": "declined: mailto links are unreliable, and the rest is new behaviour. Trimming the footer is enough.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       },
       {
         "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
         "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   }

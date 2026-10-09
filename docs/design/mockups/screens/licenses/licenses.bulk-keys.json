@@ -3,12 +3,7 @@
   "title": "Create keys in bulk",
   "area": "licenses",
   "surface": "dialog",
-  "packages": [
-    "LX-29",
-    "LX-27",
-    "LX-30",
-    "LX-33"
-  ],
+  "packages": ["LX-29", "LX-27", "LX-30", "LX-33"],
   "uxRows": [],
   "summary": "The New license drawer over the dimmed, scroll-locked Licenses list, opened by Create keys in bulk, on its Review step: 200 floating Standard keys in the batch 'Mixer bundle · Oct 2026', each limit with its source, the duration from the tier, CSV delivery, and what happens as numbered steps, with an action-named primary at the foot. What happens after Create is in licenses.bulk-keys-done.",
   "order": 12,
@@ -41,11 +36,7 @@
         "issue": "Em-dash step separators; labels truncated on phone; repeated 'Standard' source tags.",
         "resolution": "Stepper is .stepper.compact.lined (mark over label, hairline between marks) with every label visible on phone; a limit's source tag shows only when it differs from the tier (Default stays). The drawer body already scrolls above its pinned foot, so 'What happens' is never covered at rest.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       }
     ]
   }

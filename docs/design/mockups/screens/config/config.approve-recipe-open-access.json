@@ -3,9 +3,7 @@
   "title": "Approve a recipe: anyone can get a token",
   "area": "config",
   "surface": "dialog",
-  "packages": [
-    "U-31"
-  ],
+  "packages": ["U-31"],
   "uxRows": [],
   "summary": "The approve drawer when DJDL's Access lets devices without a license mint tokens: Who can get one is a warning row, and Approve with passkey stays disabled until the acknowledgement is ticked.",
   "compare": [
@@ -30,20 +28,14 @@
         "issue": "Five unchanged rows carried no decision and the change was repeated four times.",
         "resolution": "\"5 fields unchanged\" is a closed disclosure; authorship is one line (Jonah Ortiz · Oct 6 · commit 4f2c9a1); callout \"Tokens will last 12 hours\"; Who-can-get-one is one sentence; editor footer sentence removed; editor banner \"Lifetime changed from 1 to 12 hours in .pkey/schema. Minting is stopped until you approve.\"",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "severity": "major",
         "issue": "On phone the required acknowledgment checkbox was cut off by the sticky footer.",
         "resolution": "The checkbox lives inside the open-access warning card; \"Tick the box to approve.\" removed (the primary stays disabled until ticked).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1"
-        ]
+        "raisedBy": ["UX1"]
       }
     ]
   },

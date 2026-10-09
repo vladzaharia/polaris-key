@@ -3,10 +3,7 @@
   "title": "Disconnect an app",
   "area": "identity",
   "surface": "dialog",
-  "packages": [
-    "I-34",
-    "I-11"
-  ],
+  "packages": ["I-34", "I-11"],
   "uxRows": [],
   "summary": "Mara's confirmation for Disconnect on Diceroll's Connected apps row: which devices sign out and when, that the game keeps playing because the license stays activated and in her library, what happens to Cloud Sync, and that the developer keeps only what it already received.",
   "compare": [
@@ -40,9 +37,7 @@
         "issue": "Danger action the easiest tap; Cancel looked like a second primary in light.",
         "resolution": "Phone sheet: Keep first, Disconnect second and outlined; Cancel is outline with no focus fill; bullets one clause; destructive label white in dark.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       }
     ]
   },

@@ -3,18 +3,8 @@
   "title": "Channels",
   "area": "distribution",
   "surface": "console",
-  "packages": [
-    "A-19",
-    "A-20",
-    "A-21",
-    "A-33",
-    "A-28"
-  ],
-  "uxRows": [
-    "UX-52",
-    "UX-53",
-    "UX-54"
-  ],
+  "packages": ["A-19", "A-20", "A-21", "A-33", "A-28"],
+  "uxRows": ["UX-52", "UX-53", "UX-54"],
   "order": 1,
   "summary": "Diceroll's Channels page in the Ship builds accent: only the channels that fit what Diceroll builds (iOS, Android, Windows x64, Linux x86_64), each in use with its delivery and sales state from one four-state vocabulary (Not set up, Ready, Live, Attention), the Not set up ones as cards that count only the person's steps and carry a Not using choice, One click when every credential is already held, a fit problem whose fix is the card's action, and the unavailable channels absent.",
   "compare": [
@@ -94,106 +84,70 @@
         "issue": "At 1920 the table stretched to 1614px with each state column about 230px for one word; tablet hid What customers do, the only place the page says what customers do.",
         "resolution": "Delivery and Sales take fixed widths in a <colgroup> (160px at desktop and wide, 112px at tablet), the chevron 56px; What customers do takes the rest: full values at wide, chips of at most 240px truncated in the middle below 1600px. Tablet keeps the column; phone still hides it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "major",
         "issue": "Phone rows spent two labelled lines on Delivery and Sales, three of them on 'Sales —', so In use ran about 830–880px tall.",
         "resolution": "Each phone row has one state line, 'Delivery ✓ Live · Sales ⊙ Ready' in a .mk-cluster under the meta line (a show-narrow cell that hangs on the text column); the Sales half is left out where the channel can't sell; Attention is warning status text with its icon. On desktop the em dash reads 'Doesn't sell' to screen readers.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "On phone the only target was the 17px-high name, with no cue that the row opens anything.",
         "resolution": "The table is .row-links: the .cell-title link stretches over the row, the chips' copy buttons sit above it (nothing nests in a link), and phone keeps a 16px chevron at the end of the title line.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4",
-          "ux3"
-        ]
+        "raisedBy": ["ux4", "ux3"]
       },
       {
         "severity": "minor",
         "issue": "The attention banner led with a 'Warning' pill, a second word for the page's own Attention state.",
         "resolution": "The row is the kit's new .attn-row.bare: warning glyph, the Google Play mark and name, the sentence, Replace key. The row keeps Attention in Delivery and Sales and the sidebar its dot. Compare items 5 and 6 updated. The products.home reference is not changed in this pass: its list mixes danger rows (which keep their pill) with warning rows, which needs a mixed-row layout the lead should pick.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux4",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux4", "ux3"]
       },
       {
         "severity": "minor",
         "issue": "Steam's progress was shown three ways (a 25% bar that read as step 1, the next step, the step count); Flathub said its steps twice; equal heights left 44–50px of dead body.",
         "resolution": "Steam's bar is gone; its foot reads 'Step 2 of 4 for you · Next: create the app in Steamworks' with Continue. Flathub's second line is gone; its foot reads '2 steps for you: submit, then merge its pull request'. Every card is one body line and its foot; the foot's note wraps beside its action, so each button keeps the right edge.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The '3 more channels' row's + tile read as Add beside 'Show ▾': two controls in one row.",
         "resolution": "The whole row is one disclosure button (the kit's new .card.fold-row): a chevron in the media column, '3 more channels' and the names on the text column.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "severity": "minor",
         "issue": "winget's 'its' was unclear and '· x64' repeated the header chips; the header meta repeated 1.9.0 from the button beside it; on phone 'Undo' orphaned onto its own line.",
         "resolution": "winget reads 'Gets 1.9.0 when stable reaches 100%'; the header meta reads 'From CI 22 min ago'; 'Sep 30. Undo' is one .nowrap run.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "'In use' (in a card head) and 'Not set up' (a section head) started 25px apart horizontally.",
         "resolution": "In use is a .section: its h2 and count sit in a .section-head outside the card, and the table is in a head-less .table-card, so both titles start at x=272 at desktop.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "severity": "minor",
         "issue": "'Channels 7' in the sidebar repeated 'In use 7'.",
         "resolution": "The count is gone from the Channels nav entry on all four console screens in the area (Channels, App Store, Steam setup, Publish and its result). Compare item 16 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "severity": "minor",
         "issue": "Copy was inconsistent: App Store, Google Play and itch.io chips had none, and Google Play's middle-truncated value couldn't be copied.",
         "resolution": "Every chip ends in the same real copy button (btn ghost icon xs, aria-label naming the value) that copies the whole value.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux3", "ux4"]
       },
       {
         "issue": "Add a 'Live' version column after Channel, and cut each sub-line to one distinctive fact (dropping '1.8.2 on stable').",
@@ -250,70 +204,42 @@
         "issue": "Wide stretched rows: 300 to 600px between a channel name and its Delivery and Sales cells.",
         "resolution": "Page content capped at 1280px, centred (.page.cap, new kit token --page-cap). The Not set up cards are two lanes at wide, not four, because four lanes at the capped width wrapped every title.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "At tablet the copy URLs were cut in the middle and no use as copy targets.",
         "resolution": "At 1100px and below the copy chip sits under the versions line in the Channel cell (.table.reflow, .row-chip, up to 360px) and the third column goes away; Delivery and Sales stay 112px. Obtainium's label shortens to 'QR code'; the copy button stays.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Phone had no way to copy the store link, Scoop command or Obtainium link.",
         "resolution": "Phone shows a full-width 32px copy chip under each row's versions line, the same element as the tablet one. 'Sales' is dropped when the value is Not set up or an em dash.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "'Not set up' cards had footer dividers at different heights and three footer forms.",
         "resolution": "Cards stretch to equal height (.pinned); each foot is one 56px row (.card-foot.fixed) with a one-line muted status clamped with a title tooltip and one right-aligned button; the body holds two lines (.two-line). On a phone the status may take two lines.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Google Play 'Attention' appeared four times.",
         "resolution": "One Attention pill in Delivery; the Sales cell says 'Key expires Oct 16'. The banner and sidebar dot stay.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "'From CI 22 min ago' was ambiguous; Step 2 of 4 repeated the sidebar.",
         "resolution": "Header meta is 'Build from CI, 22 min ago'; the Steam card says 'Step 2 of 4: create the app in Steamworks' once.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "issue": "Collapse the Not set up cards into rows on phone; merge '3 more channels' with 'Not using'.",
@@ -330,11 +256,7 @@
         "issue": "Section levels drifted across 16, 18 and 20px; small muted text had low contrast.",
         "resolution": "The kit's 18/16 section and card scale and the 13/12 secondary sizes already hold on all six screens; the new work uses only those tokens. The muted token was not changed (an existing value).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       }
     ]
   }

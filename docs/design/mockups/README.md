@@ -83,15 +83,15 @@ digits and hyphens, such as `licenses.detail` or `commerce.offer-editor`.
 }
 ```
 
-| Field          | Meaning                                                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `surface`      | `console`, `portal`, `terminal`, `code`, `kit` (an in-app UI kit) or `dialog` (a dialog or flow drawn on its own)          |
-| `packages`     | the work packages that build it (backlog ids such as `ST-41`)                                                             |
-| `uxRows`       | the UX rows it settles, if any                                                                                            |
-| `compare`      | the checklist a reviewer walks when the built screen comes back: layout, states, words, phone. Specific and checkable.    |
-| `status`       | `mockup` in the file. Later states (`building`, `built`, `shipped`) live in the page's database, not here.                |
+| Field          | Meaning                                                                                                                                                                                                                                                                                                                                        |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `surface`      | `console`, `portal`, `terminal`, `code`, `kit` (an in-app UI kit) or `dialog` (a dialog or flow drawn on its own)                                                                                                                                                                                                                              |
+| `packages`     | the work packages that build it (backlog ids such as `ST-41`)                                                                                                                                                                                                                                                                                  |
+| `uxRows`       | the UX rows it settles, if any                                                                                                                                                                                                                                                                                                                 |
+| `compare`      | the checklist a reviewer walks when the built screen comes back: layout, states, words, phone. Specific and checkable.                                                                                                                                                                                                                         |
+| `status`       | `mockup` in the file. Later states (`building`, `built`, `shipped`) live in the page's database, not here.                                                                                                                                                                                                                                     |
 | `designReview` | `null` until a UX designer reviews the mockup; then `{ "round": 1, "verdict": "…", "findings": [{ "severity", "issue", "resolution" }] }`. A later round keeps the earlier ones in `previousRounds`; a lead's decision on several reviews is round `"multi-review"`, each finding with `"decision": "accepted"` or `"declined"` and `raisedBy` |
-| `order`        | optional number to order screens inside an area (otherwise by id)                                                         |
+| `order`        | optional number to order screens inside an area (otherwise by id)                                                                                                                                                                                                                                                                              |
 
 Draw one screen per state that matters (an empty list, an error, a confirmation) rather than one
 screen with everything at once. Reference screens: `products.home` and `products.overview` (the
@@ -145,6 +145,7 @@ blocks are current). Everything else in `mockup.css` is edited by hand.
 
    at 1920×1080, 1440×900, 1024×768 and 390×844, full page, with the same fixture content as the
    mockup where the fixtures allow, and **names the screen ids in its hand-off**.
+
 3. **Publish.** The lead uploads them to the mockups page and sets the screen's status
    (`building`, `built`, `shipped`) and the build it came from in the page's database, so the
    page needs no rebuild.

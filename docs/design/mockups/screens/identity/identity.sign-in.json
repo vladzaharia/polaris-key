@@ -3,13 +3,7 @@
   "title": "Sign in (app request)",
   "area": "identity",
   "surface": "portal",
-  "packages": [
-    "I-29",
-    "I-30",
-    "I-32",
-    "I-08",
-    "PX-14"
-  ],
+  "packages": ["I-29", "I-30", "I-32", "I-08", "PX-14"],
   "uxRows": [],
   "summary": "The first step of the hosted sign-in card when DJDL on a Mac asks someone to sign in: identifier first (the browser offers saved passkeys from the same field), then DJDL's own store account (a product connection) and the built-in providers DJDL ships with. Email and passkeys are always on; there are no per-product sign-in switches behind this card.",
   "compare": [
@@ -41,11 +35,7 @@
         "issue": "Footer links off-centre under the card; small links; orphan word in the subtitle.",
         "resolution": "Help/Privacy/Terms centred; 'Have a license key?' and 'Sign in with another device' in one centred 14px row with 44px targets; subtitle shortened to 'Use your DJDL purchase email or a work or school email.'; the Apple and Google buttons already carry aria-labels.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux4"]
       },
       {
         "issue": "Split-panel landscape layout and visible 'Apple'/'Google' text on the provider buttons.",

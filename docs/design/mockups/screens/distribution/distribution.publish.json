@@ -3,14 +3,8 @@
   "title": "Publish dialog",
   "area": "distribution",
   "surface": "dialog",
-  "packages": [
-    "A-24",
-    "P2-08",
-    "A-23"
-  ],
-  "uxRows": [
-    "UX-58"
-  ],
+  "packages": ["A-24", "P2-08", "A-23"],
+  "uxRows": ["UX-58"],
   "order": 4,
   "summary": "Publish 1.9.0 for Diceroll over the dimmed Channels page: one dialog for every live channel, with the channels this click affects as checked rows with their own rollout controls, the testing lanes and followers that need no click as one summary line, a channel not yet set up as one line, and production store submission as one typed confirmation. The header and footer stay in view; what happens after the click is distribution.publish-result.",
   "compare": [
@@ -67,55 +61,35 @@
         "issue": "On phone the typed field sat at y=885, below the sheet, under a primary that looked ready; on tablet the second hint was cut with no scroll cue.",
         "resolution": "Phone: the label, field and 'Store review can't be undone.' are pinned in the sheet foot above the stacked buttons (the kit's new .foot-confirm), and the Halt sentence ends the body. The kit's .dialog.scroll.fade already fades at every size when the body overflows; at 1024×768 the dialog now fits with no body scroll (body 532 of 532px), so nothing is cut. Compare line added for the untyped state: the empty field beside the primary; a click with an empty or wrong value focuses it with the inline error 'Type 1.9.0 to confirm the store submissions'; no unexplained disabled primary.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3",
-          "ux2"
-        ]
+        "raisedBy": ["ux1", "ux3", "ux2"]
       },
       {
         "severity": "minor",
         "issue": "The 'When you publish' eyebrow restated the title, the label repeated the row descriptions, the hints took two lines and the Steam line repeated the sidebar's step count: about 60px, the tablet overflow.",
         "resolution": "Eyebrow gone; label 'Type 1.9.0 to confirm the store submissions'; one hint block under the field with both facts; 'Steam isn't set up yet. Continue setup'. The rows' first and last padding sit on the body's 16px rhythm (the kit's new .card-rows.flush.snug), which closed the last 11px: the whole dialog fits at 1024×768 with no body scroll.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The plated Signed pill (removed by EXPERIENCE §6 and §11.3) read as a second warning beside Google Play's real key warning.",
         "resolution": "Signing is the kit's new .signed-badge: the gold glyph and muted 'Signed by diceroll-rk-2026', then ' · From beta to stable' in .meta-seps. The same in distribution.publish-result.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The checkboxes zig-zagged 10–22px below their titles; the 16px box was the only target for the dialog's main input; two selects shared the name 'Rollout'; the dialog wasn't aria-modal.",
         "resolution": "All three rows are .item-row.top: the 18px check, the 28px tile and a 32px .select.sm (new) centre on the 20px title line. Each row's check, tile and text are a <label class=\"item-label\"> (new, display: contents) around a real checkbox, so the whole row toggles; the select stays outside. Selects are named per channel; the dialog has aria-modal=\"true\".",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The compare lagged the render (meta, hint, stacked footer) and left flow gaps: the confirmation's visibility, the recount, network failure, and links that would close the dialog.",
         "resolution": "Compare updated: meta is the signing key and 'From beta to stable'; phone footer stacked full width, primary on top; each phone row's control on the text column; the confirmation shows only while a store submission is checked; the primary recounts ('Publish to 1 channel', 'Choose a channel' with nothing checked); 'Can't reach Polaris Key. Nothing was sent.' with Try again and every input kept; Replace key and Continue setup open in a new tab (↗).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux3"]
       },
       {
         "issue": "Settle the typed value: version vs the app's name (ADMIN.md §5.2 L3, A-17g), and write it into ADMIN.md.",
@@ -147,46 +121,28 @@
         "issue": "Gaps of 8, 14, 16, 26, 36 and 18px; the dialog pinned 64 down; 16px checkboxes.",
         "resolution": "The body uses one scale (16 between groups, 12 inside the field group, a divider between channel rows only); the dialog is centred with a 6vh optical lift (dropped .top); the check targets are 24px (.check.lg) with the whole row as the label; Show uses a tighter right edge.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Two grey footnote groups; different warning copy on phone and desktop.",
         "resolution": "'Steam isn't set up yet. Continue setup' is folded into 'No click needed'; the helper is 'Store review can't be undone.' at every size and the Halt-on-Rollouts sentence is gone; the Polaris Key row says 'Stable on dl.plrs.im/diceroll and update feeds'.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "The phone sheet clipped a sentence behind the foot and Cancel was as heavy as the primary.",
         "resolution": "Sheet max-height calc(100dvh - 24px); rows tighter; 'No click needed' is the last row and collapsed (the Steam line opens with Show); Cancel is a quiet 44px ghost button.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "The amber diamond had no meaning; the decision came after the signing detail.",
         "resolution": "A key icon labelled 'Signing key'; 'From beta to stable · signed with diceroll-rk-2026'.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "issue": "Draw the confirm field empty and add empty and error dialog variants.",

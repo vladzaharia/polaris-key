@@ -4,12 +4,7 @@
   "area": "sdk",
   "surface": "kit",
   "order": 7,
-  "packages": [
-    "UK-03",
-    "UK-05",
-    "UK-06",
-    "UK-42"
-  ],
+  "packages": ["UK-03", "UK-05", "UK-06", "UK-42"],
   "uxRows": [],
   "summary": "Activation with a license key in the React kit's one form, in an Electron window labelled as a DJDL fixture: the key field, the not-a-key error, Activating…, key not found and every other answer in the same place, Replace a device with the catalog heading and the inline confirm, and DJDL is ready with the once-only Keep DJDL in your account recommendation.",
   "compare": [
@@ -57,29 +52,21 @@
         "issue": "'DJDL is ready' sat alone, with about 1,250×520 empty at wide and 650×600 at desktop, and the Other answers card left a hole of about 280px under itself.",
         "resolution": "Other answers left the window flow: it is a full-width card (.span-all) closing the board, built on the new kit .card-answers rows: five up at wide (label over message), one row per answer at desktop and tablet (label column, message, actions), stacked on phone. The six windows fill 3×2 at wide and 2×3 at desktop and tablet with no hole.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "severity": "major",
         "issue": "DJDL's accent and the danger red are about 9° of hue apart in light theme, so 1b and 1d read as brand colour; the accent-tinted 'Recommended' read as a warning; 'pkey_.' looked like an ellipsis.",
         "resolution": "Errors carry shape as well as colour (kit): an errored field has a 1.5px inset danger border over its tint and keeps its ⊗ message row. 'Recommended' is a neutral pill with a dot (.kit-pill.neutral). 'pkey_' in 1b's error is set in mono.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "severity": "minor",
         "issue": "'Every answer lands under the field' appeared three times; 'floating' and 'once' were in both the lede and caption 3; 'You can add it back' appeared twice in one view; 'A license never moves by its key' was mechanism; DJDL was named three times on Ready.",
         "resolution": "Lede 'The key path, from Have a license key? to DJDL is ready.' Captions are one sentence each (1d 'An O typed for a 0.'; 1e 'Offline is a row above the actions, with Try again; none is a toast.'; 3 'Lists only DJDL's reasons; Start using DJDL stays the primary.'); PORTAL §4.19 moved to compare. Catalog, both kits: the Replace lede is 'To use it on this computer, replace one.' and the add-back promise stays only in the confirm. 'In another account' drops 'A license never moves by its key.' The Ready card title is 'Keep it in your account'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "d2"
-        ]
+        "raisedBy": ["ux1", "d2"]
       },
       {
         "issue": "When the product accent is within about 30° of the danger hue, derive the light-theme accent by shifting it toward orange, and put a warning-triangle icon on the destructive button (ux1, kit theming).",
@@ -91,49 +78,32 @@
         "issue": "Wide grid staggered with 200-280px holes; windows more than half empty; the Activate button jumps about 26px between states.",
         "resolution": "Windows are sized to content (min 380) with the actions at the bottom; the key field is 56px in every state and the form starts 32px under the bar; at wide the happy path is in column 1, errors 1b and 1d in column 2, the device list spans two rows in column 3, then Other answers beside state 3; art column clamp(120px,28%,175px) from 560px of window and a 56px strip at tablet and below; captions share a two-line strip.",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux4"
-        ]
+        "raisedBy": ["d1", "ux2", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Kit preview callout and captions narrate the picture.",
         "resolution": "One-line chip callout; no subtitle; captions are a state label plus one clause, keeping the ones that explain behavior that is not visible (focus outline, lock, Back target); ready meta reads \"Standard · Lifetime · device 5 of 5\".",
         "round": "multi-review",
-        "raisedBy": [
-          "d1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["d1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Hide states behind chips or a segmented control, or use a scroll-snap strip on phone.",
         "resolution": "declined: this removes content and adds interaction a static board does not have; the 56px art strip and content-sized windows shorten the phone page instead.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3",
-          "d1",
-          "ux2"
-        ]
+        "raisedBy": ["ux3", "d1", "ux2"]
       },
       {
         "issue": "Make the 3-up grid 12 columns with one large main state and a strip below.",
         "resolution": "declined: it invents a hierarchy between states that are equal peers.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       },
       {
         "issue": "Add states for This device is already activated and Too many attempts.",
         "resolution": "declined: new states are outside a spacing pass; recorded as a follow-up for the product plan.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       }
     ]
   }

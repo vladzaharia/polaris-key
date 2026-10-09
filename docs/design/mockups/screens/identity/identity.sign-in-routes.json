@@ -3,11 +3,7 @@
   "title": "Sign in: where the address goes",
   "area": "identity",
   "surface": "dialog",
-  "packages": [
-    "I-30",
-    "I-29",
-    "I-31"
-  ],
+  "packages": ["I-30", "I-29", "I-31"],
   "uxRows": [],
   "summary": "A board of the card's next step for four addresses typed into DJDL's sign-in and one saved passkey: a verified domain that requires SSO, a verified domain that doesn't, an address with no connection (the email code), an SSO-required domain whose connection is down, and a saved passkey picked for an SSO-required address. Beside them, the routing rule in the order the card applies it.",
   "compare": [
@@ -46,22 +42,14 @@
         "issue": "Hole under the rail at wide, ragged card heights, a design note shown as UI copy.",
         "resolution": "The rule list is first, a compact strip of columns above the cards (clamped to 3 lines per item on phone); cards are 400px on one top edge; page intro cut to 'Only the body changes; the header and footer stay.'; the SIGN-IN.md reference and the rail subtitle removed.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Five identical trust footers cost vertical space.",
         "resolution": "The footer text and height are unchanged on all five; cards 2 to 5 draw it quieter (.hosted-foot.echo). Not removed: the sheet is a faithful preview.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2"
-        ]
+        "raisedBy": ["ux1", "ux2"]
       },
       {
         "issue": "Delete the A to E rules panel or move it to the JSON notes; rewrite card copy.",

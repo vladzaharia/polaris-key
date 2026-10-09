@@ -3,13 +3,7 @@
   "title": "Discover",
   "area": "portal",
   "surface": "portal",
-  "packages": [
-    "LX-38",
-    "PS-12",
-    "P2-10",
-    "LX-36",
-    "P0-36"
-  ],
+  "packages": ["LX-38", "PS-12", "P2-10", "LX-36", "P0-36"],
   "uxRows": [],
   "summary": "Dana's Discover right after she added DJDL: DJDL's access rule for verified example.edu emails gave her Education through the same issuance as signing in, with no key, so the tile shows In your library with its download as the next step, and a toast says to download it and sign in. Diceroll, shown to everyone signed in with Free for every account, still offers Add to library under its store links. Each tile's cover art runs all the way, its whole 16:9 frame edge to edge from the tile's top (owner, 2026-10-08), with In your library on the art.",
   "compare": [
@@ -81,68 +75,42 @@
         "issue": "Card art took over half of a tablet tile and pushed the second tile below the fold on phone.",
         "resolution": "Art is 16:7 capped at 140px (112px on phone); body padding 16, rows on a 24px rhythm; no 16:9 art on tiles.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Wide layout had 336px of dead gutter and a blank lower third.",
         "resolution": "Content max-width 1520px from 1700px; tile grid auto-fit from 380px; toast anchored to the content column's right edge.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The 'What shows up here' panel narrated mechanism and the subtitle was wrong for an Education grant.",
         "resolution": "Panel deleted; subtitle 'Free and eligible products'; one muted line under the grid: 'Purchases appear in your library automatically.'",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Primary buttons sat at different heights, store links wrapped into orphans, and the Diceroll audience was stated three times.",
         "resolution": "Actions at the tile bottom with the store links (and Go to DJDL) in a reserved row under them, so the buttons are level; the 'For everyone' box is gone; the eligibility callout stays on DJDL only.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "'In library' was stated four times (outline, pill, toast, nav count) and the toast button repeated the tile's.",
         "resolution": "1px green outline plus the pill; toast is 'Added to your library' with one line and no Download button; 32px close target; 12px above the phone bar; Discover count labelled for screen readers.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "One scale step between a 40px title and 18-20px card titles.",
         "resolution": "Page title 28/36, tile title 20, body 14, meta 12.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "issue": "Move the helper strip to a 320px right rail, or use four tile columns with an end tile.",

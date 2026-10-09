@@ -3,10 +3,7 @@
   "title": "Account → Connected apps",
   "area": "identity",
   "surface": "portal",
-  "packages": [
-    "I-34",
-    "I-11"
-  ],
+  "packages": ["I-34", "I-11"],
   "uxRows": [],
   "summary": "Mara's Account page at Connected apps: one row per app she signs in to with Polaris Key, saying how she signs in to it, where she last used it and exactly what it gets, including what she declined (Diceroll gets neither her picture nor her email), with Change what <App> gets and Disconnect on each.",
   "compare": [
@@ -37,12 +34,7 @@
         "issue": "Destructive action weakest looking, buttons misaligned, lower half empty at wide.",
         "resolution": "Row actions fixed width (Change 208px, Disconnect and Sign out one size); Disconnect is a quiet danger-text button; Sign out a bordered small button; 44px targets on phone; content capped and centred; 'Where you're signed in' in a side column at wide and its subtitle deleted; phone tab bar highlights Account (an Account tab added); chip scroller fades at its end.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Remove the privacy-id sentence from consent or connected-apps; move the device list into a tooltip.",

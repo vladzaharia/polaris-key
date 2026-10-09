@@ -4,9 +4,7 @@
   "area": "packages",
   "surface": "dialog",
   "order": 15,
-  "packages": [
-    "F-33"
-  ],
+  "packages": ["F-33"],
   "uxRows": [],
   "summary": "The step after Create token on Account → Packages and before the token exists: a Label field prefilled from the browser and renamed for the machine, what the token can do and when it expires, and that other tokens keep working.",
   "compare": [
@@ -28,12 +26,7 @@
         "issue": "Sentences repeat a fact said in the sibling dialog.",
         "resolution": "Helper 'Name the machine, to tell tokens apart'; 'Expires Jan 5, 2027 (90 days)'; 'Your other tokens keep working' removed (the revoke dialog carries it).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

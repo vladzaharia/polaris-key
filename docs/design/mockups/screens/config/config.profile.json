@@ -3,11 +3,7 @@
   "title": "Profile: Studio",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-28",
-    "U-29",
-    "ST-45"
-  ],
+  "packages": ["U-28", "U-29", "ST-45"],
   "uxRows": [],
   "summary": "DJDL's Studio profile, the destination of Open Studio profile: the values Studio devices get, where locks (Read-only, Hidden) are set, one unsaved change that makes run.concurrency Read-only, the profile's place in the five-step chain, and who it reaches.",
   "compare": [
@@ -29,12 +25,7 @@
         "issue": "\"Where it sits\" was a fourth copy of the effective ladder and the primary action sat below two secondaries on phone.",
         "resolution": "Deleted the card; \"Step 3 of 5\" opens the header meta (facts separated by dots); \"Studio tier\" removed from the list and the table foot; value inputs flex (min 120px); 48px rows; phone has a sticky bar with Discard beside Save profile and Preview as... behind the overflow button.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   },

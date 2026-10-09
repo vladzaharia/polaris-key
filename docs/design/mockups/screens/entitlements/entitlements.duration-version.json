@@ -3,12 +3,7 @@
   "title": "Tier duration: version-scoped, the major-line helper",
   "area": "entitlements",
   "surface": "console",
-  "packages": [
-    "LX-41",
-    "LX-43",
-    "LX-44",
-    "LX-33"
-  ],
+  "packages": ["LX-41", "LX-43", "LX-44", "LX-33"],
   "uxRows": [],
   "summary": "DJDL's Pro 4 tier as a state of the licenses.tiers editor: Version-scoped chosen, the major line as one control (3.x / 4.x / 5.x / Other…) under Versions, runs forever within the line, and the new-major notice above the editor because 5.0.0-beta.1 has just been published above Pro 4's line.",
   "compare": [
@@ -64,61 +59,42 @@
         "issue": "Subtitles restated their titles (Includes, Profile), the 'Renews every' hint described the mechanism and was wrong for store and checkout subscriptions, and facts repeated across the page.",
         "resolution": "Cut the Includes and Profile subtitles (the frame's one-line group notes stay), cut the 'Renews every' hint; on duration-trial the 'Then moves to' hint is 'Devices stay activated.' and the Includes line is 'Matches Pro'; on duration-version the timeline item '5.0.0-beta.1 is out of reach' reads 'DJDL says “Your license covers DJDL 4.x”.' and the notice uses new-major's words.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "major",
         "issue": "The major line showed the same value twice side by side (a '4.x' field next to a '✓ 4.x' chip) and stated the range twice; one chip click plus Save would cut off 64 paying licenses with no confirmation, while the gentler widen went through a guarded dialog (ADMIN.md §5.2).",
         "resolution": "One control: chips 3.x / 4.x / 5.x plus 'Other…' (reveals the input), hint 'Every 4.x release, betas included.', the stored range only after 'Set a range instead'. The compare adds the safety rule: widening opens entitlements.extend-major; narrowing or moving opens an L1 caution confirm ('64 licenses stop covering 4.x; devices on 4.2.0 are refused at their next check', 'Move Pro 4 to 5.x'); the save bar never applies a line change on its own.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3"]
       },
       {
         "severity": "minor",
         "issue": "Dismissing the notice would leave both new-major actions with no way back to them.",
         "resolution": "Pro 4's ⋯ carries 'Start a 5.x tier…' and 'Extend to 5.x…' while an uncovered 5.x build exists (drawn in the ⋯ button's label); the compare makes Dismiss L0 with the toast and Undo.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #3"
-        ]
+        "raisedBy": ["reviewer #3"]
       },
       {
         "severity": "minor",
         "issue": "On phone the notice's Dismiss sat alone on a third row, its padding offsetting its text.",
         "resolution": "Dismiss is the kit's corner × (.callout-close, aria-label 'Dismiss for everyone'); the two outline actions share one row on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "minor",
         "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
         "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "major",
         "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
         "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #4"]
       },
       {
         "issue": "Move the stored version range, and renew's one-day margin, into tooltips.",
@@ -135,21 +111,14 @@
         "issue": "Same editor failures as entitlements.duration.",
         "resolution": "Same rebuild as entitlements.duration (sticky Order card, stacked groups, sticky timeline aside, one radio row, trimmed copy, Major line owned by Version-scoped).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "4.x coverage was stated four times.",
         "resolution": "The banner reads '5.0.0-beta.1 is the first 5.x build. Pro 4's 64 licenses stop at 4.x.' with Start a 5.x tier… as the primary and Extend Pro 4… secondary; the Versions line stays; the timeline is cut to 'Starts' and 'Never ends'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2"
-        ]
+        "raisedBy": ["ux2"]
       }
     ]
   },

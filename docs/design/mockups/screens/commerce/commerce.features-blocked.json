@@ -3,13 +3,8 @@
   "title": "Features: a requirement is off",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-29",
-    "ST-38"
-  ],
-  "uxRows": [
-    "UX-66"
-  ],
+  "packages": ["CM-29", "ST-38"],
+  "uxRows": ["UX-66"],
   "summary": "DJDL's Settings → Features with Licensing and Sign-in off: Commerce's switch is disabled, its requirement shows a lock on Licensing and its status says Turn on Licensing first; Cloud Sync is disabled the same way because Sign-in is off (Managed config, its other requirement, keeps its tick); and the sidebar has no Licensing, Sign-in, Cloud Sync or Commerce group.",
   "compare": [
     "The owner rule, drawn: a service can be turned on only when its requirements are on. Its switch is disabled (aria-disabled, still focusable) and its tooltip on hover says the same as the row: what to turn on first. The tooltip isn't drawn, so the words appear once.",
@@ -30,11 +25,7 @@
         "issue": "Blocked toggles look like ordinary off toggles; stale 'Needed by Commerce'.",
         "resolution": "Blocked switches are drawn at 50% with a not-allowed cursor; 'Needed by' removed; the unlock link is a meta line under the row.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "issue": "Turn 'Turn on Sign-in first' into a button that turns on the prerequisite.",

@@ -3,14 +3,7 @@
   "title": "Access",
   "area": "licenses",
   "surface": "console",
-  "packages": [
-    "P2-10",
-    "LX-36",
-    "LX-38",
-    "PS-12",
-    "F-34",
-    "P4-34"
-  ],
+  "packages": ["P2-10", "LX-36", "LX-38", "PS-12", "F-34", "P4-34"],
   "uxRows": [],
   "summary": "DJDL's one Access page: who gets a license automatically (Nobody, Everyone who signs in, or Rules by identity provider group, verified email domain or claim, each giving a tier or an add-on), the Anonymous devices tier, Discover visibility, and the gates on update checks, app downloads, packs and packages as one matrix in one vocabulary, with a readiness error on a rule that can't match, Check a person, and one unsaved change (App downloads Customers → Public) in the save bar.",
   "order": 6,
@@ -49,44 +42,28 @@
         "issue": "Desktop was a 2,350px single column while wide and tablet reflowed into a rail.",
         "resolution": "Rail from 1280px (.page.columns.rail-360): Anonymous devices, Discover and Check a person in a 360px sticky column (.rail-cards, align-items start) beside Updates, downloads and packages. The rules table spans the full width above, because at 744px beside a rail its 'Label people see' column wrapped to three lines.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "severity": "major",
         "issue": "Fourth audience segment ellipsized ('Entitlement…') at every size.",
         "resolution": "Label is 'Entitlement' and the matrix is content-width (.segmented.matrix.fit, 88px minimum, never ellipsized); on phone a 2x2 grid with 44px cells and a filled selected state.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "The unsaved change was stated four times; subtitles restated titles.",
         "resolution": "Subtitles on Anonymous devices and Discover removed; 'Public · unsaved' is 'Public'; the save bar says '1 change: App downloads goes Public.'; the row bar, 'was Customers' and the save bar stay; the tier-wins footer stays once.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Card heads varied (56 and 72); the save bar was only reachable at the end of a long page.",
         "resolution": "Heads are .card-head.h56 (72 with a subtitle); the save bar is drawn pinned (.save-bar.pinned: lifted, with the safe-area inset) spanning the page. The warning callout already starts at the row text's x, so it was left. A sticky bar would overlay full-page captures, so the built screen does the pinning.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX3", "UX4"]
       },
       {
         "issue": "Delete the four-audience legend or turn it into tooltips; collapse Check a person to a closed disclosure.",

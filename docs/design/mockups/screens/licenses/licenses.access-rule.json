@@ -3,11 +3,7 @@
   "title": "Add an access rule",
   "area": "licenses",
   "surface": "dialog",
-  "packages": [
-    "LX-36",
-    "P2-10",
-    "LX-38"
-  ],
+  "packages": ["LX-36", "P2-10", "LX-38"],
   "uxRows": [],
   "summary": "The Add a rule dialog over DJDL's dimmed Access page: a group from Pocket ID (bound to that connection) gives the Studio tier with the label 'Press access', and the match preview counts the four accounts the rule covers today and shows three of them, one per outcome: a new license, an automatic Standard license that moves up, and one made by hand that stays. The dialog fits the window with its buttons always visible.",
   "order": 8,
@@ -40,12 +36,7 @@
         "issue": "The third preview row was clipped; three outcome formats; 12px helpers.",
         "resolution": "Preview rows share one right-aligned outcome (Gets Studio, Standard to Studio, No change; Theo's 'made by hand' moves to his sub-line); the 'Studio: lifetime, 10 devices…' line is removed, so three rows and the footer fit; helpers are 13px (.floor); dialog foot is 40px buttons, 12px gap (.std).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

@@ -3,11 +3,7 @@
   "title": "Tier duration: trial",
   "area": "entitlements",
   "surface": "console",
-  "packages": [
-    "LX-41",
-    "LX-43",
-    "LX-44"
-  ],
+  "packages": ["LX-41", "LX-43", "LX-44"],
   "uxRows": [],
   "summary": "DJDL's Pro trial tier as a state of the licenses.tiers editor: Trial chosen among the six presets, 14 days that end by moving the license to Standard with its devices kept, the note that a billing provider's free trial shows on the subscription instead, and the trial's timeline. No unsaved change, so no save bar.",
   "compare": [
@@ -55,31 +51,21 @@
         "issue": "Subtitles restated their titles (Includes, Profile), the 'Renews every' hint described the mechanism and was wrong for store and checkout subscriptions, and facts repeated across the page.",
         "resolution": "Cut the Includes and Profile subtitles (the frame's one-line group notes stay), cut the 'Renews every' hint; on duration-trial the 'Then moves to' hint is 'Devices stay activated.' and the Includes line is 'Matches Pro'; on duration-version the timeline item '5.0.0-beta.1 is out of reach' reads 'DJDL says “Your license covers DJDL 4.x”.' and the notice uses new-major's words.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "minor",
         "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
         "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "major",
         "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
         "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #4"]
       },
       {
         "issue": "Use one DJDL tier set and one set of license counts across entitlements and licenses (now 4 tiers and 240 licenses vs 5 tiers and 1,284).",
@@ -91,22 +77,14 @@
         "issue": "Same editor failures as entitlements.duration: empty left column, timeline under the inputs, repeated groups and facts.",
         "resolution": "Same rebuild as entitlements.duration (sticky Order card, stacked groups, sticky timeline aside beside the preset, one radio row, trimmed copy).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Versions applied to a trial, 'Moves to another tier' was a radio plus a select, and two sentences narrated mechanism.",
         "resolution": "The Versions group is gone for Trial. Runs for and Then moves to are one control each; 'Devices stay activated.' and 'Counted from when the license is issued.' are deleted. The billing-run callout is a one-line note under the select: 'Billing-run trials show as Trialing on the license, not here.' (under the control, not inline on the radio, so the Trial row stays one line).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2"
-        ]
+        "raisedBy": ["ux1", "ux2"]
       }
     ]
   },

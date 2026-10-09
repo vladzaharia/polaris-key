@@ -4,13 +4,7 @@
   "area": "packages",
   "surface": "console",
   "order": 12,
-  "packages": [
-    "P2-11",
-    "A-20",
-    "P2-09",
-    "A-24",
-    "P2-10"
-  ],
+  "packages": ["P2-11", "A-20", "P2-09", "A-24", "P2-10"],
   "uxRows": [],
   "summary": "Diceroll's Updates page on Oct 7, the same page for a Godot game on iOS, Android, Windows and Linux: Play in-app updates (Verified) with the halted 1.8.0 rollout and the way forward, the Godot updater for Windows and Linux copies with Verified on 1 of 2, the App Store as store-managed and Steam as not connected, and no Sparkle-family updaters.",
   "compare": [
@@ -61,24 +55,14 @@
         "issue": "Same layout rule and trims as Updates.",
         "resolution": "Platform chips removed (the headers say it); 'First update check' removed from the Verified Android card; meta 'itch.io and key.plrs.im/diceroll'; rollout alert 'Halted at 20% on Oct 7 (1.8.0 demoted).' with Promote 1.8.1; sticky rail and code-first on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
         "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

@@ -3,17 +3,8 @@
   "title": "Channel setup wizard",
   "area": "distribution",
   "surface": "console",
-  "packages": [
-    "A-23",
-    "A-33",
-    "A-28",
-    "ST-39",
-    "A-18k"
-  ],
-  "uxRows": [
-    "UX-55",
-    "UX-68"
-  ],
+  "packages": ["A-23", "A-33", "A-28", "ST-39", "A-18k"],
+  "uxRows": ["UX-55", "UX-68"],
   "order": 3,
   "summary": "Steam's setup for Diceroll, page-hosted, on step 2 of 4 for you. The wizard leads with the person's step: the stepper numbers only the person's steps (Connect Steamworks, In Steamworks, Merge, Go live) after an unnumbered Polaris Key marker that spins until its work is done; the current step is a checklist of deep links with copy fields and one live verifier line that moves the wizard on. Below it, the setup runner (its own card) lists everything automated since one Set up consent: one action that failed with its fix, Try again and the human way, one pending, and the five done behind 'Show 5 done'.",
   "compare": [
@@ -76,77 +67,49 @@
         "issue": "Open Steamworks, the step's only primary, sat at y=1208 under a 694px log of finished automation, below the fold at every landscape size; three levels of borders squeezed the phone text column to 250px and stacked three fills in light theme.",
         "resolution": "The wizard now holds the stepper, the In Steamworks step (its two items as flush rows with a hairline, no card inside the wizard) and the foot (Do this later left, Back right). The runner is its own page-level card below the wizard, titled at h2 (18/24), collapsed to 'Show 5 done' at every size with the failed and pending rows visible, and the reassurance line in its foot. 'What this sets up' stays the 400px aside from 1600px (span-2) and follows below otherwise. Open Steamworks is at y≈477 at 1440×900 and y≈580 on phone; the phone text column is about 284px.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The wait was said three times in three phrasings (runner row, step line, footer line).",
         "resolution": "The runner row 'Find Diceroll in Steamworks' is gone (the count is '5 of 7 done'), the footer's waiting line is gone, and one live line under the copy fields says it once, role=status, as a single text run: 'Moves on when Polaris Key finds Diceroll in Steamworks · checked 6 s ago'. Compare items 1, 2, 5, 6 and 11 updated.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "blocking",
         "issue": "At 390px the failed row's link ran 10px past the card; at 360px the page scrolled sideways by 7px.",
         "resolution": "The link reads 'Upload it in Steamworks ↗' with the arrow glued to 'Steamworks' (.nowrap), and the kit's new .link.wrap lets it wrap. Re-rendered at 360px: scrollWidth is 360.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The phone stepper summary was aria-hidden, the meter had no name, state marks had no words, and the heading order ran h1 → h3 → h2.",
         "resolution": "The phone summary is no longer hidden; the four-segment meter is role=img aria-label 'Step 2 of 4'; every .step-mark and .task-mark carries sr-only Done, Failed, Running, Waiting or Now; headings run h1 Steam, h2 In Steamworks, h2 Polaris Key does this, h2 What this sets up.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4",
-          "ux1"
-        ]
+        "raisedBy": ["ux4", "ux1"]
       },
       {
         "severity": "minor",
         "issue": "The failed row named the mechanism, said 'Retry', and sent the person elsewhere with no route there.",
         "resolution": "Title 'Key art too small for Steam's library hero'; 'Steam needs 3840 × 1240; Diceroll's is 1920 × 620. Upload larger key art in Presentation, then try again.' with 'Presentation' an inline link to the key-art slot; Try again, then 'Upload it in Steamworks ↗'. Compare item 3 says the row re-runs by itself and uses 'try again' throughout.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux2", "ux3"]
       },
       {
         "severity": "minor",
         "issue": "Padding words: 'Use these values.', '; nothing to edit', and the paid fee's price and payback.",
         "resolution": "All three cut. The done fee reads 'Marked done by Ana Lima · Oct 7, 10:21'. The macOS-depot reason and 'never typed' stay (compare item 4).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "minor",
         "issue": "Four 490px copy fields of 4–18 characters wasted a row at desktop and wide.",
         "resolution": "Copy fields are .mk-grid-4 from 1280px, two up from 640 to 1279px through a screen-scoped @container screen grid-template-columns rule (no spacing), one column on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux4"]
       },
       {
         "issue": "Pull the failed automated row out first as a one-row .card.alert above the step.",
@@ -198,68 +161,42 @@
         "issue": "At wide the rail ended 500px above the main column; the three-column band held 2, 1 and 1 paragraphs; the heading 'Then' said nothing.",
         "resolution": "The rail is sticky at wide (.aside.sticky, top 88px, one column there). Desktop and tablet use a balanced two-column block headed 'Next steps'; 'Steam in the docs' moved to the card header; the page is capped at 1280.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Position was stated 3 to 4 times; the hollow Polaris Key node read as step 0.",
         "resolution": "The node no longer says 'Step 2 of 4 for you'; below 1100px the segmented bar plus 'Step 2 of 4' replaces the stepper (.hide-compact/.show-compact); connectors capped at 160px (.stepper.fill.capped); the Polaris Key node reads 'Polaris Key · 5 of 7' with a spinner on compact.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "'Do this later' looked like plain text and was missing on phone; 'Back' was almost invisible; 'Not set up' was plain grey text.",
         "resolution": "Back is a 32px outline with a strong border at the start; Do this later is a 32px accent ghost button (.btn.ghost.accent-text) at the end on every size; Not set up is a 24px status pill.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "The failed row's last word was orphaned and its tags sat far right.",
         "resolution": "Removed the 600px text cap (.fail-row); tags sit beside the title at 12px muted (.tag-inline); the copy fields are 2x2 on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Provenance and intro lines repeated facts.",
         "resolution": "Removed 'Since Ana Lima chose Set up Steam' and the 'Valve lets only you pay…' intro; kept 'Marked done by Ana Lima' and Undo.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "The failed row named Presentation in its sentence but linked to Steamworks.",
         "resolution": "One sentence 'Key art is 1920×620; Steam needs 3840×1240.' and the actions Try again and Upload in Presentation.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX4"
-        ]
+        "raisedBy": ["UX4"]
       },
       {
         "issue": "Cut the 'What this sets up' content, drop 'Used by' or the footer line.",

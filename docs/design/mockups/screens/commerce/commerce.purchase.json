@@ -3,10 +3,7 @@
   "title": "Purchase drawer: a refund",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-22",
-    "CM-23"
-  ],
+  "packages": ["CM-22", "CM-23"],
   "uxRows": [],
   "summary": "Ellie Brandt's Dice skins purchase on Google Play opened from the ledger: a full refund removed the add-on at once, the facts (account, license, offer, SKU, store order, device) and a timeline from purchase to verification, the store's refund, the removal, the email and the developer webhook, with Re-verify and a deep link to Play Console.",
   "compare": [
@@ -40,11 +37,7 @@
         "issue": "Two label styles, a tall facts card and equal-weight buttons in the drawer.",
         "resolution": "'What happened' uses the section-title style; facts are a compact two-column list (80px label); Re-verify is the one outline action and Open in Play Console a plain link; 24px fade above the footer; the title truncates on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux3", "ux4"]
       },
       {
         "issue": "Collapse the details card to Account and License with a More control, and move Open in Play Console into a menu.",

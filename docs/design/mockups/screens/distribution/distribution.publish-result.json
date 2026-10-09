@@ -3,13 +3,8 @@
   "title": "Publish dialog, after the click",
   "area": "distribution",
   "surface": "dialog",
-  "packages": [
-    "A-24",
-    "P2-08"
-  ],
-  "uxRows": [
-    "UX-58"
-  ],
+  "packages": ["A-24", "P2-08"],
+  "uxRows": ["UX-58"],
   "order": 5,
   "summary": "The Publish 1.9.0 dialog right after the click, over the dimmed Channels page: each channel's row turns into its own progress (Polaris Key done, Google Play sending, the App Store failed with what went wrong, how to fix it and Try again for that channel only), because partial success is the realistic outcome of one click to three stores.",
   "compare": [
@@ -34,43 +29,28 @@
         "issue": "The state column sat at three heights; on phone the reader met the error before 'Failed', and the footer note read as an afterthought under Close.",
         "resolution": "All three rows are .item-row.top, so Done, Sending and Failed sit on their title lines. On phone the state joins the title cluster ('App Store iOS · ⊗ Failed') before the sentence in the DOM (the end's copy hides under 560px), and the foot note is .foot-note.first (new), so the sheet reads the sentence, then Close.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The 'Your 3 channels' eyebrow repeated the click's count; 'Retry' broke the house voice.",
         "resolution": "Eyebrow gone (compare item 2: no eyebrow, the rows carry their states); 'Try App Store again' and '…then try again.'",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2"
-        ]
+        "raisedBy": ["ux1", "ux2"]
       },
       {
         "severity": "major",
         "issue": "Resending a production store submission had no defined confirmation rule, and the settled end state people return to had a wrong title.",
         "resolution": "Compare lines added: inside this dialog session Try App Store again resends with the confirmation already typed for 1.9.0 (same release, build and store, which the batch phrase listed); from Channels or the App Store page later, Try again opens Publish scoped to the App Store with the typed field; with nothing still sending the title settles to 'Published 1.9.0 to 2 of 3 channels'. The first rule is flagged for A-24's security review of the batch typed phrase (DC-07).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       },
       {
         "severity": "minor",
         "issue": "The plated Signed pill (removed by EXPERIENCE §6 and §11.3) read as a second warning.",
         "resolution": "The meta line leads with the kit's new .signed-badge (gold glyph, muted words), as in distribution.publish.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Keep an 18px leading column with a tick, spinner or × where the checkbox was.",
@@ -97,22 +77,14 @@
         "issue": "On phone the status moved inline after the name and an orphan bullet led the meta line.",
         "resolution": "The state is right-aligned on the title row, the platform moves to the sub-line (.plat-sub); the meta line stacks without a dot on a narrow card (.meta-seps.stack-narrow); Show is right-aligned.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "The failed row differed from the setup runner's.",
         "resolution": "Same treatment: red tint, 3px start bar, 12px padding (.item-row.fail-row); state words 13px/600; footer 'Publishing continues if you close this.'; the dialog is centred like Publish.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "issue": "Add a summary line, a 'View on Channels' link and a tooltip on Try again.",

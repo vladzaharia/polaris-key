@@ -3,12 +3,7 @@
   "title": "Effective config on a license",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-29",
-    "U-28",
-    "U-27",
-    "ST-45"
-  ],
+  "packages": ["U-29", "U-28", "U-27", "ST-45"],
   "uxRows": [],
   "summary": "Mara Fennick's Studio license for DJDL, Config tab: every value her devices get with the step it came from along the five-step chain, an override the Studio profile's lock keeps from applying, a required secret no step sets, and what each device does with the list.",
   "compare": [
@@ -66,54 +61,35 @@
         "issue": "The five-step order was stated three times (strip, rail list, expanded ladder) and the rail ended far above the table.",
         "resolution": "Deleted the \"Then, on each device\" rail card and the example; the strip is the one statement of order; subtitle is \"Later steps win unless an earlier one locks the value.\" Last picked up stays, sticky.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "The Studio lock on run.concurrency was told four times.",
         "resolution": "Kept the banner and the expanded row; tile sub-line is \"Locks 1\"; tiles show the number only; dropped the \"Set, not applied\" legend entry, the ladder footer sentence (Open Studio profile link kept) and the lock beside Studio profile.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Mono keys truncated at 1440 and the main column stretched at wide.",
         "resolution": "Key column 29% with no ellipsis (long keys wrap), 48px rows (.row-48), page capped at 1600px with a sticky rail. The stray white patch on phone came from a hover-simulating row class and is gone.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "On phone a value took 4 to 5 lines and sat far from its key.",
         "resolution": "Phone rows: key, value in mono directly under it, then source and mode on one muted line; ladder steps are two-line rows with the value right. The tab strip already scrolls with an edge fade (kit .tabs::after).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Six secret rows repeated \"Never listed\" and were scattered across groups.",
         "resolution": "Moved into one \"Secrets, never listed\" group; per-row label replaced with an em dash; pips kept.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX2"
-        ]
+        "raisedBy": ["UX2"]
       },
       {
         "issue": "Remove the pips or the From label (UX2)",

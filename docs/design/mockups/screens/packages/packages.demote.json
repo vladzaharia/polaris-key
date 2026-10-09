@@ -4,10 +4,7 @@
   "area": "packages",
   "surface": "dialog",
   "order": 9,
-  "packages": [
-    "P2-09",
-    "A-24"
-  ],
+  "packages": ["P2-09", "A-24"],
   "uxRows": [],
   "summary": "The confirmation for demoting Diceroll 1.8.0 from stable on Oct 7, over the Release tracks page as it was before: what the demote does to the track, an optional reason, and what changes on each channel after a readiness check, with an outcome on every row and Steam skipped because it isn't connected.",
   "compare": [
@@ -51,11 +48,7 @@
         "issue": "The phone sheet clips rows and the descriptions repeat the lane page.",
         "resolution": "Descriptions cut to one clause; sheet is .dialog.scroll.fade at 90vh (the last rows scroll under a fade, the foot stays pinned); Cancel is a text button on phone; the CTA uses the warning token (.btn.warn-fill); reason caption 'Optional, shown in Activity'; the Google Play outcome carries data-unchecked=\"Stays at 20%\" for the real build (a static mockup cannot toggle).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       }
     ]
   }

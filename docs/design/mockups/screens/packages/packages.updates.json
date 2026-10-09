@@ -4,13 +4,7 @@
   "area": "packages",
   "surface": "console",
   "order": 10,
-  "packages": [
-    "P2-11",
-    "A-20",
-    "P2-08",
-    "P2-10",
-    "P2-12"
-  ],
+  "packages": ["P2-11", "A-20", "P2-08", "P2-10", "P2-12"],
   "uxRows": [],
   "summary": "DJDL's Updates page under Ship builds, later on Oct 7 than the Integration mockup: updater setup only for the platforms DJDL ships (Sparkle on macOS, Verified from its first update check; WinSparkle on Windows, not seen yet), generated code that authorizes each check with the device's license token, and the page's update rules with access read-only.",
   "compare": [
@@ -62,32 +56,21 @@
         "issue": "The same Update rules content uses two patterns; the rail leaves about 750px empty; the code pane leaves a blank block under it.",
         "resolution": "One rule: full-width card below the platform cards, the sticky rail only from 1600px; the code pane is sticky inside its card (.card-split.sticky-end); phone puts 'In your app' above 'Setup' (.code-first).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Platform chips, repeated rows and long sentences duplicate the card headers.",
         "resolution": "Chips removed; 'First update check' removed from Verified cards (kept in Waiting); Sparkle row 'pkey release keys init --sparkle, Oct 7'; appcast '3 releases per track: 4.2.1 stable, 4.3.0-beta.2 beta'; 'Not shown: zsync, Play in-app updates (no Linux or Android builds)'; Windows 'Updater: WinSparkle, chosen by Ana Lima on Oct 7'.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "A button, an orange link and an arrow link sit in one list for the same kind of action.",
         "resolution": "In-place Change stays an outline button; navigation stays an arrow link; both in the right column. (Colour is the kit's link token.)",
         "round": "multi-review",
-        "raisedBy": [
-          "UX3"
-        ]
+        "raisedBy": ["UX3"]
       },
       {
         "issue": "Hide paths and secrets behind a 'Details' disclosure; swap the three-column layout at 1920 for a rules strip (UX1).",
@@ -104,12 +87,7 @@
         "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
         "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

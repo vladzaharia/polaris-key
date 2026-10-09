@@ -3,10 +3,7 @@
   "title": "Purchases: none yet",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "CM-29"
-  ],
+  "packages": ["CM-23", "CM-29"],
   "uxRows": [],
   "summary": "DJDL's Purchases before the first verified purchase: no tabs, toolbar or empty table, just the kit's first-run empty state saying where purchases come from and how to see one now (a test purchase), linking to Storefronts' test-purchase step.",
   "compare": [
@@ -26,9 +23,7 @@
         "issue": "Wide empty-state panel.",
         "resolution": "Card capped at 640px like offers-empty.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       }
     ]
   },

@@ -3,15 +3,8 @@
   "title": "License: subscription",
   "area": "entitlements",
   "surface": "console",
-  "packages": [
-    "LX-41",
-    "LX-14",
-    "LX-32",
-    "LX-40"
-  ],
-  "uxRows": [
-    "UX-07"
-  ],
+  "packages": ["LX-41", "LX-14", "LX-32", "LX-40"],
+  "uxRows": ["UX-07"],
   "summary": "Northside DJ School's Pro license as a state of licenses.detail, on Status: the past-due health line under the tabs, the Subscription card first (facts beside History), the Limits table with a per-row Override, the stalest device first in Devices, and Duration then Recent in the rail.",
   "compare": [
     "The record is licenses.detail's frame (LX-14, LX-41): the title is the license's name with a 'Past due' pill; under it the holder state ('In an account'), 'Priya Raman · priya@example.com' and the license id with Copy; the header's actions are the Tier: Pro ▾ control (opens Change tier), Add key (in ⋯ on phone) and ⋯. Tabs: Status, Entitlements, Keys, Devices, Activity; it opens on Status.",
@@ -62,41 +55,28 @@
         "issue": "At wide History used 300px of a 1,183px card; at tablet the facts grid broke 'Oct 7, 2025 – / Oct 7, 2026'; Started appeared twice.",
         "resolution": "Facts and History share the card from 720px of card width (.card-split.stack-md), stacking below; Started is gone; the current period is one unbroken fact on its own row; sentence sub-lines ('Renewed here or by API', 'Set in Settings') are 13/20.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #4"]
       },
       {
         "severity": "minor",
         "issue": "The pill, the callout title and a History row said 'past due' three times; a healthy Manual subscription had no way to renew; Cancel had no confirm.",
         "resolution": "Callout title 'Grace ends Oct 14', body 'Then it keeps DJDL 4.2.0. Renew once Northside’s invoice is paid.'; History drops 'Renewal due, not recorded'; the Subscription ⋯ carries Renew… and 'Cancel subscription…' (L1 confirm 'Runs until Oct 7, 2026, then keeps DJDL 4.2.0'); Override is the one verb for license overrides.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #3",
-          "reviewer #4",
-          "reviewer #1"
-        ]
+        "raisedBy": ["reviewer #3", "reviewer #4", "reviewer #1"]
       },
       {
         "severity": "minor",
         "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
         "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "major",
         "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
         "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #4"]
       },
       {
         "issue": "Right-align Recent rows' dates at every screen width of 640px and up.",
@@ -118,23 +98,14 @@
         "issue": "The past-due state was said three times, 'Pro' repeated in four rows, one-line cards wasted space and the Open Activity link was out of the shared slot.",
         "resolution": "Banner: 'Grace ends Oct 14, then it keeps DJDL 4.2.0' with 'Renew once Northside's invoice is paid.' and one settings link. The Grace and Source helpers are removed (the Grace cell is dropped because the license is past due; it would stay as one row when it is not). Limits subtitle is 'Values from Pro; overrides marked'; the From column shows an Override tag only for overrides and a dash otherwise. Duration is the first row of the Subscription card. 'Open Activity →' is a ghost action in the Recent header's right slot (.card-head.ghost-action).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The reading order flipped at tablet and the right column ended at y=830 while the left ran to 1460.",
         "resolution": "Subscription is first at every size (the old rail-first order is removed); Recent follows Devices below 1280 and is a sticky rail from 1280 (.mk-with-rail.sticky-rail); the content is capped at 1280 (.page.form-page).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux3", "ux4"]
       },
       {
         "issue": "Remove the Grace cell from Subscription entirely (ux4), versus keep it (ux3 keeps the banner link).",
@@ -146,19 +117,14 @@
         "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
         "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Gaps of 24, 32 and 48px and meta type of 12/20 against 13/22 drifted between screens.",
         "resolution": "Under .ent2: 32px section gap, card head 56px (72px with a subtitle), meta type 12/18 in the muted token, sentence-case 12px label (.eyebrow), content caps .page.form-page 1280 and .page.table-page 1600; the page-title to first-section gap equals the section gap (the page is one flex column).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       }
     ]
   },

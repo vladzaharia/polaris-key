@@ -3,11 +3,7 @@
   "title": "Empty catalog: start from a template",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-32",
-    "ST-42",
-    "ST-45"
-  ],
+  "packages": ["U-32", "ST-42", "ST-45"],
   "uxRows": [],
   "summary": "A new product's Catalog page (drawn for Diceroll before its first publish): catalog v1 was published empty at create, and the page offers templates by platform, Game picked from what the product builds, with what it adds and Publish v2 from Game in one step.",
   "compare": [
@@ -30,12 +26,7 @@
         "issue": "About 320px of dead space under the template picker, the primary action at the foot of a long rail, mechanism subtitles and an 11px caption.",
         "resolution": "Right preview groups are closed disclosures with counts and \"Show entries\" (the first group is open so the columns end close); Publish v2 moved to a bar directly under the picker (sticky bar on phone); \"What Game adds\" is \"Game template\"; page subtitle, card subtitle, \"Devices get v2\" footer and the \"Matches Diceroll\" caption removed; \"Recommended\" chip; Game description trimmed; Start empty strip has a button and a \"Commit .pkey/schema\" link as equal actions.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Drop the sidebar 0 badge (UX3)",

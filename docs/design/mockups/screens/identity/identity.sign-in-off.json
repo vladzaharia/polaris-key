@@ -3,10 +3,7 @@
   "title": "Turn off Sign-in",
   "area": "identity",
   "surface": "dialog",
-  "packages": [
-    "I-29",
-    "ST-38"
-  ],
+  "packages": ["I-29", "ST-38"],
   "uxRows": [],
   "summary": "The confirmation for the Status switch on Diceroll's App sign-in, in products.turn-off-licensing's shape: Sign-in and Cloud Sync (which needs it) each with their glyph, 'On → Off' and what stops, including what happens to players signed in now; what is kept; how to come back; and the one Activity entry the change records.",
   "compare": [
@@ -48,11 +45,7 @@
         "issue": "Wordy dialog duplicating its own consequences.",
         "resolution": "Lead sentence dropped (the Cloud Sync row shows it); change texts and the kept-data line one clause; the Activity box replaced by one 12px muted line 'Recorded in Activity'; phone sheet puts Cancel first and the destructive action second and outlined; destructive label white in dark.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   },

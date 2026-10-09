@@ -3,11 +3,7 @@
   "title": "Offer editor",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "CM-20",
-    "LX-11"
-  ],
+  "packages": ["CM-23", "CM-20", "LX-11"],
   "uxRows": [],
   "summary": "One offer, Dice skins: what it sells defined once (an add-on, one-time, a quantity of 1), its SKU on each storefront with the store's own state and a deep link, and one base price shown as each store converts it, with territories per SKU and Steam as a copy card because Steam has no price API.",
   "compare": [
@@ -53,32 +49,21 @@
         "issue": "SKUs card leaves ~700px blank at 1440; read-only id where an input would be; name appears four times; Save nearly invisible; date line small.",
         "resolution": "Two columns (form plus a 360px SKU rail) from 1200px; Offer id is meta under Name with the SDK hint; the select is labelled Add-on; Name helper is 'Shown to players'; 'Changed Sep 18 by Ada Lindqvist' is 13px on its own line; disabled Save is an outline; the price table becomes card rows beside the rail.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "[phone] Stop selling is a bordered button at the top.",
         "resolution": "Stop selling is a danger text link at the page's end; Change price is an icon button beside the price card title.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "severity": "major",
         "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
         "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       }
     ]
   },

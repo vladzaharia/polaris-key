@@ -4,17 +4,8 @@
   "area": "admin",
   "surface": "console",
   "order": 8,
-  "packages": [
-    "ST-09",
-    "ST-11",
-    "ST-16",
-    "ST-27",
-    "I-31"
-  ],
-  "uxRows": [
-    "UX-30",
-    "UX-67"
-  ],
+  "packages": ["ST-09", "ST-11", "ST-16", "ST-27", "I-31"],
+  "uxRows": ["UX-30", "UX-67"],
   "summary": "Platform → Settings rendered from the registry and ordered by how often each part changes: Recently changed (the last five changes from the audit), Platform ready while incomplete, Product defaults with who overrides them, Sign-in, Storefront and hosting, Email and alerts, Licensing, Jobs, and a folded read-only Advanced section, with a rail on desktop and a section picker on phone.",
   "compare": [
     "The section nav lists the sections in page order: Platform ready, Product defaults, Sign-in, Storefront and hosting, Email and alerts, Licensing, Jobs, Advanced, Recently changed. Each is also a route (#/platform/settings/<area>), the nav follows the scroll, and a section with unsaved changes carries a dot.",
@@ -67,101 +58,61 @@
         "issue": "The render showed 700px of history and a checklist before the first setting, and the order differed by width.",
         "resolution": "One order at every width: Platform ready as a compact banner while a step is open, the settings, then Recently changed last; the History header button is the only entry to full history (the 'All history' link is gone); the nav entry loses its '8 of 9'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Rows ran 3-4 lines with the mono key competing with the helper text; the page was about 3700px tall on desktop and 6000px on phone.",
         "resolution": "The key is a quiet chip at the end of the title line (copy glyph on hover or focus); helper text is one line (two on phone) and usage one muted line; 56px floor, 12px row padding; on phone toggles stay on the label row and only inputs stack, capped at 160px with the unit attached; segmented controls match input height (40px on phone). Desktop is now about 3440px and phone about 5570px.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The same facts were stated two or three times, the error appeared twice, and the clipped chip row had no scroll cue.",
         "resolution": "Sign-in, Jobs and Product defaults subtitles cut to one clause or deleted; 'asks first' removed (the dialog says it); the nav footnote repeating the Connections link is gone; the field error stays and the save bar reads 'Fix 1 error to save'; the tablet chip row fades at its right edge.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
         "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
         "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "severity": "minor",
         "issue": "Other states left 120 to 700px of dead space beside shorter cards, and the captions narrated layout.",
         "resolution": "Other states sit on one equal-width grid (3 columns from desktop, 2 on tablet, 1 on phone) with the page's card primitive; captions name the state and its trigger.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Keep Platform ready in the right rail at 1280px and above.",
         "resolution": "Not applied: the 1136px form cap cannot hold the 200px section nav, a usable settings column and a rail; the compact banner already costs one row, so it stays in the flow at every width.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Cut the section subtitles entirely and drop the 'Advanced' note.",
         "resolution": "declined: This is too aggressive. A single short clause is kept where it adds a fact.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux4"]
       },
       {
         "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
         "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   }

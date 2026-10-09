@@ -3,9 +3,7 @@
   "title": "Approve a recipe: passkey didn't finish",
   "area": "config",
   "surface": "dialog",
-  "packages": [
-    "U-31"
-  ],
+  "packages": ["U-31"],
   "uxRows": [],
   "summary": "The approve drawer after the passkey check was cancelled or failed: a danger strip above the foot says nothing was approved and how to try again; the comparison is unchanged.",
   "compare": [
@@ -29,11 +27,7 @@
         "issue": "Five unchanged rows carried no decision and the change was repeated four times.",
         "resolution": "\"5 fields unchanged\" is a closed disclosure; authorship is one line (Jonah Ortiz · Oct 6 · commit 4f2c9a1); callout \"Tokens will last 12 hours\"; Who-can-get-one is one sentence; editor footer sentence removed; editor banner \"Lifetime changed from 1 to 12 hours in .pkey/schema. Minting is stopped until you approve.\"",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       }
     ]
   },

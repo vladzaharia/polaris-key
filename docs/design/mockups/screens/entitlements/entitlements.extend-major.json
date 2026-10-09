@@ -3,10 +3,7 @@
   "title": "Extend Pro 4 to 5.x",
   "area": "entitlements",
   "surface": "dialog",
-  "packages": [
-    "LX-43",
-    "LX-41"
-  ],
+  "packages": ["LX-43", "LX-41"],
   "uxRows": [],
   "summary": "The L1 caution dialog behind the new-major notice's Extend Pro 4 to 5.x…: Pro 4's line widens from 4.x to 4.x and 5.x, so its 64 licenses get DJDL 5 at no charge, starting with 5.0.0-beta.1. It shows the change in one row, says what narrowing it later would do, and starts focus on Cancel.",
   "compare": [
@@ -30,19 +27,14 @@
         "issue": "The stored range was mechanism, the summary tile repeated the button's count, and the confirmation level and starting focus were stated in the compare but not drawn.",
         "resolution": "Cut 'Saved as 4.0.0 to 5.999999.999999.'; the summary is one row, 'Versions 4.x → 4.x and 5.x', with the 64 only in the button; kept 'Narrowing it later stops updates for devices already on 5.x.'; marked L1 with .dialog.caution and its leading glyph; drew the 2px focus ring on Cancel. The page behind is the converged new-major. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3"]
       },
       {
         "severity": "major",
         "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
         "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #4"]
       },
       {
         "issue": "Update the compares to say the phone dialog feet and the add-on header actions stack full width.",
@@ -54,22 +46,14 @@
         "issue": "Four statements for one confirm.",
         "resolution": "Body is two lines: 'Pro 4's 64 licenses get DJDL 5 from 5.0.0-beta.1, at no charge.' and the Versions row; 'Narrowing later stops updates for devices on 5.x.' is a caption inside the preview box; 'Charge for 5.x instead' is a tertiary link at the footer's left; initial focus stays on Cancel.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The dialog sat 110px from the top of a 1,500px blurred page and the label/value gap was about 160px.",
         "resolution": "The screen is one viewport tall (.console.modal-host) so the backdrop covers the viewport; the dialog sits at 12vh, max-height 90vh with a scrolling body and pinned foot; the summary is the shared .sum-box/.sum-row (36px, 96px label column); phone stays a bottom-anchored sheet.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux2", "ux3", "ux4"]
       }
     ]
   },

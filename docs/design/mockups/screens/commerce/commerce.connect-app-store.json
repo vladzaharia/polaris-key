@@ -3,14 +3,8 @@
   "title": "Connect App Store (one confirmation)",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-29",
-    "CM-21",
-    "A-33"
-  ],
-  "uxRows": [
-    "UX-54"
-  ],
+  "packages": ["CM-29", "CM-21", "A-33"],
+  "uxRows": ["UX-54"],
   "summary": "The one confirmation behind first-run's Connect App Store: it names the key Polaris Key already has (Example Audio team key) and the app it found (DJDL for macOS, com.example.djdl), and says what turns on: DJDL's App Store channel and storefront together, store notifications set up and tested, and that nothing sells until an offer has an App Store SKU.",
   "compare": [
     "Opened from first-run's Connect App Store (commerce.first-run) or the App Store row; the first-run page stays behind the scrim.",
@@ -32,11 +26,7 @@
         "issue": "Bullets restate the title and the success state.",
         "resolution": "Two bullets ('Builds go to TestFlight and purchases add to licenses.' and 'Nothing sells until an offer has an App Store SKU.'); Cancel is ghost; the page behind is the updated first-run.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux2", "ux3", "ux4"]
       }
     ]
   },

@@ -3,11 +3,7 @@
   "title": "License details: updates ended",
   "area": "portal",
   "surface": "portal",
-  "packages": [
-    "LX-41",
-    "LX-15",
-    "P0-36"
-  ],
+  "packages": ["LX-41", "LX-15", "P0-36"],
   "uxRows": [],
   "summary": "The same DJDL page for Kenji, whose yearly Studio license stopped renewing on Sep 30, 2026 and keeps the last version (licenses.list's 'Updates ended … keeps working' row). The state is said once, as the warning pill 'Updates ended' beside the name; the page's one solid action downloads 4.1.3, the last covered version; Get it's neutral callout says why its files are 4.1.3; the License card's term block says when and how it ended and holds the one Renew. Nothing else on the page warns: devices on 4.1.3 are fine, and the entitlements stay. The phone render emails the 4.1.3 download.",
   "compare": [

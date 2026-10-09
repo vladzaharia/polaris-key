@@ -4,13 +4,7 @@
   "area": "admin",
   "surface": "console",
   "order": 1,
-  "packages": [
-    "ST-31",
-    "ST-29",
-    "ST-30",
-    "ST-32",
-    "ST-45"
-  ],
+  "packages": ["ST-31", "ST-29", "ST-30", "ST-32", "ST-45"],
   "uxRows": [],
   "summary": "Platform → Members: one table of everyone with a role binding, their summed roles (Superadmin, Platform admin, Product admin for one product or all, narrowed to areas, Console access), where each role came from, and invites as bindings on an email. The root rule is shown above the table and its members cannot be removed here.",
   "compare": [
@@ -53,119 +47,79 @@
         "issue": "The open Jonas row menu covered the Access from and Last sign-in cells, the data the page is for; row heights were uneven (57, 61, 57, 59, 61px).",
         "resolution": "The menu moved to Other states beside Lucía's; every row is a fixed 56px with two-line cells inside it (kit .table.rows-56).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "major",
         "issue": "The count, the pending state and the env var were each stated twice.",
         "resolution": "Table footer deleted; invited rows drop 'Waiting for first sign-in' (the dashed envelope avatar and 'Invited by' say it); the banner reads 'Root rule: everyone in polaris-admins is a Superadmin' with the Open SSO rules link; PLATFORM_ADMIN_GROUP stays on SSO rules only.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Gaps between header, tabs, banner, filters and table were uneven, and the dashed chips looked like another component family.",
         "resolution": "One 24px gap between all of them (.page.gap-6, .section.gap-6); filter chips are solid 1px bordered pills (.filter.solid).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "severity": "major",
         "issue": "Columns and filters disappeared without a trace below desktop; phone cards ran up to 7 lines.",
         "resolution": "Tablet folds the last sign-in into the member's second line (email · Passkey, today); phone keeps all three filters in one sideways-scrolling row with a faded edge; the access sources flow on one line per card (dates and 'Added by' drop).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
         "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
         "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4"
-        ]
+        "raisedBy": ["ux4"]
       },
       {
         "severity": "minor",
         "issue": "Other states left 120 to 700px of dead space beside shorter cards, and the captions narrated layout.",
         "resolution": "Other states sit on one equal-width grid (3 columns from desktop, 2 on tablet, 1 on phone) with the page's card primitive; captions name the state and its trigger.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Use the free width at wide for a right rail with the Root rule card and role counts.",
         "resolution": "declined: It adds duplicate content, and the Root rule already appears in the banner and rows. Capping the width is enough.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux3"]
       },
       {
         "issue": "Add a selected-member detail panel at wide.",
         "resolution": "declined: It is new functionality and outside a spacing pass.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       },
       {
         "issue": "Show 'Waiting for first sign-in' as a pill in the Last sign-in cell.",
         "resolution": "declined: The dashed pending avatar and the 'Invited by' line already carry the state. Another pill adds duplication.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2"
-        ]
+        "raisedBy": ["ux2"]
       },
       {
         "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
         "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "issue": "Date and glossary rules belong to the copy rules and the consolidation plan, not to a spacing pass.",
         "resolution": "declined: Rewrite dates to 'relative within 7 days, else Oct 6, year only when not current' and add the 'Product admin = one product or all' glossary note.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2"
-        ]
+        "raisedBy": ["ux2"]
       }
     ]
   }

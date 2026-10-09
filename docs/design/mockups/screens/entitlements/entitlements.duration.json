@@ -3,12 +3,7 @@
   "title": "Tier duration: renewing, keeps the last version",
   "area": "entitlements",
   "surface": "console",
-  "packages": [
-    "LX-41",
-    "LX-43",
-    "LX-44",
-    "LX-33"
-  ],
+  "packages": ["LX-41", "LX-43", "LX-44", "LX-33"],
   "uxRows": [],
   "summary": "DJDL's Pro tier as a state of the licenses.tiers editor: the Order list beside Pro's record, whose Duration group has Renewing, keeps the last version chosen among the six presets, its settings (yearly, when it ends, versions, the product's grace) and the worked timeline, then Limits, Includes and Profile. One unsaved change (offline days 30 → 60) shows the record's save bar.",
   "compare": [
@@ -72,40 +67,28 @@
         "issue": "Subtitles restated their titles (Includes, Profile), the 'Renews every' hint described the mechanism and was wrong for store and checkout subscriptions, and facts repeated across the page.",
         "resolution": "Cut the Includes and Profile subtitles (the frame's one-line group notes stay), cut the 'Renews every' hint; on duration-trial the 'Then moves to' hint is 'Devices stay activated.' and the Includes line is 'Matches Pro'; on duration-version the timeline item '5.0.0-beta.1 is out of reach' reads 'DJDL says “Your license covers DJDL 4.x”.' and the notice uses new-major's words.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "minor",
         "issue": "The preset model was undefined: which option is lit when the fields are edited by hand, and what choosing a preset overwrites.",
         "resolution": "Compare item added: the lit preset is derived from the fields; when no preset matches, none is chosen and a 'Custom: …' line says what the fields make; choosing a preset overwrites only the fields it owns, each with its 'was …' mark.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #3"
-        ]
+        "raisedBy": ["reviewer #3"]
       },
       {
         "severity": "minor",
         "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
         "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "major",
         "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
         "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #4"]
       },
       {
         "issue": "Put Limits and Profile in a 400px .page.columns aside at 1600px and up (#1), or use grid-template-columns: minmax(0,1fr) 560px (#3).",
@@ -147,45 +130,28 @@
         "issue": "The Order card ended near y=460 while the editor ran to 2,468px, the controls stopped well short of the right edge, and the timeline (an output) sat under the inputs.",
         "resolution": "Rebuilt as a grid: the Order card is sticky (top 88px) from 1280; every group stacks its label over a 640px-capped field column; where the record card is 760px or wider, 'What a Pro license does' is a sticky 340px aside beside the Duration controls, with Limits, Includes and Profile under it. Duration radios use a 2-column grid (.radio-list.rows.grid2) from 960px of card, which the 1280 content cap means only a wider card reaches. Page height 2,468 to 1,834 at desktop. New kit primitives: .form-section.stacked.with-aside, .form-aside, .mk-editor.sticky-list.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Six presets, then 'When it ends' and 'Versions' asked the same question again and contradicted the preset.",
         "resolution": "The preset owns its settings (.preset-settings): Renewing, keeps the last version shows Renews every and Grace; Trial shows Runs for and Then moves to; Version-scoped shows Major line and Within the line. 'When it ends' is dropped from the three drawn presets (it belongs to Fixed and Renewing, not drawn here), 'Any version' is no longer a group. Helpers stay only as a 'then' outcome (Fixed, Trial, Version-scoped, Renewing). One radio row (.radio-list.rows): 36px, 44px on phone, 8px gap, one line with or without its helper.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "The same fact was stated twice in headers, helpers and the save bar.",
         "resolution": "'Declared in .pkey/product' once, in the record header; the Fingerprint chip stays (field-level). Save bar: '1 change · applies to 71 licenses · .pkey/product stops syncing this tier'. Order helper 'Best first. Higher tier wins.'; Limits helper 'Blank uses the platform default.'; 'Add-ons can add more.' and 'Managed config over the Default profile.' deleted; Fingerprint note 'Normal allows up to 2 hardware changes.'; Order rows drop '• N devices' and fit two lines. The save bar is .save-bar.pinned (sticky to the window's bottom); shoot.mjs draws it at rest in full-page shots.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Timeline kicker was tiny, uppercase, tracked and low contrast in dark.",
         "resolution": "Sentence-case 12px semibold kicker (.aside-title), meta lines 12/18 in the AA muted token, the Keeps-the-last-version row is one line, and the past-due row carries the grace.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux4",
-          "ux2"
-        ]
+        "raisedBy": ["ux4", "ux2"]
       },
       {
         "issue": "Make 'Renewing, keeps the last version' a 'When it ends' choice on Fixed and Renewing and collapse the timeline behind 'Preview at a date…'.",
@@ -207,10 +173,7 @@
         "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
         "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux3", "ux4"]
       }
     ]
   },

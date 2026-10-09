@@ -3,11 +3,7 @@
   "title": "Add SSO connection: before the test sign-in",
   "area": "identity",
   "surface": "console",
-  "packages": [
-    "I-31",
-    "I-30",
-    "ST-39"
-  ],
+  "packages": ["I-31", "I-30", "ST-39"],
   "uxRows": [],
   "summary": "The Test sign-in step as the operator first meets it: one primary 'Sign in with Kestrel Labs' that opens the provider in a new window, the fallback when a browser blocks the window, an empty claims area that says what will appear, and 'Continue to domains' disabled until one sign-in has worked.",
   "compare": [
@@ -26,34 +22,21 @@
         "issue": "Phone footer on three left edges; stepper label collided with its connector.",
         "resolution": "Step line plus progress bar; footer column with the disabled reason above the buttons (.foot-reason).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Wizard left-pinned; the empty 'Nothing sent yet' panel was mostly padding.",
         "resolution": "Centred 960px column; empty state is a 120px strip with the icon inline; the disabled-Continue reason moved to the left footer slot.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "minor",
         "issue": "The same fact three times (prompt, 'Window blocked?' link, secondary line); card sparse.",
         "resolution": "One card row: prompt, the 12px 'Window blocked? Open in this tab' link beside the button; empty-state second sentence cut.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "issue": "Right rail with 'What you'll have at the end' and a waiting/timeout state.",

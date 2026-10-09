@@ -3,11 +3,7 @@
   "title": "Add an unmapped SKU to an offer",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "CM-22",
-    "CM-20"
-  ],
+  "packages": ["CM-23", "CM-22", "CM-20"],
   "uxRows": [],
   "summary": "The picker behind Add to an offer for Google Play's holiday_bundle, which sold 3 times with no offer: a new offer from the SKU (name and the add-on it sells) or an existing offer as its second Google Play SKU, and one change that maps the SKU, re-verifies the 3 purchases and updates those players' licenses.",
   "compare": [
@@ -30,9 +26,7 @@
         "issue": "The subtitle adds nothing and the name list does not scale.",
         "resolution": "'Pick what it sells.' cut; names capped at two plus '1 more'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3"
-        ]
+        "raisedBy": ["ux3"]
       }
     ]
   },

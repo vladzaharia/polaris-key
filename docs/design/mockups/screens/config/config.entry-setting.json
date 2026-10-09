@@ -3,12 +3,7 @@
   "title": "Catalog entry: a setting",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-30",
-    "U-29",
-    "U-01b",
-    "ST-45"
-  ],
+  "packages": ["U-30", "U-29", "U-01b", "ST-45"],
   "uxRows": [],
   "summary": "DJDL's catalog editor with the setting quality.floor open in draft v10: Type (Setting, Secret, Minted token) and In the app (Editable, Read-only, Hidden) as two plain choices, who uses each allowed value, the Cloud Sync tuning an Editable setting gets, and where the key is set across DJDL.",
   "compare": [
@@ -80,12 +75,7 @@
         "issue": "The page ran 1800 to 2100px and said \"draft\" four times.",
         "resolution": "Header meta \"v9 from .pkey/schema · Oct 6. Resync replaces unpublished edits.\"; draft status lives in the pill and the Review button only (dot kept on the entry, footer sentence removed); one helper per field; Cloud Sync helper \"Follows the person to every device\"; Description is one row; \"In the app\" is an icon segmented control with one helper line; type cards show the description only on the selected card; three-column editor at wide, list folds to the selector at tablet, phone keeps Form|JSON beside Review with Discard behind the overflow.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Merge the Cloud Sync panel into the same card as a borderless toggle row (UX1)",

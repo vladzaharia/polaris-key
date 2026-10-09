@@ -3,10 +3,7 @@
   "title": "Cloud Sync usage",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-32",
-    "U-05"
-  ],
+  "packages": ["U-32", "U-05"],
   "uxRows": [],
   "summary": "Diceroll's Cloud Sync page, Usage tab: players with data, storage used against the product's total, syncs today and save conflicts, storage by tier against each limit, what's stored (saves, older versions, settings) and where players sync from.",
   "compare": [
@@ -29,12 +26,7 @@
         "issue": "What's stored bar stretched, the end cap notched, three links in one card, per-tier limits repeated in sub-lines.",
         "resolution": "Bar capped at 640px with a 4px minimum end segment and a 2px gap instead of a border; pair is top-aligned; tier sub-lines keep only \"Also unlicensed players\"; the foot link is dropped (one link per card); platform subtitle is \"This week\"; column header \"Near limit\" in both tabs; \"Updated\" removed. Not done: bar beside a 3-item legend, a two-column phone mini-grid.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Keep player counts on Usage only (UX4) vs keep (UX2)",

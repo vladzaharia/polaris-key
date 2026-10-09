@@ -3,16 +3,8 @@
   "title": "Channel page, Sales tab",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "A-22",
-    "CM-21",
-    "A-28",
-    "CM-22"
-  ],
-  "uxRows": [
-    "UX-57"
-  ],
+  "packages": ["CM-23", "A-22", "CM-21", "A-28", "CM-22"],
+  "uxRows": ["UX-57"],
   "summary": "Diceroll's App Store channel page opened from Storefronts on its Sales tab: Live beside the title, 28 days of purchases and refunds under it, the 3.1.3(b) warning for an offer with no App Store SKU, the App Store SKUs with their offer and App Store Connect state, recent App Store purchases, and in the rail the connection (team key, derived app identity, store notifications, test purchases) with restore under Advanced.",
   "compare": [
     "It is the one channel page (A-22), drawn like distribution.channel-app-store: the xl store tile, the h1 with its state, tabs Status, Releases, Listing, Sales and Setup; the Storefronts row lands on Sales. The crumbs say Storefronts › App Store and the Commerce sidebar entry stays active because that is where the person came from.",
@@ -53,45 +45,28 @@
         "issue": "Two row heights and header weights; banner, test purchases and connection repeat other screens.",
         "resolution": "Both tables use one row height and header; banner is 'Neon dice pack has no App Store SKU' plus the button; the subtitle is deleted; Recent purchases is 3 rows with See all; Connection is three rows (Key, App, Notifications); test purchases is a 'Test purchases off · Change' link; sentence-case states, a plain tick for Ready for sale, exceptions spelled out.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "[phone, tablet] Labels repeat four times per row; Connection is about 1400px down.",
         "resolution": "Phone rows are two lines without labels; Connection comes before Recent purchases (the conn-first order; the connection is healthy here so no status pill is drawn); on tablet Connection spans the width in two columns with Advanced under it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "major",
         "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
         "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Row sub-lines and legends are small, and chevrons and copy icons have small hit areas.",
         "resolution": "Sub-lines and legends are at least 12px (13px here) in the muted token that already passes 4.5:1; icon buttons have a 24px target; one table header token and row height are shared.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux4"]
       },
       {
         "issue": "Remove the Test purchases block and the Recent purchases card entirely.",

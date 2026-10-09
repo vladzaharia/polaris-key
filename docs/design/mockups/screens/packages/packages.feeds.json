@@ -4,18 +4,8 @@
   "area": "packages",
   "surface": "console",
   "order": 1,
-  "packages": [
-    "F-34",
-    "F-36",
-    "F-33",
-    "F-37",
-    "F-35",
-    "P2-10",
-    "A-21"
-  ],
-  "uxRows": [
-    "UX-33"
-  ],
+  "packages": ["F-34", "F-36", "F-33", "F-37", "F-35", "P2-10", "A-21"],
+  "uxRows": ["UX-33"],
   "summary": "DJDL's Packages page under Ship builds on Oct 7: one card per package feed on pkg.plrs.im, each created from a package declared in .pkey/release, access shown read-only as Customers or Public, the one-time cleanup notice before cleanup turns on, a refused CI publish on the npm feed, a freshly declared Swift feed waiting for its first package, and the quiet foot row that turns package feeds off.",
   "compare": [
     "The sidebar is DJDL's Product context with Ship builds open (Releases, Release tracks, Rollouts, Channels, Packages, Updates, Health); Packages is active and the page takes the Distribution accent (green).",
@@ -78,46 +68,28 @@
         "issue": "The subtitle 'One feed per package declared in .pkey/release' restates the title and is false (3 feeds, 4 packages).",
         "resolution": "Removed; the '3 feeds' pill stays.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Several sentences repeat the same facts (Oct 14, 41, Nothing is deleted).",
         "resolution": "Cleanup banner: 'Deletes 41 dev and beta versions (18.6 MB) once the next stable release publishes.'; foot card 'Stops every install and CI publish.' ('Nothing is deleted' lives in the turn-off dialog); helper 'Signs in and sets up every package manager.'; Swift code footnote and PyPI foot shortened, approver kept.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Dead space under the single command of 'On your machine'; the wide rail leaves 600px empty.",
         "resolution": "Card pair uses .top (no stretch); the rail is .sticky-rail (sticky, 360px).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "The npm 'Publish refused' strip is crowded.",
         "resolution": "Two lines (.attn-stack): pill, name and 'Open the CI run', then one muted sentence 'A published version can't be replaced. Bump it in package.json and push.'; feed meta lines use .meta-line (no dangling dot).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2"
-        ]
+        "raisedBy": ["UX1", "UX2"]
       },
       {
         "issue": "Add loading, API-error and permission-denied mocks.",
@@ -144,23 +116,14 @@
         "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
         "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "[Wide] Single-column screens hug the left of a 1920 canvas; the rail leaves 600-750px empty.",
         "resolution": "Kit: .page.contained (1280, centred), .page.form.centered, and .sticky-rail (360px rail, sticky at top 88px from 1600px); card pairs use .top (align-items:start).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       }
     ]
   }

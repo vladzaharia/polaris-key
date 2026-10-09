@@ -3,9 +3,7 @@
   "title": "Approve a minted-token recipe",
   "area": "config",
   "surface": "dialog",
-  "packages": [
-    "U-31"
-  ],
+  "packages": ["U-31"],
   "uxRows": [],
   "summary": "Review and approve… for DJDL's applemusic recipe after a repo change: a drawer over the catalog editor with who changed it and where, the one changed field against the last approval, what the change means, who can get a token under DJDL's access policy, and Approve with passkey.",
   "compare": [
@@ -47,11 +45,7 @@
         "issue": "Five unchanged rows carried no decision and the change was repeated four times.",
         "resolution": "\"5 fields unchanged\" is a closed disclosure; authorship is one line (Jonah Ortiz · Oct 6 · commit 4f2c9a1); callout \"Tokens will last 12 hours\"; Who-can-get-one is one sentence; editor footer sentence removed; editor banner \"Lifetime changed from 1 to 12 hours in .pkey/schema. Minting is stopped until you approve.\"",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3"]
       },
       {
         "issue": "Add the commit summary into the empty drawer area, or dim the backdrop less (UX2)",

@@ -3,14 +3,7 @@
   "title": "Library",
   "area": "portal",
   "surface": "portal",
-  "packages": [
-    "LX-15",
-    "ST-36",
-    "P0-36",
-    "LX-38",
-    "LX-39",
-    "LX-10"
-  ],
+  "packages": ["LX-15", "ST-36", "P0-36", "LX-38", "LX-39", "LX-10"],
   "uxRows": [],
   "summary": "Priya's Library with two products as license tiles, each led by its cover art at its whole 16:9 frame, edge to edge (owner, 2026-10-08: the card image runs all the way), with the icon over its lower edge: the tier and the device count as pills, LX-15's duration line, the source line (Automatic grant, or Bought on the App Store) and the add-ons the license holds. The grid's last tile is the Library's own entry for a key, 'Have a license key?' with Activate license (owner: better styling for the have-a-license entry); under the grid, the two other ways a license joins the account. The phone render shows a phone's actions (Email me the download for DJDL). Same DJDL license as licenses.detail.",
   "compare": [
@@ -78,44 +71,28 @@
         "issue": "'Missing a license?' stretched to tile height with a 130px hole and repeated Activate license and Sign-in methods three times.",
         "resolution": "A quiet full-width help strip under the grid: three one-line rows, one Activate it link, one Sign-in methods link, no second button.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "The add-ons row wrapped, so DJDL had four meta rows to Diceroll's three and the buttons sat at different heights; pill rows wrapped differently on phone.",
         "resolution": "Add-ons collapse to '3 add-ons' / '1 add-on'; device pills are '3/4 devices' and '3/3 devices' (warning style when full); the page subtitle is '2 emails'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Card art too tall, and the wide layout was not designed.",
         "resolution": "Art 16:7 capped at 140px (112px on phone); content max-width 1520px from 1700px; tile grid auto-fit from 380px.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Page title one scale step.",
         "resolution": "28/36 title, 20 tile title.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1"
-        ]
+        "raisedBy": ["ux1"]
       },
       {
         "issue": "Replace 'Automatic grant' with 'Included with your Education email'.",

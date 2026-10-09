@@ -3,16 +3,8 @@
   "title": "First run: no storefront ready",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-29",
-    "CM-21",
-    "CM-23",
-    "A-33",
-    "A-21"
-  ],
-  "uxRows": [
-    "UX-54"
-  ],
+  "packages": ["CM-29", "CM-21", "CM-23", "A-33", "A-21"],
+  "uxRows": ["UX-54"],
   "summary": "DJDL just turned Commerce on and no storefront is ready, so Storefronts opens on a three-step setup card (connect a storefront, create an offer, make a test purchase) with the App Store offered as one confirmation because the team key already sees DJDL, then the storefronts that fit DJDL's macOS and Windows builds, all Not set up except Polaris Key's free Discover listing.",
   "compare": [
     "The setup card shows while the commerce service is on, until the first verified purchase arrives (test purchases count); a storefront turning Ready doesn't remove it (commerce.first-run-connected). Steps are computed from facts, never stored.",
@@ -47,21 +39,14 @@
         "issue": "'Not set up' five times, repeated step title in its control, restated callout.",
         "resolution": "No row says Not set up: only Polaris Key shows Live and the rest a muted 'N steps'; the switch is labelled 'Turn on test purchases'; step 2 is 'Sell a tier or an add-on, or import your App Store products.'; the callout is one sentence; card title is 'Where DJDL sells'; status is inline on the title row on phone.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "major",
         "issue": "[wide] A 65px card in the rail with ~800px empty.",
         "resolution": "'Where DJDL sells' is the 400px rail beside 'Start selling' with equal weight; the callout moves below both; body text capped at 70 characters; empty progress track has a 1px edge.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux4"]
       },
       {
         "issue": "Fold the first-run store list into step 1 as a chip row.",

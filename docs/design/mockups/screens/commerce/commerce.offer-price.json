@@ -3,9 +3,7 @@
   "title": "Change price (typed confirmation)",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23"
-  ],
+  "packages": ["CM-23"],
   "uxRows": [],
   "summary": "The Change price dialog over the Dice skins editor: a new base price of $3.99, what Apple's price points and Google Play's conversion will set (with examples and territory counts), Steam named as unchanged with what to do there, and a typed confirmation of the offer id before the prices go to both stores.",
   "compare": [
@@ -46,10 +44,7 @@
         "issue": "Dialog title and close misaligned; two icon tile sizes; reassurance copy far from the price; confirm label on two lines; four sample currencies.",
         "resolution": "Title and close share a 32px row; one 24px tile; 'Players who already bought Dice skins keep it' sits under the price field; the confirm label is one line with the product name as a mono chip; two sample currencies.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux3"]
       },
       {
         "issue": "Drop the typed confirmation for price changes.",

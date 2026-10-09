@@ -4,9 +4,7 @@
   "area": "packages",
   "surface": "dialog",
   "order": 16,
-  "packages": [
-    "F-33"
-  ],
+  "packages": ["F-33"],
   "uxRows": [],
   "summary": "The moment after Create token on Account → Packages: the new 'Work laptop' pkeyp_ token shown once, what it can do and for how long on two lines, the combined npm setup with the token filled in for the home folder, and Done and the close button held until the person says they stored it.",
   "compare": [
@@ -50,24 +48,14 @@
         "issue": "On phone the token and code are truncated; the disabled Done looks broken.",
         "resolution": "Token wraps across lines (.wrap-phone-token); code soft-wraps at 12px with a fade; checkbox on a 44px row (.tap-row); disabled Done uses the kit's muted disabled style with a 'Tick the box to continue' hint; the repeated 'Reaches DJDL, Diceroll…' line and 'packages only' segment are gone.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3",
-          "UX4",
-          "UX2"
-        ]
+        "raisedBy": ["UX1", "UX3", "UX4", "UX2"]
       },
       {
         "severity": "major",
         "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
         "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

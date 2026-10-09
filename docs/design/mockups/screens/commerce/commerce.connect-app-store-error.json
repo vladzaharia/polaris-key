@@ -3,14 +3,8 @@
   "title": "Connect App Store: it didn't connect",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-29",
-    "CM-21",
-    "A-33"
-  ],
-  "uxRows": [
-    "UX-54"
-  ],
+  "packages": ["CM-29", "CM-21", "A-33"],
+  "uxRows": ["UX-54"],
   "summary": "The same confirmation after App Store Connect refused the key: an inline danger callout says nothing changed, why (the Example Audio team key has the Developer role, which can't read in-app purchases or set up store notifications) and the fix (give it the App Manager role in Users and Access → Integrations), with Open App Store Connect and Try again.",
   "compare": [
     "The dialog stays open with the same facts; the error takes the consequences' place as a danger callout with role=alert, never as a toast.",
@@ -30,11 +24,7 @@
         "issue": "A retry would fail again without a change at the store.",
         "resolution": "Retitled 'Couldn't connect the App Store'; 'Open App Store Connect' is the primary action; Cancel is ghost.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux2", "ux3", "ux4"]
       }
     ]
   },

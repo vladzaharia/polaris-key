@@ -4,12 +4,7 @@
   "area": "packages",
   "surface": "portal",
   "order": 14,
-  "packages": [
-    "F-33",
-    "F-37",
-    "F-34",
-    "F-35"
-  ],
+  "packages": ["F-33", "F-37", "F-34", "F-35"],
   "uxRows": [],
   "summary": "The customer portal's Account → Packages: every package Mara Fennick can install, grouped by product (DJDL and Diceroll), her packages tokens with one per machine, and one combined setup for every package manager with 'pkey feeds setup --write' first, how to run it without installing pkey, and the by-hand files after.",
   "compare": [
@@ -54,24 +49,14 @@
         "issue": "Three intro lines restate their card titles; the table has an Ecosystem column plus a sub-line saying the same.",
         "resolution": "Packages sub-line removed; tokens 'Each token is shown once.'; setup 'In your home folder, never a repository.'; setup explanations merged into one line and the npx hint is a right-aligned link row; 'Also on PyPI.org' is a badge in the Ecosystem cell; Package/Ecosystem column gap closed; Revoke is 36px with a 44px tap target (.tap-44).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
         "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

@@ -3,11 +3,7 @@
   "title": "App sign-in with unsaved changes",
   "area": "identity",
   "surface": "console",
-  "packages": [
-    "I-29",
-    "I-34",
-    "I-35"
-  ],
+  "packages": ["I-29", "I-34", "I-35"],
   "uxRows": [],
   "summary": "Diceroll's App sign-in with two edits waiting for Save: Apple turned off by the operator (the row says 'Off by you' with 'Use the default', and a caution about App Store guideline 4.8) and Email moved from Optional to Required, which takes the value over from the manifest. The SaveBar names both changes and says players are asked again.",
   "compare": [
@@ -27,35 +23,21 @@
         "issue": "Spacing scale inconsistent (16, 24 and 32 used at random); card header heights and title sizes vary.",
         "resolution": "Opt-in .rhythm on the page: 24 between cards in a group, 12 group title to first card, 32 between groups; card header at least 56; card titles 18/600; stat tiles 24. The global tokens are unchanged (existing values); muted and meta text already met 4.5:1 and 12px.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Same layout holes as app-sign-in.",
         "resolution": "Rebuilt on the same two-column layout and copy.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Save bar wrapped to 4 or 5 lines on phone (about 130px).",
         "resolution": "One line '2 changes: Apple off, Email required'; Discard and Save share a row; the 39% consequence moved into the Email row's 'Not saved' note; Apple row subtitle 'Off by you'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       }
     ]
   },

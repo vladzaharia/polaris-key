@@ -3,9 +3,7 @@
   "title": "Renew a subscription",
   "area": "entitlements",
   "surface": "dialog",
-  "packages": [
-    "LX-41"
-  ],
+  "packages": ["LX-41"],
   "uxRows": [],
   "summary": "The Renew… dialog over the past-due license: the new period end defaulting to one period after the current one, an optional note for the history, the one result (Past due → Active), and one link to the admin API that does the same from DJDL's own billing.",
   "compare": [
@@ -38,20 +36,14 @@
         "issue": "The API path (a sentence, a link line and a code block) took about 100px of an operator's dialog; two dates a day apart (Oct 7 on the button, Oct 8 in the summary) made the main fact doubtful.",
         "resolution": "One link line, 'Renew from DJDL’s billing with the admin API →'; the summary shows only 'Status: Past due → Active' (the margin lives on the license's Runs until value); .dialog.scroll.fade for the phone sheet. The page behind is the converged license-subscription. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #1",
-          "reviewer #3",
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #1", "reviewer #3", "reviewer #4"]
       },
       {
         "severity": "major",
         "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
         "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "reviewer #4"
-        ]
+        "raisedBy": ["reviewer #4"]
       },
       {
         "issue": "Move the stored version range, and renew's one-day margin, into tooltips.",
@@ -68,23 +60,14 @@
         "issue": "Lines restated the title or narrated mechanism.",
         "resolution": "'Records a paid renewal.' and 'Shown in History and Activity.' deleted; date helper 'A year after Oct 7, 2026' with 'Must be after today' as the error; note placeholder 'Invoice number or how it was paid'; the button reads 'Renew to Oct 7, 2027'; the admin API link is a tertiary link at the footer's left, shortened to 'Renew with the admin API'; the invalid-date state is drawn beside the default (desktop and tablet; phone shows the default sheet).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Dialog geometry and summary rows as for extend-major.",
         "resolution": "Same viewport-tall screen, 12vh placement, scrolling body, pinned foot and shared summary row.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux2", "ux3", "ux4"]
       }
     ]
   },

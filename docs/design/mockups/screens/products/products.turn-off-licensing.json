@@ -4,13 +4,8 @@
   "area": "products",
   "surface": "dialog",
   "order": 6,
-  "packages": [
-    "ST-38",
-    "CM-29"
-  ],
-  "uxRows": [
-    "UX-22"
-  ],
+  "packages": ["ST-38", "CM-29"],
+  "uxRows": ["UX-22"],
   "summary": "The requirement cascade on Diceroll's Features page: turning off Licensing also turns off Commerce, which needs it. The dialog names every dependent with what stops for each, says what is kept, and that it records one change in Activity.",
   "compare": [
     "The dialog opens over the Features page (dimmed, drawn as products.features) when the Licensing switch is pressed and before anything changes; Escape and Cancel leave both features on. With the dialog open the page can't scroll: on desktop the dialog is centred in the viewport (ui/Dialog.tsx).",
@@ -58,12 +53,7 @@
         "issue": "The Cancel focus ring was the loudest thing in the dialog; the same pair was named four times; the close X sat off the title's centre.",
         "resolution": "The lead sentence is gone (the second row reads 'Needs Licensing'); the Licensing row reads 'Players keep playing up to 30 days offline, then Diceroll can't confirm any license (Free tier too).'; the footer is one line 'Data is kept. Undo from Activity turns both back on.'; the X lines up with the title; autofocus is removed so the ring shows only in an interaction state; 'On → Off' is a 12px faint red pill at 4.5:1; meta is 12px; on phone Cancel is a ghost button so the red action is the only emphasised one. The page behind now matches products.features.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Shorten to 'Turn off both', reverse the button order, remove the X on phone, highlight the Licensing row in the backdrop, reduce the blur.",

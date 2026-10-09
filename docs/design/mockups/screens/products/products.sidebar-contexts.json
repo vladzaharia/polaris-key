@@ -4,16 +4,8 @@
   "area": "products",
   "surface": "console",
   "order": 7,
-  "packages": [
-    "ST-45",
-    "ST-29"
-  ],
-  "uxRows": [
-    "UX-09",
-    "UX-13",
-    "UX-14",
-    "UX-26"
-  ],
+  "packages": ["ST-45", "ST-29"],
+  "uxRows": ["UX-09", "UX-13", "UX-14", "UX-26"],
   "summary": "The console sidebar's two contexts side by side: Platform (Home and the platform's pages), Product for DJDL (its own pages, one group per feature that's on, Settings last), the switcher open from the context header, and the same product as a DJDL editor with Access and Settings filtered out by permission.",
   "compare": [
     "Platform context: header with the Polaris mark, 'Platform', '3 products' and the switcher chevrons; then Home, Members, Connections, Settings, Packages, Status, Activity, and Collapse in the foot. No product pages, no 'Products' item (Home has the products) and no counts.",
@@ -47,34 +39,21 @@
         "issue": "At wide: 230px dead on the right, notes top-aligned in a side column ending 540px above the sidebars' bottom, about 280px of blank inside each panel.",
         "resolution": "A centred auto-fit 4-up grid (272px columns, capped at 1360, the title lines up with the grid) with the three notes in one full-width row beneath at every size above tablet. 2 x 2 at tablet with the short pair on one row, the tall pair on the next, notes below. The notes never sit in a side column. Panels size to their content with the Collapse row 24px under the last item.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Captions and notes explained the same rules twice; the dimmed nav under the switcher looked half-rendered.",
         "resolution": "Captions are one sentence each; the three notes stay. The nav behind the open switcher is not drawn, so the menu is the only thing in focus. The phone drawer is 85% wide over the scrim.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Switcher product dots were colour-only.",
         "resolution": "DJDL and Diceroll rows carry a trailing plain-text '5 features' / '4 features' from tablet width up; the dots keep their accessible names. The Polaris Key row keeps its 'System' tag only: a count beside it did not fit the 236px menu. Platform is not the current context in this frame, so no check is drawn on it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux3", "ux4"]
       },
       {
         "issue": "Delete the notes or the captions; a phone carousel or tabs; feature icons for dots; draw one-time pages.",

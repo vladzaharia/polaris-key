@@ -3,15 +3,7 @@
   "title": "Licenses",
   "area": "licenses",
   "surface": "console",
-  "packages": [
-    "LX-30",
-    "LX-13",
-    "LX-15",
-    "LX-38",
-    "LX-41",
-    "LX-29",
-    "P0-29"
-  ],
+  "packages": ["LX-30", "LX-13", "LX-15", "LX-38", "LX-41", "LX-29", "P0-29"],
   "uxRows": [],
   "summary": "DJDL's Licenses list in the Product context: holder state (In an account, Waiting, Floating) as the first filter and as a pill in the Holder column, a tier pill on every license, the duration line, devices against the resolved limit, and the origin, with Automatic grant for licenses the Access rules issued. Bulk floating keys start from the header; the empty, no-match, loading and error states are in licenses.list-states.",
   "order": 1,
@@ -61,35 +53,21 @@
         "issue": "Eight of ten rows showed the same pill, so exceptions did not stand out; 250px gaps at wide.",
         "resolution": "'In an account' and 'Lifetime' are muted text (.quiet-cell); a pill stays for Waiting and Floating; Duration (224px) and Devices (136px) have fixed widths; the Devices bar is capped at 96px and left-aligned; the page is capped at 1440px of content (.cap-1440).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Two stacked control bars and a bare-number subtitle.",
         "resolution": "Tabs left with Columns and Export on one row, search and filters on the row under it at 8px; the '650 are Automatic grants' subtitle is removed (the Origin column shows it).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Phone cards ran 120-165px with a ragged pill row.",
         "resolution": "Three lines (.table.cards-phone): name with the device count at the end, the email, then the tier and at most one state; 'In an account' and 'Lifetime' are not drawn on phone, the holder and duration sub-lines are left to the record; file-like tokens wrap.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "issue": "Fold Origin into a single cell and drop its second line; drop the Holder or Origin column.",

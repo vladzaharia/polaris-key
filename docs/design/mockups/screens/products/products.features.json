@@ -4,17 +4,8 @@
   "area": "products",
   "surface": "console",
   "order": 5,
-  "packages": [
-    "ST-38",
-    "CM-29",
-    "ST-08",
-    "PS-12",
-    "ST-14"
-  ],
-  "uxRows": [
-    "UX-22",
-    "UX-66"
-  ],
+  "packages": ["ST-38", "CM-29", "ST-08", "PS-12", "ST-14"],
+  "uxRows": ["UX-22", "UX-66"],
   "summary": "Diceroll's Settings → Features: the six features as one list in canonical order, each row with its switch, its facts as status and its own settings nested under it. Sign-in is off, so Cloud Sync can't be turned on and says why; Commerce is on because Licensing is; raw service slugs and the derived registration are folded, read-only, under Advanced.",
   "compare": [
     "Features is the first tab of the product Settings hub (Features, Presentation, Keys & secrets, Members); Settings is active in the sidebar foot and the crumbs read Diceroll › Settings.",
@@ -65,46 +56,28 @@
         "issue": "The 'A feature turns on only when…' callout floated alone over a 1000px void beside an empty wide rail.",
         "resolution": "Callout and wide rail are deleted. The table fills a content column capped at about 1200px, left-aligned with the page title, with a fixed 280px single-line Status column so name, status and toggle sit close together. The Needs lines and the confirm dialog teach the rule.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Dependencies were told three ways (Needed by, Needs, a purple 'Turn on Sign-in first').",
         "resolution": "One dependency fact and one status fact per row: 'Needs …' stays on the dependent, 'Needed by …' is gone from the providers, the purple cell is gone from Cloud Sync, 'Turns on with Sign-in' is gone from Customer portal. Status is one line (3 tiers · 18,406 licenses; Catalog v6 published; 1.8.2 on stable; 3 of 4 storefronts ready) with a muted 'Off' in the empty cells; 'Verified on 4 platforms' is dropped (Integration owns it).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Nested groups came in two styles and Advanced was a third card style; sub-copy was long.",
         "resolution": "One inset panel (8px radius, 16px padding, 1px dividers) reaching 17px past the text column so a sub-row's title lines up with the parent's and its control with the parent's switch; Advanced is a last row of the same table. Storefront, In-app updates, Customer portal and Advanced use the lead's copy.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Disabled text under 3:1; each phone row about 170px tall with status far from its toggle; 'Members' cropped.",
         "resolution": "Disabled and locked rows dim only the control: text stays 4.5:1 and an off track keeps a 3:1 edge. On phone the status is one line under the title and the description hides below 480px. The tab strip has 12px between tabs and a right fade, so all four tabs show at 390.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux4"]
       },
       {
         "issue": "Draw extra states: saving, failed save, permission-denied, Advanced open.",

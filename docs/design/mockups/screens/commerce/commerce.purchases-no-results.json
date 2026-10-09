@@ -3,10 +3,7 @@
   "title": "Purchases: no match",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "CM-22"
-  ],
+  "packages": ["CM-23", "CM-22"],
   "uxRows": [],
   "summary": "Diceroll's Purchases searched for a license id that has no purchase in the last 28 days: the table head stays, and the kit's filtered empty state names what matched nothing, says what search accepts, and offers Search all time and Clear search.",
   "compare": [

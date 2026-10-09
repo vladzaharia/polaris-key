@@ -3,14 +3,7 @@
   "title": "Purchases",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "CM-22",
-    "CM-24",
-    "CM-25",
-    "LX-41",
-    "LX-23"
-  ],
+  "packages": ["CM-23", "CM-22", "CM-24", "CM-25", "LX-41", "LX-23"],
   "uxRows": [],
   "summary": "Diceroll's one purchase ledger across the App Store, Google Play and Steam: each row says when, which storefront, which offer and SKU, which account (or a floating license when nobody was signed in), which license it landed on and its state with what that did, including refunds and a chargeback that removed what they added at once, a purchase that added nothing, and subscriptions linked to the license that holds them.",
   "compare": [
@@ -48,56 +41,35 @@
         "issue": "Tablet: Bought flush to the border, offers and emails clip.",
         "resolution": "Below 1100 the store is an icon beside the offer, Bought drops the time, License is dropped (it is in the drawer), emails truncate with an ellipsis, last column keeps 24px.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Phone: Steam email runs out of the card, 12px padding, five labels and 160px+ cards.",
         "resolution": "3-line card: offer and state, account (email truncates), store glyph, date and license id; 'Steam linked' on its own line; 16px padding; no labels.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "State cell holds four facts; license ids look like links.",
         "resolution": "State is the pill and date only (effect lines are in the drawer timeline); the SKU shows only on the issue row; 48px rows; license ids are mono text with a copy icon.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "severity": "major",
         "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
         "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Row sub-lines and legends are small, and chevrons and copy icons have small hit areas.",
         "resolution": "Sub-lines and legends are at least 12px (13px here) in the muted token that already passes 4.5:1; icon buttons have a 24px target; one table header token and row height are shared.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux4"]
       },
       {
         "issue": "Move the license tier into the account sub-line and drop it from License.",

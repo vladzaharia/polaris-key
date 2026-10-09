@@ -3,9 +3,7 @@
   "title": "Recipe approved",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-31"
-  ],
+  "packages": ["U-31"],
   "uxRows": [],
   "summary": "The minted-token entry right after Approve with passkey: the drawer has closed, a success toast confirms, the entry reads Approved and minting has resumed.",
   "compare": [
@@ -26,9 +24,7 @@
         "issue": "The toast covered the footer text.",
         "resolution": "Toast is bottom-centre with 24px clearance (.kit-cfg .toasts) and the page reserves 96px (.toast-clear); the editor behind uses the three-column composition and rail.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1"
-        ]
+        "raisedBy": ["UX1"]
       }
     ]
   },

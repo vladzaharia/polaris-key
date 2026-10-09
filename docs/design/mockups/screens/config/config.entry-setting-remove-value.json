@@ -3,11 +3,7 @@
   "title": "Catalog entry: removing a value in use",
   "area": "config",
   "surface": "console",
-  "packages": [
-    "U-30",
-    "U-29",
-    "ST-45"
-  ],
+  "packages": ["U-30", "U-29", "ST-45"],
   "uxRows": [],
   "summary": "quality.floor in draft v10 with mp3-320 removed from its allowed values while the Studio profile, 1 license and 4 accounts still use it: an inline warning names them, asks where they move, and Review stays disabled until they have an allowed value.",
   "compare": [
@@ -29,9 +25,7 @@
         "issue": "Duplicate marker and misaligned selects.",
         "resolution": "Kept the in-use warning; removed the \"mp3-320 removed\" marker in the side card (em dash instead); \"Move them to\" and Default selects share one 320px track. The shared entry-setting cuts and three-column editor also apply.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1"
-        ]
+        "raisedBy": ["UX1"]
       },
       {
         "issue": "Hide \"Where it's set\" behind the overflow menu on narrower sizes (UX1)",

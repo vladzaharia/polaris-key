@@ -3,13 +3,8 @@
   "title": "Features: a switch didn't save",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-29",
-    "ST-38"
-  ],
-  "uxRows": [
-    "UX-66"
-  ],
+  "packages": ["CM-29", "ST-38"],
+  "uxRows": ["UX-66"],
   "summary": "DJDL's Features after turning Commerce on failed to save: the switch is back off, the row carries a danger edge, and its status column says Commerce didn't turn on and nothing changed, with Try again and a reference id; no toast and no Commerce group in the sidebar.",
   "compare": [
     "A switch that fails to save returns to its old position at once; the error stays on that row (role=alert) and never as a toast, and doesn't auto-dismiss (EXPERIENCE.md §7, §9).",
@@ -28,11 +23,7 @@
         "issue": "The reference cannot be copied.",
         "resolution": "Red left border kept; the failure is a meta line under the row and the reference is a copy chip.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3"]
       },
       {
         "issue": "Add a cause clause ('Couldn't reach Polaris Key.') to the failure text.",

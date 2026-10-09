@@ -4,9 +4,7 @@
   "area": "packages",
   "surface": "dialog",
   "order": 2,
-  "packages": [
-    "F-36"
-  ],
+  "packages": ["F-36"],
   "uxRows": [],
   "summary": "The dialog behind 'See the dry run' on DJDL's Packages page: what cleanup would delete, per package, with what it keeps and the sizes, when the deletion actually happens, and a warning about two recent installs that asked for a version that goes. The default is to keep the Oct 14 start; deleting early is a separate, explicit danger action.",
   "compare": [
@@ -50,12 +48,7 @@
         "issue": "The phone sheet hides the totals and the most important warning below the fold with no cue.",
         "resolution": "The 'recent installs' warning is directly under the lede; the sheet is a scrolling .dialog.scroll.fade at most 90vh; lede 'Dry run Oct 7, 09:00. These go with the first stable release after Oct 14; never from PyPI.org.'; the Kept footnote is the column header 'Keeps (stable + newer)'; 'Turn off cleanup' stays a left text link with 24px before the primary (.set-apart).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Require a typed confirmation for 'Delete 41 versions now', add a Close button, demote 'Keep the Oct 14 start'.",

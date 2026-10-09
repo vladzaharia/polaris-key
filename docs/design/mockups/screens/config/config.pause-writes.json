@@ -3,11 +3,7 @@
   "title": "Pause Cloud Sync writes",
   "area": "config",
   "surface": "dialog",
-  "packages": [
-    "U-05",
-    "ST-16",
-    "U-32"
-  ],
+  "packages": ["U-05", "ST-16", "U-32"],
   "uxRows": [],
   "summary": "The confirmation for the platform's one Cloud Sync kill switch (cloudSync.writesPaused), opened from Diceroll's Cloud Sync page: it names every product the pause stops, what their people see, that nothing is deleted, takes a required reason and confirms with a passkey.",
   "compare": [
@@ -47,12 +43,7 @@
         "issue": "The dialog repeated itself and the footer pattern differed on phone.",
         "resolution": "Scope stated once in the title; one intro sentence; one closing line \"Reading keeps working; nothing is deleted.\"; removed \"Next, you confirm with your passkey\" and put a fingerprint icon on the confirm button; footer is Cancel left, primary right, 44px side by side on phone (.kit-cfg).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Neutral primary on dialog commit buttons (UX4)",

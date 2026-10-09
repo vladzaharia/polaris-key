@@ -3,11 +3,7 @@
   "title": "Create keys in bulk: after Create",
   "area": "licenses",
   "surface": "dialog",
-  "packages": [
-    "LX-29",
-    "LX-27",
-    "LX-30"
-  ],
+  "packages": ["LX-29", "LX-27", "LX-30"],
   "uxRows": [],
   "summary": "The New license drawer after Create 200 keys: the one-time CSV before and after its download, the confirmation when closing before any download, and a partial result (120 of 200 created) with Retry.",
   "order": 13,
@@ -40,12 +36,7 @@
         "issue": "The count and the once-only warning appeared two or three times.",
         "resolution": "Banner says '200 keys created'; the file card is the name and size; the once-only line sits once, muted, above the card, and again in the close-early dialog; the file name wraps at its hyphens (.wrap-name); on phone the CSV card is neutral (.neutral-phone).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       }
     ]
   }

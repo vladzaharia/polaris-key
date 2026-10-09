@@ -4,16 +4,8 @@
   "area": "products",
   "surface": "console",
   "order": 2,
-  "packages": [
-    "ST-41",
-    "ST-40",
-    "ST-44"
-  ],
-  "uxRows": [
-    "UX-21",
-    "UX-61",
-    "UX-63"
-  ],
+  "packages": ["ST-41", "ST-40", "ST-44"],
+  "uxRows": ["UX-21", "UX-61", "UX-63"],
   "summary": "Status board: a hero band (DJDL, the one next step as a large button, Verified per platform) over six feature cards, each with its key number and, until Integration is hidden, a sunken integration well that asks the same three questions in every card.",
   "compare": [
     "Two blocks and an aside, no table: the hero band, then Features (a 3 × 2 board at desktop and wide, 2 × 3 at tablet, one column on phone), then Recent activity (the 400px aside at wide, spanning both blocks; below the board under 1600px).",
@@ -41,63 +33,49 @@
       {
         "severity": "major",
         "decision": "accepted",
-        "raisedBy": [
-          "owner"
-        ],
+        "raisedBy": ["owner"],
         "issue": "The current Overview has no focal point: Needs attention, a dense integration matrix with Windows floating beside it, and cramped feature tiles all weigh the same.",
         "resolution": "The hero band holds identity, the one next step as the page's large primary, and the Integration gauge; everything else is the board."
       },
       {
         "severity": "major",
         "decision": "accepted",
-        "raisedBy": [
-          "self"
-        ],
+        "raisedBy": ["self"],
         "issue": "First render: integration rows differed per card (an open step, a CI row, links pinned to the foot), leaving gaps mid-well and nothing lined up across a row.",
         "resolution": "Every well asks the same three questions in the same rows (Console, App, macOS); the CI row is dropped (the 4.2.0 release and Recent activity already show CI publishes)."
       },
       {
         "severity": "minor",
         "decision": "accepted",
-        "raisedBy": [
-          "self"
-        ],
+        "raisedBy": ["self"],
         "issue": "With data-service on each card, its links took the service accent: five link colours, Managed config's in an amber that read as a warning.",
         "resolution": "data-service sits on the icon tile only; links keep the console accent."
       },
       {
         "severity": "minor",
         "decision": "accepted",
-        "raisedBy": [
-          "self"
-        ],
+        "raisedBy": ["self"],
         "issue": "Bold platform-name labels in every well made the sunken layer as loud as the numbers above it.",
         "resolution": "Well labels are muted regular text with their glyph; the states carry the colour."
       },
       {
         "severity": "minor",
         "decision": "accepted",
-        "raisedBy": [
-          "self"
-        ],
+        "raisedBy": ["self"],
         "issue": "Cloud Sync has no foot line, so its well started higher than Sign-in's beside it; on phone it fell into the empty foot row.",
         "resolution": "The stat area keeps a value-and-foot height; on phone the well is placed on its own row."
       },
       {
         "severity": "minor",
         "decision": "accepted",
-        "raisedBy": [
-          "self"
-        ],
+        "raisedBy": ["self"],
         "issue": "On phone the cards stacked to about 1,100px.",
         "resolution": "Phone cards put the value on the name's line (as a narrow stat strip): about 56px less per card."
       },
       {
         "severity": "declined",
         "decision": "declined",
-        "raisedBy": [
-          "self"
-        ],
+        "raisedBy": ["self"],
         "issue": "Repeat 'Windows · Not seen yet' in each card for symmetry with macOS.",
         "resolution": "Declined: one platform-level fact, said once in the hero gauge with its 'Add the SDK'; a Windows row appears in the wells once Windows is seen."
       }

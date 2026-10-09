@@ -3,11 +3,7 @@
   "title": "Consent with partial grants",
   "area": "identity",
   "surface": "portal",
-  "packages": [
-    "I-34",
-    "I-08",
-    "PX-14"
-  ],
+  "packages": ["I-34", "I-08", "PX-14"],
   "uxRows": [],
   "summary": "The consent step of Mara's first sign-in to Diceroll on her Pixel: the chosen license with Change, then what Diceroll asks for, each item either Required (set by Diceroll's identity.claims) or switchable. Mara keeps Cloud Sync on and turns her picture and email off; Continue posts only that subset.",
   "compare": [
@@ -39,12 +35,7 @@
         "issue": "Footer off-centre; row heights vary; two stacked notes.",
         "resolution": "Legal links centred; every ask row has a subtitle; the two notes are one note ending 'Change anytime in Account → Connected apps.'; gap above the footer 24px.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       }
     ]
   },

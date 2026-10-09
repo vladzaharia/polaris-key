@@ -3,15 +3,7 @@
   "title": "App sign-in",
   "area": "identity",
   "surface": "console",
-  "packages": [
-    "I-29",
-    "I-32",
-    "I-34",
-    "I-35",
-    "I-14",
-    "I-33",
-    "ST-45"
-  ],
+  "packages": ["I-29", "I-32", "I-34", "I-35", "I-14", "I-33", "ST-45"],
   "uxRows": [],
   "summary": "Diceroll's one App sign-in page, replacing Identity → Portal and Identity → Sign-in: the Sign-in switch, the methods its card offers (email and passkeys always on, shortcuts derived from its channels, in-game store sign-in on with each store channel), its product connection (Diceroll accounts on Firebase, token exchange only), what Diceroll gets (required or optional, from the manifest), terms, license-key entry (taken over from the manifest), the two portal switches and the read-only Presentation.",
   "compare": [
@@ -60,47 +52,28 @@
         "issue": "Spacing scale inconsistent (16, 24 and 32 used at random); card header heights and title sizes vary.",
         "resolution": "Opt-in .rhythm on the page: 24 between cards in a group, 12 group title to first card, 32 between groups; card header at least 56; card titles 18/600; stat tiles 24. The global tokens are unchanged (existing values); muted and meta text already met 4.5:1 and 12px.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "3000px column with uneven rows; a 34px definition list among 56px rows.",
         "resolution": "Main column plus a 360px sticky rail from 1280 with 'On this page' at its top, Customer portal and Presentation; below 1280 a chip row under the title; Product connection facts in 40px rows with a 120px label column.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Segmented controls of different widths; three grammars for the second line.",
         "resolution": "One 224px segmented width (36px on phone); permission rows use bar plus 'NN% share'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Mechanism sentences and an internal key in product UI.",
         "resolution": "Removed the subtitles of Sign-in methods, Customer portal, Presentation, Terms and 'Follows each store channel'; Product connection 'Trades a Firebase token for a sign-in'; SSO row 'Pocket ID, Lakeside University · 3 domains'; Cloud Sync clause dropped from the status row; 'identity.claims' became 'the manifest'.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "issue": "Collapse Terms, License keys, Customer portal and Presentation into accordions on phone; merge the two Steam rows.",

@@ -3,11 +3,7 @@
   "title": "Saving Access",
   "area": "licenses",
   "surface": "dialog",
-  "packages": [
-    "P2-10",
-    "LX-36",
-    "PS-12"
-  ],
+  "packages": ["P2-10", "LX-36", "PS-12"],
   "uxRows": [],
   "summary": "What Save access on licenses.access asks before the two changes that alter who gets DJDL (Automatic licenses Rules → Nobody, and Rules → Everyone who signs in, with the typed slug), and the saved state: the save bar gone and a toast that names the change with View in History.",
   "order": 7,
@@ -39,11 +35,7 @@
         "issue": "Dialogs left-clustered, 40% of the board empty; long bodies; toast squeezed on phone.",
         "resolution": "Dialogs centre in their tile at 520px (.dlg-center), titles on one line; each body is the change line, one assurance line and the rules line; the toast stacks message then a 44px action on phone (.toast.wrap-action).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       }
     ]
   }

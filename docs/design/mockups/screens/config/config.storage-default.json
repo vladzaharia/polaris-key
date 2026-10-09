@@ -3,11 +3,7 @@
   "title": "Change the platform's default storage",
   "area": "config",
   "surface": "dialog",
-  "packages": [
-    "ST-16",
-    "U-05",
-    "U-01b"
-  ],
+  "packages": ["ST-16", "U-05", "U-01b"],
   "uxRows": [],
   "summary": "Change… on the Default row of Storage per player: the value is a live platform default, so the dialog names every product with Cloud Sync on and who in each uses the default, then confirms with a passkey.",
   "compare": [
@@ -29,12 +25,7 @@
         "issue": "The dialog repeated itself and the footer pattern differed on phone.",
         "resolution": "Title names the scope (\"in every product\"); intro and footer merged into one sentence; removed the passkey line and added a fingerprint icon to the button; one phone footer pattern.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "issue": "Neutral primary on dialog commit buttons (UX4)",

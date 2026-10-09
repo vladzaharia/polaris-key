@@ -40,7 +40,8 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
 
   The body is a size container named `screen`, and every `.card` is a size container too. In a
   screen's own style block use `@container screen (…)` for the page and `@container (max-width:
-  559px)` for a row inside a card, never `@media`.
+559px)` for a row inside a card, never `@media`.
+
 - **Weights.** Rubik at 400 and 700 only, as the console draws it. Radii: controls 6px, tiles
   10–14px, cards 18px, pills fully round.
 - **Pills mean attention.** A pill is an issue or a neutral fact, always with an icon or a dot. A
@@ -71,18 +72,18 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
 
 ## Tokens
 
-| Group      | Tokens                                                                                                                                                  |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Surfaces   | `--pk-surface-page` `-raised` `-sunken` `-overlay`                                                                                                     |
-| Text       | `--pk-text-strong` `-default` `-muted` `-subtle` `--pk-text-on-accent`                                                                                 |
-| Lines      | `--mk-line` (hairlines), `--pk-border-strong` (controls)                                                                                               |
-| Tone       | `--pk-success` `--pk-warning` `--pk-danger` `--pk-info`, each with `-subtle` `-border` `-on`; `--pk-signed*`                                            |
-| Accent     | `--pk-accent` `-fg` (text on the page) `-on` (text on the accent) `-subtle`; per service `--pk-service-<name>` with the same suffixes                    |
+| Group      | Tokens                                                                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------- | ------- | ----- | --------------------------------------------------------------- |
+| Surfaces   | `--pk-surface-page` `-raised` `-sunken` `-overlay`                                                                                                         |
+| Text       | `--pk-text-strong` `-default` `-muted` `-subtle` `--pk-text-on-accent`                                                                                     |
+| Lines      | `--mk-line` (hairlines), `--pk-border-strong` (controls)                                                                                                   |
+| Tone       | `--pk-success` `--pk-warning` `--pk-danger` `--pk-info`, each with `-subtle` `-border` `-on`; `--pk-signed*`                                               |
+| Accent     | `--pk-accent` `-fg` (text on the page) `-on` (text on the accent) `-subtle`; per service `--pk-service-<name>` with the same suffixes                      |
 | Kit only   | `--mk-fill` (hover, secondary button), `--mk-fill-strong`, `--mk-card-shadow`, `--mk-pop-shadow`, `--mk-scrim`, `--mk-code-*`, `--mk-syn-*`, `--mk-term-*` |
-| Type       | `--pk-font-sans`, `--pk-font-mono`                                                                                                                      |
-| Radius     | `--pk-radius-sm` `-md` `-lg` `-xl` `-full`                                                                                                              |
-| Elevation  | `--pk-elevation-1` … `-3`                                                                                                                               |
-| In-app kit | `--pk-kit-*` and the platform presets `data-pk-platform="ios|macos|android|windows|gnome|godot"` (packages/brand/css/kit.css) for `surface: "kit"` screens |
+| Type       | `--pk-font-sans`, `--pk-font-mono`                                                                                                                         |
+| Radius     | `--pk-radius-sm` `-md` `-lg` `-xl` `-full`                                                                                                                 |
+| Elevation  | `--pk-elevation-1` … `-3`                                                                                                                                  |
+| In-app kit | `--pk-kit-*` and the platform presets `data-pk-platform="ios                                                                                               | macos | android | windows | gnome | godot"`(packages/brand/css/kit.css) for`surface: "kit"` screens |
 
 ## Spacing and layout
 
@@ -95,19 +96,19 @@ own, and they show every size.
 A 4px base. Every `margin`, `padding` and `gap` in `mockup.css` is one of these tokens (or `0`,
 `auto`, or a 1px hairline overlap); nothing in the kit is off the scale.
 
-| Token      | px  | Use                                                                     |
-| ---------- | --- | ----------------------------------------------------------------------- |
+| Token      | px  | Use                                                                      |
+| ---------- | --- | ------------------------------------------------------------------------ |
 | `--sp-0-5` | 2   | Micro, inside a control only (segmented, nav list). Never between blocks |
 | `--sp-1`   | 4   | A title to its one-line text; icon to label in a pill or filter          |
-| `--sp-2`   | 8   | Icon to label (16px glyphs); label → control → help; buttons in a row   |
-| `--sp-3`   | 12  | Items in a row (avatar → text); crumbs → title                          |
-| `--sp-4`   | 16  | Cards in a grid; section title → content; card head and band padding    |
+| `--sp-2`   | 8   | Icon to label (16px glyphs); label → control → help; buttons in a row    |
+| `--sp-3`   | 12  | Items in a row (avatar → text); crumbs → title                           |
+| `--sp-4`   | 16  | Cards in a grid; section title → content; card head and band padding     |
 | `--sp-5`   | 20  | Tile padding (stats, product cards); fields in a form                    |
-| `--sp-6`   | 24  | Card inset (`--card-px`, `--card-pad`); dialog padding                  |
-| `--sp-8`   | 32  | Between page sections (`--section-gap`); page gutter                    |
-| `--sp-10`  | 40  | Between two meters side by side; empty-state padding                    |
-| `--sp-12`  | 48  | Board padding                                                           |
-| `--sp-16`  | 64  | Page bottom                                                             |
+| `--sp-6`   | 24  | Card inset (`--card-px`, `--card-pad`); dialog padding                   |
+| `--sp-8`   | 32  | Between page sections (`--section-gap`); page gutter                     |
+| `--sp-10`  | 40  | Between two meters side by side; empty-state padding                     |
+| `--sp-12`  | 48  | Board padding                                                            |
+| `--sp-16`  | 64  | Page bottom                                                              |
 
 Negative space is `calc(-1 * var(--sp-N))`; a hanging indent is the glyph plus its gap, e.g.
 `calc(var(--card-media) + var(--sp-3))`; centring a box on a line is computed from the two, e.g.
@@ -115,39 +116,39 @@ Negative space is `calc(-1 * var(--sp-N))`; a hanging indent is the glyph plus i
 
 ### Layout tokens
 
-| Token                    | Wide    | Desktop | Tablet  | Phone   | What it sets                                              |
-| ------------------------ | ------- | ------- | ------- | ------- | --------------------------------------------------------- |
+| Token                    | Wide    | Desktop | Tablet  | Phone   | What it sets                                                                |
+| ------------------------ | ------- | ------- | ------- | ------- | --------------------------------------------------------------------------- |
 | `--sidebar-w`            | 240     | 240     | 56      | 0       | The console sidebar (tablet: the icon rail; phone and 640–1023: the drawer) |
-| `--page-max`             | 1760    | 1760    | 1760    | 1760    | The widest `.page` gets; it centres beyond that           |
-| `--aside-w`              | 400     | –       | –       | –       | The aside column of `.page.columns`                       |
-| `--page-gutter`          | 32      | 32      | 24      | 16      | `.page` side padding (24 from 640 to 1279)                |
-| `--page-top` / `-bottom` | 32 / 64 | 32 / 64 | 32 / 64 | 20 / 40 | `.page` top and bottom (top 24 from 640 to 1023)          |
-| `--section-gap`          | 32      | 32      | 32      | 24      | Between page-level blocks, and between main and aside     |
-| `--section-head-gap`     | 16      | 16      | 16      | 12      | A section title to its content                            |
-| `--grid-gap`             | 16      | 16      | 16      | 12      | Between cards and tiles in a grid                         |
-| `--card-px`              | 24      | 24      | 24      | 16      | A card's inline edge: head, body, rows, table cells, foot |
-| `--card-pad`             | 24      | 24      | 24      | 16      | A card body's padding (`.card.compact`: 16)               |
-| `--card-media`           | 28      | 28      | 28      | 28      | The one media column: task marks, list avatars, row tiles, head tiles |
-| `--tile-pad`             | 20      | 20      | 20      | 16      | Stat tiles and product cards                              |
-| `--row-h`                | 56      | 56      | 56      | 56      | Table rows, list rows, attention rows, card rows          |
-| `--row-h-compact`        | 40      | 40      | 40      | 40      | `.table.compact`, `.list.compact`                         |
-| `--row-h-head`           | 40      | 40      | 40      | 40      | Table header (56 when it holds a `.meter-head`)           |
+| `--page-max`             | 1760    | 1760    | 1760    | 1760    | The widest `.page` gets; it centres beyond that                             |
+| `--aside-w`              | 400     | –       | –       | –       | The aside column of `.page.columns`                                         |
+| `--page-gutter`          | 32      | 32      | 24      | 16      | `.page` side padding (24 from 640 to 1279)                                  |
+| `--page-top` / `-bottom` | 32 / 64 | 32 / 64 | 32 / 64 | 20 / 40 | `.page` top and bottom (top 24 from 640 to 1023)                            |
+| `--section-gap`          | 32      | 32      | 32      | 24      | Between page-level blocks, and between main and aside                       |
+| `--section-head-gap`     | 16      | 16      | 16      | 12      | A section title to its content                                              |
+| `--grid-gap`             | 16      | 16      | 16      | 12      | Between cards and tiles in a grid                                           |
+| `--card-px`              | 24      | 24      | 24      | 16      | A card's inline edge: head, body, rows, table cells, foot                   |
+| `--card-pad`             | 24      | 24      | 24      | 16      | A card body's padding (`.card.compact`: 16)                                 |
+| `--card-media`           | 28      | 28      | 28      | 28      | The one media column: task marks, list avatars, row tiles, head tiles       |
+| `--tile-pad`             | 20      | 20      | 20      | 16      | Stat tiles and product cards                                                |
+| `--row-h`                | 56      | 56      | 56      | 56      | Table rows, list rows, attention rows, card rows                            |
+| `--row-h-compact`        | 40      | 40      | 40      | 40      | `.table.compact`, `.list.compact`                                           |
+| `--row-h-head`           | 40      | 40      | 40      | 40      | Table header (56 when it holds a `.meter-head`)                             |
 
 The values per size come from the tokens changing (`@container screen`), so no component has its
 own padding per size.
 
 ### Four sizes: how the primitives reflow
 
-| Primitive            | Wide ≥ 1600                                   | Desktop 1280–1599 | Tablet 1024–1279                        | Phone < 640                              |
-| -------------------- | --------------------------------------------- | ----------------- | --------------------------------------- | ---------------------------------------- |
-| Console frame        | 240 sidebar                                   | 240 sidebar       | 56px icon rail (words hidden, 40×40 items, a feature group is its service glyph) | menu drawer (also 640–1023) |
-| `.page`              | `.columns`: main + 400 aside; max 1760        | one column        | one column                              | one column                               |
-| `.page-head`         | one line                                      | one line          | one line                                | title row + its one icon action; freshness under the h1; each text action full width |
-| `.mk-tiles`, `.stats`| min 200, a short last row fills               | same              | same                                    | two up, a short last row fills           |
-| `.stats.strip`       | one row of cells (min 160)                    | one row           | one row at 920                          | 56px rows                                |
-| `.product-cards`     | min 300 (three at 1184)                       | three             | two plus one                            | one column, pips beside the name         |
-| `.mk-grid-N`         | N                                             | N                 | N (`-4`: two below 1024)                | one column                               |
-| Rows in a card       | stacked in the aside (a card under 560px)     | one line          | one line, text wraps                    | stacked                                  |
+| Primitive             | Wide ≥ 1600                               | Desktop 1280–1599 | Tablet 1024–1279                                                                 | Phone < 640                                                                          |
+| --------------------- | ----------------------------------------- | ----------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Console frame         | 240 sidebar                               | 240 sidebar       | 56px icon rail (words hidden, 40×40 items, a feature group is its service glyph) | menu drawer (also 640–1023)                                                          |
+| `.page`               | `.columns`: main + 400 aside; max 1760    | one column        | one column                                                                       | one column                                                                           |
+| `.page-head`          | one line                                  | one line          | one line                                                                         | title row + its one icon action; freshness under the h1; each text action full width |
+| `.mk-tiles`, `.stats` | min 200, a short last row fills           | same              | same                                                                             | two up, a short last row fills                                                       |
+| `.stats.strip`        | one row of cells (min 160)                | one row           | one row at 920                                                                   | 56px rows                                                                            |
+| `.product-cards`      | min 300 (three at 1184)                   | three             | two plus one                                                                     | one column, pips beside the name                                                     |
+| `.mk-grid-N`          | N                                         | N                 | N (`-4`: two below 1024)                                                         | one column                                                                           |
+| Rows in a card        | stacked in the aside (a card under 560px) | one line          | one line, text wraps                                                             | stacked                                                                              |
 
 **Narrow cards.** A `.card` is a size container. Under 560px of card width (the 400px aside, a
 half-width grid cell, a drawer, a phone) its rows take their stacked layouts with no screen code:
@@ -159,17 +160,38 @@ element at the same point (a band that replaces a table header's counts).
 ### Primitives: which to use where
 
 ```html
-<div class="page">…</div>                         <!-- the page container: gutters, --section-gap between children, max 1760 -->
-<div class="page columns">…<section class="card aside span-2">…</section>…</div>   <!-- wide: main + aside -->
-<section class="section">                         <!-- a titled group: head, then content --section-head-gap below -->
-  <div class="section-head"><div><h2>Features</h2><p>…</p></div><a class="btn link" href="#">Manage features</a></div>
+<div class="page">…</div>
+<!-- the page container: gutters, --section-gap between children, max 1760 -->
+<div class="page columns">
+  …
+  <section class="card aside span-2">…</section>
+  …
+</div>
+<!-- wide: main + aside -->
+<section class="section">
+  <!-- a titled group: head, then content --section-head-gap below -->
+  <div class="section-head">
+    <div>
+      <h2>Features</h2>
+      <p>…</p>
+    </div>
+    <a class="btn link" href="#">Manage features</a>
+  </div>
   …
 </section>
-<div class="mk-stack-4">…</div>                   <!-- a column: 1 2 3 4 5 6 8 10 12 -->
-<div class="mk-cluster">…</div>                   <!-- a wrapping row, gap 8; -1 -3 -4 -6; .baseline; .no-wrap -->
-<div class="mk-split"><div>title block</div><div>actions</div></div>   <!-- first baselines aligned; .center -->
-<div class="mk-tiles">…</div>                     <!-- equal tiles, min --tile-min (200); .wide (300); 2-up on phone -->
-<div class="mk-grid-2">…</div>                    <!-- fixed columns: -2 -3 -4; one column on phone -->
+<div class="mk-stack-4">…</div>
+<!-- a column: 1 2 3 4 5 6 8 10 12 -->
+<div class="mk-cluster">…</div>
+<!-- a wrapping row, gap 8; -1 -3 -4 -6; .baseline; .no-wrap -->
+<div class="mk-split">
+  <div>title block</div>
+  <div>actions</div>
+</div>
+<!-- first baselines aligned; .center -->
+<div class="mk-tiles">…</div>
+<!-- equal tiles, min --tile-min (200); .wide (300); 2-up on phone -->
+<div class="mk-grid-2">…</div>
+<!-- fixed columns: -2 -3 -4; one column on phone -->
 ```
 
 - **Page:** `.page` > `.page-head`, then cards and sections. Never put a wrapper with its own
@@ -195,34 +217,34 @@ element at the same point (a band that replaces a table header's counts).
 
 ### Components on the scale
 
-| Component      | Spacing                                                                                       |
-| -------------- | --------------------------------------------------------------------------------------------- |
-| Page header    | crumbs 12 above; title row 36px high (= button height, so title and actions centre on one line); description 8 below; `.page-icon` spans both; actions gap 8 |
-| Section        | title (18/24) → content 16; title → its description 4                                          |
-| Card           | head 16 × 24 (56 high); body 24; `.tight` band 16 × 24; rows 8 × 24, min 56; foot 12 × 24; hairlines between parts. A count sits 8 after the title; the head's right side holds actions only |
-| Media column   | 28 (`--card-media`): task marks (20, centred), list avatars, row tiles, head tiles. Text after it starts at card-px + 28 + 12 |
-| Table          | header 40 (56 with a `.meter-head`); rows 56 (compact 40); cells 8 × 16, first and last cell 24 to line up with the card head |
-| Stat tile      | padding 20; label (13/20) → value (24/32) 8; value → meta (12/16) 4                          |
-| List row       | 28px avatar or icon · 12 · text · trailing meta; min 56                                       |
-| Form field     | label → control 8 → help 8; fields 20 apart (`.form`)                                         |
-| Dialog         | head 24 (close button 16 from the corner); body 12 under the title, 24 sides and bottom; foot 16 × 24 |
-| Pill / count   | 24 high, 8 sides, icon 4 from the word (`.sm` 20 high); tone counts are filled subtle chips    |
-| Links          | `.link` and `.btn.link` have a 24px hit height (a link inside a sentence keeps the line's)     |
-| Status words   | 16px glyph, 8 to the word; a meta line under it hangs at 24 (`.status-stack`)                |
-| Controls       | 36 high (`.sm` 32, `.xs` 28); 16 sides (`.sm` 12, `.xs` 8); icon 8 from the label; in a toolbar the field is 32, like the facets |
+| Component    | Spacing                                                                                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page header  | crumbs 12 above; title row 36px high (= button height, so title and actions centre on one line); description 8 below; `.page-icon` spans both; actions gap 8                                 |
+| Section      | title (18/24) → content 16; title → its description 4                                                                                                                                        |
+| Card         | head 16 × 24 (56 high); body 24; `.tight` band 16 × 24; rows 8 × 24, min 56; foot 12 × 24; hairlines between parts. A count sits 8 after the title; the head's right side holds actions only |
+| Media column | 28 (`--card-media`): task marks (20, centred), list avatars, row tiles, head tiles. Text after it starts at card-px + 28 + 12                                                                |
+| Table        | header 40 (56 with a `.meter-head`); rows 56 (compact 40); cells 8 × 16, first and last cell 24 to line up with the card head                                                                |
+| Stat tile    | padding 20; label (13/20) → value (24/32) 8; value → meta (12/16) 4                                                                                                                          |
+| List row     | 28px avatar or icon · 12 · text · trailing meta; min 56                                                                                                                                      |
+| Form field   | label → control 8 → help 8; fields 20 apart (`.form`)                                                                                                                                        |
+| Dialog       | head 24 (close button 16 from the corner); body 12 under the title, 24 sides and bottom; foot 16 × 24                                                                                        |
+| Pill / count | 24 high, 8 sides, icon 4 from the word (`.sm` 20 high); tone counts are filled subtle chips                                                                                                  |
+| Links        | `.link` and `.btn.link` have a 24px hit height (a link inside a sentence keeps the line's)                                                                                                   |
+| Status words | 16px glyph, 8 to the word; a meta line under it hangs at 24 (`.status-stack`)                                                                                                                |
+| Controls     | 36 high (`.sm` 32, `.xs` 28); 16 sides (`.sm` 12, `.xs` 8); icon 8 from the label; in a toolbar the field is 32, like the facets                                                             |
 
 ### Type scale
 
-| Step     | Size / line | Weight | Where                                                     |
-| -------- | ----------- | ------ | --------------------------------------------------------- |
-| Page     | 28/36 (phone 24/32) | 700, -0.02em | `.page-head h1`, `.type-page`               |
-| Block    | 18/24       | 700, -0.01em | Every page-level block title: `.section-head h2`, the h2 of a card straight on `.page` (or in its aside), dialog and wizard titles, `.type-section` |
-| Stat     | 24/32       | 700    | `.stat-value`                                             |
-| Card     | 16/24       | 700    | A nested card's title (in a section, grid, drawer or card), product card and drawer titles, `.type-card` |
-| Body     | 14/20       | 400 (700 for emphasis) | Everything else, `.type-body`               |
-| Small    | 13/20       | 400    | Descriptions, hints, cell subs, status words, `.type-small` |
-| Meta     | 12/16       | 400    | Times, versions, counts, `.meta`, `.type-meta`; `.eyebrow` is 12/16 700 uppercase |
-| Mono     | 13/20       | 400    | Ids, slugs in headings, code, `.type-mono`                  |
+| Step  | Size / line         | Weight                 | Where                                                                                                                                               |
+| ----- | ------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page  | 28/36 (phone 24/32) | 700, -0.02em           | `.page-head h1`, `.type-page`                                                                                                                       |
+| Block | 18/24               | 700, -0.01em           | Every page-level block title: `.section-head h2`, the h2 of a card straight on `.page` (or in its aside), dialog and wizard titles, `.type-section` |
+| Stat  | 24/32               | 700                    | `.stat-value`                                                                                                                                       |
+| Card  | 16/24               | 700                    | A nested card's title (in a section, grid, drawer or card), product card and drawer titles, `.type-card`                                            |
+| Body  | 14/20               | 400 (700 for emphasis) | Everything else, `.type-body`                                                                                                                       |
+| Small | 13/20               | 400                    | Descriptions, hints, cell subs, status words, `.type-small`                                                                                         |
+| Meta  | 12/16               | 400                    | Times, versions, counts, `.meta`, `.type-meta`; `.eyebrow` is 12/16 700 uppercase                                                                   |
+| Mono  | 13/20               | 400                    | Ids, slugs in headings, code, `.type-mono`                                                                                                          |
 
 Tokens: `--fs-page` `--lh-page`, `--fs-section` `--lh-section`, `--fs-card`, `--fs-stat`,
 `--fs-body`, `--fs-small`, `--fs-meta`, `--fs-mono` (each with its `--lh-*`). **Peers share a step;
@@ -246,11 +268,14 @@ grep -nE '^\s*(margin|padding|gap|row-gap|column-gap)[a-z-]*\s*:' docs/design/mo
 The older helpers, on the same scale. New screens use the primitives above.
 
 ```html
-<div class="row gap-2">…</div>            <!-- flex row, centred; .top .wrap .between -->
-<div class="stack gap-3">…</div>          <!-- flex column -->
-<div class="grid cols-3">…</div>          <!-- .cols-2 .cols-3 .cols-4 .auto (one column on phone) -->
-<span class="grow"></span> <span class="ml-auto"></span> <span class="mt-4"></span>
-<span class="muted small">Updated 1 min ago</span>
+<div class="row gap-2">…</div>
+<!-- flex row, centred; .top .wrap .between -->
+<div class="stack gap-3">…</div>
+<!-- flex column -->
+<div class="grid cols-3">…</div>
+<!-- .cols-2 .cols-3 .cols-4 .auto (one column on phone) -->
+<span class="grow"></span> <span class="ml-auto"></span>
+<span class="mt-4"></span> <span class="muted small">Updated 1 min ago</span>
 ```
 
 Gaps `.gap-0` `-1` `-2` `-3` `-4` `-6` `-8` (0–32px); margins `.mt-1` … `.mt-6`. Text `.strong`
@@ -261,13 +286,20 @@ Gaps `.gap-0` `-1` `-2` `-3` `-4` `-6` `-8` (0–32px); margins `.mt-1` … `.mt
 ## Icons and identity
 
 ```html
-<i class="ic ic-key-round"></i>              <!-- 16px, currentColor; .xs .sm .lg .xl .xxl -->
-<i class="svc" data-service="license"></i>   <!-- the service glyph in its accent; .sm .lg .xl -->
-<i class="pk-mark"></i>                      <!-- the Pinned K for the theme; .sm .lg -->
-<span class="logo" data-product="djdl"></span>   <!-- product tile: djdl, diceroll, polaris-key -->
-<span class="logo">T</span>                  <!-- any other product: a monogram; .xs .sm .lg .xl -->
-<div class="art" data-product="diceroll"></div>  <!-- portal cover art, 16:7 -->
-<span class="avatar">MF</span>               <!-- .sm .lg .violet -->
+<i class="ic ic-key-round"></i>
+<!-- 16px, currentColor; .xs .sm .lg .xl .xxl -->
+<i class="svc" data-service="license"></i>
+<!-- the service glyph in its accent; .sm .lg .xl -->
+<i class="pk-mark"></i>
+<!-- the Pinned K for the theme; .sm .lg -->
+<span class="logo" data-product="djdl"></span>
+<!-- product tile: djdl, diceroll, polaris-key -->
+<span class="logo">T</span>
+<!-- any other product: a monogram; .xs .sm .lg .xl -->
+<div class="art" data-product="diceroll"></div>
+<!-- portal cover art, 16:7 -->
+<span class="avatar">MF</span>
+<!-- .sm .lg .violet -->
 ```
 
 `.svc` reads `data-service` from itself or any ancestor. Service glyphs: license key-round, config
@@ -306,26 +338,47 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
 ```html
 <div class="console" data-service="core">
   <header class="topbar">
-    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
-    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
-    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <button class="btn ghost icon menu-btn" aria-label="Menu">
+      <i class="ic ic-menu lg"></i>
+    </button>
+    <a class="brand" href="#"
+      ><i class="pk-mark"></i><span>Polaris Key</span></a
+    >
+    <div class="topbar-search">
+      <i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd>
+    </div>
     <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
-    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <button class="btn ghost icon theme-btn" aria-label="Theme">
+      <i class="ic ic-moon"></i>
+    </button>
     <span class="avatar violet">AL</span>
   </header>
   <nav class="sidebar" aria-label="DJDL">
     <div class="ctx">
       <span class="logo sm" data-product="djdl"></span>
-      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <span class="ctx-text"
+        ><span class="ctx-name">DJDL</span
+        ><span class="ctx-sub mono">djdl</span></span
+      >
       <i class="ic ic-chevrons-up-down"></i>
     </div>
-    <a class="nav-item active" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item active" href="#"
+      ><i class="ic ic-layout-dashboard"></i
+      ><span class="nav-text">Overview</span></a
+    >
     <div class="nav-group" data-service="license">
-      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
-      <a class="nav-item" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">240</span></a>
+      <button class="nav-label" aria-expanded="true">
+        Licensing<i class="ic ic-chevron-down sm"></i>
+      </button>
+      <a class="nav-item" href="#"
+        ><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span
+        ><span class="count">240</span></a
+      >
     </div>
     <div class="sidebar-foot">
-      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"
+        ><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a
+      >
     </div>
   </nav>
   <main class="main"><div class="page">…</div></main>
@@ -353,13 +406,20 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
 
 ```html
 <header class="page-head">
-  <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Offers</nav>
-  <div class="page-heading"><h1>Licenses</h1><span class="count">240</span></div>
+  <nav class="crumbs">
+    <a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Offers
+  </nav>
+  <div class="page-heading">
+    <h1>Licenses</h1>
+    <span class="count">240</span>
+  </div>
   <!-- No .page-sub by default. A subtitle is allowed only for live state shown nowhere else on
        the page (EXPERIENCE §2), never to repeat a count, a status or the title. -->
   <div class="page-actions">
     <span class="freshness">Updated 1 min ago</span>
-    <button class="btn ghost icon" aria-label="Refresh, updated 1 min ago"><i class="ic ic-refresh-cw"></i></button>
+    <button class="btn ghost icon" aria-label="Refresh, updated 1 min ago">
+      <i class="ic ic-refresh-cw"></i>
+    </button>
     <button class="btn primary"><i class="ic ic-plus"></i>New license</button>
   </div>
 </header>
@@ -367,7 +427,10 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
 <!-- a record with its identity: the icon spans the title and the identity line -->
 <header class="page-head">
   <div class="page-icon"><span class="logo lg" data-product="djdl"></span></div>
-  <div class="page-heading"><h1>DJDL</h1><span class="slug">djdl</span></div>
+  <div class="page-heading">
+    <h1>DJDL</h1>
+    <span class="slug">djdl</span>
+  </div>
   <p class="page-sub">A DJ app for macOS and Windows</p>
   <div class="page-actions">…</div>
 </header>
@@ -383,27 +446,49 @@ action on phone; more go in its ⋯ menu.
 
 ```html
 <section class="section">
-  <div class="section-head"><div class="mk-cluster baseline"><h2>Products</h2><span class="count">3</span></div><button class="btn outline sm">…</button></div>
-  …
-</section>
-
-<section class="card">
-  <div class="card-head">
-    <div class="title mk-cluster baseline"><h2>Needs attention</h2><span class="count danger">3</span></div>
+  <div class="section-head">
+    <div class="mk-cluster baseline">
+      <h2>Products</h2>
+      <span class="count">3</span>
+    </div>
+    <button class="btn outline sm">…</button>
   </div>
   …
 </section>
 
 <section class="card">
   <div class="card-head">
-    <span class="icon-tile" data-service="license"><i class="svc"></i></span>   <!-- only when it names the subject -->
-    <div class="title"><h2>Licensing</h2><p>Gate DJDL on a license.</p></div>
+    <div class="title mk-cluster baseline">
+      <h2>Needs attention</h2>
+      <span class="count danger">3</span>
+    </div>
+  </div>
+  …
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <span class="icon-tile" data-service="license"><i class="svc"></i></span>
+    <!-- only when it names the subject -->
+    <div class="title">
+      <h2>Licensing</h2>
+      <p>Gate DJDL on a license.</p>
+    </div>
     <button class="btn outline sm">Change</button>
   </div>
-  <div class="card-body">…</div>            <!-- .tight: a 16px band (a meter row, a summary) -->
-  <div class="card-rows"><div class="card-row">…</div><div class="card-row">…</div></div>
-  <div class="card-split wide-end"><div>…</div><div>…</div></div>   <!-- two panes, stacks on phone -->
-  <div class="card-foot"><button class="btn primary">Save</button></div>   <!-- .start .between -->
+  <div class="card-body">…</div>
+  <!-- .tight: a 16px band (a meter row, a summary) -->
+  <div class="card-rows">
+    <div class="card-row">…</div>
+    <div class="card-row">…</div>
+  </div>
+  <div class="card-split wide-end">
+    <div>…</div>
+    <div>…</div>
+  </div>
+  <!-- two panes, stacks on phone -->
+  <div class="card-foot"><button class="btn primary">Save</button></div>
+  <!-- .start .between -->
 </section>
 ```
 
@@ -421,17 +506,35 @@ Card variants: `.compact` (16 inset) `.tile` `.flat` `.sunken` `.danger` `.accen
   ready's "8 of 9 done").
 
 ```html
-<div class="card-rows">                                  <!-- list rows: avatar or icon · text · meta -->
-  <div class="list-row"><span class="avatar">MF</span>
-    <span class="list-row-text"><strong>Mara Fennick</strong> activated a MacBook Pro</span>
-    <span class="list-row-meta">Today, 10:42</span></div>
+<div class="card-rows">
+  <!-- list rows: avatar or icon · text · meta -->
+  <div class="list-row">
+    <span class="avatar">MF</span>
+    <span class="list-row-text"
+      ><strong>Mara Fennick</strong> activated a MacBook Pro</span
+    >
+    <span class="list-row-meta">Today, 10:42</span>
+  </div>
 </div>
-<div class="card-foot between"><span class="mk-cluster no-wrap type-small muted"><i class="ic ic-code-xml"></i><span>Last seen 4 min ago · Swift SDK 2.1.0 on macOS arm64</span></span>
-  <button class="btn ghost sm"><i class="ic ic-eye-off"></i>Hide</button></div>
+<div class="card-foot between">
+  <span class="mk-cluster no-wrap type-small muted"
+    ><i class="ic ic-code-xml"></i
+    ><span>Last seen 4 min ago · Swift SDK 2.1.0 on macOS arm64</span></span
+  >
+  <button class="btn ghost sm"><i class="ic ic-eye-off"></i>Hide</button>
+</div>
 <!-- done steps: one disclosure row at every size; no eyebrow, no count (the head's meter has it) -->
 <div class="done-list">
-  <button class="btn link disclosure" aria-expanded="false" aria-controls="done"><i class="ic ic-chevron-right"></i>Show done steps</button>
-  <div class="done-items" id="done" hidden><span><i class="ic ic-check"></i>Keyring configured</span>…</div>
+  <button
+    class="btn link disclosure"
+    aria-expanded="false"
+    aria-controls="done"
+  >
+    <i class="ic ic-chevron-right"></i>Show done steps
+  </button>
+  <div class="done-items" id="done" hidden>
+    <span><i class="ic ic-check"></i>Keyring configured</span>…
+  </div>
 </div>
 ```
 
@@ -441,16 +544,30 @@ the text column.
 
 ```html
 <div class="stats">
-  <div class="stat"><span class="stat-label"><i class="ic ic-key-round sm"></i>Licenses</span>
-    <span class="stat-value">240</span><span class="stat-foot"><span class="delta-up">+12</span> this week</span></div>
+  <div class="stat">
+    <span class="stat-label"><i class="ic ic-key-round sm"></i>Licenses</span>
+    <span class="stat-value">240</span
+    ><span class="stat-foot"><span class="delta-up">+12</span> this week</span>
+  </div>
 </div>
-<dl class="dl"><dt>Tier</dt><dd>Standard</dd></dl>          <!-- .dl.cols: <div><dt/><dd/></div> in columns -->
+<dl class="dl">
+  <dt>Tier</dt>
+  <dd>Standard</dd>
+</dl>
+<!-- .dl.cols: <div><dt/><dd/></div> in columns -->
 
 <!-- stats inside a card: cells share the card surface, a hairline between them; each links home -->
 <div class="stats strip">
-  <div class="stat" data-service="config"><span class="stat-label"><span class="glyph issue"><i class="svc"></i></span>
-    <a href="#" aria-label="Managed config: 1 needs attention">Managed config</a></span>
-    <span class="stat-value">v4 <small>catalog</small></span><span class="stat-foot">12 settings · 3 secrets</span></div>
+  <div class="stat" data-service="config">
+    <span class="stat-label"
+      ><span class="glyph issue"><i class="svc"></i></span>
+      <a href="#" aria-label="Managed config: 1 needs attention"
+        >Managed config</a
+      ></span
+    >
+    <span class="stat-value">v4 <small>catalog</small></span
+    ><span class="stat-foot">12 settings · 3 secrets</span>
+  </div>
 </div>
 ```
 
@@ -471,14 +588,32 @@ accessible name including the issue.
   <article class="product-card">
     <div class="product-card-head">
       <span class="logo" data-product="diceroll"></span>
-      <div class="grow"><h3><a href="#">Diceroll</a></h3>
-        <div class="mk-cluster-1"><span class="slug">diceroll</span><span class="pips" role="img" aria-label="Licensing, …, Ship builds: 2 need attention, …"><i class="pip" data-service="license"></i>…</span></div></div>
-      <span class="pill danger sm"><i class="ic ic-circle-x"></i>2 need attention</span>
+      <div class="grow">
+        <h3><a href="#">Diceroll</a></h3>
+        <div class="mk-cluster-1">
+          <span class="slug">diceroll</span
+          ><span
+            class="pips"
+            role="img"
+            aria-label="Licensing, …, Ship builds: 2 need attention, …"
+            ><i class="pip" data-service="license"></i>…</span
+          >
+        </div>
+      </div>
+      <span class="pill danger sm"
+        ><i class="ic ic-circle-x"></i>2 need attention</span
+      >
     </div>
-    <div class="product-card-svcs"><div class="svcs">
-      <a href="#" title="Licensing"><i class="svc" data-service="license"></i></a>
-      <a href="#" class="issue danger" title="Release: resync failed"><i class="svc" data-service="release"></i></a>
-    </div></div>
+    <div class="product-card-svcs">
+      <div class="svcs">
+        <a href="#" title="Licensing"
+          ><i class="svc" data-service="license"></i
+        ></a>
+        <a href="#" class="issue danger" title="Release: resync failed"
+          ><i class="svc" data-service="release"></i
+        ></a>
+      </div>
+    </div>
   </article>
 </div>
 ```
@@ -487,15 +622,21 @@ accessible name including the issue.
 
 ```html
 <button class="btn primary"><i class="ic ic-plus"></i>New product</button>
-<button class="btn">Cancel</button>                <!-- neutral fill -->
+<button class="btn">Cancel</button>
+<!-- neutral fill -->
 <button class="btn outline">Export CSV</button>
 <button class="btn ghost">Refresh</button>
-<button class="btn action"><i class="ic ic-rocket"></i>Promote to stable</button>
+<button class="btn action">
+  <i class="ic ic-rocket"></i>Promote to stable
+</button>
 <button class="btn danger">Revoke license</button>
 <button class="btn danger-outline">Remove device</button>
 <a class="btn link" href="#">Open Catalog<i class="ic ic-arrow-right"></i></a>
-<button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
-<div class="segmented"><span class="on">Cards</span><span>Table</span></div>   <!-- .sm -->
+<button class="btn ghost icon" aria-label="More">
+  <i class="ic ic-ellipsis"></i>
+</button>
+<div class="segmented"><span class="on">Cards</span><span>Table</span></div>
+<!-- .sm -->
 ```
 
 Sizes `.sm` `.xs` `.lg`; `.block` fills the width; states `.busy` `.disabled` (or `[disabled]`)
@@ -504,13 +645,25 @@ Sizes `.sm` `.xs` `.lg`; `.block` fills the width; states `.busy` `.disabled` (o
 ## Pills, status, counts
 
 ```html
-<span class="pill warning"><i class="ic ic-triangle-alert"></i>Expires in 9 days</span>
+<span class="pill warning"
+  ><i class="ic ic-triangle-alert"></i>Expires in 9 days</span
+>
 <span class="pill"><i class="dot"></i>System</span>
 <span class="status"><i class="ic ic-circle-check"></i>Live</span>
 <span class="count">240</span>
-<span class="id"><i class="ic ic-key-round"></i>lic_8KQ2…7HJM<button class="btn ghost icon xs" aria-label="Copy lic_8KQ2…7HJM"><i class="ic ic-copy"></i></button></span>
+<span class="id"
+  ><i class="ic ic-key-round"></i>lic_8KQ2…7HJM<button
+    class="btn ghost icon xs"
+    aria-label="Copy lic_8KQ2…7HJM"
+  >
+    <i class="ic ic-copy"></i></button
+></span>
 <span class="slug">diceroll</span>
-<span class="signed-badge"><i class="signed-glyph" aria-hidden="true"></i>Signed by diceroll-rk-2026</span>   <!-- SignedBadge -->
+<span class="signed-badge"
+  ><i class="signed-glyph" aria-hidden="true"></i>Signed by
+  diceroll-rk-2026</span
+>
+<!-- SignedBadge -->
 ```
 
 Pill tones `.warning` `.danger` `.info` `.success` `.accent` `.outline`, size `.sm`. `.pill.signed` is
@@ -524,17 +677,37 @@ Status tones `.warning` `.danger` `.info` `.muted` (default is success). Count t
 
 ```html
 <div class="toolbar">
-  <div class="search-field"><i class="ic ic-search"></i><span>Search licenses</span></div>
+  <div class="search-field">
+    <i class="ic ic-search"></i><span>Search licenses</span>
+  </div>
   <span class="filter on"><i class="ic ic-check"></i>Tier: Standard</span>
   <span class="filter"><i class="ic ic-plus"></i>Holder</span>
   <div class="end"><button class="btn outline sm">Export</button></div>
 </div>
 <div class="table-card">
   <table class="table">
-    <thead><tr><th>Holder</th><th class="num">Devices</th><th class="end"></th></tr></thead>
-    <tbody><tr><td><div class="cell-with-logo"><span class="avatar sm">MF</span>
-      <div><div class="cell-title">Mara Fennick</div><div class="cell-sub">mara@example.com</div></div></div></td>
-      <td class="num">2 of 5</td><td class="end"><span class="pill sm warning">…</span></td></tr></tbody>
+    <thead>
+      <tr>
+        <th>Holder</th>
+        <th class="num">Devices</th>
+        <th class="end"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="cell-with-logo">
+            <span class="avatar sm">MF</span>
+            <div>
+              <div class="cell-title">Mara Fennick</div>
+              <div class="cell-sub">mara@example.com</div>
+            </div>
+          </div>
+        </td>
+        <td class="num">2 of 5</td>
+        <td class="end"><span class="pill sm warning">…</span></td>
+      </tr>
+    </tbody>
   </table>
   <div class="table-foot">240 licenses<span class="ml-auto">1–50</span></div>
 </div>
@@ -548,19 +721,37 @@ own top rule).
 
 ```html
 <!-- a count per column goes in that column's header, never in a band of meters above the table -->
-<th><div class="meter-head"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span>
-  <span class="meta">2 of 5</span><div class="progress success" style="--v: 40%"></div></div></th>
+<th>
+  <div class="meter-head">
+    <span class="platform-name"><i class="ic ic-apple"></i>macOS</span>
+    <span class="meta">2 of 5</span>
+    <div class="progress success" style="--v: 40%"></div>
+  </div>
+</th>
 <!-- one state for a whole column: one top-aligned cell merged down the rows -->
-<td rowspan="5" class="hide-narrow"><div class="status-stack"><span class="unseen">Not seen yet</span><a class="link" href="#">Add the SDK</a></div></td>
+<td rowspan="5" class="hide-narrow">
+  <div class="status-stack">
+    <span class="unseen">Not seen yet</span
+    ><a class="link" href="#">Add the SDK</a>
+  </div>
+</td>
 <!-- a lead path and a lesser one, side by side; two lines still fit a 56px row -->
-<span class="links"><a class="link" href="#">Drop-in kit</a><a class="link quiet" href="#">Your own UI<i class="ic ic-arrow-up-right"></i></a></span>
+<span class="links"
+  ><a class="link" href="#">Drop-in kit</a
+  ><a class="link quiet" href="#"
+    >Your own UI<i class="ic ic-arrow-up-right"></i></a
+></span>
 ```
 
 Rows are one height (`--row-h`, 56; compact 40). A cell holds one line, or a title over one sub
 line: `.cell-title` + `.cell-sub`, or a status over its meta:
 
 ```html
-<td><div class="status-stack"><span class="verified">Verified</span><span class="meta">Oct 7, 10:42</span></div></td>
+<td>
+  <div class="status-stack">
+    <span class="verified">Verified</span><span class="meta">Oct 7, 10:42</span>
+  </div>
+</td>
 ```
 
 The meta (or a `.link`) hangs under the status word, past its glyph; a time never breaks.
@@ -575,22 +766,49 @@ title's edge instead of hanging past a media column the row doesn't have.
 ```html
 <div class="form">
   <div class="field">
-    <label class="field-label">Slug <span class="optional">Can't change later</span></label>
+    <label class="field-label"
+      >Slug <span class="optional">Can't change later</span></label
+    >
     <div class="input mono"><span class="grow">diceroll</span></div>
     <span class="hint">Lowercase letters, digits and hyphens.</span>
   </div>
-  <div class="field invalid"><div class="input">…</div>
-    <span class="error-text"><i class="ic ic-circle-x"></i>Say what went wrong and how to fix it.</span></div>
-  <div class="select"><span class="grow">Standard</span><i class="ic ic-chevrons-up-down"></i></div>
-  <div class="input"><span class="affix">$</span><span class="grow">4.99</span><span class="affix">USD</span></div>
+  <div class="field invalid">
+    <div class="input">…</div>
+    <span class="error-text"
+      ><i class="ic ic-circle-x"></i>Say what went wrong and how to fix
+      it.</span
+    >
+  </div>
+  <div class="select">
+    <span class="grow">Standard</span><i class="ic ic-chevrons-up-down"></i>
+  </div>
+  <div class="input">
+    <span class="affix">$</span><span class="grow">4.99</span
+    ><span class="affix">USD</span>
+  </div>
   <div class="textarea"><span class="ph">Placeholder</span></div>
 </div>
-<span class="check on"><span class="box"></span>Email the customer their key</span>   <!-- .mixed -->
+<span class="check on"
+  ><span class="box"></span>Email the customer their key</span
+>
+<!-- .mixed -->
 <span class="radio on"><span class="box"></span>Lifetime</span>
-<span class="switch on"></span>                                                  <!-- .disabled -->
-<div class="choices"><div class="choice on"><div class="choice-title">…</div><div class="choice-desc">…</div></div></div>
+<span class="switch on"></span>
+<!-- .disabled -->
+<div class="choices">
+  <div class="choice on">
+    <div class="choice-title">…</div>
+    <div class="choice-desc">…</div>
+  </div>
+</div>
 <span class="chip on"><i class="ic ic-apple"></i>iOS</span>
-<div class="setting-row"><div><div class="setting-title">…</div><div class="setting-desc">…</div></div><span class="switch on"></span></div>
+<div class="setting-row">
+  <div>
+    <div class="setting-title">…</div>
+    <div class="setting-desc">…</div>
+  </div>
+  <span class="switch on"></span>
+</div>
 ```
 
 Fields: `.input.readonly`, `.input.sm`, `.input.invalid`, `.ph` for placeholder text. Controls
@@ -599,33 +817,77 @@ are drawn, not real inputs. `.choice.disabled`, `.choice.nocheck`.
 ## Tabs
 
 ```html
-<nav class="tabs"><a class="tab active" href="#">Licenses <span class="count">240</span></a><a class="tab" href="#">Tiers</a></nav>
+<nav class="tabs">
+  <a class="tab active" href="#">Licenses <span class="count">240</span></a
+  ><a class="tab" href="#">Tiers</a>
+</nav>
 ```
 
 ## Wizard, steps and progress
 
 ```html
 <div class="wizard">
-  <div class="wizard-head"><ol class="stepper">
-    <li class="step done"><span class="step-mark"></span><span class="step-label">Repository</span></li>
-    <li class="step current"><span class="step-mark"></span><span class="step-label">What it's for<small>Features and platforms</small></span></li>
-    <li class="step"><span class="step-mark"></span><span class="step-label">Create</span></li>
-  </ol></div>
-  <div class="wizard-body"><h2>What is Diceroll for?</h2>…</div>
-  <div class="wizard-foot"><button class="btn ghost">Back</button><button class="btn primary">Continue</button></div>
+  <div class="wizard-head">
+    <ol class="stepper">
+      <li class="step done">
+        <span class="step-mark"></span
+        ><span class="step-label">Repository</span>
+      </li>
+      <li class="step current">
+        <span class="step-mark"></span
+        ><span class="step-label"
+          >What it's for<small>Features and platforms</small></span
+        >
+      </li>
+      <li class="step">
+        <span class="step-mark"></span><span class="step-label">Create</span>
+      </li>
+    </ol>
+  </div>
+  <div class="wizard-body">
+    <h2>What is Diceroll for?</h2>
+    …
+  </div>
+  <div class="wizard-foot">
+    <button class="btn ghost">Back</button
+    ><button class="btn primary">Continue</button>
+  </div>
 </div>
 
-<div class="tasks">                                  <!-- .padded inside a card -->
-  <div class="task done"><span class="task-mark"></span><div class="task-title">Signing key</div><div class="task-desc">…</div></div>
-  <div class="task"><span class="task-mark"></span><div class="task-title">Connect Steam</div><div class="task-desc">…</div>
-    <div class="task-action"><button class="btn outline sm">Connect</button></div></div>
+<div class="tasks">
+  <!-- .padded inside a card -->
+  <div class="task done">
+    <span class="task-mark"></span>
+    <div class="task-title">Signing key</div>
+    <div class="task-desc">…</div>
+  </div>
+  <div class="task">
+    <span class="task-mark"></span>
+    <div class="task-title">Connect Steam</div>
+    <div class="task-desc">…</div>
+    <div class="task-action">
+      <button class="btn outline sm">Connect</button>
+    </div>
+  </div>
 </div>
-<div class="progress success" style="--v: 40%"></div>   <!-- .warning; default accent -->
+<div class="progress success" style="--v: 40%"></div>
+<!-- .warning; default accent -->
 <div class="meter"><i class="on"></i><i class="on"></i><i></i></div>
-<div class="progress-stats"><div class="progress-stat">        <!-- labelled meters side by side, 40 apart; never above a table -->
-  <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="meta">2 of 5 verified</span></div>
-  <div class="progress success" style="--v: 40%"></div></div>…</div>
-<div class="progress-inline"><span>8 of 9 done</span><div class="progress success" style="--v: 88.9%"></div></div>
+<div class="progress-stats">
+  <div class="progress-stat">
+    <!-- labelled meters side by side, 40 apart; never above a table -->
+    <div class="progress-stat-head">
+      <span class="platform-name"><i class="ic ic-apple"></i>macOS</span
+      ><span class="meta">2 of 5 verified</span>
+    </div>
+    <div class="progress success" style="--v: 40%"></div>
+  </div>
+  …
+</div>
+<div class="progress-inline">
+  <span>8 of 9 done</span>
+  <div class="progress success" style="--v: 88.9%"></div>
+</div>
 ```
 
 Task states: none (to do), `.done`, `.waiting`, `.blocked`. The 20px mark is centred in the 28px
@@ -636,26 +898,40 @@ an empty or partial bar shows its full extent.
 ## Features and Integration
 
 ```html
-<span class="icon-tile" data-service="sync"><i class="svc"></i></span>   <!-- .sm .lg .muted -->
+<span class="icon-tile" data-service="sync"><i class="svc"></i></span>
+<!-- .sm .lg .muted -->
 <p class="eyebrow">In the console<span class="end">…</span></p>
 
 <div class="platform-checks">
   <p class="eyebrow">Verified</p>
-  <div class="platform-check"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span>
-    <span class="verified">Verified</span><span class="meta">Oct 7, 10:42</span></div>
-  <div class="platform-check"><span class="platform-name"><i class="ic ic-windows"></i>Windows</span>
-    <span class="unseen">Not seen yet</span></div>
+  <div class="platform-check">
+    <span class="platform-name"><i class="ic ic-apple"></i>macOS</span>
+    <span class="verified">Verified</span><span class="meta">Oct 7, 10:42</span>
+  </div>
+  <div class="platform-check">
+    <span class="platform-name"><i class="ic ic-windows"></i>Windows</span>
+    <span class="unseen">Not seen yet</span>
+  </div>
 </div>
 
-<section class="card feature-fold" data-service="config">     <!-- .add: dashed, for an off feature -->
+<section class="card feature-fold" data-service="config">
+  <!-- .add: dashed, for an off feature -->
   <span class="icon-tile sm"><i class="svc"></i></span>
-  <div class="title"><h2>Managed config</h2><span class="status"><i class="ic ic-circle-check"></i>Verified on macOS</span></div>
+  <div class="title">
+    <h2>Managed config</h2>
+    <span class="status"
+      ><i class="ic ic-circle-check"></i>Verified on macOS</span
+    >
+  </div>
   <button class="btn ghost sm">Show<i class="ic ic-chevron-down"></i></button>
 </section>
 
 <div class="setting-row with-icon" data-service="license">
   <span class="icon-tile"><i class="svc"></i></span>
-  <div><div class="setting-title">Licensing</div><div class="setting-desc">…</div></div>
+  <div>
+    <div class="setting-title">Licensing</div>
+    <div class="setting-desc">…</div>
+  </div>
   <span class="switch on"></span>
 </div>
 ```
@@ -677,14 +953,28 @@ walkthrough lives in the console.
 ## Callouts, attention, empty states
 
 ```html
-<div class="callout warning"><i class="ic ic-triangle-alert"></i>
-  <div class="grow"><div class="callout-title">The Play key expires on Oct 16</div><div class="callout-text">Uploads to Google Play stop then.</div></div>
-  <button class="btn outline sm">Replace key</button></div>
-<div class="attn-row"><span class="pill danger"><i class="ic ic-circle-x"></i>Error</span>
-  <span class="attn-subject"><span class="logo xs" data-product="diceroll"></span>Diceroll</span>
-  <span class="attn-text">Resync from repo failed: …</span><a class="link" href="#">Open error<i class="ic ic-arrow-right"></i></a></div>
-<div class="empty"><span class="empty-icon"><i class="svc"></i></span><h3>No offers yet</h3><p>…</p>
-  <div class="btn-row"><button class="btn primary">New offer</button></div></div>
+<div class="callout warning">
+  <i class="ic ic-triangle-alert"></i>
+  <div class="grow">
+    <div class="callout-title">The Play key expires on Oct 16</div>
+    <div class="callout-text">Uploads to Google Play stop then.</div>
+  </div>
+  <button class="btn outline sm">Replace key</button>
+</div>
+<div class="attn-row">
+  <span class="pill danger"><i class="ic ic-circle-x"></i>Error</span>
+  <span class="attn-subject"
+    ><span class="logo xs" data-product="diceroll"></span>Diceroll</span
+  >
+  <span class="attn-text">Resync from repo failed: …</span
+  ><a class="link" href="#">Open error<i class="ic ic-arrow-right"></i></a>
+</div>
+<div class="empty">
+  <span class="empty-icon"><i class="svc"></i></span>
+  <h3>No offers yet</h3>
+  <p>…</p>
+  <div class="btn-row"><button class="btn primary">New offer</button></div>
+</div>
 <span class="skeleton" style="width: 40%"></span> <span class="spinner"></span>
 ```
 
@@ -701,33 +991,68 @@ live in `.card-rows` or a card.
 ## Menus, tooltips, dialogs, drawers, toasts
 
 ```html
-<div class="popover-anchor"><button class="btn ghost icon">…</button>
-  <div class="popover right"><div class="menu">
-    <span class="menu-label">DJDL</span>
-    <a class="menu-item active" href="#"><i class="ic ic-pencil"></i>Edit license<span class="end"><kbd>E</kbd></span></a>
-    <div class="menu-sep"></div>
-    <a class="menu-item danger" href="#"><i class="ic ic-ban"></i>Revoke</a>
-  </div></div></div>
+<div class="popover-anchor">
+  <button class="btn ghost icon">…</button>
+  <div class="popover right">
+    <div class="menu">
+      <span class="menu-label">DJDL</span>
+      <a class="menu-item active" href="#"
+        ><i class="ic ic-pencil"></i>Edit license<span class="end"
+          ><kbd>E</kbd></span
+        ></a
+      >
+      <div class="menu-sep"></div>
+      <a class="menu-item danger" href="#"><i class="ic ic-ban"></i>Revoke</a>
+    </div>
+  </div>
+</div>
 <span class="tooltip">Managed config: 1 needs attention</span>
 
 <!-- last child of .console or .portal -->
-<div class="overlay"><div class="dialog">                 <!-- .sm .lg .danger -->
-  <div class="dialog-head"><h2>Turn off Licensing?</h2><button class="btn ghost icon sm"><i class="ic ic-x"></i></button></div>
-  <div class="dialog-body"><p>Commerce needs Licensing, so it turns off too, in the same change:</p>
-    <ul class="bullets"><li><strong>Commerce</strong>: …</li></ul></div>
-  <div class="dialog-foot"><button class="btn">Cancel</button><button class="btn danger">Turn off Licensing and Commerce</button></div>
-</div></div>
+<div class="overlay">
+  <div class="dialog">
+    <!-- .sm .lg .danger -->
+    <div class="dialog-head">
+      <h2>Turn off Licensing?</h2>
+      <button class="btn ghost icon sm"><i class="ic ic-x"></i></button>
+    </div>
+    <div class="dialog-body">
+      <p>Commerce needs Licensing, so it turns off too, in the same change:</p>
+      <ul class="bullets">
+        <li><strong>Commerce</strong>: …</li>
+      </ul>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn">Cancel</button
+      ><button class="btn danger">Turn off Licensing and Commerce</button>
+    </div>
+  </div>
+</div>
 
 <!-- typed confirmation -->
-<label class="field-label">Type <span class="confirm-word">diceroll</span> to confirm</label>
+<label class="field-label"
+  >Type <span class="confirm-word">diceroll</span> to confirm</label
+>
 <div class="input mono focus"><span class="grow">dicer</span></div>
 
-<div class="overlay end"><aside class="drawer"><div class="drawer-head"><h2>Device</h2></div>
-  <div class="drawer-body">…</div><div class="drawer-foot">…</div></aside></div>
+<div class="overlay end">
+  <aside class="drawer">
+    <div class="drawer-head"><h2>Device</h2></div>
+    <div class="drawer-body">…</div>
+    <div class="drawer-foot">…</div>
+  </aside>
+</div>
 
-<div class="toasts"><div class="toast success"><i class="ic ic-circle-check"></i>
-  <div class="grow"><div class="toast-title">Published catalog v4</div><div class="toast-text">…</div></div>
-  <button class="btn ghost xs">Undo</button></div></div>
+<div class="toasts">
+  <div class="toast success">
+    <i class="ic ic-circle-check"></i>
+    <div class="grow">
+      <div class="toast-title">Published catalog v4</div>
+      <div class="toast-text">…</div>
+    </div>
+    <button class="btn ghost xs">Undo</button>
+  </div>
+</div>
 ```
 
 A confirmation names what else changes (a requirement turning off its dependents) and its button
@@ -747,14 +1072,22 @@ dialog or drawer a bottom sheet below 640px (ADMIN.md §Overlays): grab handle, 
 ```html
 <div class="code">
   <div class="code-head">
-    <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span>
-      <span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+    <div class="code-tabs">
+      <span class="active">Swift<small>macOS</small></span
+      ><span>Kotlin<small>Windows</small></span>
+      <span class="more">More<i class="ic ic-chevron-down"></i></span>
+    </div>
     <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
   </div>
-<pre><span class="t-k">let</span> client = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</pre>
-  <div class="code-foot"><i class="ic ic-info sm"></i><span>Written for DJDL.</span></div>
+  <pre><span class="t-k">let</span> client = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</pre>
+  <div class="code-foot">
+    <i class="ic ic-info sm"></i><span>Written for DJDL.</span>
+  </div>
 </div>
-<div class="cmd"><span>pnpm add @polaris-key/react</span><button class="btn ghost icon xs"><i class="ic ic-copy"></i></button></div>
+<div class="cmd">
+  <span>pnpm add @polaris-key/react</span
+  ><button class="btn ghost icon xs"><i class="ic ic-copy"></i></button>
+</div>
 ```
 
 Tokens: `t-k` keyword, `t-s` string, `t-f` function, `t-t` type, `t-n` number, `t-c` comment,
@@ -765,9 +1098,13 @@ On phone, Copy keeps only its icon and the code scrolls inside its block.
 ## Terminal
 
 ```html
-<div class="term">                                     <!-- .cols-80: exactly 80 columns -->
-  <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — diceroll</span></div>
-<pre class="term-body"><span class="c-prompt">❯</span> pkey doctor
+<div class="term">
+  <!-- .cols-80: exactly 80 columns -->
+  <div class="term-bar">
+    <span class="term-dots"><i></i><i></i><i></i></span
+    ><span class="term-title">zsh — diceroll</span>
+  </div>
+  <pre class="term-body"><span class="c-prompt">❯</span> pkey doctor
   <span class="c-ok">✓</span> polaris-key.json  <span class="c-dim">found, product diceroll</span>
 <span class="c-chip"> 1 problem </span> <span class="cursor"></span></pre>
 </div>
@@ -783,34 +1120,90 @@ yellow, `c-err` red, `c-info` magenta, `c-dim`, `c-b` bold, `c-u` link, `c-chip`
 <div class="portal" data-service="core">
   <header class="portal-top">
     <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
-    <nav class="portal-nav"><a class="active" href="#">Library <span class="count">3</span></a><a href="#">Discover</a></nav>
-    <div class="portal-actions"><button class="btn outline sm"><i class="ic ic-key-round"></i>Activate license</button>
-      <span class="account"><span class="avatar sm">MF</span>Mara Fennick<i class="ic ic-chevron-down"></i></span></div>
+    <nav class="portal-nav">
+      <a class="active" href="#">Library <span class="count">3</span></a
+      ><a href="#">Discover</a>
+    </nav>
+    <div class="portal-actions">
+      <button class="btn outline sm">
+        <i class="ic ic-key-round"></i>Activate license
+      </button>
+      <span class="account"
+        ><span class="avatar sm">MF</span>Mara Fennick<i
+          class="ic ic-chevron-down"
+        ></i
+      ></span>
+    </div>
   </header>
   <main class="portal-page">
-    <div class="mk-stack-2"><h1>Your library</h1><p class="muted">Licenses for mara@example.com</p></div>
+    <div class="mk-stack-2">
+      <h1>Your library</h1>
+      <p class="muted">Licenses for mara@example.com</p>
+    </div>
     <div class="portal-grid">
       <article class="ptile">
-        <div class="art" data-product="diceroll"><span class="pill success on-art"><i class="ic ic-circle-check"></i>In your library</span></div>
-        <div class="ptile-head"><span class="logo lg" data-product="diceroll"></span>
-          <div class="ptile-title"><h2><a href="#">Diceroll</a></h2><span>Example Games</span></div></div>
-        <div class="ptile-body"><div class="mk-stack-3">
-          <div class="pill-row"><div class="mk-cluster"><span class="pill sm"><i class="ic ic-key-round"></i>Standard</span></div>
-            <span class="platforms"><i class="ic ic-apple"></i></span></div>
-          <ul class="icon-lines"><li><i class="ic ic-calendar-clock"></i><span>Lifetime</span></li></ul>
-        </div></div>
-        <div class="ptile-foot"><button class="btn outline">Download</button><button class="btn outline icon" aria-label="More"><i class="ic ic-ellipsis"></i></button></div>
+        <div class="art" data-product="diceroll">
+          <span class="pill success on-art"
+            ><i class="ic ic-circle-check"></i>In your library</span
+          >
+        </div>
+        <div class="ptile-head">
+          <span class="logo lg" data-product="diceroll"></span>
+          <div class="ptile-title">
+            <h2><a href="#">Diceroll</a></h2>
+            <span>Example Games</span>
+          </div>
+        </div>
+        <div class="ptile-body">
+          <div class="mk-stack-3">
+            <div class="pill-row">
+              <div class="mk-cluster">
+                <span class="pill sm"
+                  ><i class="ic ic-key-round"></i>Standard</span
+                >
+              </div>
+              <span class="platforms"><i class="ic ic-apple"></i></span>
+            </div>
+            <ul class="icon-lines">
+              <li><i class="ic ic-calendar-clock"></i><span>Lifetime</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="ptile-foot">
+          <button class="btn outline">Download</button
+          ><button class="btn outline icon" aria-label="More">
+            <i class="ic ic-ellipsis"></i>
+          </button>
+        </div>
       </article>
-      <aside class="ptile end-tile"><h2>Missing a license?</h2>
-        <ul class="media-list"><li><span class="icon-tile muted"><i class="ic ic-key-round"></i></span>
-          <span><strong>You have a license key</strong>Activate it to move it into your account.</span></li></ul>
-        <div class="btn-row"><button class="btn outline">Activate license</button></div></aside>
+      <aside class="ptile end-tile">
+        <h2>Missing a license?</h2>
+        <ul class="media-list">
+          <li>
+            <span class="icon-tile muted"><i class="ic ic-key-round"></i></span>
+            <span
+              ><strong>You have a license key</strong>Activate it to move it
+              into your account.</span
+            >
+          </li>
+        </ul>
+        <div class="btn-row">
+          <button class="btn outline">Activate license</button>
+        </div>
+      </aside>
     </div>
   </main>
   <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a></footer>
-  <nav class="portal-tabbar"><a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
+  <nav class="portal-tabbar">
+    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
     <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
-    <a href="#" aria-label="Discover, 1 to add"><i class="ic ic-sparkles"></i>Discover<span class="dot" aria-hidden="true"></span></a></nav>
+    <a href="#" aria-label="Discover, 1 to add"
+      ><i class="ic ic-sparkles"></i>Discover<span
+        class="dot"
+        aria-hidden="true"
+      ></span
+    ></a>
+  </nav>
 </div>
 ```
 
@@ -862,15 +1255,35 @@ count the nav already shows.
 
 ```html
 <main class="portal-page">
-  <div><a class="link" href="#"><i class="ic ic-arrow-left"></i>Library</a></div>
-  <header class="product-hero"><div class="art" data-product="djdl"></div>
-    <div class="product-hero-row"><span class="logo" data-product="djdl"></span>
-      <div class="product-hero-title"><h1>DJDL</h1><p>by <a href="#">Example Audio</a></p></div>
-      <div class="product-hero-actions"><button class="btn primary lg">…</button><button class="btn outline icon lg">…</button></div>
-      <p class="product-hero-note">A line for this device (phone: "We'll email you a link")</p></div></header>
+  <div>
+    <a class="link" href="#"><i class="ic ic-arrow-left"></i>Library</a>
+  </div>
+  <header class="product-hero">
+    <div class="art" data-product="djdl"></div>
+    <div class="product-hero-row">
+      <span class="logo" data-product="djdl"></span>
+      <div class="product-hero-title">
+        <h1>DJDL</h1>
+        <p>by <a href="#">Example Audio</a></p>
+      </div>
+      <div class="product-hero-actions">
+        <button class="btn primary lg">…</button
+        ><button class="btn outline icon lg">…</button>
+      </div>
+      <p class="product-hero-note">
+        A line for this device (phone: "We'll email you a link")
+      </p>
+    </div>
+  </header>
   <div class="product-layout">
-    <nav class="jump-nav" aria-label="On this page"><a class="on" href="#">License</a>…</nav>  <!-- below 1280 -->
-    <nav class="toc-nav" aria-label="On this page"><a class="on" href="#">License</a>…</nav>   <!-- from 1280 -->
+    <nav class="jump-nav" aria-label="On this page">
+      <a class="on" href="#">License</a>…
+    </nav>
+    <!-- below 1280 -->
+    <nav class="toc-nav" aria-label="On this page">
+      <a class="on" href="#">License</a>…
+    </nav>
+    <!-- from 1280 -->
     <div class="product-col">…main cards…</div>
     <div class="product-col">…license column…</div>
   </div>
@@ -916,18 +1329,49 @@ count the nav already shows.
 
 ```html
 <div class="board">
-  <div class="board-title"><h1>Diceroll paywall</h1><p>The Godot kit on iOS and Android.</p></div>
+  <div class="board-title">
+    <h1>Diceroll paywall</h1>
+    <p>The Godot kit on iOS and Android.</p>
+  </div>
   <figure class="board-item">
-    <div class="device"><div class="device-screen" data-pk-platform="ios">
-      <div class="device-status"><span>9:41</span><span class="row gap-1"><i class="ic ic-signal"></i><i class="ic ic-wifi"></i><i class="ic ic-battery-full"></i></span></div>
-      <div class="device-body">…</div></div></div>
+    <div class="device">
+      <div class="device-screen" data-pk-platform="ios">
+        <div class="device-status">
+          <span>9:41</span
+          ><span class="row gap-1"
+            ><i class="ic ic-signal"></i><i class="ic ic-wifi"></i
+            ><i class="ic ic-battery-full"></i
+          ></span>
+        </div>
+        <div class="device-body">…</div>
+      </div>
+    </div>
     <figcaption><strong>iOS</strong>Light</figcaption>
   </figure>
 </div>
-<div class="window"><div class="window-bar"><span class="term-dots"><i></i><i></i><i></i></span>DJDL</div><div class="window-body">…</div></div>
-<div class="window win"><div class="window-bar">DJDL<span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div></div>
-<div class="browser"><div class="browser-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="url"><i class="ic ic-lock"></i>key.plrs.im/djdl</span></div>…</div>
-<span class="anno">1</span>   <!-- numbered pin; .at + inline top/left to place it; refer to it in "compare" -->
+<div class="window">
+  <div class="window-bar">
+    <span class="term-dots"><i></i><i></i><i></i></span>DJDL
+  </div>
+  <div class="window-body">…</div>
+</div>
+<div class="window win">
+  <div class="window-bar">
+    DJDL<span class="window-controls"
+      ><i class="ic ic-minus"></i><i class="ic ic-square"></i
+      ><i class="ic ic-x"></i
+    ></span>
+  </div>
+</div>
+<div class="browser">
+  <div class="browser-bar">
+    <span class="term-dots"><i></i><i></i><i></i></span
+    ><span class="url"><i class="ic ic-lock"></i>key.plrs.im/djdl</span>
+  </div>
+  …
+</div>
+<span class="anno">1</span>
+<!-- numbered pin; .at + inline top/left to place it; refer to it in "compare" -->
 ```
 
 `.device.android` is a 412×915 Android phone; `.device.landscape` holds either sideways (844×390,
@@ -942,8 +1386,17 @@ product beside the form, the code beside its QR) sit side by side from 640px of 
 it (portrait).
 
 ```html
-<div class="device landscape"><div class="device-screen" data-pk-platform="ios">…
-  <div class="device-body"><div class="kit-split"><div>product</div><div>form</div></div></div></div></div>
+<div class="device landscape">
+  <div class="device-screen" data-pk-platform="ios">
+    …
+    <div class="device-body">
+      <div class="kit-split">
+        <div>product</div>
+        <div>form</div>
+      </div>
+    </div>
+  </div>
+</div>
 ```
 
 **Board copy** (sdk multi-review, 2026-10-08). "Say it once, and briefly" on a board:
@@ -965,38 +1418,103 @@ it (portrait).
 
 ```html
 <!-- nested nav entries under their parent: a hairline under the parent's icon, 32px items -->
-<a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a>   <!-- no count: the nested entries list them -->
+<a class="nav-item" href="#"
+  ><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a
+>
+<!-- no count: the nested entries list them -->
 <div class="nav-sub">
-  <a class="nav-item active" href="#"><i class="ic ic-app-store"></i><span class="nav-text">App Store</span></a>
-  <a class="nav-item" href="#"><i class="ic ic-google-play"></i><span class="nav-text">Google Play</span><span class="nav-dot" title="Attention"></span></a>
-  <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note">2 of 4</span></a>
+  <a class="nav-item active" href="#"
+    ><i class="ic ic-app-store"></i><span class="nav-text">App Store</span></a
+  >
+  <a class="nav-item" href="#"
+    ><i class="ic ic-google-play"></i><span class="nav-text">Google Play</span
+    ><span class="nav-dot" title="Attention"></span
+  ></a>
+  <a class="nav-item" href="#"
+    ><i class="ic ic-steam"></i><span class="nav-text">Steam</span
+    ><span class="nav-note">2 of 4</span></a
+  >
 </div>
 
-<span class="icon-tile sm neutral"><i class="ic ic-app-store"></i></span>   <!-- a store or platform mark; .xl is a page icon (56, phone 40) -->
-<span class="value-chip"><i class="ic ic-terminal"></i><span class="mid"><span>scoop install https://…/</span><span>stable.json</span></span><button class="btn ghost icon xs" aria-label="Copy the Scoop install command"><i class="ic ic-copy"></i></button></span>
-<div class="value-chip block"><i class="ic ic-external-link"></i><span>apps.apple.com/app/id6478123905</span><button class="btn ghost icon xs">…</button></div>
-<figure class="qr-figure"><span class="qr"><svg>…</svg></span><figcaption>Scan with your iPhone</figcaption></figure>   <!-- .qr.sm 80 -->
-<div class="mk-media"><figure class="qr-figure">…</figure><div class="mk-stack-2">…</div></div>   <!-- a fixed thing beside text, 16 apart -->
+<span class="icon-tile sm neutral"><i class="ic ic-app-store"></i></span>
+<!-- a store or platform mark; .xl is a page icon (56, phone 40) -->
+<span class="value-chip"
+  ><i class="ic ic-terminal"></i
+  ><span class="mid"
+    ><span>scoop install https://…/</span><span>stable.json</span></span
+  ><button
+    class="btn ghost icon xs"
+    aria-label="Copy the Scoop install command"
+  >
+    <i class="ic ic-copy"></i></button
+></span>
+<div class="value-chip block">
+  <i class="ic ic-external-link"></i><span>apps.apple.com/app/id6478123905</span
+  ><button class="btn ghost icon xs">…</button>
+</div>
+<figure class="qr-figure">
+  <span class="qr"><svg>…</svg></span>
+  <figcaption>Scan with your iPhone</figcaption>
+</figure>
+<!-- .qr.sm 80 -->
+<div class="mk-media">
+  <figure class="qr-figure">…</figure>
+  <div class="mk-stack-2">…</div>
+</div>
+<!-- a fixed thing beside text, 16 apart -->
 
-<div class="card-rows">                         <!-- .flush in a dialog or drawer body -->
-  <div class="item-row">                        <!-- .lead: a 16px check or state mark first; .top: align to the title's line -->
+<div class="card-rows">
+  <!-- .flush in a dialog or drawer body -->
+  <div class="item-row">
+    <!-- .lead: a 16px check or state mark first; .top: align to the title's line -->
     <span class="icon-tile sm neutral"><i class="ic ic-itch"></i></span>
-    <div class="item-text"><div class="item-title">itch.io <small>Windows</small></div><div class="item-desc">…</div></div>
-    <div class="item-end"><button class="btn outline">Open itch.io</button></div>
-    <div class="item-more"><ol class="num-list"><li><span>Install Diceroll:</span><div class="cmd">…</div></li></ol></div>
+    <div class="item-text">
+      <div class="item-title">itch.io <small>Windows</small></div>
+      <div class="item-desc">…</div>
+    </div>
+    <div class="item-end">
+      <button class="btn outline">Open itch.io</button>
+    </div>
+    <div class="item-more">
+      <ol class="num-list">
+        <li>
+          <span>Install Diceroll:</span>
+          <div class="cmd">…</div>
+        </li>
+      </ol>
+    </div>
   </div>
 </div>
 
-<div class="copy-field"><span class="copy-label">App name</span><span class="copy-value">Diceroll</span><button class="btn ghost icon xs">…</button></div>
-<div class="task running"><span class="task-mark"></span><div class="task-title">Find Diceroll in Steamworks</div><span class="task-meta">Steamworks Web API</span></div>
+<div class="copy-field">
+  <span class="copy-label">App name</span
+  ><span class="copy-value">Diceroll</span
+  ><button class="btn ghost icon xs">…</button>
+</div>
+<div class="task running">
+  <span class="task-mark"></span>
+  <div class="task-title">Find Diceroll in Steamworks</div>
+  <span class="task-meta">Steamworks Web API</span>
+</div>
 
-<div class="overlay top"><div class="dialog xl scroll">…</div></div>   <!-- starts 64 down; head and foot stay, the body scrolls -->
-<section class="card tint">…</section>                                   <!-- the one recommended thing on a page -->
+<div class="overlay top"><div class="dialog xl scroll">…</div></div>
+<!-- starts 64 down; head and foot stay, the body scrolls -->
+<section class="card tint">…</section>
+<!-- the one recommended thing on a page -->
 
-<main class="portal-page columns">                                       <!-- from 1280: main + a 400px aside -->
-  <section class="portal-hero span-all"><div class="art" data-product="diceroll"></div>
-    <div class="portal-hero-body"><span class="logo xl" data-product="diceroll"></span>
-      <div class="mk-stack-1"><h1>Diceroll</h1><p>by …</p></div><p class="portal-hero-pitch">…</p></div></section>
+<main class="portal-page columns">
+  <!-- from 1280: main + a 400px aside -->
+  <section class="portal-hero span-all">
+    <div class="art" data-product="diceroll"></div>
+    <div class="portal-hero-body">
+      <span class="logo xl" data-product="diceroll"></span>
+      <div class="mk-stack-1">
+        <h1>Diceroll</h1>
+        <p>by …</p>
+      </div>
+      <p class="portal-hero-pitch">…</p>
+    </div>
+  </section>
   <section class="card tint aside">Recommended for your PC</section>
   <section class="section">Every way to get Diceroll</section>
 </main>
@@ -1036,25 +1554,85 @@ it (portrait).
 
 ```html
 <!-- a state mark whose words flow as one run, wrapped lines past the glyph -->
-<span class="waiting-dot hang" role="status">Moves on when Polaris Key finds Diceroll in Steamworks · checked&nbsp;6&nbsp;s&nbsp;ago</span>
+<span class="waiting-dot hang" role="status"
+  >Moves on when Polaris Key finds Diceroll in Steamworks ·
+  checked&nbsp;6&nbsp;s&nbsp;ago</span
+>
 <!-- an action link that may wrap; the arrow is glued to the last word -->
-<a class="link wrap" href="#">Upload it in <span class="nowrap">Steamworks<i class="ic ic-arrow-up-right"></i></span></a>
+<a class="link wrap" href="#"
+  >Upload it in
+  <span class="nowrap">Steamworks<i class="ic ic-arrow-up-right"></i></span
+></a>
 <!-- a table whose rows open a page; a 16px chevron ends the title line on a narrow card -->
-<table class="table fixed stack-phone row-links">… <div class="cell-with-logo">…<a class="cell-title" href="#">App Store</a>…<i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div> …</table>
+<table class="table fixed stack-phone row-links">
+  …
+  <div class="cell-with-logo">
+    …<a class="cell-title" href="#">App Store</a>…<i
+      class="ic ic-chevron-right row-go show-narrow"
+      aria-hidden="true"
+    ></i>
+  </div>
+  …
+</table>
 <!-- a warning attention row: no pill, the glyph leads the subject (a danger row keeps its pill) -->
-<div class="attn-row bare"><span class="attn-subject"><i class="ic ic-triangle-alert attn-glyph" aria-hidden="true"></i><i class="ic ic-google-play" aria-hidden="true"></i>Google Play</span><span class="attn-text">…</span><a class="link" href="#">Replace key<i class="ic ic-arrow-right"></i></a></div>
+<div class="attn-row bare">
+  <span class="attn-subject"
+    ><i class="ic ic-triangle-alert attn-glyph" aria-hidden="true"></i
+    ><i class="ic ic-google-play" aria-hidden="true"></i>Google Play</span
+  ><span class="attn-text">…</span
+  ><a class="link" href="#">Replace key<i class="ic ic-arrow-right"></i></a>
+</div>
 <!-- meta facts with even dots; a rating's 16px star in brand gold, 4 from its number -->
-<span class="meta-seps"><span>Store</span><span>iOS</span><span class="rating"><i class="ic ic-star" aria-hidden="true"></i>4.6 from 1,284 ratings</span></span>
+<span class="meta-seps"
+  ><span>Store</span><span>iOS</span
+  ><span class="rating"
+    ><i class="ic ic-star" aria-hidden="true"></i>4.6 from 1,284 ratings</span
+  ></span
+>
 <!-- a dialog row whose leading part toggles a real checkbox; the select stays outside the label -->
-<div class="item-row lead top"><label class="item-label"><span class="check on"><input class="sr-only" type="checkbox" checked><span class="box"></span></span>
-  <span class="icon-tile neutral">…</span><span class="item-text"><span class="item-title">App Store</span><span class="item-desc">…</span></span></label>
-  <div class="item-end"><div class="select sm" role="combobox" aria-label="App Store release">…</div></div></div>
+<div class="item-row lead top">
+  <label class="item-label"
+    ><span class="check on"
+      ><input class="sr-only" type="checkbox" checked /><span class="box"></span
+    ></span>
+    <span class="icon-tile neutral">…</span
+    ><span class="item-text"
+      ><span class="item-title">App Store</span
+      ><span class="item-desc">…</span></span
+    ></label
+  >
+  <div class="item-end">
+    <div class="select sm" role="combobox" aria-label="App Store release">
+      …
+    </div>
+  </div>
+</div>
 <!-- the typed confirmation pinned in a phone sheet's foot (from 640px the field ends the body) -->
-<div class="dialog-foot"><div class="foot-confirm"><label class="field-label">Type <span class="confirm-word neutral">1.9.0</span> to confirm …</label><div class="input mono">…</div><p class="hint">Store review can’t be undone.</p></div>…</div>
+<div class="dialog-foot">
+  <div class="foot-confirm">
+    <label class="field-label"
+      >Type <span class="confirm-word neutral">1.9.0</span> to confirm …</label
+    >
+    <div class="input mono">…</div>
+    <p class="hint">Store review can’t be undone.</p>
+  </div>
+  …
+</div>
 <!-- a whole-row disclosure in its own card -->
-<button class="card fold-row" aria-expanded="false"><i class="ic ic-chevron-right"></i><span class="fold-row-text"><strong>3 more channels</strong><span>AltStore PAL, …</span></span></button>
+<button class="card fold-row" aria-expanded="false">
+  <i class="ic ic-chevron-right"></i
+  ><span class="fold-row-text"
+    ><strong>3 more channels</strong><span>AltStore PAL, …</span></span
+  >
+</button>
 <!-- the portal hero's download for this device, from 640px -->
-<div class="portal-hero-body">…<div class="portal-hero-action"><div class="mk-stack-1">…</div><button class="btn primary lg">…Download</button></div></div>
+<div class="portal-hero-body">
+  …
+  <div class="portal-hero-action">
+    <div class="mk-stack-1">…</div>
+    <button class="btn primary lg">…Download</button>
+  </div>
+</div>
 ```
 
 - **State marks** `.hang` (on `.verified`, `.unseen`, `.waiting-dot`, `.after-step`): the glyph
@@ -1116,26 +1694,56 @@ it (portrait).
 ## Dashboard with a rail (products.overview-a)
 
 ```html
-<div class="page"><header class="page-head">…</header>
+<div class="page">
+  <header class="page-head">…</header>
   <div class="dash">
-    <div class="dash-main"><section class="card alert" aria-label="Needs attention">…</section><section class="card">…checklist…</section></div>
-    <div class="dash-rail"><section class="card">Features</section><section class="card">Recent activity</section></div>
+    <div class="dash-main">
+      <section class="card alert" aria-label="Needs attention">…</section>
+      <section class="card">…checklist…</section>
+    </div>
+    <div class="dash-rail">
+      <section class="card">Features</section>
+      <section class="card">Recent activity</section>
+    </div>
   </div>
 </div>
 
 <!-- a feature checklist: the feature, its app paths, one mark per planned platform -->
-<div class="checklist"><div class="check-row next">
-  <div class="check-feature"><span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
-    <span class="check-name">Ship builds</span><span class="check-sub">First CI publish Oct 6</span></div>
-  <span class="links"><a class="link" href="#">Drop-in kit</a><a class="link quiet" href="#">Your own UI<i class="ic ic-arrow-up-right"></i></a></span>
-  <span class="plats"><span class="plat after-step" title="macOS: After the console step"><i class="ic ic-apple"></i>
-    <span class="plat-name">macOS</span><span class="sr-only">: After the console step</span></span>…</span>
-  <div class="check-next"><button class="btn primary sm">Add Sparkle signing key</button></div>
-</div></div>
+<div class="checklist">
+  <div class="check-row next">
+    <div class="check-feature">
+      <span class="icon-tile sm" data-service="release"
+        ><i class="svc"></i
+      ></span>
+      <span class="check-name">Ship builds</span
+      ><span class="check-sub">First CI publish Oct 6</span>
+    </div>
+    <span class="links"
+      ><a class="link" href="#">Drop-in kit</a
+      ><a class="link quiet" href="#"
+        >Your own UI<i class="ic ic-arrow-up-right"></i></a
+    ></span>
+    <span class="plats"
+      ><span class="plat after-step" title="macOS: After the console step"
+        ><i class="ic ic-apple"></i> <span class="plat-name">macOS</span
+        ><span class="sr-only">: After the console step</span></span
+      >…</span
+    >
+    <div class="check-next">
+      <button class="btn primary sm">Add Sparkle signing key</button>
+    </div>
+  </div>
+</div>
 
 <!-- per-platform counts in the card head; a platform never seen carries its one action -->
-<div class="plat-tallies"><div class="plat-tally"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span>
-  <div class="progress success" style="--v: 40%"></div><span>2 of 5</span></div>…</div>
+<div class="plat-tallies">
+  <div class="plat-tally">
+    <span class="platform-name"><i class="ic ic-apple"></i>macOS</span>
+    <div class="progress success" style="--v: 40%"></div>
+    <span>2 of 5</span>
+  </div>
+  …
+</div>
 ```
 
 - **`.dash`** is a main column and a rail. Desktop (1280–1599): one 360px rail column. Wide: the
@@ -1166,19 +1774,56 @@ it (portrait).
 Appended for the guided-setup exploration of the Overview; all on the scale.
 
 ```html
-<ol class="guide" aria-label="Integration steps" style="--guide-steps: 5">   <!-- one step per feature, on a rail -->
-  <li class="guide-step done"><div class="guide-row"><span class="guide-mark"></span>
-    <div class="guide-title"><h3><button aria-expanded="false">Licensing</button></h3></div>
-    <span class="plat-badges"><span class="plat-badge verified" role="img" aria-label="macOS: Verified Oct 7, 10:42"><i class="ic ic-apple"></i></span>
-      <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet"><i class="ic ic-windows"></i></span></span>
-    <i class="ic ic-chevron-right guide-chevron"></i></div></li>
-  <li class="guide-step current open"><div class="guide-row">…<span class="guide-sub">First CI publish Oct 6</span>…</div>
-    <div class="guide-body"><div>In the console …</div><div>Drop-in kit …</div></div></li>
-  <li class="guide-step waiting">…</li>  <li class="guide-step">…<span class="guide-sub"><a class="link" href="#">Set storage per account</a></span>…</li>
+<ol class="guide" aria-label="Integration steps" style="--guide-steps: 5">
+  <!-- one step per feature, on a rail -->
+  <li class="guide-step done">
+    <div class="guide-row">
+      <span class="guide-mark"></span>
+      <div class="guide-title">
+        <h3><button aria-expanded="false">Licensing</button></h3>
+      </div>
+      <span class="plat-badges"
+        ><span
+          class="plat-badge verified"
+          role="img"
+          aria-label="macOS: Verified Oct 7, 10:42"
+          ><i class="ic ic-apple"></i
+        ></span>
+        <span
+          class="plat-badge unseen"
+          role="img"
+          aria-label="Windows: Not seen yet"
+          ><i class="ic ic-windows"></i></span
+      ></span>
+      <i class="ic ic-chevron-right guide-chevron"></i>
+    </div>
+  </li>
+  <li class="guide-step current open">
+    <div class="guide-row">
+      …<span class="guide-sub">First CI publish Oct 6</span>…
+    </div>
+    <div class="guide-body">
+      <div>In the console …</div>
+      <div>Drop-in kit …</div>
+    </div>
+  </li>
+  <li class="guide-step waiting">…</li>
+  <li class="guide-step">
+    …<span class="guide-sub"
+      ><a class="link" href="#">Set storage per account</a></span
+    >…
+  </li>
 </ol>
-<div class="mk-pair"><section class="card">…</section><section class="card aside span-3">…</section></div>
-<div class="stats strip compact cols-3">…<div class="stat off" data-service="commerce">…</div></div>
-<section class="card warning">…</section>   <div class="list-row wide-only">…</div>
+<div class="mk-pair">
+  <section class="card">…</section>
+  <section class="card aside span-3">…</section>
+</div>
+<div class="stats strip compact cols-3">
+  …
+  <div class="stat off" data-service="commerce">…</div>
+</div>
+<section class="card warning">…</section>
+<div class="list-row wide-only">…</div>
 ```
 
 - **`.guide`**: steps on a rail. `.done` (green tick, green rail after it), `.current` (accent ring;
@@ -1207,28 +1852,63 @@ phone) sets the board's columns and the hero's side pane, so the pane sits exact
 board's last column (at wide, inside the main column beside the aside).
 
 ```html
-<div class="card hero attention">                  <!-- .attention: a warning wash while the next step is an issue -->
+<div class="card hero attention">
+  <!-- .attention: a warning wash while the next step is an issue -->
   <div class="hero-main">
     <header class="page-head">…logo, h1, slug, identity line, ⋯…</header>
-    <section class="mk-stack-5" aria-labelledby="next"><h2 id="next" class="sr-only">Next step</h2>
-      <div class="mk-stack-3"><div class="mk-cluster-3"><span class="pill warning">…</span><span class="attn-subject">…</span></div>
-        <p class="hero-statement">Required secret <code>…</code> has no value in the Default profile.</p></div>
-      <div class="mk-cluster"><a class="btn primary lg" href="#">Set secret</a></div></section>
+    <section class="mk-stack-5" aria-labelledby="next">
+      <h2 id="next" class="sr-only">Next step</h2>
+      <div class="mk-stack-3">
+        <div class="mk-cluster-3">
+          <span class="pill warning">…</span><span class="attn-subject">…</span>
+        </div>
+        <p class="hero-statement">
+          Required secret <code>…</code> has no value in the Default profile.
+        </p>
+      </div>
+      <div class="mk-cluster">
+        <a class="btn primary lg" href="#">Set secret</a>
+      </div>
+    </section>
   </div>
-  <section class="hero-side" aria-labelledby="int">…a gauge: .meter-head per platform…</section>
+  <section class="hero-side" aria-labelledby="int">
+    …a gauge: .meter-head per platform…
+  </section>
 </div>
 
 <div class="feature-board">
-  <article class="card feature-card">              <!-- .issue: warning edge; .off: dashed, a feature that is off -->
-    <div class="feature-card-head"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span><h3><a href="#">Licensing</a></h3></div>
-    <div class="feature-card-stat"><span class="stat-value">240 <small>licenses</small></span><span class="stat-foot">Standard · 3 waiting</span></div>
-    <div class="feature-card-well">                <!-- the sunken layer: one .well-row per question, the same rows in every card -->
-      <div class="well-row"><span class="platform-name"><i class="ic ic-polaris"></i>Console</span><span class="status">…Done</span></div>
-      <div class="well-row"><span class="platform-name"><i class="ic ic-app-window"></i>App</span><span class="links">…</span></div>
-      <div class="well-row"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="verified">Verified</span>…</div>
+  <article class="card feature-card">
+    <!-- .issue: warning edge; .off: dashed, a feature that is off -->
+    <div class="feature-card-head">
+      <span class="icon-tile sm" data-service="license"
+        ><i class="svc"></i
+      ></span>
+      <h3><a href="#">Licensing</a></h3>
+    </div>
+    <div class="feature-card-stat">
+      <span class="stat-value">240 <small>licenses</small></span
+      ><span class="stat-foot">Standard · 3 waiting</span>
+    </div>
+    <div class="feature-card-well">
+      <!-- the sunken layer: one .well-row per question, the same rows in every card -->
+      <div class="well-row">
+        <span class="platform-name"><i class="ic ic-polaris"></i>Console</span
+        ><span class="status">…Done</span>
+      </div>
+      <div class="well-row">
+        <span class="platform-name"><i class="ic ic-app-window"></i>App</span
+        ><span class="links">…</span>
+      </div>
+      <div class="well-row">
+        <span class="platform-name"><i class="ic ic-apple"></i>macOS</span
+        ><span class="verified">Verified</span>…
+      </div>
     </div>
   </article>
-  <article class="card feature-card off">…<div class="feature-card-foot"><span class="link">Turn on</span></div></article>
+  <article class="card feature-card off">
+    …
+    <div class="feature-card-foot"><span class="link">Turn on</span></div>
+  </article>
 </div>
 ```
 
@@ -1252,29 +1932,44 @@ of records, the open record, a rail). `config.effective`, `config.entry-setting`
 ```html
 <!-- main + rail: 320px rail (400 at wide), --section-gap between; below 1280 the rail drops under, its cards side by side -->
 <div class="mk-with-rail">
-  <div class="mk-main">…blocks, --section-gap apart…</div>      <!-- or one card, or a .section (toolbar + table) -->
-  <div class="mk-rail"><section class="card">…</section><section class="card">…</section></div>
+  <div class="mk-main">…blocks, --section-gap apart…</div>
+  <!-- or one card, or a .section (toolbar + table) -->
+  <div class="mk-rail">
+    <section class="card">…</section>
+    <section class="card">…</section>
+  </div>
 </div>
 
 <!-- editor: 240px list (260 at wide) · the open record · rail (beside it at wide only) -->
 <div class="mk-editor">
   <nav class="card list-nav mk-editor-list" aria-label="Catalog entries">
-    <div class="search-field"><i class="ic ic-search"></i><span>Search entries</span></div>
+    <div class="search-field">
+      <i class="ic ic-search"></i><span>Search entries</span>
+    </div>
     <p class="list-nav-label">Quality<span class="end">4</span></p>
-    <a class="list-nav-item mono active" href="#" aria-current="page"><i class="ic ic-sliders-horizontal"></i><span>quality.floor</span></a>
-    <a class="list-nav-item two" href="#"><i class="ic ic-layers"></i><span><strong>Default</strong><small>Applies to everyone</small></span></a>
+    <a class="list-nav-item mono active" href="#" aria-current="page"
+      ><i class="ic ic-sliders-horizontal"></i><span>quality.floor</span></a
+    >
+    <a class="list-nav-item two" href="#"
+      ><i class="ic ic-layers"></i
+      ><span
+        ><strong>Default</strong><small>Applies to everyone</small></span
+      ></a
+    >
     <div class="list-nav-foot">…a key, Add entry…</div>
   </nav>
-  <div class="select mk-editor-switch">…Entry quality.floor · 1 of 23…</div>   <!-- phone only: the list folds into it -->
+  <div class="select mk-editor-switch">…Entry quality.floor · 1 of 23…</div>
+  <!-- phone only: the list folds into it -->
   <section class="card">…the open record…</section>
-  <div class="mk-rail">…</div>                                                <!-- optional -->
+  <div class="mk-rail">…</div>
+  <!-- optional -->
 </div>
 ```
 
-| Primitive        | Wide ≥ 1600                     | Desktop 1280–1599                    | Tablet 1024–1279                     | Phone < 640                    |
-| ---------------- | ------------------------------- | ------------------------------------ | ------------------------------------ | ------------------------------ |
-| `.mk-with-rail`  | main + 400 rail                 | main + 320 rail                      | rail under main, cards side by side  | one column                     |
-| `.mk-editor`     | 260 list · record · 400 rail    | 240 list · record; rail under record | same                                 | switcher, record, rail         |
+| Primitive       | Wide ≥ 1600                  | Desktop 1280–1599                    | Tablet 1024–1279                    | Phone < 640            |
+| --------------- | ---------------------------- | ------------------------------------ | ----------------------------------- | ---------------------- |
+| `.mk-with-rail` | main + 400 rail              | main + 320 rail                      | rail under main, cards side by side | one column             |
+| `.mk-editor`    | 260 list · record · 400 rail | 240 list · record; rail under record | same                                | switcher, record, rail |
 
 - Cards in `.mk-with-rail`, `.mk-main`, `.mk-rail` and `.mk-editor` are page-level blocks, so they
   title at the block step (18/24) like a card straight on `.page`.
@@ -1286,11 +1981,20 @@ of records, the open record, a rail). `config.effective`, `config.entry-setting`
 Small components on the same scale:
 
 ```html
-<div class="icon-line"><i class="ic ic-plus"></i><span>Text that may wrap hangs past the glyph</span></div>
-<div class="fixed-value"><i class="ic ic-lock"></i><span class="mono">ES256</span><span class="meta">Set by the template</span></div>
-<del class="diff-old"><span>1 hour</span></del> <ins class="diff-new">12 hours</ins>
-<div class="choices cols-3">…</div>                        <!-- .cols-2; one column on a card under 560px -->
-<span class="chip">flac<span class="chip-note">10 set it</span><i class="ic ic-x"></i></span>
+<div class="icon-line">
+  <i class="ic ic-plus"></i><span>Text that may wrap hangs past the glyph</span>
+</div>
+<div class="fixed-value">
+  <i class="ic ic-lock"></i><span class="mono">ES256</span
+  ><span class="meta">Set by the template</span>
+</div>
+<del class="diff-old"><span>1 hour</span></del>
+<ins class="diff-new">12 hours</ins>
+<div class="choices cols-3">…</div>
+<!-- .cols-2; one column on a card under 560px -->
+<span class="chip"
+  >flac<span class="chip-note">10 set it</span><i class="ic ic-x"></i
+></span>
 ```
 
 - **`.icon-line`**: the glyph centres on the first 20px line, 8 from the text; use it for facts,
@@ -1305,8 +2009,14 @@ Small components on the same scale:
 Two more for config's second spacing pass:
 
 ```html
-<div class="page capped">…<div class="mk-editor">…list · record, no rail…</div></div>
-<div class="mk-pair loose"><section class="card">In your game</section><section class="card aside span-3">Limits</section></div>
+<div class="page capped">
+  …
+  <div class="mk-editor">…list · record, no rail…</div>
+</div>
+<div class="mk-pair loose">
+  <section class="card">In your game</section>
+  <section class="card aside span-3">Limits</section>
+</div>
 ```
 
 - **`.page.capped`**: an editor with no rail (a list and one record). At wide the page caps at
@@ -1325,19 +2035,48 @@ timeline of what happens to it, and one save bar for its unsaved edits. `entitle
 `entitlements.addon` and `entitlements.license-subscription` are the references.
 
 ```html
-<span class="icon-text"><i class="ic ic-repeat"></i>Renews Oct 3</span>        <!-- a glyph and its words; .warning -->
-<span class="icon-text inline"><i class="ic ic-toggle-right"></i>On/off</span> · Opens the pack   <!-- inside a sentence -->
-<span class="val-on">On</span> <span class="val-off">Off</span>               <!-- an on/off value -->
-<span class="source">Pro</span> <span class="source own">Set here</span>      <!-- where a value comes from -->
-<dl class="kv-rows"><div><dt>Device limit</dt><dd>10<span class="source own">Set here</span></dd></div></dl>
-<ol class="timeline"><li class="timeline-item"><span class="timeline-when">Oct 7, 2026</span>
-  <span class="timeline-what">Starts</span><span class="timeline-desc">…</span></li></ol>   <!-- .warning .ended .later -->
-<div class="setting-row dense"><div><div class="setting-title">Synced crates</div><div class="setting-desc mono">crates</div></div>
-  <div class="input sm unit"><span class="grow tnum">500</span><span class="affix">crates</span></div></div>
-<div class="card-row"><button class="btn link"><i class="ic ic-plus"></i>Add an entitlement</button></div>
-<label class="field-label">Offline days<span class="was">was 30</span></label><div class="input changed">…</div>
-<div class="save-bar" role="region" aria-label="Unsaved changes"><p class="save-bar-msg"><i class="ic ic-info"></i><span>…</span></p>
-  <button class="btn ghost">Discard</button><button class="btn primary">Save Pro</button></div>
+<span class="icon-text"><i class="ic ic-repeat"></i>Renews Oct 3</span>
+<!-- a glyph and its words; .warning -->
+<span class="icon-text inline"><i class="ic ic-toggle-right"></i>On/off</span> ·
+Opens the pack
+<!-- inside a sentence -->
+<span class="val-on">On</span> <span class="val-off">Off</span>
+<!-- an on/off value -->
+<span class="source">Pro</span> <span class="source own">Set here</span>
+<!-- where a value comes from -->
+<dl class="kv-rows">
+  <div>
+    <dt>Device limit</dt>
+    <dd>10<span class="source own">Set here</span></dd>
+  </div>
+</dl>
+<ol class="timeline">
+  <li class="timeline-item">
+    <span class="timeline-when">Oct 7, 2026</span>
+    <span class="timeline-what">Starts</span
+    ><span class="timeline-desc">…</span>
+  </li>
+</ol>
+<!-- .warning .ended .later -->
+<div class="setting-row dense">
+  <div>
+    <div class="setting-title">Synced crates</div>
+    <div class="setting-desc mono">crates</div>
+  </div>
+  <div class="input sm unit">
+    <span class="grow tnum">500</span><span class="affix">crates</span>
+  </div>
+</div>
+<div class="card-row">
+  <button class="btn link"><i class="ic ic-plus"></i>Add an entitlement</button>
+</div>
+<label class="field-label">Offline days<span class="was">was 30</span></label>
+<div class="input changed">…</div>
+<div class="save-bar" role="region" aria-label="Unsaved changes">
+  <p class="save-bar-msg"><i class="ic ic-info"></i><span>…</span></p>
+  <button class="btn ghost">Discard</button
+  ><button class="btn primary">Save Pro</button>
+</div>
 ```
 
 - **`.icon-text`**: a 14px glyph 8 from its word, in the subtle colour (a `.svc` keeps its accent);
@@ -1366,32 +2105,78 @@ timeline of what happens to it, and one save bar for its unsaved edits. `entitle
 
 ```html
 <section class="card">
-  <div class="feature-rows-head" aria-hidden="true"><span>Feature</span><span>Status</span></div>
+  <div class="feature-rows-head" aria-hidden="true">
+    <span>Feature</span><span>Status</span>
+  </div>
   <div class="feature-rows">
-    <div class="feature-row">                                   <!-- .off: a feature that is off -->
-      <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
-      <div class="feature-row-text"><div class="feature-row-name">Managed config</div>
+    <div class="feature-row">
+      <!-- .off: a feature that is off -->
+      <span class="icon-tile sm" data-service="config"
+        ><i class="svc"></i
+      ></span>
+      <div class="feature-row-text">
+        <div class="feature-row-name">Managed config</div>
         <p class="feature-row-desc">…</p>
-        <div class="reqs"><span class="req" aria-label="Cloud Sync needs Managed config">Needed by Cloud Sync</span></div></div>
-      <div class="feature-row-status"><div class="status-stack"><span class="status"><i class="ic ic-circle-check"></i>Catalog v6 published</span><span class="meta">…</span></div></div>
-      <span class="switch touch on" role="switch" aria-checked="true" aria-label="Managed config"></span>
-      <div class="feature-subs"><div class="setting-row">…</div></div>   <!-- the feature's own settings; .setting-row.off dims one -->
+        <div class="reqs">
+          <span class="req" aria-label="Cloud Sync needs Managed config"
+            >Needed by Cloud Sync</span
+          >
+        </div>
+      </div>
+      <div class="feature-row-status">
+        <div class="status-stack">
+          <span class="status"
+            ><i class="ic ic-circle-check"></i>Catalog v6 published</span
+          ><span class="meta">…</span>
+        </div>
+      </div>
+      <span
+        class="switch touch on"
+        role="switch"
+        aria-checked="true"
+        aria-label="Managed config"
+      ></span>
+      <div class="feature-subs"><div class="setting-row">…</div></div>
+      <!-- the feature's own settings; .setting-row.off dims one -->
     </div>
   </div>
 </section>
-<div class="reqs"><span>Needs</span><span class="req met" aria-label="Managed config is on">Managed config</span>
-  <span class="req unmet" aria-label="Sign-in is off">Sign-in</span></div>
+<div class="reqs">
+  <span>Needs</span
+  ><span class="req met" aria-label="Managed config is on">Managed config</span>
+  <span class="req unmet" aria-label="Sign-in is off">Sign-in</span>
+</div>
 <div class="choices multi cols-3" role="group">
   <div class="choice on" role="checkbox" aria-checked="true">
-    <div class="choice-title"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span>Licensing</div>
-    <div class="choice-desc">…</div><div class="choice-foot"><b>Turns on</b> tiers, licenses and device limits</div></div>
-  <div class="choice locked" role="checkbox" aria-disabled="true">…<div class="reqs">…</div><div class="choice-foot">…</div></div>
+    <div class="choice-title">
+      <span class="icon-tile sm" data-service="license"
+        ><i class="svc"></i></span
+      >Licensing
+    </div>
+    <div class="choice-desc">…</div>
+    <div class="choice-foot">
+      <b>Turns on</b> tiers, licenses and device limits
+    </div>
+  </div>
+  <div class="choice locked" role="checkbox" aria-disabled="true">
+    …
+    <div class="reqs">…</div>
+    <div class="choice-foot">…</div>
+  </div>
 </div>
-<div class="change-list"><div class="change-item"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
-  <div class="change-title">Licensing</div><span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
-  <p class="change-text">…</p><p class="meta">…</p></div></div>
-<div class="card-split stack-narrow">…</div>                    <!-- also stacks on a narrow card -->
-<button class="btn ghost phone-inline"><i class="ic ic-x"></i>Cancel</button>   <!-- in .page-actions -->
+<div class="change-list">
+  <div class="change-item">
+    <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
+    <div class="change-title">Licensing</div>
+    <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
+    <p class="change-text">…</p>
+    <p class="meta">…</p>
+  </div>
+</div>
+<div class="card-split stack-narrow">…</div>
+<!-- also stacks on a narrow card -->
+<button class="btn ghost phone-inline"><i class="ic ic-x"></i>Cancel</button>
+<!-- in .page-actions -->
 ```
 
 - **Feature rows** (Settings → Features): the 28px media column · the text (3fr) · the status
@@ -1431,18 +2216,38 @@ Pages of code, terminals and in-app frames, on the console's rhythm. `sdk.start-
 the references.
 
 ```html
-<div class="board"><div class="board-page">
-  <header class="board-head"><h1>…</h1><p>…</p><div class="callout info">…</div></header>
-  <div class="board-grid">…<div class="board-col">…sections…</div>…</div>   <!-- per-size columns -->
-  <div class="board-aside">…cards…</div>                                     <!-- side by side from 360 each -->
-  <div class="frame-grid windows top">                                        <!-- desktop windows -->
-    <figure class="board-item"><div class="window win">…</div><figcaption><strong>1 · Sign in.</strong> …</figcaption></figure>
+<div class="board">
+  <div class="board-page">
+    <header class="board-head">
+      <h1>…</h1>
+      <p>…</p>
+      <div class="callout info">…</div>
+    </header>
+    <div class="board-grid">
+      …
+      <div class="board-col">…sections…</div>
+      …
+    </div>
+    <!-- per-size columns -->
+    <div class="board-aside">…cards…</div>
+    <!-- side by side from 360 each -->
+    <div class="frame-grid windows top">
+      <!-- desktop windows -->
+      <figure class="board-item">
+        <div class="window win">…</div>
+        <figcaption><strong>1 · Sign in.</strong> …</figcaption>
+      </figure>
+    </div>
+    <div class="frame-grid devices">
+      <!-- phones -->
+      <figure class="board-item">…portrait…</figure>
+      <div class="frame-stack span-2">
+        <figure class="board-item hide-phone">…landscape…</figure>
+        <figure class="board-item">…code…</figure>
+      </div>
+    </div>
   </div>
-  <div class="frame-grid devices">                                            <!-- phones -->
-    <figure class="board-item">…portrait…</figure>
-    <div class="frame-stack span-2"><figure class="board-item hide-phone">…landscape…</figure><figure class="board-item">…code…</figure></div>
-  </div>
-</div></div>
+</div>
 ```
 
 - **`.board-page`**: the head, then blocks `--section-gap` apart, `--page-max` wide. The head is
@@ -1558,33 +2363,85 @@ nav. `identity.sign-in`, `identity.consent`, `identity.connection`, `identity.co
 <div class="hosted" data-service="core">
   <div class="hosted-brand"><i class="pk-mark sm"></i>Polaris Key</div>
   <main class="hosted-card">
-    <header class="hosted-head"><span class="logo lg" data-product="djdl"></span>
-      <div class="grow"><div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
-        <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div></div></header>
-    <div class="hosted-body">                                   <!-- one column, 16 apart; a lede 8 under the h1 -->
-      <h1>Sign in</h1><p class="hosted-lede">…</p>
-      <div class="field"><label class="field-label">Email</label>
-        <div class="input focus"><span class="ph"><span class="caret"></span>name@example.com</span></div></div>
+    <header class="hosted-head">
+      <span class="logo lg" data-product="djdl"></span>
+      <div class="grow">
+        <div class="hosted-title">
+          <strong>DJDL</strong> wants you to sign in
+        </div>
+        <div class="hosted-sub">
+          <span>Example Audio</span><span aria-hidden="true">·</span
+          ><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span>
+        </div>
+      </div>
+    </header>
+    <div class="hosted-body">
+      <!-- one column, 16 apart; a lede 8 under the h1 -->
+      <h1>Sign in</h1>
+      <p class="hosted-lede">…</p>
+      <div class="field">
+        <label class="field-label">Email</label>
+        <div class="input focus">
+          <span class="ph"><span class="caret"></span>name@example.com</span>
+        </div>
+      </div>
       <div class="hosted-or">or</div>
-      <div class="provider-row"><a class="provider" href="#" aria-label="Continue with Google"><i class="gmark lg"></i></a>…</div>
-      <div class="hosted-links"><a href="#">Have a license key?</a>…</div>   <!-- .plain: no rule; a <span> is muted text -->
-      <div class="hosted-actions"><button class="btn primary block">…</button><span class="hint">…</span></div>
+      <div class="provider-row">
+        <a class="provider" href="#" aria-label="Continue with Google"
+          ><i class="gmark lg"></i></a
+        >…
+      </div>
+      <div class="hosted-links"><a href="#">Have a license key?</a>…</div>
+      <!-- .plain: no rule; a <span> is muted text -->
+      <div class="hosted-actions">
+        <button class="btn primary block">…</button><span class="hint">…</span>
+      </div>
     </div>
-    <footer class="hosted-foot"><i class="ic ic-lock sm"></i><span>…</span></footer>
+    <footer class="hosted-foot">
+      <i class="ic ic-lock sm"></i><span>…</span>
+    </footer>
   </main>
   <nav class="hosted-legal">…</nav>
 </div>
 
-<span class="id-chip"><span>dana@example.edu</span><a href="#">Change</a></span>        <!-- the typed address -->
-<div class="hosted-org"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
-<div class="person-row"><span class="photo lg"></span><div class="person-row-text"><strong>Mara Fennick</strong><span>mara@…</span></div><a class="link" href="#">Not you?</a></div>
-<div class="code-cells"><span>4</span><span class="on"></span>…</div>                    <!-- six 56px cells -->
+<span class="id-chip"><span>dana@example.edu</span><a href="#">Change</a></span>
+<!-- the typed address -->
+<div class="hosted-org">
+  <span class="icon-tile muted"><i class="ic ic-building-2"></i></span>
+  <h1>Lakeside University</h1>
+</div>
+<div class="person-row">
+  <span class="photo lg"></span>
+  <div class="person-row-text">
+    <strong>Mara Fennick</strong><span>mara@…</span>
+  </div>
+  <a class="link" href="#">Not you?</a>
+</div>
+<div class="code-cells"><span>4</span><span class="on"></span>…</div>
+<!-- six 56px cells -->
 <p class="hosted-note"><i class="ic ic-info sm"></i><span>…</span></p>
-<div class="hosted-list"><div class="hosted-row"><i class="ic ic-mail"></i>                 <!-- rows in a box, 56 high -->
-  <div class="hosted-row-text"><strong>Your email</strong><span>…</span></div><span class="switch"></span></div></div>
-<div class="check-list"><span class="check"><span class="box"></span><span>I agree to …</span></span>…</div>
-<div class="pick-tiles"><div class="pick-tile on"><span class="photo lg badged"><i class="gmark sm"></i></span><span>Google</span><span class="meta">In use</span></div>
-  <div class="pick-tile add"><span class="pick-media"><i class="ic ic-upload"></i></span><span>Upload</span><span class="meta">PNG or JPEG</span></div></div>
+<div class="hosted-list">
+  <div class="hosted-row">
+    <i class="ic ic-mail"></i>
+    <!-- rows in a box, 56 high -->
+    <div class="hosted-row-text"><strong>Your email</strong><span>…</span></div>
+    <span class="switch"></span>
+  </div>
+</div>
+<div class="check-list">
+  <span class="check"><span class="box"></span><span>I agree to …</span></span
+  >…
+</div>
+<div class="pick-tiles">
+  <div class="pick-tile on">
+    <span class="photo lg badged"><i class="gmark sm"></i></span
+    ><span>Google</span><span class="meta">In use</span>
+  </div>
+  <div class="pick-tile add">
+    <span class="pick-media"><i class="ic ic-upload"></i></span
+    ><span>Upload</span><span class="meta">PNG or JPEG</span>
+  </div>
+</div>
 ```
 
 - **Hosted card.** Fields and block buttons are 48 (the card's touch size), the h1 is the stat
@@ -1601,12 +2458,30 @@ nav. `identity.sign-in`, `identity.consent`, `identity.connection`, `identity.co
   profile picture (24, `.lg` 40, `.xl` 48), `.badged` with its source's mark on the corner.
 
 ```html
-<span class="domain req"><i class="ic ic-shield-check"></i>example.edu<span class="domain-tag">SSO only</span></span>   <!-- .wait: DNS pending -->
-<dl class="record"><dt>Name</dt><dd><span>_polaris-key.music.example.edu</span><button class="btn ghost icon sm">…</button></dd></dl>
-<tr class="detail"><td colspan="5">…the pending domain's record, right under its row…</td></tr>
-<div class="choices fit">…</div>                                  <!-- three choices take the width -->
-<span class="grant"><i class="ic ic-check"></i>Screen name</span><span class="grant no"><i class="ic ic-eye-off"></i>Not your email</span>
-<ol class="num-list alpha">…</ol>                                  <!-- lettered, beside numbered pins -->
+<span class="domain req"
+  ><i class="ic ic-shield-check"></i>example.edu<span class="domain-tag"
+    >SSO only</span
+  ></span
+>
+<!-- .wait: DNS pending -->
+<dl class="record">
+  <dt>Name</dt>
+  <dd>
+    <span>_polaris-key.music.example.edu</span
+    ><button class="btn ghost icon sm">…</button>
+  </dd>
+</dl>
+<tr class="detail">
+  <td colspan="5">…the pending domain's record, right under its row…</td>
+</tr>
+<div class="choices fit">…</div>
+<!-- three choices take the width -->
+<span class="grant"><i class="ic ic-check"></i>Screen name</span
+><span class="grant no"><i class="ic ic-eye-off"></i>Not your email</span>
+<ol class="num-list alpha">
+  …
+</ol>
+<!-- lettered, beside numbered pins -->
 ```
 
 - **Grants** are what an app gets from an account: quiet 24px chips, a tick for granted, dashed
@@ -1619,24 +2494,50 @@ nav. `identity.sign-in`, `identity.consent`, `identity.connection`, `identity.co
 ```html
 <!-- a long settings page with its own nav: 200 nav · body (max 960) · aside at wide -->
 <div class="with-toc">
-  <nav class="jump-nav">…</nav>                                    <!-- optional: the pills below 1280 -->
-  <nav class="toc-nav"><p class="eyebrow">On this page</p><a class="on" href="#s-status">Status</a>
-    <a href="#s-methods">Sign-in methods<span class="dot" aria-label="Unsaved changes"></span></a>…</nav>
+  <nav class="jump-nav">…</nav>
+  <!-- optional: the pills below 1280 -->
+  <nav class="toc-nav">
+    <p class="eyebrow">On this page</p>
+    <a class="on" href="#s-status">Status</a>
+    <a href="#s-methods"
+      >Sign-in methods<span class="dot" aria-label="Unsaved changes"></span></a
+    >…
+  </nav>
   <div class="toc-body">…cards…</div>
-  <div class="toc-aside">…secondary cards…</div>                   <!-- optional -->
-  <div class="save-bar">…</div>                                    <!-- optional: rests under the body -->
+  <div class="toc-aside">…secondary cards…</div>
+  <!-- optional -->
+  <div class="save-bar">…</div>
+  <!-- optional: rests under the body -->
 </div>
-<div class="card-band"><p class="eyebrow">Inside the game<span class="end">Follows each store channel</span></p></div>
-<div class="setting-row changed">…<div class="changed-note"><i class="ic ic-pencil"></i>Not saved ·<a class="link" href="#">Use the default</a></div></div>
-<div class="card-note"><div class="callout warning">…</div></div>  <!-- a caution about the row above -->
+<div class="card-band">
+  <p class="eyebrow">
+    Inside the game<span class="end">Follows each store channel</span>
+  </p>
+</div>
+<div class="setting-row changed">
+  …
+  <div class="changed-note">
+    <i class="ic ic-pencil"></i>Not saved ·<a class="link" href="#"
+      >Use the default</a
+    >
+  </div>
+</div>
+<div class="card-note"><div class="callout warning">…</div></div>
+<!-- a caution about the row above -->
 <div class="setting-title">Game Center<small>iOS</small></div>
-<span class="share-line"><span class="progress" style="--v: 48%"></span>Shared by 48% of players</span>
-<span class="swatch-chip"><i style="--swatch: #ec4c55"></i>Accent<span class="mono">#EC4C55</span></span>
+<span class="share-line"
+  ><span class="progress" style="--v: 48%"></span>Shared by 48% of players</span
+>
+<span class="swatch-chip"
+  ><i style="--swatch: #ec4c55"></i>Accent<span class="mono"
+    >#EC4C55</span
+  ></span
+>
 ```
 
-| Primitive    | Wide ≥ 1600                          | Desktop 1280–1599              | Tablet and phone          |
-| ------------ | ------------------------------------ | ------------------------------ | ------------------------- |
-| `.with-toc`  | 200 nav · body · 400 `.toc-aside`    | 200 nav · body, aside under it | one column; `.jump-nav`   |
+| Primitive   | Wide ≥ 1600                       | Desktop 1280–1599              | Tablet and phone        |
+| ----------- | --------------------------------- | ------------------------------ | ----------------------- |
+| `.with-toc` | 200 nav · body · 400 `.toc-aside` | 200 nav · body, aside under it | one column; `.jump-nav` |
 
 - Cards in `.toc-body` and `.toc-aside` are page-level blocks: they title at the block step. In
   the portal the body takes the rest of the 1248 page, so it ends where the header's actions end.
@@ -1653,22 +2554,60 @@ the last column share their edges, with exploration C's setup stepper (owner, 20
 Integration steps in the last column under the hero's Integration pane.
 
 ```html
-<div class="page"><div class="ov"><div class="ov-grid">
-  <div class="card ov-hero attention">                 <!-- every column; .attention: 3px warning edge and wash -->
-    <div class="ov-hero-main"><header class="page-head">…</header><section class="mk-stack-5">…the next step…</section></div>
-    <section class="ov-hero-side">                     <!-- the last column: a sunken gauge -->
-      <div class="ov-pane-head"><h2 class="type-card"><a href="#">Integration<i class="ic ic-arrow-right"></i></a></h2><button class="btn link quiet">Hide</button></div>
-      <div class="ov-gauge"><div class="meter-head">…macOS · 2 of 5 verified · bar…</div></div>
-      <p class="ov-seen"><i class="ic ic-code-xml"></i><span>Last seen 4 min ago · …</span></p>
-    </section></div>
-  <section class="section ov-main">…<div class="ov-board">
-    <article class="card ov-feature">                  <!-- .issue .off -->
-      <div class="ov-feature-main"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
-        <h3><a href="#">Licensing</a></h3><span class="stat-value">240 <small>licenses</small></span><span class="stat-foot">Standard · 3 waiting</span></div>
-    </article>…</div></section>
-  <section class="section ov-side span-rows">…<div class="card"><ol class="guide flat">…steps…</ol></div></section>
-  <section class="section ov-main">…Recent activity…</section>
-</div></div></div>
+<div class="page">
+  <div class="ov">
+    <div class="ov-grid">
+      <div class="card ov-hero attention">
+        <!-- every column; .attention: 3px warning edge and wash -->
+        <div class="ov-hero-main">
+          <header class="page-head">…</header>
+          <section class="mk-stack-5">…the next step…</section>
+        </div>
+        <section class="ov-hero-side">
+          <!-- the last column: a sunken gauge -->
+          <div class="ov-pane-head">
+            <h2 class="type-card">
+              <a href="#">Integration<i class="ic ic-arrow-right"></i></a>
+            </h2>
+            <button class="btn link quiet">Hide</button>
+          </div>
+          <div class="ov-gauge">
+            <div class="meter-head">…macOS · 2 of 5 verified · bar…</div>
+          </div>
+          <p class="ov-seen">
+            <i class="ic ic-code-xml"></i><span>Last seen 4 min ago · …</span>
+          </p>
+        </section>
+      </div>
+      <section class="section ov-main">
+        …
+        <div class="ov-board">
+          <article class="card ov-feature">
+            <!-- .issue .off -->
+            <div class="ov-feature-main">
+              <span class="icon-tile sm" data-service="license"
+                ><i class="svc"></i
+              ></span>
+              <h3><a href="#">Licensing</a></h3>
+              <span class="stat-value">240 <small>licenses</small></span
+              ><span class="stat-foot">Standard · 3 waiting</span>
+            </div>
+          </article>
+          …
+        </div>
+      </section>
+      <section class="section ov-side span-rows">
+        …
+        <div class="card">
+          <ol class="guide flat">
+            …steps…
+          </ol>
+        </div>
+      </section>
+      <section class="section ov-main">…Recent activity…</section>
+    </div>
+  </div>
+</div>
 ```
 
 - **`.ov` / `.ov-grid`**: columns from the grid's own width, never the viewport: 4 from 1488px
@@ -1697,13 +2636,38 @@ Integration steps in the last column under the hero's Integration pane.
 ## Toasts at the page's end, choice bodies, stacked facts (commerce screens)
 
 ```html
-<div class="toasts at-end"><div class="toast success" role="status"><i class="ic ic-circle-check"></i>
-  <div class="grow"><div class="toast-title">Commerce is on for DJDL</div><div class="toast-text">…</div>
-    <div class="toast-actions"><button class="btn outline xs">Undo</button><button class="btn ghost xs">Open Storefronts</button></div></div></div></div>
-<div class="input medium"><span class="affix">$</span><span class="grow tnum">3.99</span><span class="affix">USD</span></div>
-<div class="choice on"><div class="choice-title">A new offer from …</div>
-  <div class="choice-body mk-stack-2"><div class="mk-grid-2">…fields…</div><span class="hint">…</span></div></div>
-<dl class="kv-rows stack-narrow"><div><dt>Order</dt><dd><span class="id">GPA.3391-2284-1170-55120<i class="ic ic-copy"></i></span></dd></div></dl>
+<div class="toasts at-end">
+  <div class="toast success" role="status">
+    <i class="ic ic-circle-check"></i>
+    <div class="grow">
+      <div class="toast-title">Commerce is on for DJDL</div>
+      <div class="toast-text">…</div>
+      <div class="toast-actions">
+        <button class="btn outline xs">Undo</button
+        ><button class="btn ghost xs">Open Storefronts</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="input medium">
+  <span class="affix">$</span><span class="grow tnum">3.99</span
+  ><span class="affix">USD</span>
+</div>
+<div class="choice on">
+  <div class="choice-title">A new offer from …</div>
+  <div class="choice-body mk-stack-2">
+    <div class="mk-grid-2">…fields…</div>
+    <span class="hint">…</span>
+  </div>
+</div>
+<dl class="kv-rows stack-narrow">
+  <div>
+    <dt>Order</dt>
+    <dd>
+      <span class="id">GPA.3391-2284-1170-55120<i class="ic ic-copy"></i></span>
+    </dd>
+  </div>
+</dl>
 ```
 
 - **`.toasts.at-end`**: a toast about a row near the page's end (a switch just turned on) is
@@ -1730,18 +2694,41 @@ Small additions for `packages.portal-packages` (the portal's Account → Package
 ```html
 <!-- Account sections: the side nav from 1280px, the pill row from 640px, a picker on phone -->
 <div class="with-toc">
-  <nav class="toc-nav" aria-label="Account">…<a class="on" href="#" aria-current="page">Packages</a>…</nav>
-  <nav class="jump-nav" aria-label="Account">…<a class="on" href="#">Packages</a>…</nav>
-  <div class="select toc-select" role="button" aria-label="Account section: Packages"><i class="ic ic-boxes"></i><span class="grow">Packages</span><i class="ic ic-chevrons-up-down"></i></div>
+  <nav class="toc-nav" aria-label="Account">
+    …<a class="on" href="#" aria-current="page">Packages</a>…
+  </nav>
+  <nav class="jump-nav" aria-label="Account">
+    …<a class="on" href="#">Packages</a>…
+  </nav>
+  <div
+    class="select toc-select"
+    role="button"
+    aria-label="Account section: Packages"
+  >
+    <i class="ic ic-boxes"></i><span class="grow">Packages</span
+    ><i class="ic ic-chevrons-up-down"></i>
+  </div>
   <div class="toc-body">…cards…</div>
 </div>
 
 <!-- a stacked table keeps its group rows as tinted bands -->
-<table class="table fixed stack-phone flow"><tbody><tr class="group-row"><td colspan="3">…DJDL · Standard license</td></tr>…</tbody></table>
+<table class="table fixed stack-phone flow">
+  <tbody>
+    <tr class="group-row">
+      <td colspan="3">…DJDL · Standard license</td>
+    </tr>
+    …
+  </tbody>
+</table>
 
-<div class="code-tabs fade">…five tabs…</div>                         <!-- scroll under a fade, clear of Copy -->
-<div class="field fit">…a typed confirmation…</div>                   <!-- at most 400px wide -->
-<div class="card-foot actions"><button class="btn outline">Cancel</button><button class="btn primary">…</button></div>
+<div class="code-tabs fade">…five tabs…</div>
+<!-- scroll under a fade, clear of Copy -->
+<div class="field fit">…a typed confirmation…</div>
+<!-- at most 400px wide -->
+<div class="card-foot actions">
+  <button class="btn outline">Cancel</button
+  ><button class="btn primary">…</button>
+</div>
 ```
 
 - **Sections that are pages.** A `.with-toc` holding both a `.jump-nav` and a `.toc-select` shows
@@ -1766,49 +2753,117 @@ scale. `admin.members`, `admin.platform-settings` and `admin.cli-login` are the 
 <!-- roles as tags; a narrowed role is one tag, its areas after a hairline -->
 <span class="role-tags">
   <span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span>
-  <span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span>
-    <span class="role-areas"><i class="svc" data-service="release"></i>Ship builds</span></span>
+  <span class="role-set"
+    ><span class="role-tag"
+      ><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span
+    >
+    <span class="role-areas"
+      ><i class="svc" data-service="release"></i>Ship builds</span
+    ></span
+  >
 </span>
-<span class="role-tags flow">…</span>                       <!-- stays a wrapping row on a narrow card -->
-<span class="faces"><span class="avatar sm">NH</span><span class="avatar sm">FB</span></span>
-<span class="avatar pending"><i class="ic ic-mail"></i></span>   <!-- an invite: no sign-in yet -->
+<span class="role-tags flow">…</span>
+<!-- stays a wrapping row on a narrow card -->
+<span class="faces"
+  ><span class="avatar sm">NH</span><span class="avatar sm">FB</span></span
+>
+<span class="avatar pending"><i class="ic ic-mail"></i></span>
+<!-- an invite: no sign-in yet -->
 
 <!-- a row's ⋯ menu drawn open, with an item you can't use and why -->
-<td class="row-menu"><div class="popover-anchor">…<div class="popover right"><div class="menu">
-  <span class="menu-item disabled"><i class="ic ic-lock"></i>Remove from console</span>
-  <p class="menu-note">The root rule gives this role. Take Jonas out of polaris-admins at Pocket ID instead.</p>
-</div></div></div></td>
+<td class="row-menu">
+  <div class="popover-anchor">
+    …
+    <div class="popover right">
+      <div class="menu">
+        <span class="menu-item disabled"
+          ><i class="ic ic-lock"></i>Remove from console</span
+        >
+        <p class="menu-note">
+          The root rule gives this role. Take Jonas out of polaris-admins at
+          Pocket ID instead.
+        </p>
+      </div>
+    </div>
+  </div>
+</td>
 
-<div class="token-field focus"><span class="token">hana@example.com<i class="ic ic-x"></i></span><span class="caret"></span></div>
-<div class="field-row"><span class="field-row-label">Signs in with</span><div class="select">…</div></div>
-<span class="foot-note"><i class="ic ic-fingerprint"></i>Asks for your passkey first</span>   <!-- first in a foot or save bar -->
+<div class="token-field focus">
+  <span class="token">hana@example.com<i class="ic ic-x"></i></span
+  ><span class="caret"></span>
+</div>
+<div class="field-row">
+  <span class="field-row-label">Signs in with</span>
+  <div class="select">…</div>
+</div>
+<span class="foot-note"
+  ><i class="ic ic-fingerprint"></i>Asks for your passkey first</span
+>
+<!-- first in a foot or save bar -->
 
 <!-- a settings row rendered from a registry -->
 <div class="setting-row changed">
-  <div><div class="setting-title">Default release-file quota<span class="setting-key">assets.quota.releaseBytes</span></div>
+  <div>
+    <div class="setting-title">
+      Default release-file quota<span class="setting-key"
+        >assets.quota.releaseBytes</span
+      >
+    </div>
     <div class="setting-desc">Builds, installers and packs, per product.</div>
-    <div class="setting-meta"><span>2 products use this</span><span aria-hidden="true">·</span><span>Diceroll sets 40 GB</span></div>
-    <div class="changed-note">Changed from 20 GB, not saved yet</div></div>
+    <div class="setting-meta">
+      <span>2 products use this</span><span aria-hidden="true">·</span
+      ><span>Diceroll sets 40 GB</span>
+    </div>
+    <div class="changed-note">Changed from 20 GB, not saved yet</div>
+  </div>
   <div class="setting-control"><div class="input changed">…</div></div>
 </div>
-<div class="setting-control"><div class="setting-value"><span>8 hours</span><span class="meta">Set in code, not a setting</span></div></div>
-<div class="save-bar blocked">…</div>   <div class="save-bar saved">…</div>
+<div class="setting-control">
+  <div class="setting-value">
+    <span>8 hours</span><span class="meta">Set in code, not a setting</span>
+  </div>
+</div>
+<div class="save-bar blocked">…</div>
+<div class="save-bar saved">…</div>
 
 <!-- a settings page: the section nav, the pills (tablet), the picker (phone); Platform ready in the aside at wide -->
 <div class="with-toc">
-  <nav class="toc-nav">…<a href="#ready">Platform ready<span class="meta">8 of 9</span></a><a href="#jobs">Jobs<i class="dot"></i></a>
-    <p class="toc-note">Members and SSO rules are in <a class="link" href="#">Members</a>…</p></nav>
-  <nav class="jump-nav">…</nav><div class="select toc-select">…</div>
-  <div class="toc-body columns">…<section class="card aside span-3">Platform ready</section>…</div>
+  <nav class="toc-nav">
+    …<a href="#ready">Platform ready<span class="meta">8 of 9</span></a
+    ><a href="#jobs">Jobs<i class="dot"></i></a>
+    <p class="toc-note">
+      Members and SSO rules are in <a class="link" href="#">Members</a>…
+    </p>
+  </nav>
+  <nav class="jump-nav">…</nav>
+  <div class="select toc-select">…</div>
+  <div class="toc-body columns">
+    …
+    <section class="card aside span-3">Platform ready</section>
+    …
+  </div>
 </div>
 
 <!-- other states under a console screen -->
-<section class="board below"><div class="board-title"><h1>Other states</h1></div><figure class="board-item">…</figure></section>
+<section class="board below">
+  <div class="board-title"><h1>Other states</h1></div>
+  <figure class="board-item">…</figure>
+</section>
 
 <!-- the hosted sign-in page inside a browser frame, and a code to check against the terminal -->
-<div class="browser"><div class="browser-bar">…</div>
-  <div class="hosted framed"><div class="hosted-brand">…</div><main class="hosted-card">…
-    <div class="match-code"><span>Check this matches your terminal</span><strong>QXKM-TPRW</strong></div>…</main></div></div>
+<div class="browser">
+  <div class="browser-bar">…</div>
+  <div class="hosted framed">
+    <div class="hosted-brand">…</div>
+    <main class="hosted-card">
+      …
+      <div class="match-code">
+        <span>Check this matches your terminal</span><strong>QXKM-TPRW</strong>
+      </div>
+      …
+    </main>
+  </div>
+</div>
 ```
 
 - **Role tags** are 24 high like a pill. Under 560px of card width each role takes its own line
@@ -1850,26 +2905,73 @@ Appended for the licenses area (2026-10-08); all on the scale. `licenses.list`, 
 ```html
 <!-- an editor: an ordered list beside the open record (licenses.tiers) -->
 <div class="mk-editor">
-  <section class="card"><div class="card-head">…Order…</div><div class="card-rows">
-    <div class="item-row lead keep-end marked"><i class="ic ic-grip-vertical subtle"></i><span class="rank">3</span>
-      <div class="item-text"><div class="item-title">Education<small>57 licenses</small></div><div class="item-desc">…</div></div>
-      <div class="item-end"><button class="btn ghost icon xs">…</button></div></div></div></section>
-  <div class="mk-stack-4"><section class="card">
-    <div class="form-section"><div class="form-section-label"><h3>Duration</h3><p>…</p></div><div class="form">…</div></div>
-  </section><div class="save-bar">…</div></div>
+  <section class="card">
+    <div class="card-head">…Order…</div>
+    <div class="card-rows">
+      <div class="item-row lead keep-end marked">
+        <i class="ic ic-grip-vertical subtle"></i><span class="rank">3</span>
+        <div class="item-text">
+          <div class="item-title">Education<small>57 licenses</small></div>
+          <div class="item-desc">…</div>
+        </div>
+        <div class="item-end"><button class="btn ghost icon xs">…</button></div>
+      </div>
+    </div>
+  </section>
+  <div class="mk-stack-4">
+    <section class="card">
+      <div class="form-section">
+        <div class="form-section-label">
+          <h3>Duration</h3>
+          <p>…</p>
+        </div>
+        <div class="form">…</div>
+      </div>
+    </section>
+    <div class="save-bar">…</div>
+  </div>
 </div>
-<div class="radio-list"><div class="radio-option"><span class="radio on"><span class="box"></span>Keeps the last version</span>
-  <span class="radio-desc">…</span></div></div>
-<ul class="icon-list small"><li class="success"><i class="ic ic-check"></i><span>…</span><span>value</span><span class="sub">…</span></li></ul>
-<div class="date-span" style="--v: 6%"><span>Sep 14, 2026</span><div class="date-span-track"><div class="progress" style="--v: 6%"></div>
-  <span class="date-span-today">Today · Oct 7</span></div><span class="strong">Sep 14, 2027</span></div>
-<div class="segmented sm matrix">…four options…</div>        <!-- the same four columns on every row -->
-<p class="eyebrow rows-label">Packs</p>                         <!-- a group label inside .card-rows -->
+<div class="radio-list">
+  <div class="radio-option">
+    <span class="radio on"
+      ><span class="box"></span>Keeps the last version</span
+    >
+    <span class="radio-desc">…</span>
+  </div>
+</div>
+<ul class="icon-list small">
+  <li class="success">
+    <i class="ic ic-check"></i><span>…</span><span>value</span
+    ><span class="sub">…</span>
+  </li>
+</ul>
+<div class="date-span" style="--v: 6%">
+  <span>Sep 14, 2026</span>
+  <div class="date-span-track">
+    <div class="progress" style="--v: 6%"></div>
+    <span class="date-span-today">Today · Oct 7</span>
+  </div>
+  <span class="strong">Sep 14, 2027</span>
+</div>
+<div class="segmented sm matrix">…four options…</div>
+<!-- the same four columns on every row -->
+<p class="eyebrow rows-label">Packs</p>
+<!-- a group label inside .card-rows -->
 
 <!-- a board of states drawn as slices of the page, dialogs or drawers -->
-<div class="board cols-2 wide-3"><figure class="board-item"><div class="board-frame">…page-head, toolbar, card…</div><figcaption>…</figcaption></figure>
-  <figure class="board-item"><div class="board-stage"><aside class="drawer">…</aside><div class="overlay center"><div class="dialog sm">…</div></div></div></figure>
-  <figure class="board-item full">…</figure></div>
+<div class="board cols-2 wide-3">
+  <figure class="board-item">
+    <div class="board-frame">…page-head, toolbar, card…</div>
+    <figcaption>…</figcaption>
+  </figure>
+  <figure class="board-item">
+    <div class="board-stage">
+      <aside class="drawer">…</aside>
+      <div class="overlay center"><div class="dialog sm">…</div></div>
+    </div>
+  </figure>
+  <figure class="board-item full">…</figure>
+</div>
 ```
 
 - **`.mk-editor`** with a wider list: a screen may set `--list-w` (a width, not spacing); the
@@ -1922,30 +3024,72 @@ value changed. `entitlements.duration` (the tier record), `entitlements.license-
 
 ```html
 <!-- a reference legend: glyph in the media column, name (14/20 bold) over its rule (13/20 body) -->
-<section class="card aside span-2"><div class="card-head">…Kinds…</div>
-  <div class="ref-legend cols">                          <!-- .inline: name and rule on one 32px line; .cols (880+) / .cols-lg (1080+): equal columns -->
-    <div class="legend-item"><i class="ic ic-toggle-right legend-glyph" aria-hidden="true"></i>
-      <div class="legend-text"><span class="legend-name">On/off</span> <span class="legend-rule">Off unless …</span></div></div>…</div>
-  <div class="card-foot start"><span>Applied in order: …</span></div></section>
+<section class="card aside span-2">
+  <div class="card-head">…Kinds…</div>
+  <div class="ref-legend cols">
+    <!-- .inline: name and rule on one 32px line; .cols (880+) / .cols-lg (1080+): equal columns -->
+    <div class="legend-item">
+      <i class="ic ic-toggle-right legend-glyph" aria-hidden="true"></i>
+      <div class="legend-text">
+        <span class="legend-name">On/off</span>
+        <span class="legend-rule">Off unless …</span>
+      </div>
+    </div>
+    …
+  </div>
+  <div class="card-foot start"><span>Applied in order: …</span></div>
+</section>
 
 <!-- a callout's dismiss in its corner -->
-<div class="callout info">…<div class="btn-row">…two outline actions…</div>
-  <button class="btn ghost icon sm callout-close" aria-label="Dismiss for everyone"><i class="ic ic-x"></i></button></div>
+<div class="callout info">
+  …
+  <div class="btn-row">…two outline actions…</div>
+  <button
+    class="btn ghost icon sm callout-close"
+    aria-label="Dismiss for everyone"
+  >
+    <i class="ic ic-x"></i>
+  </button>
+</div>
 
 <!-- two header text actions that share one row on phone -->
-<div class="page-actions"><button class="btn ghost icon" aria-label="More">…</button>
-  <div class="action-pair"><button class="btn outline">Create codes…</button><button class="btn outline">Comp to…</button></div></div>
+<div class="page-actions">
+  <button class="btn ghost icon" aria-label="More">…</button>
+  <div class="action-pair">
+    <button class="btn outline">Create codes…</button
+    ><button class="btn outline">Comp to…</button>
+  </div>
+</div>
 
 <!-- a row's value or control, its "was" mark and its remove ×, on the title's line -->
-<div class="setting-row dense top">…<div class="end-control"><span class="was">was +1</span>
-  <div class="input sm short changed">…</div><button class="btn ghost icon xs" aria-label="Remove loadouts">…</button></div></div>
+<div class="setting-row dense top">
+  …
+  <div class="end-control">
+    <span class="was">was +1</span>
+    <div class="input sm short changed">…</div>
+    <button class="btn ghost icon xs" aria-label="Remove loadouts">…</button>
+  </div>
+</div>
 
-<div class="card-split stack-md">…facts…<div>…History…</div></div>   <!-- side by side from 720px of card -->
-<div class="stats strip quad">…four stats…</div>                      <!-- 4 across; 2×2 under 680, tiles on phone -->
-<table class="table no-head-phone">…</table>                           <!-- folded on phone: no lone header -->
-<td class="end on-title"><button class="btn ghost icon xs">…</button></td>   <!-- phone: ⋯ on the title's line -->
-<button class="btn ghost sm muted hang-start">Change to units…</button>     <!-- a quiet structural action -->
-<div class="card-head"><div class="title fill">…a title over a line of facts…</div><button class="btn outline icon sm">…</button></div>
+<div class="card-split stack-md">
+  …facts…
+  <div>…History…</div>
+</div>
+<!-- side by side from 720px of card -->
+<div class="stats strip quad">…four stats…</div>
+<!-- 4 across; 2×2 under 680, tiles on phone -->
+<table class="table no-head-phone">
+  …
+</table>
+<!-- folded on phone: no lone header -->
+<td class="end on-title"><button class="btn ghost icon xs">…</button></td>
+<!-- phone: ⋯ on the title's line -->
+<button class="btn ghost sm muted hang-start">Change to units…</button>
+<!-- a quiet structural action -->
+<div class="card-head">
+  <div class="title fill">…a title over a line of facts…</div>
+  <button class="btn outline icon sm">…</button>
+</div>
 ```
 
 - **`.ref-legend`** is the one component for reference legends (entitlement kinds, where add-ons
@@ -1969,7 +3113,7 @@ value changed. `entitlements.duration` (the tier record), `entitlements.license-
   **`td.on-title`** (phone only), **`.btn.ghost.muted`** and **`.title.fill`** (a card head whose
   title carries a line of facts shrinks before its icon button wraps) are small.
 - **Tokens**: `--mk-warning-tint` (a warm warning wash: light `color-mix(--pk-signed 14%,
-  surface-raised)`, about `#f7ebdb`; dark `--pk-warning-subtle`) and `--control-max` (320, the
+surface-raised)`, about `#f7ebdb`; dark `--pk-warning-subtle`) and `--control-max` (320, the
   widest a select in a form gets). For brand: the light `--pk-warning-subtle` (`#eae7e6`) reads grey.
 
 ### Status words: facts never break inside themselves
@@ -1988,23 +3132,23 @@ These change existing components, so they apply only under `.kit-next` on the sc
 every screen means changing existing values, which this pass did not do; until the lead flips
 them, a screen without `.kit-next` renders as before.
 
-| Default                         | Under `.kit-next`                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Link inside a sentence          | Underlined: 1px, 3px offset, half the link's colour, in `p`, `.hint`, `.cell-sub`, `.setting-desc`, `.callout-text`, `.radio-desc`, `.item-desc`, `.timeline-desc`, `.error-text`, `.toast-text`, `.legend-rule`. A link with an arrow and a `.btn` stay bare (WCAG 1.4.1) |
-| `.callout.warning`, `.pill.warning` | `--mk-warning-tint` background (light; dark unchanged). A screen's own warning rows (`tr.reversed`, a stale device) use the token too |
-| Phone touch targets             | `.btn` at least 44; `.segmented` options 40 in a 44 control; an icon-only button in a row (`td`, `.item-end`, `.card-row`, `.setting-row`, `.list-row`, `.card-head`, `.end-control`) a 40×40 target that keeps the row 56; `.switch` a 44×44 hit area while it draws 36×20; a radio or check row at least 44 |
-| Phone save bar                  | One 56px row: "N changes" (small, strong), Discard, Save. Markup: the sentence in `.hide-phone`, the count in `.show-phone`, Save's record name in `.hide-phone`. The sentence shows from 640px. For builders: `scroll-padding-bottom` = the bar's height + 16, so a focused field is never hidden behind it. (Replaces "message first line, buttons second" for these screens.) |
-| Phone sheet foot, `.card-foot.actions` | Cancel and the primary side by side in two equal columns, in DOM order, so the visual order matches the tab order (replaces column-reverse with the primary on top) |
-| `.dialog.scroll.fade` sheet     | The body is a focusable scroll region (`tabindex="0"`, `role="region"` with a name); while it scrolls (mark `.overflows`) the foot is lifted by a shadow |
-| Light switch and radio          | The knob and the selected dot are the surface colour (white); the accent stays on the track and the ring. A real switch: `<button class="switch on" role="switch" aria-checked="true" aria-labelledby="…">` |
-| `.segmented > .on`              | An inset 1px ring in `--pk-border-strong`, so the selected segment reaches 3:1 in both themes            |
-| `.choice-title`                 | The glyph on the title's first line                                                                      |
-| `.val-on` / `.val-off`          | Off reserves On's 14px tick slot, so On and Off start at one x in a column                              |
-| Status words in a table cell    | The cell's 14/20, on the row's baseline                                                                  |
-| A select in a form              | At most `--control-max` (320). A number is `.input.short` (96) or `.input.unit` (128), never a stretched input with an affix; text fields stop at the form-section's 640 column |
-| `.kv-rows` on a narrow card     | A 112px label column                                                                                     |
-| `.avatar.sm`                    | Initials at 11px (initials are `aria-hidden`; the name is beside them)                                   |
-| Tablet toolbar (1024–1279)      | The search is 240, so it and five facets fit 920px                                                       |
+| Default                                | Under `.kit-next`                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Link inside a sentence                 | Underlined: 1px, 3px offset, half the link's colour, in `p`, `.hint`, `.cell-sub`, `.setting-desc`, `.callout-text`, `.radio-desc`, `.item-desc`, `.timeline-desc`, `.error-text`, `.toast-text`, `.legend-rule`. A link with an arrow and a `.btn` stay bare (WCAG 1.4.1)                                                                                                       |
+| `.callout.warning`, `.pill.warning`    | `--mk-warning-tint` background (light; dark unchanged). A screen's own warning rows (`tr.reversed`, a stale device) use the token too                                                                                                                                                                                                                                            |
+| Phone touch targets                    | `.btn` at least 44; `.segmented` options 40 in a 44 control; an icon-only button in a row (`td`, `.item-end`, `.card-row`, `.setting-row`, `.list-row`, `.card-head`, `.end-control`) a 40×40 target that keeps the row 56; `.switch` a 44×44 hit area while it draws 36×20; a radio or check row at least 44                                                                    |
+| Phone save bar                         | One 56px row: "N changes" (small, strong), Discard, Save. Markup: the sentence in `.hide-phone`, the count in `.show-phone`, Save's record name in `.hide-phone`. The sentence shows from 640px. For builders: `scroll-padding-bottom` = the bar's height + 16, so a focused field is never hidden behind it. (Replaces "message first line, buttons second" for these screens.) |
+| Phone sheet foot, `.card-foot.actions` | Cancel and the primary side by side in two equal columns, in DOM order, so the visual order matches the tab order (replaces column-reverse with the primary on top)                                                                                                                                                                                                              |
+| `.dialog.scroll.fade` sheet            | The body is a focusable scroll region (`tabindex="0"`, `role="region"` with a name); while it scrolls (mark `.overflows`) the foot is lifted by a shadow                                                                                                                                                                                                                         |
+| Light switch and radio                 | The knob and the selected dot are the surface colour (white); the accent stays on the track and the ring. A real switch: `<button class="switch on" role="switch" aria-checked="true" aria-labelledby="…">`                                                                                                                                                                      |
+| `.segmented > .on`                     | An inset 1px ring in `--pk-border-strong`, so the selected segment reaches 3:1 in both themes                                                                                                                                                                                                                                                                                    |
+| `.choice-title`                        | The glyph on the title's first line                                                                                                                                                                                                                                                                                                                                              |
+| `.val-on` / `.val-off`                 | Off reserves On's 14px tick slot, so On and Off start at one x in a column                                                                                                                                                                                                                                                                                                       |
+| Status words in a table cell           | The cell's 14/20, on the row's baseline                                                                                                                                                                                                                                                                                                                                          |
+| A select in a form                     | At most `--control-max` (320). A number is `.input.short` (96) or `.input.unit` (128), never a stretched input with an affix; text fields stop at the form-section's 640 column                                                                                                                                                                                                  |
+| `.kv-rows` on a narrow card            | A 112px label column                                                                                                                                                                                                                                                                                                                                                             |
+| `.avatar.sm`                           | Initials at 11px (initials are `aria-hidden`; the name is beside them)                                                                                                                                                                                                                                                                                                           |
+| Tablet toolbar (1024–1279)             | The search is 240, so it and five facets fit 920px                                                                                                                                                                                                                                                                                                                               |
 
 No sentence is set at `--fs-meta`: helper sentences, rules and sentence sub-lines use `--fs-small`
 (13/20); `--fs-meta` is for dates, counts, column labels and source tags.
@@ -2175,29 +3319,29 @@ in renders as before. Where the lead's list needed an existing value changed (ca
 row height 56, card gap 32, the 14px body type, a global `.page` cap), nothing was edited: those
 tokens already hold the lead's numbers, and a global width cap exists as `.page.cap`.
 
-| Primitive | What it does |
-| --- | --- |
-| `.page.cap` + `.cap-1180` / `.cap-1400` / `.cap-1440` | The distribution pass's content cap with a width per screen (tiers 1180, detail 1400, list 1440): wide adds margin, not an empty strip |
-| `.sticky-top`, `.sticky-1280` | A side column (Order, the detail rail) that stays 88px under the top; `-1280` only where it sits beside the record |
-| `.card-head.h56` (+ `.sub`) | One head height: 56, or 72 with a subtitle; the action stays on the title's line; an icon button stays beside the title on a narrow card |
-| `.fld-rhythm` | 24 between field groups, 8 label to control, 6 control to helper |
-| `.btn.match` | A button at the control height (36), on an input's line |
-| `.mk-editor.tiers` | Order list 300px (272 at tablet) beside the record; below 900px the list folds into `.mk-editor-switch` |
-| `.tabs.scroller` | Phone tab row: scroll-snap, a 56px edge fade |
-| `.segmented.fit`, `.segmented.matrix.fit` | Content-width segments that never ellipsize; on phone the matrix is a 2x2 of 44px cells with a filled selected state |
-| `.table.two-line` | Phone key/value rows: label and value, then source and action, 44px targets. Cells in DOM order: label, value, source, action |
-| `.table.cards-phone`, `td.is-default` | A list row as a three-line card on phone; default cells are not drawn |
-| `th.col-dur`, `th.col-dev`, `.meter-head.cap` | Fixed Duration (224) and Devices (136) columns; a meter capped at 96px |
-| `.quiet-cell`, `.btn.text` | A default value in muted text; an action as quiet underlined text |
-| `.page.columns.rail-360` + `.rail-cards` | The aside from 1280px (not 1600) at 360px, sticky, its cards sized to content; a `.full` block spans above it; below 1280 the cards sit in the flow, two across from 640px |
-| `.board.cols-2.start`, `.board-item.dlg-center`, `.room-below` | State boards: tiles size to their content; a dialog centres at 520px; a tile leaves 160px under a popover |
-| `.popover.anchor-below` | A popover or menu 8px under its trigger |
-| `.dialog-foot.std`, `.drawer-foot.std` | 40px buttons, 12px gap; on phone Cancel beside the primary and a `.start` link above the pair |
-| `.floor` (on a console or board root) | Helper and meta text at 13px, row icon actions 32px (44px on phone), 6px progress bars |
-| `.save-bar.pinned` | A save bar drawn as pinned: lifted, with the safe-area inset under it (the built screen pins it) |
-| `.stepper.compact.lined` | Every step label kept at every width, a hairline between the marks |
-| `.toast.wrap-action`, `.item-title.wrap-name`, `.card.tint.neutral-phone` | A toast's action under its message on phone; a file name that wraps at hyphens; a tinted card neutral on phone |
-| `.note-mock` | A board caption that reads as mock-only (defined, not yet applied to any caption) |
+| Primitive                                                                 | What it does                                                                                                                                                               |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.page.cap` + `.cap-1180` / `.cap-1400` / `.cap-1440`                     | The distribution pass's content cap with a width per screen (tiers 1180, detail 1400, list 1440): wide adds margin, not an empty strip                                     |
+| `.sticky-top`, `.sticky-1280`                                             | A side column (Order, the detail rail) that stays 88px under the top; `-1280` only where it sits beside the record                                                         |
+| `.card-head.h56` (+ `.sub`)                                               | One head height: 56, or 72 with a subtitle; the action stays on the title's line; an icon button stays beside the title on a narrow card                                   |
+| `.fld-rhythm`                                                             | 24 between field groups, 8 label to control, 6 control to helper                                                                                                           |
+| `.btn.match`                                                              | A button at the control height (36), on an input's line                                                                                                                    |
+| `.mk-editor.tiers`                                                        | Order list 300px (272 at tablet) beside the record; below 900px the list folds into `.mk-editor-switch`                                                                    |
+| `.tabs.scroller`                                                          | Phone tab row: scroll-snap, a 56px edge fade                                                                                                                               |
+| `.segmented.fit`, `.segmented.matrix.fit`                                 | Content-width segments that never ellipsize; on phone the matrix is a 2x2 of 44px cells with a filled selected state                                                       |
+| `.table.two-line`                                                         | Phone key/value rows: label and value, then source and action, 44px targets. Cells in DOM order: label, value, source, action                                              |
+| `.table.cards-phone`, `td.is-default`                                     | A list row as a three-line card on phone; default cells are not drawn                                                                                                      |
+| `th.col-dur`, `th.col-dev`, `.meter-head.cap`                             | Fixed Duration (224) and Devices (136) columns; a meter capped at 96px                                                                                                     |
+| `.quiet-cell`, `.btn.text`                                                | A default value in muted text; an action as quiet underlined text                                                                                                          |
+| `.page.columns.rail-360` + `.rail-cards`                                  | The aside from 1280px (not 1600) at 360px, sticky, its cards sized to content; a `.full` block spans above it; below 1280 the cards sit in the flow, two across from 640px |
+| `.board.cols-2.start`, `.board-item.dlg-center`, `.room-below`            | State boards: tiles size to their content; a dialog centres at 520px; a tile leaves 160px under a popover                                                                  |
+| `.popover.anchor-below`                                                   | A popover or menu 8px under its trigger                                                                                                                                    |
+| `.dialog-foot.std`, `.drawer-foot.std`                                    | 40px buttons, 12px gap; on phone Cancel beside the primary and a `.start` link above the pair                                                                              |
+| `.floor` (on a console or board root)                                     | Helper and meta text at 13px, row icon actions 32px (44px on phone), 6px progress bars                                                                                     |
+| `.save-bar.pinned`                                                        | A save bar drawn as pinned: lifted, with the safe-area inset under it (the built screen pins it)                                                                           |
+| `.stepper.compact.lined`                                                  | Every step label kept at every width, a hairline between the marks                                                                                                         |
+| `.toast.wrap-action`, `.item-title.wrap-name`, `.card.tint.neutral-phone` | A toast's action under its message on phone; a file name that wraps at hyphens; a tinted card neutral on phone                                                             |
+| `.note-mock`                                                              | A board caption that reads as mock-only (defined, not yet applied to any caption)                                                                                          |
 
 ## Config screens, multi-review: new primitives and the `.kit-cfg` rules
 
@@ -2241,22 +3385,22 @@ no new banner colours; the Platform pill marks controls that act on every produc
 
 Appended to `kit/mockup.css` between `BEGIN/END packages-multi-review`; no existing value changed.
 
-| Class | What it does |
-| --- | --- |
-| `.page.contained` | A single-column page centred at 1280px (`.page.form.centered` for a 760 flow). Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's. |
-| `.page.columns.sticky-rail` | From 1600px the rail is 360px and sticky at `top: 88px`; below, its cards fall under the main column. Card pairs that must not stretch: `.mk-grid-2.top`. |
-| `.fade-x`, `.wrap-phone` | Code, terminals: an edge fade while they scroll sideways (`tabindex="0"`, `role="region"` on the `<pre>`), soft wrap at 12px on phone. |
-| `.table-card.fade-edge` | A table scrolling inside its card on tablet, with an edge fade (off from 1280px). |
-| `.card.lane-card` | Equal-height lane: footer pinned (`margin-top:auto`); cap the list at 2 to 3 rows and put "View all" in the foot. |
-| `.attn-stack` / `.attn-line` | An attention row on two lines: pill, subject and the way on, then one muted sentence. |
-| `.card-split.sticky-end`, `.code-first`, `.v-center` | Sticky second pane beside a taller first; code above steps when stacked on phone; short pane centred. |
-| `.card-rows.cols-2` | Rows in two columns from 640 to 1599px, one column in the rail and on phone. |
-| `.board-grid.equal` | Columns that end on one line; captions are labels 8px above the pane. |
-| `.kv-grid`, `.split-line`, `.measure-70`, `.actions-under` | Parameter grid; a value pushed right; a 70ch measure; closing buttons directly under the field they confirm. |
-| `.em-dash` | An empty cell as an em dash (`.dash` is the dashboard layout). |
-| `.meta-line` | Facts separated by a gap, not a dot character. |
+| Class                                                                                   | What it does                                                                                                                                                                                                         |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.page.contained`                                                                       | A single-column page centred at 1280px (`.page.form.centered` for a 760 flow). Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.                                                  |
+| `.page.columns.sticky-rail`                                                             | From 1600px the rail is 360px and sticky at `top: 88px`; below, its cards fall under the main column. Card pairs that must not stretch: `.mk-grid-2.top`.                                                            |
+| `.fade-x`, `.wrap-phone`                                                                | Code, terminals: an edge fade while they scroll sideways (`tabindex="0"`, `role="region"` on the `<pre>`), soft wrap at 12px on phone.                                                                               |
+| `.table-card.fade-edge`                                                                 | A table scrolling inside its card on tablet, with an edge fade (off from 1280px).                                                                                                                                    |
+| `.card.lane-card`                                                                       | Equal-height lane: footer pinned (`margin-top:auto`); cap the list at 2 to 3 rows and put "View all" in the foot.                                                                                                    |
+| `.attn-stack` / `.attn-line`                                                            | An attention row on two lines: pill, subject and the way on, then one muted sentence.                                                                                                                                |
+| `.card-split.sticky-end`, `.code-first`, `.v-center`                                    | Sticky second pane beside a taller first; code above steps when stacked on phone; short pane centred.                                                                                                                |
+| `.card-rows.cols-2`                                                                     | Rows in two columns from 640 to 1599px, one column in the rail and on phone.                                                                                                                                         |
+| `.board-grid.equal`                                                                     | Columns that end on one line; captions are labels 8px above the pane.                                                                                                                                                |
+| `.kv-grid`, `.split-line`, `.measure-70`, `.actions-under`                              | Parameter grid; a value pushed right; a 70ch measure; closing buttons directly under the field they confirm.                                                                                                         |
+| `.em-dash`                                                                              | An empty cell as an em dash (`.dash` is the dashboard layout).                                                                                                                                                       |
+| `.meta-line`                                                                            | Facts separated by a gap, not a dot character.                                                                                                                                                                       |
 | `.btn.full-phone`, `.text-phone`, `.tap-44`, `.set-apart`, `.warn-fill`, `.is-disabled` | Full-width 44px CTA on phone; lower-emphasis Cancel on phone; 36px button with 44px hit area; 24px before a primary; warning-token confirm; muted disabled primary with `.hint-inline` ("Tick the box to continue"). |
-| `.tap-row`, `.key-field.wrap-phone-token`, `.overlay.sheet > .dialog.sheet-90` | 44px checkbox row; a key that wraps on phone; sheet at most 90vh. |
+| `.tap-row`, `.key-field.wrap-phone-token`, `.overlay.sheet > .dialog.sheet-90`          | 44px checkbox row; a key that wraps on phone; sheet at most 90vh.                                                                                                                                                    |
 
 Not done: the sidebar active-bar clip and tablet-rail tooltips (shared console chrome, a separate kit
 item), a 12px type floor and 4.5:1 contrast sweep across kit tokens (needs existing token values

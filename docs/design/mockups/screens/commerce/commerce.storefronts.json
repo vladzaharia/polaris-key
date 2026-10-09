@@ -3,17 +3,8 @@
   "title": "Storefronts",
   "area": "commerce",
   "surface": "console",
-  "packages": [
-    "CM-23",
-    "A-21",
-    "A-22",
-    "CM-21",
-    "CM-29"
-  ],
-  "uxRows": [
-    "UX-54",
-    "UX-57"
-  ],
+  "packages": ["CM-23", "A-21", "A-22", "CM-21", "CM-29"],
+  "uxRows": ["UX-54", "UX-57"],
   "summary": "Diceroll's Commerce overview: every storefront that fits its platforms (App Store, Google Play, Steam, Microsoft Store, itch.io, Polaris Key) in one list with its state, what it sells and 28 days of purchases and refunds, the product's commerce attention above it, and the one test-purchase switch below. Each row opens that channel's page on the Sales tab.",
   "compare": [
     "The sidebar is Diceroll's Product context with the Commerce group open (Storefronts active, Offers, Purchases) in the distribution green; the group shows only while the commerce service is on. Integration is absent because Diceroll hid it. Badges mean attention only: Storefronts carries its red 2, Offers has no count.",
@@ -55,80 +46,49 @@
         "issue": "'2 need attention' pill overflows into Selling at tablet and repeats the card and badge.",
         "resolution": "Google Play shows a plain red Error pill; the state column is fixed at 188px, nowrap; the card and sidebar badge stay.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "Selling, Purchases and Refunds crowd the row.",
         "resolution": "Selling merges into State ('Live · 3 offers'); Purchases and Refunds stay; KPI tiles stay; 'Refunds and chargebacks' is 'Refunds' (chargebacks in the tooltip).",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "'Not checked' reads as a refunds value; uneven rows and chevron edges.",
         "resolution": "itch.io shows a dash in both number columns, 'Ready, not checked' in State and the reason in the sub-line; numbers right-aligned; 32px chevron column; sub-lines truncate to one line.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Subtitles mix health, marketing and numbers; phone repeats the columns.",
         "resolution": "One slot: freshness, next step, or blank (Google Play); 'Free on Discover · 57 added' once; phone shows 'N purchases · N refunds' only.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux2",
-          "ux4"
-        ]
+        "raisedBy": ["ux2", "ux4"]
       },
       {
         "severity": "major",
         "issue": "A lone test-purchases card in the 1920 rail.",
         "resolution": "The rail holds Needs attention and Accept test purchases; the table keeps the main column.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "major",
         "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
         "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux2",
-          "ux3",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux2", "ux3", "ux4"]
       },
       {
         "severity": "minor",
         "issue": "Row sub-lines and legends are small, and chevrons and copy icons have small hit areas.",
         "resolution": "Sub-lines and legends are at least 12px (13px here) in the muted token that already passes 4.5:1; icon buttons have a 24px target; one table header token and row height are shared.",
         "round": "multi-review",
-        "raisedBy": [
-          "ux1",
-          "ux4"
-        ]
+        "raisedBy": ["ux1", "ux4"]
       },
       {
         "issue": "Delete the Purchases and Refunds columns, the KPI tiles, or the Selling column outright.",

@@ -3,12 +3,7 @@
   "title": "License record by holder",
   "area": "licenses",
   "surface": "console",
-  "packages": [
-    "LX-30",
-    "LX-14",
-    "LX-29",
-    "LX-38"
-  ],
+  "packages": ["LX-30", "LX-14", "LX-29", "LX-38"],
   "uxRows": [],
   "summary": "The license record's header, holder card and origin card for the two holder states licenses.detail doesn't draw: Waiting (Tomás Okafor, made by hand) and Floating (a key from the Controller bundle batch), covering the By hand and Key batch origins.",
   "order": 4,
@@ -43,11 +38,7 @@
         "issue": "Devices rows duplicated the tab count; mechanism sentences repeated.",
         "resolution": "Devices rows removed from the Invitation and Floating cards; the Library row and the 'old link stops working' footer removed; heads are .card-head.h56; tab strip is .tabs.scroller. The label and value already sit side by side on phone for short values.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       }
     ]
   }

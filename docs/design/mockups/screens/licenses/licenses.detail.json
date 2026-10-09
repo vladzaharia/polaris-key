@@ -3,18 +3,8 @@
   "title": "License details",
   "area": "licenses",
   "surface": "console",
-  "packages": [
-    "LX-14",
-    "LX-32",
-    "LX-33",
-    "LX-35",
-    "LX-38",
-    "LX-41",
-    "LX-15"
-  ],
-  "uxRows": [
-    "UX-07"
-  ],
+  "packages": ["LX-14", "LX-32", "LX-33", "LX-35", "LX-38", "LX-41", "LX-15"],
+  "uxRows": ["UX-07"],
   "summary": "Priya Raman's Education license on its Status tab: the tier as a control top right that opens Change tier, Limits with each value's source and a per-field Override, a one-year Duration with today marked that keeps the last version, the add-ons it holds, its devices, and the Automatic grant card naming the rule that issued it. The Waiting and Floating holders are in licenses.detail-holders and Change tier in licenses.change-tier.",
   "order": 3,
   "compare": [
@@ -50,45 +40,28 @@
         "issue": "Right rail ended 475px above the left column at 1920; dead space at wide.",
         "resolution": "Page capped at 1400px of content; the rail is sticky (.sticky-1280, top 88px) from 1280. Limits, Add-ons and Devices already share the main column's width; the optional Add-ons and Devices side by side at 1600+ was not built, because the cap leaves the main column at about 970px.",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "minor",
         "issue": "Card header heights differed (66px, 78px); Change sat above the title baseline; Add-ons and Devices used two date styles.",
         "resolution": "Every head is .card-head.h56 (56px) with the action on the title's line; Add-ons and Devices show the date alone in muted text (the 'Since' word is gone, its date is the cell's title attribute). The triage both moved and removed Duration's subtitle; it is removed (the tier control shows it).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX3"
-        ]
+        "raisedBy": ["UX1", "UX3"]
       },
       {
         "severity": "major",
         "issue": "Duplicated facts and a noisy Automatic grant card.",
         "resolution": "Duration subtitle removed; 'today 4.2.0' is '4.2.0'; Automatic grant is the rule line plus Open Access, with the mechanism sentences (moves up only, no key) in an info button's tooltip; the four Override outline buttons are quiet text buttons (.btn.text).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX3",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX3", "UX4"]
       },
       {
         "severity": "major",
         "issue": "Phone: clipped 'Devices 3' tab with no cue; irregular three-line Limits rows; Add key hidden.",
         "resolution": "Tab strip is .tabs.scroller (scroll-snap, 56px edge fade); Limits rows are two lines (.table.two-line: label and bold value, then source and action, 44px targets); Tier and Add key sit as a 50/50 pair (.action-pair).",
         "round": "multi-review",
-        "raisedBy": [
-          "UX1",
-          "UX2",
-          "UX4"
-        ]
+        "raisedBy": ["UX1", "UX2", "UX4"]
       },
       {
         "issue": "Remove the 'In an account' pill from the header, and remove the Devices tab count.",
