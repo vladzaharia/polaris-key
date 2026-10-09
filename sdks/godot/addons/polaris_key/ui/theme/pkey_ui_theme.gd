@@ -981,6 +981,8 @@ static func _apply_layout(t: Theme, unit: float, density: String, brand: bool) -
 		for type in ["Button", "OptionButton", "PKeyPrimary"]:
 			for item in ["normal", "hover", "pressed", "disabled"]:
 				_pad(t, item, type, side, v)
+		for item in ["pressed", "hover_pressed"]:
+			_pad(t, item, "PKeyRailItem", side, v)
 		for type in ["LineEdit", "TextEdit"]:
 			for item in ["normal", "read_only"]:
 				_pad(t, item, type, roundf(roles["stack_gap"] * unit), v)

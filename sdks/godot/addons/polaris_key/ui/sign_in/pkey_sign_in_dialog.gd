@@ -113,6 +113,8 @@ func _build() -> void:
 	_instructions = label(where, "Instructions")
 	# The address on a line of its own, in the strong colour: the thing to type.
 	_url = label(where, "Address", "PKeyStrong", true)
+	# An address is one word: past the width it breaks rather than push the card off screen.
+	_url.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_code = label(_steps, "UserCode", "PKeyCode", true)
 	# One line while the room allows; a last resort breaks it rather than push the card off screen.
 	_code.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
