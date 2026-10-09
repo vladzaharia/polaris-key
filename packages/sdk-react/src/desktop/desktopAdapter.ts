@@ -95,6 +95,7 @@ import {
   withError,
   type ServiceSlug,
   type ServicesMap,
+  licenseGateEnabled,
 } from "../core/services.js";
 import { classifyActivation } from "../core/activation.js";
 import {
@@ -236,6 +237,10 @@ export class DesktopAdapter implements PolarisAdapter {
           ...flags,
           localOverrides: this.localOverrides,
           capabilities: this.capabilities,
+          licenseGate: licenseGateEnabled(
+            this.fallbackServices,
+            this.capabilities,
+          ),
         },
       ),
     );

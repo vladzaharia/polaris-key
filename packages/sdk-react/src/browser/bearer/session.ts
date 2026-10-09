@@ -838,7 +838,8 @@ export class BearerSession {
     const m = await verifyTrustManifest(jws, {
       pinned: this.opts.pinned,
       expectedAud: this.opts.product,
-      now: this.opts.now(),
+      // CLI-8: the effective clock (never behind a held floor), as every network path.
+      now: this.now(),
       lastTrustIssuedAt: this.manifestIssuedAt,
     });
     if (!m.doc) return null;
@@ -901,7 +902,7 @@ export class BearerSession {
           trust: this.trust,
           expectedAud: this.opts.product,
           deviceId: this.deviceIdValue,
-          now: this.opts.now(),
+          now: this.now(),
         };
         if (slice === "license") {
           const doc = await verifyLicenseDoc(res.jws, {
@@ -993,6 +994,20 @@ export class BearerSession {
     }
     const patch: Partial<CacheRecordV3> = {};
     if (trustJws) patch.trustJws = trustJws;
+    // CLI-2: a hard 401 deletes the slice it answered for, and a 403 build block deletes the
+    // licence document, in the SAME write that sets the hint (hints are display-only: clearing
+    // one must not hand back a usable cached document). The token and the floor stay.
+    const revoked: Array<"license" | "config"> = [];
+    if (license.kind === "unauthorized" || blocked) revoked.push("license");
+    if (config.kind === "unauthorized") revoked.push("config");
+    for (const slice of revoked) {
+      this[slice] = null;
+      const { [slice]: _doc, ...docs } = this.record?.docs ?? {};
+      const { [slice]: _etag, ...etags } = this.record?.etags ?? {};
+      patch.docs = docs;
+      patch.etags = etags;
+      this.record = { v: CACHE_VERSION, ...this.record, docs, etags };
+    }
     if (unauthorized) patch.lastSyncUnauthorized = true;
     else if (healthy) patch.lastSyncUnauthorized = false;
     if (blocked?.kind === "blocked") patch.blocked = blocked.blocked;

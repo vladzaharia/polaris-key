@@ -135,6 +135,7 @@ import {
   type ServiceBusyMap,
   type ServiceErrorMap,
   type ServicesMap,
+  licenseGateEnabled,
 } from "../core/services.js";
 import { discoverProduct, type DiscoveryDocument } from "./discovery.js";
 import {
@@ -442,6 +443,8 @@ export class BrowserAdapter implements PolarisAdapter {
   private csrf: string | null = null;
   private hadSession = false;
   private capabilities: ServicesMap;
+  /** The build's own belief (`expectServices`, else the default): the gate's floor (CLI-4). */
+  private readonly expectedServices: ServicesMap;
   /** `supports()`'s inputs: the generated table, runtime `web`, and `capabilities` above. */
   private readonly capabilityCtx: CapabilityContext;
   private readonly pinned: TrustSet | null;
@@ -493,7 +496,10 @@ export class BrowserAdapter implements PolarisAdapter {
     this.localOverrides = { ...hostOverrides, ...localBackend.read() };
     this.version = opts.version;
     // D-21: the pre-discovery belief. Never all-true.
-    this.capabilities = copyServices(opts.expectServices ?? defaultServices());
+    this.expectedServices = copyServices(
+      opts.expectServices ?? defaultServices(),
+    );
+    this.capabilities = copyServices(this.expectedServices);
     this.capabilityCtx = capabilityContext("web", () => this.capabilities);
     this.pinned = opts.trust?.pinnedKeys ?? null;
     this.offline =
@@ -710,6 +716,7 @@ export class BrowserAdapter implements PolarisAdapter {
           ...flags,
           localOverrides: this.localOverrides,
           capabilities: this.capabilities,
+          licenseGate: this.licenseGate(),
         },
       ),
     );
@@ -737,6 +744,7 @@ export class BrowserAdapter implements PolarisAdapter {
           ...flags,
           localOverrides: this.localOverrides,
           capabilities: this.capabilities,
+          licenseGate: this.licenseGate(),
         },
       ),
     );
@@ -783,6 +791,11 @@ export class BrowserAdapter implements PolarisAdapter {
 
   /** Install the product's real capability map from discovery (D-21). A failed or rejected
    *  document leaves the constructor's `expectServices` belief in place. */
+  /** The licence gate's input (CLI-4): build expectation OR a discovery loaded this session. */
+  private licenseGate(): boolean {
+    return licenseGateEnabled(this.expectedServices, this.capabilities);
+  }
+
   private loadCapabilities(): Promise<void> {
     this.discovered = (async () => {
       const result = await discoverProduct({
@@ -826,6 +839,7 @@ export class BrowserAdapter implements PolarisAdapter {
             error: withError(noErrors(), "identity", this.configError!),
             localOverrides: this.localOverrides,
             capabilities: this.capabilities,
+            licenseGate: this.licenseGate(),
           },
         ),
       );
@@ -861,6 +875,7 @@ export class BrowserAdapter implements PolarisAdapter {
             error: withError(noErrors(), "identity", err),
             localOverrides: this.localOverrides,
             capabilities: this.capabilities,
+            licenseGate: this.licenseGate(),
           },
         ),
       );
@@ -891,6 +906,7 @@ export class BrowserAdapter implements PolarisAdapter {
           ...flags,
           localOverrides: this.localOverrides,
           capabilities: this.capabilities,
+          licenseGate: this.licenseGate(),
         },
       ),
     );
@@ -980,6 +996,7 @@ export class BrowserAdapter implements PolarisAdapter {
             {
               localOverrides: this.localOverrides,
               capabilities: this.capabilities,
+              licenseGate: this.licenseGate(),
             },
           ),
         );
@@ -1166,6 +1183,7 @@ export class BrowserAdapter implements PolarisAdapter {
           {
             localOverrides: this.localOverrides,
             capabilities: this.capabilities,
+            licenseGate: this.licenseGate(),
           },
         ),
       );
