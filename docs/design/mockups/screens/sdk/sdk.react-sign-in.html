@@ -48,7 +48,7 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>1 · Sign in.</strong> No provider logos (DJDL has no connections).</figcaption>
+        <figcaption><strong>1 · Sign in.</strong></figcaption>
       </figure>
       <figure class="board-item">
         <div class="window win">
@@ -72,7 +72,7 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>1b · Offline.</strong> No browser opens until the network is back; the only Polaris Key words in a kit frame are the footnote’s.</figcaption>
+        <figcaption><strong>1b · Offline.</strong> No browser opens until the network is back.</figcaption>
       </figure>
       <figure class="board-item">
         <div class="window win">
@@ -205,7 +205,7 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>3b · No license in this account.</strong> Never a dead end.</figcaption>
+        <figcaption><strong>3b · No license in this account.</strong></figcaption>
       </figure>
       <figure class="board-item">
         <div class="window win">
@@ -241,7 +241,7 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>4 · Signed in.</strong> The account row is the kit’s AccountAndLicense part.</figcaption>
+        <figcaption><strong>4 · Signed in.</strong></figcaption>
       </figure>
       <figure class="board-item span-all code-end cap-top">
         <div class="code" data-service="core">
@@ -253,8 +253,6 @@
 <span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> } <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
 <span class="t-k">import</span> <span class="t-s">"@polaris-key/react/styles.css"</span>;
 
-<span class="t-c">// In Electron the provider uses the main process's bridge, which</span>
-<span class="t-c">// runs the browser sign-in and holds the device key.</span>
 <span class="t-f">createRoot</span>(root).<span class="t-f">render</span>(
   &lt;<span class="t-t">PolarisKeyProvider</span> <span class="t-p">config</span>={polarisKey}&gt;
     &lt;<span class="t-t">PolarisKeyGate</span>&gt;
@@ -262,7 +260,7 @@
     &lt;/<span class="t-t">PolarisKeyGate</span>&gt;
   &lt;/<span class="t-t">PolarisKeyProvider</span>&gt;,
 );</pre>
-          <div class="code-foot"><i class="ic ic-info sm"></i><span>No theme set: the Polaris look in DJDL’s accent. <code>theme</code> restyles it.</span></div>
+          <div class="code-foot"><i class="ic ic-info sm"></i><span>No theme set: the Polaris look in DJDL’s accent</span></div>
         </div>
         <figcaption><strong>What the Electron build writes.</strong></figcaption>
       </figure>

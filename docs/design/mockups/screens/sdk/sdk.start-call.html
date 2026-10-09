@@ -46,7 +46,7 @@
   <span class="t-p">"expectedServices"</span><span class="t-o">: [</span><span class="t-s">"license"</span><span class="t-o">,</span> <span class="t-s">"config"</span><span class="t-o">,</span> <span class="t-s">"release"</span><span class="t-o">,</span>
     <span class="t-s">"distribution"</span><span class="t-o">,</span> <span class="t-s">"update"</span><span class="t-o">,</span> <span class="t-s">"identity"</span><span class="t-o">,</span> <span class="t-s">"sync"</span><span class="t-o">]</span>
 <span class="t-o">}</span></pre>
-          <div class="code-foot"><i class="ic ic-info sm"></i><span>Public keys only; safe to commit. Never fetched.</span></div>
+          <div class="code-foot"><i class="ic ic-info sm"></i><span>Safe to commit: public keys only</span></div>
         </div>
       </section>
 
@@ -124,7 +124,6 @@
 <span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> }
   <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
 
-<span class="t-c">// The provider runs fromConfig() and boot().</span>
 <span class="t-f">createRoot</span>(root).<span class="t-f">render</span>(
   &lt;<span class="t-t">PolarisKeyProvider</span> <span class="t-p">config</span>={polarisKey}&gt;
     &lt;<span class="t-t">PolarisKeyGate</span>&gt;&lt;<span class="t-t">App</span> /&gt;&lt;/<span class="t-t">PolarisKeyGate</span>&gt;
@@ -153,16 +152,13 @@ pk.<span class="t-f">boot</span>()
         </div>
         <div class="code wrap-phone" data-service="core">
           <div class="code-head"><span class="code-file">Godot · main.gd</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre tabindex="0"><span class="t-c"># The PolarisKey autoload reads</span>
-<span class="t-c"># res://polaris-key.json itself.</span>
-<span class="t-k">func</span> <span class="t-f">_ready</span>() <span class="t-o">-></span> <span class="t-t">void</span>:
+<pre tabindex="0"><span class="t-k">func</span> <span class="t-f">_ready</span>() <span class="t-o">-></span> <span class="t-t">void</span>:
   <span class="t-k">await</span> PolarisKey.<span class="t-f">boot</span>()
   <span class="t-k">if not</span> PolarisKey.<span class="t-f">is_licensed</span>():
     $SignIn.<span class="t-f">show</span>()</pre>
         </div>
       </div>
 
-      <p class="board-note"><i class="ic ic-info"></i><span><code>boot()</code> checks the license, syncs managed config and registers the device. When start fails, a debug build prints what is wrong. <a class="link" href="#">See doctor()<i class="ic ic-arrow-right"></i></a></span></p>
     </section>
 
       <section class="section">
@@ -171,19 +167,19 @@ pk.<span class="t-f">boot</span>()
           <div class="card-rows">
             <div class="item-row top">
               <span class="icon-tile sm"><i class="ic ic-square-terminal"></i></span>
-              <div class="item-text"><div class="item-title">pkey sdk add</div><div class="item-desc">Adds the SDK and writes the file; pins keys that match Integration’s fingerprint.</div></div>
+              <div class="item-text"><div class="item-title">pkey sdk add</div><div class="item-desc">Adds the SDK and writes the file</div><div class="item-desc">Pins only keys that match Integration’s fingerprint</div></div>
               <div class="item-more mk-stack-2">
                 <div class="cmd one-line wrap-phone"><span tabindex="0">pkey sdk add swift --dir macos/ --expect djdl-2026@sha256:3f9a0c…e41b</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
-                <p class="type-meta">Outside DJDL’s repository, add <code>--product djdl</code>, as Integration’s copy does.</p>
+                <p class="type-meta">Outside DJDL’s repository, add <code>--product djdl</code></p>
               </div>
             </div>
             <div class="item-row top">
               <span class="icon-tile sm"><i class="ic ic-download"></i></span>
-              <div class="item-text"><div class="item-title">Download on Integration</div><div class="item-desc">The same file, with the active and the staged signing keys, for adding the SDK by hand.</div></div>
+              <div class="item-text"><div class="item-title">Download on Integration</div><div class="item-desc">The same file, for adding the SDK by hand</div><div class="item-desc">Holds the active and the staged signing keys</div></div>
             </div>
             <div class="item-row top">
               <span class="icon-tile sm"><i class="ic ic-godot"></i></span>
-              <div class="item-text"><div class="item-title">Import file… in the Godot dock</div><div class="item-desc">Writes <code>res://polaris-key.json</code> and adds it to the export filter. No Node needed.</div></div>
+              <div class="item-text"><div class="item-title">Import file… in the Godot dock</div><div class="item-desc">Writes <code>res://polaris-key.json</code></div><div class="item-desc">No Node needed</div></div>
             </div>
           </div>
         </section>
