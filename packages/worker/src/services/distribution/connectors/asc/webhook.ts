@@ -46,6 +46,7 @@ import {
   importHmacKey,
   kvKey,
 } from "../../../../core/platform.js";
+import { claimOnce, releaseClaim } from "../../../../core/atomicClaim.js";
 import { rateLimitOk } from "../../../../core/rateLimit.js";
 import { openOutletCredential } from "../../../../core/outletCredentials.js";
 import {
@@ -189,6 +190,9 @@ export async function handleAscWebhook(
     (seen !== null && seen.outcome !== "failed")
   )
     return json({ ok: true, duplicate: true });
+  // SEC-INF-3: the KV get above is a fast path only; the atomic claim is the Durable Object's.
+  if (!(await claimOnce(env, "webhook-claim", kvk, 86_400)))
+    return json({ ok: true, duplicate: true });
   await env.HOT.put(kvk, "1", { expirationTtl: ASC_DELIVERY_TTL_SECONDS });
 
   const write = { db, product: slug, now };
@@ -259,7 +263,10 @@ async function processEvent(
   }
   try {
     await setEventOutcome(write, ASC_CONNECTOR, eventId, outcome);
-    if (outcome === "failed") await run.env.HOT.delete(kvk);
+    if (outcome === "failed") {
+      await run.env.HOT.delete(kvk);
+      await releaseClaim(run.env, "webhook-claim", kvk);
+    }
     await finishRun(run, error);
   } catch {
     /* the event row still says `received`; the poller re-drives it (`poll.ts`) */

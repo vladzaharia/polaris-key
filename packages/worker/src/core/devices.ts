@@ -817,6 +817,13 @@ export async function validateDeviceToken(
   return { tokenHash, license, device };
 }
 
+/** SEC-LIC-3: the rotation's compare-and-set found the device changed under it. */
+export class DeviceTokenRotationLost extends Error {
+  constructor() {
+    super("device changed during token rotation");
+  }
+}
+
 export async function rotateDeviceToken(
   env: Env,
   db: Db,
@@ -826,12 +833,22 @@ export async function rotateDeviceToken(
 ): Promise<string> {
   const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+  // SEC-LIC-3: a compare-and-set, not a full-row upsert from the snapshot `validateDeviceToken`
+  // read. A deauthorize, a revoke or another rotation that landed in between leaves the row
+  // alone, and the new credential is never minted for a device that is no longer live.
+  const swapped = await db.runChanges(
+    `UPDATE devices SET token_hash = ?, last_seen = ?
+      WHERE product = ? AND device_id = ? AND status = 'authorized'
+        AND license_id = ? AND token_hash = ?`,
+    tokenHash,
+    now,
+    product.slug,
+    valid.device.device_id,
+    valid.device.license_id,
+    valid.tokenHash,
+  );
+  if (swapped === 0) throw new DeviceTokenRotationLost();
   await deleteTokenRecord(env, product.slug, valid.tokenHash);
-  await upsertDevice(db, {
-    ...valid.device,
-    last_seen: now,
-    token_hash: tokenHash,
-  });
   await putTokenRecord(env, product.slug, tokenHash, {
     product: product.slug,
     deviceId: valid.device.device_id,
@@ -860,8 +877,6 @@ export async function touchDeviceMetadata(
   now: number,
 ): Promise<void> {
   const next = {
-    ...device,
-    last_seen: now,
     ua: meta.userAgent ?? device.ua,
     platform: meta.platform ?? device.platform ?? null,
     arch: meta.arch ?? device.arch ?? null,
@@ -879,7 +894,26 @@ export async function touchDeviceMetadata(
     next.sdk_name === (device.sdk_name ?? null) &&
     next.sdk_version === (device.sdk_version ?? null);
   if (unchanged && now - device.last_seen < TOUCH_MIN_INTERVAL_SEC) return;
-  await upsertDevice(db, next);
+  // SEC-LIC-3 / SEC-CFG-6: narrow UPDATE of the metadata columns only, guarded by the state the
+  // caller authenticated against. A full-row upsert from the stale snapshot resurrected a device
+  // deauthorized (or re-tokened) while the request was in flight.
+  await db.run(
+    `UPDATE devices SET last_seen = ?, ua = ?, platform = ?, arch = ?, app_version = ?,
+            sdk_name = ?, sdk_version = ?
+      WHERE product = ? AND device_id = ? AND status = 'authorized'
+        AND license_id = ? AND token_hash IS ?`,
+    now,
+    next.ua,
+    next.platform,
+    next.arch,
+    next.app_version,
+    next.sdk_name,
+    next.sdk_version,
+    device.product,
+    device.device_id,
+    device.license_id,
+    device.token_hash,
+  );
 }
 
 /** SEC-CFG-11: the least gap between `last_seen` stamps for a device whose metadata is unchanged. */

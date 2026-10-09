@@ -55,7 +55,11 @@ export type SingleUseKind =
   /** Adding an email sign-in method (PX-W12): the code's address, by the account session. */
   | "method-flow"
   /** Link an existing account (PX-W12): the two accounts' proofs, by the browser's flow secret. */
-  | "link-flow";
+  | "link-flow"
+  /** SEC-WP-06: a webhook delivery already processed, by delivery id / body hash. */
+  | "webhook-claim"
+  /** SEC-WP-06: an attestation challenge already redeemed, by product + challenge. */
+  | "attest-claim";
 
 /** The address of one artefact. */
 export interface ArtefactRef {

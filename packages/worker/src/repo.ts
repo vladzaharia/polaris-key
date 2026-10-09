@@ -1391,7 +1391,9 @@ export async function releaseDormantSeats(
   now: number,
   licenseId?: string,
 ): Promise<number> {
-  const base = `UPDATE devices SET seat_no = NULL
+  // SEC-LIC-4: the credential goes with the seat. A released row keeps `status = 'authorized'`,
+  // so its old token would otherwise keep validating with no seat while another device holds it.
+  const base = `UPDATE devices SET seat_no = NULL, token_hash = NULL
       WHERE product = ? AND status = 'authorized'
         AND seat_no IS NOT NULL AND last_seen <= ?`;
   return licenseId === undefined

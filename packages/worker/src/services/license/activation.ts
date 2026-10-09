@@ -43,6 +43,7 @@ import {
   deviceMetadata,
   isValidClientDeviceId,
   readDeviceBody,
+  DeviceTokenRotationLost,
   rotateDeviceToken,
   shapeDevice,
 } from "../../core/devices.js";
@@ -289,7 +290,14 @@ export async function handleToken(
   );
   if ("error" in valid) return errorResponse(401, ErrorCode.Unauthorized);
 
-  const token = await rotateDeviceToken(env, db, product, valid, now);
+  let token: string;
+  try {
+    token = await rotateDeviceToken(env, db, product, valid, now);
+  } catch (e) {
+    if (e instanceof DeviceTokenRotationLost)
+      return errorResponse(401, ErrorCode.Unauthorized);
+    throw e;
+  }
   return json({ token, schemaVersion: product.schemaVersion });
 }
 
