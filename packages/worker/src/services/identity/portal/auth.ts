@@ -17,7 +17,7 @@ import {
   type Db,
   type Env,
 } from "../../../core/platform.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
@@ -261,7 +261,7 @@ export async function handlePortalLogin(
   const ok = await rateLimitOk(
     env,
     "_portal",
-    { bucket: "portalLogin", id: clientIp(req), limit: 20, windowSec: 60 },
+    { bucket: "portalLogin", id: clientNetwork(req), limit: 20, windowSec: 60 },
     now,
   );
   if (!ok) return signInPage.tooMany();

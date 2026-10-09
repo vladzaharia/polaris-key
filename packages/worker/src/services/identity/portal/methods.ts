@@ -36,7 +36,7 @@
  */
 
 import { hashKey, type Db, type Env } from "../../../core/platform.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
@@ -474,7 +474,7 @@ async function emailVerify(
     PORTAL_EMAIL_SCOPE,
     {
       bucket: "portalCodeVerify",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: CODE_VERIFY_PER_IP_MINUTE,
       windowSec: 60,
     },

@@ -9,7 +9,7 @@ import type { Env } from "./env.js";
 // STORAGE IS NOT SELF-BOUNDING (R10-04b). The previous comment here claimed storage "stays
 // bounded by the active client set because a counter rolls over when the window advances" —
 // that is false. Rollover overwrites the VALUE; it never removes the KEY. Since `id` is
-// usually `clientIp(req)` and an attacker with a routed IPv6 /64 has 2^64 source addresses
+// usually `clientNetwork(req)` and an attacker with a routed IPv6 /64 has 2^64 source addresses
 // for free, every one of which mints a permanent key, the object grew without limit and never
 // self-healed. An `alarm()` sweep now deletes counters whose window has already elapsed: once
 // a window is over, the stored counter can never be read again (the next request in a new

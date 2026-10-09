@@ -67,7 +67,7 @@ import {
 } from "../../core/downloadTicket.js";
 import { isBytesHost } from "../../core/bytesHostname.js";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   cachedFeedBytes,
   cachedFeedText,
@@ -207,7 +207,11 @@ async function serveFeed(
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "updateFeed", id: clientIp(req), ...UPDATER_FEED_RATE_LIMIT },
+      {
+        bucket: "updateFeed",
+        id: clientNetwork(req),
+        ...UPDATER_FEED_RATE_LIMIT,
+      },
       now,
     ))
   )

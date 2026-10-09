@@ -35,7 +35,7 @@ import {
   type Db,
   type Env,
 } from "../../../core/platform.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   PASSKEY_FLOW_COOKIE,
   accountRealmCookie,
@@ -173,7 +173,7 @@ async function signInAllowed(
     PORTAL_SCOPE,
     {
       bucket: "portalPasskey",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: PASSKEY_SIGNIN_PER_IP_MINUTE,
       windowSec: 60,
     },

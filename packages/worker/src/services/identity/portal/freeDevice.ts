@@ -31,7 +31,7 @@ import {
   type DeviceRow,
 } from "../../../core/data.js";
 import {
-  clientIp,
+  clientNetwork,
   rateLimitOk,
   type RateLimit,
 } from "../../../core/rateLimit.js";
@@ -67,7 +67,7 @@ export function portalActionLimit(
     shard: product ?? "_portal",
     rl: {
       bucket,
-      id: `${product ?? "_"}:${accountId}:${clientIp(req)}`,
+      id: `${product ?? "_"}:${accountId}:${clientNetwork(req)}`,
       limit,
       windowSec,
     },

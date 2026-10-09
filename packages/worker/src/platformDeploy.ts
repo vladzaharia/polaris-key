@@ -61,7 +61,7 @@ import type { Env } from "./env.js";
 import { secret } from "./env.js";
 import type { Db } from "./db/types.js";
 import { errorResponse, ErrorCode, json } from "./core/errors.js";
-import { clientIp, rateLimitOk } from "./core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "./core/rateLimit.js";
 import { readCappedText } from "./core/readCapped.js";
 import {
   checkPublisherPolicy,
@@ -206,7 +206,7 @@ export async function handleDeployHook(
     !(await rateLimitOk(
       env,
       RL_SCOPE,
-      { bucket: "deployHook", id: clientIp(req), ...DEPLOY_HOOK_RL },
+      { bucket: "deployHook", id: clientNetwork(req), ...DEPLOY_HOOK_RL },
       now,
     ))
   )

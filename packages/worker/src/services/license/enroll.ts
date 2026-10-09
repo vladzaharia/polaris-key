@@ -19,7 +19,7 @@ import {
   methodNotAllowed,
 } from "../../core/errors.js";
 import { randomId } from "../../core/platform.js";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   allowsAnonymousEnroll,
   computeEnrollHwid,
@@ -171,7 +171,7 @@ export async function handleEnroll(
       product.slug,
       {
         bucket: "enroll",
-        id: clientIp(req),
+        id: clientNetwork(req),
         limit: policy.rateLimitPerHour,
         windowSec: 3600,
       },

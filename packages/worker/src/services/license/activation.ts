@@ -38,7 +38,7 @@ import {
   touchKey,
   type LicenseRow,
 } from "../../core/data.js";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   deviceMetadata,
   isValidClientDeviceId,
@@ -143,7 +143,7 @@ async function activateWithKey(
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "activate", id: clientIp(req), limit: 30, windowSec: 60 },
+      { bucket: "activate", id: clientNetwork(req), limit: 30, windowSec: 60 },
       now,
     ))
   ) {
@@ -266,7 +266,7 @@ export async function handleToken(
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "token", id: clientIp(req), limit: 30, windowSec: 60 },
+      { bucket: "token", id: clientNetwork(req), limit: 30, windowSec: 60 },
       now,
     ))
   ) {
@@ -301,6 +301,22 @@ export async function handleDeauthorize(
   product: Product,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
+  // SEC-LIC-13: per-network limit before the token hash and the D1 lookups.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      {
+        bucket: "deauthorize",
+        id: clientNetwork(req),
+        limit: 30,
+        windowSec: 60,
+      },
+      Math.floor(Date.now() / 1000),
+    ))
+  ) {
+    return errorResponse(429, "rate_limited", "too many deauthorize requests");
+  }
   const token = bearer(req);
   if (!token) return errorResponse(401, ErrorCode.Unauthorized);
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
