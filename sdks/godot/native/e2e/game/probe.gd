@@ -91,8 +91,10 @@ func _hand_off() -> void:
 	var f := bridge.facade()
 	f.event.connect(func(e: String, d: Dictionary): plog("native:" + e, d))
 	plog("availability", result(f.availability()))
+	if bridge.id() == "velopack":
+		plog("direct_apply", f._native().call("apply_on_exit", true))
 	var r: PKeyApplyResult = await bridge.install_and_relaunch()
-	plog("install_and_relaunch", {"ok": r.ok, "code": String(r.code), "message": r.message, "behaviour": r.behaviour, "bridge": r.bridge})
+	plog("install_and_relaunch", {"ok": r.ok, "code": String(r.code), "message": r.message, "behaviour": r.behaviour, "bridge": r.bridge, "detail": r.detail})
 	if not r.ok:
 		_quit_soon(1)
 

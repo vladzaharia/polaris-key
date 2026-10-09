@@ -94,6 +94,9 @@ func check_now() -> PKeyApplyResult:
 
 
 func install_and_relaunch() -> PKeyApplyResult:
+	# This also covers custom native objects and Engine singletons that bypass the facade.
+	if id() == "velopack":
+		return PKeyApplyResult.failed(PKeyErrors.UNSUPPORTED, "Velopack installation is disabled until the exact applied package can be verified against the pinned-key-signed release record (version, size and SHA-256).", {"feature": PKeyConstants.Feature.UPDATE_DRIVER, "reason": PKeyConstants.UnsupportedReason.RUNTIME, "bridge": id()})
 	return await _forward("install_and_relaunch")
 
 

@@ -61,36 +61,21 @@ func _bridges(t: PKeyTestContext) -> void:
 		var home: PKeyNativeBridge = c[0].new(T.env_on(c[1]), "https://x/feed")
 		var r: PKeyApplyResult = await home.install_and_relaunch()
 		t.check("bridges: %s uses its facade (%s)" % [home.id(), c[2].new().id()], home.facade() != null and home.facade().id() == home.id() and home._native() == home.facade())
-		t.check("bridges: %s on %s without the GDExtension is unsupported (dependency) through the bridge" % [home.id(), c[1]], not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "dependency" and r.detail.get("bridge") == home.id() and not home.is_available(), str(r))
+		t.check("bridges: %s on %s without the GDExtension is unsupported (dependency) through the bridge" % [home.id(), c[1]], not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == ("runtime" if home.id() == "velopack" else "dependency") and r.detail.get("bridge") == home.id() and not home.is_available(), str(r))
 		var away: PKeyNativeBridge = c[0].new(T.env_on("linux"), "https://x/feed")
 		var w: PKeyApplyResult = await away.check_now()
 		t.check("bridges: %s on linux is unsupported (runtime) through the bridge" % away.id(), not w.ok and w.detail.get("reason") == "runtime" and w.detail.get("bridge") == away.id(), str(w))
 
-	# A facade that awaits: the bridge waits for Velopack's whole flow.
+	# The bridge refuses before either the facade or an Engine singleton can install.
 	var e := T.env_on("windows")
 	e.files["C:/Games/Game/Update.exe"] = true
-	var vb := PKeyVelopackBridge.new(e, "https://x/update/stable/velopack/")
-	vb.headers_source = func(): return {"Authorization": "Bearer v"}
-	var vn := F.Velopack.new()
-	vb.facade().native = vn
-	var r: PKeyApplyResult = await vb.install_and_relaunch()
-	t.check("bridges: Velopack's hook awaits check, download and apply, with the bridge's headers", r.ok and r.behaviour == "hook" and r.bridge == "velopack" and vn.calls.size() == 5 and vn.calls[0][0] == "load_library" and vn.calls[1] == ["open", "https://x/update/stable/velopack/", {"Authorization": "Bearer v"}] and vn.calls[4] == ["apply_on_exit", true], "%s %s" % [r, vn.calls])
-
-	# A 401/403 download refused twice (SP-09: one retry for a fresh ticket) comes back through
-	# P3-10's hook as unsupported (product) with the cannot-sign message, not "answered 1".
-	var vn2 := F.Velopack.new()
-	vn2.download_ok = false
-	vn2.download_message = "Network error: http status: 403 Forbidden"
-	var vb2 := PKeyVelopackBridge.new(e, "https://x/update/stable/velopack/")
-	vb2.facade().native = vn2
-	r = await vb2.install_and_relaunch()
-	t.check("bridges: a 403 Velopack download refused twice surfaces as unsupported (product) with the cannot-sign message", not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "product" and r.detail.get("bridge") == "velopack" and r.message.contains("cannot sign Velopack downloads") and vn2.calls.count(["download_async"]) == 2, "%s %s" % [r, r.detail])
-	var vn3 := F.Velopack.new()
-	vn3.check_answer = {"status": "none"}
-	var vb3 := PKeyVelopackBridge.new(e, "https://x/update/stable/velopack/")
-	vb3.facade().native = vn3
-	r = await vb3.install_and_relaunch()
-	t.check("bridges: a feed with no update is a typed not_found through the bridge", not r.ok and r.code == PKeyErrors.NOT_FOUND and r.detail.get("bridge") == "velopack", str(r))
+	for offered in ["1.0.0", "9.9.9"]:
+		var vb := PKeyVelopackBridge.new(e, "https://x/update/stable/velopack/")
+		var vn := F.Velopack.new()
+		vn.check_answer = {"status": "available", "target": {"version": offered}}
+		vb.facade().native = vn
+		var r: PKeyApplyResult = await vb.install_and_relaunch()
+		t.check("bridges: Velopack refuses unverifiable feed packages (%s) before native calls" % offered, not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "runtime" and r.detail.get("bridge") == "velopack" and vn.calls.is_empty(), "%s %s" % [r, vn.calls])
 
 	var sb := PKeySparkleBridge.new(T.env_on("macos"), "https://x/appcast.xml")
 	sb.channels = PackedStringArray(["stable"])
@@ -98,7 +83,7 @@ func _bridges(t: PKeyTestContext) -> void:
 	var sn := F.Sparkle.new()
 	sb.facade().native = sn
 	OS.set_environment(PKeySparkle.HEADLESS_ENV, "1")
-	r = await sb.install_and_relaunch()
+	var r: PKeyApplyResult = await sb.install_and_relaunch()
 	OS.unset_environment(PKeySparkle.HEADLESS_ENV)
 	t.check("bridges: Sparkle's hook starts the facade with the bridge's options and channels", r.ok and sn.calls[0][1] == "headless" and sn.calls[0][2] == "https://x/appcast.xml" and sn.calls[0][4] == ["stable"] and sn.calls[1] == ["check_for_updates"], str(sn.calls))
 

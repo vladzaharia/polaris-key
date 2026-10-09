@@ -3670,6 +3670,14 @@ guard with P3-12, each of which extends this section.
   model): a compromised Worker or KEK can choose among CI-signed releases, but cannot ship bytes
   no release key signed, because every SDK verifies the record's signature, and then the
   payload's `size` and SHA-256 against the record, before staging.
+- **Velopack automatic installation fails closed.** The Node and Python manager APIs and
+  Godot native bridge do not expose the exact package bytes handed to the installer. Their
+  install entry points return `unsupported` (`runtime`) before checking or downloading a feed;
+  Godot's facade and Windows GDExtension also refuse direct apply calls. A matching version or
+  distribution-controlled checksum is not release-key authorization. Godot retains the adapter's
+  manual download-link fallback. Re-enabling installation requires verifying the exact applied
+  package's version, size and SHA-256 against the pinned-key-verified release record, including
+  delta reconstruction and the deferred apply boundary.
 - **Release keys are never product keys.** If a product key were pinned or declared as a release
   key, the Worker would hold the private half of a "release key" and the two-signer property
   would be gone without a trace. Three checks keep them apart: `verifyReleaseRecord` refuses at

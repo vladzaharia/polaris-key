@@ -297,16 +297,13 @@ class PKeyVelopackNative : public RefCounted {
     return request;
   }
 
-  Dictionary apply_on_exit(bool restart) {
+  Dictionary apply_on_exit(bool /* restart */) {
+    // Even direct GDExtension callers cannot install feed-authorized executable bytes.
+    // Restore apply only with verification of the exact package against a pinned-key record.
     Dictionary d;
-    if (!mgr_ || !info_ || !downloaded_ || busy_) {
-      d["ok"] = false;
-      d["error"] = "nothing_downloaded";
-      return d;
-    }
-    bool ok = g_api.apply(mgr_, info_->TargetFullRelease, true, restart, nullptr, 0);
-    d["ok"] = ok;
-    if (!ok) d["message"] = last_error();
+    d["ok"] = false;
+    d["error"] = "release_verification_unavailable";
+    d["message"] = "Velopack installation requires pinned-key-signed release-record package verification.";
     return d;
   }
 

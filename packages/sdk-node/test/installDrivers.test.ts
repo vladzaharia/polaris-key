@@ -15,7 +15,6 @@ import {
   seaSelfReplaceDriver,
   storeLinkDriver,
   velopackDriver,
-  type VelopackUpdateInfo,
 } from "../src/update/drivers/index.js";
 import { tempDir } from "./parityFixtures.js";
 import {
@@ -223,47 +222,38 @@ describe("electronUpdaterDriver", () => {
 });
 
 describe("velopackDriver", () => {
-  it("points UpdateManager at the discovery feed's directory and applies on restart", async () => {
-    const { client, decision } = await setup({ velopack: true });
-    const seen: string[] = [];
-    const apply = vi.fn();
-    const exit = vi.fn();
-    const info: VelopackUpdateInfo = {
-      TargetFullRelease: { Version: "1.5.0" },
-    };
-    client.update.useDriver(
-      velopackDriver({
-        velopackChannel: "osx-arm64",
-        exit,
-        createManager: (url, channel) => {
-          seen.push(url, channel);
-          return {
-            checkForUpdatesAsync: async () => info,
-            downloadUpdateAsync: async (_u, p) => p?.(100),
-            waitExitThenApplyUpdate: apply,
-          };
-        },
-      }),
-    );
-    const progress: [number, number][] = [];
-    const out = await client.update.install(decision, {
-      onProgress: (d, t) => progress.push([d, t]),
-    });
-    expect(seen).toEqual([
-      `${BASE}/${PRODUCT}/update/stable/velopack`,
-      "osx-arm64",
-    ]);
-    expect(progress).toEqual([[100, 100]]);
-    expect(out).toMatchObject({ kind: "restartRequired", version: "1.5.0" });
-    if (out.kind !== "restartRequired") throw new Error("unreachable");
-    await out.restart();
-    expect(apply).toHaveBeenCalledWith(info, false, true, []);
-    expect(exit).toHaveBeenCalledOnce();
-    expect(await events(client)).toEqual([
-      "update_downloaded",
-      "update_applied",
-    ]);
-  });
+  it.each(["1.5.0", "1.6.0"])(
+    "refuses feed-selected packages before touching a manager (offered %s)",
+    async (version) => {
+      const { client, decision } = await setup({ velopack: true });
+      const download = vi.fn();
+      const apply = vi.fn();
+      const exit = vi.fn();
+      const createManager = vi.fn(() => ({
+        checkForUpdatesAsync: async () => ({
+          TargetFullRelease: { Version: version },
+        }),
+        downloadUpdateAsync: download,
+        waitExitThenApplyUpdate: apply,
+      }));
+      client.update.useDriver(
+        velopackDriver({ velopackChannel: "osx-arm64", createManager, exit }),
+      );
+      const progress = vi.fn();
+      expect(
+        await client.update.install(decision, { onProgress: progress }),
+      ).toMatchObject({
+        kind: "unsupported",
+        reason: "runtime",
+      });
+      expect(createManager).not.toHaveBeenCalled();
+      expect(download).not.toHaveBeenCalled();
+      expect(apply).not.toHaveBeenCalled();
+      expect(exit).not.toHaveBeenCalled();
+      expect(progress).not.toHaveBeenCalled();
+      expect(await events(client)).toEqual([]);
+    },
+  );
 
   it("is unsupported (product) when the product publishes no Velopack feed", async () => {
     const { client, decision } = await setup();
