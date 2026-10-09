@@ -162,10 +162,10 @@ export function platformName(id: string | null | undefined): string | null {
     .join(" ");
 }
 
-/** "2 days ago", from epoch seconds (or milliseconds). */
+/** "2 days ago", from epoch seconds (`DeviceInfo.lastVerifiedAt`). */
 function lastSeen(at: number | undefined, now = Date.now()): string | null {
   if (at === undefined || !Number.isFinite(at) || at <= 0) return null;
-  const ms = at > 1e11 ? at : at * 1000;
+  const ms = at * 1000;
   const seconds = Math.round((ms - now) / 1000);
   const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
   const abs = Math.abs(seconds);

@@ -104,6 +104,7 @@ export interface DeviceInfo {
   status: LicenseStatus;
   licenseId?: string;
   profile?: DocProfile;
+  /** When the device was last verified or seen, epoch SECONDS. */
   lastVerifiedAt?: number;
   /** Operator-set label, when the backend supports device management. */
   label?: string | null;
