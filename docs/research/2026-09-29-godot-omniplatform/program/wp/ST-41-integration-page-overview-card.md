@@ -110,6 +110,8 @@ Applied from the brand and transition integration ([Brand transition decisions](
 
 - The Overview's composition is `products.overview` as of dx-mockups 5ffbe914f (one hero with the computed next step as the only primary, the Integration gauge pane, a feature-card board, the Integration steps rail). The transition guide's older Overview (a 'Continue integration' primary, a feature x platform table) is out of date for composition and copy and is not built; take only the shell treatments from ST-48. (admin-1-03)
 - [ ] The brief names the mockup id and commit, and the guide's 'Continue integration' is not built. (admin-1-03)
+- Integration snippets use the site's patterns: the SDK picker per feature is a tablist with roving tabindex and Home/End, its selection in the hash query (`sdk=`), logos from the brand service and stack icons; the shared CodeBlock (filename bar, Copy with a live region, notes footer); destination links. (site-06)
+- [ ] Playwright keyboard test (ArrowRight, End, Tab order); copy test with the clipboard denied; axe zero at 1440 and 390 in both themes; no horizontal page scroll at 360. (site-06)
 
 ## Steps
 
