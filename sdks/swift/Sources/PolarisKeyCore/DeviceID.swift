@@ -30,6 +30,18 @@ public enum DeviceID {
         return String(Base64URL.encode(Data(digest)).prefix(32))
     }
 
+    /// The hardware anchor a desktop file store binds its device id to (`bindDeviceId`): the
+    /// IOPlatformUUID on macOS, read through IOKit (never through a spawned `ioreg`, so no `PATH`
+    /// lookup exists to plant). nil where this platform has no stable anchor to re-derive from
+    /// (iOS and the other Keychain-backed platforms keep their stored id).
+    static func anchorRaw() -> String? {
+        #if os(macOS)
+        return macPlatformUUID()
+        #else
+        return nil
+        #endif
+    }
+
     /// The raw, per-device identifier — never returned to callers directly.
     static func rawDeviceId() -> String? {
         #if os(macOS)

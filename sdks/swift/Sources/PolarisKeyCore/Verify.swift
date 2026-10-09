@@ -21,6 +21,8 @@ public struct VerifyOptions: Sendable {
     public let deviceId: String
     /// Per-TYPE anti-replay floor: reject a document not strictly newer than the one already
     /// accepted for this document type (§3). License and config carry INDEPENDENT floors.
+    /// REQUIRED at every call site: `nil` is the explicit "no floor" (reload, bundle import);
+    /// an omitted argument is a compile error, never a silent no-floor.
     public let lastAcceptedIssuedAt: Int?
     /// Epoch seconds to evaluate the time claims against. Pass the client's monotonic-floored
     /// `effectiveNow` so a rolled-back clock cannot widen the window (§4.2).
@@ -40,7 +42,7 @@ public struct VerifyOptions: Sendable {
         trust: TrustSet,
         expectedAud: String,
         deviceId: String,
-        lastAcceptedIssuedAt: Int? = nil,
+        lastAcceptedIssuedAt: Int?,
         expectedIss: String = POLARIS_ISSUER,
         now: Int? = nil,
         clockSkewSeconds: Int = CLOCK_SKEW_SECONDS,
