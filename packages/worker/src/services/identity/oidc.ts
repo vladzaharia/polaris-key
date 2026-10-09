@@ -20,7 +20,7 @@
 // carried over: a compatibility alias for a path nobody can still be calling is a second code
 // path for free.
 
-import { constantTimeEqual } from "../../platform/compare.js";
+import { constantTimeEqual } from "../../core/platform.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { createSignInRequest } from "./passthrough/request.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -281,13 +281,12 @@ async function getOidcConfig(
  * at the character level, and that host still receives a POST containing the product's OIDC
  * `client_secret`. Only an operator-curated host list distinguishes them.
  *
- * **Unset means not enforced.** That is a deliberate, documented fail-open: enforcing an empty
- * allowlist would take every already-configured custom-OIDC product offline on the deploy that
- * ships this code, with no operator action and no warning. The follow-up that makes it fail
- * closed *for new configs only* has to live at the ingest paths (`release/linkRepo.ts`,
- * `release/resync.ts`), which can tell a first write from a re-sync; see
- * the R9 audit findings. The platform issuer is exempt: it is a Worker
- * secret, not a repo-supplied value.
+ * **Unset fails closed in production.** On the `prod` environment an unset or empty list refuses
+ * every custom issuer, so a public https host can never receive the client secret by default;
+ * operators list their custom issuers' hosts before deploying. Outside `prod` (staging, dev,
+ * local and test Workers) an unset list is not enforced. The ingest check (`release/linkRepo.ts`)
+ * fails closed everywhere for a new issuer. The platform issuer is exempt: it is a Worker secret,
+ * not a repo-supplied value.
  */
 function issuerHostAllowed(env: Env, issuer: string): boolean {
   const raw = secret(env, "OIDC_ISSUER_ALLOWLIST");

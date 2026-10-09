@@ -1,5 +1,5 @@
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
-import { constantTimeEqual } from "../../../platform/compare.js";
+import { constantTimeEqual } from "../../../core/platform.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";

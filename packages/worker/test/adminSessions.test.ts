@@ -8,6 +8,7 @@
  *   - SEC-CRY-20: the console's ID-token verification carries the same freshness options.
  */
 import { describe, expect, it } from "vitest";
+import { bindAdminFlow } from "./flowBinderHelper.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -57,9 +58,10 @@ async function login(env: Env, opts: { stepUp?: boolean; authTime?: number }) {
     }),
   };
   const res = await handleAdminCallback(
-    new Request(
-      `https://key.plrs.im/manage/callback?code=c&state=${state}`,
-    ) as unknown as Request,
+    // The browser that started the sign-in (SEC-WP-10's console flow binder).
+    new Request(`https://key.plrs.im/manage/callback?code=c&state=${state}`, {
+      headers: { cookie: await bindAdminFlow(env, state) },
+    }) as unknown as Request,
     env,
     makeTestDb(),
     NOW,

@@ -84,9 +84,17 @@ beforeEach(async () => {
   env.PORTAL_EMAIL_FROM = "noreply@key.plrs.im";
   await seedProduct(db, SLUG);
   ctx = { db, env, now: NOW, origin: "https://key.plrs.im" };
+  // A proven step-up: Reassign… is in SEC-WP-09's step-up table.
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
+    {
+      sub: "u1",
+      name: "Op",
+      email: "op@x.io",
+      groups: [PLATFORM_GROUP],
+      authTime: NOW,
+      stepUp: true,
+    },
     NOW,
   );
   call = (method, path, body) => {

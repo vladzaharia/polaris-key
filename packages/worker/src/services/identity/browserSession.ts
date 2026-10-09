@@ -21,7 +21,7 @@
  */
 
 import { isSameOriginRequest } from "../../core/browserRequestGuard.js";
-import { constantTimeEqual } from "../../platform/compare.js";
+import { constantTimeEqual } from "../../core/platform.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
 import { Catalog } from "@polaris-key/catalog";
 import {

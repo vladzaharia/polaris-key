@@ -1088,13 +1088,16 @@ describe("R10-08 device metadata headers are persisted with no length cap", () =
     const token = await activate(env, db, product, key, "dev-1");
 
     const big = "U".repeat(16 * 1024);
+    // Still 16 KiB, but a parseable version: SEC-WP-22 refuses an unparseable version under the
+    // product's bounded compat window, and this case is about what reaches the write.
+    const bigVersion = `1.0.0+${big}`.slice(0, 16 * 1024);
     const res = await handleLicenseDocument(
       mkReq("GET", {
         authorization: `Bearer ${token}`,
         "user-agent": big,
         "x-pkey-platform": big,
         "x-pkey-arch": big,
-        "x-pkey-version": big,
+        "x-pkey-version": bigVersion,
         "x-pkey-sdk": big,
         "x-pkey-sdk-version": big,
       }),
