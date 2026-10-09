@@ -53,6 +53,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - D1 migration (`mig`): name the file `00XX_<name>.sql`; the lead assigns the number at merge. Contracts take two releases (tracks.md rule 5): replay-safe, safe for the Worker still serving during the deploy, with a down script in `scripts/rollback/`.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- [ ] After Promote or Demote the affected track lane and the channel cells in 'Where each track goes' update in place (MO-09), others do not re-render; a partial result shows the lane callout (for example 'itch.io still serves 1.8.0' with 'Retry itch.io') and a toast with Retry; progress indicators only for a real running operation. (admin-2-17)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

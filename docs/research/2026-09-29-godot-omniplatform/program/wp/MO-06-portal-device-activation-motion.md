@@ -5,7 +5,7 @@
 | Phase       | MO: Motion system (notes/S-23) (wave 2: areas)                                    |
 | Size        | 0.5–0.8 engineer-weeks                                                            |
 | Depends on  | [MO-03](MO-03-e2e-motion-determinism.md), [SP-08](SP-08-apple-platform-values.md) |
-| Unblocks    | [MO-13](MO-13-motion-qa-closeout.md)                                              |
+| Unblocks    | [MO-13](MO-13-motion-qa-closeout.md), [PX-29](PX-29-focused-task-frame.md)        |
 | Role        | `pkey-implementer`                                                                |
 | Plan mode   | no                                                                                |
 | Gates       | admin unit tests and axe; portal e2e and the smoke suite; `adminCspParity`        |
