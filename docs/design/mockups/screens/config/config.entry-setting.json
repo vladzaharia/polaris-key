@@ -9,7 +9,7 @@
   "compare": [
     "The sidebar is DJDL's Product context in canonical order (Overview, Integration, Access, Devices, Users, Activity, then Licensing, Managed config, Ship builds, Sign-in, Cloud Sync), Settings last. Managed config is open on Catalog (23) and Profiles (2); there is no Edge mint item and no entitlement (flag) in the catalog list.",
     "Counts agree: 23 shows once in the sidebar (and, on phone, in the switcher's \"1 of 23\"); the list's group counts add up to it (4 + 5 + 2 + 3 + 4 + 4 + 1) and the search says \"Search entries\".",
-    "The entry list groups every entry by category with one glyph per type (sliders for a setting, a lock for a secret, a stamp for a minted token) and a key to the glyphs; the open entry is a neutral fill with a neutral edge, and an entry changed in the draft carries the gold draft dot.",
+    "The entry list groups every entry by category with one glyph per type (sliders for a setting, a lock for a secret, a stamp for a minted token) and a key to the glyphs; the open entry is a neutral fill with a neutral edge, and an entry changed in the draft carries the draft dot in the section accent (Config yellow; gold means signing only).",
     "The key is the card's title, with \"The key can't change after publish\" under it; there's no Key field that would repeat it, and Label and Category aren't repeated in the head.",
     "Type is one control with exactly Setting, Secret and Minted token; a help button beside it opens the five valid type and visibility cells (Setting x Editable, Read-only, Hidden; Secret: never listed, write-only here; Minted token: code only). The stored JSON stays kind config or secret (plus delivery edgeMint), so served documents are unchanged.",
     "In the app has exactly Editable, Read-only and Hidden (stored default, enforced, hidden) and appears only for a Setting; the hint says a profile, license or account can still lock it.",
@@ -21,7 +21,11 @@
     "Where it's set comes from the U-29 effective read, never a console re-merge, past the catalog default (the Default field shows that): Default profile, each tier profile, counts of licenses and accounts with their own value as neutral underlined links, and Preview as… to see what one license, tier or person gets.",
     "Header: Draft v10 as a neutral pill, the repo note, Form or JSON, Discard draft and Review 1 change; nothing reaches devices until Publish. No secret: true, serverOnly, device scope or User grant control anywhere.",
     "Tablet and desktop: the rail follows the record under it; wide: beside it. Phone: the list becomes one entry switcher, choices stack, Form/JSON moves into the header's … menu, and the foot line stays under Remove from catalog.",
-    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Preserved (guide Ed. 04): Setting / Secret / Minted token types are unchanged",
+    "Preserved (guide Ed. 04): Editable / Read-only / Hidden visibility is unchanged",
+    "Preserved (guide Ed. 04): Precedence (Where it's set: catalog default, profiles, licenses, accounts) is unchanged"
   ],
   "status": "mockup",
   "designReview": {

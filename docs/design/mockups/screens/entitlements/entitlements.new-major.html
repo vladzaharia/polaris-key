@@ -77,20 +77,14 @@
         <button class="btn ghost icon sm callout-close" aria-label="Dismiss for everyone"><i class="ic ic-x"></i></button>
       </div>
 
-      <!-- licenses.list's frame: holder states first; facets Tier, Duration (with Renewing, Past due and Updates ended), Origin, Batch. -->
+      <!-- licenses.list's frame (admin-1-23): one workbench, the holder states as counted facets first; then Tier, Duration (with Renewing, Past due and Updates ended), Origin, Batch. -->
       <div class="mk-stack-4">
-        <div class="toolbar hide-phone">
-          <div class="segmented" role="radiogroup" aria-label="Holder">
-            <span class="on" role="radio" aria-checked="true">All<span class="count">240</span></span>
-            <span role="radio" aria-checked="false"><i class="ic ic-user-round sm"></i>In an account<span class="count">221</span></span>
-            <span role="radio" aria-checked="false"><i class="ic ic-mail sm"></i>Waiting<span class="count">3</span></span>
-            <span role="radio" aria-checked="false"><i class="ic ic-key-round sm"></i>Floating<span class="count">16</span></span>
-          </div>
-        </div>
         <div class="workbench">
           <div class="toolbar">
             <div class="search-field"><i class="ic ic-search"></i><span>Search name, email, key or id</span></div>
-            <span class="filter show-phone"><i class="ic ic-chevron-down"></i>Holder: All</span>
+            <span class="filter"><i class="ic ic-user-round"></i>In an account<span class="count">221</span></span>
+            <span class="filter"><i class="ic ic-mail"></i>Waiting<span class="count">3</span></span>
+            <span class="filter"><i class="ic ic-key-round"></i>Floating<span class="count">16</span></span>
             <span class="filter"><i class="ic ic-plus"></i>Tier</span>
             <span class="filter-anchor"><span role="button" tabindex="0" class="filter" aria-haspopup="menu" aria-expanded="true"><i class="ic ic-plus"></i>Duration</span>
               <!-- The Duration facet, open: its states first, each with its count, then the kinds of duration. -->
@@ -191,7 +185,7 @@
                 </tr>
                 <tr>
                   <td><div class="cell-with-logo"><span class="avatar md" aria-hidden="true">TO</span><div><div class="cell-title">Tomás Okafor</div><div class="cell-sub">tomas@example.com</div></div></div></td>
-                  <td><div class="cell-stack"><span class="pill sm warning"><i class="ic ic-mail"></i>Email not verified</span><span class="cell-sub">Waiting</span></div></td>
+                  <td><div class="cell-stack"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span><span class="cell-sub">Invited Oct 2</span></div></td>
                   <td><span class="pill sm"><i class="ic ic-layers accent"></i>Pro 4</span></td>
                   <td class="flow-end"><div class="cell-stack"><span>4.x, no end date</span><span class="cell-sub">Version-scoped</span></div></td>
                   <td><div class="meter-head"><span class="icon-text tnum"><span class="show-narrow"><i class="ic ic-monitor-smartphone"></i></span>0 of 5<span class="sr-only"> devices</span></span><div class="progress hide-narrow" style="--v: 0%"></div></div></td>

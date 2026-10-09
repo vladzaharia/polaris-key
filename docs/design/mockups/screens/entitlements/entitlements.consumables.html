@@ -12,15 +12,7 @@
   [data-screen="entitlements.consumables"] .mk-with-rail {
     --rail-w: var(--aside-w);
   }
-  /* Wide: the add-ons card sits beside the table and stretches to its height. */
-  @container screen (min-width: 1440px) {
-    [data-screen="entitlements.consumables"] .mk-with-rail {
-      align-items: stretch;
-    }
-    [data-screen="entitlements.consumables"] .mk-rail > .card {
-      flex: 1;
-    }
-  }
+  /* The add-ons card keeps its own height beside the table (admin-1-28: never stretched into dead space). */
   /* The entitlement table is one fixed grid, so the From pills sit beside the value at every width. */
   @container screen (min-width: 640px) {
     [data-screen="entitlements.consumables"] .table.grid-fixed {
@@ -93,7 +85,7 @@
 
   <main class="main">
     <div class="page table-page">
-      <header class="page-head record">
+      <header class="page-head is-record">
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a><i class="ic ic-chevron-right"></i><a href="#">Licenses</a></nav>
         <div class="page-heading"><h1>Elif Yıldız</h1></div>
         <p class="page-sub"><span>elif@example.com · In an account · Premium</span><span class="id hide-phone"><i class="ic ic-id-card"></i>lic_01J9X…7FQA<i class="ic ic-copy"></i></span></p>

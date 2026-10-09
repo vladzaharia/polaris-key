@@ -17,7 +17,8 @@
     "Accent, type, radii and glass match sdk.swiftui-sign-in.",
     "A visible 'Kit preview · fixture product' callout, as on sdk.swiftui-sign-in. With Sign-in off, as Diceroll really is, the card would read 'Keep your license safe in Polaris Key' and open the portal instead.",
     "Four sizes: the two landscape phones (the key field, and Diceroll is ready, side by side as .kit-split draws them) share one cell beside the portrait key field; Other answers, an iOS grouped list, spans two cells beside Ready at desktop (3×3) and takes one cell at wide (4×2) and tablet (2×4); tablet backfills the row beside the first phone; phone shows the portrait frames one by one (the landscapes hide).",
-    "Board copy: the lede is 'The key path, from Have a license key? to Diceroll is ready.'; each caption is the state name plus one sentence; the landscape captions are '1 · Enter your license key, landscape' and '2 · Diceroll is ready, landscape'. 'Floating' and 'shows once' are said in the compare list, not on the board."
+    "Board copy: the lede is 'The key path, from Have a license key? to Diceroll is ready.'; each caption is the state name plus one sentence; the landscape captions are '1 · Enter your license key, landscape' and '2 · Diceroll is ready, landscape'. 'Floating' and 'shows once' are said in the compare list, not on the board.",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13)."
   ],
   "status": "mockup",
   "designReview": {

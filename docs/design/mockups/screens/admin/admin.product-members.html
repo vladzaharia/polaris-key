@@ -63,59 +63,63 @@
         <div class="card-head">
           <div class="title"><h2 id="pm-title">Admins</h2></div>
         </div>
-        <table class="table fixed stack-phone members rows-56" aria-label="Admins">
-          <colgroup><col style="width: 27%"><col style="width: 41%"><col style="width: 26%"><col style="width: 6%"></colgroup>
-          <thead><tr><th>Member</th><th>Role</th><th>Access from</th><th class="row-menu"><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-with-logo"><span class="avatar">KM</span><div><div class="cell-title mk-cluster baseline">Kenji Mori<span class="meta">You</span></div><div class="cell-sub">kenji@example.com</div></div></div></td>
-              <td><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span></td>
-              <td class="type-small"><span class="icon-text"><i class="ic ic-user-check"></i>Added by Ada Lindqvist<span class="meta">Sep 30</span></span></td>
-              <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Kenji Mori"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="avatar">LO</span><div><div class="cell-title">Lucía Ortega</div><div class="cell-sub">lucia@example.com</div></div></div></td>
-              <td><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds, <i class="svc" data-service="commerce"></i>Commerce</span></span></td>
-              <td class="type-small"><span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">diceroll-store</span></span></td>
-              <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Lucía Ortega"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="avatar pending"><i class="ic ic-mail"></i></span><div><div>marco@example.com</div></div></div></td>
-              <td><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="commerce"></i>Commerce</span></span></td>
-              <td class="type-small"><span class="icon-text"><i class="ic ic-send"></i>Invited by you<span class="meta">Just now</span></span></td>
-              <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for marco@example.com"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="Admins, scrolls sideways" tabindex="0">
+          <table class="table fixed stack-phone members rows-56" aria-label="Admins">
+            <colgroup><col style="width: 27%"><col style="width: 41%"><col style="width: 26%"><col style="width: 6%"></colgroup>
+            <thead><tr><th>Member</th><th>Role</th><th>Access from</th><th class="row-menu"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">KM</span><div><div class="cell-title mk-cluster baseline">Kenji Mori<span class="meta">You</span></div><div class="cell-sub">kenji@example.com</div></div></div></td>
+                <td><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span></td>
+                <td class="type-small"><span class="icon-text"><i class="ic ic-user-check"></i>Added by Ada Lindqvist<span class="meta">Sep 30</span></span></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Kenji Mori"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">LO</span><div><div class="cell-title">Lucía Ortega</div><div class="cell-sub">lucia@example.com</div></div></div></td>
+                <td><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds, <i class="svc" data-service="commerce"></i>Commerce</span></span></td>
+                <td class="type-small"><span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">diceroll-store</span></span></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Lucía Ortega"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar pending"><i class="ic ic-mail"></i></span><div><div>marco@example.com</div></div></div></td>
+                <td><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="commerce"></i>Commerce</span></span></td>
+                <td class="type-small"><span class="icon-text"><i class="ic ic-send"></i>Invited by you<span class="meta">Just now</span></span></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for marco@example.com"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section class="card aside" aria-labelledby="inh-title">
         <div class="card-head">
           <div class="title"><h2 id="inh-title">Platform roles</h2><p>Read-only here</p></div>
         </div>
-        <table class="table fixed stack-phone rows-56" aria-label="Platform roles">
-          <colgroup><col style="width: 34%"><col style="width: 34%"><col style="width: 26%"><col style="width: 6%"></colgroup>
-          <tbody>
-            <tr>
-              <td><div class="cell-with-logo"><span class="avatar violet">AL</span><div><div class="cell-title">Ada Lindqvist</div><div class="cell-sub">ada@example.com</div></div></div></td>
-              <td><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></td>
-              <td class="type-small"><span class="icon-text"><i class="ic ic-lock-keyhole"></i>Root rule<span class="slug">polaris-admins</span></span></td>
-              <td class="row-menu"></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="avatar">JW</span><div><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com</div></div></div></td>
-              <td><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></td>
-              <td class="type-small"><span class="icon-text"><i class="ic ic-lock-keyhole"></i>Root rule<span class="slug">polaris-admins</span></span></td>
-              <td class="row-menu"></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="avatar">SO</span><div><div class="cell-title">Sam Okoye</div><div class="cell-sub">sam@example.com</div></div></div></td>
-              <td><span class="role-set"><span class="role-tag"><i class="ic ic-layers"></i>All products admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds</span></span></td>
-              <td class="type-small"><span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">release-managers</span></span></td>
-              <td class="row-menu"></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="Platform roles, scrolls sideways" tabindex="0">
+          <table class="table fixed stack-phone rows-56" aria-label="Platform roles">
+            <colgroup><col style="width: 34%"><col style="width: 34%"><col style="width: 26%"><col style="width: 6%"></colgroup>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar violet">AL</span><div><div class="cell-title">Ada Lindqvist</div><div class="cell-sub">ada@example.com</div></div></div></td>
+                <td><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></td>
+                <td class="type-small"><span class="icon-text"><i class="ic ic-lock-keyhole"></i>Root rule<span class="slug">polaris-admins</span></span></td>
+                <td class="row-menu"></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">JW</span><div><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com</div></div></div></td>
+                <td><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></td>
+                <td class="type-small"><span class="icon-text"><i class="ic ic-lock-keyhole"></i>Root rule<span class="slug">polaris-admins</span></span></td>
+                <td class="row-menu"></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">SO</span><div><div class="cell-title">Sam Okoye</div><div class="cell-sub">sam@example.com</div></div></div></td>
+                <td><span class="role-set"><span class="role-tag"><i class="ic ic-layers"></i>All products admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds</span></span></td>
+                <td class="type-small"><span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">release-managers</span></span></td>
+                <td class="row-menu"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   </main>

@@ -16,7 +16,10 @@
     "Updated by the store (its subtitle: nothing to set up): the App Store row says 1.8.0 is live on iPhone and iPad; the Steam row says updates come from each player's branch once a build reaches Steam, with a 'Not connected' warning pill and Connect Steam, matching Home.",
     "The 'Not shown' line names Sparkle, WinSparkle, Velopack, App Installer and zsync and why.",
     "Update rules (the aside at wide): 'Who can check for updates' is Public (free players included), read-only with 'Change on Access'; Release track names 312 licenses (the Supporter tier and 38 more).",
-    "Phone: the sidebar folds into the menu button, the scope pills wrap, the Play attention row stacks above the setup, setup stacks above the code, code scrolls inside its block and the platform cells stack, each keeping its two parts."
+    "Phone: the sidebar folds into the menu button, the scope pills wrap, the Play attention row stacks above the setup, setup stacks above the code, code scrolls inside its block and the platform cells stack, each keeping its two parts.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page.",
+    "Ship builds is one identity (B5): Release cyan rule, chip, tile and nav marker, the Package glyph, crumb '<Product> › Ship builds'; no per-page green or tangerine."
   ],
   "status": "mockup",
   "designReview": {

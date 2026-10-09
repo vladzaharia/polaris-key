@@ -15,7 +15,9 @@
     "Birth date is conditional (PX-21, I-33) and absent here: Google sent none and Diceroll gates nothing. It shows only when a connection supplied a birthdate claim (prefilled, labelled with its source, 'From Lakeside University', and editable) or once a product gates content. When shown it is labelled Optional, its selects follow the locale's order, and its hint says why it's there and that it stays private: 'Private to you. Diceroll and other apps never receive it.' No age is asked or checked until a product gates content.",
     "Terms: two required checks, Polaris Key's Terms and Privacy Policy (recorded as a platform acceptance with the platform terms version) and Diceroll's, whose links come from Diceroll's listing (eulaUrl, privacyUrl) and whose version line reads 'From Example Games · October 2026'. A product with no terms shows only the first.",
     "'Add a passkey after this' is an unticked opt-in. Both terms start unticked and the primary 'Create account and continue' is disabled, with 'Agree to both terms to continue.' under it, until both are ticked; 'Cancel sign-in' abandons it and issues nothing.",
-    "Phone: edge to edge; 'Confirmed by Google' stays beside the Email label, the name chips wrap under their label, and the picture tiles stay three across."
+    "Phone: edge to edge; 'Confirmed by Google' stays beside the Email label, the name chips wrap under their label, and the picture tiles stay three across.",
+    "Hosted card v2 (B8): the one primary is ink; the app header is a neutral strip, and in a landscape window ≥960px the passport (a sunken identity pane: the product's art, icon, the request, developer and device on their own lines, no eyebrow) beside the unchanged 456px form pane; the trust receipt spans the card; refusals are neutral callouts with the fix as the one primary.",
+    "Passport layout as identity.sign-in (auth-04); the email is said once ('Confirmed by Google'), no 'Signed in with Google' strip."
   ],
   "status": "mockup",
   "designReview": {

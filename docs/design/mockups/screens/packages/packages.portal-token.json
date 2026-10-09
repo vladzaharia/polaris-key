@@ -14,7 +14,9 @@
     "The combined setup uses the same tabs and renderer as the page with the real token in place of PKEY_PACKAGES_TOKEN; its foot says the file is for the home folder, never a project, because the token is in it.",
     "No scope picker, product picker or binding: a personal token is packages-only by construction.",
     "'I've stored the token somewhere safe' is unchecked, and Done, the close button and Escape all wait for it.",
-    "Phone: the kit's bottom sheet; the token ellipsizes inside its field with Copy visible, the code tabs scroll under a fade that ends before Copy, the code scrolls sideways, and Done takes the full width."
+    "Phone: the kit's bottom sheet; the token ellipsizes inside its field with Copy visible, the code tabs scroll under a fade that ends before Copy, the code scrolls sideways, and Done takes the full width.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "Portal v2 (B2, B12): the docked header, the one filled primary is ink, tile actions outlined, the page h1 at the display step (48/52, 32/36 on a phone) with no full stop or eyebrow, no glow or wash, no chartreuse; text never painted over art; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

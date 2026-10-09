@@ -63,7 +63,7 @@
     <!-- From 1200px: what it sells and its prices in the main column, its SKU on each storefront in a
          360px rail. Narrower: one column. -->
     <div class="page rail-md">
-      <header class="page-head record">
+      <header class="page-head is-record">
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="commerce" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Commerce</a><i class="ic ic-chevron-right"></i><a href="#">Offers</a></nav>
         <div class="page-heading"><h1>Dice skins</h1><span class="status"><i class="ic ic-circle-check"></i>On sale</span></div>
         <p class="page-sub">186 purchases in 28 days</p>
@@ -221,12 +221,17 @@
             </div>
           </div>
         </div>
-        <div class="field">
+        <div class="field hide-phone">
           <label class="field-label"><span>Type <span class="confirm-word neutral">Diceroll</span> to confirm</span></label>
           <div class="input"><span class="grow ph">Diceroll</span></div>
         </div>
       </div>
       <div class="dialog-foot">
+        <!-- Phone sheet: the typed confirmation sits with the pinned buttons, never below the fold (admin-3-07). -->
+        <div class="foot-confirm">
+          <label class="field-label"><span>Type <span class="confirm-word neutral">Diceroll</span> to confirm</span></label>
+          <div class="input"><span class="grow ph">Diceroll</span></div>
+        </div>
         <button class="btn">Cancel</button>
         <button class="btn primary" disabled aria-disabled="true">Change price on 2 stores</button>
       </div>

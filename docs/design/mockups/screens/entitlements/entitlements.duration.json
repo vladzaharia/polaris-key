@@ -21,7 +21,8 @@
     "Renewing, keeps the last version's settings: Renews every (Month | Year, no hint: the subscription's source decides how a license renews), When it ends with Keeps the last version chosen, Versions Any version, and Grace after a missed renewal (7 days, read-only, license.dunningGraceDays, with Change in Settings →), shown only because the tier renews.",
     "The timeline: Starts (Oct 7, 2026), Renews for another year (Oct 7, 2027), Past due for 7 days if a renewal doesn't arrive (warning), Keeps the last version 7 days later ('4.2.0 if it lapsed today. The portal says “Updates ended at 4.2.0 · keeps working”.'), Renewing brings updates back.",
     "The unsaved change is Offline days 30 → 60 (accent ring, 'was 30'); the bar reads '1 change. Applies to 71 of 71 licenses; .pkey/product stops changing Pro.' with Discard and Save Pro.",
-    "Phone: the list stacks over the record, the six presets are a one-column list with every line kept, the settings sit above the timeline, and the save bar is one row."
+    "Phone: the list stacks over the record, the six presets are a one-column list with every line kept, the settings sit above the timeline, and the save bar is one row.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

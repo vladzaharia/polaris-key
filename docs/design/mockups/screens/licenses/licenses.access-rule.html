@@ -65,56 +65,58 @@
             <div class="choice on"><div class="choice-title"><i class="ic ic-list-filter"></i>Rules</div><div class="choice-desc">Groups, verified email domains or claims decide.</div></div>
           </div>
         </div>
-        <table class="table stack-phone flow">
-          <thead><tr><th>When</th><th>Gets</th><th class="hide-narrow">Label people see</th><th class="num">Accounts</th><th class="row-menu"><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>studio-pro</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
-              <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
-              <td class="hide-narrow">Included with Studio membership</td>
-              <td class="num">38</td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Group studio-pro: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>members</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
-              <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
-              <td class="hide-narrow">Included with membership</td>
-              <td class="num">412</td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Group members: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-at-sign"></i></span><div><div class="cell-title">Verified email domain <code>example.edu</code></div><div class="cell-sub">Any sign-in method</div></div></div></td>
-              <td><span class="pill sm"><i class="ic ic-layers accent"></i>Education</span></td>
-              <td class="hide-narrow">Education license</td>
-              <td class="num">57</td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Verified email domain example.edu: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-id-card"></i></span><div><div class="cell-title">Claim <code>vpnAccess</code> is <code>true</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
-              <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-puzzle accent"></i>Polaris VPN</span><span class="cell-sub">Add-on, on top of the tier</span></div></td>
-              <td class="hide-narrow">Polaris VPN included</td>
-              <td class="num"><span class="icon-text warning"><i class="ic ic-triangle-alert"></i>0</span></td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Claim vpnAccess: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <!-- Readiness error (P2-10): a rule that can't match yet says why and how to fix it. -->
-            <tr class="note-row">
-              <td colspan="5" class="indent">
-                <div class="callout warning">
-                  <i class="ic ic-triangle-alert"></i>
-                  <div class="grow"><div class="callout-title">Pocket ID doesn’t send <code>vpnAccess</code>, so this rule can’t match</div><div class="callout-text">Add the claim to Pocket ID’s claim map in Connections.</div></div>
-                  <button class="btn outline sm">Open Connections</button>
-                </div>
-              </td>
-            </tr>
-            <tr class="shaded">
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-user-round"></i></span><div class="cell-title">Everyone else who signs in</div></div></td>
-              <td><span class="pill sm"><i class="ic ic-layers accent"></i>Trial</span></td>
-              <td class="hide-narrow">Try DJDL Standard for 14 days</td>
-              <td class="num">143</td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Everyone else: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="Table, scrolls sideways" tabindex="0">
+          <table class="table stack-phone flow">
+            <thead><tr><th>When</th><th>Gets</th><th class="hide-narrow">Label people see</th><th class="num">Accounts</th><th class="row-menu"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>studio-pro</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                <td class="hide-narrow">Included with Studio membership</td>
+                <td class="num">38</td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Group studio-pro: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>members</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                <td class="hide-narrow">Included with membership</td>
+                <td class="num">412</td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Group members: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-at-sign"></i></span><div><div class="cell-title">Verified email domain <code>example.edu</code></div><div class="cell-sub">Any sign-in method</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Education</span></td>
+                <td class="hide-narrow">Education license</td>
+                <td class="num">57</td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Verified email domain example.edu: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-id-card"></i></span><div><div class="cell-title">Claim <code>vpnAccess</code> is <code>true</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
+                <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-puzzle accent"></i>Polaris VPN</span><span class="cell-sub">Add-on, on top of the tier</span></div></td>
+                <td class="hide-narrow">Polaris VPN included</td>
+                <td class="num"><span class="icon-text warning"><i class="ic ic-triangle-alert"></i>0</span></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Claim vpnAccess: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <!-- Readiness error (P2-10): a rule that can't match yet says why and how to fix it. -->
+              <tr class="note-row">
+                <td colspan="5" class="indent">
+                  <div class="callout warning">
+                    <i class="ic ic-triangle-alert"></i>
+                    <div class="grow"><div class="callout-title">Pocket ID doesn’t send <code>vpnAccess</code>, so this rule can’t match</div><div class="callout-text">Add the claim to Pocket ID’s claim map in Connections.</div></div>
+                    <button class="btn outline sm">Open Connections</button>
+                  </div>
+                </td>
+              </tr>
+              <tr class="shaded">
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-user-round"></i></span><div class="cell-title">Everyone else who signs in</div></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Trial</span></td>
+                <td class="hide-narrow">Try DJDL Standard for 14 days</td>
+                <td class="num">143</td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Everyone else: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div class="card-foot start">
           <button class="btn outline sm"><i class="ic ic-plus"></i>Add rule</button>
           <span class="type-small muted">When several match, the higher tier wins; add-ons add to it.</span>

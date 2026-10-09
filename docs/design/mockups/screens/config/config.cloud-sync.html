@@ -143,42 +143,44 @@
           <div class="title"><h2 id="quota-title">Storage per player</h2><p>Per tier. Entitlement <code>pkey.cloudSync.bytes</code></p></div>
           <a class="btn link" href="#">Open Tiers<i class="ic ic-arrow-right"></i></a>
         </div>
-        <table class="table fixed stack-phone" aria-label="Storage per player">
-          <colgroup><col style="width: 42%"><col style="width: 20%"><col style="width: 20%"><col style="width: 18%"></colgroup>
-          <thead><tr><th>Who</th><th>Storage</th><th>Near limit</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-globe"></i></span><div class="grow"><div class="mk-cluster"><span class="cell-title">Default</span><span class="pill sm"><i class="ic ic-polaris"></i>Platform</span></div><div class="cell-sub">For tiers that don’t set their own</div></div><span class="show-narrow"><button class="btn ghost sm">Change…</button></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">256&nbsp;MiB</span></td>
-              <td class="hide-narrow"><span role="img" class="dash" aria-label="None"></span></td>
-              <td class="end hide-narrow"><button class="btn ghost sm">Change…</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Free</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Change Free">Change</button></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">64&nbsp;MiB</span></td>
-              <td><span class="cell-label">Over 80%</span><span class="status warning"><i class="ic ic-triangle-alert"></i>41 players</span></td>
-              <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Change Free">Change</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Standard</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Set Standard">Set</button></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><div><div>256&nbsp;MiB</div><div class="cell-sub">Uses the default</div></div></td>
-              <td><span class="cell-label">Over 80%</span><span class="muted">3 players</span></td>
-              <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Set Standard">Set</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Deluxe</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Change Deluxe">Change</button></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">1&nbsp;GiB</span></td>
-              <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
-              <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Change Deluxe">Change</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-user-round"></i></span><div class="grow"><div class="cell-title">Without a license</div><div class="cell-sub">Signed in, no Diceroll license yet</div></div><span class="show-narrow"><a class="btn ghost sm" href="#">Change in Access</a></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><div><div>64&nbsp;MiB</div><div class="cell-sub">Same as Free</div></div></td>
-              <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
-              <td class="end hide-narrow"><a class="btn ghost sm" href="#">Change in Access</a></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="Storage per player, scrolls sideways" tabindex="0">
+          <table class="table fixed stack-phone" aria-label="Storage per player">
+            <colgroup><col style="width: 42%"><col style="width: 20%"><col style="width: 20%"><col style="width: 18%"></colgroup>
+            <thead><tr><th>Who</th><th>Storage</th><th>Near limit</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-globe"></i></span><div class="grow"><div class="mk-cluster"><span class="cell-title">Default</span><span class="pill sm"><i class="ic ic-polaris"></i>Platform</span></div><div class="cell-sub">For tiers that don’t set their own</div></div><span class="show-narrow"><button class="btn ghost sm">Change…</button></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">256&nbsp;MiB</span></td>
+                <td class="hide-narrow"><span role="img" class="dash" aria-label="None"></span></td>
+                <td class="end hide-narrow"><button class="btn ghost sm">Change…</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Free</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Change Free">Change</button></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">64&nbsp;MiB</span></td>
+                <td><span class="cell-label">Over 80%</span><span class="status warning"><i class="ic ic-triangle-alert"></i>41 players</span></td>
+                <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Change Free">Change</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Standard</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Set Standard">Set</button></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><div><div>256&nbsp;MiB</div><div class="cell-sub">Uses the default</div></div></td>
+                <td><span class="cell-label">Over 80%</span><span class="muted">3 players</span></td>
+                <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Set Standard">Set</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Deluxe</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Change Deluxe">Change</button></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">1&nbsp;GiB</span></td>
+                <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
+                <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Change Deluxe">Change</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-user-round"></i></span><div class="grow"><div class="cell-title">Without a license</div><div class="cell-sub">Signed in, no Diceroll license yet</div></div><span class="show-narrow"><a class="btn ghost sm" href="#">Change in Access</a></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><div><div>64&nbsp;MiB</div><div class="cell-sub">Same as Free</div></div></td>
+                <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
+                <td class="end hide-narrow"><a class="btn ghost sm" href="#">Change in Access</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div class="card-foot start">
           <span class="type-small muted">Changes reach each player on their next sync. Lowering a limit deletes nothing; new saves wait for room. <a class="nlink" href="#">See Usage</a></span>
         </div>

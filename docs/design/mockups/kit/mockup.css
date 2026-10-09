@@ -22098,7 +22098,7 @@ span.dash::before {
   --mk-action-on: #ffffff;
   --mk-band: color-mix(in oklab, var(--pk-surface-sunken) 55%, var(--pk-surface-raised));
 }
-/* The masthead's h1: 36/44 on a collection, 32/40 on a record (.page-head.record), 24/32 on a
+/* The masthead's h1: 36/44 on a collection, 32/40 on a record (.page-head.is-record), 24/32 on a
    phone. Never a display size in the console (B4, B6). */
 :root {
   --fs-page: 36px;
@@ -22335,7 +22335,7 @@ span.dash::before {
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
-.page-head.record {
+.page-head.is-record {
   --fs-page: 32px;
   --lh-page: 40px;
 }
@@ -22392,7 +22392,7 @@ span.dash::before {
 }
 @container screen (max-width: 639px) {
   .page-head,
-  .page-head.record {
+  .page-head.is-record {
     --fs-page: 24px;
     --lh-page: 32px;
   }
@@ -22602,27 +22602,27 @@ span.dash::before {
 
 /* ── Home (B4): Needs attention 2/3 beside Platform ready 1/3 from 1280px only ─────────────── */
 
-/* <div class="page columns dash">: below 1280 one column in source order; from 1280 the aside
+/* <div class="page columns split">: below 1280 one column in source order; from 1280 the aside
    takes a third, top-aligned, never stretched. Product cards carry a 72px cover banner in the
    Cards view only (.product-card > .art.banner): hosted art, else the stored flat tint. */
 @container screen (min-width: 1280px) {
-  .page.columns.dash {
+  .page.columns.split {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
     grid-auto-flow: row dense;
     align-items: start;
     gap: var(--section-gap);
   }
-  .page.columns.dash > * {
+  .page.columns.split > * {
     grid-column: 1 / -1;
   }
-  .page.columns.dash > .page-head {
+  .page.columns.split > .page-head {
     grid-column: 1 / -1;
   }
-  .page.columns.dash > .dash-main {
+  .page.columns.split > .split-main {
     grid-column: 1;
   }
-  .page.columns.dash > .aside {
+  .page.columns.split > .aside {
     grid-column: 2;
     grid-row: span 1;
   }
@@ -22917,4 +22917,601 @@ span.dash::before {
 /* A Review row's action is its own description cell (a dl row holds dt and dd only). */
 .kv-rows dd.kv-action {
   display: block;
+}
+
+/* ── Brand v2: Home product cards (admin-1-13) ────────────────────────────────────────────── */
+/* Each feature glyph on a card is a 32px bordered tile (it is a link), and the cover banner shows
+   in the Cards view only: a phone keeps the one-line card with its pips. */
+.product-card-svcs .svcs > a {
+  border: 1px solid var(--mk-line);
+  background: var(--pk-surface-raised);
+}
+.product-card-svcs > .svcs {
+  gap: var(--sp-2);
+  margin-left: 0;
+}
+.product-card > .art.banner.flat {
+  background: var(--pk-service-core-subtle);
+}
+@container screen (max-width: 639px) {
+  .product-card > .art.banner {
+    display: none;
+  }
+}
+
+/* A disabled primary reads as off beside Cancel: a quiet edge and subtle words (WCAG exempts
+   disabled controls; the hint beside it says why). */
+.btn.primary:is([disabled], .disabled, .is-disabled) {
+  border-color: var(--mk-line);
+  color: var(--pk-text-subtle);
+}
+/* Wizard progress is neutral like the marks it joins; the current step keeps the context accent. */
+.step.done + .step::before,
+.stepper.vertical .step.done:not(:last-child)::after,
+.stepper-progress > .segs > i.on {
+  background: var(--mk-action);
+}
+
+/* ── Brand v2: no text under 12px, no accent fill as state (B6) ──────────────────────────── */
+.kbd,
+kbd {
+  font-size: 12px;
+}
+@container screen (max-width: 639px) {
+  .portal-tabbar > a {
+    font-size: 12px;
+  }
+}
+.kit-cfg .pill,
+.kit-cfg .pill.sm {
+  font-size: 12px;
+}
+.kit-prod .eyebrow {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+/* An SSO-required domain is a neutral badge with a lock and the words (admin-3-20): the accent
+   never encodes a state, and violet is also the info tone. */
+.domain.req {
+  border-color: var(--pk-border-strong);
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+.domain.req > .ic {
+  color: var(--pk-text-strong);
+}
+.domain-tag {
+  height: 16px;
+  padding: 0 0 0 var(--sp-1);
+  border-left: 1px solid var(--mk-line);
+  border-radius: 0;
+  background: none;
+  color: var(--pk-text-muted);
+  font: 500 12px/16px var(--pk-font-sans);
+}
+
+/* Provider buttons take only the providers' allowed fills (auth-15/16): in light, white with a
+   3:1 edge, never the lavender secondary tint; in dark, unchanged. Never the host or section tint. */
+[data-theme="light"] .provider {
+  border-color: var(--pk-border-strong);
+  background: #ffffff;
+}
+
+/* A full license is a limit, not an error (DL6, sdk-c-25): its seats and its 'No free devices'
+   words are neutral, never amber; the fix (Replace a device) is the row's action. */
+.kit-seats.full > i {
+  background: var(--pk-text-strong);
+}
+.kit-line .warn {
+  color: var(--pk-text-strong);
+  font-weight: 500;
+}
+
+/* The docs site's doors (sdk-c-21): Help · Developers · Operate in the top bar, the open door
+   underlined; below 1024 they move into the menu, and the changelog link (also in the nav) hides. */
+.docs-doors {
+  display: flex;
+  align-self: stretch;
+  gap: var(--sp-6);
+}
+.docs-doors > a {
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 3px solid transparent;
+  color: var(--pk-text-muted);
+  font-size: var(--fs-small);
+}
+.docs-doors > a.on {
+  border-bottom-color: var(--pk-accent);
+  color: var(--pk-text-strong);
+  font-weight: 500;
+}
+@container screen (max-width: 1023px) {
+  .docs-doors,
+  .docs-links > a:first-child {
+    display: none;
+  }
+}
+
+/* ── Brand v2: the hosted card (B8) ────────────────────────────────────────────────────────────
+ *
+ * The app header is a neutral strip (no host or section tint), and in a landscape window at least
+ * 960px wide it becomes the passport: a sunken identity pane beside the unchanged 456px form pane,
+ * top-aligned, the product's hosted art (an <img> in the Worker; same-origin) over its icon, the
+ * request, then the developer and the device on their own lines; no eyebrow. Portrait (a tablet
+ * held upright, 834) and phone keep the strip. The trust receipt spans the whole card; Help,
+ * Privacy and Terms align to its end edge.
+ *   <main class="hosted-card passport">
+ *     <header class="hosted-head"><div class="art hosted-art" data-product="djdl"></div>
+ *       <span class="logo lg" data-product="djdl"></span><div class="grow">…title, sub…</div></header>
+ *     <div class="hosted-body">…</div><footer class="hosted-foot">…</footer></main>
+ * The key on-ramp's header has no request verb: '<Product> · <Developer>' (.hosted-head.plain-id).
+ */
+.hosted-head {
+  background: var(--pk-surface-sunken);
+}
+.hosted-art {
+  display: none;
+}
+.hosted-sub > .by-dev,
+.hosted-sub > .on-device {
+  white-space: nowrap;
+}
+@media (min-width: 960px) and (orientation: landscape) {
+  .hosted-card.passport {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 456px);
+    grid-template-areas:
+      "pass body"
+      "foot foot";
+    width: 736px;
+  }
+  .hosted-card.passport > .hosted-head {
+    grid-area: pass;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: var(--sp-4);
+    padding: 0 var(--sp-6) var(--sp-6);
+    border-bottom: 0;
+    border-right: 1px solid var(--mk-line);
+  }
+  .hosted-card.passport > .hosted-head > .hosted-art {
+    display: block;
+    align-self: stretch;
+    height: 158px;
+    margin: 0 calc(-1 * var(--sp-6));
+    border-radius: 0;
+    aspect-ratio: auto;
+  }
+  .hosted-card.passport > .hosted-head > .logo {
+    position: relative;
+    z-index: 1;
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    margin-top: calc(-1 * var(--sp-10));
+    box-shadow: 0 0 0 3px var(--pk-surface-sunken);
+  }
+  .hosted-card.passport > .hosted-head:not(:has(> .hosted-art)) > .logo {
+    margin-top: var(--sp-6);
+  }
+  .hosted-card.passport .hosted-title {
+    font-size: var(--fs-section);
+    line-height: var(--lh-section);
+  }
+  .hosted-card.passport .hosted-sub {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-1);
+    margin-top: var(--sp-2);
+  }
+  .hosted-card.passport .hosted-sub > [aria-hidden="true"] {
+    display: none;
+  }
+  .hosted-card.passport > .hosted-body {
+    grid-area: body;
+  }
+  .hosted-card.passport > .hosted-foot {
+    grid-area: foot;
+  }
+  .hosted:has(> .hosted-card.passport) > .hosted-legal {
+    width: 736px;
+    justify-content: flex-end;
+  }
+}
+/* The person being signed in is readable on a phone: under 400px the way out drops under the name
+   and the email wraps at any character, never truncated (auth-05). */
+.person-row-text > span {
+  overflow-wrap: anywhere;
+}
+@container (max-width: 399px) {
+  .person-row {
+    flex-wrap: wrap;
+  }
+  .person-row > .link {
+    flex-basis: 100%;
+    padding-left: calc(40px + var(--sp-3));
+  }
+}
+/* Allow and Deny are the same size (B8): two block buttons, Deny outlined so its edge reads. */
+.hosted-actions.equal > .btn {
+  width: 100%;
+}
+/* A refusal on the card is a neutral callout (DL6): what happened in one line, the fix as the one
+   primary under it; never amber, never a disabled primary. */
+.hosted-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--mk-line);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-default);
+}
+.hosted-callout > .ic {
+  flex: none;
+  margin-top: var(--sp-0-5);
+  color: var(--pk-text-strong);
+}
+.hosted-callout strong {
+  display: block;
+  color: var(--pk-text-strong);
+}
+.hosted-callout span {
+  font-size: var(--fs-small);
+  line-height: var(--lh-small);
+  color: var(--pk-text-muted);
+}
+/* The device code: big mono groups, entered or echoed, never wrapping inside a group. */
+.code-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  height: 64px;
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-sunken);
+  font: 500 28px/36px var(--pk-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--pk-text-strong);
+  white-space: nowrap;
+}
+.code-entry.focus {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+.code-entry > .sep {
+  color: var(--pk-text-subtle);
+}
+.code-entry > .ph {
+  color: var(--pk-text-subtle);
+}
+@media (min-width: 960px) and (orientation: landscape) {
+  .hosted-card.passport .hosted-title {
+    text-wrap: balance;
+  }
+}
+
+/* The sidebar is one viewport tall from 1024px: the context header at its top, Settings and Collapse
+   pinned at its foot, and a long feature list scrolls between them (admin-1-15), never under the
+   foot. A hairline sets the foot apart. */
+@container screen (min-width: 1024px) {
+  .console > .sidebar {
+    position: sticky;
+    top: 64px;
+    align-self: start;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .console > .sidebar > .sidebar-foot {
+    border-top: 1px solid var(--mk-line);
+  }
+}
+@container screen (min-width: 1024px) {
+  .console > .sidebar > * {
+    flex-shrink: 0;
+  }
+}
+
+/* Cards in a grid keep their own height when their contents differ (no dead space under a short
+   card, admin-1-28): <div class="mk-grid-2 top">. */
+:is(.mk-grid-2, .mk-grid-3).top {
+  align-items: start;
+}
+/* A phone sheet keeps the dialog's 3px rule (none on a destructive or cautious one). */
+@container screen (max-width: 639px) {
+  .overlay.sheet > :is(.dialog, .drawer):not(.danger, .caution) {
+    border-top: 3px solid var(--pk-accent);
+  }
+}
+
+/* Annotation pins on boards are neutral ink: gold means signing only, and nothing glows (B6). */
+.anno {
+  background: var(--mk-action);
+  color: var(--mk-action-on);
+  box-shadow: none;
+}
+
+/* ── Brand v2: the portal's focused task frame (PX-29, B12) ───────────────────────────────────
+ *   <main class="portal-page task"><nav class="crumbs">Library › DJDL</nav>
+ *     <div class="task-frame"><aside class="task-aside"><div class="identity-row">…</div>…</aside>
+ *       <section class="task-main"><h1>…</h1>…<div class="task-actions">…</div></section></div></main>
+ * One centred 640px column; on a short desktop (≥1024 wide, ≤820 tall) the identity and the
+ * consequences sit in a 320px column beside the task so its buttons stay in the first viewport.
+ * The identity row replaces a cropped art band: icon, name, the license in one line.
+ */
+.portal-page.task {
+  gap: var(--sp-5);
+}
+.portal-page.task h1 {
+  font-size: var(--fs-page);
+  line-height: var(--lh-page);
+}
+.task-frame {
+  display: grid;
+  gap: var(--sp-6);
+  width: 100%;
+  max-width: 640px;
+}
+.task-aside,
+.task-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+.task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.identity-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--mk-line);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-raised);
+}
+.identity-row > .grow {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.identity-row strong {
+  color: var(--pk-text-strong);
+}
+.identity-row .meta {
+  color: var(--pk-text-muted);
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+  .task-frame {
+    max-width: 1040px;
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+  }
+}
+@container screen (max-width: 639px) {
+  .task-actions > .btn {
+    flex: 1 1 100%;
+  }
+}
+/* A hash with its copy control, one line, middle-truncated at rest. */
+.hash-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  font: 400 var(--fs-mono) / var(--lh-mono) var(--pk-font-mono);
+  color: var(--pk-text-default);
+}
+.hash-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* The task column is centred, never pinned left at a wide window (portal-30, PX-26); the
+   breadcrumb shares its edge. */
+.portal-page.task {
+  align-items: center;
+}
+.portal-page.task > .crumbs {
+  width: 100%;
+  max-width: 640px;
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+  .portal-page.task > .crumbs {
+    max-width: 1040px;
+  }
+}
+/* A store rating's star is neutral: gold means signing only (B6). */
+.rating > .ic-star {
+  color: var(--pk-text-strong);
+}
+/* No uppercase transform on a table head, a group row or a docs label: ids and names keep their
+   case (admin-3-11, B6; 'com.example.diceroll.*' must never read 'COM.EXAMPLE…'). */
+.table tr.group-row td,
+.docs-label,
+.table.sdk-reads th,
+.table.sdk-checks th {
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* A repeated trust footer is quieter by colour, not opacity, so it keeps 4.5:1. */
+.hosted-foot.echo {
+  opacity: 1;
+  color: var(--pk-text-subtle);
+}
+/* 24px targets for the guided setup's step buttons and inline links (WCAG 2.5.8). */
+.guide-title :is(h3, h4) > button,
+.guide-sub > .link {
+  min-height: 24px;
+}
+.guide-sub > .link {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── Brand v2: no sideways scroll from 320 to 2560 ────────────────────────────────────────────
+ * A table straight in a card that can be wider than its card sits in a labelled, focusable
+ * scroll region (B4: tablet = contained scroll, the first column pinned); under 560px of card it
+ * still stacks (.stack-phone).
+ *   <div class="table-scroll" role="region" aria-label="Email domains, scrolls sideways" tabindex="0"><table class="table stack-phone">…</table></div>
+ */
+.table-scroll {
+  position: relative;
+  min-width: 0;
+  overflow-x: auto;
+}
+.card > :not(.card-head, .show-narrow) + .table-scroll .table thead th {
+  border-top: 1px solid var(--mk-line);
+}
+.card > .table-scroll + :is(.card-rows, .card-body, .card-row, .card-foot) {
+  border-top: 1px solid var(--mk-line);
+}
+@container screen (min-width: 640px) and (max-width: 1023px) {
+  .table-scroll .table :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+  .table-scroll .table td:first-child {
+    background: var(--pk-surface-raised);
+    box-shadow: 1px 0 0 var(--mk-line);
+  }
+}
+/* Long single values wrap rather than widen a phone page: a URL in a fact, an id chip, a status
+   or a no-wrap line inside a stacked row, a closing button's label. */
+p.mono,
+p.type-meta.mono,
+dd .mono {
+  overflow-wrap: anywhere;
+}
+.segmented {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+@container (max-width: 559px) {
+  .table.stack-phone :is(.status, .nowrap, .meta.nowrap) {
+    white-space: normal;
+  }
+  .table.stack-phone :is(td, .cell-title, .cell-sub) {
+    overflow-wrap: anywhere;
+  }
+}
+@container screen (max-width: 639px) {
+  .id {
+    max-width: 100%;
+    height: auto;
+    min-height: 24px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .actions-under > .btn {
+    white-space: normal;
+    text-align: center;
+    height: auto;
+  }
+  .save-bar {
+    flex-wrap: wrap;
+  }
+  .table.ledger .cell-sub {
+    white-space: normal;
+  }
+}
+@container screen (max-width: 379px) {
+  .table :is(th, td) {
+    padding-inline: var(--sp-2);
+  }
+  .table :is(th, td):first-child {
+    padding-left: var(--card-px);
+  }
+}
+/* The portal's header at 640–899: the account chip is its avatar, so the bar never overflows. */
+@container screen (max-width: 899px) {
+  .portal-top {
+    gap: var(--sp-4);
+  }
+  .portal-top .account > :not(.avatar) {
+    display: none;
+  }
+  .portal-top .account {
+    padding: 0;
+    border: 0;
+  }
+}
+@container screen (max-width: 639px) {
+  .save-bar-msg {
+    flex-basis: 100%;
+  }
+  .info-tip::after {
+    max-width: calc(100vw - 2 * var(--sp-6));
+  }
+}
+/* An open facet at a tablet width opens toward the start from its chip's end, so it never
+   passes the window's edge. */
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  .filter-anchor > .facet-menu {
+    left: auto;
+    right: 0;
+  }
+}
+/* Device frames are fixed-size pictures of hardware: a row of them that is wider than the window
+   scrolls inside its own block (320 phones, an 834 portrait tablet with a landscape frame). */
+.frame-grid.devices {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* Art without hosted art is the stored flat tint, never a generated gradient (B4, B6):
+   <div class="art" style="--tint: var(--pk-service-sync-subtle)"></div>. */
+.art:not([data-product]) {
+  background: var(--tint, var(--pk-surface-sunken));
+}
+/* The 12-product Library (portal-17): compact tiles four up at desktop, two on a tablet, one on a
+   phone; the art keeps 16:9; one outlined quick action. The attention shelf is one card, its most
+   urgent item the only solid action. */
+.portal-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.ptile.compact .art {
+  aspect-ratio: 16 / 9;
+}
+.ptile.compact .ptile-head .logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+/* A compact tile's 40px icon overlaps the art by 12px, so the name always starts below the art:
+   nothing is drawn over developer art. */
+.ptile.compact .ptile-head {
+  margin-top: calc(-1 * var(--sp-3));
+}
+/* A segmented switch keeps its width in a toolbar; it scrolls only when its own row is narrower. */
+.segmented {
+  flex-shrink: 0;
+}
+/* At tablet widths a table never squeezes its cells into each other: it keeps its content width
+   and scrolls inside its region, the first column pinned (B4). */
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  :is(.workbench > .table-card, .table-scroll) > .table {
+    min-width: max-content;
+  }
+}
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  .workbench .table.members.rows-56 {
+    table-layout: auto;
+  }
 }

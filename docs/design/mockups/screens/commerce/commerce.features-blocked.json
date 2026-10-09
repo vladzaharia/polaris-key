@@ -12,7 +12,9 @@
     "Turn on Licensing / Turn on Sign-in scroll to and focus that row's switch; they don't turn anything on by themselves. The server refuses the dependent too (commerce_requires_license).",
     "A feature that is off greys its name and tile and hides its own settings (Sign-in's Customer portal); a requirement that is off still says what needs it ('Needed by Commerce').",
     "The sidebar shows groups only for features that are on.",
-    "Phone: the tooltip shows on long-press; the requirements and the link wrap under the description; switches are 44×24."
+    "Phone: the tooltip shows on long-press; the requirements and the link wrap under the description; switches are 44×24.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page."
   ],
   "status": "mockup",
   "designReview": {

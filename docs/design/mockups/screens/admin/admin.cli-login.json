@@ -19,7 +19,9 @@
     "The other endings are drawn: Approved (the browser says 'Signed in. Go back to your terminal.', beside terminal 3), and under Other states Cancelled, Expired and Email code only.",
     "Over SSH or with no browser, the terminal skips the browser and says to enter the code at key.plrs.im/manage/device on another device; --json prints one object per state and never prompts; CI uses a service token instead.",
     "Every line fits 80 columns; colours are the ANSI roles (pkey has no product accent, so emphasis is bold, not cyan text) and ✓ ✗ fall back to ASCII under TERM=dumb.",
-    "Landscape (tablet and up): two rows of two equal frames in order (terminal 1 and the approval page, terminal 3 and the approved page), then the related commands, then the three notes as a strip, then Other states in equal columns. Phone: one column in that order; terminal lines scroll sideways inside their frames."
+    "Landscape (tablet and up): two rows of two equal frames in order (terminal 1 and the approval page, terminal 3 and the approved page), then the related commands, then the three notes as a strip, then Other states in equal columns. Phone: one column in that order; terminal lines scroll sideways inside their frames.",
+    "Hosted card v2 (B8): the one primary is ink; the app header is a neutral strip, and in a landscape window ≥960px the passport (a sunken identity pane: the product's art, icon, the request, developer and device on their own lines, no eyebrow) beside the unchanged 456px form pane; the trust receipt spans the card; refusals are neutral callouts with the fix as the one primary.",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13)."
   ],
   "status": "mockup",
   "designReview": {

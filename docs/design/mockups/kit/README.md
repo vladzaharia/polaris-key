@@ -84,6 +84,34 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
     it keeps working." → "Your license covers versions in 4.1.x, the latest of which is 4.1.3".
   - Remove repetition and padding words, never information the screen needs to do its job.
 
+## Brand v2 (lead decisions B1–B16, 2026-10-09)
+
+The kit was re-skinned once to the brand and transition decisions (`_brand/DECISIONS.md`); every
+screen inherits it. Our mockups, DL1–DL18 and the owner's notes win over the Transition Guide's
+pictures; the guide is a reference edition. What changed, and the classes that draw it:
+
+| Decision         | What a screen gets                                                                                                                                                                                                                                            | Classes                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| B2 ink primary   | the one filled primary is `--mk-action` ink (light: #060912 / white; dark: #f6f8ff / #060912); switches, checks, radios, chosen cards and chips are ink; danger stays red                                                                                     | `.btn.primary`, `.switch.on`, `.check.on`, `.choice.on`, `.chip.on`, `.filter.on`                           |
+| B3 nav           | the selected item is the accent's subtle fill with a 3px marker; group labels neutral with a 3px accent bar; a one-page feature is one row                                                                                                                    | `.nav-item.active`, `.nav-label`, `.nav-group.single`                                                       |
+| B4 canvas        | `.console > .main` is the raised canvas: radius 18, hairline, 3px rule in the console's `data-service`, inset 16 from the window's end and bottom from 1024px, full-bleed below; the sidebar is one viewport tall with its foot pinned and its list scrolling | (automatic)                                                                                                 |
+| B4 masthead      | one orientation line (chip + crumbs), h1 36/44 or 32/40 (`.is-record`), the 48px tile on landing and product pages from 1024px                                                                                                                                | `.crumbs`, `.crumb-chip` (`.product`, `.platform`), `.page-head.is-record`, `.page-icon.mast`, `.mast-tile` |
+| B4 bands         | card heads on `--mk-band`, dialog and drawer heads on `--mk-band-overlay`, a hairline under each; no numerals                                                                                                                                                 | `.card-head`, `.dialog-head`, `.drawer-head`                                                                |
+| B4 workbench     | filters and table in one bordered container; 56px rows; the table a labelled focusable region with its first column pinned from 640 to 1279                                                                                                                   | `.workbench` > `.toolbar` + `.table-card[role=region]`                                                      |
+| B4 overlays      | 3px rule on dialogs and drawers (none on `.danger` / `.caution`), one leading glyph, titles ≤ 20/28, blurred scrim with a reduced-transparency fallback                                                                                                       | `.dialog`, `.drawer`, `.overlay`                                                                            |
+| B5 Ship builds   | Releases, Release tracks, Rollouts, Channels, Packages, Updates, Health: `data-service="release"` on the console, the group and the dialogs; no `update` or `distribution` accent in the console                                                              | `areas.json` (distribution and packages are `release`)                                                      |
+| B6 nothing glows | no wash, glow, gradient or coloured shadow in chrome; no text under 12px; no uppercase transform on labels; annotation pins and rating stars neutral                                                                                                          | `.eyebrow` is 13/20 500 sentence case                                                                       |
+| B7 weights       | 400 body, 500 labels/buttons/tabs/nav/row titles, 600 headings and values; no 700 left in the kit                                                                                                                                                             | (automatic)                                                                                                 |
+| B8 hosted card   | a neutral header strip; the passport in a landscape window ≥ 960px; equal Allow/Deny; neutral refusals; white provider buttons in light                                                                                                                       | `.hosted-card.passport`, `.hosted-art`, `.hosted-actions.equal`, `.hosted-callout`, `.code-entry`           |
+| B12 portal       | display h1 48/52 (32/36 phone); the focused task frame (identity row, centred column, two columns on a short desktop)                                                                                                                                         | `.portal-page.task`, `.task-frame`, `.task-aside`, `.task-main`, `.identity-row`, `.hash-row`               |
+
+Also new: `.page.columns.split` (Home: attention 2/3 beside Platform ready 1/3 from 1280px),
+`.product-card > .art.banner` (`.flat` for the stored tint), `:is(.mk-grid-2, .mk-grid-3).top`
+(cards keep their own height), `.docs-doors`, the opt-in `portrait` size (834×1194) in
+`shoot.mjs` and the page, and `tools/mockups/check.mjs` (sideways scroll at 13 widths from 320 to
+2560, axe at 390/1024/1440/1920 in both themes, and the spacing rule). Screen-level spacing that
+predated the rule now lives in the kit, scoped to its screen, at the end of `mockup.css`.
+
 ## Tokens
 
 | Group      | Tokens                                                                                                                                                     |
@@ -231,34 +259,34 @@ element at the same point (a band that replaces a table header's counts).
 
 ### Components on the scale
 
-| Component    | Spacing                                                                                                                                                                                      |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Component    | Spacing                                                                                                                                                                                                                                                |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Page header  | the orientation line (chip + crumbs, 20 high) 12 above; title row 44px (40 on a record); description 8 below; `.page-icon` (the 48px masthead tile from 1024px) spans both; actions gap 8; at most 140px on a collection and 176px on a record at 1440 |
-| Section      | title (18/24) → content 16; title → its description 4                                                                                                                                        |
-| Card         | head 16 × 24 (56 high); body 24; `.tight` band 16 × 24; rows 8 × 24, min 56; foot 12 × 24; hairlines between parts. A count sits 8 after the title; the head's right side holds actions only |
-| Media column | 28 (`--card-media`): task marks (20, centred), list avatars, row tiles, head tiles. Text after it starts at card-px + 28 + 12                                                                |
-| Table        | header 40 (56 with a `.meter-head`); rows 56 (compact 40); cells 8 × 16, first and last cell 24 to line up with the card head                                                                |
-| Stat tile    | padding 20; label (13/20) → value (24/32) 8; value → meta (12/16) 4                                                                                                                          |
-| List row     | 28px avatar or icon · 12 · text · trailing meta; min 56                                                                                                                                      |
-| Form field   | label → control 8 → help 8; fields 20 apart (`.form`)                                                                                                                                        |
-| Dialog       | head 24 (close button 16 from the corner); body 12 under the title, 24 sides and bottom; foot 16 × 24                                                                                        |
-| Pill / count | 24 high, 8 sides, icon 4 from the word (`.sm` 20 high); tone counts are filled subtle chips                                                                                                  |
-| Links        | `.link` and `.btn.link` have a 24px hit height (a link inside a sentence keeps the line's)                                                                                                   |
-| Status words | 16px glyph, 8 to the word; a meta line under it hangs at 24 (`.status-stack`)                                                                                                                |
-| Controls     | 36 high (`.sm` 32, `.xs` 28); 16 sides (`.sm` 12, `.xs` 8); icon 8 from the label; in a toolbar the field is 32, like the facets                                                             |
+| Section      | title (18/24) → content 16; title → its description 4                                                                                                                                                                                                  |
+| Card         | head 16 × 24 (56 high); body 24; `.tight` band 16 × 24; rows 8 × 24, min 56; foot 12 × 24; hairlines between parts. A count sits 8 after the title; the head's right side holds actions only                                                           |
+| Media column | 28 (`--card-media`): task marks (20, centred), list avatars, row tiles, head tiles. Text after it starts at card-px + 28 + 12                                                                                                                          |
+| Table        | header 40 (56 with a `.meter-head`); rows 56 (compact 40); cells 8 × 16, first and last cell 24 to line up with the card head                                                                                                                          |
+| Stat tile    | padding 20; label (13/20) → value (24/32) 8; value → meta (12/16) 4                                                                                                                                                                                    |
+| List row     | 28px avatar or icon · 12 · text · trailing meta; min 56                                                                                                                                                                                                |
+| Form field   | label → control 8 → help 8; fields 20 apart (`.form`)                                                                                                                                                                                                  |
+| Dialog       | head 24 (close button 16 from the corner); body 12 under the title, 24 sides and bottom; foot 16 × 24                                                                                                                                                  |
+| Pill / count | 24 high, 8 sides, icon 4 from the word (`.sm` 20 high); tone counts are filled subtle chips                                                                                                                                                            |
+| Links        | `.link` and `.btn.link` have a 24px hit height (a link inside a sentence keeps the line's)                                                                                                                                                             |
+| Status words | 16px glyph, 8 to the word; a meta line under it hangs at 24 (`.status-stack`)                                                                                                                                                                          |
+| Controls     | 36 high (`.sm` 32, `.xs` 28); 16 sides (`.sm` 12, `.xs` 8); icon 8 from the label; in a toolbar the field is 32, like the facets                                                                                                                       |
 
 ### Type scale
 
-| Step  | Size / line         | Weight                 | Where                                                                                                                                               |
-| ----- | ------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page  | 36/44 collection, 32/40 record (`.page-head.record`), phone 24/32 | 600, -0.02em | `.page-head h1`, `.type-page`; two lines at most, then an ellipsis (the console never uses a display size) |
-| Block | 18/24               | 600, -0.01em           | Every page-level block title: `.section-head h2`, the h2 of a card straight on `.page` (or in its aside), dialog and wizard titles, `.type-section` |
-| Stat  | 24/32               | 600                    | `.stat-value`                                                                                                                                       |
-| Card  | 16/24               | 600                    | A nested card's title (in a section, grid, drawer or card), product card titles, `.type-card`                                                      |
-| Body  | 14/20               | 400 (600 for emphasis; 500 for a row title or a label) | Everything else, `.type-body`                                                                     |
-| Small | 13/20               | 400                    | Descriptions, hints, cell subs, status words, `.type-small`                                                                                         |
-| Meta  | 12/16               | 400                    | Times, versions, counts, `.meta`, `.type-meta`; `.eyebrow` (a label over a block in a card) is 13/20 500, sentence case                          |
-| Mono  | 13/20               | 400                    | Ids, slugs in headings, code, `.type-mono`                                                                                                          |
+| Step  | Size / line                                                          | Weight                                                 | Where                                                                                                                                               |
+| ----- | -------------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page  | 36/44 collection, 32/40 record (`.page-head.is-record`), phone 24/32 | 600, -0.02em                                           | `.page-head h1`, `.type-page`; two lines at most, then an ellipsis (the console never uses a display size)                                          |
+| Block | 18/24                                                                | 600, -0.01em                                           | Every page-level block title: `.section-head h2`, the h2 of a card straight on `.page` (or in its aside), dialog and wizard titles, `.type-section` |
+| Stat  | 24/32                                                                | 600                                                    | `.stat-value`                                                                                                                                       |
+| Card  | 16/24                                                                | 600                                                    | A nested card's title (in a section, grid, drawer or card), product card titles, `.type-card`                                                       |
+| Body  | 14/20                                                                | 400 (600 for emphasis; 500 for a row title or a label) | Everything else, `.type-body`                                                                                                                       |
+| Small | 13/20                                                                | 400                                                    | Descriptions, hints, cell subs, status words, `.type-small`                                                                                         |
+| Meta  | 12/16                                                                | 400                                                    | Times, versions, counts, `.meta`, `.type-meta`; `.eyebrow` (a label over a block in a card) is 13/20 500, sentence case                             |
+| Mono  | 13/20                                                                | 400                                                    | Ids, slugs in headings, code, `.type-mono`                                                                                                          |
 
 Tokens: `--fs-page` `--lh-page`, `--fs-section` `--lh-section`, `--fs-card`, `--fs-stat`,
 `--fs-body`, `--fs-small`, `--fs-meta`, `--fs-mono` (each with its `--lh-*`). **Peers share a step;
@@ -408,7 +436,7 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
 - A feature group's `.nav-label` is a `<button aria-expanded>`, 32px high, its chevron at the end:
   muted, sentence case, 13/20 500, no icon (a section header carries none); the 3px service bar is
   its only colour. A one-page feature (Cloud Sync) is one row: `<div class="nav-group closed single"
-  data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>`, `.active` when open.
+data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>`, `.active` when open.
 - The selected item (`.nav-item.active`) is the subtle accent fill with a 3px accent marker on its
   start edge, 500 (B3); never a solid accent pill. A count keeps its own status colour inside it.
 - No "Workspace" label above the context switcher (it says Platform or the product already).
@@ -448,8 +476,10 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
      ancestors as links; the h1 is the page. Never an eyebrow that repeats the path. -->
 <header class="page-head">
   <nav class="crumbs" aria-label="Breadcrumb">
-    <span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span
-    ><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a>
+    <span class="crumb-chip" data-service="license" aria-hidden="true"
+      ><i class="svc"></i></span
+    ><a href="#">DJDL</a><i class="ic ic-chevron-right"></i
+    ><a href="#">Licensing</a>
   </nav>
   <div class="page-heading"><h1>Licenses</h1></div>
   <div class="page-actions">…</div>
@@ -461,8 +491,10 @@ Need another? Add its lucide file name to `LUCIDE_ICONS` in `tools/mockups/build
 <div class="page-icon mast" data-service="sync" aria-hidden="true">
   <span class="mast-tile"><i class="svc"></i></span>
 </div>
-<div class="page-icon mast" aria-hidden="true"><span class="logo lg" data-product="djdl"></span></div>
-<!-- a record: .page-head.record (h1 32/40) -->
+<div class="page-icon mast" aria-hidden="true">
+  <span class="logo lg" data-product="djdl"></span>
+</div>
+<!-- a record: .page-head.is-record (h1 32/40) -->
 
 <!-- a record with its identity: the icon spans the title and the identity line -->
 <header class="page-head">
@@ -733,7 +765,14 @@ column pinned; below 640 it stacks (`.stack-phone`).
 ```html
 <div class="workbench">
   <div class="toolbar">…</div>
-  <div class="table-card" role="region" aria-label="Licenses table" tabindex="0">…</div>
+  <div
+    class="table-card"
+    role="region"
+    aria-label="Licenses table"
+    tabindex="0"
+  >
+    …
+  </div>
 </div>
 ```
 

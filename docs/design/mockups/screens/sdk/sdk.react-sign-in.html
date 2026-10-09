@@ -5,6 +5,10 @@
     --kit-accent-on: var(--pk-text-on-accent);
     --kit-accent-subtle: color-mix(in oklab, var(--kit-accent) 13%, var(--pk-surface-raised));
   }
+  /* Light: the same coral one step deeper, so its label and its links read at 4.5:1 on white. */
+  [data-theme="light"] [data-screen="sdk.react-sign-in"] {
+    --kit-accent: color-mix(in oklab, color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose)) 78%, #060912);
+  }
   /* From 1600: four windows to a row, then the code across the board. */
   @container screen (min-width: 1600px) {
     [data-screen="sdk.react-sign-in"] .frame-grid.windows {
@@ -59,7 +63,7 @@
                   <p class="kit-lede">Use the email you bought DJDL with.</p>
                 </div>
                 <div class="kit-stack">
-                  <div class="kit-state" role="alert"><i class="ic ic-wifi-off"></i><span><b>Can’t reach Polaris Key</b>Check this computer’s internet connection, then try again.</span></div>
+                  <div class="kit-state" role="alert"><i class="ic ic-wifi-off"></i><span><b>You’re offline</b>Check this computer’s internet connection, then try again.</span></div>
                   <button class="kit-btn primary block">Try again<i class="ic ic-arrow-up-right"></i></button>
                 </div>
                 <div class="kit-rule"></div>
@@ -68,7 +72,7 @@
             </div>
           </div>
         </div>
-        <figcaption><strong>1b · Offline.</strong> No browser opens until Polaris Key answers.</figcaption>
+        <figcaption><strong>1b · Offline.</strong> No browser opens until the network is back; the only Polaris Key words in a kit frame are the footnote’s.</figcaption>
       </figure>
       <figure class="board-item">
         <div class="window win">
@@ -80,7 +84,7 @@
                 <div class="kit-head">
                   <span class="logo lg" data-product="djdl"></span>
                   <h2 class="kit-title">Finish in your browser</h2>
-                  <p class="kit-lede">We opened Polaris Key in your browser. Sign in there and DJDL continues by itself.</p>
+                  <p class="kit-lede">Sign in in the window that opened; DJDL continues by itself.</p>
                 </div>
                 <div class="kit-stack">
                   <div class="kit-waiting" role="status"><span class="kit-breath"></span>Waiting for your browser…</div>

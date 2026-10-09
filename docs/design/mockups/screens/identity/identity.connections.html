@@ -54,29 +54,31 @@
         <div class="card-head">
           <div class="title"><h2 id="h-providers">Sign-in providers</h2></div>
         </div>
-        <table class="table stack-phone" aria-labelledby="h-providers">
-          <thead><tr><th>Provider</th><th>Shown on</th><th>Status</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-apple"></i></span><div><div class="cell-title">Apple</div><div class="cell-sub mono">im.plrs.key.signin</div></div></div></td>
-              <td><span class="cell-label">Shown on</span><div><div>DJDL, Diceroll</div><div class="cell-sub">Ship on macOS or iOS</div></div></td>
-              <td><span class="cell-label">Status</span><span class="mk-cluster no-wrap"><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span><span class="meta">Last sign-in 12 min ago</span></span></td>
-              <td class="end"><button class="btn outline sm">Edit</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="gmark"></i></span><div><div class="cell-title">Google</div><div class="cell-sub">OAuth client <span class="mono">…k2rq</span></div></div></div></td>
-              <td><span class="cell-label">Shown on</span>Every product</td>
-              <td><span class="cell-label">Status</span><span class="mk-cluster no-wrap"><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span><span class="meta">Last sign-in 4 min ago</span></span></td>
-              <td class="end"><button class="btn outline sm">Edit</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-steam"></i></span><div><div class="cell-title">Steam (web sign-in)</div><div class="cell-sub mono">SIGNIN_STEAM_API_KEY</div></div></div></td>
-              <td><span class="cell-label">Shown on</span><div><div>Diceroll</div><div class="cell-sub">Sells on Steam</div></div></td>
-              <td><span class="cell-label">Status</span><span class="mk-cluster no-wrap"><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span><span class="meta">Last sign-in 1 h ago</span></span></td>
-              <td class="end"><div class="mk-cluster"><span class="pill sm"><i class="dot"></i>Set by deployment</span><button class="btn outline sm">Move into Polaris Key</button></div></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="Sign-in providers, scrolls sideways" tabindex="0">
+          <table class="table stack-phone" aria-labelledby="h-providers">
+            <thead><tr><th>Provider</th><th>Shown on</th><th>Status</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-apple"></i></span><div><div class="cell-title">Apple</div><div class="cell-sub mono">im.plrs.key.signin</div></div></div></td>
+                <td><span class="cell-label">Shown on</span><div><div>DJDL, Diceroll</div><div class="cell-sub">Ship on macOS or iOS</div></div></td>
+                <td><span class="cell-label">Status</span><span class="mk-cluster no-wrap"><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span><span class="meta">Last sign-in 12 min ago</span></span></td>
+                <td class="end"><button class="btn outline sm">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="gmark"></i></span><div><div class="cell-title">Google</div><div class="cell-sub">OAuth client <span class="mono">…k2rq</span></div></div></div></td>
+                <td><span class="cell-label">Shown on</span>Every product</td>
+                <td><span class="cell-label">Status</span><span class="mk-cluster no-wrap"><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span><span class="meta">Last sign-in 4 min ago</span></span></td>
+                <td class="end"><button class="btn outline sm">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-steam"></i></span><div><div class="cell-title">Steam (web sign-in)</div><div class="cell-sub mono">SIGNIN_STEAM_API_KEY</div></div></div></td>
+                <td><span class="cell-label">Shown on</span><div><div>Diceroll</div><div class="cell-sub">Sells on Steam</div></div></td>
+                <td><span class="cell-label">Status</span><span class="mk-cluster no-wrap"><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span><span class="meta">Last sign-in 1 h ago</span></span></td>
+                <td class="end"><div class="mk-cluster"><span class="pill sm"><i class="dot"></i>Set by deployment</span><button class="btn outline sm">Move into Polaris Key</button></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <!-- SSO connections (I-30): platform or product scope, verified domains, SSO required per domain. -->
@@ -89,54 +91,58 @@
           <div class="card-head">
             <div class="title"><h3 id="h-orgs">Organizations</h3><p>Every other address gets email codes and passkeys.</p></div>
           </div>
-          <table class="table stack-phone" aria-labelledby="h-orgs">
-            <thead><tr><th>Connection</th><th>Domains</th><th>Signs in</th><th class="end"><span class="sr-only">Open</span></th></tr></thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div><div class="cell-title">Pocket ID</div><div class="cell-sub mono">id.plrs.im</div></div></div></td>
-                <td><div class="mk-cluster"><span class="domain req" title="SSO required: this domain signs in only here"><i class="ic ic-shield-check"></i>polaris.example.com<span class="domain-tag">SSO only</span></span></div></td>
-                <td><span class="cell-label">Signs in</span><div><div class="nowrap">Customers and operators</div><div class="meta nowrap">Last sign-in 6 min ago</div></div></td>
-                <td class="end"><div class="mk-cluster no-wrap"><span class="pill sm"><i class="dot"></i>Set by deployment</span><i class="ic ic-chevron-right hide-narrow"></i></div></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-building-2"></i></span><div><div class="cell-title">Studio Okta</div><div class="cell-sub mono">studio.okta.example.com</div></div></div></td>
-                <td><div class="mk-cluster"><span class="domain req" title="SSO required: this domain signs in only here"><i class="ic ic-shield-check"></i>studio.example.com<span class="domain-tag">SSO only</span></span></div></td>
-                <td><span class="cell-label">Signs in</span><div><div class="nowrap">Operators</div><div class="meta nowrap">Last sign-in 3 h ago</div></div></td>
-                <td class="end hide-narrow"><i class="ic ic-chevron-right"></i></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-building-2"></i></span><div><div class="cell-title">Lakeside University</div><div class="cell-sub mono">login.example.edu</div></div></div></td>
-                <td><div class="mk-cluster"><span class="domain req" title="SSO required: this domain signs in only here"><i class="ic ic-shield-check"></i>example.edu<span class="domain-tag">SSO only</span></span><span class="domain" title="Verified"><i class="ic ic-check"></i>students.example.edu</span><span role="img" class="domain wait" title="Waiting for its DNS record" aria-label="music.example.edu, waiting for its DNS record"><i class="ic ic-clock"></i>music.example.edu</span></div></td>
-                <td><span class="cell-label">Signs in</span><div><div class="nowrap">Customers</div><div class="meta nowrap">Last sign-in 2 h ago</div></div></td>
-                <td class="end hide-narrow"><i class="ic ic-chevron-right"></i></td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="table-scroll" role="region" aria-label="Organizations, scrolls sideways" tabindex="0">
+            <table class="table stack-phone" aria-labelledby="h-orgs">
+              <thead><tr><th>Connection</th><th>Domains</th><th>Signs in</th><th class="end"><span class="sr-only">Open</span></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div><div class="cell-title">Pocket ID</div><div class="cell-sub mono">id.plrs.im</div></div></div></td>
+                  <td><div class="mk-cluster"><span class="domain req" title="SSO required: this domain signs in only here"><i class="ic ic-lock"></i>polaris.example.com<span class="domain-tag">SSO required</span></span></div></td>
+                  <td><span class="cell-label">Signs in</span><div><div class="nowrap">Customers and operators</div><div class="meta nowrap">Last sign-in 6 min ago</div></div></td>
+                  <td class="end"><div class="mk-cluster no-wrap"><span class="pill sm"><i class="dot"></i>Set by deployment</span><i class="ic ic-chevron-right hide-narrow"></i></div></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-building-2"></i></span><div><div class="cell-title">Studio Okta</div><div class="cell-sub mono">studio.okta.example.com</div></div></div></td>
+                  <td><div class="mk-cluster"><span class="domain req" title="SSO required: this domain signs in only here"><i class="ic ic-lock"></i>studio.example.com<span class="domain-tag">SSO required</span></span></div></td>
+                  <td><span class="cell-label">Signs in</span><div><div class="nowrap">Operators</div><div class="meta nowrap">Last sign-in 3 h ago</div></div></td>
+                  <td class="end hide-narrow"><i class="ic ic-chevron-right"></i></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-building-2"></i></span><div><div class="cell-title">Lakeside University</div><div class="cell-sub mono">login.example.edu</div></div></div></td>
+                  <td><div class="mk-cluster"><span class="domain req" title="SSO required: this domain signs in only here"><i class="ic ic-lock"></i>example.edu<span class="domain-tag">SSO required</span></span><span class="domain" title="Verified"><i class="ic ic-check"></i>students.example.edu</span><span role="img" class="domain wait" title="Waiting for its DNS record" aria-label="music.example.edu, waiting for its DNS record"><i class="ic ic-clock"></i>music.example.edu</span></div></td>
+                  <td><span class="cell-label">Signs in</span><div><div class="nowrap">Customers</div><div class="meta nowrap">Last sign-in 2 h ago</div></div></td>
+                  <td class="end hide-narrow"><i class="ic ic-chevron-right"></i></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section class="card" aria-labelledby="h-pcs">
           <div class="card-head">
             <div class="title"><h3 id="h-pcs">Product connections</h3></div>
           </div>
-          <table class="table stack-phone" aria-labelledby="h-pcs">
-            <thead><tr><th>Connection</th><th>Product</th><th>What it does</th><th>Signs in</th><th class="end"><span class="sr-only">Open</span></th></tr></thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div><div class="cell-title">DJDL store</div><div class="cell-sub mono">accounts.djdl.example.com</div></div></div></td>
-                <td><span class="cell-label">Product</span><span class="mk-cluster no-wrap"><span class="logo xs" data-product="djdl"></span>DJDL</span></td>
-                <td><span class="cell-label">Does</span>A button on its sign-in card</td>
-                <td><span class="cell-label">Signs in</span><div><div class="nowrap">Customers</div><div class="meta nowrap">Last sign-in 18 min ago</div></div></td>
-                <td class="end hide-narrow"><i class="ic ic-chevron-right"></i></td>
-              </tr>
-              <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div><div class="cell-title">Diceroll accounts</div><div class="cell-sub mono">securetoken.google.com/diceroll-prod</div></div></div></td>
-                <td><span class="cell-label">Product</span><span class="mk-cluster no-wrap"><span class="logo xs" data-product="diceroll"></span>Diceroll</span></td>
-                <td><span class="cell-label">Does</span>Trades the game’s Firebase sign-in</td>
-                <td><span class="cell-label">Signs in</span><div><div class="nowrap">Customers</div><div class="meta nowrap">Last sign-in 2 min ago</div></div></td>
-                <td class="end hide-narrow"><i class="ic ic-chevron-right"></i></td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="table-scroll" role="region" aria-label="Product connections, scrolls sideways" tabindex="0">
+            <table class="table stack-phone" aria-labelledby="h-pcs">
+              <thead><tr><th>Connection</th><th>Product</th><th>What it does</th><th>Signs in</th><th class="end"><span class="sr-only">Open</span></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div><div class="cell-title">DJDL store</div><div class="cell-sub mono">accounts.djdl.example.com</div></div></div></td>
+                  <td><span class="cell-label">Product</span><span class="mk-cluster no-wrap"><span class="logo xs" data-product="djdl"></span>DJDL</span></td>
+                  <td><span class="cell-label">Does</span>A button on its sign-in card</td>
+                  <td><span class="cell-label">Signs in</span><div><div class="nowrap">Customers</div><div class="meta nowrap">Last sign-in 18 min ago</div></div></td>
+                  <td class="end hide-narrow"><i class="ic ic-chevron-right"></i></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div><div class="cell-title">Diceroll accounts</div><div class="cell-sub mono">securetoken.google.com/diceroll-prod</div></div></div></td>
+                  <td><span class="cell-label">Product</span><span class="mk-cluster no-wrap"><span class="logo xs" data-product="diceroll"></span>Diceroll</span></td>
+                  <td><span class="cell-label">Does</span>Trades the game’s Firebase sign-in</td>
+                  <td><span class="cell-label">Signs in</span><div><div class="nowrap">Customers</div><div class="meta nowrap">Last sign-in 2 min ago</div></div></td>
+                  <td class="end hide-narrow"><i class="ic ic-chevron-right"></i></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </section>
       </section>
 
@@ -145,35 +151,37 @@
         <div class="card-head">
           <div class="title"><h2 id="h-stores">Stores</h2></div>
         </div>
-        <table class="table stack-phone" aria-labelledby="h-stores">
-          <thead><tr><th>Account</th><th>Used by</th><th>Status</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-app-store"></i></span><div><div class="cell-title">App Store Connect</div><div class="cell-sub">Example Audio · <span class="mono">7KQ2J7HJM4</span></div></div></div></td>
-              <td><span class="cell-label">Used by</span><span class="mk-cluster no-wrap"><span class="logo xs" data-product="djdl"></span>DJDL</span></td>
-              <td><span class="cell-label">Status</span><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span></td>
-              <td class="end"><button class="btn outline sm">Edit</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-app-store"></i></span><div><div class="cell-title">App Store Connect</div><div class="cell-sub">Example Games · <span class="mono">3MZ8Q2W9KD</span></div></div></div></td>
-              <td><span class="cell-label">Used by</span><div><span class="mk-cluster no-wrap"><span class="logo xs" data-product="diceroll"></span>Diceroll</span><div class="cell-sub">Uploads, purchases, Game Center sign-in</div></div></td>
-              <td><span class="cell-label">Status</span><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span></td>
-              <td class="end"><button class="btn outline sm">Edit</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-google-play"></i></span><div><div class="cell-title">Google Play</div><div class="cell-sub">Example Games</div></div></div></td>
-              <td><span class="cell-label">Used by</span><div><span class="mk-cluster no-wrap"><span class="logo xs" data-product="diceroll"></span>Diceroll</span><div class="cell-sub">Uploads, purchases, Play Games sign-in</div></div></td>
-              <td><span class="cell-label">Status</span><div class="mk-stack-1"><span><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Key expires Oct 16</span></span><span class="meta">Uploads and purchase checks stop then</span></div></td>
-              <td class="end"><button class="btn outline sm">Replace key</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-steam"></i></span><div class="cell-title">Steamworks (publisher key)</div></div></td>
-              <td><span class="cell-label">Used by</span><span class="mk-cluster no-wrap"><span class="logo xs" data-product="diceroll"></span>Diceroll</span></td>
-              <td><span class="cell-label">Status</span><div class="mk-stack-1"><span><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Not set up</span></span><span class="meta">Steam uploads and sign-in checks wait for it</span></div></td>
-              <td class="end"><button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="Stores, scrolls sideways" tabindex="0">
+          <table class="table stack-phone" aria-labelledby="h-stores">
+            <thead><tr><th>Account</th><th>Used by</th><th>Status</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-app-store"></i></span><div><div class="cell-title">App Store Connect</div><div class="cell-sub">Example Audio · <span class="mono">7KQ2J7HJM4</span></div></div></div></td>
+                <td><span class="cell-label">Used by</span><span class="mk-cluster no-wrap"><span class="logo xs" data-product="djdl"></span>DJDL</span></td>
+                <td><span class="cell-label">Status</span><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span></td>
+                <td class="end"><button class="btn outline sm">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-app-store"></i></span><div><div class="cell-title">App Store Connect</div><div class="cell-sub">Example Games · <span class="mono">3MZ8Q2W9KD</span></div></div></div></td>
+                <td><span class="cell-label">Used by</span><div><span class="mk-cluster no-wrap"><span class="logo xs" data-product="diceroll"></span>Diceroll</span><div class="cell-sub">Uploads, purchases, Game Center sign-in</div></div></td>
+                <td><span class="cell-label">Status</span><span class="status" title="Working"><i class="ic ic-circle-check"></i><span class="sr-only">Working</span></span></td>
+                <td class="end"><button class="btn outline sm">Edit</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-google-play"></i></span><div><div class="cell-title">Google Play</div><div class="cell-sub">Example Games</div></div></div></td>
+                <td><span class="cell-label">Used by</span><div><span class="mk-cluster no-wrap"><span class="logo xs" data-product="diceroll"></span>Diceroll</span><div class="cell-sub">Uploads, purchases, Play Games sign-in</div></div></td>
+                <td><span class="cell-label">Status</span><div class="mk-stack-1"><span><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Key expires Oct 16</span></span><span class="meta">Uploads and purchase checks stop then</span></div></td>
+                <td class="end"><button class="btn outline sm">Replace key</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-steam"></i></span><div class="cell-title">Steamworks (publisher key)</div></div></td>
+                <td><span class="cell-label">Used by</span><span class="mk-cluster no-wrap"><span class="logo xs" data-product="diceroll"></span>Diceroll</span></td>
+                <td><span class="cell-label">Status</span><div class="mk-stack-1"><span><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Not set up</span></span><span class="meta">Steam uploads and sign-in checks wait for it</span></div></td>
+                <td class="end"><button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <!-- Email delivery (I-18), Turnstile and the deploy-time session lengths: secondary, so the aside at wide. -->

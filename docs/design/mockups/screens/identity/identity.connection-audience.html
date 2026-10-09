@@ -44,7 +44,7 @@
   <main class="main">
     <!-- From 1280: the main column and a 360px sticky rail (what it gives people, the client, delete); below, one column. -->
     <div class="page rhythm">
-      <header class="page-head record">
+      <header class="page-head is-record">
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a><i class="ic ic-chevron-right"></i><a href="#">Connections</a></nav>
         <div class="page-heading"><h1>Lakeside University</h1></div>
         <p class="page-sub">Platform connection · Keycloak</p>
@@ -100,9 +100,9 @@
                   <div class="grow mk-stack-4">
                     <div class="callout-text">Add this TXT record at the DNS host for <strong>music.example.edu</strong>. Until it’s found, addresses there get an email code.</div>
                     <dl class="record scroll">
-                      <dt>Type</dt><dd><span>TXT</span></dd>
-                      <dt>Name</dt><dd><span>_polaris-key.music.example.edu</span><button class="btn ghost icon sm" aria-label="Copy name"><i class="ic ic-copy"></i></button></dd>
-                      <dt>Value</dt><dd><span>polaris-key-verify=4f9c2e7a1b8d6053c1e7</span><button class="btn ghost icon sm" aria-label="Copy value"><i class="ic ic-copy"></i></button></dd>
+                      <dt>Type</dt><dd><span tabindex="0">TXT</span></dd>
+                      <dt>Name</dt><dd><span tabindex="0">_polaris-key.music.example.edu</span><button class="btn ghost icon sm" aria-label="Copy name"><i class="ic ic-copy"></i></button></dd>
+                      <dt>Value</dt><dd><span tabindex="0">polaris-key-verify=4f9c2e7a1b8d6053c1e7</span><button class="btn ghost icon sm" aria-label="Copy value"><i class="ic ic-copy"></i></button></dd>
                     </dl>
                     <div class="mk-split center">
                       <div class="status-stack"><span class="status warning"><i class="ic ic-circle-x"></i>No record found 4 min ago</span><span class="meta">Checked every 10 minutes for 7 days</span></div>
@@ -182,7 +182,7 @@
               <dt>Client secret</dt><dd><div class="mk-cluster"><span class="mk-cluster-1 no-wrap"><i class="ic ic-lock sm"></i>Sealed · set Sep 28, 2026</span><button class="btn outline xs"><i class="ic ic-refresh-cw"></i>Replace secret</button></div></dd>
             </dl>
             <dl class="record scroll">
-              <dt>Redirect URI</dt><dd><span>https://key.plrs.im/signin/callback/lakeside-university</span><button class="btn ghost icon sm" aria-label="Copy redirect URI"><i class="ic ic-copy"></i></button></dd>
+              <dt>Redirect URI</dt><dd><span tabindex="0">https://key.plrs.im/signin/callback/lakeside-university</span><button class="btn ghost icon sm" aria-label="Copy redirect URI"><i class="ic ic-copy"></i></button></dd>
             </dl>
           </div>
         </section>

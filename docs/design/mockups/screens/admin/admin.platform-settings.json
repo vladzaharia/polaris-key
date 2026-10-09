@@ -10,7 +10,7 @@
   "compare": [
     "The section nav lists the sections in page order: Platform ready, Product defaults, Sign-in, Storefront and hosting, Email and alerts, Licensing, Jobs, Advanced, Recently changed. Each is also a route (#/platform/settings/<area>), the nav follows the scroll, and a section with unsaved changes carries a dot.",
     "Recently changed is last: the last five platform setting changes from platform_audit (the setting, its section, old value struck through → new value, who and when). The header's History button is the only way into the full history.",
-    "Platform ready is a compact banner while a step is open: the checklist's meter (8 of 9) and its open step (Store connections: Connect Steam), with the done steps folded. It sits in the flow at every width and goes when complete (Other states).",
+    "Platform ready is a compact banner while a step is open: the checklist's meter (8 of 9) and its open step (Store accounts: Connect Steam), with the done steps folded. It sits in the flow at every width and goes when complete (Other states).",
     "Product defaults rows each say how many products use the default and name each product that sets its own value with its logo (DJDL sets 8 GB). The licence device-limit and offline-window defaults are gone: tiers carry them.",
     "Every registered platform key has a row with its registry key as a quiet mono chip at the end of the title line; no registry area is missing (the drift test that fails on an unrendered key is the check). Rows that aren't registry keys say so ('Set in code, not a setting'). Licensing shows only the reserved-names rule.",
     "Sign-in keeps names and terms only and links to Connections for providers, SSO and verified domains; there is no sign-in provider, policy or method-strength editor here, and deploy-time values (console session length) are read-only with where they come from.",
@@ -19,7 +19,14 @@
     "Email and alerts: the verified sender, the daily limit with today's count, and alert destinations (email and webhook) as removable chips.",
     "Jobs show each job's switch with its last run in the description (absorbing Platform Status's job facts, UX-30); Advanced is folded, read-only, and counts the deployment values it holds.",
     "Members, SSO rules and the root rule are not in Settings; Connections holds providers and domains.",
-    "Tablet: the section nav becomes the row of section pills under the header, fading at its right edge. Phone: a section picker; a search icon button sits in the title row and History takes the full width; each setting's control drops under its text (inputs capped at 160px), except switches, which stay at the right."
+    "Tablet: the section nav becomes the row of section pills under the header, fading at its right edge. Phone: a section picker; a search icon button sits in the title row and History takes the full width; each setting's control drops under its text (inputs capped at 160px), except switches, which stay at the right.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "Canvas and section head bands with no numbers; search and History on one line with the '/' hint once (admin-4-05).",
+    "Preserved (guide Ed. 04): Inherited values are shown with their source",
+    "Preserved (guide Ed. 04): Claim and revert are available",
+    "Preserved (guide Ed. 04): Scopes are shown",
+    "Preserved (guide Ed. 04): Audit history is reachable from every setting"
   ],
   "status": "mockup",
   "designReview": {

@@ -15,7 +15,8 @@
     "The combined setup leads with 'pkey feeds setup --write' and exactly what it sets up for this account (npm, pnpm, Yarn, Bun, uv, pip and Docker; pip's index per project), the same list the CLI run prints; the card's subtitle says it goes in the home folder. Under it: 'Don't have pkey? With Node 22, npx runs it once without installing it.' with 'Copy the npx command' and the docs link on their own line.",
     "Then 'Or by hand' with one tabbed block (npm and pnpm, Yarn, Bun, uv and pip, Docker); the npm file routes both scopes to their owners' feeds with one auth line, and its foot says nothing else leaves npmjs.com.",
     "Words: license (US), Packages, token; never 'registry token', 'feed token', 'grant' or 'capability'.",
-    "Phone: the top nav gives way to the bottom tab bar, the account sections fold into the picker, each package row puts its ecosystem and version under the description, each token stacks with Last used and Expires labelled and Revoke under them, and the code tabs scroll under a fade that ends before Copy, so the last tab never hides under it."
+    "Phone: the top nav gives way to the bottom tab bar, the account sections fold into the picker, each package row puts its ecosystem and version under the description, each token stacks with Last used and Expires labelled and Revoke under them, and the code tabs scroll under a fade that ends before Copy, so the last tab never hides under it.",
+    "Portal v2 (B2, B12): the docked header, the one filled primary is ink, tile actions outlined, the page h1 at the display step (48/52, 32/36 on a phone) with no full stop or eyebrow, no glow or wash, no chartreuse; text never painted over art; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

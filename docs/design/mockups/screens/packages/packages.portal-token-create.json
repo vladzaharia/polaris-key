@@ -12,7 +12,9 @@
     "Label is the one field, focused, here typed as 'Work laptop'; its hint gives the browser's suggestion ('Mac · Safari') and why to name the machine (to tell tokens apart).",
     "Three fixed facts, each led by its glyph: 'Packages only', 'Expires in 90 days, on Jan 5, 2027', 'Reaches DJDL, Diceroll and any product you get a license for later'. No scope, product or expiry picker.",
     "'Your other tokens keep working.' under it; Cancel (outline) and the primary 'Create token', which leads to packages.portal-token.",
-    "Phone: the kit's bottom sheet with the buttons pinned full width, the primary on top."
+    "Phone: the kit's bottom sheet with the buttons pinned full width, the primary on top.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "Portal v2 (B2, B12): the docked header, the one filled primary is ink, tile actions outlined, the page h1 at the display step (48/52, 32/36 on a phone) with no full stop or eyebrow, no glow or wash, no chartreuse; text never painted over art; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {
