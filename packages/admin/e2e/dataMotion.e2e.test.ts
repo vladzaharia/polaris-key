@@ -532,7 +532,9 @@ describe("motion on: the Licenses table under the Worker's CSP", () => {
         .map((e) => [e.duration, e.state, e.connected]),
       "the bar's exit ran to its end with the node still in the DOM",
     ).toEqual([[tk.base, "closed", true]]);
-    expect(await running(page)).toEqual([]);
+    // A re-hover after the filter bar returns under the pointer starts hover transitions up to
+    // ~100 ms after layout (seen once on the CI runner); they must still all end.
+    await expect.poll(() => running(page), { timeout: 3000 }).toEqual([]);
     expect(await violations(page)).toEqual([]);
     await page.context().close();
   });
