@@ -16,7 +16,8 @@
     "zsh completion for pkey sdk add lists the six SDKs with one-line descriptions from the same table.",
     "Layout matches UK-14's terminal kit: 80 columns, bold group headings, two columns of terms and descriptions, dim footer; every line fits in 80 columns. Terminal titles are what zsh shows (zsh — djdl — 80×64, 68×32, 56×10; zsh — ~/Downloads — 80×12), and the state names are bold figcaptions: Completion, First run without --expect, Outside a repository. From 1280 the overview sits beside everything else: the 68-column help, then completion and the first run two up where the column has about 900px (wide, and tablet under the two helps) and stacked at desktop, then the outside run across its column.",
     "At 44 columns (phone), every string is the same as at 80; each term takes its own line, with its description indented and wrapped under it, and the header prints 'pkey 0.9.0' first with the description under it. Nothing is cut off or reworded.",
-    "A first run without --expect fails with '✗ No pin in macos/ yet. Run it again with --expect, copied from Integration:' and writes nothing."
+    "A first run without --expect fails with '✗ No pin in macos/ yet. Run it again with --expect, copied from Integration:' and writes nothing.",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13)."
   ],
   "status": "mockup",
   "designReview": {

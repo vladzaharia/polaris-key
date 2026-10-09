@@ -13,7 +13,10 @@
     "A muted line says the next sign-in asks what to share again (the grant is revoked, so consent shows again).",
     "Buttons say what happens: 'Keep Diceroll' and the danger 'Disconnect Diceroll'. On success the row leaves the list with a toast 'Diceroll is disconnected' and its devices are signed out through I-11's revocation hook (I-34 acceptance: Disconnect signs the app out).",
     "Never 'Revoke grant' or 'Deauthorize' in customer copy; the portal verb is Disconnect.",
-    "Phone: the dialog is the portal's bottom sheet (grab handle, 'Disconnect Diceroll' full width above 'Keep Diceroll'). 'Keep Diceroll' has focus when it opens and is visible in both themes."
+    "Phone: the dialog is the portal's bottom sheet (grab handle, 'Disconnect Diceroll' full width above 'Keep Diceroll'). 'Keep Diceroll' has focus when it opens and is visible in both themes.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "Portal v2 (B2, B12): the docked header, the one filled primary is ink, tile actions outlined, the page h1 at the display step (48/52, 32/36 on a phone) with no full stop or eyebrow, no glow or wash, no chartreuse; text never painted over art; weights 400/500/600.",
+    "'Keep Diceroll' has initial focus, drawn with the violet --pk-focus ring (2px, 2px offset) (auth-21)."
   ],
   "status": "mockup",
   "designReview": {

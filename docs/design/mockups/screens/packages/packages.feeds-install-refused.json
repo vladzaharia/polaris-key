@@ -1,0 +1,18 @@
+{
+  "id": "packages.feeds-install-refused",
+  "title": "Packages: installs refused",
+  "area": "packages",
+  "surface": "console",
+  "packages": ["F-33", "F-34", "P2-10", "LX-41"],
+  "uxRows": [],
+  "summary": "DJDL's Packages page when customers' installs from the npm feed are being refused: on that feed's card, the count for the last 24 hours, the top reason in words (updates ended at 2.3.x, asking for ^2.4.0) with its fix, and the rest of the reasons on the same line. The other feeds, healthy, carry no band and no pill.",
+  "compare": [
+    "The refusal band sits on the feed it happened to (npm), above its table: a warning pill with the count ('38 installs refused'), the package, 'last 24 h', and one link to the fix (Open Access) (admin-2-24, guide state 'blocked installation').",
+    "The top reason is said in the customer's terms with what they can do (install 2.3.0, or renew); the second reason follows in the same sentence; no per-install log on this page (Activity has it).",
+    "A healthy feed (PyPI, Swift) has no band and no pill; the count resets after 24 h without refusals.",
+    "Ship builds is one identity: Release cyan, Package glyph; crumb 'DJDL › Ship builds' (B5).",
+    "Phone: the band's pill, package and link wrap; the sentence stays one paragraph."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

@@ -8,7 +8,7 @@
   "uxRows": [],
   "summary": "The docs site's one start path, Your first product: five steps that mirror the console (create, add the SDK, start it, use each feature, check Verified) with generated code in synced SDK tabs, a short troubleshooting list and the reshaped sidebar (Start here, Build, Features, Reference).",
   "compare": [
-    "There is one start path: the sidebar's Start here holds Concepts, Your first product and How Polaris Key works; the old Quickstart by goal, Integrate in 5 minutes and the DJDL onboarding page are gone.",
+    "There is one start path: the top bar has the docs doors (Help · Developers · Operate) and the sidebar's Start here holds Overview, Your first product, Choose your integration, How Polaris Key works and Concepts and glossary (docs plan 2026-10-08); the old Quickstart by goal, Integrate in 5 minutes and the DJDL onboarding page are gone.",
     "The five steps mirror the console in order: New product (name and slug, what it's for, platforms), the pkey sdk add command Integration shows, fromConfig() then boot(), each feature's code on Integration, and Verified.",
     "The example product is Tidewater Studio (tidewater), the docs' one example product (SP-36, SP-37), not DJDL or Diceroll; every snippet uses it.",
     "Code blocks in steps 2 and 3 are generated and share one SDK tab choice (Swift picked in one switches the other), and all six SDKs are tabs. Step 3's blocks have Copy. Step 2's command shows the fingerprint as a placeholder ('<fingerprint from Integration>') and has no Copy; the lede says to run the command Integration shows. Step 3's two lanes line up: their code heads and links sit on one line each.",
@@ -19,7 +19,8 @@
     "The words follow the glossary: Verified, Not seen yet, Waiting, feature, license (US), and never 'outlet', 'grant', 'capability' or 'Setup complete'.",
     "Phone: the sidebar folds into the menu button, search becomes an icon, On this page becomes a 44px bar under the header (also from 640 to 1279, where the column beside the article is gone), and each step's number is a 24px badge 8 before its title, with no rail, so the body runs the full width. The code tabs show the picked SDK with '5 more', the definition list stacks, step 2's command fits, and step 5's terminal re-wraps like pkey doctor's 44-column run ('Tidewater Studio (tidewater)' / 'key.plrs.im', '0 to do · 0.9 s' / 'run it on Windows next') with a 12px inset on every side.",
     "On this page starts on Overview; the header and the sidebar both say 'Developer changelog'.",
-    "Wide: the step 3 lanes and step 5's terminal widen to 920px (.docs-bleed, right edge on the article's), so the Swift lines need no manual wrap; desktop and below keep the wrapped lines. Inline code never splits ('polaris-key.json' stays whole)."
+    "Wide: the step 3 lanes and step 5's terminal widen to 920px (.docs-bleed, right edge on the article's), so the Swift lines need no manual wrap; desktop and below keep the wrapped lines. Inline code never splits ('polaris-key.json' stays whole).",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13)."
   ],
   "status": "mockup",
   "designReview": {

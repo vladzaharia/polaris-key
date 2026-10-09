@@ -1,0 +1,19 @@
+{
+  "id": "identity.refusals",
+  "title": "Refusals on the hosted card",
+  "area": "identity",
+  "surface": "dialog",
+  "packages": ["P0-38", "PX-14", "I-08", "I-15"],
+  "uxRows": [],
+  "summary": "The hosted card's four refusals drawn the DL6 way: a full license (Replace a device), every license full (Replace a device on the one that ranks first), a license bought with another email (Use another account), and no key entries left (Sign in instead). Each says what happened in a neutral callout and offers the fix as the one primary.",
+  "compare": [
+    "Every refusal is a neutral callout on the sunken surface with a glyph, a strong first line and one sentence; no amber, no danger, no warning pill (B8, auth-08/09/10).",
+    "The fix is always the one primary (ink, block); there is never a disabled primary or a dead end: a second, quiet way out where one exists.",
+    "Full licenses show a neutral 'Full' pill and their device counts in words; the seat meter, if drawn, is neutral.",
+    "Key entries used up names when entries come back and turns the primary into Sign in instead; the key on-ramp header has no request verb (frame 4).",
+    "Amber is kept only for 'unsynced changes' on sign-out (not on this board).",
+    "Each frame keeps the product header strip; in a landscape window the same bodies sit in the form pane beside the passport."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

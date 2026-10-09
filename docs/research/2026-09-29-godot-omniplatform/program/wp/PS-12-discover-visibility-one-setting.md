@@ -1,16 +1,16 @@
 # PS-12 Discover visibility: one setting
 
-| Field       | Value                                                                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (DX consolidation H: Distribution channels, storefronts and commerce) |
-| Size        | 0.3–0.5 engineer-weeks                                                                                                                         |
-| Depends on  | [LX-36](LX-36-access-policy-license-access-absorbs-ps.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md)                              |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-16](LX-16-licensing-contract.md), [PS-11](PS-11-storefront-closeout.md)                            |
-| Role        | `pkey-implementer`                                                                                                                             |
-| Plan mode   | no                                                                                                                                             |
-| Gates       | none beyond the green gate                                                                                                                     |
-| Human input | none                                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                      |
+| Field       | Value                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | PS: Polaris Key storefront: the Library as a distribution channel (S-21) (DX consolidation H: Distribution channels, storefronts and commerce)                   |
+| Size        | 0.3–0.5 engineer-weeks                                                                                                                                           |
+| Depends on  | [LX-36](LX-36-access-policy-license-access-absorbs-ps.md), [P0-49](P0-49-data-migration-runner-dry-run-report.md)                                                |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-16](LX-16-licensing-contract.md), [PS-11](PS-11-storefront-closeout.md), [PX-32](PX-32-storefront-decision-panel.md) |
+| Role        | `pkey-implementer`                                                                                                                                               |
+| Plan mode   | no                                                                                                                                                               |
+| Gates       | none beyond the green gate                                                                                                                                       |
+| Human input | none                                                                                                                                                             |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                        |
 
 ## Consolidation 2026-10-07
 

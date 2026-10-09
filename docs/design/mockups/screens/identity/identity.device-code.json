@@ -1,0 +1,19 @@
+{
+  "id": "identity.device-code",
+  "title": "Device code: enter the code",
+  "area": "identity",
+  "surface": "portal",
+  "packages": ["PX-14", "P0-38", "I-37"],
+  "uxRows": [],
+  "summary": "The script-free key.plrs.im/device page a person opens on their phone or computer to sign in a TV, console or other device: code first in big mono groups, the anti-phishing line, Continue. It names no product before the code resolves; the next step (identity.device-confirm) always asks 'Sign in on <device>?'.",
+  "compare": [
+    "Code first: the field is the first control, big mono groups with a dash that never wrap; paste of the whole code works, case and spaces don't matter (PX-14).",
+    "No product, art or developer before the code resolves (B9, portal report): the card has no app header; Polaris Key's brand line only.",
+    "The anti-phishing line sits between the code and Continue: 'Only use a code from your own product, not one somebody sent you.' (B12)",
+    "Script-free Worker page: a form POST with an origin check, escaped echo of the code, no countdown (the device shows 'Expires at …'); no inline style or script (auth-14).",
+    "Errors (identity.device-code-states): a wrong code says so at the field; an expired one says the device shows a new code. Neither is a dead end.",
+    "The next step is always the explicit confirm (identity.device-confirm): a scan or a code is never approval (B9)."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

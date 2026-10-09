@@ -13,7 +13,10 @@
     "Three consequences: the App Store channel and storefront turn on together (builds to TestFlight, purchases add to licenses); store notifications are set up and checked with a test notification; nothing sells until an offer has an App Store SKU.",
     "The button repeats the verb: 'Connect App Store' (primary, Commerce green). On success the dialog closes and the setup card ticks its first step (commerce.first-run-connected); no toast, because the card already shows the result.",
     "An error stays inline in the dialog, says what went wrong and how to fix it, and the button becomes Try again (commerce.connect-app-store-error).",
-    "Phone: a bottom sheet (grab handle, rounded top, body scrolls within 90% of the screen), buttons full width and pinned, the primary on top; the facts stack label over value."
+    "Phone: a bottom sheet (grab handle, rounded top, body scrolls within 90% of the screen), buttons full width and pinned, the primary on top; the facts stack label over value.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency."
   ],
   "status": "mockup",
   "designReview": {

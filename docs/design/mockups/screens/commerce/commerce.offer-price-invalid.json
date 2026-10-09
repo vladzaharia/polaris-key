@@ -10,7 +10,10 @@
     "Validation is inline and immediate: the field turns invalid, the hint is replaced by the error (what's wrong and the fix), and the nearest price points are buttons that fill the field. Zero, empty and non-numbers get the same treatment ('Enter a price, such as $3.99').",
     "The per-store rows show what they will show once the price is valid, muted; no conversions are computed from an invalid price.",
     "The typed confirmation is empty, with the app name as placeholder; the confirm button is disabled (aria-disabled) until both the price is valid and the typed word matches Diceroll exactly.",
-    "Phone: the same bottom sheet as commerce.offer-price; the two fix buttons sit under the error."
+    "Phone: the same bottom sheet as commerce.offer-price; the two fix buttons sit under the error.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "On a phone the typed confirmation sits with the pinned buttons (admin-3-07)."
   ],
   "status": "mockup",
   "designReview": {

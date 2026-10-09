@@ -12,7 +12,9 @@
     "Try Google Play again (primary, focused) retries only the failed store with the same idempotency key; the typed confirmation isn't asked again. Close leaves the offer in a mismatch the editor shows: 'Base price $3.99 · Google Play still at $2.99' as a warning on the Price card, with the same retry.",
     "Nothing is rolled back on the store that succeeded; the base price is recorded as $3.99 with Google Play's mismatch listed, and Activity records both outcomes.",
     "While sending, the confirm button shows its busy state ('Changing price on 2 stores…') and the dialog can't be dismissed; each row shows a spinner until its store answers.",
-    "Phone: the same bottom sheet; the failed row's text wraps and its link stays under it."
+    "Phone: the same bottom sheet; the failed row's text wraps and its link stays under it.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency."
   ],
   "status": "mockup",
   "designReview": {

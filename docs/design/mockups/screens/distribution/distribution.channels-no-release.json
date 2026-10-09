@@ -1,0 +1,19 @@
+{
+  "id": "distribution.channels-no-release",
+  "title": "Channels before the first release",
+  "area": "distribution",
+  "surface": "console",
+  "packages": ["A-20", "A-24", "A-33"],
+  "uxRows": [],
+  "summary": "DJDL's Channels page after its channels are set up but before CI has published a build: no Publish button (there is nothing to publish), one card with the release workflow step said once, and each channel in use saying what it waits for.",
+  "compare": [
+    "No Publish button anywhere on the page until a build exists; the header's freshness reads 'No build from CI yet' (admin-2-22, guide state coverage 'no release').",
+    "The release workflow snippet appears once, in the 'Waiting for the first release' card, with the file name and Copy; no row repeats it.",
+    "Each In use row says what it waits for in words ('The first build on stable', 'A Windows x64 installer on stable') and its Delivery is Ready (info dot, default text), never Live and never a pill.",
+    "Ship builds is one identity: Release cyan rule, Package chip and tile, crumb 'DJDL › Ship builds' (B5).",
+    "Not set up folds into one row; nothing here says 'outlet' or 'storefront feed'.",
+    "Phone: the card's text and snippet stack; the table stacks behind its labels; nothing scrolls sideways."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

@@ -24,7 +24,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -131,10 +131,10 @@
                 <p class="eyebrow">Drop-in kit<span class="end"><a class="link quiet" href="#" aria-label="Integrate Ship builds directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span></p>
                 <div class="code">
                   <div class="code-head">
-                    <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span></div>
+                    <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span></div>
                     <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                   </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
 
 <span class="t-t">PolarisSparkle</span>.<span class="t-f">start</span>(client: client)</pre>
                 </div>

@@ -1,0 +1,18 @@
+{
+  "id": "portal.library-12",
+  "title": "Library with 12 products",
+  "area": "portal",
+  "surface": "portal",
+  "packages": ["PX-27", "LX-15", "P0-36"],
+  "uxRows": [],
+  "summary": "Priya's Library at twelve products: the display h1, a calmer attention shelf (one card, two items, only the most urgent with a solid action), a toolbar with search (⌘K), counted chips, sort and Grid/List, and compact tiles (16:9 art or the flat tint, icon, name, tier, one outlined quick action). The Missing a license? strip stays.",
+  "compare": [
+    "The attention shelf is one card; only its most urgent item (Diceroll on 3 of 3 devices) has a solid action, the rest are outlined (B12, portal-17). A full license reads neutral (DL6).",
+    "Toolbar: search with ⌘K, counted chips (All 12 selected, Updates, Games, Apps), sort, Grid/List as a segmented switch.",
+    "Compact tiles: 16:9 art (the product's art or its stored flat tint, never a gradient), the icon over its lower edge, name once, the tier pill, one outlined quick action and More; four up at desktop, two at tablet, one on a phone.",
+    "No product name painted over art; status plates at the bottom-left of the art on a narrow compact tile (PORTAL §7).",
+    "The Missing a license? strip stays at the end; the bottom bar on a phone."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                   |
 | Size        | 0.2–0.4 engineer-weeks                                                                                                                                                       |
 | Depends on  | [PX-16](PX-16-discover-page.md), [MO-07](MO-07-portal-library-motion.md)                                                                                                     |
-| Unblocks    | none                                                                                                                                                                         |
+| Unblocks    | [PX-27](PX-27-library-discover-presence.md), [PX-30](PX-30-art-hero-rendering.md)                                                                                            |
 | Role        | `pkey-implementer`                                                                                                                                                           |
 | Plan mode   | no                                                                                                                                                                           |
 | Gates       | portal e2e in both themes at 1440 and 390, with the linux visual baselines re-recorded (`scripts/portal-baselines.sh`); console CSP parity; `vitest-axe` on the changed tile |

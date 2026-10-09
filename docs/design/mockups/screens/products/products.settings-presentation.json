@@ -1,0 +1,18 @@
+{
+  "id": "products.settings-presentation",
+  "title": "Settings: Presentation",
+  "area": "products",
+  "surface": "console",
+  "packages": ["ST-08", "HA-06", "I-29"],
+  "uxRows": [],
+  "summary": "DJDL's Settings → Presentation tab: the product icon, wordmark, hero art, accent and description, each with where it comes from (the manifest or an uploaded copy) and its actions (Replace, Revert to manifest, Delete copy), beside one live preview of the sign-in card, the Library tile and the Discover card with a Dark/Light switch.",
+  "compare": [
+    "Controls on the left, one preview on the right (admin-4-11): the preview is sticky beside the rows at 1280 and up, under them below; on a phone it collapses to a Preview button that opens a sheet.",
+    "Each asset row names its source with a neutral pill (Manifest or Uploaded) and offers only what applies: an uploaded copy has Revert to manifest and, in its menu, Replace and Delete copy (HA-06).",
+    "The preview draws the three customer surfaces at their real proportions with a 'Sample data' marker; Dark/Light is a segmented switch, not route tabs; uploaded art is never recoloured.",
+    "States: no art uploaded (the product's tint field, never a gradient), upload failed (inline at the row, the old asset kept), oversize (the limit in words before upload), changed elsewhere (a notice that stays until reloaded).",
+    "The hub keeps four underline tabs (Features · Presentation · Keys & secrets · Members) and DJDL's icon as the masthead mark."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

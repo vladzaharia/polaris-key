@@ -1,0 +1,19 @@
+{
+  "id": "admin.platform-status",
+  "title": "Platform: Status",
+  "area": "admin",
+  "surface": "console",
+  "packages": ["ST-09", "ST-45"],
+  "uxRows": ["UX-30"],
+  "summary": "The Platform → Status page (Deployment and Operations in one, ST-09): a check · result · next action table first (Worker deployment, storage bindings, recent automation), then health by area, queues with dead letters, scheduled jobs, storage and schema, and deploys. Here one problem: 12 webhook deliveries failed, with Retry 12 beside it and the destructive purge apart in the row's menu.",
+  "compare": [
+    "The page leads with one table, Check · Result · Next action (admin-4-13, study 383); a healthy check's next action reads 'None'; a problem's result says what happened in words with the warning glyph.",
+    "Retry and a destructive repair are separate controls: Retry 12 is a visible outline button; Purge dead letters lives in the row's menu with its consequence said in the card foot.",
+    "Health by area uses each feature's glyph in its colour as context only; status is the status word and glyph (OK in success, Webhooks behind in warning), never the accent.",
+    "Platform-only: Platform context, the Pinned K chip, 'Platform' crumb; no product page shows this.",
+    "Refreshing can pause (icon button with its label); 'Checked 40 s ago' is the one freshness line. States: healthy (no problem rows), degraded with one retry (drawn), a failed check (danger), a stale heartbeat (warning with when it last ran), refreshing paused.",
+    "Logs are redacted, said once at the foot."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

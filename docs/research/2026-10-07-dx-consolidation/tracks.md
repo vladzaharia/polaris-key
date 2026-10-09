@@ -255,7 +255,7 @@ upper estimates).
   catalog v1, Free tier, services, trust policy, planned platforms) and lands on Integration.
 - Integration shows, per enabled feature, its prerequisites, a snippet from the one generator and
   Verified per platform; Verified is the feature's `sdk_sightings` bit once its prerequisites are
-  met (first CI package publish and updater Wired are the only domain facts); "Hide Integration"
+  met (first CI package publish and the updater's first check are the only domain facts); "Hide Integration"
   appears after the first Verified feature, is recorded in `core.setup`, and never happens
   automatically: no product is hidden without an operator's choice, the backfill included.
 - `sdk_sightings` adds no wire field, writes at most once per key per isolate every 5 minutes and
@@ -595,25 +595,25 @@ themselves securely; automatic cleanup; stable, beta and dev release tracks buil
 promote and demote; one product Access page; updater setup scoped to shipped platforms and
 verified; packs that ship themselves.
 
-| #   | Id    | Origin | Title                                                          | Depends on (open)         | Weeks   | Flags    |
-| --- | ----- | ------ | -------------------------------------------------------------- | ------------------------- | ------- | -------- |
-| 1   | F-33  | FX-01  | Personal tokens (pkeyp\_, packages:read) and portal Packages   | P0-17                     | 1.2–1.6 | sec, mig |
-| 2   | F-34  | FX-02  | Feeds that provision themselves, Customers by default          | F-33                      | 0.8–1.1 | sec      |
-| 3   | F-37  | FX-05  | pkey feeds setup --write and CLI naming                        | F-33                      | 0.5–0.8 |          |
-| 4   | P2-08 | UC-01  | Built-in dev release track and default store track maps        | —                         | 0.5–0.8 | plan     |
-| 5   | F-36  | FX-04  | Feed cleanup on by default (dev and main prereleases)          | P2-08                     | 0.3–0.5 | sec      |
-| 6   | P2-09 | UC-02  | Demote a release down a release track                          | P2-08                     | 0.5–0.8 | mig      |
-| 7   | P2-10 | UC-03  | Product Access page: who gets what (absorbs LX-37)             | ST-07, F-34, LX-36, ST-39 | 1–1.4   |          |
-| 8   | P2-11 | UC-04  | Updates page: updaters for shipped platforms with Wired status | P2-08, A-20               | 0.8–1.1 |          |
-| 9   | P2-13 | UC-07  | Portal channel picker and SHA-256                              | P2-08, A-26, A-30         | 0.4–0.6 |          |
-| 10  | F-35  | FX-03  | Publish to public registries (absorbs DC-13)                   | F-34                      | 1.2–1.6 | sec      |
-| 11  | P4-33 | CP-01  | Pack transports auto                                           | A-25                      | 0.6–0.9 |          |
-| 12  | P4-34 | CP-02  | One-click pack gate and the packs-without-Update warning       | P2-10, LX-35              | 0.4–0.6 |          |
-| 13  | D-01  | keep   | Diceroll                                                       | —                         | 1.5–2   |          |
-| 14  | D-02  | edit   | Diceroll: onboard through the wizard and Integration page      | ST-43, ST-41, LX-36       | 1–1.5   |          |
-| 15  | D-03  | edit   | Diceroll                                                       | A-25, P2-08, P2-11        | 1–2     |          |
-| 16  | D-04  | edit   | Diceroll                                                       | P4-34                     | 1.5–2   |          |
-| 17  | D-05  | edit   | Diceroll                                                       | P4-33, LX-35              | 1–2     |          |
+| #   | Id    | Origin | Title                                                             | Depends on (open)         | Weeks   | Flags    |
+| --- | ----- | ------ | ----------------------------------------------------------------- | ------------------------- | ------- | -------- |
+| 1   | F-33  | FX-01  | Personal tokens (pkeyp\_, packages:read) and portal Packages      | P0-17                     | 1.2–1.6 | sec, mig |
+| 2   | F-34  | FX-02  | Feeds that provision themselves, Customers by default             | F-33                      | 0.8–1.1 | sec      |
+| 3   | F-37  | FX-05  | pkey feeds setup --write and CLI naming                           | F-33                      | 0.5–0.8 |          |
+| 4   | P2-08 | UC-01  | Built-in dev release track and default store track maps           | —                         | 0.5–0.8 | plan     |
+| 5   | F-36  | FX-04  | Feed cleanup on by default (dev and main prereleases)             | P2-08                     | 0.3–0.5 | sec      |
+| 6   | P2-09 | UC-02  | Demote a release down a release track                             | P2-08                     | 0.5–0.8 | mig      |
+| 7   | P2-10 | UC-03  | Product Access page: who gets what (absorbs LX-37)                | ST-07, F-34, LX-36, ST-39 | 1–1.4   |          |
+| 8   | P2-11 | UC-04  | Updates page: updaters for shipped platforms with Verified status | P2-08, A-20               | 0.8–1.1 |          |
+| 9   | P2-13 | UC-07  | Portal channel picker and SHA-256                                 | P2-08, A-26, A-30         | 0.4–0.6 |          |
+| 10  | F-35  | FX-03  | Publish to public registries (absorbs DC-13)                      | F-34                      | 1.2–1.6 | sec      |
+| 11  | P4-33 | CP-01  | Pack transports auto                                              | A-25                      | 0.6–0.9 |          |
+| 12  | P4-34 | CP-02  | One-click pack gate and the packs-without-Update warning          | P2-10, LX-35              | 0.4–0.6 |          |
+| 13  | D-01  | keep   | Diceroll                                                          | —                         | 1.5–2   |          |
+| 14  | D-02  | edit   | Diceroll: onboard through the wizard and Integration page         | ST-43, ST-41, LX-36       | 1–1.5   |          |
+| 15  | D-03  | edit   | Diceroll                                                          | A-25, P2-08, P2-11        | 1–2     |          |
+| 16  | D-04  | edit   | Diceroll                                                          | P4-34                     | 1.5–2   |          |
+| 17  | D-05  | edit   | Diceroll                                                          | P4-33, LX-35              | 1–2     |          |
 
 **Dependencies:** F-33 needs P0-17's window. F-34 registers its keys through ST-05a and does not
 wait for ST-09. F-37 mints its own packages-only token through the account device-code flow, so it
@@ -634,7 +634,7 @@ SDK feed visibility; if the SDK feeds are gated, SP-38 (Track J) ships in the sa
   no new setting.
 - stable, beta and dev exist for every product; a release can be demoted (a per-track yank); one
   product Access page answers who gets what; the Updates page shows only shipped platforms'
-  updaters with Wired status.
+  updaters with Verified status.
 - Packs use `transports.packs: auto`; a gated pack needs one approval; D-02..D-05 pass on
   Diceroll.
 
@@ -913,7 +913,7 @@ reviving it.
 | UC-01          | P2-08         | Built-in dev release track and default store track maps                                          |
 | UC-02          | P2-09         | Demote a release down a release track                                                            |
 | UC-03          | P2-10         | Product Access page: who gets what (absorbs LX-37)                                               |
-| UC-04          | P2-11         | Updates page: updaters for shipped platforms with Wired status                                   |
+| UC-04          | P2-11         | Updates page: updaters for shipped platforms with Verified status                                |
 | UC-05          | P2-12         | One update resolver: retire the GitHub-resolved appcast and version path                         |
 | UC-07          | P2-13         | Portal channel picker and SHA-256                                                                |
 | UC-08          | P2-14         | Optional: split the dev channel from the dev-build bypass                                        |

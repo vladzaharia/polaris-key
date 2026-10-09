@@ -46,29 +46,16 @@
     color: var(--pk-text-default);
   }
   /* One spacing scale: 16 between groups, 12 inside a group, a divider between channel rows only. */
-  [data-screen="distribution.publish"] .dialog-body {
-    gap: var(--sp-4);
-  }
-  [data-screen="distribution.publish"] .dialog .field {
-    gap: var(--sp-3);
-  }
   [data-screen="distribution.publish"] .dialog .card-rows > .item-row:first-child {
     border-top: 0;
   }
   [data-screen="distribution.publish"] .dialog .callout > .grow {
     display: flex;
     flex-direction: column;
-    gap: var(--sp-1);
-  }
-  [data-screen="distribution.publish"] .dialog .callout > .btn {
-    margin-right: calc(-1 * var(--sp-2));
   }
   /* The 24px check target gets a 24px column. */
   [data-screen="distribution.publish"] .dialog .item-row.lead {
     grid-template-columns: 24px var(--card-media) minmax(0, 1fr) auto;
-  }
-  [data-screen="distribution.publish"] .dialog .item-row.lead > .item-label > .check {
-    margin-top: calc((var(--lh-body) - 24px) / 2);
   }
   @container (max-width: 559px) {
     [data-screen="distribution.publish"] .dialog .item-row.lead {
@@ -79,7 +66,6 @@
   @container screen (min-width: 640px) {
     [data-screen="distribution.publish"] .overlay.sheet {
       align-items: center;
-      padding-block: var(--sp-8) 6vh;
     }
   }
   /* Phone sheet: nearly the viewport tall, Cancel quiet at 44px like the primary. */
@@ -94,18 +80,12 @@
       border-color: transparent !important;
       background: transparent !important;
     }
-    [data-screen="distribution.publish"] .dialog .item-row {
-      padding-block: var(--sp-2);
-    }
     [data-screen="distribution.publish"] .dialog .callout {
       flex-wrap: nowrap;
     }
     [data-screen="distribution.publish"] .dialog .callout > .grow {
       flex: 1 1 0%;
       min-width: 0;
-    }
-    [data-screen="distribution.publish"] .dialog .callout > .grow ~ * {
-      margin-left: 0;
     }
     /* Collapsed: the second line (Steam) opens with Show, so the last row is never cut mid-sentence. */
     [data-screen="distribution.publish"] .dialog .callout .callout-text + .callout-text {
@@ -157,13 +137,13 @@
         <a class="nav-item" href="#"><i class="ic ic-package-open"></i><span class="nav-text">Obtainium</span></a>
         <a class="nav-item" href="#"><i class="ic ic-square-terminal"></i><span class="nav-text">Scoop</span></a>
         <a class="nav-item" href="#"><i class="ic ic-terminal"></i><span class="nav-text">winget</span></a>
-        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span role="img" class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
       </div>
       <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -174,11 +154,12 @@
   <main class="main">
     <div class="page">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i>Channels</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
+<div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Channels</h1></div>
         <!-- The platforms Diceroll builds decide which channels show; the scope is stated once, here. -->
         <div class="page-sub">
-          <div class="mk-cluster" aria-label="Diceroll's platforms">
+          <div role="group" class="mk-cluster" aria-label="Diceroll's platforms">
             <span class="pill"><i class="ic ic-apple"></i>iOS</span>
             <span class="pill"><i class="ic ic-android"></i>Android</span>
             <span class="pill"><i class="ic ic-windows"></i>Windows x64</span>
@@ -360,7 +341,7 @@
               <span class="icon-tile" data-service="core"><i class="ic ic-polaris"></i></span>
               <span class="item-text"><span class="item-title">Polaris Key</span><span class="item-desc">Stable on dl.plrs.im/diceroll and update feeds</span></span>
             </label>
-            <div class="item-end"><div class="select sm" role="combobox" aria-label="Polaris Key rollout"><span class="grow">10% → 100% over 3 days</span><i class="ic ic-chevron-down"></i></div></div>
+            <div class="item-end"><div class="select sm" role="combobox" aria-expanded="false" aria-label="Polaris Key rollout"><span class="grow">10% → 100% over 3 days</span><i class="ic ic-chevron-down"></i></div></div>
           </div>
           <div class="item-row lead top">
             <label class="item-label">
@@ -368,7 +349,7 @@
               <span class="icon-tile neutral"><i class="ic ic-app-store"></i></span>
               <span class="item-text"><span class="item-title">App Store <small>iOS</small></span><span class="item-desc">Submits build 214 for review</span></span>
             </label>
-            <div class="item-end"><div class="select sm" role="combobox" aria-label="App Store release: Phased release, 7 days, release when approved"><span class="grow">Phased, 7 days · when approved</span><i class="ic ic-chevron-down"></i></div></div>
+            <div class="item-end"><div class="select sm" role="combobox" aria-expanded="false" aria-label="App Store release: Phased release, 7 days, release when approved"><span class="grow">Phased, 7 days · when approved</span><i class="ic ic-chevron-down"></i></div></div>
           </div>
           <div class="item-row lead top">
             <label class="item-label">
@@ -380,7 +361,7 @@
                 <span class="item-desc warning">Service account key expires Oct 16. <a class="link" href="#" target="_blank">Replace key<i class="ic ic-arrow-up-right"></i></a></span>
               </span>
             </label>
-            <div class="item-end"><div class="select sm" role="combobox" aria-label="Google Play rollout"><span class="grow">Staged rollout, 20%</span><i class="ic ic-chevron-down"></i></div></div>
+            <div class="item-end"><div class="select sm" role="combobox" aria-expanded="false" aria-label="Google Play rollout"><span class="grow">Staged rollout, 20%</span><i class="ic ic-chevron-down"></i></div></div>
           </div>
         </div>
 

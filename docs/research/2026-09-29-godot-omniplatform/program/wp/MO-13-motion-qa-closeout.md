@@ -87,9 +87,51 @@ The prototypes tuned the rules (notes/S-23 §3.4–§3.5); the app has to show t
 
 - The docs site is gated (AGENTS.md rule 11); a new page needs its `check:links` pass and, if linked from the console, the `docsLinks` tables.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the
+      render (text 4.5:1, UI 3:1).
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state; the section accent marks context only, never
+      success, warning or failure; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
 ## Files it touches
 
 `e2e/motion.e2e.test.ts`, a new docs page, `docs/design/admin/components.md`.
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Add frame strips and assertions: the canvas, rule and masthead never move on route change between siblings (only the body fades); the record masthead stays anchored across tab changes; the new-product shared element; the duration timeline marker; the active nav marker does not animate colour on hover beyond `micro`; every one instant under reduced motion. (admin-1-34, admin-2-30, brand-21, portal-24)
+- When A-24, U-31, P2-09 and P2-11 have landed, add strips for publish result rows, the approve drawer changed-while-open notice, the promote or demote lane and channel cell update, and updater failure persistence; otherwise list them as follow-ups. (admin-1-34, admin-2-30, brand-21, portal-24)
+- Add the guide's three checks: with `document.hidden` no animation frames run for the spinner, shimmer or refetch bar; hosted consent and sign-in controls are enabled and unanimated on first paint; the workspace entrance runs once per session entry and never on in-app navigation. (admin-1-34, admin-2-30, brand-21, portal-24)
+- Portal: a frame strip of the Library tile to product hero shared-element transition at 1440 and 390 in both themes plus reduced motion as an instant swap; no download or primary action button changes position or size during any portal transition or art fade-in. (admin-1-34, admin-2-30, brand-21, portal-24)
 
 ## Steps
 

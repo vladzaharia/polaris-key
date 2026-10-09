@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (DX consolidation F: Identity)                        |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                   |
 | Depends on  | [I-08](I-08-app-passthrough.md), [I-11](I-11-portal-library.md), [I-35](I-35-one-identity-manifest-block-joint-lx-36.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                   |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [PX-31](PX-31-account-composition-v3.md)                                         |
 | Role        | `pkey-implementer`                                                                                                       |
 | Plan mode   | no                                                                                                                       |
 | Gates       | none beyond the green gate                                                                                               |
@@ -51,6 +51,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 - Working id **IX-09**; DX consolidation F: Identity.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Connected apps sits third in the Account nav and replaces the 'Connected products' card. 'Gets' chips encode state by icon and word (a check with the claim for granted; a struck glyph with 'Not your <claim>' for declined), never colour alone. The footnote 'Disconnecting signs the app out on every device within an hour' must match the real token lifetimes, else word it as what happens: 'signs <App> out; it asks you to sign in again'. 'Change what <App> gets' reopens the consent toggles of PX-14. Decide whether 'Access tokens' is separate from Packages before building the nav. (portal-12)
 
 ## Steps
 

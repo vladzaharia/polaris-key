@@ -23,7 +23,8 @@
     "The new-major notice sits between the header and the editor, in new-major's words: '5.0.0-beta.1 is DJDL’s first 5.x build' / 'Pro 4’s 64 licenses cover 4.x, so they won’t get 5.x.', with Start a 5.x tier… and Extend Pro 4 to 5.x… (outline) and the kit's corner × (aria-label 'Dismiss for everyone'). Dismiss is L0: a toast 'Dismissed for everyone. Both actions stay in Pro 4's menu.' with Undo.",
     "Pro 4's record ⋯ carries 'Start a 5.x tier…' and 'Extend to 5.x…' while a 5.x build exists that no tier covers.",
     "The timeline explains a refused out-of-line install in the customer's words ('DJDL says “Your license covers DJDL 4.x”.'), keeps one 'today' (Today · Runs 4.2.0, the newest 4.x; Published today · 5.0.0-beta.1 is out of reach), and ends 'Keeps working on 4.x · For good'.",
-    "Phone: the notice's two actions share one row under its text, the × stays in its corner; the chips wrap."
+    "Phone: the notice's two actions share one row under its text, the × stays in its corner; the chips wrap.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

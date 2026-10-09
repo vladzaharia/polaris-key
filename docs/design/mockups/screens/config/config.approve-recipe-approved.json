@@ -13,7 +13,8 @@
     "There is no approve button anywhere; Approval history stays in the card head.",
     "What DJDL receives drops the preview label and shows a token minted now.",
     "Config's gold accent is never the only cue: a selected Type card is a strong neutral border plus the tick, the open entry is a neutral fill with a neutral edge, and every warning callout has a solid warning rail and a triangle, so selected, changed and needs-approval read differently in both themes.",
-    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

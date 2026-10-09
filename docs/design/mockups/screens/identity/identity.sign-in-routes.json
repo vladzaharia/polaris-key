@@ -18,7 +18,9 @@
     "Product connections route only on their own product's card; platform connections (Lakeside University here) route on every product's card and on key.plrs.im itself.",
     "An unverified domain (music.example.edu while its TXT record is missing) never routes: it gets pin 3.",
     "Phone: each card is edge to edge in the real flow; on this board the five cards and the rule stack in one column, rule first.",
-    "The rule list uses letters (A–E) in neutral marks, so it never reads as the gold pins 1–5."
+    "The rule list uses letters (A–E) in neutral marks, so it never reads as the numbered pins 1–5 (neutral ink pins; gold means signing only).",
+    "Hosted card v2 (B8): the one primary is ink; the app header is a neutral strip, and in a landscape window ≥960px the passport (a sunken identity pane: the product's art, icon, the request, developer and device on their own lines, no eyebrow) beside the unchanged 456px form pane; the trust receipt spans the card; refusals are neutral callouts with the fix as the one primary.",
+    "A note on the board: in a landscape window the pins render in the form pane beside the passport; one layout, not two (auth-06)."
   ],
   "status": "mockup",
   "designReview": {

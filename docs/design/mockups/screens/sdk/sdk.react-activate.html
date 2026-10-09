@@ -5,6 +5,10 @@
     --kit-accent-on: var(--pk-text-on-accent);
     --kit-accent-subtle: color-mix(in oklab, var(--kit-accent) 13%, var(--pk-surface-raised));
   }
+  /* Light: the same coral one step deeper, so its label and its links read at 4.5:1 on white. */
+  [data-theme="light"] [data-screen="sdk.react-activate"] {
+    --kit-accent: color-mix(in oklab, color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose)) 78%, #060912);
+  }
   /* From 1600: three columns. 1 and 1c in the first, the errors 1b and 1d in the second, the device list
      across two rows in the third; then Other answers (1e) beside 3. */
   @container screen (min-width: 1600px) {
@@ -89,11 +93,11 @@
                   <h2 class="kit-title">Enter your license key</h2>
                   <p class="kit-lede">You’ll find it in your purchase email.</p>
                 </div>
-                <div class="kit-field kit-locked">
+                <div class="kit-field kit-locked" aria-disabled="true">
                   <label class="kit-label">License key</label>
                   <div class="kit-input wrap"><span>pkey_djdl_7HJM2QKD9XRL4WTPB3NC60</span><button class="kit-btn sm" disabled>Paste</button></div>
                 </div>
-                <div class="kit-actions" aria-busy="true"><button class="kit-btn primary busy"><span class="kit-spin"></span>Activating…</button><button class="kit-btn kit-locked" disabled>Back</button></div>
+                <div class="kit-actions" aria-busy="true"><button class="kit-btn primary busy" disabled aria-disabled="true"><span class="kit-spin"></span>Activating…</button><button class="kit-btn kit-locked" disabled>Back</button></div>
               </div>
             </div>
           </div>
