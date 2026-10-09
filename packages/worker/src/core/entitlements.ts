@@ -129,9 +129,11 @@ export function versionWindow(
   return range;
 }
 
-/** Is `version` inside `range`? An unparseable version compares equal to everything
- *  (`compareSemver`'s documented behaviour), so it is never blocked on shape alone. */
+/** Is `version` inside `range`? `compareSemver` calls an unparseable version equal to every
+ *  bound, so a bounded window refuses a version it cannot order (SEC-LIC-6); an open window
+ *  admits anything. */
 export function versionInWindow(version: string, range: AllowedRange): boolean {
+  if ((range.min || range.max) && !parseSemver(version)) return false;
   if (range.min && compareSemver(version, range.min) < 0) return false;
   if (range.max && compareSemver(version, range.max) > 0) return false;
   return true;
