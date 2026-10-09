@@ -25,8 +25,10 @@ export function SectionCard({
       data-section={id}
       className={cn(
         // A jump lands it 9rem (6rem on desk) below the top: the shell's scroll padding
-        // (`--pk-scroll-top`: the header, and the section pills below desk) plus this margin.
-        "scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] rounded-xl border border-border bg-surface-raised p-5 shadow-elevation-1 desk:scroll-mt-[calc(6rem_-_var(--pk-scroll-top,0px))] desk:p-6",
+        // (`--pk-scroll-top`: the header, and the section pills) plus this margin; never closer
+        // than 2rem under the tablet pills, and 0.75rem under whatever sticks on a short screen
+        // (styles.css).
+        "scroll-mt-[calc(9rem_-_var(--pk-scroll-top,0px))] rounded-xl border border-border bg-surface-raised p-5 shadow-elevation-1 desk:scroll-mt-[max(2rem,calc(6rem_-_var(--pk-scroll-top,0px)))] desk:p-6 short:scroll-mt-3",
         className,
       )}
     >

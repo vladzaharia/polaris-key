@@ -62,7 +62,13 @@ export function LibraryTile({
     <div ref={cue.ref} className="pk-lift pk-pressable-card grid rounded-xl">
       <article
         aria-labelledby={`tile-${product.slug}`}
-        className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1"
+        // A compact tile is a size container (`tile`): under 17rem (its content, like the action
+        // row, under 15rem) the status pill moves to the art's top-right corner, clear of the icon,
+        // and the name takes two lines.
+        className={cn(
+          "group relative flex flex-col overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1",
+          compact && "@container/tile",
+        )}
       >
         <ProductArt
           slug={product.slug}
@@ -79,11 +85,14 @@ export function LibraryTile({
           // same art the product page's hero shows a centred band of.
           className="aspect-video"
         >
-          {/* The header's safe bottom-right corner, inset by the card's own padding. */}
+          {/* The header's safe bottom-right corner, inset by the card's own padding; the top-right
+              one on a narrow compact tile, where the bottom one meets the icon. */}
           <span
             className={cn(
               "absolute",
-              compact ? "bottom-4 right-4" : "bottom-5 right-5",
+              compact
+                ? "bottom-4 right-4 @max-[17rem]/tile:bottom-auto @max-[17rem]/tile:right-3 @max-[17rem]/tile:top-3"
+                : "bottom-5 right-5",
             )}
           >
             <ProductStatusPill status={product.status} onArt />
@@ -113,7 +122,9 @@ export function LibraryTile({
                 id={`tile-${product.slug}`}
                 className={cn(
                   "truncate font-bold text-fg-strong",
-                  compact ? "text-base" : "text-lg",
+                  compact
+                    ? "text-base @max-[17rem]/tile:whitespace-normal"
+                    : "text-lg",
                 )}
               >
                 <a
@@ -121,7 +132,11 @@ export function LibraryTile({
                   // block: the name's full line is the link (24 px or taller), so a short name
                   // still meets the target size (WCAG 2.5.8; PS-05). Its focus ring is the
                   // card's, which it stretches over (styles.css, .pk-press-link).
-                  className="pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
+                  className={cn(
+                    "pk-press-link block truncate rounded-sm after:absolute after:inset-0 after:content-[''] focus-visible:outline-none",
+                    compact &&
+                      "@max-[17rem]/tile:line-clamp-2 @max-[17rem]/tile:whitespace-normal @max-[17rem]/tile:break-words",
+                  )}
                 >
                   {product.name}
                 </a>
@@ -129,10 +144,11 @@ export function LibraryTile({
             </div>
           </div>
           <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
+            {/* Two lines on a compact tile, so the device count is never cut off. */}
             <span
               className={cn(
                 "min-w-0",
-                product.justAdded ? "line-clamp-2" : "truncate",
+                product.justAdded || compact ? "line-clamp-2" : "truncate",
               )}
             >
               {product.justAdded ? (
@@ -162,11 +178,18 @@ export function LibraryTile({
               {note}
             </p>
           ) : null}
-          <div className="relative mt-auto flex gap-2 pt-5">
+          {/* A size container on a compact tile: its download shortens under 15rem. */}
+          <div
+            className={cn(
+              "relative mt-auto flex gap-2 pt-5",
+              compact && "@container",
+            )}
+          >
             <QuickActionButton
               product={product}
               action={action}
               lead={product.justAdded && isDownloadAction(action)}
+              shortLabel={compact}
               size={compact ? "md" : "lg"}
               className={cn("min-w-0 flex-1", compact ? "h-10" : "h-11")}
             />

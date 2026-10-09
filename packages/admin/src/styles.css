@@ -39,6 +39,12 @@
     @slot;
   }
 }
+/*
+ * A short viewport (PORTAL.md §8): a phone on its side, or a laptop at 200 % zoom. The customer
+ * site's header scrolls away there instead of sticking, so it never covers a sixth of the screen
+ * or the targets passing under it; what stuck below it sticks to the top instead.
+ */
+@custom-variant short (@media (max-height: 32rem));
 @custom-variant motion-safe {
   @media (prefers-reduced-motion: no-preference) {
     &:where(
@@ -91,6 +97,13 @@
   /* The customer site's breakpoints (PORTAL.md §8): phones end at 760 px, the three-column
      product page starts at 1180 px. */
   --breakpoint-desk: 47.5625rem;
+  /* From 900 px the signed-in header has room for the full lockup and "Activate license" (§8).
+     Named, not min-[900px]: an arbitrary px breakpoint sorts before the rem ones, so it would
+     lose to a desk: utility on the same property. */
+  --breakpoint-mid: 56.25rem;
+  /* 1024 px, where the product page splits into main · side (§4.20); one column in task order
+     below it. */
+  --breakpoint-split: 64rem;
   --breakpoint-wide: 73.75rem;
   /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
      Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
@@ -277,11 +290,15 @@
      - the header (PortalShell: 3.5rem, 4rem from the desk breakpoint, plus its 1px rule);
      - below desk, a page's sticky section pills just under it (the product and account pages,
        `data-section-pills`: 2.25rem pills, 0.5rem above and below, a 1px rule, stuck at 3.5rem,
-       so their lower edge is 6.75rem + 1px down);
-     - below desk, the fixed phone bar (3.25rem, its 1px rule and the safe area).
+       so their lower edge is 6.75rem + 1px down); the product page's pills (`="tablet"`) stay up
+       to 1180 px, stuck under the 4rem header there (7.25rem + 2px);
+     - below desk, the fixed phone bar (3.25rem, its 1px rule and the safe area);
+     - on a short screen (at most 32rem tall, PORTAL.md §8) the header scrolls away, so only the
+       pills, stuck at the very top, are left (3.25rem + 1px), or nothing.
      `--pk-scroll-top` is the top padding. Section cards and the sign-in method headings take it
-     off their own scroll-margin, so a jump lands them 9rem (6rem on desk) down whatever chrome
-     is there (product/Card.tsx), and the product page's reading line starts from it. */
+     off their own scroll-margin, so a jump lands them 9rem (6rem on desk, never closer than 2rem
+     under the pills) down whatever chrome is there, and 0.75rem under it on a short screen
+     (product/Card.tsx); the product page's reading line starts from it. */
   html:has(.pk-portal-shell) {
     --pk-scroll-top: calc(3.5rem + 1px);
     scroll-padding-top: var(--pk-scroll-top);
@@ -296,6 +313,26 @@
     html:has(.pk-portal-shell) {
       --pk-scroll-top: calc(4rem + 1px);
       scroll-padding-bottom: 0;
+    }
+  }
+  @media (47.5625rem <= width < 73.75rem) {
+    html:has(.pk-portal-shell [data-section-pills="tablet"]) {
+      --pk-scroll-top: calc(4rem + 1px + 3.25rem + 1px);
+    }
+  }
+  @media (height <= 32rem) {
+    html:has(.pk-portal-shell) {
+      --pk-scroll-top: 0px;
+    }
+  }
+  @media (height <= 32rem) and (width < 47.5625rem) {
+    html:has(.pk-portal-shell [data-section-pills]) {
+      --pk-scroll-top: calc(3.25rem + 1px);
+    }
+  }
+  @media (height <= 32rem) and (width < 73.75rem) {
+    html:has(.pk-portal-shell [data-section-pills="tablet"]) {
+      --pk-scroll-top: calc(3.25rem + 1px);
     }
   }
 

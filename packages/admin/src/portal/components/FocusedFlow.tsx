@@ -64,7 +64,7 @@ export function FocusedFlow({
       <main
         id="flow"
         tabIndex={-1}
-        className="flex-1 px-4 pb-16 pt-6 outline-none desk:pt-10"
+        className="flex-1 px-4 pb-16 pt-6 outline-none desk:pt-10 short:pt-4"
       >
         {children}
       </main>
@@ -72,7 +72,11 @@ export function FocusedFlow({
   );
 }
 
-/** The flow's card: the product's art strip, its icon overlapping, "Name · Developer". */
+/**
+ * The flow's card: the product's art strip, its icon overlapping, "Name · Developer". On a short
+ * screen (PORTAL.md §8) the art steps aside for the task and the icon, no longer overlapping,
+ * carries the product's identity.
+ */
 export function FlowCard({
   slug,
   name,
@@ -107,9 +111,9 @@ export function FlowCard({
         variant="banner"
         // No cover: a bare tint field; the icon overlapping the strip already shows the letter.
         letter={false}
-        className="h-24 desk:h-30"
+        className="h-24 desk:h-30 short:hidden"
       />
-      <div className="px-5 pb-6 desk:px-8 desk:pb-8">
+      <div className="px-5 pb-6 desk:px-8 desk:pb-8 short:pt-5">
         <ProductIcon
           slug={slug}
           name={name}
@@ -117,7 +121,7 @@ export function FlowCard({
           src={iconUrl}
           size={64}
           lift
-          className="relative -mt-8"
+          className="relative -mt-8 short:mt-0"
           tileClassName="border-[3px] border-surface-raised"
         />
         <p className="mt-3 text-sm text-fg-muted">

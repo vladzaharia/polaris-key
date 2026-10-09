@@ -14,7 +14,9 @@ import {
  *
  * `SHIPPED` are the states the portal renders today: `portalQuality.e2e.test.ts` opens each one in
  * both themes at 1440 and 390 px and checks it under the Worker's CSP (zero violations), with axe
- * (zero violations), exactly one `h1`, no horizontal scroll at 360 px, and its visual baseline.
+ * (zero violations), exactly one `h1`, no horizontal scroll at 360 px, and its visual baseline (a
+ * few key pages also at 768 px); `portalResolutions.e2e.test.ts` opens each one again at every
+ * other size (`RESOLUTIONS`) for the same checks without pixels, plus target sizes.
  *
  * `PENDING` are the states whose work package has not landed. Each names the §4 section and the
  * owning package(s), and the suite lists it as a todo, so the gap is visible in every run rather
@@ -105,7 +107,7 @@ async function openActivate(page: Page): Promise<void> {
   await dialog.getByText("Key format is valid").waitFor();
 }
 
-async function toConfirm(page: Page): Promise<void> {
+export async function toConfirm(page: Page): Promise<void> {
   await openActivate(page);
   await page
     .getByRole("dialog", { name: "Activate a license" })
@@ -903,6 +905,12 @@ export const SHIPPED: ShippedState[] = [
       await h1(p, "Nightfall");
       await p.getByRole("button", { name: "Remove Studio PC" }).first().click();
       await p.getByRole("heading", { name: "Remove Studio PC?" }).waitFor();
+      await sectionNavSettled(p);
+      // Checked from the top, like every state: scrolled to Devices, whatever the main column
+      // has at that height passes under the sticky pills (761–1179 px), and a sliver of a target
+      // left showing reads to axe as an obscured target.
+      await p.evaluate(() => window.scrollTo(0, 0));
+      await p.waitForFunction(() => window.scrollY === 0);
       await sectionNavSettled(p);
     },
   },

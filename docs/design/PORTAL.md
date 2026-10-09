@@ -639,10 +639,12 @@ claim error "owned by another account" (§4.19).
 
 ![Empty library](portal/18-library-empty-desktop-dark.png)
 
-- One `text-strong` line naming the signed-in email ("Nothing here for mara@fennick.studio yet"),
-  one `text-muted` line, the primary **Activate a license** (opens the modal) and **See 4 in
-  Discover**. "Bought with a different email or on Steam? Add it in Account → Sign-in methods." The
-  stationary star fills the right half (top strip on phones).
+- One `text-strong` line, "Nothing here yet" (the page's subtitle names the signed-in email, and
+  the body's "this email" refers back to it), one `text-muted` line, the primary **Activate a
+  license** (opens the modal) and **See 4 in Discover**. "Bought with a different email or on
+  Steam? Add it in Account → Sign-in methods." The stationary star fills the right half from
+  900 px, is a top strip below that, and is hidden on short screens, where the text takes the
+  whole card (§8).
 - **Ready to add:** up to three Discover offers as rows (thumb, name, why) with **See all**. Hidden
   when Discover is empty.
 
@@ -652,9 +654,14 @@ claim error "owned by another account" (§4.19).
 
 - A full-width **hero**: key art (left, 1.45 fr) and a side panel with icon, name, developer,
   status and tier, the **primary download** as a two-line button, an **Also yours on** row, a short
-  summary (license, devices, includes, runs on) and a link to the product page.
+  summary (license, devices, includes, runs on) and a link to the product page. Side by side from
+  1024 px: at 1024–1179 px the art keeps 16:9 at the top of its column (never cropped, §0.3), and
+  from 1180 px it fills the column's height.
 - A closing line: "That's everything linked to <email>. There are 4 more you can add in Discover."
-- **Phone:** the art becomes a 16:9 strip; the primary action becomes the phone action.
+- **At 761–1023 px** the hero stacks: the art at 16:9 across the full width, the panel underneath.
+  On a short screen from 761 px the two stay side by side with the art at 16:9, and the page's
+  top spacing and the panel tighten, so the primary download is on the first screen. **Phone:**
+  the primary action becomes the phone action.
 
 ### 4.14 Library: a few products (2–7)
 
@@ -684,10 +691,16 @@ claim error "owned by another account" (§4.19).
 - **Needs attention shelf:** only items the person can act on, each with a solid primary action:
   device limit → **Free a device**; expires within 14 days → **Renew with <developer>** (G16, else
   "Contact"); Steam key not activated → **Activate on Steam**; expired with a newer version →
-  **Renew**. Never news. Hidden when empty.
+  **Renew**. Never news. Hidden when empty. The card's title names the product, so the reason does
+  not ("Both devices are in use. Remove one to use it on another device."); an ended license's
+  reason names the developer ("Kiln Games can renew it."), since a long name truncates on the
+  action, whose full label shows on hover. A date in a reason never breaks across lines.
 - **All products:** 4-column compact grid (3 at 761–1179 px), or the **list**: icon · Product ·
   Status · Latest · Devices · **Quick action for this Mac** · chevron; 72 px rows; the whole row
-  opens the product page.
+  opens the product page. A compact tile's status line takes up to two lines. On a tile whose
+  content is under 15rem wide (761–about 920 px, 1180–about 1250 px) "Download for macOS" reads
+  **Download** (its accessible name keeps the full label), the status pill moves to the art's
+  top-right corner, clear of the icon, and the name takes up to two lines.
 - **⌘K trigger** in the header (§4.27). Products without art use the fallback (§5.2).
 - **Phone:** search and view toggle share a row, chips scroll; **List by default above 6
   products** (the remembered choice wins, so someone who picked Grid keeps the desktop's compact
@@ -712,7 +725,8 @@ are entitled to sits unclaimed.
   **Purchase-only and operator-issued products never appear**, nor do products already in the
   library or ones whose developer turned Discover off.
 - **Layout:** `h1` "Discover", one lede ("Products their developers offer to your account. Adding
-  one gives you its license straight away, at no cost."), a 4-column grid of **Discover tiles**:
+  one gives you its license straight away, at no cost."), a 3-column grid (2 on tablets) of
+  **Discover tiles**:
   art, icon, name, developer, **what you'd get** (tier and terms, from the same policy: "Lifetime ·
   5 devices", "Beta · 90 days · 2 devices"), platform glyphs, **why you can add it** ("Free with a
   Polaris Key account", "Free for everyone with an account", "Open beta for Aperture Seven
@@ -862,10 +876,14 @@ library).
 **Layout:** at ≥ 1180 px three columns: a sticky **in-page table of contents** (148 px: Get it,
 Cloud Sync, What's new, License, Devices 2/3, Package access, Help), the main column (Get it,
 **Cloud Sync**, What's new, Package access) and a 384 px side column (License, product sign-in,
-Devices, Help). At 761–1179 px the TOC hides. On phones one column in task order (Get it, License,
-Devices, Cloud Sync, product sign-in, What's new, Package access, Help) under **sticky pill tabs**
-that list the sections **in that same phone order** (Get it, License, Devices, Cloud Sync, What's
-new, Package access, Help) and highlight the section on screen (**Get it** on load). Sections that
+Devices, Help). At 1024–1179 px the TOC hides and the page is main · side (fluid · 340). Below
+1024 px, phones and tablets alike, one column in task order (Get it, License,
+Devices, Cloud Sync, product sign-in, What's new, Package access, Help). Below 1180 px **sticky pill
+tabs** (under the header; at the top on a short screen, where the header scrolls away)
+list the sections **in that same phone order** (Get it, License, Devices, Cloud Sync, What's
+new, Package access, Help) and highlight the section on screen (**Get it** on load). A device's
+name wraps rather than being cut short; in a narrow card (the side column from 1024 px, a phone)
+its **Remove** sits under the meta line, so the name has the row's full width. Sections that
 don't apply are **omitted**, with their TOC entry and pill (P14).
 
 **Get it:** the recommended panel (honest platform detection: a Universal build is named as such;
@@ -972,9 +990,12 @@ scope and expiry, and the snippet with the real token inlined.
 
 ![Remove a device](portal/34-product-remove-device-desktop-dark.png)
 
-**Remove** expands the row in place into a `danger-subtle` panel with the consequences (the seat is
-free straight away with the new count; the app on that device asks to activate next time; an email
-confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading. On a sign-in license the seat is freed the same way, and the panel adds "Studio PC signs
+**Remove** expands the row in place into a `danger-subtle` panel headed "Remove Studio PC?" with the
+consequences (the seat is free straight away with the new count; the app on that device asks to
+activate next time; an email confirms it), **Keep it** and **Remove** (its accessible name stays
+"Remove Studio PC"). Focus moves to the panel heading; Escape in the panel is Keep it, and focus
+goes back to the row's Remove. Under 22rem the two buttons stack full width, Remove last (§8's sheet
+buttons). On a sign-in license the seat is freed the same way, and the panel adds "Studio PC signs
 out of <Product>." (SIGN-IN.md D-58).
 
 ### 4.23 Sign in with another device
@@ -1378,14 +1399,37 @@ again." with the reference id. Never render the HTTP status or an internal code 
 
 ## 8. Responsive rules
 
-| Width       | Library                                                                                        | Product page                                                  | Chrome                                                    |
-| ----------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------- |
-| ≥ 1180 px   | Large tiles 3 columns; compact 4 columns                                                       | TOC · main · side (148 · fluid · 384)                         | Full header                                               |
-| 761–1179 px | Large 3, compact 3                                                                             | Main · side (fluid · 340); TOC hidden                         | Full header; ⌘K trigger collapses to an icon below 900 px |
-| ≤ 760 px    | One column; List view by default above 6 products; toolbar: search + view toggle, chips scroll | One column in task order; sticky pill tabs; banner full-bleed | 56 px header, bottom tab bar, bottom sheets               |
+| Width       | Library                                                                                        | Product page                                                                                           | Chrome                                      |
+| ----------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| ≥ 1180 px   | Large tiles 3 columns; compact 4 columns                                                       | TOC · main · side (148 · fluid · 384)                                                                  | Full header                                 |
+| 761–1179 px | Large 2, compact 3                                                                             | 1024–1179 px: main · side (fluid · 340), with pills; 761–1023 px: one column in task order, with pills | Compact header (below)                      |
+| ≤ 760 px    | One column; List view by default above 6 products; toolbar: search + view toggle, chips scroll | One column in task order; sticky pill tabs; banner full-bleed                                          | 56 px header, bottom tab bar, bottom sheets |
 
+- **Compact header (761–1179 px):** the same row, so the account menu never leaves the screen: the
+  account chip is its avatar and the ⌘K trigger a 40 px icon; below 900 px the lockup drops to its
+  52 px phone size, the header's gaps to 24 px and the action reads **Activate** (its accessible
+  name stays "Activate license"). From 1180 px the chip adds the full name (never its first word
+  alone: "Dr.", a compound prefix, a family name first; the menu keeps the full name and the
+  email; with no name, the avatar alone), and when the row is tight the ⌘K field gives way first
+  (256 down to 176 px), before the name truncates. ⌘K, Activate and the chip are 40 px tall, 44 px
+  on a coarse pointer.
+- **Shelves on tablets:** Needs attention uses two columns at 761–899 px and three from 900 px;
+  Ready to add two at 761–1179 px and three from 1180 px. In two columns an odd last card spans
+  both. An attention card's action has its own row at the card's foot, full width and on one line
+  (a long label truncates; the accessible name keeps it), so the actions in a row line up; the card
+  shows its thumbnail only when it has 22rem for it beside the title and reason.
+- **Short screens** (at most 512 px tall: a phone on its side, 200 % zoom): the header scrolls away
+  instead of sticking, and what stuck under it (the section pills) sticks to the top; a section
+  jump lands 0.75rem under whatever still sticks, and Tab never leaves focus under it. Art steps
+  aside for the task and the icon carries the product's identity: no banner on the product page
+  (the icon beside the name, so the primary action shows on load), on Activate's confirm step
+  (the facts and the key start on the first screen) or on a focused flow's card (Free a device,
+  Download; the icon no longer overlaps). The empty library's star and the one-product hero follow
+  §4.12 and §4.13.
 - **No horizontal page scroll at 360 px**, ever (the render script checks every screen). Only code
-  blocks scroll inside themselves.
+  blocks scroll inside themselves. The quality bar checks every screen with pixels at 1440 and
+  390 px (and 768 px for the seven key pages), and without at 320, 360, 768, 820, 1024, 844 × 390
+  and 2560 px and 200 % zoom (PX-20).
 - **Touch targets** ≥ 44 × 44 px on touch (buttons are 44 px; small buttons 36 px tall with 44 px hit
   areas through padding). The tab bar items are 52 px tall.
 - **Tables become rows:** the list view drops columns and keeps status as a pill under the name.

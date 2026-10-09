@@ -465,6 +465,7 @@ useUnsavedChangesGuard(form.isDirty, {
 - There is one footer component.
 - **Focus.** It moves to the first field, or to the least destructive button (Cancel) for confirms. On close it returns
   to the invoker.
+- **A body that overflows** joins the tab order as a region named by the dialog's title.
 
 ### 4.2 `ConfirmDialog`
 

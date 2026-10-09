@@ -272,9 +272,11 @@ const inlineNames = (page: Page): Promise<number> =>
 
 const deviceRows = (page: Page): Promise<string[]> =>
   page.evaluate(() =>
-    [...document.querySelectorAll("#section-devices ul > li p.truncate")].map(
-      (p) => p.textContent ?? "",
-    ),
+    [
+      ...document.querySelectorAll(
+        "#section-devices ul > li p[data-device-name]",
+      ),
+    ].map((p) => p.textContent ?? ""),
   );
 
 const starts = (e: AnimEvent[], where: string, name?: string): AnimEvent[] =>

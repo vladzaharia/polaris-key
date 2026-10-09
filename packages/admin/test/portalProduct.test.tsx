@@ -593,12 +593,32 @@ describe("product page on today's data (PX-04)", () => {
     expect(
       within(devices).queryByRole("heading", { name: "Remove Studio PC?" }),
     ).toBeNull();
+    // Escape inside the panel is Keep it: the panel closes, focus is back on the row's Remove.
     await userEvent.click(
       within(devices).getByRole("button", { name: "Remove Studio PC" }),
+    );
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Remove Studio PC?"),
+    );
+    await userEvent.keyboard("{Escape}");
+    expect(
+      within(devices).queryByRole("heading", { name: "Remove Studio PC?" }),
+    ).toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(devices).getByRole("button", { name: "Remove Studio PC" }),
+      ),
     );
     await userEvent.click(
       within(devices).getByRole("button", { name: "Remove Studio PC" }),
     );
+    // The heading names the device; the destructive button reads "Remove" and keeps the name in
+    // its accessible name.
+    const confirm = within(devices).getByRole("button", {
+      name: "Remove Studio PC",
+    });
+    expect(confirm.textContent).toBe("Remove");
+    await userEvent.click(confirm);
     await waitFor(() =>
       expect(fetchedRequests()).toContain(
         "DELETE /api/licenses/nightfall/lic_nightfall/devices/d2",

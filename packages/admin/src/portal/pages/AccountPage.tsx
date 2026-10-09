@@ -113,9 +113,10 @@ export function AccountPage({
       </div>
       <nav
         aria-label="Account sections"
-        // Sticky under the header below desk: the page's scroll padding clears it (styles.css).
+        // Sticky under the header below desk (at the top on a short screen, where the header
+        // scrolls away): the page's scroll padding clears it (styles.css).
         data-section-pills=""
-        className="sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 desk:hidden"
+        className="sticky top-14 z-20 -mx-4 overflow-x-auto border-b border-border bg-surface-page px-4 py-2 short:top-0 desk:hidden"
       >
         <ul className="flex gap-2">
           {sections.map((s) => (
@@ -134,7 +135,7 @@ export function AccountPage({
       <div className="flex gap-8">
         <nav
           aria-label="On this page"
-          className="sticky top-24 hidden w-56 shrink-0 self-start desk:block"
+          className="sticky top-24 hidden w-56 shrink-0 self-start desk:block short:top-6"
         >
           <ul className="space-y-1">
             {sections.map((s) => (
@@ -281,7 +282,9 @@ function ThemeSwatch({
   return (
     <span
       aria-hidden
-      className="mt-2 flex h-10 w-28 overflow-hidden rounded-md border border-border"
+      data-swatch={preference}
+      // 112 px, shrinking only when its card is narrower (three cards share a tablet's column).
+      className="mt-2 flex h-10 w-28 max-w-full overflow-hidden rounded-md border border-border"
     >
       {preference !== "light" ? <span className="flex-1 bg-[#060912]" /> : null}
       {preference !== "dark" ? <span className="flex-1 bg-[#f6f7fb]" /> : null}

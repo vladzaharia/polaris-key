@@ -818,7 +818,9 @@ export function ConfirmStep({
             variant="banner"
             // No cover: a bare tint field; the icon overlapping the art already shows the letter.
             letter={false}
-            className="h-36 rounded-lg"
+            // A short screen (§8) drops the art, so the facts and the key start on the first
+            // screen; the icon, in a row of its own, carries the product's identity.
+            className="h-36 rounded-lg short:hidden"
           />
           <ProductIcon
             slug={p.slug}
@@ -827,7 +829,7 @@ export function ConfirmStep({
             src={p.iconUrl}
             size={64}
             lift
-            className="relative -mt-8 ml-4"
+            className="relative -mt-8 ml-4 short:mt-0 short:ml-0"
             tileClassName="border-[3px] border-surface-overlay"
           />
         </div>

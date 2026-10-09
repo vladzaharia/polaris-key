@@ -493,9 +493,33 @@ describe("Needs attention", () => {
       href: "https://northpaw.example/renew",
       external: true,
     });
+    // The date's spaces are non-breaking, so "10 Oct" never splits across lines.
     expect(items[0]!.text).toMatch(
-      /^Your Studio license ends on \d+ \w{3}\. Renew with [^.]+ to keep using it\.$/,
+      /^Your Studio license ends on \d+\u00a0\w{3}\. Renew with [^.]+ to keep using it\.$/,
     );
+  });
+
+  it("an ended licence names the developer in its reason, since a long name truncates on the action", () => {
+    const lib = build(
+      [
+        license({
+          product: "ember",
+          expiresAt: NOW_S - DAY,
+          usable: false,
+          productBranding: {
+            developerName: "Kiln Games",
+            supportUrl: "https://kiln.example/renew",
+          },
+        }),
+      ],
+      [],
+      NOW_S,
+    );
+    const [item] = attentionItems(lib);
+    expect(item!.text).toMatch(
+      /^Your license ended on \d+\u00a0\w{3}\u00a0\d{4}\. Kiln Games can renew it\.$/,
+    );
+    expect(item!.action.label).toBe("Renew with Kiln Games");
   });
 });
 
@@ -602,6 +626,19 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
       href: "#/p/x/devices",
       external: false,
     });
+    // The card's title names the product, so the reason does not.
+    expect(att!.text).toBe(
+      "All 3 devices are in use. Remove one to use it on another device.",
+    );
+  });
+
+  it("words a two-device limit as 'Both devices'", () => {
+    const l = license({ product: "orbit", deviceCount: 2 });
+    const [p] = build([l], [], NOW_S, [libraryItem(l, { deviceLimit: 2 })]);
+    const [att] = attentionItems([p!], (s) => `#/p/${s}/devices`);
+    expect(att!.text).toBe(
+      "Both devices are in use. Remove one to use it on another device.",
+    );
   });
 
   it("describes the licence the Worker ranked best, with its seats", () => {

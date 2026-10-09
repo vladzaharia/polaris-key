@@ -74,14 +74,16 @@ async function library(): Promise<void> {
 }
 
 describe("Library on today's data (PX-02)", () => {
-  it("empty: names the email and offers Activate a license", async () => {
+  it("empty: says so, names the email once and offers Activate a license", async () => {
     mockFetch(signedIn([]));
     renderPortal();
     expect(
       await screen.findByRole("heading", {
-        name: "Nothing here for mara@fennick.studio yet",
+        name: "Nothing here yet",
       }),
     ).toBeTruthy();
+    // The subtitle names the email; the card's "this email" refers back to it.
+    expect(screen.getAllByText(/mara@fennick\.studio/)).toHaveLength(1);
     await userEvent.click(
       screen.getByRole("button", { name: "Activate a license" }),
     );

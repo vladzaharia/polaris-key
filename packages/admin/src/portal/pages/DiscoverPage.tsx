@@ -166,10 +166,10 @@ export function DiscoverPage({
         </p>
       </div>
       {pending ? (
-        <div className="grid gap-5 desk:grid-cols-2 wide:grid-cols-4" aria-busy>
+        // Two columns on tablets, three from 1180 px (§4.16), as the loaded grid.
+        <div className="grid gap-5 desk:grid-cols-2 wide:grid-cols-3" aria-busy>
           <Skeleton className="h-96 rounded-xl" />
           <Skeleton className="hidden h-96 rounded-xl desk:block" />
-          <Skeleton className="hidden h-96 rounded-xl wide:block" />
           <Skeleton className="hidden h-96 rounded-xl wide:block" />
         </div>
       ) : discover.error ? (
@@ -209,7 +209,7 @@ export function DiscoverPage({
             <ul
               ref={stagger.ref}
               className={cn(
-                "grid gap-5 desk:grid-cols-2 wide:grid-cols-4",
+                "grid gap-5 desk:grid-cols-2 wide:grid-cols-3",
                 stagger.className,
               )}
             >

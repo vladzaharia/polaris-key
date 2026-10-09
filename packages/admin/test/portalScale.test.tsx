@@ -161,6 +161,33 @@ describe("scale features from 8 products (PX-03)", () => {
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });
 
+  it("closing without a jump gives focus back to the opener (§9.4)", async () => {
+    mockFetch(signedIn(TWELVE));
+    renderPortal();
+    await ready();
+    // From the trigger: Enter, then Escape.
+    const trigger = screen.getAllByRole("button", {
+      name: "Jump to a product",
+    })[0]!;
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+    await screen.findByRole("dialog", { name: "Jump to a product" });
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Jump to a product" }),
+      ).toBeNull(),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+    // From a tile's link: ⌘K, then Escape.
+    const link = screen.getByRole("link", { name: "Glyphsmith" });
+    link.focus();
+    await userEvent.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("dialog", { name: "Jump to a product" });
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(document.activeElement).toBe(link));
+  });
+
   it("jumping to the product already showing still focuses its h1 (UX-79)", async () => {
     window.history.replaceState(null, "", "/#/p/glyphsmith");
     mockFetch(signedIn(TWELVE));

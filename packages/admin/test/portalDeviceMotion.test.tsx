@@ -145,7 +145,7 @@ function installFake(mode: Mode = "auto"): Fake {
 
 function rowNames(): string[] {
   return Array.from(
-    document.querySelectorAll("#section-devices ul > li p.truncate"),
+    document.querySelectorAll("#section-devices ul > li p[data-device-name]"),
   ).map((p) => p.textContent ?? "");
 }
 

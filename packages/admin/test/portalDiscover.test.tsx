@@ -526,7 +526,7 @@ describe("the empty Library's Discover teaser (PX-16, §4.12)", () => {
     mockFetch(discoverWorker([]));
     renderPortal();
     await screen.findByRole("heading", {
-      name: "Nothing here for mara@fennick.studio yet",
+      name: "Nothing here yet",
     });
     expect(screen.queryByRole("region", { name: /Ready to add/ })).toBeNull();
     expect(fetchedRequests()).not.toContain("GET /api/discover");

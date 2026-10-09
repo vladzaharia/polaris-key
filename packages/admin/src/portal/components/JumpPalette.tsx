@@ -65,6 +65,20 @@ export function JumpPalette({
 
   /** A product was chosen: closing must not hand focus back to the opener (below). */
   const jumped = React.useRef(false);
+  /*
+   * Where focus was when the palette opened (the header trigger, the phone search icon, or a
+   * tile's link under ⌘K). The palette has no Radix trigger, so without this, closing it without
+   * a jump would drop focus to `body`; it goes back to the opener instead (§9.4). Read during
+   * render, before Radix moves focus in, as `useOverlayFocus` does.
+   */
+  const opener = React.useRef<HTMLElement | null>(null);
+  const wasOpen = React.useRef(false);
+  if (open && !wasOpen.current && typeof document !== "undefined") {
+    const active = document.activeElement;
+    opener.current =
+      active instanceof HTMLElement && active !== document.body ? active : null;
+  }
+  wasOpen.current = open;
   const found = products.filter((p) => matches(p, query));
   const top = query.trim() ? found[0] : undefined;
   const recent = query.trim()
@@ -106,10 +120,15 @@ export function JumpPalette({
         <DialogPrimitive.Content
           aria-describedby={undefined}
           onCloseAutoFocus={(e) => {
-            // After a jump, focus belongs to the product's heading, not the trigger.
-            if (!jumped.current) return;
-            jumped.current = false;
             e.preventDefault();
+            // After a jump, focus belongs to the product's heading, not the opener.
+            if (jumped.current) {
+              jumped.current = false;
+              return;
+            }
+            const back = opener.current;
+            opener.current = null;
+            (back?.isConnected ? back : visibleTrigger())?.focus();
           }}
           className={cn(
             "fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-overlay text-fg shadow-elevation-3 animate-pk-in",
@@ -228,7 +247,21 @@ export function JumpPalette({
   );
 }
 
-/** The header trigger: "Jump to a product ⌘K" (an icon below 900 px). */
+/** The header trigger or the phone search icon, whichever this width shows. */
+function visibleTrigger(): HTMLElement | null {
+  return (
+    [...document.querySelectorAll<HTMLElement>("[data-jump-trigger]")].find(
+      (el) => el.checkVisibility?.() ?? el.offsetParent !== null,
+    ) ?? null
+  );
+}
+
+/**
+ * The header trigger: "Jump to a product ⌘K", a 40 px icon button below 1180 px (PORTAL.md §8:
+ * the full 256 px field does not fit the tablet header beside Activate license and the account
+ * menu). From 1180 px a 256 px field that gives way first when the row is tight, down to 176 px,
+ * before the account chip's name does. 40 px tall, 44 on a coarse pointer.
+ */
 export function JumpTrigger({
   onOpen,
 }: {
@@ -241,15 +274,16 @@ export function JumpTrigger({
     <button
       type="button"
       onClick={onOpen}
+      data-jump-trigger=""
       aria-label="Jump to a product"
       aria-keyshortcuts={mac ? "Meta+K" : "Control+K"}
-      className="inline-flex h-10 items-center gap-3 rounded-md border border-border bg-surface-raised px-3 text-sm text-fg-muted hover:text-fg-strong min-[900px]:w-64"
+      className="inline-flex h-10 w-10 items-center justify-center gap-3 rounded-md border border-border bg-surface-raised text-sm text-fg-muted hover:text-fg-strong pointer-coarse:h-11 max-wide:pointer-coarse:w-11 wide:w-64 wide:min-w-44 wide:shrink wide:justify-start wide:px-3"
     >
       <Search aria-hidden className="size-4 shrink-0" />
-      <span className="hidden flex-1 text-left min-[900px]:inline">
+      <span className="hidden min-w-0 flex-1 truncate text-left wide:inline">
         Jump to a product
       </span>
-      <Kbd keys={mac ? "⌘K" : "Ctrl K"} className="hidden min-[900px]:flex" />
+      <Kbd keys={mac ? "⌘K" : "Ctrl K"} className="hidden shrink-0 wide:flex" />
     </button>
   );
 }
@@ -264,6 +298,7 @@ export function JumpIconButton({
     <button
       type="button"
       onClick={onOpen}
+      data-jump-trigger=""
       aria-label="Jump to a product"
       className="inline-flex size-11 items-center justify-center rounded-full text-fg-strong hover:bg-hover"
     >

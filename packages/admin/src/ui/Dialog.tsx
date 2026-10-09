@@ -484,20 +484,76 @@ export function Dialog({
   );
 }
 
-/** The scrolling middle of a dialog. */
+/**
+ * The scrolling middle of a dialog. Whenever its content overflows (a phone on its side, 200 %
+ * zoom) it joins the tab order, so a keyboard can scroll it even when it holds nothing focusable
+ * (WCAG 2.1.1; axe `scrollable-region-focusable`). While it is a tab stop it is a `region` named
+ * by the dialog's title ("Dialog content" when no title is reachable), and its focus ring is drawn
+ * 4 px inside its edges with rounded corners.
+ */
 export function DialogBody({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const overflows = useOverflowsY(ref);
+  // The title's id from the dialog's own `aria-labelledby` (Radix names the content by its title).
+  const [titleId, setTitleId] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (!overflows) return;
+    const id = ref.current
+      ?.closest("[role=dialog], [role=alertdialog]")
+      ?.getAttribute("aria-labelledby");
+    setTitleId(id && document.getElementById(id) ? id : null);
+  }, [overflows]);
+  const region = overflows
+    ? {
+        tabIndex: 0,
+        role: "region",
+        ...(titleId
+          ? { "aria-labelledby": titleId }
+          : { "aria-label": "Dialog content" }),
+      }
+    : {};
   return (
     <div
+      ref={ref}
+      {...region}
       className={cn(
-        "pk-scroll min-h-0 flex-1 overflow-y-auto px-6 py-2 text-base",
+        "pk-scroll min-h-0 flex-1 overflow-y-auto rounded-md px-6 py-2 text-base",
+        // outline-solid: the base `:focus-visible` rule's outline-hidden leaves the outline style
+        // at none, which outline-2 alone would keep.
+        "focus-visible:outline-2 focus-visible:outline-solid focus-visible:-outline-offset-4 focus-visible:outline-focus focus-visible:ring-0 focus-visible:ring-offset-0",
         className,
       )}
       {...props}
     />
   );
+}
+
+/** Whether the element's content is taller than its box, kept current as either resizes. */
+function useOverflowsY(ref: React.RefObject<HTMLElement | null>): boolean {
+  const [overflows, setOverflows] = React.useState(false);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const measure = (): void =>
+      setOverflows(el.scrollHeight > el.clientHeight + 1);
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const child of Array.from(el.children)) ro.observe(child);
+    const mo = new MutationObserver(() => {
+      for (const child of Array.from(el.children)) ro.observe(child);
+      measure();
+    });
+    mo.observe(el, { childList: true });
+    measure();
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [ref]);
+  return overflows;
 }
 
 /** The one footer: actions end-aligned on desktop, stacked full-width on phones. */

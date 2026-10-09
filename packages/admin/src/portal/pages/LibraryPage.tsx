@@ -62,7 +62,8 @@ export function LibraryPage({
   const firstLoad = useFirstLoad("library", lib.isPending);
 
   return (
-    <section className="pk-vt-scope space-y-8">
+    // A short screen (§8) tightens the gap under the title, so a hero's download is on screen.
+    <section className="pk-vt-scope space-y-8 short:space-y-4">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold leading-tight text-fg-strong desk:text-display">
           Your library
@@ -74,7 +75,8 @@ export function LibraryPage({
         </p>
       </div>
       {lib.isPending ? (
-        <div className="grid gap-6 desk:grid-cols-3" aria-busy>
+        // The large-tile grid's columns, so the page holds still when the library loads.
+        <div className="grid gap-6 desk:grid-cols-2 wide:grid-cols-3" aria-busy>
           <Skeleton className="h-80 rounded-xl" />
           <Skeleton className="h-80 rounded-xl" />
           <Skeleton className="h-80 rounded-xl" />
@@ -83,10 +85,7 @@ export function LibraryPage({
         <ErrorPanel error={lib.error} onRetry={lib.retry} />
       ) : count === 0 ? (
         <>
-          <LibraryEmpty
-            email={account.email}
-            discoverCount={lib.discoverCount}
-          />
+          <LibraryEmpty discoverCount={lib.discoverCount} />
           <DiscoverTeaser discoverCount={lib.discoverCount} />
         </>
       ) : (
@@ -305,8 +304,11 @@ function ScaledLibrary({
             }
           />
         ) : (
+          // Compact tiles (§8): three columns on tablets, four from 1180 px. A narrow tile's
+          // download reads "Download" (QuickActionButton's shortLabel).
           <ul
             ref={stagger.ref}
+            data-library-grid="compact"
             className={cn(
               "grid gap-5 desk:grid-cols-3 wide:grid-cols-4",
               stagger.className,
