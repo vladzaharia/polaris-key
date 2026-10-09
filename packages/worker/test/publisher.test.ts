@@ -187,8 +187,11 @@ beforeEach(async () => {
 // ── 1. Verification ──────────────────────────────────────────────────────────
 
 describe("GitHub OIDC verification", () => {
-  const verify = (token: string, f = fetcher(() => [jwk]), now = NOW) =>
-    verifyGithubOidcToken(env, token, { audience: AUD, now, fetchJwks: f });
+  const verify = (
+    token: string,
+    f: JwksFetcher = fetcher(() => [jwk]),
+    now = NOW,
+  ) => verifyGithubOidcToken(env, token, { audience: AUD, now, fetchJwks: f });
 
   it("accepts a token GitHub's key signed for this product's audience", async () => {
     const res = await verify(await ghToken());
