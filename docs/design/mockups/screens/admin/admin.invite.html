@@ -217,7 +217,7 @@
   <div class="overlay end">
     <aside class="drawer" aria-labelledby="invite-title">
       <div class="drawer-head">
-        <div class="grow"><h2 id="invite-title">Invite people</h2><p class="type-small muted">They join at their first sign-in with a passkey or SSO.</p></div>
+        <div class="grow"><h2 id="invite-title">Invite people</h2></div>
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
       <div class="drawer-body">
@@ -236,11 +236,11 @@
         <div class="field">
           <span class="field-label">Role</span>
           <div class="choices cols-2 tiles-phone">
-            <div class="choice"><div class="choice-title"><i class="ic ic-log-in"></i>Console access</div><div class="choice-desc">Can sign in. Sees nothing until someone adds another role.</div></div>
-            <div class="choice on"><div class="choice-title"><i class="ic ic-boxes"></i>Product admin</div><div class="choice-desc">Manages the products you pick, or only some areas of them.</div></div>
+            <div class="choice"><div class="choice-title"><i class="ic ic-log-in"></i>Console access</div><div class="choice-desc">Sees nothing until given another role.</div></div>
+            <div class="choice on"><div class="choice-title"><i class="ic ic-boxes"></i>Product admin</div><div class="choice-desc">Manages the products you pick.</div></div>
             <div class="choice"><div class="choice-title"><i class="ic ic-shield"></i>Platform admin</div><div class="choice-desc">Platform settings, connections, packages and new products.</div></div>
             <div class="choice"><div class="choice-title"><i class="ic ic-crown"></i>Superadmin</div><div class="choice-desc">Everything, including every role and SSO rule.</div></div>
-            <p class="choice-note">Manages the products you pick, or only some areas of them.</p>
+            <p class="choice-note">Manages the products you pick.</p>
           </div>
         </div>
 
@@ -280,7 +280,10 @@
             <div class="callout-title"><span class="mono">hana@</span> and <span class="mono">theo@</span> will manage Ship builds and Commerce in Diceroll</div>
           </div>
         </div>
-        <p class="hint">Emails each invite and tells every Superadmin. Expires Oct 14.</p>
+        <ul class="icon-lines">
+          <li><i class="ic ic-calendar-clock"></i><span>Expires Oct 14</span></li>
+          <li><i class="ic ic-bell"></i><span>Every Superadmin is told</span></li>
+        </ul>
       </div>
       <div class="drawer-foot sticky-foot">
         <button class="btn outline">Cancel</button>
@@ -329,7 +332,11 @@
             <span class="token"><span class="avatar">FB</span>felix@studio.example.com<i class="ic ic-x"></i></span>
             <span class="caret"></span>
           </div>
-          <div class="icon-line type-small"><i class="ic ic-info"></i><span><strong>felix@studio.example.com</strong> is Felix Brandt (DJDL admin · Managed config). Sending adds Diceroll admin for Ship builds and Commerce; no invite is sent.</span></div>
+          <div class="icon-line type-small"><i class="ic ic-info"></i><span><strong>felix@studio.example.com</strong> is Felix Brandt, already a member</span></div>
+          <dl class="dl compact">
+            <dt>Has</dt><dd>DJDL admin · Managed config</dd>
+            <dt>Adds</dt><dd>Diceroll admin · Ship builds, Commerce</dd>
+          </dl>
         </div>
       </div>
       <div class="card-foot">
@@ -338,7 +345,7 @@
         <button class="btn primary"><i class="ic ic-send"></i>Invite 1 person and update 1</button>
       </div>
     </div>
-    <figcaption><strong>An address that is already a member.</strong>An SSO-covered address works the same; repeats merge into one chip.</figcaption>
+    <figcaption><strong>An address that is already a member.</strong>An SSO-covered address works the same.</figcaption>
   </figure>
 
   <figure class="board-item">
@@ -354,7 +361,7 @@
       </div>
       <div class="card">
         <div class="card-head">
-          <div class="title"><h3>Invite links for 2 people</h3><p>Email isn’t set up, so nothing was sent. Send each person their own link.</p></div>
+          <div class="title"><h3>Invite links for 2 people</h3><p>Nothing was emailed</p></div>
           <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
         </div>
         <div class="card-body mk-stack-5">
@@ -366,12 +373,16 @@
             <span class="field-label">theo@example.com<span class="optional">Diceroll admin · Ship builds, Commerce</span></span>
             <div class="mk-cluster no-wrap"><div class="input mono readonly"><span class="grow">key.plrs.im/manage/invite/R9TW2LPD</span></div><button class="btn outline"><i class="ic ic-copy"></i>Copy</button></div>
           </div>
-          <p class="hint">Each link works once, for that address only, and expires Oct 14.</p>
+          <ul class="icon-lines">
+            <li><i class="ic ic-link"></i><span>Works once</span></li>
+            <li><i class="ic ic-at-sign"></i><span>Only for that address</span></li>
+            <li><i class="ic ic-calendar-clock"></i><span>Expires Oct 14</span></li>
+          </ul>
         </div>
         <div class="card-foot"><button class="btn primary">Done</button></div>
       </div>
     </div>
-    <figcaption><strong>Email delivery is off.</strong>One link per address, nothing emailed.</figcaption>
+    <figcaption><strong>Email delivery is off.</strong></figcaption>
   </figure>
 
   <figure class="board-item">
@@ -380,11 +391,11 @@
         <div class="field">
           <span class="field-label">Role</span>
           <div class="choices cols-2 tiles-phone">
-            <div class="choice"><div class="choice-title"><i class="ic ic-log-in"></i>Console access</div><div class="choice-desc">Can sign in. Sees nothing until someone adds another role.</div></div>
-            <div class="choice on"><div class="choice-title"><i class="ic ic-boxes"></i>Product admin</div><div class="choice-desc">Of DJDL, the product you admin, or only some areas of it.</div></div>
+            <div class="choice"><div class="choice-title"><i class="ic ic-log-in"></i>Console access</div><div class="choice-desc">Sees nothing until given another role.</div></div>
+            <div class="choice on"><div class="choice-title"><i class="ic ic-boxes"></i>Product admin</div><div class="choice-desc">Of DJDL, the product you admin.</div></div>
             <div class="choice disabled" aria-disabled="true"><div class="choice-title"><i class="ic ic-shield"></i>Platform admin</div><div class="choice-desc">Only a Superadmin can give this role.</div></div>
             <div class="choice disabled" aria-disabled="true"><div class="choice-title"><i class="ic ic-crown"></i>Superadmin</div><div class="choice-desc">Only a Superadmin can give this role.</div></div>
-            <p class="choice-note">Of DJDL, the product you admin, or only some areas of it.</p>
+            <p class="choice-note">Of DJDL, the product you admin.</p>
           </div>
         </div>
         <div class="field">
@@ -398,6 +409,6 @@
         </div>
       </div>
     </div>
-    <figcaption><strong>A Platform admin opens the drawer.</strong>Nobody gives more than they hold.</figcaption>
+    <figcaption><strong>A Platform admin opens the drawer.</strong></figcaption>
   </figure>
 </section>
