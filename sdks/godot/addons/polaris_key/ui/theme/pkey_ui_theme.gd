@@ -545,6 +545,7 @@ static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBo
 		t.set_stylebox(item, "Button", b)
 	t.set_stylebox("focus", "Button", ring)
 	t.set_stylebox("focus", "OptionButton", ring)
+	t.set_stylebox("focus", "HSlider", ring)
 	var field: StyleBox = game.get("field")
 	if field != null:
 		t.set_stylebox("normal", "LineEdit", _widen(field, pad))
@@ -652,7 +653,13 @@ static func _tv_ring(game_focus: StyleBox, normal: StyleBox, ground: Color, text
 		var f := game_focus as StyleBoxFlat
 		if f.border_width_left >= RING_WIDTH and _contrast(Color(f.border_color, 1.0), ground) >= 3.0:
 			return game_focus
-	return _ring(colour)
+	# The ring follows the corners of the control it surrounds: a square button gets a square ring
+	# (a round one would leave the button's corners poking through its inner edge).
+	var radius := 0
+	if normal is StyleBoxFlat:
+		var n := normal as StyleBoxFlat
+		radius = maxi(maxi(n.get_corner_radius(CORNER_TOP_LEFT), n.get_corner_radius(CORNER_TOP_RIGHT)), maxi(n.get_corner_radius(CORNER_BOTTOM_LEFT), n.get_corner_radius(CORNER_BOTTOM_RIGHT)))
+	return _ring(colour, radius)
 
 
 ## The one primary action in the game's own look: the ink primary of UI-KITS.md §1.2 (filled with
@@ -774,7 +781,7 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, m
 
 	# Controls (their padding and height: _apply_layout below).
 	var focus := _ring(p.focus)
-	for type in ["Button", "CheckButton", "CheckBox", "OptionButton", "LineEdit", "TextEdit"]:
+	for type in ["Button", "CheckButton", "CheckBox", "OptionButton", "LineEdit", "TextEdit", "HSlider"]:
 		t.set_stylebox("focus", type, focus)
 	for type in ["Button", "OptionButton"]:
 		t.set_stylebox("normal", type, _box(p.overlay, p.border_strong, 1, RADIUS_CONTROL, 0))
@@ -1240,6 +1247,15 @@ static func layered(own: Theme) -> Theme:
 	var button := own.get_stylebox("normal", "Button") if own.has_stylebox("normal", "Button") else _project_stylebox("normal", "Button")
 	var t := neutral_with(size, text, bold, panel, button)
 	t.merge_with(own)
+	# A game's ring thinner than the kit's (2 px) is thickened to the kit's width: a ring reads at
+	# TV distance or not at all.
+	for type in ["Button", "OptionButton", "LineEdit", "TextEdit", "CheckButton", "CheckBox", "HSlider"]:
+		if own.has_stylebox("focus", type) and own.get_stylebox("focus", type) is StyleBoxFlat:
+			var f := (own.get_stylebox("focus", type) as StyleBoxFlat).duplicate() as StyleBoxFlat
+			if f.draw_center == false and f.border_width_left < RING_WIDTH:
+				f.set_border_width_all(RING_WIDTH)
+				f.set_expand_margin_all(maxf(f.expand_margin_left, float(RING_OFFSET + RING_WIDTH)))
+				t.set_stylebox("focus", type, f)
 	t.set_meta(STOCK_META, true)
 	t.set_meta(LAYERED_META, own)
 	_layered[own] = t
@@ -1273,11 +1289,11 @@ static func _box(bg: Color, border: Color, width: int, radius: int, pad: int) ->
 
 ## The focus ring: no fill, `RING_WIDTH` px of `color`, `RING_OFFSET` px outside the control so
 ## the gap shows the surface behind it and the ring never hides the control's own border.
-static func _ring(color: Color) -> StyleBoxFlat:
+static func _ring(color: Color, radius := RADIUS_CONTROL) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.draw_center = false
 	s.border_color = color
 	s.set_border_width_all(RING_WIDTH)
-	s.set_corner_radius_all(RADIUS_CONTROL + RING_OFFSET + RING_WIDTH)
+	s.set_corner_radius_all(radius + RING_OFFSET + RING_WIDTH)
 	s.set_expand_margin_all(RING_OFFSET + RING_WIDTH)
 	return s

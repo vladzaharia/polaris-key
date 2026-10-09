@@ -265,7 +265,7 @@ func _render() -> void:
 	var plain: bool = model["state"] in ["binary", "store", "platform", "version"] and model["version"] != ""
 	if as_modal and plain and product != "":
 		# "{product} {version}", and what the player has: nothing else to read.
-		title_text = t.text("update_modal_title", [product, model["version"]])
+		title_text = t.text("update_modal_title", model["version"])
 		var have := String(ProjectSettings.get_setting("application/config/version", ""))
 		var size = (result as PKeyUpdateCheck).decision.get("size") if result is PKeyUpdateCheck else null
 		if have == "":

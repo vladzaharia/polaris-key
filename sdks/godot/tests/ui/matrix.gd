@@ -60,18 +60,20 @@ const LOCALES := ["en", "de", "ja"]
 ## is a strip across the top (or the middle, for the badge).
 const SCREENS := [
 	["sign_in", "sign_in", "pending", "full"],
+	["sign_in.pad", "sign_in", "pending", "full", "pad"],
 	["sign_in.confirm", "sign_in", "confirm, attachable", "full"],
 	["sign_in.expired", "sign_in", "expired", "full"],
 	["gate", "gate", "needs-activation", "full"],
 	["gate.sign_in", "gate", "sign-in pending", "full"],
+	["gate.sign_in_pad", "gate", "sign-in pending", "full", "pad"],
 	["gate.offline", "gate", "offline activation", "full"],
 	["gate.device_limit", "gate", "device limit", "full"],
-	["gate.device_limit_qr", "gate", "device limit, replace a device (QR)", "full"],
+	["gate.device_limit_qr", "gate", "device limit, replace a device (QR)", "full", "pad"],
 	["gate.error", "gate", "needs-activation after an error", "full"],
 	["gate.expired", "gate", "expired", "full"],
 	["gate.update", "gate", "version-too-old with a store action", "full"],
 	["activation", "activation", "license on, identity on, enrolment on, native", "full"],
-	["activation.device_limit", "activation", "device limit, replace a device (QR)", "full"],
+	["activation.device_limit", "activation", "device limit, replace a device (QR)", "full", "pad"],
 	["offline", "offline", "native", "full"],
 	["boot", "boot", "syncing", "full"],
 	["boot.waiting", "boot", "waiting needs-activation", "full"],
@@ -191,7 +193,8 @@ func drop_locales() -> void:
 func stage(tree: SceneTree, entry: Array, physical: Vector2i, scale: float, insets: Variant, preset: String, render := false, dpr := 0.0) -> Dictionary:
 	PKeyUiView.safe_insets_override = insets
 	PKeyUiView.mobile_override = {"dpr": dpr} if dpr > 0.0 else false
-	PKeyUiView.pad_only_override = false
+	# A screen entry's fifth element "pad" stages it on a pad-only device (a TV, a console).
+	PKeyUiView.pad_only_override = entry.size() > 4 and entry[4] == "pad"
 	var vp := SubViewport.new()
 	vp.size = physical
 	vp.size_2d_override = Vector2i((Vector2(physical) / scale).round())
@@ -425,6 +428,13 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 			var content := s.get_child(0) as Control if s.get_child_count() > 0 else null
 			if s.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and content != null and content.get_combined_minimum_size().y > s.size.y + 1.0:
 				out.append("%s needs its scroll fallback (%.0f > %.0f)" % [_path(view, s), content.get_combined_minimum_size().y, s.size.y])
+	# Pad-only (a TV, even one whose OS is a phone's, or a big tablet-sized screen): the way to free a
+	# device is its QR code, never dropped for a "mobile" device.
+	if view.pad_only():
+		var panel := view.find_child("PKeyActivationPanel", true, false) if not (view is PKeyActivationPanel) else view
+		var qr := view.find_child("FreeDeviceQr", true, false) as Control
+		if panel != null and qr != null and not String(panel.get("manage_url")).is_empty() and not panel.get("limit").is_empty() and not qr.is_visible_in_tree():
+			out.append("a pad-only screen with a device limit shows no manage QR code")
 	var m := view.layout_metrics()
 	var ins: Array = m["insets"]
 	var r := view.get_global_rect()
@@ -568,6 +578,8 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		tight = tight or cr.position.y - safe.position.y < g or safe.end.y - cr.end.y < g
 	if tight:
 		out.append("%s is within %d px of the edge: %s in %s" % [_path(view, c), PKeyUiView.GUTTER, cr, safe])
+	if c is Label and (view as PKeyUiView).is_phone_device() and not (view as PKeyUiView).pad_only() and ("scan" in (c as Label).text.to_lower() or "スキャン" in (c as Label).text):
+		out.append("%s tells a phone to scan a code: \"%s\"" % [_path(view, c), (c as Label).text])
 	if c is Label:
 		var l := c as Label
 		if l.text != "" and l.get_visible_line_count() < l.get_line_count():
@@ -587,10 +599,9 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 				out.append("%s is wider than its rect (%.0f > %.0f)" % [_path(view, c), w, l.size.x])
 	if c is PKeyQrRect and (c as PKeyQrRect).texture != null:
 		var m := (view as PKeyUiView).layout_metrics()
-		# Never on a phone (it opens the browser itself): only where the device cannot browse, or
-		# the player holds another one.
-		if (view as PKeyUiView).is_phone_device():
-			out.append("%s shows a QR code on a phone" % _path(view, c))
+		# Only on a pad-only device (no browser to open), or for the offline request code.
+		if not (view as PKeyUiView).pad_only() and not _under(c, "Request"):
+			out.append("%s shows a QR code, but this is not a pad-only device or the offline request" % _path(view, c))
 		var side := minf(c.size.x, c.size.y)
 		var phys := side * float(m["physical"])
 		if phys < PKeyUiView.QR_MIN_PHYSICAL - 0.5:
@@ -599,6 +610,15 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		var most := maxf(PKeyUiView.QR_MAX_SHARE * minf(screen.x, screen.y), PKeyUiView.QR_MIN_PHYSICAL / float(m["physical"]))
 		if side > most + 1.0:
 			out.append("%s is %.0f px, over %.0f (%d%% of the screen's shorter side)" % [_path(view, c), side, most, roundi(PKeyUiView.QR_MAX_SHARE * 100)])
+
+
+static func _under(n: Node, name: String) -> bool:
+	var p := n.get_parent()
+	while p != null:
+		if p.name == name:
+			return true
+		p = p.get_parent()
+	return false
 
 
 static func _is_leaf(c: Control) -> bool:

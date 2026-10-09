@@ -287,6 +287,7 @@ func _behaviour(t: PKeyTestContext) -> void:
 	await _settings(t)
 	await _update_prompt(t)
 	await _dialogs_take_focus(t)
+	await _focus_follows_screen(t)
 	await _never_covering(t)
 	_activation_copy(t)
 	_sign_in_copy(t)
@@ -307,7 +308,7 @@ func _settings(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	var keys: Array = p.rows.map(func(r): return r["key"])
 	t.check("settings: hidden keys are never rows (document hidden, catalog hidden, secrets, flags)", not keys.has("game.tuning") and not keys.has("debug.overlay") and not keys.has("leaderboard.key") and not keys.has("extras.skins"), str(keys))
-	t.check("settings: grouped by category, sorted by ui.order", keys == ["game.killSwitch", "audio.volume", "audio.muted", "ui.theme", "ui.reducedMotion", "net.proxyUrl", "net.proxyPassword", "notes.motd"], str(keys))
+	t.check("settings: grouped by category, sorted by ui.order", keys == ["game.killSwitch", "audio.volume", "audio.muted", "audio.pitch", "ui.theme", "ui.reducedMotion", "net.proxyUrl", "net.proxyPassword", "notes.motd"], str(keys))
 	var kill := _row_nodes(p, "game.killSwitch")
 	var kill_input: Control = kill.get("input")
 	t.check("settings: an enforced setting is text, never a dimmed control", kill_input is Label and not (kill_input as Label).text.is_empty() and not kill_input is BaseButton, str(kill_input))
@@ -409,6 +410,31 @@ func _dialogs_take_focus(t: PKeyTestContext) -> void:
 		t.check("dialog focus: %s, a pad's B closes it and the game's control has the focus again" % name, not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game, "%s visible %s focus %s" % [name, dialog.is_visible_in_tree(), _tree().root.gui_get_focus_owner()])
 		_free(dialog)
 		_free(game)
+
+
+## The sign-in starts with focus on Cancel (nothing else exists yet); when the code arrives, and
+## again when it expires, the focus moves to the new screen's primary.
+func _focus_follows_screen(t: PKeyTestContext) -> void:
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = true
+	var d := PKeySignInDialog.new()
+	d.now_source = func(): return SCENARIOS.NOW
+	d.auto_sdk = false
+	_tree().root.add_child(d)
+	d.show_starting()
+	await _tree().create_timer(0.35).timeout
+	t.check("focus follows the screen: sign-in starting holds focus inside", d._has_focus_inside())
+	d.show_prompt(_sc.prompt_fixture())
+	await _tree().process_frame
+	await _tree().process_frame
+	var f := _tree().root.gui_get_focus_owner()
+	t.check("focus follows the screen: the code arriving moves focus from Cancel to Open browser", f != null and f.name == "OpenBrowser", str(f))
+	d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
+	await _tree().process_frame
+	await _tree().process_frame
+	f = _tree().root.gui_get_focus_owner()
+	t.check("focus follows the screen: an expired code moves focus to Get a new code", f != null and f.name == "TryAgain", str(f))
+	_free(d)
 
 
 func _update_prompt(t: PKeyTestContext) -> void:

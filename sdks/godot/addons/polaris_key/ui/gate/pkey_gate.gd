@@ -83,6 +83,11 @@ var _banner_slot: MarginContainer
 var _center: CenterContainer
 var _bound := false
 var _was_usable := false
+var _retrying := false
+
+
+func _process(_delta: float) -> void:
+	_tick_loading()
 
 
 func _bleeds() -> bool:
@@ -106,6 +111,7 @@ func _build() -> void:
 	_center.add_child(_card)
 	_card_box = _card
 	var box := vbox(scroll_area(_card), "Body", "PKeySections")
+	loading_bar(box)
 	_split = columns(box, "Split")
 	_pane = PanelContainer.new()
 	_pane.name = "Pane"
@@ -309,6 +315,8 @@ func _render() -> void:
 	if ctl["banner"]:
 		banner.show_state(status)
 	_product.refresh()
+	set_loading(_retrying)
+	set_process(_retrying)
 	# One state per screen: a rejected key is the activation form with its message inline.
 	var title_key: String = cp["title"]
 	var body_key: String = cp["body"]
@@ -393,8 +401,12 @@ func _on_retry() -> void:
 	retry_requested.emit()
 	if managed_retry or sdk == null or not sdk.has_method("sync"):
 		return
-	show_loading()
+	# The card stays (and keeps the focus on Try again) with a thin indicator while the check runs:
+	# swapping it for an empty loading screen would drop the focus.
+	_retrying = true
+	refresh_view()
 	await sdk.sync(true)
+	_retrying = false
 	show_state(sdk.status())
 
 

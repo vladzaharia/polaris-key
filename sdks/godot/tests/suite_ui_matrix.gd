@@ -61,6 +61,9 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 				continue
 			var failed: Array = []
 			var row_sizes: Array = sizes.filter(func(r): return at.is_empty() or at.has(r[0]))
+			# A pad-only screen (a TV, a console) is never a phone's size.
+			if entry.size() > 4 and entry[4] == "pad":
+				row_sizes = row_sizes.filter(func(r): return float(r[4]) <= 0.0 or minf(r[1].x, r[1].y) * 1.0 / float(r[4]) >= 600.0)
 			# Built once, then resized through every size, as a window is.
 			var first: Array = row_sizes[0]
 			var st: Dictionary = await mx.stage(tree, entry, first[1], first[2], first[3], preset, false, first[4])

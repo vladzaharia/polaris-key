@@ -104,6 +104,7 @@ func _build() -> void:
 	_step2.add_child(_paste)
 	_drop = label(_step2, "DropHint", "PKeyMuted")
 	_message = label(_stack, "Message")
+	loading_bar(_stack)
 	_spacer = spacer(_stack)
 	_actions = actions_row(_stack, "Actions", BoxContainer.ALIGNMENT_END)
 	_close = button(_actions, "Close", func(): _close_dialog())
@@ -115,6 +116,10 @@ func _ready() -> void:
 	var w := get_window()
 	if w != null and not _is_web() and not w.files_dropped.is_connected(_on_files_dropped):
 		w.files_dropped.connect(_on_files_dropped)
+
+
+func _process(_delta: float) -> void:
+	_tick_loading()
 
 
 func _bleeds() -> bool:
@@ -227,7 +232,9 @@ func _render() -> void:
 	show_text(_drop, t.text("offline_drop_hint") if not web and OS.has_feature("pc") else "")
 	show_text(_message, message)
 	_message.theme_type_variation = "PKeyMuted" if message_ok else "PKeyError"
-	_import.text = t.text("activation_working") if busy else t.text("offline_import")
+	_import.text = t.text("offline_import")
+	set_loading(busy)
+	set_process(busy)
 	_close.text = t.text("close")
 
 

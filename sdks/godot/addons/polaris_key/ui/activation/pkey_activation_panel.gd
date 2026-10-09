@@ -126,6 +126,7 @@ func _build() -> void:
 	_form = vbox(_main, "Form", "PKeyStack")
 	_form.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_form.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	loading_bar(_form)
 	_form_title = label(_form, "FormTitle", "PKeyMuted")
 	_key_field = vbox(_form, "KeyField", "PKeyTight")
 	_key_label = label(_key_field, "KeyLabel")
@@ -190,6 +191,10 @@ func _ready() -> void:
 	super()
 	sign_in_dialog.sdk = sdk
 	offline_dialog.sdk = sdk
+
+
+func _process(_delta: float) -> void:
+	_tick_loading()
 
 
 func _bleeds() -> bool:
@@ -318,11 +323,14 @@ func _render() -> void:
 	_key_field.visible = caps["key_entry"]
 	_key.placeholder_text = t.text("key_placeholder")
 	_key.editable = true
-	_submit.text = t.text("activation_working") if busy else t.text("key_submit")
+	_submit.text = t.text("key_submit")
 	_sign_in_block.visible = caps["sign_in"]
-	_sign_in.text = t.text("activation_working") if busy and message_slot == "sign_in" else t.text("sign_in")
+	_sign_in.text = t.text("sign_in")
 	_free_block.visible = caps["continue_free"]
-	_free.text = t.text("activation_working") if busy and message_slot == "free" else t.text("continue_free")
+	_free.text = t.text("continue_free")
+	# A busy action keeps its label and shows a thin indicator (never "Activating…" in its place).
+	set_loading(busy)
+	set_process(busy)
 	_offline.text = t.text("offline_activation")
 	_offline.visible = caps["offline"]
 	var slots := {"key": _msg_key, "sign_in": _msg_sign_in, "free": _msg_free}
@@ -368,12 +376,12 @@ func _render_limit(t: PKeyUiCopy) -> void:
 	var how := manage_presentation()
 	var has_link := manage_url != ""
 	_manage.text = t.text("free_device")
-	# A phone opens the link itself; a tablet or a pad-only device (a TV) shows the QR code for another
-	# device when that is how the link is offered.
-	var phone := is_phone_device()
-	_manage.visible = has_link and (how == "button" or phone)
-	_manage_qr.text = manage_url if how == "qr" and not phone else ""
-	_manage_qr.visible = has_link and how == "qr" and not phone and not _manage_qr.encode_failed
+	# A QR code only on a pad-only device (a TV, a console), where there is no browser to open; every
+	# other device has the button.
+	var as_qr := how == "qr"
+	_manage.visible = has_link and not as_qr
+	_manage_qr.text = manage_url if as_qr else ""
+	_manage_qr.visible = has_link and as_qr and not _manage_qr.encode_failed
 	_manage_qr.get_parent().visible = _manage_qr.visible
 	show_text(_manage_caption, t.text("free_device_scan") if _manage_qr.visible else "")
 	_remedy.visible = _manage.visible or _manage_qr.visible
@@ -414,9 +422,11 @@ func _initial_focus() -> Control:
 
 ## "button" or "qr" for "Replace a device" here (manage_mode, else the device).
 func manage_presentation() -> String:
-	if manage_mode == "button" or manage_mode == "qr":
-		return manage_mode
-	return PKeyActivationController.manage_presentation_here()
+	# A QR code only where a joypad is the only input; `manage_mode` "qr" asks for it, and gets the
+	# button anywhere a browser can open.
+	if manage_mode == "button" or not pad_only():
+		return "button"
+	return "qr"
 
 
 ## Render an activation result (also used by snapshots). `key` is the key just tried, which a

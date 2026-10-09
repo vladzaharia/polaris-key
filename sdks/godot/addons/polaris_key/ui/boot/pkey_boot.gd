@@ -677,7 +677,7 @@ func _render() -> void:
 	if consent:
 		_card.visible = true
 		show_text(_title, t.text("boot_consent_title"))
-		show_text(_body, t.text("boot_consent_body_metered" if _consent_metered else "boot_consent_body", [_product_name(), human_size(_consent_bytes)]))
+		show_text(_body, t.text("boot_consent_body_metered" if _consent_metered else "boot_consent_body", human_size(_consent_bytes)))
 		# A question hides the progress that would say the download had begun.
 		_status.visible = false
 		_progress.visible = false

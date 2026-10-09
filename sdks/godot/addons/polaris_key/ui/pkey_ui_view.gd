@@ -406,6 +406,13 @@ func _manage_focus() -> void:
 		# A dialog over a running game takes the focus from the game's own control (a pad's A
 		# must answer the dialog, never press the game's button behind it) and gives it back
 		# when it closes.
+		# The screen changed under a focus already inside it (a sign-in code arrived while Cancel was
+		# focused): the new screen's primary takes it, unless it is already there.
+		if _has_focus_inside():
+			var lead := _initial_focus()
+			if lead != null and lead.is_inside_tree() and is_focusable(lead) and not lead.has_focus():
+				lead.grab_focus()
+			return
 		var takes := _takes_focus_from_game()
 		if takes and not _has_focus_inside():
 			remember_opener()
@@ -589,7 +596,8 @@ func _measure() -> Dictionary:
 		"density": density,
 		"landscape": landscape,
 		# A phone's layout: portrait, on a phone or on a panel narrower than a phone.
-		"phone": room.y >= room.x and (mobile or room.x / k < PHONE_MAX_WIDTH),
+		# (A tablet, 600 dp or more on its shorter side, is not one: it gets a centred card.)
+		"phone": room.y >= room.x and ((mobile and minf(screen.x, screen.y) * physical / device_dpr() < 600.0) or room.x / k < PHONE_MAX_WIDTH),
 		"mobile": mobile,
 		# On a phone a control is at least 48 dp tall: the floor, in layout pixels.
 		"min_control": MOBILE_CONTROL_DP * device_dpr() / physical if mobile else 0.0,
@@ -1072,7 +1080,7 @@ func _card_shown() -> bool:
 
 ## The card's left plus right padding while it shows, else 0.
 func card_padding_x() -> float:
-	if _card_box == null or not _card_shown() or phone_bleed():
+	if _card_box == null or not _card_shown() or (phone_bleed() and not phone_sheet()):
 		return 0.0
 	return side_padding(_card_box) + scrollbar_width()
 
@@ -1123,7 +1131,24 @@ func _float_strip() -> void:
 func _style_card() -> void:
 	if _card_box == null:
 		return
-	if _card_shown() and phone_bleed():
+	if _card_shown() and phone_sheet():
+		# A dialog over the game on a phone: an opaque sheet docked to the bottom, never text drawn
+		# straight onto the scrim (a busy frame behind it would swallow a user code).
+		if _card_box.has_theme_stylebox_override("panel"):
+			_card_box.remove_theme_stylebox_override("panel")
+		_card_box.theme_type_variation = _card_variation()
+		_card_box.size_flags_vertical = Control.SIZE_SHRINK_END
+		# A phone's sheet pads less than a desktop card: the width is the content's.
+		var base := _card_box.get_theme_stylebox("panel")
+		if base is StyleBoxFlat:
+			var pad := maxf(12.0, roundf(role("card_padding") * 0.6))
+			var cur := (_card_box.get_theme_stylebox("panel") as StyleBoxFlat)
+			if not is_equal_approx(cur.content_margin_left, pad) or not _card_box.has_theme_stylebox_override("panel"):
+				var box := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
+				box.set_content_margin_all(pad)
+				_card_box.add_theme_stylebox_override("panel", box)
+	elif _card_shown() and phone_bleed():
+		_card_box.size_flags_vertical = Control.SIZE_FILL
 		# Full-bleed: the page is the card, at the page margin from the (safe) edges.
 		var pad := maxf(0.0, role("page_margin") - side_padding(outer_view()) / 2.0)
 		var e := _card_box.get_theme_stylebox("panel") as StyleBoxEmpty if _card_box.has_theme_stylebox_override("panel") else null
@@ -1135,6 +1160,7 @@ func _style_card() -> void:
 			box.content_margin_bottom = pad
 			_card_box.add_theme_stylebox_override("panel", box)
 	elif _card_shown():
+		_card_box.size_flags_vertical = Control.SIZE_FILL
 		if _card_box.has_theme_stylebox_override("panel"):
 			_card_box.remove_theme_stylebox_override("panel")
 		_card_box.theme_type_variation = _card_variation()
@@ -1151,6 +1177,12 @@ func phone_bleed() -> bool:
 
 func _bleeds() -> bool:
 	return false
+
+
+## Whether this view, the outermost one, is a dialog over the game on a phone: it sits on an opaque
+## sheet docked to the bottom (the scrim above it shows the game, dimmed).
+func phone_sheet() -> bool:
+	return phone_bleed() and _scrim_wanted()
 
 
 ## Whether the screen this view is on bleeds on a phone: its own state as the outermost view, the
@@ -1264,7 +1296,7 @@ func _apply_width(width: float) -> void:
 		return
 	if phone_screen():
 		content.size_flags_horizontal = Control.SIZE_FILL
-		content.size_flags_vertical = Control.SIZE_FILL
+		content.size_flags_vertical = Control.SIZE_SHRINK_END if outer_view().phone_sheet() else Control.SIZE_FILL
 		content.custom_minimum_size.x = 0.0
 		return
 	if width <= 0.0:

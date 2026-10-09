@@ -139,6 +139,8 @@ func _build() -> void:
 	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_who = label(who, "Name", "PKeyStrong", true)
 	_email = label(who, "Email", "PKeyMuted", true)
+	# An address is one word: past the width it breaks rather than push the card off screen.
+	_email.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_attach = CheckButton.new()
 	_attach.name = "AttachLicense"
 	_attach.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -168,8 +170,8 @@ func _scrim_wanted() -> bool:
 	return true
 
 
-## A QR code never shows on a phone: it opens the browser itself (the code and Copy link are there
-## for another device); tablets, desktops and TVs keep it.
+## A QR code shows only on a TV, a console or any pad-only device, where there is no browser to open;
+## a phone, a tablet and a desktop open the browser (Open browser, Copy link) and show the code.
 func _is_phone() -> bool:
 	return is_phone_device()
 
@@ -184,7 +186,7 @@ func _screen_key() -> String:
 
 ## Whether the QR code is on this screen: with a code, never on a phone.
 func _qr_wanted() -> bool:
-	return _showing_code() and _qr.text != "" and not _qr.encode_failed and not _is_phone()
+	return _showing_code() and _qr.text != "" and not _qr.encode_failed and _pad()
 
 
 func _showing_code() -> bool:
@@ -198,7 +200,7 @@ func _pending() -> bool:
 ## A landscape layout puts the QR code beside the text; it keeps its column while the code is
 ## still on its way (starting), so the card does not jump when it arrives.
 func _side_by_side() -> bool:
-	if not (is_landscape() and not phone_screen() and (_qr_wanted() or (state == "starting" and not _is_phone() and not _pad()))):
+	if not (is_landscape() and not phone_screen() and (_qr_wanted() or (state == "starting" and _pad()))):
 		return false
 	# Only while the QR code, its gaps and a text column wide enough for the code fit the room.
 	var text_min := maxf(role("card_width") * 0.5, text_width(_code, _code.text if _code.text != "" else "WDJB-MJHT"))
@@ -253,7 +255,8 @@ func _apply_width(width: float) -> void:
 func _column_mode() -> bool:
 	var m := layout_metrics()
 	var room: Vector2 = m["room"]
-	return squeeze_level() >= 2 and not _side_by_side() and room.x >= room.y * 1.3 and room.x >= 560.0 * float(m["scale"]) and not phone_screen()
+	# (Not while a QR code shows: its tile is as wide as the column the actions would take.)
+	return squeeze_level() >= 2 and not _side_by_side() and not _qr_wanted() and room.x >= room.y * 1.3 and room.x >= 560.0 * float(m["scale"]) and not phone_screen()
 
 
 func _arrange(m: Dictionary) -> void:
@@ -386,7 +389,8 @@ func _render() -> void:
 	show_text(_status, status)
 	_status.theme_type_variation = "PKeyError" if failed and not expired else "PKeyMuted"
 	set_loading(state == "starting")
-	show_text(_instructions, t.text("sign_in_instructions") if pending else "")
+	# Without a QR code on the screen the line never says "scan".
+	show_text(_instructions, (t.text("sign_in_instructions") if _qr_wanted() else t.text("sign_in_instructions_plain")) if pending else "")
 	show_text(_url, PKeySignInController.short_uri(prompt.verification_uri) if pending else "")
 	show_text(_code, prompt.user_code if pending else "")
 	_qr.text = prompt.verification_uri_complete if pending else ""
