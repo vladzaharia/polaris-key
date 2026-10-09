@@ -232,7 +232,7 @@ jobs:
         if: env.PICKED == 'true'
       # F-09: GodotEnv is a .NET tool; the godot client fails rather than skips without it here.
       - if: env.PICKED == 'true' && matrix.client == 'godot'
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
       - if: env.PICKED == 'true' && matrix.client == 'godot'
