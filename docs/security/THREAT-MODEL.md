@@ -4996,11 +4996,12 @@ version answers `unsupported` (`version`) and installs nothing.
     `BridgeState` carries the verified documents and the sync bookkeeping only.
   - Refusals cross as `{code, message}` envelopes built from the copy catalog, never a raw
     server body.
-  - `allowSender` is **optional, and the default accepts every frame**. A host that loads remote
-    content, an iframe, or a second window with the same preload exposes every verb above to
-    that content, including `devices.deauthorize` and `signOut`. Hosts should pass an
-    `allowSender` that pins the app's own origin (the README and tests show
-    `senderFrame.url.startsWith("app://")`), and attach the preload only to windows they trust.
+  - `allowSender` defaults to the **top frame of the app's own origin**: an iframe, a window that
+    navigated to remote content, or an event with no sender frame is refused. Without
+    `appOrigin` the default accepts local origins only (`file:`, a custom scheme, loopback); a
+    host that loads a remote `https:` page sets `appOrigin`. A host that passes its own
+    `allowSender` replaces the default, and should still pin the origin
+    (`senderFrame.url.startsWith("app://")`). Attach the preload only to windows you trust.
     The bridge cannot install code: no verb reaches a driver's `install`.
 - **SafeStorageStore degradation.** The token is encrypted with `safeStorage` (Keychain, DPAPI,
   libsecret or KWallet) into a 0600 `token.enc` file opened with `O_NOFOLLOW`. Every weaker state

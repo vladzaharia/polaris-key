@@ -37,7 +37,7 @@
     },
     "core.errors": {
       "status": "implemented",
-      "note": "SP-46: one taxonomy over every network call (src/core/http.ts): no answer is network-error with the failure as cause, 429 rate_limited with retryAfterSeconds, 5xx server-error with status and wireCode, 404 not_found, any other refusal the server's code; the server's message kept. Every exported error class is a PolarisError; activation and registration results print with the device token redacted (test/errorTaxonomy.test.ts)."
+      "note": "SP-46: one taxonomy over every network call (src/core/http.ts): no answer is network-error with the failure as cause, 429 rate_limited with retryAfterSeconds, 5xx server-error with status and wireCode, 404 not_found, any other refusal the server's code; the server's message kept. Every exported error class is a PolarisError; every product-scoped call follows the WIRE-CONTRACT-V4 section 5 redirect rule (src/core/redirect.ts: cross-origin hops lose Authorization and X-PKey-*, insecure-redirect, too-many-redirects); activation and registration results print with the device token redacted (test/errorTaxonomy.test.ts)."
     },
     "core.caps": {
       "status": "implemented"
@@ -51,7 +51,7 @@
           "note": "When @napi-rs/keyring cannot load (a single-executable build, no Secret Service) the token is in a 0600 file; supports() reports dependency (P1b-10)."
         }
       ],
-      "note": "KeyringStore by default; an Electron main process uses SafeStorageStore (@polaris-key/node/electron), whose status() reports keyring-unavailable when safeStorage cannot encrypt or falls back to basic_text, and keyring-error when the stored token no longer decrypts (SP-N11)."
+      "note": "KeyringStore by default (reads are keyring-first; state written atomically at 0600 in a 0700 directory, read without following symlinks); an Electron main process uses SafeStorageStore (@polaris-key/node/electron), whose status() reports keyring-unavailable when safeStorage cannot encrypt or falls back to basic_text, and keyring-error when the stored token no longer decrypts (SP-N11)."
     },
     "core.copy": {
       "status": "implemented",
