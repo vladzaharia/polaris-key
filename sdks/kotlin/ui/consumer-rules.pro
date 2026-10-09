@@ -4,3 +4,8 @@
 -keepclassmembers class im.plrs.key.ui.PolarisCopy {
     java.lang.String *;
 }
+
+# The sign-in ViewModel is created reflectively by ViewModelProvider.
+-keepclassmembers class im.plrs.key.ui.PolarisSignInViewModel {
+    <init>();
+}

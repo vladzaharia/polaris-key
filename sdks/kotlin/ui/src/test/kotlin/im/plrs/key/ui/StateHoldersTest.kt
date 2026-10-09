@@ -172,8 +172,12 @@ class StateHoldersTest {
         state.start()
         runCurrent()
         assertEquals(PolarisSignInUi.Expired, state.ui.value)
-        result = SignInResult.Error("boom")
+        // start() on a finished flow starts over: a new sign-in asks for a new code.
         state.start()
+        runCurrent()
+        assertEquals(PolarisSignInUi.Expired, state.ui.value)
+        result = SignInResult.Error("boom")
+        state.restart()
         runCurrent()
         assertEquals(PolarisSignInUi.Failed, state.ui.value)
         val failing = PolarisSignInState(

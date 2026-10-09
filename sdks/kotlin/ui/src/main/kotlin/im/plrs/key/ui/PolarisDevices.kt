@@ -15,19 +15,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,7 +42,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
@@ -58,12 +66,24 @@ import kotlinx.coroutines.launch
 public data class PolarisDevicesUi(
     val loading: Boolean = true,
     val devices: List<DeviceInfo> = emptyList(),
+    /** The list could not be read. */
     val error: Boolean = false,
     /** The device an action is running on. */
     val busyId: String? = null,
     /** Epoch milliseconds, for "last checked … ago". */
     val nowMillis: Long = 0,
+    /** The last rename or removal the SDK refused; it survives the reload that follows. */
+    val actionError: PolarisDeviceActionError? = null,
 )
+
+/** A device action the SDK refused, named for the device (and, for a rename, the typed name). */
+public sealed interface PolarisDeviceActionError {
+    public val deviceId: String
+
+    public data class Rename(override val deviceId: String, val label: String) : PolarisDeviceActionError
+
+    public data class SignOut(override val deviceId: String) : PolarisDeviceActionError
+}
 
 /** The SDK calls the devices screen makes. [PolarisKeyClient.devicesActions] adapts the umbrella client. */
 public interface PolarisDevicesActions {
@@ -95,28 +115,33 @@ public class PolarisDevicesState(
     }
 
     private suspend fun reload() {
-        _ui.update { it.copy(loading = it.devices.isEmpty()) }
+        _ui.update { it.copy(loading = it.devices.isEmpty() && it.actionError == null) }
         val devices = guarded { actions.list() }
         _ui.update {
             if (devices == null) it.copy(loading = false, error = true, busyId = null, nowMillis = clockMillis())
-            else PolarisDevicesUi(loading = false, devices = sortDevices(devices), nowMillis = clockMillis())
+            else PolarisDevicesUi(loading = false, devices = sortDevices(devices), nowMillis = clockMillis(), actionError = it.actionError)
         }
     }
 
     public fun rename(deviceId: String, label: String) {
-        run(deviceId) { actions.rename(deviceId, label.trim().ifEmpty { null }) }
+        run(deviceId, PolarisDeviceActionError.Rename(deviceId, label)) { actions.rename(deviceId, label.trim().ifEmpty { null }) }
     }
 
     public fun deauthorize(deviceId: String) {
-        run(deviceId) { actions.deauthorize(deviceId) }
+        run(deviceId, PolarisDeviceActionError.SignOut(deviceId)) { actions.deauthorize(deviceId) }
     }
 
-    private fun run(deviceId: String, action: suspend () -> Unit) {
+    /** The player dismissed the refusal (closed the reopened rename, or acknowledged it). */
+    public fun dismissActionError() {
+        _ui.update { it.copy(actionError = null) }
+    }
+
+    private fun run(deviceId: String, failure: PolarisDeviceActionError, action: suspend () -> Unit) {
         if (_ui.value.busyId != null) return
         scope.launch {
-            _ui.update { it.copy(busyId = deviceId) }
+            _ui.update { it.copy(busyId = deviceId, actionError = null) }
             val ok = guarded { action() } != null
-            if (!ok) _ui.update { it.copy(error = true) }
+            _ui.update { it.copy(actionError = if (ok) null else failure) }
             reload()
         }
     }
@@ -152,14 +177,27 @@ public fun PolarisCopy.deviceName(device: DeviceInfo): String = device.label?.ta
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
+/** @param navigationIcon an optional control above the title (a Back for the host's navigation). */
 @Composable
-public fun PolarisDevices(state: PolarisDevicesState, modifier: Modifier = Modifier) {
+public fun PolarisDevices(state: PolarisDevicesState, modifier: Modifier = Modifier, navigationIcon: (@Composable () -> Unit)? = null) {
     val ui by state.ui.collectAsState()
     androidx.compose.runtime.LaunchedEffect(state) { state.load() }
-    PolarisDevicesScreen(ui, modifier, onRename = state::rename, onDeauthorize = state::deauthorize, onRetry = state::load)
+    PolarisDevicesScreen(
+        ui,
+        modifier,
+        onRename = state::rename,
+        onDeauthorize = state::deauthorize,
+        onRetry = state::load,
+        onDismissError = state::dismissActionError,
+        navigationIcon = navigationIcon,
+    )
 }
 
-/** The stateless devices screen, with its rename and sign-out dialogs. */
+/**
+ * The stateless devices screen, with its rename dialog and its removal confirm: a list screen,
+ * top-anchored under a start-aligned title. A refused rename or removal shows at the top of the
+ * list, named for its device, and a refused rename reopens its dialog with the typed name.
+ */
 @Composable
 public fun PolarisDevicesScreen(
     ui: PolarisDevicesUi,
@@ -167,6 +205,8 @@ public fun PolarisDevicesScreen(
     onRename: (String, String) -> Unit = { _, _ -> },
     onDeauthorize: (String) -> Unit = {},
     onRetry: () -> Unit = {},
+    onDismissError: () -> Unit = {},
+    navigationIcon: (@Composable () -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     if (ui.loading) {
@@ -175,16 +215,29 @@ public fun PolarisDevicesScreen(
     }
     var renaming by rememberSaveable { mutableStateOf<String?>(null) }
     var removing by rememberSaveable { mutableStateOf<String?>(null) }
-    PolarisScreen(modifier = modifier, showLogo = false) {
+    val failed = ui.actionError
+    PolarisScaffold(modifier = modifier, anchor = PolarisAnchor.Top, contentAlign = TextAlign.Start, navigationIcon = navigationIcon) {
         PolarisTitle(copy.devicesTitle)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(PolarisSpace.tight))
         PolarisBody(copy.devicesSubtitle)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(polarisWindow.section))
         if (ui.error) {
-            PolarisNotice(PolarisMessageCopy(copy.devicesError, copy.retry, PolarisMessageKind.Danger))
-            Spacer(Modifier.height(8.dp))
-            PolarisTextButton(copy.retry, onRetry)
-            Spacer(Modifier.height(16.dp))
+            // One notice and one way on; the empty card stays hidden.
+            PolarisInlineNotice(copy.devicesError)
+            Spacer(Modifier.height(PolarisSpace.controls))
+            PolarisSecondaryButton(copy.retry, onRetry)
+            if (ui.devices.isEmpty()) return@PolarisScaffold
+            Spacer(Modifier.height(PolarisSpace.group))
+        }
+        if (failed != null) {
+            val device = ui.devices.firstOrNull { it.id == failed.deviceId }
+            val name = device?.let { copy.deviceName(it) } ?: copy.deviceUnnamed
+            val text = when (failed) {
+                is PolarisDeviceActionError.Rename -> copy.format(copy.devicesRenameFailed, name)
+                is PolarisDeviceActionError.SignOut -> copy.format(copy.devicesRemoveFailed, name)
+            }
+            PolarisInlineNotice(text)
+            Spacer(Modifier.height(PolarisSpace.controls))
         }
         PolarisSection(title = null) {
             if (ui.devices.isEmpty()) {
@@ -196,7 +249,8 @@ public fun PolarisDevicesScreen(
                 )
             }
             ui.devices.forEachIndexed { i, device ->
-                if (i > 0) HorizontalDivider(Modifier.padding(start = 72.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                // Inset on both sides: past the glyph at the start, short of the card's edge at the end.
+                if (i > 0) HorizontalDivider(Modifier.padding(start = 72.dp, end = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
                 PolarisDeviceRow(
                     device = device,
                     nowMillis = ui.nowMillis,
@@ -207,10 +261,17 @@ public fun PolarisDevicesScreen(
             }
         }
     }
-    ui.devices.firstOrNull { it.id == renaming }?.let { device ->
+    // A refused rename reopens its dialog with what the player typed.
+    val reopened = (failed as? PolarisDeviceActionError.Rename)?.takeIf { renaming == null && ui.busyId == null }
+    val renameId = renaming ?: reopened?.deviceId
+    ui.devices.firstOrNull { it.id == renameId }?.let { device ->
         PolarisRenameDialog(
-            initial = device.label.orEmpty(),
-            onDismiss = { renaming = null },
+            current = device.label.orEmpty(),
+            initial = reopened?.label ?: device.label.orEmpty(),
+            onDismiss = {
+                renaming = null
+                if (reopened != null) onDismissError()
+            },
             onSave = {
                 renaming = null
                 onRename(device.id, it)
@@ -220,19 +281,22 @@ public fun PolarisDevicesScreen(
     ui.devices.firstOrNull { it.id == removing }?.let { device ->
         AlertDialog(
             onDismissRequest = { removing = null },
-            title = { Text(copy.deviceDeauthorizeTitle) },
-            text = { Text(copy.format(copy.deviceDeauthorizeBody, copy.deviceName(device))) },
+            text = { Text(copy.format(copy.deviceRemoveConfirm, copy.deviceName(device), copy.productName)) },
             confirmButton = {
-                PolarisTextButton(copy.deviceDeauthorize, onClick = {
-                    removing = null
-                    onDeauthorize(device.id)
-                })
+                TextButton(
+                    onClick = {
+                        removing = null
+                        onDeauthorize(device.id)
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = PolarisTheme.status.danger),
+                ) { Text(copy.deviceDeauthorize) }
             },
             dismissButton = { PolarisTextButton(copy.cancel, onClick = { removing = null }) },
         )
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PolarisDeviceRow(device: DeviceInfo, nowMillis: Long, busy: Boolean, onRename: () -> Unit, onDeauthorize: () -> Unit) {
     val copy = PolarisTheme.copy
@@ -241,17 +305,26 @@ internal fun PolarisDeviceRow(device: DeviceInfo, nowMillis: Long, busy: Boolean
         modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(Modifier.size(40.dp), shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer) {
+        // The glyph (by form factor once DeviceInfo carries one; the phone until then) on the
+        // highest container, in the strongest text colour, so it clears 3:1 in both themes.
+        Surface(
+            Modifier.size(40.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ) {
             androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
                 Icon(DeviceIcon, contentDescription = null, modifier = Modifier.size(20.dp))
             }
         }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            if (device.current) {
-                Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
-                    Text(copy.deviceThis, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+                Text(name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                if (device.current) {
+                    Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                        Text(copy.deviceThis, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                    }
                 }
             }
             device.lastVerifiedAt?.let { at ->
@@ -263,34 +336,53 @@ internal fun PolarisDeviceRow(device: DeviceInfo, nowMillis: Long, busy: Boolean
             }
         }
         val tint = MaterialTheme.colorScheme.onSurfaceVariant
-        IconButton(onClick = onRename, enabled = !busy) {
+        PolarisIconButton(onClick = onRename, enabled = !busy) {
             Icon(Icons.Filled.Edit, contentDescription = copy.format(copy.deviceRenameDescription, name), tint = tint)
         }
-        IconButton(onClick = onDeauthorize, enabled = !busy) {
+        PolarisIconButton(onClick = onDeauthorize, enabled = !busy) {
             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = copy.format(copy.deviceDeauthorizeDescription, name), tint = tint)
         }
     }
 }
 
+/** An icon button with a full 48 dp target and the kit's focus ring. */
 @Composable
-internal fun PolarisRenameDialog(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+internal fun PolarisIconButton(onClick: () -> Unit, enabled: Boolean = true, content: @Composable () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        interactionSource = interaction,
+        modifier = Modifier.polarisFocusIndication(interaction, CircleShape).size(PolarisMinTouchTarget),
+        content = content,
+    )
+}
+
+/**
+ * The rename dialog: the field takes focus when it opens, Done saves, and Save waits for a change
+ * from the [current] name. [initial] is what the field starts with (a refused rename's text).
+ */
+@Composable
+internal fun PolarisRenameDialog(current: String, initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
     val copy = PolarisTheme.copy
-    var text by remember { mutableStateOf(initial) }
+    var text by remember(initial) { mutableStateOf(initial) }
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    val changed = text.trim() != current.trim()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(copy.deviceRenameTitle) },
         text = {
-            OutlinedTextField(
+            PolarisTextField(
                 value = text,
                 onValueChange = { text = it.take(64) },
-                label = { Text(copy.deviceRenameLabel) },
-                singleLine = true,
-                shape = PolarisTheme.fieldShape,
+                label = copy.deviceRenameLabel,
+                focusRequester = focus,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                modifier = Modifier.fillMaxWidth(),
+                keyboardActions = KeyboardActions(onDone = { if (changed) onSave(text) }),
             )
         },
-        confirmButton = { PolarisTextButton(copy.deviceSave, onClick = { onSave(text) }) },
+        confirmButton = { PolarisTextButton(copy.deviceSave, onClick = { onSave(text) }, enabled = changed) },
         dismissButton = { PolarisTextButton(copy.cancel, onClick = onDismiss) },
     )
 }

@@ -93,6 +93,26 @@ internal fun bootUi(stage: BootStage, outcome: BootOutcome = BootOutcome.running
 
 internal const val SAMPLE_MANAGE_URL = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Android%20arm64"
 
+/** PX-W8 on Android TV: a device-limit refusal whose portal link shows as a QR code (TV only). */
+internal val deviceLimitTv: @Composable () -> Unit = {
+    PolarisGateScreen(
+        gateUi(LicenseStatus.needsActivation),
+        PolarisActivationUi(
+            key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
+            error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(1, 1, SAMPLE_MANAGE_URL)),
+            manageUrl = "$SAMPLE_MANAGE_URL#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
+            manageQrUrl = SAMPLE_MANAGE_URL,
+        ),
+        manageAsQr = true,
+    )
+}
+
+/** The update prompt in its dialog, as an app shows it over its own screen. */
+internal val updateDialog: @Composable () -> Unit = {
+    SampleProduct()
+    PolarisUpdatePromptDialog(PolarisUpdateUi("2.5.0"), onUpdate = {}, onLater = {})
+}
+
 /** Every screen the kit ships, by snapshot name. */
 internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "boot-progress" to { PolarisBootScreen(bootUi(BootStage.sync)) },
@@ -122,18 +142,6 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
             ),
         )
     },
-    "gate-device-limit-manage-tv" to {
-        PolarisGateScreen(
-            gateUi(LicenseStatus.needsActivation),
-            PolarisActivationUi(
-                key = "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
-                error = PolarisActivationError.Refused(ActivationResult.DeviceLimit(1, 1, SAMPLE_MANAGE_URL)),
-                manageUrl = "$SAMPLE_MANAGE_URL#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV",
-                manageQrUrl = SAMPLE_MANAGE_URL,
-            ),
-            manageAsQr = true,
-        )
-    },
     "gate-revoked" to { PolarisGateScreen(gateUi(LicenseStatus.revoked), PolarisActivationUi(), onSignIn = {}) },
     "gate-expired" to { PolarisGateScreen(gateUi(LicenseStatus.expired), PolarisActivationUi()) },
     "gate-version-too-old" to {
@@ -147,6 +155,9 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
         PolarisGateScreen(gateUi(LicenseStatus.grace, graceUntil = NOW + 3 * 86_400 + 600), PolarisActivationUi()) { SampleProduct() }
     },
     "sign-in" to { PolarisSignInScreen(PolarisSignInUi.Showing(samplePrompt, NOW)) },
+    "sign-in-starting" to { PolarisSignInScreen(PolarisSignInUi.Starting) },
+    "sign-in-expired" to { PolarisSignInScreen(PolarisSignInUi.Expired) },
+    "sign-in-failed" to { PolarisSignInScreen(PolarisSignInUi.Failed) },
     "settings" to { PolarisSettingsScreen(sampleSettings) },
     "devices" to { PolarisDevicesScreen(PolarisDevicesUi(loading = false, devices = sampleDevices, nowMillis = NOW * 1000)) },
     "update-banner" to {

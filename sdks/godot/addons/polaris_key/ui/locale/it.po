@@ -650,6 +650,11 @@ msgstr "Richiesta di un codice di accesso…"
 msgid "signInHandoff.scan"
 msgstr "Scansiona il codice con il telefono oppure vai su {url} e inserisci questo codice."
 
+#. Scan the QR code with your phone, or enter this code at the address below.
+#. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
+msgid "signInHandoff.scanTv"
+msgstr "Inquadra il codice QR con il telefono, oppure inserisci questo codice all'indirizzo qui sotto."
+
 #. Link copied
 #. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
 msgid "signInHandoff.linkCopied"
@@ -879,6 +884,11 @@ msgstr "Apri nel browser"
 msgid "deviceLimit.scan"
 msgstr "Scansiona il codice per sostituire un dispositivo dal telefono."
 
+#. Sign out of {product} on another device, then try again.
+#. DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "deviceLimit.noManage"
+msgstr "Esci da {product} su un altro dispositivo, poi riprova."
+
 #. Your devices
 #. Devices: the list of devices using the license.
 msgid "devices.title"
@@ -932,6 +942,21 @@ msgstr "Rimuovere {device}? Uscirà da {product}."
 #. Devices: the list of devices using the license.
 msgid "devices.empty"
 msgstr "Nessun dispositivo usa ancora questa licenza."
+
+#. Couldn't load your devices.
+#. Devices: the list of devices using the license. The list could not be read; a Try again button follows.
+msgid "devices.loadFailed"
+msgstr "Impossibile caricare i tuoi dispositivi."
+
+#. Couldn't rename {device}. Try again.
+#. Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.renameFailed"
+msgstr "Impossibile rinominare {device}. Riprova."
+
+#. Couldn't remove {device}. Try again.
+#. Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.removeFailed"
+msgstr "Impossibile rimuovere {device}. Riprova."
 
 #. Manage your devices in your browser.
 #. Devices: the list of devices using the license. Browser mode.
@@ -1248,6 +1273,16 @@ msgstr "Impossibile caricare le note di rilascio."
 msgid "status.renew"
 msgstr "Rinnova"
 
+#. Use another license
+#. StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license.
+msgid "status.useAnotherLicense"
+msgstr "Usa un'altra licenza"
+
+#. macos: Use Another License
+msgctxt "macos"
+msgid "status.useAnotherLicense"
+msgstr "Usa un'altra licenza"
+
 #. Update
 #. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old.
 msgid "status.update"
@@ -1446,6 +1481,11 @@ msgstr "Modifiche non salvate"
 #. Settings: settings delivered by the developer.
 msgid "settings.error"
 msgstr "Impossibile salvare le impostazioni. Riprova."
+
+#. Settings couldn't be loaded.
+#. Settings: settings delivered by the developer. The settings could not be read; a Try again button follows.
+msgid "settings.loadFailed"
+msgstr "Impossibile caricare le impostazioni."
 
 #. Between {min} and {max}
 #. Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version.

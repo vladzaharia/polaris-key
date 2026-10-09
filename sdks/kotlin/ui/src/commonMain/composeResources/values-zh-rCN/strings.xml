@@ -232,6 +232,8 @@
     <string name="signInHandoff_starting">正在获取登录码…</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signInHandoff_scan">用手机扫描二维码，或前往%1$s并输入此代码。</string>
+    <!-- SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it. -->
+    <string name="signInHandoff_scanTv">用手机扫描二维码，或在下方地址输入此代码。</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">链接已复制</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -310,6 +312,8 @@
     <string name="deviceLimit_openBrowser__macos">在浏览器中打开</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console. -->
     <string name="deviceLimit_scan">扫描二维码，在手机上替换设备。</string>
+    <!-- DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="deviceLimit_noManage">请在另一台设备上退出登录%1$s，然后重试。</string>
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_title">你的设备</string>
     <!-- Devices: the list of devices using the license. -->
@@ -332,6 +336,12 @@
     <string name="devices_removeConfirm">移除%1$s？它将退出登录%2$s。</string>
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_empty">还没有设备在使用此许可证。</string>
+    <!-- Devices: the list of devices using the license. The list could not be read; a Try again button follows. -->
+    <string name="devices_loadFailed">无法加载你的设备。</string>
+    <!-- Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="devices_renameFailed">无法重命名%1$s。请重试。</string>
+    <!-- Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="devices_removeFailed">无法移除%1$s。请重试。</string>
     <!-- Devices: the list of devices using the license. Browser mode. -->
     <string name="devices_browser">在浏览器中管理你的设备。</string>
     <!-- Devices: the list of devices using the license. Browser mode; opens the account in the browser. -->
@@ -448,6 +458,9 @@
     <string name="releaseNotes_error">无法加载版本说明。</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license. -->
     <string name="status_renew">续订</string>
+    <!-- StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license. -->
+    <string name="status_useAnotherLicense">使用其他许可证</string>
+    <string name="status_useAnotherLicense__macos">使用其他许可证</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old. -->
     <string name="status_update">更新</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Channel not included. -->
@@ -525,6 +538,8 @@
     <string name="settings_unsaved">有未保存的更改</string>
     <!-- Settings: settings delivered by the developer. -->
     <string name="settings_error">无法保存设置。请重试。</string>
+    <!-- Settings: settings delivered by the developer. The settings could not be read; a Try again button follows. -->
+    <string name="settings_loadFailed">无法加载设置。</string>
     <!-- Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
     <string name="settings_range">介于%1$s和%2$s之间</string>
     <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->

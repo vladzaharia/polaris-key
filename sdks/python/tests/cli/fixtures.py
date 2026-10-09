@@ -217,6 +217,7 @@ NOT_DRAWN = {
     ("OfflineActivation", "loaded"): "the file is read and submitted in one step",
     ("Devices", "loading"): "the list prints when it has loaded",
     ("Devices", "renaming"): "rename takes its label on the command line",
+    ("Devices", "error"): "a failed list, rename or removal is the command's error line and exit code",
     ("UpdateProgress", "paused"): "a terminal download never waits for Wi-Fi",
     ("Settings", "loading"): "the list prints when it has loaded",
     ("Settings", "dirty"): "config set saves at once",

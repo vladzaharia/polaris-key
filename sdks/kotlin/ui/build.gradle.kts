@@ -98,6 +98,7 @@ dependencies {
     implementation(libs.compose.material.icons.core)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.zxing.core)
+    implementation(libs.androidx.lifecycle.viewmodel)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 

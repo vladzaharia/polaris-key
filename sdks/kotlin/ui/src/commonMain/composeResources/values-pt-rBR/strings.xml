@@ -236,6 +236,8 @@
     <string name="signInHandoff_starting">Obtendo um código de acesso…</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signInHandoff_scan">Escaneie o código com o celular ou acesse %1$s e digite este código.</string>
+    <!-- SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it. -->
+    <string name="signInHandoff_scanTv">Escaneie o QR code com o celular ou digite este código no endereço abaixo.</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
     <string name="signInHandoff_linkCopied">Link copiado</string>
     <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -316,6 +318,8 @@
     <string name="deviceLimit_openBrowser__macos">Abrir no navegador</string>
     <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console. -->
     <string name="deviceLimit_scan">Escaneie o código para substituir um dispositivo pelo celular.</string>
+    <!-- DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="deviceLimit_noManage">Saia de %1$s em outro dispositivo e tente novamente.</string>
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_title">Seus dispositivos</string>
     <!-- Devices: the list of devices using the license. -->
@@ -340,6 +344,12 @@
     <string name="devices_removeConfirm">Remover %1$s? Ele sairá de %2$s.</string>
     <!-- Devices: the list of devices using the license. -->
     <string name="devices_empty">Nenhum dispositivo está usando esta licença ainda.</string>
+    <!-- Devices: the list of devices using the license. The list could not be read; a Try again button follows. -->
+    <string name="devices_loadFailed">Não foi possível carregar seus dispositivos.</string>
+    <!-- Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="devices_renameFailed">Não foi possível renomear %1$s. Tente novamente.</string>
+    <!-- Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="devices_removeFailed">Não foi possível remover %1$s. Tente novamente.</string>
     <!-- Devices: the list of devices using the license. Browser mode. -->
     <string name="devices_browser">Gerencie seus dispositivos no navegador.</string>
     <!-- Devices: the list of devices using the license. Browser mode; opens the account in the browser. -->
@@ -456,6 +466,9 @@
     <string name="releaseNotes_error">Não foi possível carregar as notas da versão.</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license. -->
     <string name="status_renew">Renovar</string>
+    <!-- StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license. -->
+    <string name="status_useAnotherLicense">Usar outra licença</string>
+    <string name="status_useAnotherLicense__macos">Usar outra licença</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old. -->
     <string name="status_update">Atualizar</string>
     <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Channel not included. -->
@@ -535,6 +548,8 @@
     <string name="settings_unsaved">Alterações não salvas</string>
     <!-- Settings: settings delivered by the developer. -->
     <string name="settings_error">Não foi possível salvar as configurações. Tente novamente.</string>
+    <!-- Settings: settings delivered by the developer. The settings could not be read; a Try again button follows. -->
+    <string name="settings_loadFailed">Não foi possível carregar as configurações.</string>
     <!-- Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
     <string name="settings_range">Entre %1$s e %2$s</string>
     <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->

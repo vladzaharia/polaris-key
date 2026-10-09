@@ -7,21 +7,34 @@
 // NEUTRAL MEANS INHERITED. With PolarisBranding.None (the default) the kit sets no MaterialTheme of
 // its own: every colour, shape and text style a screen draws comes from the host app's
 // MaterialTheme, so a stock Material 3 app (dynamic colour included) renders the kit as part of
-// itself. The logo slot is empty unless the host passes one; no Polaris Key colour, font, mark or
+// itself. Only the status colours Material 3 has no role for (warning, success) are the brand's
+// fixed amber and green, never the host's tertiary (UI-KITS.md §3.4). No Polaris Key mark or
 // badge appears.
 //
 // PolarisBranding.PolarisKey wraps the subtree in a MaterialTheme built from the generated brand
 // tokens (PolarisBrandTokens: dark first, light supported, the core violet as primary, the service
-// accents for the small section indicators), Rubik (bundled under the OFL) and the brand radii,
-// and the logo slot shows the bit-less Pinned K. The "Powered by Polaris Key" badge is a separate
-// switch, off by default, independent of branding (owner decision 2).
+// accents for the small section indicators), Rubik at 400, 500 and 600 (bundled under the OFL),
+// full-round buttons and radius-16 fields. The "Powered by Polaris Key" badge is a separate switch,
+// off by default, independent of branding (owner decision 2).
+//
+// THE PRODUCT IS THE HERO (UI-KITS.md §1.2). `logo` is the product's own icon. Without one, the
+// kit draws a monogram tile (the product's initial); the Pinned K appears only inside the optional
+// Powered-by badge, in either preset.
+//
+// THE PRODUCT ACCENT. `accent` (a product's colour) replaces the primary roles in either mode,
+// run through the accent resolver (UI-KITS.md §3.3, brand/PolarisAccent.kt) so the fill, its
+// label and the text-on-surface colour all keep their contrast: branded it replaces the core
+// violet against the brand surfaces; neutral it is resolved against the host's own surfaces and
+// applied over the host's scheme, which otherwise stays exactly the host's.
 
 package im.plrs.key.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -35,22 +48,26 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import im.plrs.key.ui.brand.BrandAccent
+import im.plrs.key.ui.brand.PolarisAccent
 import im.plrs.key.ui.brand.PolarisBrandTokens
 
 /** The look the kit renders in. */
 public enum class PolarisBranding {
-    /** Neutral (the default): everything from the host app's MaterialTheme; no Polaris Key marks. */
+    /** Neutral (the native preset, the default): everything from the host app's MaterialTheme. */
     None,
 
-    /** The Polaris Key design system: brand palette (dark or light), Rubik, the Pinned K. */
+    /** The Polaris Key design system: brand palette (dark or light) and Rubik. */
     PolarisKey,
 }
 
 /**
- * Status colours Material 3 has no role for (warning, success), plus the section accents. Neutral,
- * each derives from the host's [ColorScheme]; branded, each is a brand token.
+ * Status colours Material 3 has no role for (warning, success), plus danger and the QR plate.
+ * Warning and success are the brand's fixed amber and green in both presets (for the host's
+ * darkness, neutral); danger is the host's error neutral and the brand's danger branded.
  */
 @Immutable
 public data class PolarisStatusColors(
@@ -68,20 +85,34 @@ public data class PolarisStatusColors(
     val qrPlate: Color,
 ) {
     public companion object {
-        /** Neutral: roles borrowed from the host's colour scheme. */
-        public fun from(scheme: ColorScheme): PolarisStatusColors = PolarisStatusColors(
-            warning = scheme.tertiary,
-            warningContainer = scheme.tertiaryContainer,
-            onWarningContainer = scheme.onTertiaryContainer,
-            success = scheme.primary,
-            successContainer = scheme.primaryContainer,
-            onSuccessContainer = scheme.onPrimaryContainer,
-            danger = scheme.error,
-            dangerContainer = scheme.errorContainer,
-            onDangerContainer = scheme.onErrorContainer,
-            qrModules = Color.Black, // polaris-lint: allow-colour (a QR code is dark on light for every scanner)
-            qrPlate = Color.White, // polaris-lint: allow-colour
-        )
+        /**
+         * Neutral: the brand's fixed amber and green for the host's darkness (never its tertiary,
+         * which a dynamic scheme makes any hue), with the host's text on their containers, and the
+         * host's error for danger.
+         */
+        public fun from(scheme: ColorScheme): PolarisStatusColors {
+            val dark = scheme.background.luminance() < 0.5f
+            val warning = if (dark) PolarisBrandTokens.Dark.warning else PolarisBrandTokens.Light.warning
+            val warningSubtle = if (dark) PolarisBrandTokens.Dark.warningSubtle else PolarisBrandTokens.Light.warningSubtle
+            val success = if (dark) PolarisBrandTokens.Dark.success else PolarisBrandTokens.Light.success
+            val successSubtle = if (dark) PolarisBrandTokens.Dark.successSubtle else PolarisBrandTokens.Light.successSubtle
+            return PolarisStatusColors(
+                warning = warning,
+                warningContainer = warningSubtle,
+                onWarningContainer = scheme.onSurface,
+                success = success,
+                successContainer = successSubtle,
+                onSuccessContainer = scheme.onSurface,
+                danger = scheme.error,
+                dangerContainer = scheme.errorContainer,
+                onDangerContainer = scheme.onErrorContainer,
+                qrModules = Color.Black, // polaris-lint: allow-colour (a QR code is dark on light for every scanner)
+                qrPlate = QR_PLATE,
+            )
+        }
+
+        /** The QR tile: 92 % white (UI-KITS.md §4.3), bright enough for every scanner, softer on a TV. */
+        internal val QR_PLATE: Color = Color(0xFFEBEBEB) // polaris-lint: allow-colour (92 % white, the spec's QR tile)
 
         /** Branded: the brand's status tokens for the theme. */
         public fun brand(dark: Boolean): PolarisStatusColors = if (dark) {
@@ -90,7 +121,7 @@ public data class PolarisStatusColors(
                 warning = t.warning, warningContainer = t.warningSubtle, onWarningContainer = t.textStrong,
                 success = t.success, successContainer = t.successSubtle, onSuccessContainer = t.textStrong,
                 danger = t.danger, dangerContainer = t.dangerSubtle, onDangerContainer = t.textStrong,
-                qrModules = PolarisBrandTokens.Kit.pageDark, qrPlate = PolarisBrandTokens.Kit.starDark,
+                qrModules = PolarisBrandTokens.Kit.pageDark, qrPlate = QR_PLATE,
             )
         } else {
             val t = PolarisBrandTokens.Light
@@ -98,7 +129,7 @@ public data class PolarisStatusColors(
                 warning = t.warning, warningContainer = t.warningSubtle, onWarningContainer = t.textStrong,
                 success = t.success, successContainer = t.successSubtle, onSuccessContainer = t.textStrong,
                 danger = t.danger, dangerContainer = t.dangerSubtle, onDangerContainer = t.textStrong,
-                qrModules = PolarisBrandTokens.Kit.pageDark, qrPlate = PolarisBrandTokens.Light.surfaceRaised,
+                qrModules = PolarisBrandTokens.Kit.pageDark, qrPlate = QR_PLATE,
             )
         }
     }
@@ -113,8 +144,19 @@ public class PolarisUiConfig internal constructor(
     public val logo: (@Composable () -> Unit)?,
     public val dark: Boolean,
     public val status: PolarisStatusColors,
-    /** The shape of the kit's buttons and fields: the host's (Material) shape neutral, the brand radius branded. */
+    /** The shape of the kit's buttons: Material's full round in both presets. */
     public val controlShape: Shape?,
+    /** The product accent's text colour (the resolver's `fg`), when an accent is given. */
+    public val accentText: Color? = null,
+    /** The shape of the kit's filled fields: Material's filled-field shape neutral, radius 16 branded. */
+    public val fieldShape: Shape? = null,
+    /** The keyboard and D-pad focus ring (UI-KITS.md §3.3 `focus`): the accent's, else the scheme's primary. */
+    public val focus: Color? = null,
+    /**
+     * The address a person types for a device-code sign-in (`product.deviceCodeUrl`, UI-KITS.md
+     * owner decision Q8), shown instead of the server's verification address when set.
+     */
+    public val deviceCodeUrl: String? = null,
 )
 
 internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null }
@@ -128,10 +170,16 @@ internal val LocalPolarisUi = staticCompositionLocalOf<PolarisUiConfig?> { null 
  *   Off by default, and independent of [branding].
  * @param copy every string the kit renders; the default reads the string resources, so an app's
  *   translations apply.
- * @param logo the product's logo for the top of the kit's screens. Null (the default) shows
- *   nothing neutral and the Pinned K branded.
+ * @param logo the product's icon: the hero of the welcome, beside the product name on focused
+ *   steps, on the update prompt. Null (the default) draws a monogram tile of the product's
+ *   initial (when the copy names the product) in either preset; never a Polaris Key mark.
  * @param darkTheme the branded palette's theme; follows the system. Neutral, the host's
  *   MaterialTheme decides and this only picks the dark or light badge artwork.
+ * @param accent the product's colour. Null (the default) keeps the host's primary neutral and the
+ *   core violet branded; a colour replaces the primary roles in either mode, resolved for
+ *   contrast against the surfaces it sits on (the host's, neutral).
+ * @param deviceCodeUrl the address a person types to sign in with a code (for example
+ *   `driftkart.gg/tv`); null shows the server's verification address.
  */
 @Composable
 public fun PolarisTheme(
@@ -140,12 +188,23 @@ public fun PolarisTheme(
     copy: PolarisCopy = PolarisCopy.localized(),
     logo: (@Composable () -> Unit)? = null,
     darkTheme: Boolean = isSystemInDarkTheme(),
+    accent: Color? = null,
+    deviceCodeUrl: String? = null,
     content: @Composable () -> Unit,
 ) {
     when (branding) {
         PolarisBranding.None -> {
-            val scheme = MaterialTheme.colorScheme
-            val dark = remember(scheme.background) { scheme.background.luminance() < 0.5f }
+            val host = MaterialTheme.colorScheme
+            val dark = remember(host.background) { host.background.luminance() < 0.5f }
+            // The accent is resolved against the host's own grounds, so it keeps 3:1 (fills) and
+            // 4.5:1 (text) on them, not on the brand's.
+            val resolved = remember(accent, dark, host) {
+                accent?.let {
+                    val grounds = listOf(host.background, host.surface, host.surfaceContainerLow, host.surfaceContainerHigh, host.surfaceContainerHighest)
+                    PolarisAccent.resolve(it.toHex(), dark, grounds.map { g -> g.toHex() })
+                }
+            }
+            val scheme = remember(host, resolved) { resolved?.let { host.withAccent(it) } ?: host }
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
@@ -154,20 +213,38 @@ public fun PolarisTheme(
                 dark = dark,
                 status = PolarisStatusColors.from(scheme),
                 controlShape = null,
+                accentText = resolved?.let { colorOf(it.fg) },
+                focus = resolved?.let { colorOf(it.focus) },
+                deviceCodeUrl = deviceCodeUrl,
             )
-            CompositionLocalProvider(LocalPolarisUi provides config, content = content)
+            if (resolved == null) {
+                // Neutral means inherited: no MaterialTheme of the kit's own, dynamic colour and all.
+                CompositionLocalProvider(LocalPolarisUi provides config, content = content)
+            } else {
+                MaterialTheme(colorScheme = scheme, typography = MaterialTheme.typography, shapes = MaterialTheme.shapes) {
+                    CompositionLocalProvider(LocalPolarisUi provides config, content = content)
+                }
+            }
         }
         PolarisBranding.PolarisKey -> {
-            val scheme = remember(darkTheme) { polarisBrandColorScheme(darkTheme) }
+            val resolved = remember(accent, darkTheme) { accent?.let { PolarisAccent.resolve(it.toHex(), darkTheme) } }
+            val scheme = remember(darkTheme, resolved) {
+                polarisBrandColorScheme(darkTheme).let { brand -> resolved?.let { brand.withAccent(it) } ?: brand }
+            }
             val typography = polarisBrandTypography(MaterialTheme.typography)
             val config = PolarisUiConfig(
                 branding = branding,
                 showPoweredBy = showPoweredBy,
                 copy = copy,
-                logo = logo ?: { PolarisMark(contentDescription = copy.polarisKeyMark) },
+                logo = logo,
                 dark = darkTheme,
                 status = PolarisStatusColors.brand(darkTheme),
-                controlShape = RoundedCornerShape(PolarisBrandTokens.Radius.md.dp),
+                // UI-KITS.md §1.4, Android: full-round buttons and radius-16 filled fields.
+                controlShape = CircleShape,
+                accentText = resolved?.let { colorOf(it.fg) },
+                fieldShape = RoundedCornerShape(16.dp),
+                focus = resolved?.let { colorOf(it.focus) } ?: if (darkTheme) PolarisBrandTokens.Dark.focus else PolarisBrandTokens.Light.focus,
+                deviceCodeUrl = deviceCodeUrl,
             )
             MaterialTheme(colorScheme = scheme, typography = typography, shapes = polarisBrandShapes) {
                 CompositionLocalProvider(LocalPolarisUi provides config, content = content)
@@ -175,6 +252,41 @@ public fun PolarisTheme(
         }
     }
 }
+
+/**
+ * [this] scheme with its primary roles from a resolved accent: the fill and its label, the tinted
+ * container (with the scheme's strongest text on it) and the surface tint. The accent's text
+ * colour (`fg`) travels separately, as [PolarisUiConfig.accentText].
+ */
+internal fun ColorScheme.withAccent(accent: PolarisAccent.Resolved): ColorScheme = copy(
+    primary = colorOf(accent.solid),
+    onPrimary = colorOf(labelOn(accent)),
+    primaryContainer = colorOf(accent.subtle),
+    onPrimaryContainer = onSurface,
+    surfaceTint = colorOf(accent.solid),
+)
+
+/** The message card's radius 28. */
+private val MessageCardShape: Shape = RoundedCornerShape(28.dp)
+
+/** The product icon's 28 % squircle (UI-KITS.md §1.4, Android). */
+private val ProductIconShape: Shape = RoundedCornerShape(28)
+
+/**
+ * The label on the accent's fill. On the brand's near-black and near-white grounds the resolver's
+ * `on` always clears 4.5:1; on a host's mid-tone ground (a grey dark theme) the fill may have been
+ * lifted for 3:1 past where white reads, so the kit takes whichever of white and ink reads better.
+ */
+internal fun labelOn(accent: PolarisAccent.Resolved): String {
+    if (PolarisAccent.contrast(accent.on, accent.solid) >= 4.5) return accent.on
+    return listOf(PolarisAccent.WHITE, PolarisAccent.INK).maxBy { PolarisAccent.contrast(it, accent.solid) }
+}
+
+/** A colour as the resolver's lower-case "#rrggbb". */
+internal fun Color.toHex(): String = "#%06x".format(toArgb() and 0xFFFFFF)
+
+/** A resolver "#rrggbb" as an opaque colour. */
+internal fun colorOf(hex: String): Color = Color(("ff" + hex.removePrefix("#")).toLong(16))
 
 /** Reads the kit's resolved theme. */
 public object PolarisTheme {
@@ -191,15 +303,40 @@ public object PolarisTheme {
         @Composable @ReadOnlyComposable
         get() = current.status
 
-    /** The shape of the kit's buttons. */
+    /** The shape of the kit's buttons: full round (Material's default neutral). */
     public val buttonShape: Shape
         @Composable
         get() = current.controlShape ?: ButtonDefaults.shape
 
-    /** The shape of the kit's text fields. */
+    /** The shape of the kit's filled text fields: Material's filled-field shape neutral, radius 16 branded. */
     public val fieldShape: Shape
+        @Composable
+        get() = current.fieldShape ?: TextFieldDefaults.shape
+
+    /** The product icon's shape: a 28 % squircle (the monogram tile, a host icon). */
+    public val iconShape: Shape
         @Composable @ReadOnlyComposable
-        get() = current.controlShape ?: MaterialTheme.shapes.extraSmall
+        get() = ProductIconShape
+
+    /** A message screen's card on a wide window or TV: radius 28 (UI-KITS.md §1.4, Android sheets). */
+    public val cardShape: Shape
+        @Composable @ReadOnlyComposable
+        get() = MessageCardShape
+
+    /** The keyboard and D-pad focus ring's colour. */
+    public val focusColor: Color
+        @Composable @ReadOnlyComposable
+        get() = current.focus ?: MaterialTheme.colorScheme.primary
+
+    /** The colour of accent text (text buttons, outlined labels): the product accent's `fg` when given. */
+    public val accentText: Color
+        @Composable @ReadOnlyComposable
+        get() = current.accentText ?: MaterialTheme.colorScheme.primary
+
+    /** The kit mono for user codes and keys: JetBrains Mono branded, the platform monospace neutral. */
+    public val monoFamily: FontFamily
+        @Composable @ReadOnlyComposable
+        get() = if (current.branding == PolarisBranding.PolarisKey) PolarisKitMono else FontFamily.Monospace
 
     /**
      * The accent for a section indicator (an entitlement badge, the update glyph, a pack progress

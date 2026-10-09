@@ -646,6 +646,11 @@ msgstr "サインインコードを取得しています…"
 msgid "signInHandoff.scan"
 msgstr "スマートフォンでコードをスキャンするか、{url}にアクセスしてこのコードを入力してください。"
 
+#. Scan the QR code with your phone, or enter this code at the address below.
+#. SignInHandoff on a TV: the QR code sits beside it and the web address follows on its own line, so the sentence does not repeat it.
+msgid "signInHandoff.scanTv"
+msgstr "スマートフォンでQRコードを読み取るか、下のアドレスでこのコードを入力してください。"
+
 #. Link copied
 #. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
 msgid "signInHandoff.linkCopied"
@@ -873,6 +878,11 @@ msgstr "ブラウザで開く"
 msgid "deviceLimit.scan"
 msgstr "コードをスキャンして、スマートフォンでデバイスを置き換えてください。"
 
+#. Sign out of {product} on another device, then try again.
+#. DeviceLimit on the key path when the server sent no link to replace a device: the license is on all its devices, so the fix is to free one first. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "deviceLimit.noManage"
+msgstr "別のデバイスで{product}からサインアウトしてから、もう一度お試しください。"
+
 #. Your devices
 #. Devices: the list of devices using the license.
 msgid "devices.title"
@@ -924,6 +934,21 @@ msgstr "{device}を削除しますか？{product}からサインアウトされ�
 #. Devices: the list of devices using the license.
 msgid "devices.empty"
 msgstr "このライセンスを使用しているデバイスはまだありません。"
+
+#. Couldn't load your devices.
+#. Devices: the list of devices using the license. The list could not be read; a Try again button follows.
+msgid "devices.loadFailed"
+msgstr "デバイスを読み込めませんでした。"
+
+#. Couldn't rename {device}. Try again.
+#. Devices: the list of devices using the license. A rename was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.renameFailed"
+msgstr "{device}の名前を変更できませんでした。もう一度お試しください。"
+
+#. Couldn't remove {device}. Try again.
+#. Devices: the list of devices using the license. A removal was refused. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "devices.removeFailed"
+msgstr "{device}を削除できませんでした。もう一度お試しください。"
 
 #. Manage your devices in your browser.
 #. Devices: the list of devices using the license. Browser mode.
@@ -1240,6 +1265,16 @@ msgstr "リリースノートを読み込めませんでした。"
 msgid "status.renew"
 msgstr "更新"
 
+#. Use another license
+#. StatusScreen: a blocking state and its fix. Expired license: back to the license key field (and Sign in) to use a different license.
+msgid "status.useAnotherLicense"
+msgstr "別のライセンスを使う"
+
+#. macos: Use Another License
+msgctxt "macos"
+msgid "status.useAnotherLicense"
+msgstr "別のライセンスを使う"
+
 #. Update
 #. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old.
 msgid "status.update"
@@ -1436,6 +1471,11 @@ msgstr "未保存の変更"
 #. Settings: settings delivered by the developer.
 msgid "settings.error"
 msgstr "設定を保存できませんでした。もう一度お試しください。"
+
+#. Settings couldn't be loaded.
+#. Settings: settings delivered by the developer. The settings could not be read; a Try again button follows.
+msgid "settings.loadFailed"
+msgstr "設定を読み込めませんでした。"
 
 #. Between {min} and {max}
 #. Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version.

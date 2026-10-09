@@ -1,47 +1,77 @@
-// Sign-in with a QR code: the RFC 8628 device-code flow the identity service runs. The screen
-// shows the verification page, the user code (large, and spelled out for TalkBack), a QR code of
-// the pre-filled page for a phone camera, and a countdown to the code's expiry; the SDK polls in
-// the background (IdentityClient.waitForSignIn) and the state moves to Done, Expired or Failed.
+// Sign-in with a code: the RFC 8628 device-code flow the identity service runs. The code view
+// (UI-KITS.md §4.3, SignInHandoff) shows the product header, "Sign in with a code", the lede with
+// the address set inline, the user code at hero size (spelled out for TalkBack, with a copy
+// button for the pre-filled link), and a countdown; the SDK polls in the background
+// (IdentityClient.waitForSignIn) and the state moves to Done, Expired or Failed.
 //
-// The QR code is encoded by ZXing's core library (pure Java, no camera) and drawn on a plate of
-// its own: always dark modules on a light ground with a four-module quiet zone, in both themes,
-// so every scanner reads it.
+// On Android TV the person signs in on another device: the screen leads with a QR code of the
+// pre-filled page and has no "Open sign-in page" (a TV may have no browser), and D-pad focus starts
+// on the first real control. Every browser opener is guarded: when none can open the page the
+// screen stays put and says so, with the code and the copy button still there.
+//
+// The QR code is encoded by ZXing's core library (pure Java, no camera) and drawn on a 92 % white
+// tile with an 8 dp quiet zone, in both themes, so every scanner reads it.
 
 package im.plrs.key.ui
 
+import android.content.ClipData
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.material.icons.materialIcon
+import androidx.compose.material.icons.materialPath
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.viewModelScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
@@ -54,11 +84,11 @@ import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.net.URI
@@ -100,7 +130,13 @@ public fun PolarisKeyClient.signInActions(deviceName: String? = null): PolarisSi
     }
 }
 
-/** The sign-in state holder: [start] asks for a code, shows it, and waits for the player. */
+/**
+ * The sign-in state holder: [start] asks for a code, shows it, and waits for the player.
+ *
+ * Hold it where it outlives the screen (a ViewModel, with `viewModelScope`), so a rotation or a
+ * trip through navigation keeps the same code: when the screen comes back, [start] resumes polling
+ * that code instead of asking for a new one.
+ */
 public class PolarisSignInState(
     private val actions: PolarisSignInActions,
     private val scope: CoroutineScope,
@@ -112,12 +148,58 @@ public class PolarisSignInState(
     public val ui: StateFlow<PolarisSignInUi> = _ui.asStateFlow()
     private var job: Job? = null
 
-    /** Start (or restart) the flow. */
+    /** The code being followed, so a re-shown screen polls it again. */
+    private var prompt: SignInPrompt? = null
+
+    /** The countdown ran out on screen while the poll still ran: a late success still completes. */
+    private var expiredOnScreen = false
+
+    /**
+     * Start the flow, once. The first call asks for a code; a call after the screen left
+     * composition resumes polling the same code (same device code and interval) and the countdown
+     * from its expiry. While the flow runs, or after it ended, it does nothing: [restart] asks for
+     * a new code.
+     */
     public fun start() {
+        if (job?.isActive == true) return
+        val shown = prompt
+        val now = _ui.value
+        val ended = !expiredOnScreen && (now == PolarisSignInUi.Done || now == PolarisSignInUi.Expired || now == PolarisSignInUi.Failed)
+        when {
+            // A finished flow (done, expired, failed) starts over: a new sign-in asks for a new code.
+            _ui.value == PolarisSignInUi.Starting || ended -> begin()
+            shown != null && (_ui.value is PolarisSignInUi.Showing || expiredOnScreen) -> job = scope.launch { follow(shown) }
+        }
+    }
+
+    /** Drop the current code and ask for a new one ("Get a new code", "Try again"). */
+    public fun restart() {
         job?.cancel()
+        prompt = null
+        expiredOnScreen = false
+        begin()
+    }
+
+    /** Stop polling: the player cancelled. */
+    public fun cancel() {
+        job?.cancel()
+        job = null
+        prompt = null
+        expiredOnScreen = false
+        // Back to the start, so the next start() asks for a fresh code (never the old frozen one).
+        _ui.value = PolarisSignInUi.Starting
+    }
+
+    /** Stop polling while the screen is away; [start] resumes the same code. Never changes [ui]. */
+    public fun pause() {
+        job?.cancel()
+        job = null
+    }
+
+    private fun begin() {
         _ui.value = PolarisSignInUi.Starting
         job = scope.launch {
-            val prompt = try {
+            val shown = try {
                 actions.begin()
             } catch (e: CancellationException) {
                 throw e
@@ -125,53 +207,147 @@ public class PolarisSignInState(
                 _ui.value = PolarisSignInUi.Failed
                 return@launch
             }
-            _ui.value = PolarisSignInUi.Showing(prompt, clock())
-            val ticker = launch {
-                while (isActive) {
-                    delay(1_000)
-                    _ui.update { if (it is PolarisSignInUi.Showing) it.copy(nowSeconds = clock()) else it }
-                }
-            }
-            val result = try {
-                actions.wait(prompt)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                SignInResult.Error(e.message ?: "")
-            }
-            ticker.cancel()
-            _ui.value = when (result) {
-                SignInResult.Ready -> PolarisSignInUi.Done
-                SignInResult.Expired -> PolarisSignInUi.Expired
-                is SignInResult.Error -> PolarisSignInUi.Failed
-            }
-            if (result == SignInResult.Ready) onSignedIn()
+            prompt = shown
+            _ui.value = PolarisSignInUi.Showing(shown, clock())
+            follow(shown)
         }
     }
 
-    /** Stop polling (the screen was dismissed). */
-    public fun cancel() {
-        job?.cancel()
-        job = null
+    /** The countdown and the poll for [shown]; the code expiring on screen leaves the poll running. */
+    private suspend fun follow(shown: SignInPrompt): Unit = coroutineScope {
+        fun tick() {
+            val now = clock()
+            val current = _ui.value
+            if (current !is PolarisSignInUi.Showing) return
+            if (shown.expiresAt - now <= 0) {
+                expiredOnScreen = true
+                _ui.value = PolarisSignInUi.Expired
+            } else {
+                _ui.value = current.copy(nowSeconds = now)
+            }
+        }
+        tick()
+        val ticker = launch {
+            while (isActive) {
+                delay(1_000)
+                tick()
+            }
+        }
+        val result = try {
+            actions.wait(shown)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            SignInResult.Error(e.message ?: "")
+        }
+        ticker.cancel()
+        prompt = null
+        expiredOnScreen = false
+        _ui.value = when (result) {
+            SignInResult.Ready -> PolarisSignInUi.Done
+            SignInResult.Expired -> PolarisSignInUi.Expired
+            is SignInResult.Error -> PolarisSignInUi.Failed
+        }
+        if (result == SignInResult.Ready) onSignedIn()
     }
+}
+
+/**
+ * The sign-in state kept by the Activity's ViewModel store, so a rotation keeps the same code (a new
+ * one would kill the code the person is typing on their phone) and finishing the Activity releases
+ * it. One per Activity; it follows the client it was made for and starts over for a different one.
+ */
+internal class PolarisSignInViewModel : androidx.lifecycle.ViewModel() {
+    private var owner: Any? = null
+    var state: PolarisSignInState? = null
+        private set
+
+    /** The composition's "signed in" reaction; null while no screen is attached, so nothing stale runs. */
+    @Volatile
+    var onSignedIn: (() -> Unit)? = null
+
+    /** The state for [client]: the held one, or a fresh one for a new client. */
+    fun stateFor(client: Any, actions: PolarisSignInActions): PolarisSignInState {
+        val held = state
+        if (held != null && owner === client) return held
+        held?.cancel()
+        owner = client
+        return PolarisSignInState(actions, viewModelScope, onSignedIn = { onSignedIn?.invoke() }).also { state = it }
+    }
+
+    override fun onCleared() {
+        state?.cancel()
+        state = null
+        owner = null
+        onSignedIn = null
+    }
+}
+
+/** The ViewModelStoreOwner behind [this] context (the Activity), or null. */
+private tailrec fun android.content.Context.storeOwner(): androidx.lifecycle.ViewModelStoreOwner? = when (this) {
+    is androidx.lifecycle.ViewModelStoreOwner -> this
+    is android.content.ContextWrapper -> baseContext.storeOwner()
+    else -> null
+}
+
+/**
+ * The sign-in state for [key] (the client), held by the Activity's ViewModel store (see
+ * [PolarisSignInViewModel]); [onSignedIn] runs while this composition is attached.
+ */
+@Composable
+internal fun rememberHeldSignIn(key: Any, actions: PolarisSignInActions, onSignedIn: () -> Unit): PolarisSignInState {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val owner = remember(context) { context.storeOwner() }
+    val vm = remember(owner) {
+        owner?.let { androidx.lifecycle.ViewModelProvider(it)["polaris-key-sign-in", PolarisSignInViewModel::class.java] }
+            ?: PolarisSignInViewModel()
+    }
+    val latest by androidx.compose.runtime.rememberUpdatedState(onSignedIn)
+    DisposableEffect(vm) {
+        vm.onSignedIn = { latest() }
+        onDispose { vm.onSignedIn = null }
+    }
+    return remember(vm, key) { vm.stateFor(key, actions) }
 }
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────
 
-/** The sign-in screen over its state holder. Starts the flow when first shown. */
+/**
+ * The sign-in screen over its state holder. Starts the flow when shown, and resumes the same code
+ * when it comes back after a rotation or navigation.
+ *
+ * @param onUseKey offered on Android TV as "Use a license key instead"; null hides it.
+ */
 @Composable
-public fun PolarisSignIn(state: PolarisSignInState, modifier: Modifier = Modifier, onCancel: () -> Unit = {}) {
-    val ui by state.ui.collectAsState()
-    androidx.compose.runtime.LaunchedEffect(state) { if (state.ui.value == PolarisSignInUi.Starting) state.start() }
-    androidx.compose.runtime.DisposableEffect(state) { onDispose { state.cancel() } }
+public fun PolarisSignIn(
+    state: PolarisSignInState,
+    modifier: Modifier = Modifier,
+    onCancel: () -> Unit = {},
+    onUseKey: (() -> Unit)? = null,
+) {
+    val live by state.ui.collectAsState()
+    // After Cancel the state resets to Starting at once; the screen keeps showing what it showed
+    // while it fades out, so "Getting a sign-in code…" never flashes.
+    var leaving by remember { mutableStateOf<PolarisSignInUi?>(null) }
+    val ui = leaving ?: live
+    LaunchedEffect(state) { state.start() }
+    DisposableEffect(state) { onDispose { state.pause() } }
     PolarisSignInScreen(
         ui = ui,
         modifier = modifier,
         onCancel = {
+            leaving = live
             state.cancel()
             onCancel()
         },
-        onRestart = state::start,
+        onRestart = state::restart,
+        onUseKey = onUseKey?.let { useKey ->
+            {
+                leaving = live
+                state.cancel()
+                useKey()
+            }
+        },
     )
 }
 
@@ -179,7 +355,11 @@ public fun PolarisSignIn(state: PolarisSignInState, modifier: Modifier = Modifie
  * The stateless sign-in screen.
  *
  * @param onOpenBrowser opens the pre-filled verification page; the default opens it with the
- *   platform's URI handler (a browser on the same device).
+ *   platform's URI handler. Either way a failure (no browser) keeps the screen and says so.
+ * @param showQr the TV layout: the QR code leads and "Open sign-in page" is not offered. The
+ *   default is true on Android TV only.
+ * @param onCopyLink copies the pre-filled verification link; the default puts it on the clipboard.
+ * @param onUseKey offered on TV as "Use a license key instead"; null hides it.
  */
 @Composable
 public fun PolarisSignInScreen(
@@ -188,75 +368,200 @@ public fun PolarisSignInScreen(
     onOpenBrowser: ((String) -> Unit)? = null,
     onCancel: () -> Unit = {},
     onRestart: () -> Unit = {},
+    showQr: Boolean = isTelevision(),
+    onCopyLink: ((String) -> Unit)? = null,
+    onUseKey: (() -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     when (ui) {
-        PolarisSignInUi.Starting -> PolarisScreen(modifier = modifier) {
-            PolarisTitle(copy.signInTitle)
-            Spacer(Modifier.height(32.dp))
-            PolarisProgress(copy.signInStarting)
-            Spacer(Modifier.height(32.dp))
-            PolarisTextButton(copy.cancel, onCancel)
-        }
-        is PolarisSignInUi.Showing -> {
-            val uriHandler = LocalUriHandler.current
-            val open = onOpenBrowser ?: { uri: String -> uriHandler.openUri(uri) }
-            PolarisScreen(modifier = modifier) {
-                PolarisTitle(copy.signInTitle)
-                Spacer(Modifier.height(8.dp))
-                PolarisBody(copy.format(copy.signInInstructions, displayHost(ui.prompt.verificationUri)))
-                Spacer(Modifier.height(24.dp))
-                PolarisQrCode(
-                    content = ui.prompt.verificationUriComplete,
-                    contentDescription = copy.signInQrDescription,
-                    modifier = Modifier.widthIn(max = 240.dp).fillMaxWidth(0.72f),
-                )
-                Spacer(Modifier.height(24.dp))
-                PolarisUserCode(ui.prompt.userCode)
-                Spacer(Modifier.height(20.dp))
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LinearProgressIndicator(
-                        progress = { ui.fractionLeft },
-                        modifier = Modifier.fillMaxWidth(0.6f),
-                        drawStopIndicator = {},
-                    )
-                    Text(
-                        text = copy.format(copy.signInExpiresIn, countdown(ui.secondsLeft)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                    // PX-W13: the label the sign-in page will show (the Worker's echo), so the
-                    // player can check the page belongs to this device.
-                    ui.prompt.deviceName?.let { label ->
-                        Text(
-                            text = copy.format(copy.signInDeviceLabel, label),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
-                Spacer(Modifier.height(28.dp))
-                PolarisPrimaryButton(copy.signInOpenBrowser, onClick = { open(ui.prompt.verificationUriComplete) })
-                Spacer(Modifier.height(8.dp))
-                PolarisTextButton(copy.cancel, onCancel)
-            }
-        }
-        PolarisSignInUi.Done -> PolarisScreen(modifier = modifier) {
+        PolarisSignInUi.Starting -> PolarisMessageLayout(
+            modifier = modifier,
+            emblem = { PolarisWaitIndicator() },
+            title = copy.signInStarting,
+            body = null,
+            titleStyle = { MaterialTheme.typography.titleMedium },
+            actions = { PolarisTextButton(copy.cancel, onCancel, initialFocus = true) },
+        )
+        is PolarisSignInUi.Showing -> PolarisCodeView(ui, modifier, onOpenBrowser, onCancel, showQr, onCopyLink, onUseKey)
+        PolarisSignInUi.Done -> PolarisScreen(modifier = modifier, showLogo = false) {
             PolarisTitle(copy.signInDone, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
-        PolarisSignInUi.Expired, PolarisSignInUi.Failed -> PolarisMessageScreen(
-            message = PolarisMessageCopy(
-                title = copy.signInTitle,
-                body = if (ui == PolarisSignInUi.Expired) copy.signInExpired else copy.signInError,
-                kind = if (ui == PolarisSignInUi.Expired) PolarisMessageKind.Info else PolarisMessageKind.Danger,
-            ),
-            modifier = modifier,
-        ) {
-            PolarisPrimaryButton(copy.signInNewCode, onRestart)
+        PolarisSignInUi.Expired -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_EXPIRED, PolarisMessageKind.Info), modifier) {
+            PolarisPrimaryButton(copy.signInNewCode, onRestart, initialFocus = true)
             PolarisTextButton(copy.cancel, onCancel)
         }
+        PolarisSignInUi.Failed -> PolarisMessageScreen(copy.coreMessage(SIGN_IN_FAILED, PolarisMessageKind.Danger), modifier) {
+            PolarisPrimaryButton(copy.retry, onRestart, initialFocus = true)
+            PolarisTextButton(copy.cancel, onCancel)
+        }
+    }
+}
+
+/** core.copy's codes for the sign-in stops. */
+internal const val SIGN_IN_EXPIRED: String = "sign-in-expired"
+internal const val SIGN_IN_FAILED: String = "sign-in-failed"
+
+/** The code view: content (and on TV the code) on the start side, the code or QR and the controls after. */
+@Composable
+private fun PolarisCodeView(
+    ui: PolarisSignInUi.Showing,
+    modifier: Modifier,
+    onOpenBrowser: ((String) -> Unit)?,
+    onCancel: () -> Unit,
+    showQr: Boolean,
+    onCopyLink: ((String) -> Unit)?,
+    onUseKey: (() -> Unit)?,
+) {
+    val copy = PolarisTheme.copy
+    val theme = PolarisTheme.current
+    val uriHandler = LocalUriHandler.current
+    val link = ui.prompt.verificationUriComplete
+    val address = theme.deviceCodeUrl?.let(::displayHost) ?: displayHost(ui.prompt.verificationUri)
+    var noBrowser by rememberSaveable(link) { mutableStateOf(false) }
+    // The link comes from the server: only a plain https link is opened, shown as a QR or copied.
+    val linkOk = isSafeSignInLink(link)
+    val clipboard = LocalClipboard.current
+    val clipScope = rememberCoroutineScope()
+    val copyLink: () -> Unit = copyLink@{
+        // Only a validated link is ever copied.
+        if (!linkOk) return@copyLink
+        if (onCopyLink != null) onCopyLink(link)
+        else clipScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, link))) }
+    }
+    val open: () -> Unit = {
+        val opened = linkOk && runCatching { (onOpenBrowser ?: uriHandler::openUri)(link) }.isSuccess
+        noBrowser = !opened
+    }
+    // TalkBack hears the code once, spelled out, when it first appears.
+    val view = LocalView.current
+    val spoken = copy.format(copy.signInCodeDescription, spelled(ui.prompt.userCode))
+    LaunchedEffect(ui.prompt.userCode) {
+        @Suppress("DEPRECATION") // the one-off announcement API; a live region would repeat on every tick
+        view.announceForAccessibility(spoken)
+    }
+    val countdown: @Composable () -> Unit = {
+        Spacer(Modifier.height(PolarisSpace.controls))
+        PolarisCountdown(ui.fractionLeft, copy.format(copy.signInExpiresIn, countdown(ui.secondsLeft)))
+    }
+    val deviceLine: @Composable () -> Unit = {
+        // PX-W13: the label the sign-in page will show (the Worker's echo), so the player can
+        // check the page belongs to this device.
+        ui.prompt.deviceName?.let { label ->
+            Spacer(Modifier.height(PolarisSpace.controls))
+            Text(
+                text = copy.format(copy.signInDeviceLabel, label),
+                style = MaterialTheme.typography.bodyMedium.copy(lineBreak = LineBreak.Paragraph),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+    PolarisScaffold(
+        modifier = modifier,
+        anchor = PolarisAnchor.Top,
+        contentAlign = TextAlign.Start,
+        content = {
+            PolarisProductHeader()
+            PolarisTitle(copy.signInTitle)
+            Spacer(Modifier.height(PolarisSpace.tight))
+            if (showQr) {
+                // The address follows on its own line, so the instruction does not repeat it.
+                PolarisBody(copy.signInInstructions)
+                Spacer(Modifier.height(PolarisSpace.controls))
+                // The address on its own line, large enough to read from the sofa.
+                Text(
+                    text = unbroken(address),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(polarisWindow.section))
+                PolarisUserCode(ui.prompt.userCode, Modifier.fillMaxWidth())
+                countdown()
+            } else {
+                PolarisLede(copy.signInCodeBody, address)
+            }
+        },
+        detail = {
+            if (showQr) {
+                if (linkOk) PolarisQrCode(link, copy.signInQrDescription, Modifier.size(polarisWindow.qrSize))
+                deviceLine()
+            } else {
+                PolarisUserCode(ui.prompt.userCode, Modifier.fillMaxWidth(), onCopy = if (linkOk) link to onCopyLink else null)
+                countdown()
+                deviceLine()
+            }
+        },
+        actions = {
+            if (noBrowser || !linkOk) {
+                PolarisInlineNotice(copy.signInNoBrowser)
+                Spacer(Modifier.height(PolarisSpace.controls))
+            }
+            if (showQr) {
+                // A TV may have no browser, so the QR leads and the first control is a real one.
+                if (onUseKey != null) {
+                    PolarisSecondaryButton(copy.signInUseKey, onUseKey, initialFocus = true)
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                }
+                PolarisTextButton(copy.cancel, onCancel, initialFocus = onUseKey == null)
+            } else {
+                // After a failed open, Copy link leads (and takes focus) and the opener steps down to tonal.
+                if (noBrowser && linkOk) {
+                    PolarisPrimaryButton(copy.signInCopyLink, onClick = copyLink, initialFocus = true)
+                    Spacer(Modifier.height(PolarisSpace.controls))
+                    PolarisSecondaryButton(copy.signInOpenBrowser, onClick = open)
+                } else {
+                    PolarisPrimaryButton(copy.signInOpenBrowser, onClick = open, initialFocus = true)
+                }
+                Spacer(Modifier.height(PolarisSpace.controls))
+                PolarisTextButton(copy.cancel, onCancel)
+            }
+        },
+    )
+}
+
+/** The longest link the screen opens or encodes (a QR code holds more, but nothing legitimate is longer). */
+internal const val MAX_SIGN_IN_LINK: Int = 2048
+
+/** An https link of at most [MAX_SIGN_IN_LINK] characters with a host and no userinfo: the only kind the sign-in screen opens, encodes or copies. */
+internal fun isSafeSignInLink(raw: String): Boolean = try {
+    val u = URI(raw)
+    raw.length <= MAX_SIGN_IN_LINK && u.scheme.equals("https", ignoreCase = true) && !u.host.isNullOrEmpty() && u.userInfo == null
+} catch (e: Exception) {
+    false
+}
+
+/** A lede template (`%1$s` for the address) with the address set inline at 600 weight, unbroken. */
+@Composable
+internal fun PolarisLede(template: String, address: String) {
+    val strong = SpanStyle(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    val text: AnnotatedString = buildAnnotatedString {
+        val at = template.indexOf("%1\$s")
+        if (at < 0) {
+            append(template)
+        } else {
+            append(template.substring(0, at))
+            withStyle(strong) { append(unbroken(address)) }
+            append(template.substring(at + 4))
+        }
+    }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyLarge.copy(lineBreak = LineBreak.Paragraph),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = LocalPolarisTextAlign.current,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/**
+ * [address] with a word joiner between its characters, except after a slash: a line may break
+ * only after a '/', never inside the host or a path segment.
+ */
+internal fun unbroken(address: String): String = buildString {
+    address.forEachIndexed { i, c ->
+        append(c)
+        if (i < address.lastIndex && c != '/') append('\u2060')
     }
 }
 
@@ -269,27 +574,176 @@ internal fun displayHost(uri: String): String = try {
     uri
 }
 
-/** The user code in a large monospace, spelled out character by character for TalkBack. */
+/** A code spelled out for TalkBack: one character at a time, the hyphen as a pause. */
+internal fun spelled(code: String): String = code.toCharArray().joinToString(" ") { if (it == '-') "," else it.toString() }
+
+/**
+ * The user code at hero size in the kit mono, spelled out character by character for TalkBack.
+ *
+ * Two groups of four joined by a hyphen, exactly as the page asks for it, with no letter spacing
+ * (UI-KITS.md §4.3: no spaced-out letters). It sits on a borderless plate so it reads as output,
+ * not as a field, grows with the window (up to 56 sp from 1280 dp wide), and shrinks to fit rather
+ * than wrap at a large font scale. With [onCopy] (the link and an optional copier) a ghost copy
+ * button sits at the plate's inline end.
+ */
 @Composable
 public fun PolarisUserCode(code: String, modifier: Modifier = Modifier) {
+    PolarisUserCode(code, modifier, onCopy = null)
+}
+
+@Composable
+internal fun PolarisUserCode(code: String, modifier: Modifier, onCopy: Pair<String, ((String) -> Unit)?>?) {
     val copy = PolarisTheme.copy
-    val spelled = code.toCharArray().joinToString(" ") { if (it == '-') "," else it.toString() }
+    val window = polarisWindow
+    val size = when {
+        window.width >= 1280.dp && !window.compactHeight -> 56.sp
+        window.wide || window.tv -> 40.sp
+        window.compactHeight -> 32.sp
+        else -> 36.sp
+    }
+    val color = MaterialTheme.colorScheme.onSurface
     Surface(
-        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = copy.format(copy.signInCodeDescription, spelled) },
-        shape = MaterialTheme.shapes.medium,
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        contentColor = MaterialTheme.colorScheme.onSurface,
+        contentColor = color,
     ) {
-        Text(
-            text = code,
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 4.sp,
-            ),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+        Row(
+            Modifier.padding(start = 20.dp, end = if (onCopy != null) 4.dp else 20.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(
+                text = code,
+                style = TextStyle(
+                    fontFamily = PolarisTheme.monoFamily,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = size,
+                    lineHeight = size * 1.25f,
+                    letterSpacing = 0.sp,
+                    textAlign = TextAlign.Start,
+                ),
+                color = { color },
+                maxLines = 1,
+                softWrap = false,
+                autoSize = TextAutoSize.StepBased(minFontSize = 16.sp, maxFontSize = size, stepSize = 1.sp),
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { contentDescription = copy.format(copy.signInCodeDescription, spelled(code)) },
+            )
+            if (onCopy != null) PolarisCopyLinkButton(onCopy.first, onCopy.second)
+        }
+    }
+}
+
+/**
+ * The ghost copy button: it puts the pre-filled [link] on the clipboard (for a person who signs in
+ * on another device they can paste to), and its label turns to "Link copied" for two seconds.
+ */
+@Composable
+internal fun PolarisCopyLinkButton(link: String, onCopyLink: ((String) -> Unit)?) {
+    val copy = PolarisTheme.copy
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    var copied by remember { mutableStateOf(false) }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(2_000)
+            copied = false
+        }
+    }
+    val interaction = remember { MutableInteractionSource() }
+    IconButton(
+        onClick = {
+            if (onCopyLink != null) {
+                onCopyLink(link)
+            } else {
+                scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(copy.signInCopyLink, link))) }
+            }
+            copied = true
+        },
+        interactionSource = interaction,
+        modifier = Modifier
+            .polarisFocusIndication(interaction, PolarisTheme.buttonShape)
+            .size(PolarisMinTouchTarget)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Icon(
+            imageVector = if (copied) PolarisCheckIcon else PolarisCopyIcon,
+            contentDescription = if (copied) copy.signInLinkCopied else copy.signInCopyLink,
+            tint = PolarisTheme.accentText,
+            modifier = Modifier.size(20.dp),
         )
+    }
+}
+
+/**
+ * The code's countdown (UI-KITS.md §1.5 rule 4): a 20 dp determinate ring, 2 dp stroke, in the
+ * accent, draining linearly, beside the time left in tabular figures.
+ */
+@Composable
+internal fun PolarisCountdown(fraction: Float, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(
+            progress = { fraction },
+            modifier = Modifier.size(20.dp),
+            strokeWidth = 2.dp,
+            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            gapSize = 0.dp,
+        )
+        Spacer(Modifier.width(PolarisSpace.tight))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Material's "content copy" glyph, drawn by the kit (the legacy icon set is not used). */
+internal val PolarisCopyIcon: ImageVector by lazy {
+    materialIcon(name = "Polaris.ContentCopy") {
+        materialPath {
+            moveTo(16.0f, 1.0f)
+            lineTo(4.0f, 1.0f)
+            curveToRelative(-1.1f, 0.0f, -2.0f, 0.9f, -2.0f, 2.0f)
+            verticalLineToRelative(14.0f)
+            horizontalLineToRelative(2.0f)
+            lineTo(4.0f, 3.0f)
+            horizontalLineToRelative(12.0f)
+            lineTo(16.0f, 1.0f)
+            close()
+            moveTo(19.0f, 5.0f)
+            lineTo(8.0f, 5.0f)
+            curveToRelative(-1.1f, 0.0f, -2.0f, 0.9f, -2.0f, 2.0f)
+            verticalLineToRelative(14.0f)
+            curveToRelative(0.0f, 1.1f, 0.9f, 2.0f, 2.0f, 2.0f)
+            horizontalLineToRelative(11.0f)
+            curveToRelative(1.1f, 0.0f, 2.0f, -0.9f, 2.0f, -2.0f)
+            lineTo(21.0f, 7.0f)
+            curveToRelative(0.0f, -1.1f, -0.9f, -2.0f, -2.0f, -2.0f)
+            close()
+            moveTo(19.0f, 21.0f)
+            lineTo(8.0f, 21.0f)
+            lineTo(8.0f, 7.0f)
+            horizontalLineToRelative(11.0f)
+            verticalLineToRelative(14.0f)
+            close()
+        }
+    }
+}
+
+/** Material's "check" glyph, drawn by the kit: the copy button's "Link copied" state. */
+internal val PolarisCheckIcon: ImageVector by lazy {
+    materialIcon(name = "Polaris.Check") {
+        materialPath {
+            moveTo(9.0f, 16.17f)
+            lineTo(4.83f, 12.0f)
+            lineToRelative(-1.42f, 1.41f)
+            lineTo(9.0f, 19.0f)
+            lineTo(21.0f, 7.0f)
+            lineToRelative(-1.41f, -1.41f)
+            close()
+        }
     }
 }
 
@@ -300,32 +754,35 @@ public fun qrModules(content: String): Array<BooleanArray> {
     return Array(matrix.height) { y -> BooleanArray(matrix.width) { x -> matrix[x, y] } }
 }
 
-/** A QR code of [content] on its own light plate with a four-module quiet zone. */
+/**
+ * A QR code of [content] on its own tile: 92 % white with an 8 dp quiet zone (UI-KITS.md §4.3),
+ * dark modules, in both themes. Size it with the kit's one QR size (the window's `qrSize`).
+ */
 @Composable
 public fun PolarisQrCode(content: String, contentDescription: String, modifier: Modifier = Modifier) {
-    val modules = remember(content) { qrModules(content) }
+    // A link the encoder refuses draws no code (the screen still has the code and Copy link).
+    val modules = remember(content) { runCatching { qrModules(content) }.getOrNull() } ?: return
     val status = PolarisTheme.status
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .clip(MaterialTheme.shapes.small)
+            .background(status.qrPlate)
+            .padding(8.dp)
             .semantics {
                 this.contentDescription = contentDescription
                 role = Role.Image
             },
     ) {
         Canvas(Modifier.matchParentSize()) {
-            val quiet = 4
-            val count = modules.size + quiet * 2
-            val cell = size.minDimension / count
-            drawRect(color = status.qrPlate, size = Size(cell * count, cell * count))
+            val cell = size.minDimension / modules.size
             for (y in modules.indices) {
                 val row = modules[y]
                 for (x in row.indices) {
                     if (!row[x]) continue
                     drawRect(
                         color = status.qrModules,
-                        topLeft = Offset((x + quiet) * cell, (y + quiet) * cell),
+                        topLeft = Offset(x * cell, y * cell),
                         // A hair of overlap so neighbouring modules never show a seam.
                         size = Size(cell + 0.5f, cell + 0.5f),
                     )

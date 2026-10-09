@@ -8,6 +8,7 @@
 package im.plrs.key.ui
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -126,7 +127,8 @@ class BrandingTest {
             kitScreens.first { it.first == "gate-activation" }.second()
         }
         assertEquals(PolarisRubik, body)
-        assertEquals("the Pinned K is the branded logo", 1, marks())
+        // UI-KITS.md §1.2, §1.6: the product is the hero; no Polaris Key mark on a kit screen.
+        assertEquals("no Pinned K stands in for the product", 0, marks())
         assertEquals("the badge stays off with branding on", 0, badges())
         val core = PolarisBrandTokens.accent("core", dark = true).solid.toArgb()
         assertTrue("the primary button wears the core violet", core in pixels())
@@ -143,7 +145,51 @@ class BrandingTest {
         rule.runOnIdle { branding = PolarisBranding.PolarisKey }
         rule.waitForIdle()
         assertEquals(1, badges())
-        assertEquals(1, marks())
+        assertEquals("the Pinned K lives only inside the badge", 0, marks())
+    }
+
+    /** Neutral is the native preset: the host's scheme reaches the kit untouched, dynamic colour included. */
+    @Test
+    fun neutralInheritsDynamicColour() {
+        val dynamic = dynamicLightColorScheme(rule.activity)
+        var inside: androidx.compose.material3.ColorScheme? = null
+        rule.setContent {
+            MaterialTheme(colorScheme = dynamic) {
+                PolarisTheme(copy = sampleCopy) {
+                    inside = MaterialTheme.colorScheme
+                    screen()
+                }
+            }
+        }
+        show(kitScreens.first { it.first == "gate-activation" }.second)
+        assertTrue("the kit sees the host's own scheme object", inside === dynamic)
+        assertTrue("the primary button wears the dynamic primary", dynamic.primary.toArgb() in pixels())
+    }
+
+    /** A product accent replaces the primary roles, resolved for contrast (UI-KITS.md §3.3). */
+    @Test
+    fun theProductAccentApplies() {
+        // The spec's Tidewater vector: teal #369186 resolves to the solid #26847a in both schemes.
+        val teal = androidx.compose.ui.graphics.Color(0xFF369186)
+        val solid = androidx.compose.ui.graphics.Color(0xFF26847A).toArgb()
+        val violet = PolarisBrandTokens.accent("core", dark = true).solid.toArgb()
+        var branding by mutableStateOf(PolarisBranding.PolarisKey)
+        // An empty host logo, so the (violet) Pinned K is not on screen to confuse the check.
+        host(dark = true) { content ->
+            PolarisTheme(branding = branding, copy = sampleCopy, logo = {}, darkTheme = true, accent = teal, content = content)
+        }
+        show(kitScreens.first { it.first == "gate-activation" }.second)
+        assertTrue("branded: the primary button wears the product accent", solid in pixels())
+        assertTrue("branded: the core violet gives way to it", violet !in pixels())
+        rule.runOnIdle { branding = PolarisBranding.None }
+        rule.waitForIdle()
+        // Neutral resolves against the host's own grounds (UI-KITS.md §3.3 with the host's surfaces).
+        val host = androidx.compose.material3.darkColorScheme()
+        val grounds = listOf(host.background, host.surface, host.surfaceContainerLow, host.surfaceContainerHigh, host.surfaceContainerHighest)
+            .map { "#%06x".format(it.toArgb() and 0xFFFFFF) }
+        val hostSolid = im.plrs.key.ui.brand.PolarisAccent.resolve("#369186", true, grounds)!!.solid
+        val hostSolidArgb = androidx.compose.ui.graphics.Color(("ff" + hostSolid.removePrefix("#")).toLong(16)).toArgb()
+        assertTrue("neutral: the accent applies over the host's scheme", hostSolidArgb in pixels())
     }
 
     @Test

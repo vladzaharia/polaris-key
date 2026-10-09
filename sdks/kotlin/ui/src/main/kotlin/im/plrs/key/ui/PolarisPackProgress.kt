@@ -147,15 +147,15 @@ public fun PolarisPackProgressScreen(ui: PolarisPackProgressUi, modifier: Modifi
     val copy = PolarisTheme.copy
     PolarisScreen(modifier = modifier) {
         PolarisTitle(if (ui.complete) copy.packsComplete else copy.packsTitle)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(PolarisSpace.tight))
         val overall = ui.fraction
         if (overall != null) {
             PolarisBody(copy.format(copy.packsBytes, copy.bytes(ui.doneBytes), copy.bytes(ui.totalBytes)))
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(PolarisSpace.controls))
         }
         PolarisProgressBar(overall, copy.format(copy.packsPercent, ((overall ?: 0f) * 100).roundToInt()))
         if (ui.packs.isNotEmpty()) {
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(polarisWindow.section))
             PolarisPackList(ui, label = label)
         }
     }
