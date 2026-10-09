@@ -571,6 +571,12 @@ func _ready() -> void:
   `PKeyDevMenuSection` (a Control, and `rows()` for a data-driven dev menu). Every string goes
   through `PKeyUiCopy` and `tr()`; every interactive control is in one wrapping focus chain, so
   ui_up / ui_down / ui_accept / ui_cancel operate every screen on a gamepad or a TV remote.
+- **A full-screen scene owns its offsets.** A scene anchored across an axis of its parent (a
+  full-rect `PKeyGate`, `PKeySettingsPanel` or dialog) is exactly as big as that parent: the kit
+  resets its offsets on that axis at every layout, so a game's `set_anchors_and_offsets_preset()`
+  (which writes the scene's minimum size at that moment into them) never leaves it wider or shorter
+  than the screen. To keep deliberate margins around a scene, wrap it in a `MarginContainer`, or
+  keep its offsets with `view.set_meta(PKeyUiView.KEEP_OFFSETS_META, true)` (meta `pkey_keep_offsets`).
 - **Update answers never cover the game.** A mandatory or blocked decision is a persistent banner
   with no dismiss in `PKeyUpdatePrompt`, whatever its `modal` setting; only a dismissable answer
   may use the modal card. The banner is a strip at the top in any parent: PKeyBoot hosts it on a
@@ -589,7 +595,7 @@ func _ready() -> void:
   and checks every visible string is PKeyUiCopy text under a pseudo-locale. `ui_matrix` (a `run_tests.sh` step of its own) lays every
   drop-in screen out across the resolution matrix (`tests/ui/matrix.gd`: 640×360, 800×600,
   1280×720, 1280×800, 1920×1080, 2560×1440, 3840×2160 at scale 2, a phone in portrait and
-  landscape with a safe area, a 4:3 tablet, and five common stretch settings), in the Polaris Key,
+  landscape with a safe area (2532×1170@3, 1334×750@2 and 750×1334@2 among them), a 4:3 tablet, and five common stretch settings), in the Polaris Key,
   native and custom looks and in English, German and Japanese, and fails on any control outside
   its container or the screen's safe area, overlapping controls, clipped text, a margin under
   16 px, a QR code under 160 physical pixels, a landscape screen laid out in portrait, or a Polaris

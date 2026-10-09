@@ -9,6 +9,18 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Review fixes: settings on a short landscape screen.** The settings list opens with the focus in
+  view on a phone held sideways (it used to open scrolled to its last row, the Volume slider out
+  of view): the head scrolls with the list when no rail is shown and it would leave the rows a few
+  control heights, the list reveals the focused control once the layout settles (also the advanced
+  switch, and the control itself when a stacked row is taller than the list), and the first focus
+  is the first editable row, else the selected rail item. A locked value, the advanced switch and a
+  stepper's gaps line up with the other rows; the native look's settings fit 375 pt. A scene
+  anchored across the screen keeps a game's deliberate offsets when it carries the
+  `pkey_keep_offsets` meta (documented). A view the game re-parents keeps the control that opened
+  it. The matrix gains 2532×1170@3, 1334×750@2 and 750×1334@2, and settings opened the way a game
+  opens them.
+
 - **Second review round.** The gate-hosted device limit takes the focus (a view nested in another
   asks the outermost view for it); the sign-in user code fits its width on one line (never under the
   title's size; at most a break at its hyphen); a full-screen view's offsets are the kit's (a
