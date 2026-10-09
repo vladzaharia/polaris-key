@@ -65,7 +65,7 @@
       <!-- Domains (I-30): DNS TXT verified, re-checked daily, failing closed; SSO required per domain. -->
       <section class="card" aria-labelledby="h-domains">
         <div class="card-head">
-          <div class="title"><h2 id="h-domains">Email domains</h2><p>SSO required turns off email codes and passkeys for that domain. Re-checked today, 06:00.</p></div>
+          <div class="title"><h2 id="h-domains">Email domains</h2><p>Re-checked today, 06:00</p></div>
           <button class="btn outline sm"><i class="ic ic-plus"></i>Add domain</button>
         </div>
         <table class="table stack-phone" aria-labelledby="h-domains">
@@ -98,7 +98,7 @@
                 <div class="callout warning">
                   <i class="ic ic-clock"></i>
                   <div class="grow mk-stack-4">
-                    <div class="callout-text">Add this TXT record at the DNS host for <strong>music.example.edu</strong>. Until it’s found, addresses there get an email code.</div>
+                    <div class="callout-text">Add this TXT record at the DNS host for <strong>music.example.edu</strong>.</div>
                     <dl class="record scroll">
                       <dt>Type</dt><dd><span tabindex="0">TXT</span></dd>
                       <dt>Name</dt><dd><span tabindex="0">_polaris-key.music.example.edu</span><button class="btn ghost icon sm" aria-label="Copy name"><i class="ic ic-copy"></i></button></dd>
@@ -124,7 +124,7 @@
         <div class="card-body">
           <div class="choices fit" role="radiogroup" aria-label="Who signs in with it">
             <div class="choice on" role="radio" aria-checked="true"><div class="choice-title">Customers</div><div class="choice-desc">People signing in to products and to Polaris Key.</div></div>
-            <div class="choice" role="radio" aria-checked="false"><div class="choice-title">Operators</div><div class="choice-desc">Console members. Their role comes from an SSO rule in Members.</div></div>
+            <div class="choice" role="radio" aria-checked="false"><div class="choice-title">Operators</div><div class="choice-desc">Console members.</div></div>
             <div class="choice" role="radio" aria-checked="false"><div class="choice-title">Customers and operators</div><div class="choice-desc">Both, from the same domains.</div></div>
           </div>
         </div>
@@ -133,7 +133,7 @@
       <!-- Claim map: groups, name, picture, birthdate. -->
       <section class="card" aria-labelledby="h-claims">
         <div class="card-head">
-          <div class="title"><h2 id="h-claims">What Polaris Key reads</h2><p>Only these claims, from verified ID tokens. Name and picture start a new account’s profile.</p></div>
+          <div class="title"><h2 id="h-claims">What Polaris Key reads</h2></div>
           <button class="btn outline sm"><i class="ic ic-pencil"></i>Edit claim map</button>
         </div>
         <table class="table stack-phone flow" aria-labelledby="h-claims">
@@ -142,7 +142,7 @@
             <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-users"></i></span><span class="cell-title">Groups</span></div></td><td><span class="cell-label">Claim</span><span class="mono">groups</span></td><td><span class="cell-label">Last seen</span><span class="mk-cluster"><span class="id">students</span><span class="id">music-dept</span></span></td></tr>
             <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-user-round"></i></span><span class="cell-title">Name</span></div></td><td><span class="cell-label">Claim</span><span class="mono">name</span></td><td><span class="cell-label">Last seen</span>Dana Whitfield</td></tr>
             <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-image"></i></span><span class="cell-title">Picture</span></div></td><td><span class="cell-label">Claim</span><span class="mono">picture</span></td><td><span class="cell-label">Last seen</span><span class="mk-cluster no-wrap"><span class="photo" aria-hidden="true"></span><span class="muted">Copied on sign-in</span></span></td></tr>
-            <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-calendar"></i></span><span class="cell-title">Birth date</span></div></td><td><span class="cell-label">Claim</span><span class="muted">Not mapped</span></td><td><span class="cell-label">Last seen</span><span class="muted">Not sent; apps never receive it</span></td></tr>
+            <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-calendar"></i></span><span class="cell-title">Birth date</span></div></td><td><span class="cell-label">Claim</span><span class="muted">Not mapped</span></td><td><span class="cell-label">Last seen</span><span class="muted">Not sent</span></td></tr>
           </tbody>
         </table>
       </section>
@@ -211,17 +211,17 @@
         <p id="enf-lead">Addresses there will sign in only through Lakeside University, on every product and on Polaris Key.</p>
         <ul class="bullets">
           <li><strong>Email codes and passkeys stop</strong> at each person’s next sign-in.</li>
-          <li><strong>31 accounts</strong> use this domain; 5 are sent to Lakeside University next time.</li>
+          <li><strong>31 accounts</strong> use this domain.</li>
+          <li><strong>5 of them</strong> go to Lakeside University at their next sign-in.</li>
           <li><strong>No other way in</strong> while Lakeside University is down.</li>
         </ul>
-        <p class="type-small muted">Turning it off brings email codes back at once.</p>
         <!-- Step-up: this change needs a fresh sign-in. The consequences above stay as they
              are; after the return the button is back to the action, with any typed word kept. -->
         <div class="callout" role="status">
           <i class="ic ic-fingerprint"></i>
           <div class="grow">
             <div class="callout-title">Sign in again to confirm it’s you</div>
-            <div class="callout-text">You signed in 9 hours ago. You come back to this dialog after.</div>
+            <div class="callout-text">You signed in 9 hours ago.</div>
           </div>
         </div>
       </div>

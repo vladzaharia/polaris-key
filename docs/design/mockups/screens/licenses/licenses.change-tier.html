@@ -8,7 +8,6 @@
 <div class="board cols-2 floor" data-service="license">
   <div class="board-title">
     <h1>Change tier</h1>
-    <p>From the tier control, the Limits card or ⋯ on licenses.detail.</p>
   </div>
 
   <!-- Moving up: the license becomes Studio; it stays an Automatic grant and nothing moves it back. -->
@@ -30,7 +29,9 @@
           </dl>
         </section>
         <ul class="icon-list small">
-          <li><i class="ic ic-check"></i><span>Unchanged: offline days 14 (set on this license), fingerprint Normal and the 3 add-ons. Still an Automatic grant; Studio is the top tier, so no sign-in moves it back. Devices get the new limits at their next check.</span></li>
+          <li><i class="ic ic-check"></i><span>Unchanged: offline days 14, fingerprint Normal, the 3 add-ons</span></li>
+          <li><i class="ic ic-shield-check"></i><span>No sign-in moves it back</span></li>
+          <li><i class="ic ic-clock"></i><span>Devices get the new limits at their next check</span></li>
         </ul>
       </div>
       <div class="dialog-foot std">
@@ -38,7 +39,7 @@
         <button class="btn primary">Move to Studio</button>
       </div>
     </div>
-    <figcaption><strong>Moving up</strong>Each changed limit, now and after; what stays; why the move sticks.</figcaption>
+    <figcaption><strong>Moving up</strong></figcaption>
   </figure>
 
   <!-- Moving down: the access rule would move it back up at the next sign-in, so the dialog says so. -->
@@ -72,6 +73,6 @@
         <button class="btn primary">Move to Free</button>
       </div>
     </div>
-    <figcaption><strong>Moving down</strong>A rule still covers Priya, so the dialog warns that her next sign-in undoes the move. Nothing is blocked.</figcaption>
+    <figcaption><strong>Moving down</strong></figcaption>
   </figure>
 </div>

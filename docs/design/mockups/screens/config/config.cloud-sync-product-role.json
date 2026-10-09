@@ -9,7 +9,7 @@
   "compare": [
     "Everything a product role may change works as on config.cloud-sync (tier values, the product's total storage).",
     "The Default row has no Change…: its action cell says \"Platform admins only\" with a lock.",
-    "The pause switch is disabled (aria-disabled), stays visible so the member knows it exists, and says \"Only platform admins can pause writes. Ana Lima is one.\"",
+    "The pause switch is disabled (aria-disabled), stays visible so the member knows it exists, and the Product limits head says \"Platform admins only: Ana Lima\"",
     "No control a member can't use looks active; nothing errors after a click.",
     "Words: \"player\" for a game (Diceroll), \"person\" or \"account\" for an app (DJDL); storage in MiB and GiB, never MB; numbers and units never break across lines. products.integration's Cloud Sync card must say \"Storage per person: 256 MiB by default (Standard uses the default)\" to match this page.",
     "Wide (1600px and up): the page is two columns. Storage per player, What syncs and In your game take the main column; Limits, the operator's block, is the 400px aside. Below 1600 In your game and Limits sit side by side about 2:1, a section gap apart, and stack on phone.",

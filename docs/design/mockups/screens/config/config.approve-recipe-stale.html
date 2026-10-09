@@ -236,7 +236,7 @@
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="config" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Managed config</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a></nav>
         <div class="page-icon mast" data-service="config" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Edit catalog</h1></div>
-        <p class="page-sub"><span>v9 came from <code>.pkey/schema</code> in example-org/djdl on Oct 6.</span></p>
+        <p class="page-sub"><span>v9 from <code>.pkey/schema</code> · Oct 6</span></p>
         <div class="page-actions">
           <div role="group" class="segmented sm hide-phone" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
           <button class="btn ghost hide-phone">Close editor</button>
@@ -292,7 +292,6 @@
           <div class="card-head">
             <div class="title">
               <div class="mk-cluster baseline"><h2 id="entry-title" class="mono">applemusic.token</h2><span class="pill sm warning"><i class="ic ic-triangle-alert"></i>Changed since approval</span></div>
-              <p>Last approved Sep 14 by Ana Lima</p>
             </div>
             <a class="btn link hide-phone" href="#">Approval history<i class="ic ic-arrow-right"></i></a>
           </div>
@@ -301,7 +300,7 @@
               <i class="ic ic-triangle-alert"></i>
               <div class="grow">
                 <div class="callout-title">Lifetime changed from 1 to 12 hours</div>
-                <div class="callout-text">in <code>.pkey/schema</code>. Minting is stopped until you approve.</div>
+                <div class="callout-text">Minting is stopped until you approve.</div>
               </div>
               <button class="btn outline sm"><i class="ic ic-fingerprint"></i>Review and approve…</button>
             </div>
@@ -324,15 +323,17 @@
               <div class="choices cols-3" role="radiogroup" aria-label="Type">
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-sliders-horizontal"></i>Setting</div>
-                  <div class="choice-desc">A value DJDL reads. You decide whether people can change it.</div>
+                  <div class="choice-desc">A value DJDL reads</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-lock"></i>Secret</div>
-                  <div class="choice-desc">Write-only here. DJDL reads it in code; it’s never listed.</div>
+                  <div class="choice-desc">Write-only here</div>
+                  <div class="choice-desc">Never listed in DJDL</div>
                 </div>
                 <div class="choice on" role="radio" aria-checked="true">
                   <div class="choice-title"><i class="ic ic-stamp"></i>Minted token</div>
-                  <div class="choice-desc">Signed on request from a recipe. Never stored.</div>
+                  <div class="choice-desc">Signed on request from a recipe</div>
+                  <div class="choice-desc">Never stored</div>
                 </div>
               </div>
             </div>
@@ -340,14 +341,13 @@
               <label class="field-label">In the app</label>
               <div class="callout code-only">
                 <i class="ic ic-code-xml"></i>
-                <div class="grow callout-text"><strong class="strong">Code only.</strong> DJDL calls <code>mintToken("applemusic")</code>; it’s never listed or synced.</div>
+                <div class="grow callout-text"><strong class="strong">Code only.</strong> DJDL calls <code>mintToken("applemusic")</code></div>
               </div>
             </div>
           </div>
           <div class="card-body form">
             <div class="mk-stack-1">
               <h3 class="type-card">Recipe</h3>
-              <p class="type-small muted">Signed with your key; it never leaves Polaris Key</p>
             </div>
             <div class="field">
               <label class="field-label">Template</label>
@@ -356,7 +356,7 @@
             <div class="mk-grid-2">
               <div class="field">
                 <label class="field-label">Recipe id</label>
-                <div class="fixed-value"><i class="ic ic-lock"></i><span class="mono">applemusic</span><span class="meta">What the app asks for</span></div>
+                <div class="fixed-value"><i class="ic ic-lock"></i><span class="mono">applemusic</span></div>
               </div>
               <div class="field">
                 <label class="field-label">Algorithm</label>
@@ -380,16 +380,15 @@
               <div class="card compact sunken">
                 <div class="card-row stack-narrow">
                   <span class="icon-tile sm"><i class="ic ic-key-round"></i></span>
-                  <div class="grow"><div class="strong">MusicKit private key (.p8)</div><div class="type-small muted">Sealed Oct 2 by Ana Lima, used only for this token</div></div>
+                  <div class="grow"><div class="strong">MusicKit private key (.p8)</div><div class="type-small muted">Sealed Oct 2 by Ana Lima</div><div class="type-small muted">Used only for this token</div></div>
                   <button class="btn outline sm">Replace key…</button>
                 </div>
               </div>
             </div>
             <div class="field">
               <label class="field-label">What DJDL receives</label>
-              <span class="hint">Preview: a token minted after you approve, decoded</span>
               <div class="code">
-                <div class="code-head"><span class="code-file">applemusic.token · JWT</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+                <div class="code-head"><span class="code-file">applemusic.token · decoded preview</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
 <pre tabindex="0"><span class="t-c">// Header</span>
 <span class="t-o">{</span> <span class="t-p">"alg"</span><span class="t-o">:</span> <span class="t-s">"ES256"</span><span class="t-o">,</span> <span class="t-p">"kid"</span><span class="t-o">:</span> <span class="t-s">"3HWR8C2N6T"</span><span class="t-o">,</span> <span class="t-p">"typ"</span><span class="t-o">:</span> <span class="t-s">"JWT"</span> <span class="t-o">}</span>
 <span class="t-c">// Claims: if minted Oct 7, 2026 17:00 UTC</span>
@@ -423,7 +422,6 @@ request.<span class="t-f">setValue</span>(<span class="t-s">"Bearer </span>\(tok
         <span class="icon-tile sm"><i class="ic ic-stamp"></i></span>
         <div class="grow">
           <h2 id="approve-title">Approve the applemusic recipe</h2>
-          <p>For <span class="mono">applemusic.token</span> in DJDL</p>
         </div>
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
@@ -432,7 +430,8 @@ request.<span class="t-f">setValue</span>(<span class="t-s">"Bearer </span>\(tok
           <i class="ic ic-refresh-cw"></i>
           <div class="grow">
             <div class="callout-title">The recipe changed while you were reviewing</div>
-            <div class="callout-text">Jonah Ortiz pushed again at 17:04, so nothing was approved. Review the new change. <a class="nlink" href="#">Open commit 9b1e07d</a></div>
+            <div class="callout-text">Nothing was approved.</div>
+            <div class="callout-text">Jonah Ortiz pushed again at 17:04. <a class="nlink" href="#">Open commit 9b1e07d</a></div>
           </div>
         </div>
         <div>
@@ -465,7 +464,11 @@ request.<span class="t-f">setValue</span>(<span class="t-s">"Bearer </span>\(tok
         </div>
         <div>
           <p class="eyebrow">Who can get one</p>
-          <p class="type-small">Devices on a Standard or Studio license, up to each license’s device limit, and people in the <span class="mono">members</span> group, who get Standard at sign-in.</p>
+          <ul class="icon-lines">
+            <li><i class="ic ic-key-round"></i><span>Devices on a Standard or Studio license</span></li>
+            <li><i class="ic ic-monitor-smartphone"></i><span>Up to each license’s device limit</span></li>
+            <li><i class="ic ic-users-round"></i><span>People in the <span class="mono">members</span> group</span></li>
+          </ul>
         </div>
       </div>
       <div class="drawer-foot">

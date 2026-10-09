@@ -58,7 +58,8 @@
         <i class="ic ic-calendar-clock"></i>
         <div class="grow">
           <div class="callout-title">Cleanup starts Oct 14</div>
-          <div class="callout-text">Deletes 41 dev and beta versions (18.6 MB) once the next stable release publishes.</div>
+          <div class="callout-text">Deletes 41 dev and beta versions (18.6 MB).</div>
+          <div class="callout-text">They go with the next stable release.</div>
         </div>
         <button class="btn outline sm"><i class="ic ic-list-checks"></i>See the dry run</button>
       </div>
@@ -82,7 +83,9 @@
               <span class="meta">last 24 h</span>
               <a class="link" href="#">Open Access<i class="ic ic-arrow-right"></i></a>
             </div>
-            <div class="type-small muted">31 come from licenses whose updates ended at 2.3.x, asking for <span class="mono">^2.4.0</span>: they can install 2.3.0, or renew. 7 come from accounts with no DJDL license.</div>
+            <div class="type-small muted">31 asked for <span class="mono">^2.4.0</span> after their updates ended at 2.3.x.</div>
+            <div class="type-small muted">They can install 2.3.0, or renew.</div>
+            <div class="type-small muted">7 have no DJDL license.</div>
           </div>
         </div>
         <table class="table fixed stack-phone flush" aria-label="npm packages">
@@ -132,7 +135,7 @@
           </tbody>
         </table>
         <div class="card-foot start">
-          <span class="icon-line type-small muted"><i class="ic ic-arrow-up-right"></i><span>Also on PyPI.org: stable and beta, approved by Ana Lima on Oct 2</span></span>
+          <span class="icon-line type-small muted"><i class="ic ic-arrow-up-right"></i><span>Also on PyPI.org: stable and beta</span></span>
         </div>
       </section>
 
@@ -161,7 +164,8 @@
             <div class="task waiting">
               <span class="task-mark"></span>
               <div class="task-title">Waiting for the first package</div>
-              <div class="task-desc">The next tag publishes it, once <span class="mono">release.yml</span> has the Swift step.</div>
+              <div class="task-desc">Add the Swift step to <span class="mono">release.yml</span>.</div>
+              <div class="task-desc">The next tag publishes it.</div>
             </div>
           </div>
           </div>
@@ -183,7 +187,7 @@
       <div class="aside span-4 mk-grid-2 top">
         <section class="card" aria-labelledby="mine">
           <div class="card-head">
-            <div class="title"><h2 id="mine">On your machine</h2><p>Signs in and sets up every package manager.</p></div>
+            <div class="title"><h2 id="mine">Install on your machine</h2></div>
           </div>
           <div class="card-body">
             <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
@@ -191,7 +195,7 @@
         </section>
         <section class="card" aria-labelledby="ci">
           <div class="card-head">
-            <div class="title"><h2 id="ci">In CI and on servers</h2><p>Use a service token that can read packages.</p></div>
+            <div class="title"><h2 id="ci">Install in CI and on servers</h2></div>
           </div>
           <div class="card-rows">
             <div class="card-row"><div class="grow"><div class="cell-title">Plugin CI</div><div class="cell-sub mono">pkeyci_…R8VQ</div></div><span class="meta">Used 14 min ago</span></div>

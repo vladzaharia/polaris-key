@@ -5,11 +5,11 @@
   "surface": "dialog",
   "packages": ["PX-29", "LX-38"],
   "uxRows": [],
-  "summary": "The confirm step of Activate a license: DJDL's art header, the tier and its developer, the term in the duration's words, the key echoed, and 'It's on 2 devices already', with Add to my library as the one primary. After it, the Library shows DJDL with 'Added just now' and focus moves to Open.",
+  "summary": "The confirm step of Activate a license: DJDL's art header, the tier and its developer, the term in the duration's words, the key echoed, and the devices in use ('2 of 5 in use'), with Add to my library as the one primary. After it, the Library shows DJDL with 'Added just now' and focus moves to Open.",
   "compare": [
     "The art header is the product's hosted art (flat tint without it), never text painted over art; the icon and the question lead the head.",
     "Tier, term (LX-15's duration words), the key echoed (mono, middle-truncated) and the device count say what the person is adding.",
-    "'It's on 2 devices already' is a neutral fact; when the key is full the row offers Replace a device instead of a dead end (DL6).",
+    "'2 of 5 in use' is a neutral fact; when the key is full the row offers Replace a device instead of a dead end (DL6).",
     "Add to my library is the one primary; Back returns to Enter with the key kept.",
     "Done: the dialog closes, the tile shows 'Added just now' (the one solid tile action allowed, B12) and focus moves to Open."
   ],

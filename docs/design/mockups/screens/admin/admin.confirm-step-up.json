@@ -8,7 +8,7 @@
   "summary": "The ConfirmDialog's step-up state, drawn over the SSO-required confirmation for students.example.edu on Lakeside University's page: the consequences are unchanged, a caution row says 'Sign in again to confirm it's you' and how long ago the person signed in, and the primary becomes 'Sign in again' (Cancel a ghost). After the return the same dialog shows its action again, any typed word kept.",
   "compare": [
     "The consequences list is exactly identity.connection-enforce's; only the caution row and the buttons change (admin-3-06).",
-    "The caution row is warning-toned with the fingerprint glyph: 'Sign in again to confirm it's you' (final copy from the step-up package) and one fact (signed in 9 hours ago) and what happens after (back to this dialog).",
+    "The caution row is warning-toned with the fingerprint glyph: 'Sign in again to confirm it's you' (final copy from the step-up package) and one fact: signed in 9 hours ago.",
     "The primary is 'Sign in again' (ink, with the fingerprint glyph); Cancel is a ghost; focus starts on Cancel and returns to the trigger.",
     "After the return: the button reads 'Require SSO for students.example.edu' again; a typed confirmation word, where the dialog has one, is kept across the round trip.",
     "Phone: a bottom sheet with the caution row and both buttons pinned, the consequences scrolling above.",

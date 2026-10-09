@@ -9,7 +9,7 @@
   "order": 11,
   "compare": [
     "A board of page slices (.board.cols-2, .board-frame): two a row from 1280px, one below; each slice is the editor card or the list as on licenses.tiers.",
-    "Moves to another tier: Trial's Duration with Runs for 14 days ('One starting today moves to Free on Oct 21, 2026.'), the third option chosen and 'Then [Free]' with '1 device · 2 decks · no recording' on its line.",
+    "Moves to another tier: Trial's Duration with Runs for 14 days ('A license starting today moves to Free on Oct 21, 2026'), the third option chosen and 'Then [Free]' with '1 device · 2 decks · no recording' on its line.",
     "Fields that need fixing: 'Enter at least 1 day.' under Runs for, '“From” must be lower than “to”. Swap them, or clear one for no limit.' under Versions, and the save bar in the danger tone: '3 changes. Fix 2 fields to save.' with Save disabled.",
     "Reordering without a mouse: the Order list with Education's ⋯ open above it: Move up (above Standard ↑), Move down (below Trial ↓), Duplicate, and Delete disabled with 'Used by 57 licenses. Move them to another tier first.'",
     "Leaving with a change: 'Discard 1 change to Education?' over the edited Limits ('Offline days goes back to 7 and Studio opens.'), Keep editing and Discard.",

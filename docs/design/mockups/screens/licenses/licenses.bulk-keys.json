@@ -9,8 +9,8 @@
   "order": 12,
   "compare": [
     "Behind: the reworked Licenses list, scroll-locked under the scrim.",
-    "Drawer: 'New license', the stepper band (Tier, Who, Limits, Delivery done; Review current), then the review card with Change on every row: Tier Standard; Who '200 floating keys: anyone with one can use it' in the batch 'Mixer bundle · Oct 2026'; Limits (Devices 5, Offline days 30, Fingerprint Normal from Standard; Release tracks stable, Versions Any by default); Duration Lifetime (Standard); Delivery Download a CSV (key, license id, batch).",
-    "What happens: Polaris Key makes 200 Standard licenses with no holder, one key each; the keys show once, as a CSV you can download until you close this, and only a hash is kept; a key added to a library moves its license into that account.",
+    "Drawer: 'New license', the stepper band (Tier, Who, Limits, Delivery done; Review current), then the review card with Change on every row: Tier Standard; Who '200 floating keys' in the batch 'Mixer bundle · Oct 2026'; Limits (Devices 5, Offline days 30, Fingerprint Normal from Standard; Release tracks stable, Versions Any by default); Duration Lifetime (Standard); Delivery Download a CSV (key, license id, batch).",
+    "What happens, one line each: 'The keys show once, in a CSV.' and 'Download it before you close this.'",
     "Foot: Back and Create 200 keys (primary).",
     "Phone: a bottom sheet; the stepper shows marks and the current label; the limits keep two columns.",
     "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",

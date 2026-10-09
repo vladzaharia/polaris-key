@@ -9,11 +9,11 @@
   "order": 9,
   "compare": [
     "A board of dialogs (.board.cols-2.wide-3): two a row from 1280px, three at wide, one below; each draws only the fields its state needs.",
-    "Matches no one: Group djdl-press-eu; a warning 'No one has djdl-press-eu yet' / 'The rule still saves. Check the name matches Pocket ID’s exactly, including case.'; Add rule enabled.",
+    "Matches no one: Group djdl-press-eu; a warning 'No one has djdl-press-eu yet' / 'Check the name matches Pocket ID’s exactly, including case.'; Add rule enabled.",
     "Duplicate: under Group, 'studio-pro from Pocket ID already gives Studio. Edit that rule instead.'; Add rule disabled.",
     "Blank group: 'Enter the group name exactly as Pocket ID sends it.' under the empty, focused field.",
     "Preview counting: skeleton head and two skeleton rows in the preview slot; a live region announces the count.",
-    "Preview failed: 'Couldn’t count who has djdl-press' / 'Polaris Key didn’t answer in time. The rule still saves.' with Retry.",
+    "Preview failed: 'Couldn’t count who has djdl-press' / 'Polaris Key didn’t answer in time.' with Retry.",
     "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
     "The same dialog head and ink primary as licenses.access-rule; inline errors keep the danger edge under the focus ring (admin-1-25, admin-1-27)."
   ],

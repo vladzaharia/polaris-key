@@ -8,7 +8,6 @@
 <div class="board cols-1 floor" data-service="license">
   <div class="board-title">
     <h1>License record by holder</h1>
-    <p>The header, holder and origin of a Waiting and a Floating license. The rest is as on licenses.detail.</p>
   </div>
 
   <!-- Waiting: assigned to an email that hasn't signed in yet (LX-30). Made by hand. -->
@@ -30,8 +29,8 @@
       <nav class="tabs scroller"><a class="tab active" href="#">Status</a><a class="tab" href="#">Entitlements <span class="count">4</span></a><a class="tab" href="#">Keys <span class="count">0</span></a><a class="tab" href="#">Devices <span class="count">0</span></a><a class="tab" href="#">Activity</a></nav>
       <div class="mk-with-rail">
         <section class="card" aria-labelledby="w-inv">
-          <div class="card-head h56 sub">
-            <div class="title"><h3 id="w-inv">Invitation</h3><p>Moves into his account at his first sign-in with this email, verified.</p></div>
+          <div class="card-head h56">
+            <div class="title"><h3 id="w-inv">Invitation</h3></div>
             <button class="btn outline sm"><i class="ic ic-pencil"></i>Change email…</button>
           </div>
           <dl class="kv-rows">
@@ -48,12 +47,11 @@
               <div><dt>Created</dt><dd>Oct 2, 2026<span class="source">Ada Lovelace</span></dd></div>
               <div><dt>Reason</dt><dd>“Beta tester, Berlin meetup”</dd></div>
             </dl>
-            <div class="card-body tight"><div class="icon-line type-small muted"><i class="ic ic-shield-check"></i><span>Access rules never change it.</span></div></div>
           </section>
         </div>
       </div>
     </div>
-    <figcaption><strong>Waiting</strong>Resend invitation is the primary; Change email is on the invitation and in ⋯. Origin: By hand.</figcaption>
+    <figcaption><strong>Waiting</strong></figcaption>
   </figure>
 
   <!-- Floating: no holder; its key activates devices (LX-30). From a key batch (LX-29). -->
@@ -75,12 +73,13 @@
       <nav class="tabs scroller"><a class="tab active" href="#">Status</a><a class="tab" href="#">Entitlements <span class="count">4</span></a><a class="tab" href="#">Keys <span class="count">1</span></a><a class="tab" href="#">Devices <span class="count">1</span></a><a class="tab" href="#">Activity</a></nav>
       <div class="mk-with-rail">
         <section class="card" aria-labelledby="f-key">
-          <div class="card-head h56 sub">
-            <div class="title"><h3 id="f-key">Anyone with the key</h3><p>No email or account: whoever enters the key gets the license on that device.</p></div>
+          <div class="card-head h56">
+            <div class="title"><h3 id="f-key">Anyone with the key</h3></div>
           </div>
           <dl class="kv-rows">
-            <div><dt>Key</dt><dd>Only its hash is kept, so it can’t be shown again</dd></div>
-            <div><dt>First used</dt><dd>Oct 6, 2026, on Studio-PC · Windows 11 · DJDL 4.2.0</dd></div>
+            <div><dt>Key</dt><dd>Can’t be shown again</dd></div>
+            <div><dt>First used</dt><dd>Oct 6, 2026</dd></div>
+            <div><dt>Device</dt><dd>Studio-PC<span class="source">Windows 11 · DJDL 4.2.0</span></dd></div>
           </dl>
         </section>
         <div class="mk-rail">
@@ -94,11 +93,10 @@
               <div><dt>Created</dt><dd>Oct 6, 2026<span class="source">Ada Lovelace</span></dd></div>
               <div><dt>Used</dt><dd class="tnum">41 of 200</dd></div>
             </dl>
-            <div class="card-body tight"><div class="icon-line type-small muted"><i class="ic ic-ban"></i><span>Disable unused keys, on the batch, turns off the other 159.</span></div></div>
           </section>
         </div>
       </div>
     </div>
-    <figcaption><strong>Floating</strong>Titled by its masked key; no email anywhere. Assign to a person is the primary. Origin: Key batch.</figcaption>
+    <figcaption><strong>Floating</strong></figcaption>
   </figure>
 </div>

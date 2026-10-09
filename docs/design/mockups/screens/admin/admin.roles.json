@@ -9,7 +9,7 @@
   "summary": "Members → Roles: the four built-in roles as cards (what each covers, who can give it, how many people hold it) and the read-only role × area matrix generated from the route table, product areas first with their stable ids, then the platform pages.",
   "compare": [
     "Exactly four role cards in this order: Superadmin, Platform admin, Product admin, Console access. No Product editor, Product viewer or custom role, and no 'Create role' button.",
-    "Each card says what the role covers in one or two sentences, then a footer: who can give it and, on its own line, how many people hold it now. The footers' dividers and their first lines line up across the four cards.",
+    "Each card says what the role covers, one short line per fact and nothing the matrix already says, then a footer: who can give it and, on its own line, how many people hold it now. The footers' dividers and their first lines line up across the four cards.",
     "The matrix is read-only and says it is generated from the route table; the built page must be produced by the same generator the docs' roles page uses, with a drift gate.",
     "Product rows list the ten areas in order with the service glyph for the six features (no ids shown); Core, Keys, Settings and Members carry a one-line list of what they cover.",
     "Platform admin sees other products by name and status on Home only; every other product cell for Platform admin is a dash.",

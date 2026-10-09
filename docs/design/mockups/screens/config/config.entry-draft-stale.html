@@ -142,7 +142,6 @@
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="config" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Managed config</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a></nav>
         <div class="page-icon mast" data-service="config" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Edit catalog</h1><span class="pill"><i class="dot"></i>Draft v10</span></div>
-        <p class="page-sub"><span>Your draft started from v9 · the repository is now at v10</span></p>
         <div class="page-actions row-phone">
           <div role="group" class="segmented sm" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
           <button class="btn ghost hide-phone">Discard draft</button>
@@ -157,7 +156,8 @@
         <i class="ic ic-git-merge"></i>
         <div class="grow">
           <div class="callout-title" id="stale-title">v10 arrived from <span class="mono">.pkey/schema</span> while you edited</div>
-          <div class="callout-text">Ana Lima’s commit <span class="mono">7c41d0e</span>, 10:42. 1 of your edits conflicts; the other 3 repo changes don’t touch your draft.</div>
+          <div class="callout-text">Ana Lima’s commit <span class="mono">7c41d0e</span>, 10:42</div>
+          <div class="callout-text">1 of your edits conflicts.</div>
         </div>
         <a class="btn outline sm" href="#">Open the commit<i class="ic ic-arrow-up-right"></i></a>
       </div>
@@ -210,7 +210,6 @@
           <div class="card-head">
             <div class="title">
               <div class="mk-cluster baseline"><h2 id="entry-title" class="mono">quality.floor</h2><i class="dot changed" role="img" aria-label="Changed in draft" title="Changed in draft"></i></div>
-              <p>The key can’t change after publish</p>
             </div>
             <button class="btn ghost icon sm hide-phone" aria-label="More"><i class="ic ic-ellipsis"></i></button>
           </div>
@@ -227,22 +226,25 @@
             </div>
             <div class="field">
               <label class="field-label">Description <span class="optional">Optional</span></label>
-              <div class="textarea one">Skip a track when no source has it at this quality. People see this under the setting in DJDL’s settings.</div>
+              <div class="textarea one">Skip a track when no source has it at this quality.</div>
+              <span class="hint">Shown under the setting in DJDL’s settings</span>
             </div>
             <div class="field">
               <label class="field-label">Type<button class="btn ghost icon xs" aria-label="How types and in-app visibility combine"><i class="ic ic-circle-help"></i></button></label>
               <div class="choices cols-3 brief" role="radiogroup" aria-label="Type">
                 <div class="choice on" role="radio" aria-checked="true">
                   <div class="choice-title"><i class="ic ic-sliders-horizontal"></i>Setting</div>
-                  <div class="choice-desc">A value DJDL reads. You decide whether people can change it.</div>
+                  <div class="choice-desc">A value DJDL reads</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-lock"></i>Secret</div>
-                  <div class="choice-desc">Write-only here. DJDL reads it in code; it’s never listed.</div>
+                  <div class="choice-desc">Write-only here</div>
+                  <div class="choice-desc">Never listed in DJDL</div>
                 </div>
                 <div class="choice" role="radio" aria-checked="false">
                   <div class="choice-title"><i class="ic ic-stamp"></i>Minted token</div>
-                  <div class="choice-desc">Signed on request from a recipe. Never stored.</div>
+                  <div class="choice-desc">Signed on request from a recipe</div>
+                  <div class="choice-desc">Never stored</div>
                 </div>
               </div>
             </div>
@@ -255,15 +257,15 @@
                 <span class="chip">any<span class="chip-note">Default</span><i class="ic ic-x"></i></span>
                 <span class="chip add"><i class="ic ic-plus"></i>Add</span>
               </div>
-              <span class="hint">Removing one in use asks where its people move. <a class="nlink" href="#">Edit as JSON schema</a></span>
+              <span class="hint"><a class="nlink" href="#">Edit as JSON schema</a></span>
             </div>
             <!-- The conflict, at the field it concerns: both sides, and one choice per entry. -->
             <div class="card compact sunken" aria-labelledby="conf-title">
               <div class="card-body mk-stack-3">
-                <div class="mk-cluster baseline"><strong id="conf-title">Allowed values conflict</strong><span class="meta">Choose one; the other side is kept in Activity</span></div>
+                <div class="mk-cluster baseline"><strong id="conf-title">Allowed values conflict</strong><span class="meta">The other side is kept in Activity</span></div>
                 <dl class="kv-rows">
                   <div><dt>Your draft</dt><dd>adds <span class="mono">aiff</span></dd></div>
-                  <div><dt>Repository v10</dt><dd>adds <span class="mono">alac</span>, removes <span class="mono">flac</span> (10 set it)</dd></div>
+                  <div><dt>Repository v10</dt><dd><div>adds <span class="mono">alac</span></div><div>removes <span class="mono">flac</span>, set by 10</div></dd></div>
                 </dl>
                 <div class="btn-row">
                   <button class="btn outline sm">Keep mine</button>
@@ -275,7 +277,6 @@
               <div class="field">
                 <label class="field-label">Default</label>
                 <div class="select mono"><span class="grow">any</span><i class="ic ic-chevrons-up-down"></i></div>
-                <span class="hint">What devices get when nothing else sets it</span>
               </div>
             </div>
             <div class="field">
@@ -285,7 +286,7 @@
                 <span role="radio" aria-checked="false"><i class="ic ic-lock-keyhole sm"></i>Read-only</span>
                 <span role="radio" aria-checked="false"><i class="ic ic-eye-off sm"></i>Hidden</span>
               </div>
-              <div class="seg-help">Listed in DJDL’s settings. People can change it, and their choice syncs.</div>
+              <div class="seg-help">People can change it in DJDL’s settings</div>
             </div>
             <!-- Only for an Editable setting, and only while Cloud Sync is on for DJDL. -->
             <div class="card compact sunken" data-service="sync">
@@ -293,7 +294,6 @@
                 <div class="setting-row">
                   <div>
                     <div class="setting-title"><i class="svc"></i>Syncs with Cloud Sync</div>
-                    <div class="setting-desc">Follows the person to every device</div>
                   </div>
                   <span class="switch on" role="switch" aria-checked="true" aria-label="Syncs with Cloud Sync"></span>
                 </div>
@@ -306,7 +306,6 @@
                     <div class="field">
                       <label class="field-label">When two devices disagree</label>
                       <div class="fixed-value"><i class="ic ic-clock"></i><span>The latest change wins</span></div>
-                      <span class="hint">The only rule for a value from a list</span>
                     </div>
                   </div>
                 </div>

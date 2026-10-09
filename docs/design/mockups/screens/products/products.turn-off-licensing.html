@@ -59,7 +59,6 @@
             <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Licensing</div>
-              <p class="feature-row-desc">Tiers, add-ons, entitlements and who gets a license automatically.</p>
             </div>
             <div class="feature-row-status"><span class="status"><i class="ic ic-circle-check"></i><span class="tnum">3 tiers · 18,406 licenses</span></span></div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Licensing"></span>
@@ -69,7 +68,6 @@
             <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Managed config</div>
-              <p class="feature-row-desc">Settings, secrets and profiles you change without shipping a build.</p>
             </div>
             <div class="feature-row-status"><span class="status"><i class="ic ic-circle-check"></i>Catalog v6 published</span></div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Managed config"></span>
@@ -77,7 +75,7 @@
               <div class="setting-row">
                 <div>
                   <div class="setting-title">Minted tokens</div>
-                  <div class="setting-desc">Short-lived tokens for each device. Diceroll declares <span class="mono">multiplayer.roomToken</span>.</div>
+                  <div class="setting-desc">Diceroll declares <span class="mono">multiplayer.roomToken</span>.</div>
                 </div>
                 <span class="switch touch on" role="switch" aria-checked="true" aria-label="Minted tokens"></span>
               </div>
@@ -88,7 +86,6 @@
             <span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Ship builds</div>
-              <p class="feature-row-desc">Releases from CI, delivered to every channel.</p>
             </div>
             <div class="feature-row-status"><span class="status"><i class="ic ic-circle-check"></i>1.8.2 on stable</span></div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Ship builds"></span>
@@ -96,21 +93,23 @@
               <div class="setting-row">
                 <div>
                   <div class="setting-title">In-app updates</div>
-                  <div class="setting-desc">Updates ship through the Godot updater; store builds use their store.</div>
+                  <div class="setting-desc">The Godot updater</div>
+                  <div class="setting-desc">Store builds update through their store</div>
                 </div>
                 <span class="switch touch on" role="switch" aria-checked="true" aria-label="In-app updates"></span>
               </div>
               <div class="setting-row">
                 <div>
                   <div class="setting-title">Packages</div>
-                  <div class="setting-desc">Publish packages such as a mod kit on <span class="mono">pkg.plrs.im</span>.</div>
+                  <div class="setting-desc">On <span class="mono">pkg.plrs.im</span></div>
                 </div>
                 <span class="switch touch" role="switch" aria-checked="false" aria-label="Packages"></span>
               </div>
               <div class="setting-row">
                 <div>
                   <div class="setting-title">Polaris Key storefront</div>
-                  <div class="setting-desc">Who finds Diceroll on <span class="mono">key.plrs.im</span>. Eligible = owns it or qualifies.</div>
+                  <div class="setting-desc">Who finds Diceroll on <span class="mono">key.plrs.im</span></div>
+                  <div class="setting-desc">Eligible: owns it or qualifies</div>
                 </div>
                 <div class="segmented sm" role="radiogroup" aria-label="Discover visibility"><span role="radio" aria-checked="false">Unlisted</span><span role="radio" aria-checked="false">Eligible</span><span class="on" role="radio" aria-checked="true">Everyone</span></div>
               </div>
@@ -121,7 +120,6 @@
             <span class="icon-tile sm muted" data-service="identity"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Sign-in</div>
-              <p class="feature-row-desc">Players sign in with a Polaris Key account.</p>
             </div>
             <div class="feature-row-status"><span class="status muted"><i class="ic ic-circle"></i>Off</span></div>
             <span class="switch touch" role="switch" aria-checked="false" aria-label="Sign-in"></span>
@@ -129,7 +127,6 @@
               <div class="setting-row off">
                 <div>
                   <div class="setting-title">Customer portal</div>
-                  <div class="setting-desc">Players see Diceroll in their library and manage devices.</div>
                 </div>
                 <span class="switch touch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="Customer portal"></span>
               </div>
@@ -140,7 +137,6 @@
             <span class="icon-tile sm muted" data-service="sync"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Cloud Sync</div>
-              <p class="feature-row-desc">Each player’s saves and settings, the same on every device.</p>
               <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Managed config is on">Managed config</span><span role="img" class="req unmet" aria-label="Sign-in is off">Sign-in</span></div>
             </div>
             <div class="feature-row-status"><span class="status muted"><i class="ic ic-circle"></i>Off</span></div>
@@ -151,7 +147,6 @@
             <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
             <div class="feature-row-text">
               <div class="feature-row-name">Commerce</div>
-              <p class="feature-row-desc">Sell tiers and add-ons as offers, with a SKU on each store.</p>
               <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Licensing is on">Licensing</span></div>
             </div>
             <div class="feature-row-status"><span class="status"><i class="ic ic-circle-check"></i>3 of 4 storefronts ready</span></div>
@@ -161,8 +156,7 @@
           <div class="feature-row adv">
             <span class="icon-tile sm muted"><i class="ic ic-sliders-horizontal"></i></span>
             <div class="feature-row-text">
-              <div class="feature-row-name" id="adv-title">Advanced</div>
-              <p class="feature-row-desc">Slugs and device registration</p>
+              <div class="feature-row-name" id="adv-title">Slugs and device registration</div>
             </div>
             <div class="feature-row-status"></div>
             <button class="btn ghost sm" aria-expanded="false" aria-labelledby="adv-title">Show<i class="ic ic-chevron-down"></i></button>
@@ -185,17 +179,20 @@
             <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
             <div class="change-title">Licensing</div>
             <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
-            <p class="change-text">Players keep playing up to 30 days offline, then Diceroll can’t confirm any license (Free tier too).</p>
+            <p class="change-text">Players keep playing for up to 30 days offline.</p>
+            <p class="change-text">Then no license confirms, Free tier included.</p>
             <p class="meta tnum">11,239 devices checked a license in 30 days</p>
           </div>
           <div class="change-item">
             <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
             <div class="change-title">Commerce</div>
             <span class="change-to">On<i class="ic ic-arrow-right"></i>Off</span>
-            <p class="change-text">The game can’t show its 4 offers; purchases and restores are refused.</p>
+            <p class="change-text">The game can’t show its 4 offers.</p>
+            <p class="change-text">Purchases and restores are refused.</p>
           </div>
         </div>
-        <p class="icon-line type-small muted"><i class="ic ic-archive"></i><span>Data is kept. Undo from Activity turns both back on.</span></p>
+        <p class="icon-line type-small muted"><i class="ic ic-archive"></i><span>Data is kept.</span></p>
+        <p class="icon-line type-small muted"><i class="ic ic-history"></i><span>Undo from Activity turns both back on.</span></p>
       </div>
       <div class="dialog-foot">
         <button class="btn outline cancel-btn">Cancel</button>

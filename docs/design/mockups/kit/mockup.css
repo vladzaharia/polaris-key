@@ -3703,6 +3703,14 @@ kbd,
 .toolbar .search-field {
   height: 32px;
 }
+/* The placeholder never spills out of the field: one line, cut with an ellipsis. */
+.search-field > span:not(.ic) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .filter {
   display: inline-flex;
   align-items: center;
@@ -4680,6 +4688,28 @@ kbd,
   justify-content: center;
   margin-top: var(--sp-2);
 }
+/* An empty collection (the page head, then one card that is only an empty state): the state sits
+   in the middle of the canvas, across and down, not in its top-left corner (owner note,
+   commerce.offers-empty). */
+.main:has(> .page > .page-head + .card:last-child > .empty:only-child) {
+  display: flex;
+  flex-direction: column;
+}
+.main > .page:has(> .page-head + .card:last-child > .empty:only-child) {
+  flex: 1 0 auto;
+  width: 100%;
+}
+.page > .page-head + .card:last-child:has(> .empty:only-child) {
+  align-self: center;
+  width: 100%;
+  margin-block: auto;
+}
+/* An empty portal page: the empty state takes the room, so what follows it (Missing a license?)
+   sits at the page's foot (owner note, portal.library-empty). */
+.portal-page > .empty:not(:last-child) {
+  flex: 1 0 auto;
+  justify-content: center;
+}
 
 /*
  * List rows: a leading avatar or icon, the text, a trailing meta (a time, a count), one row
@@ -5501,6 +5531,22 @@ pre.code-plain {
 }
 .ptile-foot > .btn:first-child {
   flex: 1;
+}
+/* Quick actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone,
+   so a tile's foot holds one of the two and never spills ("Email me the download", owner note). */
+.ua-phone {
+  display: none !important;
+}
+@container screen (max-width: 639px) {
+  .ua-desk {
+    display: none !important;
+  }
+  .btn.ua-phone {
+    display: inline-flex !important;
+  }
+  span.ua-phone {
+    display: inline !important;
+  }
 }
 .platforms {
   display: inline-flex;
@@ -16911,6 +16957,12 @@ a.card:focus-visible {
 .hint-slot {
   min-height: 20px;
 }
+/* One column: an empty slot has no row partner to line up with. */
+@container screen (max-width: 639px) {
+  .hint-slot:empty {
+    display: none;
+  }
+}
 
 /* Table rows at 48px, blank cells as an em dash (span.dash: div.dash is overview-a's dashboard). */
 @container screen (min-width: 640px) {
@@ -17156,12 +17208,13 @@ span.dash::before {
   min-height: var(--card-head-h);
   padding-block: var(--sp-2);
 }
-.card-head.h56.sub {
+/* The 72px head only while the subtitle is there: a head that lost its sub-line is the 56px one. */
+.card-head.h56.sub:has(> .title > p) {
   min-height: var(--card-head-h-sub);
   align-items: flex-start;
   padding-block: var(--sp-4);
 }
-.card-head.h56.sub > .btn {
+.card-head.h56.sub:has(> .title > p) > .btn {
   margin-block: calc(-1 * var(--sp-0-5)) 0;
 }
 
@@ -20754,10 +20807,11 @@ span.dash::before {
 .cm2 .dialog-head {
   align-items: flex-start;
 }
+/* A block, not a flex row: a flex title drops the spaces around an inline mono value
+   ("Add holiday_bundle to an offer"). One line still centres on the 32px close button. */
 .cm2 .dialog-head > h2 {
-  display: flex;
-  align-items: center;
-  min-height: 32px;
+  display: block;
+  padding-block: max(0px, calc((32px - var(--lh-section)) / 2));
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -21884,8 +21938,10 @@ span.dash::before {
   display: flex;
   align-items: stretch;
 }
+/* The rail's link tile is as tall as its content: stretched to the main card, a tile that is an
+   icon and a title is mostly empty. */
 .mk-with-rail.g84 > .mk-rail > .card {
-  flex: 1 1 auto;
+  flex: none;
 }
 .acct-line {
   display: flex;
@@ -21917,6 +21973,8 @@ span.dash::before {
 }
 .mk-with-rail.g-stretch > .mk-rail {
   display: flex;
+  /* Not the phone rail grid's start: as a column flex, start shrank the card to 2px. */
+  align-items: stretch;
 }
 /* END admin-multi-review */
 
@@ -22169,6 +22227,16 @@ span.dash::before {
 }
 .choice.on::before {
   background: var(--mk-action-on);
+}
+/* A feature choice (data-service on the .choice) is edged in its feature's accent, the owner's
+   2026-10-09 note: the colour names the feature (context); the ink check, the 2px edge and the
+   fill say it is chosen (state), so the accent never carries the state alone. */
+.choice[data-service] {
+  border-color: color-mix(in oklab, var(--pk-accent) 50%, var(--mk-line));
+}
+.choice[data-service].on {
+  border-color: var(--pk-accent);
+  box-shadow: inset 0 0 0 1px var(--pk-accent);
 }
 .chip.on,
 .filter.on {
@@ -23166,6 +23234,10 @@ kbd {
   font-size: var(--fs-small);
   line-height: var(--lh-small);
   color: var(--pk-text-muted);
+}
+/* One fact per line: each sentence of a hosted callout is its own span, on its own line. */
+.hosted-callout > div > span {
+  display: block;
 }
 /* The device code: big mono groups, entered or echoed, never wrapping inside a group. */
 .code-entry {

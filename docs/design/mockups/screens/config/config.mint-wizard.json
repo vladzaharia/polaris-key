@@ -9,9 +9,9 @@
   "compare": [
     "One drawer with three steps (Template, Signing key, Claims); finished steps collapse to one line each with Change or Replace, so the stepper shows names only.",
     "The key is pasted or uploaded on step 2 and sealed straight into the product's secrets with usage edge-mint; afterwards it shows only \"Signing key sealed\" and its type, never the key.",
-    "Claims: Catalog key (can't change after publish), Recipe id (what the app asks for), iss, aud, kid and Lifetime with \"Short is safer\", plus whether the device id goes in as sub; the decoded preview follows every field and uses real times (iat + 15 minutes = exp).",
+    "Claims: Catalog key (hint: can't change after publish), Recipe id, iss, aud, kid and Lifetime (hint: a leaked token works until it expires), plus whether the device id goes in as sub (hint: lets the server rate-limit each Mac and PC); the decoded preview follows every field and uses real times (iat + 15 minutes = exp).",
     "Templates: Apple MusicKit developer token (fields fixed by the template: ES256, Team ID, Key ID) and Generic JWT (ES256, RS256 or EdDSA).",
-    "The last button is Save and approve with the passkey glyph: a recipe made in the console is approved on save under step-up. The foot says where it goes (draft v10) and when DJDL can mint it (once v10 is published).",
+    "The last button is Save and approve with the passkey glyph: a recipe made in the console is approved on save under step-up. The foot says when DJDL can mint it (once v10 is published).",
     "The screen is one viewport: the page behind doesn't scroll and only the drawer body does.",
     "Phone: the drawer fills the screen, step labels shorten to marks plus the current step's name, field pairs stack and the buttons fill the width.",
     "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful.",

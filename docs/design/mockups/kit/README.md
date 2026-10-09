@@ -83,6 +83,22 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
     "Your license covers versions released until Sep 30, 2026. 4.1.3 is the newest of those, and
     it keeps working." → "Your license covers versions in 4.1.x, the latest of which is 4.1.3".
   - Remove repetition and padding words, never information the screen needs to do its job.
+  - **No explainer subtitles** (the owner, 2026-10-09: "remove all extraneous comments or
+    subtitles"). A card, section, dialog or drawer heading stands alone: "Anyone with the key"
+    loses "No email or account: whoever enters the key gets the license on that device." A
+    sub-line stays only when it carries a fact the reader needs to decide (a limit, a unit, a
+    source, a consequence). If the heading reads ambiguous alone, tighten the heading instead of
+    keeping both. The same holds for page ledes, field hints that restate the label, captions that
+    narrate the frame, and "You can…" or reassurance lines. Kept: labels, errors, statuses, the
+    consequence line before a destructive action, metadata, catalog strings and the one short
+    empty-state sentence.
+  - **One fact per line** (the owner, 2026-10-09). A line that packs facts together with commas,
+    "and", "too", semicolons, "·" or parentheses (a limit plus a behaviour, a status plus a
+    consequence plus a count) is rewritten and split: each fact its own short line, label and
+    value row, or hint, where the reader needs it. "Keys the game adds itself sync too, up to 256
+    keys and 64 KiB per player" → "Keys the game adds itself also sync", then "Keys per player: up
+    to 256" and "Size per player: up to 64 KiB". A meta line of plain values (an email and a date)
+    stays one line.
 
 ## Brand v2 (lead decisions B1–B16, 2026-10-09)
 
@@ -129,6 +145,15 @@ Also new: `.page.columns.split` (Home: attention 2/3 beside Platform ready 1/3 f
 `shoot.mjs` and the page, and `tools/mockups/check.mjs` (sideways scroll at 13 widths from 320 to
 2560, axe at 390/1024/1440/1920 in both themes, and the spacing rule). Screen-level spacing that
 predated the rule now lives in the kit, scoped to its screen, at the end of `mockup.css`.
+
+The copy pass and the owner's notes (2026-10-09) added: `.choice[data-service]` (a feature card
+edged in its feature's accent; the ink check still says chosen), a search placeholder that ends in
+an ellipsis, the device-following `.ua-desk` / `.ua-phone` actions for every portal tile, an empty
+collection (a page head, then one empty-state card) centred across and down the canvas, an empty
+portal page's following strip at its foot, a `.hosted-callout` sentence per line, a 72px
+`.card-head.h56.sub` only while its subtitle is there, and `.hint-slot` reserving nothing in one
+column. The published page now renders each frame with its `data-screen`, so screen-scoped rules
+apply there as they do in `shoot.mjs` and `check.mjs`.
 
 ## Tokens
 
@@ -3632,8 +3657,9 @@ block gap (32), card padding (24) and row height (56) already existed as `--page
 - **Device-code story (cli-login).** `.story` is two rows of two equal-height frames; `.related` is the
   open Related commands block; `.strip-3` is the three-note strip; `.term-body.scroll-x` scrolls
   sideways on phone (give it `tabindex="0"`, `role="region"` and an `aria-label`).
-- **Message pages.** `.mk-with-rail.g84` is an 8/4 grid of equal-height cards, `.g-stretch` makes the
-  rail card as tall as the main one, `.acct-line` carries the quiet "Use another account" link.
+- **Message pages.** `.mk-with-rail.g84` is an 8/4 grid whose rail link tile is as tall as its
+  content, `.g-stretch` makes the rail card as tall as the main one, `.acct-line` carries the quiet
+  "Use another account" link.
 - **`.root-rule`, `.icon-hint`** (a tooltip glyph after a title), `.key-chip`.
 
 Not done: the 1280px right rail for Platform ready on platform-settings. The 1136px form cap cannot

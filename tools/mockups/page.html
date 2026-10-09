@@ -239,7 +239,7 @@ details.review summary .muted { font-weight: 400; }
   const builtOf = (s) => (live.screens[s.id] && live.screens[s.id].built) || null;
 
   function srcdoc(screen, theme) {
-    return "<!doctype html><html data-theme=\"" + theme + "\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>" + DATA.kitCss + "</style><style>html,body{margin:0}</style></head><body>" + screen.html + "</body></html>";
+    return "<!doctype html><html data-theme=\"" + theme + "\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>" + DATA.kitCss + "</style><style>html,body{margin:0}</style></head><body data-screen=\"" + screen.id + "\">" + screen.html + "</body></html>";
   }
 
   // --- Index, counts, filters -------------------------------------------------

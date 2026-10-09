@@ -6,11 +6,11 @@
   "order": 17,
   "packages": ["F-33"],
   "uxRows": [],
-  "summary": "The confirmation behind Revoke on Account → Packages: it names the token and the machine where package installs stop, how to set that machine up again, and the token that keeps working.",
+  "summary": "The confirmation behind Revoke on Account → Packages: it names the token and the machine where package installs stop and how to set that machine up again.",
   "compare": [
     "Opens over Account → Packages; a small danger dialog with the warning icon.",
     "The title names the token by its label: 'Revoke “pkey feeds setup on mara-mbp”?'.",
-    "The body says what stops in plain words (the package managers on mara-mbp can't reach DJDL's or Diceroll's packages) and how to undo it (run 'pkey feeds setup --write' there again); a quiet line names the token that keeps working (Build server).",
+    "The body says what stops in plain words (the package managers on mara-mbp can't reach DJDL's or Diceroll's packages) and how to undo it (run 'pkey feeds setup --write' there again). The title names the token, so no line repeats which one keeps working.",
     "Cancel (outline) and the danger 'Revoke token'.",
     "Phone: the kit's bottom sheet with the buttons pinned full width, the danger button on top.",
     "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",

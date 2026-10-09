@@ -100,7 +100,7 @@
               <thead>
                 <tr>
                   <th>Entitlement</th>
-                  <th class="hide-phone">Kind<span class="info-tip" tabindex="0" role="img" aria-label="Kinds: On/off, Quantity, Consumable" data-tip="On/off: off unless the tier, the license or an add-on turns it on.&#10;Quantity: the license’s value, else the tier’s, plus each add-on’s.&#10;Consumable: units a player spends, with a balance per license."><i class="ic ic-info"></i></span></th>
+                  <th class="hide-phone">Kind</th>
                   <th class="hide-phone">Free</th>
                   <th class="hide-phone">Premium</th>
                   <th class="hide-phone">Add-ons</th>
@@ -180,7 +180,7 @@
       <!-- Platform entitlements (LX-34): the registry rows, each shown only while its feature is on. -->
       <section class="section" aria-labelledby="platform-title">
         <div class="section-head">
-          <div><h2 id="platform-title">Platform entitlements</h2><p>Set by Polaris Key</p></div>
+          <div><h2 id="platform-title">Platform entitlements</h2></div>
         </div>
         <div class="table-card">
           <table class="table fixed no-head-phone rows-44">
@@ -198,7 +198,8 @@
             <tbody>
               <tr>
                 <td><div class="cell-title">Release tracks</div><div class="cell-sub"><span class="mono">channels</span></div>
-                  <div class="cell-sub show-phone"><span class="nowrap">Ship builds</span>&nbsp;· <span class="nowrap">stable for both tiers</span>&nbsp;· <a class="link" href="#">Playtester access</a> adds beta</div></td>
+                  <div class="cell-sub show-phone"><span class="nowrap">Ship builds</span>&nbsp;· <span class="nowrap">stable for both tiers</span></div>
+                  <div class="cell-sub show-phone"><a class="link" href="#">Playtester access</a> adds beta</div></td>
                 <td class="hide-phone" data-service="release"><span class="icon-text"><i class="svc" role="img" aria-label="Ship builds"></i>Ship builds</span></td>
                 <td class="hide-phone">stable</td>
                 <td class="hide-phone">stable</td>
@@ -207,7 +208,8 @@
               </tr>
               <tr>
                 <td><div class="cell-title">Versions</div><div class="cell-sub"><span class="mono">app.minVersion</span>&nbsp;· <span class="mono">app.maxVersion</span></div>
-                  <div class="cell-sub show-phone"><span class="nowrap">Licensing</span>&nbsp;· <span class="nowrap">any version for both tiers</span>&nbsp;· <span class="nowrap">set in the tier’s Duration</span></div></td>
+                  <div class="cell-sub show-phone"><span class="nowrap">Licensing</span>&nbsp;· <span class="nowrap">any version for both tiers</span></div>
+                  <div class="cell-sub show-phone">Set in the tier’s Duration</div></td>
                 <td class="hide-phone" data-service="license"><span class="icon-text"><i class="svc" role="img" aria-label="Licensing"></i>Licensing</span></td>
                 <td class="hide-phone">Any</td>
                 <td class="hide-phone">Any</td>
@@ -216,7 +218,8 @@
               </tr>
               <tr>
                 <td><div class="cell-title">Device limit</div><div class="cell-sub"><span class="mono">deviceLimit</span></div>
-                  <div class="cell-sub show-phone"><span class="nowrap">Licensing</span>&nbsp;· <span class="nowrap">Free 3</span>&nbsp;· <span class="nowrap">Premium 5</span>&nbsp;· <span class="nowrap">seat packs add</span></div></td>
+                  <div class="cell-sub show-phone"><span class="nowrap">Licensing</span>&nbsp;· <span class="nowrap">Free 3</span>&nbsp;· <span class="nowrap">Premium 5</span></div>
+                  <div class="cell-sub show-phone">Seat packs add</div></td>
                 <td class="hide-phone" data-service="license"><span class="icon-text"><i class="svc" role="img" aria-label="Licensing"></i>Licensing</span></td>
                 <td class="hide-phone tnum">3</td>
                 <td class="hide-phone tnum">5</td>
@@ -246,7 +249,6 @@
         </div>
       </section>
 
-      <p class="foot-caption bare">Applied in order: tier, the license’s own values, add-ons, platform entitlements.</p>
     </div>
   </main>
 </div>

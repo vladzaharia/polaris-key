@@ -88,7 +88,7 @@
       <header class="page-head is-record">
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a><i class="ic ic-chevron-right"></i><a href="#">Licenses</a></nav>
         <div class="page-heading"><h1>Elif Yıldız</h1></div>
-        <p class="page-sub"><span>elif@example.com · In an account · Premium</span><span class="id hide-phone"><i class="ic ic-id-card"></i>lic_01J9X…7FQA<i class="ic ic-copy"></i></span></p>
+        <p class="page-sub"><span class="pill sm"><i class="ic ic-user-round"></i>In an account</span><span>elif@example.com</span><span class="pill sm"><i class="ic ic-layers"></i>Premium</span><span class="id hide-phone"><i class="ic ic-id-card"></i>lic_01J9X…7FQA<i class="ic ic-copy"></i></span></p>
         <div class="page-actions">
           <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
           <button class="btn outline"><i class="ic ic-gift"></i>Comp an add-on…</button>
@@ -134,7 +134,7 @@
         <div class="mk-rail">
           <section class="card" aria-labelledby="held-title">
             <div class="card-head">
-              <div class="title"><h2 id="held-title">Add-ons</h2><p>Gem purchases are the ledger’s source.</p></div>
+              <div class="title"><h2 id="held-title">Add-ons</h2></div>
             </div>
             <div class="card-rows">
               <div class="card-row">
@@ -154,17 +154,17 @@
               </div>
               <div class="card-row">
                 <span class="icon-tile sm"><i class="ic ic-coins"></i></span>
-                <div class="grow"><div class="strong">1,200 gems</div><div class="cell-sub"><span class="nowrap">App Store</span>&nbsp;· <span class="nowrap">Oct 5</span>&nbsp;· <span class="nowrap">450 of 1,200 redeemed</span></div></div>
+                <div class="grow"><div class="strong">1,200 gems</div><div class="cell-sub"><span class="nowrap">App Store</span>&nbsp;· <span class="nowrap">Oct 5</span></div><div class="cell-sub">450 of 1,200 redeemed</div></div>
                 <button class="btn ghost icon xs" aria-label="Actions for 1,200 gems"><i class="ic ic-ellipsis"></i></button>
               </div>
               <div class="card-row">
                 <span class="icon-tile sm muted"><i class="ic ic-coins"></i></span>
-                <div class="grow"><div class="strong">500 gems</div><div class="cell-sub"><span class="nowrap">Google Play</span>&nbsp;· <span class="nowrap">Oct 1</span>&nbsp;· <span class="nowrap text-danger">refunded Oct 3</span></div></div>
+                <div class="grow"><div class="strong">500 gems</div><div class="cell-sub"><span class="nowrap">Google Play</span>&nbsp;· <span class="nowrap">Oct 1</span></div><div class="cell-sub text-danger">Refunded Oct 3</div></div>
                 <button class="btn ghost icon xs" aria-label="Actions for 500 gems, refunded"><i class="ic ic-ellipsis"></i></button>
               </div>
               <div class="card-row">
                 <span class="icon-tile sm"><i class="ic ic-coins"></i></span>
-                <div class="grow"><div class="strong">500 gems ×2</div><div class="cell-sub"><span class="nowrap">Google Play</span>&nbsp;· <span class="nowrap">Sep 28</span>&nbsp;· <span class="nowrap">400 of 1,000 redeemed</span></div></div>
+                <div class="grow"><div class="strong">500 gems ×2</div><div class="cell-sub"><span class="nowrap">Google Play</span>&nbsp;· <span class="nowrap">Sep 28</span></div><div class="cell-sub">400 of 1,000 redeemed</div></div>
                 <button class="btn ghost icon xs" aria-label="Actions for 500 gems ×2"><i class="ic ic-ellipsis"></i></button>
               </div>
             </div>
@@ -177,11 +177,11 @@
       <section class="card" aria-labelledby="gems-title">
         <div class="card-head">
           <div class="title">
-            <h2 id="gems-title">Gems<span class="info-tip" tabindex="0" role="img" aria-label="How the ledger counts" data-tip="A repeated request id redeems nothing.&#10;A refund never takes the balance below zero."><i class="ic ic-info"></i></span></h2>
+            <h2 id="gems-title">Gems</h2>
           </div>
         </div>
         <div class="stats strip quad">
-          <div class="stat"><span class="stat-label"><i class="ic ic-coins"></i>Balance</span><span class="stat-value">1,350</span><span class="stat-foot">Bought − redeemed − refunded</span></div>
+          <div class="stat"><span class="stat-label"><i class="ic ic-coins"></i>Balance</span><span class="stat-value">1,350</span></div>
           <div class="stat"><span class="stat-label"><i class="ic ic-circle-plus"></i>Bought</span><span class="stat-value">2,700</span><span class="stat-foot">3 purchases</span></div>
           <div class="stat"><span class="stat-label"><i class="ic ic-arrow-up-right"></i>Redeemed</span><span class="stat-value">1,200</span><span class="stat-foot"><span class="nowrap">4 times</span>&nbsp;· <span class="nowrap">350 reversed</span></span></div>
           <div class="stat"><span class="stat-label"><i class="ic ic-circle-minus"></i>Refunded</span><span class="stat-value">150</span><span class="stat-foot">1 refund</span></div>
@@ -228,7 +228,8 @@
               <td class="num strong">−350<div class="cell-sub show-phone">balance 750</div></td>
               <td class="num hide-phone">750</td>
               <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">From 500 gems (Oct 1) · Elif’s Pixel 8</span></span>
-                <div class="icon-line type-small reversed-note detail"><i class="ic ic-triangle-alert"></i><span class="detail-text">Reversed by the Oct 3 refund; Diceroll acknowledged and took back the Ember table</span></div></td>
+                <div class="icon-line type-small reversed-note detail"><i class="ic ic-triangle-alert"></i><span class="detail-text">Reversed by the Oct 3 refund</span></div>
+                <div class="icon-line type-small detail"><i class="ic ic-check"></i><span class="detail-text">Diceroll took back the Ember table</span></div></td>
             </tr>
             <tr>
               <td class="when"><span class="hide-phone nowrap">Oct 1, 12:40</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Oct 1</span><span class="meta">12:40</span></span></span></td>

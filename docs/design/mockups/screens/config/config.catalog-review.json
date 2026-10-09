@@ -8,7 +8,7 @@
   "summary": "The review surface behind 'Review 1 change' in DJDL's catalog editor: draft v10 against published v9 as a per-entry diff (aiff added to quality.floor's allowed values, mp3-256 removed with its 4 licenses moving to mp3-320), who it reaches, the one repository note (commit the same change to .pkey/schema), and Publish v10 as the one primary.",
   "compare": [
     "A distinct review step (admin-2-19): the draft against the last published version, one card per changed entry, each value change as + or − in mono with words (Added, Removed, Unchanged), never colour alone.",
-    "A removed value says where its people move ('4 licenses move to mp3-320, as you chose'), the choice made in the editor's remove dialog (config.entry-setting-remove-value).",
+    "A removed value says where its people move ('4 licenses move to mp3-320'), the choice made in the editor's remove dialog (config.entry-setting-remove-value).",
     "Who it reaches is counted once, in the rail: profiles, licenses that move, accounts that keep their own; devices get v10 at their next check.",
     "The repository note appears once, as an info callout with Copy the diff: the console publish doesn't write .pkey/schema.",
     "Publish v10 is the one filled primary (ink); Back to editing is a ghost. States (config.catalog-review-states): nothing to publish, a validation error pinned to its entry, publish failed with nothing lost.",
