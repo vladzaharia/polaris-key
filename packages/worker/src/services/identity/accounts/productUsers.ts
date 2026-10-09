@@ -597,7 +597,9 @@ export async function productUserDetail(
     })),
     devices: devices.map((d) => ({
       deviceId: d.device_id,
-      label: d.label,
+      // SEC-PRV-12: a device bound to this licence by someone else is not this person's data.
+      label:
+        d.subject !== null && !subjects.includes(d.subject) ? null : d.label,
       status: d.status,
       platform: d.platform,
       appVersion: d.app_version,
