@@ -180,6 +180,7 @@ func start() -> PKeyResult:
 	device_id = store.get_device_id()
 	if device_id == "":
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The store has no device id.", last_store_error)
+	device_id = await PKeyDeviceBinding.bind(store, product, device_id)
 	tokens.load_token()
 	cache = PKeyCache.new(store, trust, clock, product, device_id)
 	cache.platform = update_platform()
@@ -217,6 +218,22 @@ func capability_engine() -> PKeyCaps:
 
 func enabled(slug: String) -> bool:
 	return PKeyClaims.is_true(services().get(slug, {}).get("enabled", false))
+
+
+## Whether the licence GATE runs: the build's own declaration (`expected_services`, default
+## licence and config) OR a discovery document loaded this session that says licence is enabled.
+## Discovery is unsigned, so it may switch the gate on but never off: a forged
+## `services.license.enabled: false` cannot turn a licensed product into `not-applicable`. A
+## product without licensing says so with `expected_services` lacking `license`. Which sub-clients
+## exist still follows discovery (`enabled`).
+func license_gate_enabled() -> bool:
+	var built: bool
+	if _expected_services != null:
+		built = _expected_services.has("license")
+	else:
+		built = PKeyClaims.is_true(PKeyDiscovery.default_services().get("license", {}).get("enabled", false))
+	var discovered: bool = _discovered_services != null and PKeyClaims.is_true(_discovered_services.get("license", {}).get("enabled", false))
+	return built or discovered
 
 
 ## null when `slug` is enabled, else a `service-unavailable` failure for the caller to return.
@@ -369,7 +386,7 @@ func refresh_trust() -> String:
 	if not r.ok or r.detail["status"] != 200:
 		return ""
 	var jws: String = (r.detail["body"] as PackedByteArray).get_string_from_utf8().strip_edges()
-	var issued := await trust.accept_network(jws, product, clock.system_now(), true)
+	var issued := await trust.accept_network(jws, product, clock.now(), true)
 	if issued < 0:
 		return ""
 	clock.raise(issued)
@@ -526,7 +543,7 @@ func activation() -> String:
 ## The licence gate's view now (PKeyGate.license_state).
 func license_state() -> Dictionary:
 	return PKeyGate.license_state({
-		"license_service_enabled": enabled("license"),
+		"license_service_enabled": license_gate_enabled(),
 		"activation": activation(),
 		"doc": cache.license["doc"] if cache != null and cache.license != null else null,
 		"now": clock.system_now(),

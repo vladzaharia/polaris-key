@@ -467,21 +467,35 @@ static func reset_memo() -> void:
 ## (a sandbox that refuses `ioreg`). "" when nothing is readable (web). Blocks: one short read.
 static func device_id_raw(host: PKeyHostIo = null) -> String:
 	var h: PKeyHostIo = host if host != null else PKeyHostIo.new()
-	var raw := ""
+	var raw := device_anchor(h)
+	if raw == "":
+		raw = trim_ascii(h.unique_id())
+	return raw
+
+
+## The desktop platform anchor ALONE (MachineGuid, IOPlatformUUID, the rule-2 machine-id), or ""
+## where none is readable (mobile, web, a sandbox that refuses the probe). Never the
+## `OS.get_unique_id()` fallback: a device id is re-derived from this at every start (PKeyDeviceBinding)
+## and a stored id is kept when it is empty. The probes run by ABSOLUTE path (`/usr/sbin/ioreg`,
+## `%SystemRoot%\\System32\\reg.exe`), never through PATH; a Windows without a usable SystemRoot has
+## no anchor rather than a PATH lookup. Blocks: one short read.
+static func device_anchor(host: PKeyHostIo = null) -> String:
+	var h: PKeyHostIo = host if host != null else PKeyHostIo.new()
 	match h.platform():
 		"windows":
 			var root := h.env("SystemRoot")
 			if root == "":
 				root = h.env("SYSTEMROOT")
-			raw = parse_reg_machine_guid(h.run(windows_system_path(root, "reg.exe"), PackedStringArray(WINDOWS_REG_ARGS)))
+			var reg := windows_system_path(root, "reg.exe")
+			if reg == "reg.exe":
+				return ""
+			return parse_reg_machine_guid(h.run(reg, PackedStringArray(WINDOWS_REG_ARGS)))
 		"macos":
-			raw = parse_ioreg(h.run("/usr/sbin/ioreg", PackedStringArray(["-rd1", "-c", "IOPlatformExpertDevice"]))).get("uuid", "")
+			return parse_ioreg(h.run("/usr/sbin/ioreg", PackedStringArray(["-rd1", "-c", "IOPlatformExpertDevice"]))).get("uuid", "")
 		"linux":
 			var files := {}
 			for p in PackedStringArray(LINUX_ANCHOR_PATHS):
 				files[p] = h.read(p)
 			var anchor = linux_anchor_source(files)
-			raw = anchor["value"] if anchor != null else ""
-	if raw == "":
-		raw = trim_ascii(h.unique_id())
-	return raw
+			return anchor["value"] if anchor != null else ""
+	return ""
