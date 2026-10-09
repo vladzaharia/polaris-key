@@ -116,8 +116,9 @@ class LiveStateTest {
         assertNull(c.license.entitlementValue("seats"))
         assertTrue(c.license.entitlements().isEmpty())
         assertTrue(!c.license.isEntitled("pro"))
-        // licenseInfo stays the diagnostic: the last verified document is still readable.
-        assertNotNull(c.license.licenseInfo())
+        // A hard 401 deletes the licence document (V4 §4.3), so there is no last verified document
+        // left to read: licenseInfo is null, and the gate reports the revocation.
+        assertNull(c.license.licenseInfo())
     }
 
     @Test

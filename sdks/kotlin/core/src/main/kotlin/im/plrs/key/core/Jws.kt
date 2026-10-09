@@ -109,7 +109,7 @@ public object JwsVerifier {
         // 9-10. The key comes FROM THE TRUST SET; a revoked kid is absent by construction.
         if (kid == null) return null
         val rawKeyB64 = trust[kid] ?: return null
-        val rawKey = Base64Url.decode(rawKeyB64) ?: return null
+        val rawKey = Base64Url.decodeStrict(rawKeyB64) ?: return null
         if (rawKey.size != 32) return null
 
         // 11-12. V4 §1.1 prechecks, then the backend, over the ORIGINAL substrings.

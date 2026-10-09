@@ -18,12 +18,24 @@ public object Base64Url {
 
     /**
      * Strict base64url decode for WIRE segments (header, payload, signature): the unpadded `-_`
-     * alphabet only — no `+` or `/`, no `=`, no whitespace (WIRE-CONTRACT-V2 §2.3, audit R2-05).
-     * Null on any error, never a throw.
+     * alphabet only — no `+` or `/`, no `=`, no whitespace — and only the CANONICAL spelling
+     * (WIRE-CONTRACT-V4 §1): a length that is not 1 mod 4 and whose last character's unused low
+     * bits are zero, so every byte string has exactly one accepted spelling. Null on any error,
+     * never a throw.
      */
     public fun decodeStrict(s: String): ByteArray? {
-        for (c in s) if (!inAlphabet(c)) return null
+        if (!isCanonical(s)) return null
         return decode(s)
+    }
+
+    /** WIRE-CONTRACT-V4 §1: the alphabet, no padding, `length % 4 != 1`, and zero unused bits. */
+    public fun isCanonical(s: String): Boolean {
+        for (c in s) if (!inAlphabet(c)) return false
+        val rem = s.length % 4
+        if (rem == 1) return false
+        if (rem == 0) return true
+        val last = URL.indexOf(s[s.length - 1])
+        return if (rem == 2) last and 0x0f == 0 else last and 0x03 == 0
     }
 
     /**

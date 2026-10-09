@@ -111,11 +111,12 @@ class CacheTest {
             trustJws = "a.b.c",
             docs = mapOf(DocumentSlice.license to "l.l.l", DocumentSlice.config to "c.c.c"),
             etags = mapOf(DocumentSlice.config to "\"e\""),
-            importedBundle = ImportedBundle("01J", 1700000000),
+            bundle = "b.b.b",
             lastSyncUnauthorized = true,
             blocked = BlockInfoRecord(BlockReason.versionTooOld, AllowedRange(min = "2.0.0")),
             feeds = mapOf("stable" to "f.f.f"),
             releaseRecords = mapOf("ab" to "r.r.r"),
+            pinRevocations = mapOf("pkey-test-prod-2026" to "p.p.p"),
         )
         assertEquals(record, CacheRecord.fromJson(JsonText.parse(record.toJson().toString())))
         assertTrue(record.toJson().toString().contains("\"docs\":{\"license\":\"l.l.l\""))
