@@ -1,5 +1,0 @@
-apiVersion: pkey.dev/v1
-outlets:
-  steam:
-    identity:
-      appId: "999999"
