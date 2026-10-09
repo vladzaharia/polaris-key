@@ -563,9 +563,10 @@ struct PolarisGateSurface<Content: View>: View {
         let resting = !keyFieldFocused && !licenseKey.isEmpty
         let field = TextField(
             theme.copy.kit.keyFieldPlaceholder, text: $licenseKey,
-            // The placeholder is the only visible name in compact mode: muted text, not the
-            // system placeholder grey (1.8:1 on the light page).
-            prompt: Text(theme.copy.kit.keyFieldPlaceholder).foregroundStyle(palette.textMuted))
+            // The placeholder is the only visible name in compact mode. The system prompt is
+            // blended toward the background on some OS releases (3.1:1 light on macOS 15), so it
+            // stays empty and `placeholderOverlay` draws the muted text, the same on every OS.
+            prompt: Text(""))
             .font(style.monoBody)
             .multilineTextAlignment(.leading)
             .autocorrectionDisabled()
@@ -604,6 +605,7 @@ struct PolarisGateSurface<Content: View>: View {
                     // field's text inset.
                     .foregroundStyle(resting ? Color.clear : palette.textDefault)
                     .overlay(restingOverlay(resting).padding(.horizontal, 8))
+                    .overlay(placeholderOverlay.padding(.horizontal, 8))
                     .overlay(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .strokeBorder(hasError ? palette.danger : Color.clear, lineWidth: 1))
@@ -628,6 +630,7 @@ struct PolarisGateSurface<Content: View>: View {
                 // accessibility tree; the middle-truncated overlay shows the key.
                 .foregroundStyle(resting ? Color.clear : palette.textDefault)
                 .overlay(restingOverlay(resting), alignment: .leading)
+                .overlay(placeholderOverlay, alignment: .leading)
                 .frame(maxWidth: .infinity)
             #if os(iOS)
                 PasteButton(payloadType: String.self) { items in
@@ -644,6 +647,18 @@ struct PolarisGateSurface<Content: View>: View {
         .overlay(shape.strokeBorder(hasError ? palette.danger : palette.borderStrong, lineWidth: 1))
         .modifier(OptionalTint(color: tint == nil ? nil : palette.focus))
         .polarisScrollRequest(focusToken)
+    }
+
+    @ViewBuilder private var placeholderOverlay: some View {
+        if licenseKey.isEmpty {
+            Text(theme.copy.kit.keyFieldPlaceholder)
+                .font(style.monoBody)
+                .foregroundStyle(palette.textMuted)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
 
     @ViewBuilder private func restingOverlay(_ resting: Bool) -> some View {

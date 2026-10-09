@@ -16,6 +16,11 @@
 
     @MainActor
     final class KitFocusHostTests: XCTestCase {
+        // The refused-key test takes 137 s on a loaded CI simulator, past run.sh's 120 s default
+        // allowance (xcodebuild then kills the runner and exits 65 though every test passed).
+        // XCTest rounds this up to whole minutes.
+        nonisolated override var executionTimeAllowance: TimeInterval { 300 }
+
         struct Harness: View {
             @State var key: String
             var error: String?
