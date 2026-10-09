@@ -70,21 +70,19 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 			var v: PKeyUiView = st["view"]
 			for s in row_sizes:
 				await mx.resize(tree, st, s[1], s[2], s[3], s[4])
-				var row := {"label": s[0], "physical": s[1], "scale": s[2], "dpr": s[4], "preset": preset}
-				var probs: PackedStringArray = MATRIX.problems(v, entry[3], entry[0], preset in ["dark", "accent-dark", "accent-light"], row)
-				# (A 36 px host font on a 640 px wide canvas is the one tight case; see MATRIX.problems.)
-				if not ([entry[0], preset, s[0]] in MATRIX.TIGHT_CASES and s[1].x <= 640):
-					probs.append_array(_focus(v))
+				var probs := await _view_problems(tree, v, entry, preset, s)
 				if not probs.is_empty():
 					failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
 				layouts += 1
 			(st["vp"] as Node).free()
 			t.check("matrix: %s / %s / %s fits every size" % [entry[0], preset, locale], failed.is_empty(), "; ".join(failed.slice(0, 4)))
+	await _fresh_layouts(t, tree, mx, sizes, only)
 	await _pad_flows(t, tree, mx)
 	await _live_resize(t, tree, mx)
 	await _safe_area(t, tree, mx)
 	await _refresh_stability(t, tree, mx)
 	await _offline_qr(t, tree, mx)
+	await _phone_checks(t, tree, mx)
 	mx.drop_locales()
 	PKeyUiView.safe_insets_override = null
 	PKeyUiView.mobile_override = null
@@ -92,6 +90,45 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	PKeyUiTheme.reset()
 	t.check("matrix: coverage", layouts >= MATRIX.SCREENS.size() * sizes.size() * 7 or not only.is_empty(), "%d layouts" % layouts)
 	return true
+
+
+## Every layout and focus problem of `v`, laid out at the size row `s` in `preset`.
+static func _view_problems(tree: SceneTree, v: PKeyUiView, entry: Array, preset: String, s: Array) -> PackedStringArray:
+	var row := {"label": s[0], "physical": s[1], "scale": s[2], "dpr": s[4], "preset": preset}
+	var probs: PackedStringArray = MATRIX.problems(v, entry[3], entry[0], preset in ["dark", "accent-dark", "accent-light"], row)
+	# (A 36 px host font on a 640 px wide canvas is the one tight case; see MATRIX.problems.)
+	if not ([entry[0], preset, s[0]] in MATRIX.TIGHT_CASES and s[1].x <= 640):
+		probs.append_array(_focus(v))
+	probs.append_array(await MATRIX.reach_problems(tree, v, entry[3]))
+	return probs
+
+
+## The arrangement is a pure function of the size (DL1): every screen laid out FRESH at each size, as
+## a game opens it on a phone, passes the same checks as the one resized through the sizes. (A view
+## that keeps a squeeze, a column or a width from a size it was laid out at before lays out
+## differently when it is built at the size.) The Polaris Key look, the native look and a whole
+## custom theme, in English.
+func _fresh_layouts(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, only: Array) -> void:
+	mx.use_locale("en")
+	var layouts := 0
+	for preset in ["dark", "native", "custom"]:
+		for entry in MATRIX.SCREENS:
+			if not only.is_empty() and not only.has(entry[0]):
+				continue
+			var failed: Array = []
+			var row_sizes: Array = sizes
+			if entry.size() > 4 and entry[4] == "pad":
+				row_sizes = row_sizes.filter(func(r): return float(r[4]) <= 0.0 or minf(r[1].x, r[1].y) * 1.0 / float(r[4]) >= 600.0)
+			for s in row_sizes:
+				var st: Dictionary = await mx.stage(tree, entry, s[1], s[2], s[3], preset, false, s[4])
+				var probs := await _view_problems(tree, st["view"], entry, preset, s)
+				if not probs.is_empty():
+					failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
+				layouts += 1
+				(st["vp"] as Node).free()
+				await tree.process_frame
+			t.check("fresh layout: %s / %s fits every size laid out at the size" % [entry[0], preset], failed.is_empty(), "; ".join(failed.slice(0, 4)))
+	t.check("fresh layout: coverage", layouts >= MATRIX.SCREENS.size() * 12 * 3 - 200 or not only.is_empty(), "%d layouts" % layouts)
 
 
 ## Every control in the focus chain is on screen and focusable.
@@ -302,3 +339,35 @@ func _safe_area(t: PKeyTestContext, tree: SceneTree, mx) -> void:
 	t.check("safe area: the card clears the notch and the home indicator", r.position.x >= 140.0 + PKeyUiView.GUTTER and r.end.x <= 2400.0 - 60.0 - PKeyUiView.GUTTER and r.end.y <= 1080.0 - 40.0 - PKeyUiView.GUTTER, str(r))
 	(st["vp"] as Node).free()
 	PKeyUiView.safe_insets_override = null
+
+
+## The sign-in user code on a 360 dp phone is one line (DL11: broken only at its hyphen, never mid-group);
+## the offline request QR also shows on a mobile-flagged device whose only input is a pad (Android TV);
+## the settings slider draws a focus ring in every look.
+func _phone_checks(t: PKeyTestContext, tree: SceneTree, mx) -> void:
+	mx.use_locale("en")
+	var entry := ["sign_in", "sign_in", "pending", "full"]
+	for sz in [[Vector2i(1080, 2400), 3.0, "360 dp"], [Vector2i(1170, 2532), 3.0, "390 pt"]]:
+		var logical: Vector2i = sz[0]
+		for preset in ["dark", "native", "custom"]:
+			var st: Dictionary = await mx.stage(tree, entry, logical, 1.0 if logical.x == 1080 else 3.0, null, preset, false, sz[1])
+			var code := (st["view"] as Node).find_child("UserCode", true, false) as Label
+			t.check("phone: the sign-in code is one line at %s (%s)" % [sz[2], preset], code != null and code.is_visible_in_tree() and code.get_line_count() == 1, "%s lines" % (code.get_line_count() if code else -1))
+			(st["vp"] as Node).free()
+	var pad_entry := ["offline", "offline", "native", "full", "pad"]
+	var st2: Dictionary = await mx.stage(tree, pad_entry, Vector2i(1920, 1080), 1.0, null, "dark", false, 2.0)
+	var qr := (st2["view"] as Node).find_child("QrCode", true, false) as Control
+	t.check("offline: the request QR code shows on a mobile-flagged, pad-only device (Android TV)", qr != null and qr.is_visible_in_tree())
+	(st2["vp"] as Node).free()
+	for preset in ["dark", "light", "native", "native-light", "custom", "default", "accent-dark"]:
+		var st3: Dictionary = await mx.stage(tree, ["settings", "settings", "catalog", "full"], Vector2i(1280, 720), 1.0, null, preset)
+		var panel := st3["view"] as PKeySettingsPanel
+		var slider: HSlider = null
+		for s in panel.find_children("Input", "HSlider", true, false):
+			slider = s
+		var drawn := slider != null and slider.draw.get_connections().size() > 0
+		var ring := slider != null and not (slider.get_theme_stylebox("focus", "HSlider") is StyleBoxEmpty or slider.get_theme_stylebox("focus", "Button") is StyleBoxEmpty)
+		t.check("settings: the slider is drawn a focus ring in the %s look" % preset, drawn and ring)
+		(st3["vp"] as Node).free()
+	PKeyUiView.mobile_override = null
+	PKeyUiView.pad_only_override = null

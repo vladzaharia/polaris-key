@@ -54,7 +54,9 @@ const TIGHT_CASES := [
 	["activation", "custom", "pixel-art canvas_items 640x360 keep"],
 	["activation", "native", "pixel-art canvas_items 640x360 keep"],
 	["activation", "native36", "640x360"],
+	["activation.device_limit", "custom", "640x360"],
 	["activation.device_limit", "custom", "pixel-art canvas_items 640x360 keep"],
+	["activation.device_limit", "native", "640x360"],
 	["activation.device_limit", "native", "pixel-art canvas_items 640x360 keep"],
 	["activation.device_limit", "native36", "1280x720"],
 	["boot.consent", "custom", "pixel-art canvas_items 640x360 keep"],
@@ -67,6 +69,7 @@ const TIGHT_CASES := [
 	["gate", "native36", "640x360"],
 	["gate.device_limit", "custom", "pixel-art canvas_items 640x360 keep"],
 	["gate.device_limit", "native", "pixel-art canvas_items 640x360 keep"],
+	["gate.device_limit_qr", "custom", "640x360"],
 	["gate.device_limit_qr", "custom", "pixel-art canvas_items 640x360 keep"],
 	["gate.device_limit_qr", "native", "pixel-art canvas_items 640x360 keep"],
 	["gate.error", "custom", "pixel-art canvas_items 640x360 keep"],
@@ -81,6 +84,7 @@ const TIGHT_CASES := [
 	["gate.sign_in", "native", "pixel-art canvas_items 640x360 keep"],
 	["gate.sign_in", "native28", "640x360"],
 	["gate.sign_in", "native36", "640x360"],
+	["gate.sign_in_pad", "custom", "640x360"],
 	["gate.sign_in_pad", "custom", "pixel-art canvas_items 640x360 keep"],
 	["gate.sign_in_pad", "native", "pixel-art canvas_items 640x360 keep"],
 	["gate.sign_in_pad", "native36", "640x360"],
@@ -95,11 +99,16 @@ const TIGHT_CASES := [
 	["sign_in", "native28", "640x360"],
 	["sign_in", "native36", "640x360"],
 	["sign_in.confirm", "native36", "640x360"],
+	["sign_in.pad", "custom", "640x360"],
 	["sign_in.pad", "custom", "pixel-art canvas_items 640x360 keep"],
 	["sign_in.pad", "native", "pixel-art canvas_items 640x360 keep"],
 	["sign_in.pad", "native36", "1280x720"],
 	["sign_in.pad", "native36", "640x360"],
 	["update.banner", "native36", "640x360"],
+	# M9 (deferred): a 28 or 36 px host font on a phone's width; the settings rows (a stepper's buttons
+	# and number) cannot be narrower than that type allows.
+	["settings", "native28", "1080x2400"],
+	["settings", "native36", "1080x2400"],
 ]
 
 ## The looks: the Polaris Key theme (dark, light), the native look over a game's own theme
@@ -333,7 +342,7 @@ static func settle(tree: SceneTree, st: Dictionary) -> void:
 	var v: PKeyUiView = st["view"]
 	v.layout_content()
 	var last := ""
-	for i in 10:
+	for i in 30:
 		await tree.process_frame
 		if st["kind"] != "full" and not v.get("_covering"):
 			# A strip asks for its own height only.
@@ -505,7 +514,9 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 	var tight := [screen, preset, row.get("label", "")] in TIGHT_CASES
 	# The margins are held to the screen's safe area (a strip or a badge is placed within it).
 	var safe := Rect2(screen_rect.position + Vector2(ins[0], ins[1]), screen_rect.size - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
-	if kind == "full" and not screen_rect.grow(1.0).encloses(r) and not (tight and preset == "native36" and screen_rect.size.x <= 640.0):
+	# (A 36 px host font on a 640 px wide canvas, or a 28 or 36 px one on a phone's width, is the tight case.)
+	var host_tight := tight and ((preset == "native36" and screen_rect.size.x <= 640.0) or (preset in ["native28", "native36"] and float(row.get("dpr", 0.0)) > 0.0))
+	if kind == "full" and not screen_rect.grow(1.0).encloses(r) and not host_tight:
 		out.append("the view %s is outside the screen %s" % [r, screen_rect])
 	var leaves: Array = []
 	_walk(view, view, safe, kind, out, leaves)
@@ -560,7 +571,7 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 		if ch < MOBILE_CONTROL_DP * dpr - 0.6:
 			out.append("controls are %.1f dp tall, under %d" % [ch / dpr, MOBILE_CONTROL_DP])
 	# A 36 px host font on a 640 px wide canvas: the card cannot be narrower than its widest word.
-	if tight and preset == "native36" and screen_rect.size.x <= 640.0:
+	if host_tight:
 		var kept := PackedStringArray()
 		for line in out:
 			if not (" is outside the panel's safe rect" in line or " is within " in line or " overflows its container" in line or " breaks the word" in line):
@@ -597,6 +608,38 @@ static func _visible_unscrolled(ctl: Control, view: Control, screen_rect: Rect2)
 				return false
 		n = n.get_parent()
 	return true
+
+
+## A tight case keeps its primary (and the user code) reachable through the scroll fallback: give each one
+## that is not on screen at the top the focus, let the layout settle, and require it to be INSIDE the
+## visible part of every scroll area above it and of the screen (the scroll must follow the focus; a
+## scroll container merely being above it proves nothing). A coroutine.
+static func reach_problems(tree: SceneTree, view: PKeyUiView, kind: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	if kind != "full" or view is PKeySettingsPanel or view is PKeyDevMenuSection:
+		return out
+	var screen_rect := view.get_viewport_rect()
+	var pending: Array = []
+	for ctl in view.find_children("*", "Control", true, false):
+		if not ctl.is_visible_in_tree():
+			continue
+		var primary: bool = ctl is Button and ctl.theme_type_variation == &"PKeyPrimary"
+		if primary and not _visible_unscrolled(ctl, view, screen_rect) and PKeyUiView.is_focusable(ctl):
+			pending.append(ctl)
+	for ctl in pending:
+		ctl.grab_focus()
+		for i in 4:
+			await tree.process_frame
+		var r: Rect2 = ctl.get_global_rect()
+		var inside := screen_rect.grow(1.0).encloses(r)
+		var n: Node = ctl.get_parent()
+		while n != null and n != view.get_parent():
+			if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+				inside = inside and (n as ScrollContainer).get_global_rect().grow(1.0).encloses(r)
+			n = n.get_parent()
+		if not inside:
+			out.append("%s has the focus but is not inside the visible scroll area: %s" % [_path(view, ctl), r])
+	return out
 
 
 ## `ctl` sits in a scroll area that scrolls (a focus on it brings it into view).

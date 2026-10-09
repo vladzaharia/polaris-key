@@ -85,6 +85,7 @@ func _build() -> void:
 	_scroll.name = "Scroll"
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_scroll.follow_focus = false
+	_scroll.set_meta(MANUAL_SCROLL_META, true)
 	_pane.add_child(_scroll)
 	# A fade over the clipped bottom edge, while there is more below.
 	var g := Gradient.new()
@@ -112,8 +113,7 @@ func _build() -> void:
 	_inset.size_flags_vertical = Control.SIZE_EXPAND | Control.SIZE_SHRINK_BEGIN
 	_inset.minimum_size_changed.connect(layout_content)
 	_scroll.add_child(_inset)
-	_scroll.get_v_scroll_bar().visibility_changed.connect(func():
-		_inset.add_theme_constant_override("margin_right", roundi(role("space_4")) if _scroll.get_v_scroll_bar().visible else 0))
+	_scroll.get_v_scroll_bar().visibility_changed.connect(_apply_inset)
 	_scroll.get_v_scroll_bar().value_changed.connect(func(_v: float) -> void: _update_fade())
 	var box := vbox(_inset, "Body", "PKeySections")
 	_list = vbox(box, "Rows", "PKeySections")
@@ -121,6 +121,9 @@ func _build() -> void:
 	_advanced.name = "AdvancedToggle"
 	_advanced.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_advanced.set_meta(DISCLOSURE_META, true)
+	# Wraps rather than widen the panel past a narrow screen.
+	_advanced.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_advanced.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_advanced.toggled.connect(func(on: bool):
 		show_advanced = on
 		refresh_view())
@@ -159,35 +162,109 @@ func _apply_width(width: float) -> void:
 
 
 func _arrange(m: Dictionary) -> void:
-	var rail := bool(m.get("wide", false)) and _groups.size() > 1 and not phone_bleed()
+	var rail := _rail_wanted(m)
 	_rail_panel.visible = rail and not _groups.is_empty()
 	set_columns(_body, rail)
 	for i in _groups.size():
 		(_groups[i]["node"] as Control).visible = (not rail) or i == section
+		# The rail already names the section: its heading is not said twice.
+		var heading := (_groups[i]["node"] as Control).find_child("Category", false, false) as Control
+		if heading != null:
+			heading.visible = not rail
 	for i in _rail_buttons.size():
 		(_rail_buttons[i] as Button).set_pressed_no_signal(i == section)
 	super(m)
-	var stack := bool(m["phone"]) or content_room().x < role("card_width")
+	var stack := _is_narrow()
 	for k in _controls:
 		var n: Dictionary = _controls[k]
 		(n["row"] as BoxContainer).vertical = stack
 		(n["control"] as Control).custom_minimum_size.x = 0.0 if stack else role("card_width") * 0.42
 		(n["control"] as Control).size_flags_horizontal = Control.SIZE_FILL if stack else Control.SIZE_SHRINK_END
-		_size_control(n)
-	# The list is as tall as its rows, up to the room the screen leaves, then scrolls: ending on a
-	# row boundary so no row is cut in half.
+		# Every control ends on the same right edge (a switch, a value, the last stepper button), in
+		# a column of one width: the line fills the column and packs its parts to the end.
+		var line := n["line"] as BoxContainer
+		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.alignment = BoxContainer.ALIGNMENT_END
+		_size_control(n, stack)
+	_narrow_lists(stack)
+	_apply_inset()
+	var want := _list_height()
+	if not is_equal_approx(_scroll.custom_minimum_size.y, want):
+		_scroll.custom_minimum_size.y = want
+	_update_fade()
+
+
+## On a narrow panel the grouped lists pad less at the sides (a card, a list and a scroll bar's
+## inset each take a margin of the few hundred pixels a phone has).
+func _narrow_lists(narrow: bool) -> void:
+	var side := roundf(role("space_2"))
+	for g in _groups:
+		var panel := (g["node"] as Control).find_child("List", false, false) as PanelContainer
+		if panel == null:
+			continue
+		var has := panel.has_theme_stylebox_override("panel")
+		if narrow and has and is_equal_approx(float(panel.get_meta(&"pkey_narrow_side", -1.0)), side):
+			continue
+		if has:
+			panel.remove_theme_stylebox_override("panel")
+			panel.remove_meta(&"pkey_narrow_side")
+		if not narrow:
+			continue
+		var base := panel.get_theme_stylebox("panel")
+		if not (base is StyleBoxFlat):
+			continue
+		var box := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
+		box.content_margin_left = minf(box.content_margin_left, side)
+		box.content_margin_right = minf(box.content_margin_right, side)
+		panel.add_theme_stylebox_override("panel", box)
+		panel.set_meta(&"pkey_narrow_side", side)
+
+
+## The list is as tall as its rows, up to the room the screen leaves, then scrolls: ending on a row
+## boundary so no row is cut in half.
+func _list_height() -> float:
 	var room := available_height()
 	room -= _frame_head_height()
 	if _powered_by.visible:
 		room -= _powered_by.get_combined_minimum_size().y + role("section_gap")
 	room = maxf(room, 0.0)
 	var need := _inset.get_combined_minimum_size().y
-	var want := need
 	if need > room:
-		want = _row_boundary(room)
-	if not is_equal_approx(_scroll.custom_minimum_size.y, want):
-		_scroll.custom_minimum_size.y = want
-	_update_fade()
+		return _row_boundary(room)
+	return need
+
+
+## The head and rows wrap as the widths settle: the list's height is taken again until it holds.
+func _layout_stale() -> bool:
+	if not (is_inside_tree() and is_visible_in_tree()):
+		return false
+	return (_rail_panel.visible != (_rail_wanted(layout_metrics()) and not _groups.is_empty())) or not is_equal_approx(_scroll.custom_minimum_size.y, _list_height())
+
+
+## The section rail beside the list: on a wide panel with several sections, and only while the rail
+## itself fits the height under the head (else every section is in one column and the list scrolls).
+## The room beside the rows for the scroll bar while it shows (a function of the size now, not of the
+## size the bar last appeared at).
+func _apply_inset() -> void:
+	var want := roundi(role("space_2") if _is_narrow() else role("space_4")) if _scroll.get_v_scroll_bar().visible else 0
+	if _inset.get_theme_constant("margin_right") != want or not _inset.has_theme_constant_override("margin_right"):
+		_inset.add_theme_constant_override("margin_right", want)
+
+
+## A phone, or a panel narrower than a card: rows stack, the lists pad less.
+func _is_narrow() -> bool:
+	return bool(layout_metrics().get("phone", false)) or content_room().x < role("card_width")
+
+
+func _rail_wanted(m: Dictionary) -> bool:
+	if not (bool(m.get("wide", false)) and _groups.size() > 1 and not phone_bleed()):
+		return false
+	var head := 0.0
+	for ch in _frame.get_children():
+		if ch is Control and (ch as Control).visible and ch != _body and ch != _powered_by:
+			head += (ch as Control).get_combined_minimum_size().y + float(_frame.get_theme_constant("separation"))
+	head += float(_frame.get_theme_constant("separation"))
+	return _rail.get_combined_minimum_size().y + end_padding(_rail_panel) <= available_height() - head
 
 
 func _frame_head_height() -> float:
@@ -405,6 +482,16 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 				sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 				sl.value_changed.connect(func(v: float): _write(key, int(v) if r["integer"] else v))
+				# The engine's slider draws no focus ring of its own (measured on 4.4 and 4.7): the theme's
+				# focus box is drawn over it while it has the focus, in every look.
+				sl.draw.connect(func() -> void:
+					var ring := sl.get_theme_stylebox("focus", "HSlider")
+					if ring == null or ring is StyleBoxEmpty:
+						ring = sl.get_theme_stylebox("focus", "Button")
+					if sl.has_focus() and ring != null and not (ring is StyleBoxEmpty):
+						sl.draw_style_box(ring, Rect2(Vector2.ZERO, sl.size)))
+				sl.focus_entered.connect(sl.queue_redraw)
+				sl.focus_exited.connect(sl.queue_redraw)
 				# The engine's slider answers a keyboard's arrows but not a pad's D-pad or stick.
 				sl.gui_input.connect(func(e: InputEvent) -> void:
 					var dir := _side_step(sl, e)
@@ -427,6 +514,8 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 				# Left and right are minus and plus a step on a pad (and on a keyboard when the
 				# caret cannot move that way); up and down still move focus.
 				var le := sp.get_line_edit()
+				# Three characters wide at least: the number is short, the row has little room.
+				le.add_theme_constant_override("minimum_character_width", 3)
 				le.gui_input.connect(func(e: InputEvent) -> void:
 					var dir := _side_step(le, e)
 					if dir != 0:
@@ -556,13 +645,14 @@ func _ensure_visible(ctl: Control) -> void:
 		_scroll.scroll_vertical = int(bottom - _scroll.size.y)
 
 
-func _size_control(n: Dictionary) -> void:
+func _size_control(n: Dictionary, stack := false) -> void:
 	var h := role("control_height")
 	for k in ["minus", "plus"]:
 		if n.has(k):
 			(n[k] as Control).custom_minimum_size = Vector2(h, h)
 	if n.has("input") and n["input"] is HSlider:
-		(n["input"] as Control).custom_minimum_size = Vector2(role("space_10") * 2.0, h * 0.5)
+		# A narrow panel gets a shorter slider (the track still has room to be dragged and stepped).
+		(n["input"] as Control).custom_minimum_size = Vector2(h * 1.25 if stack else role("space_10") * 2.0, h * 0.5)
 	if n["input"] is TextEdit:
 		(n["input"] as Control).custom_minimum_size.y = roundf(h * 1.5)
 	size_glyph(n["lock"], 14.0, get_theme_color("font_color", "PKeyMuted"))
@@ -680,8 +770,19 @@ func _initial_focus() -> Control:
 	var chain := focus_order()
 	for ctl in chain:
 		if not _rail_buttons.has(ctl):
+			_settle_at_top.call_deferred(ctl)
 			return ctl
 	return chain[0] if not chain.is_empty() else null
+
+
+## The list opens at its top (the first section and its heading in view) when the first control it
+## focuses is on that first page: the focus follows a control without scrolling the heading away.
+func _settle_at_top(ctl: Control) -> void:
+	if not is_instance_valid(ctl) or not ctl.is_inside_tree() or not ctl.has_focus() or not _scroll.is_visible_in_tree():
+		return
+	var bottom := ctl.global_position.y + ctl.size.y - _inset.global_position.y
+	if bottom + float(PKeyUiTheme.RING_WIDTH + PKeyUiTheme.RING_OFFSET) <= _scroll.size.y:
+		_scroll.scroll_vertical = 0
 
 
 ## The store edits go to: PolarisKey.config's, else a new in-memory one installed there.

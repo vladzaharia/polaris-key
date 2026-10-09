@@ -981,7 +981,7 @@ static func _apply_layout(t: Theme, unit: float, density: String, brand: bool) -
 		for type in ["Button", "OptionButton", "PKeyPrimary"]:
 			for item in ["normal", "hover", "pressed", "disabled"]:
 				_pad(t, item, type, side, v)
-		for item in ["pressed", "hover_pressed"]:
+		for item in ["normal", "hover", "pressed", "hover_pressed"]:
 			_pad(t, item, "PKeyRailItem", side, v)
 		for type in ["LineEdit", "TextEdit"]:
 			for item in ["normal", "read_only"]:
@@ -1306,6 +1306,14 @@ static func _rail_item(t: Theme, ink: Color) -> void:
 			b.content_margin_bottom = base.get_margin(SIDE_BOTTOM)
 		t.set_stylebox(item, "PKeyRailItem", b)
 	t.set_color("font_pressed_color", "PKeyRailItem", ink)
+	# The other sections are quiet too: the Button's own box with a much lighter border, so a row of
+	# them reads as a list and the one selected (and the focus ring) stand out.
+	for item in ["normal", "hover"]:
+		var plain := t.get_stylebox(item, "Button")
+		if plain is StyleBoxFlat:
+			var q := (plain as StyleBoxFlat).duplicate() as StyleBoxFlat
+			q.border_color = Color(q.border_color, q.border_color.a * (0.35 if item == "normal" else 0.6))
+			t.set_stylebox(item, "PKeyRailItem", q)
 
 
 ## The focus ring: no fill, `RING_WIDTH` px of `color`, `RING_OFFSET` px outside the control so

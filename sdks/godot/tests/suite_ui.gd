@@ -411,6 +411,27 @@ func _dialogs_take_focus(t: PKeyTestContext) -> void:
 		t.check("dialog focus: %s, a pad's B closes it and the game's control has the focus again" % name, not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game, "%s visible %s focus %s" % [name, dialog.is_visible_in_tree(), _tree().root.gui_get_focus_owner()])
 		_free(dialog)
 		_free(game)
+	# Settings freed instead of hidden: the game's control has its focus back too.
+	var game := Button.new()
+	game.text = "Game menu"
+	_tree().root.add_child(game)
+	game.grab_focus()
+	await _tree().process_frame
+	var sdk: Node = await _sc.settings_sdk({})
+	var panel := PKeySettingsPanel.new()
+	panel.sdk = sdk
+	panel.auto_sdk = false
+	_tree().root.add_child(panel)
+	await _tree().create_timer(0.35).timeout
+	var owner := _tree().root.gui_get_focus_owner()
+	t.check("dialog focus: settings takes the focus from the game's control", owner != null and panel.is_ancestor_of(owner), str(owner))
+	panel.get_parent().remove_child(panel)
+	panel.queue_free()
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("dialog focus: settings freed by the game gives the focus back", _tree().root.gui_get_focus_owner() == game, str(_tree().root.gui_get_focus_owner()))
+	sdk.queue_free()
+	_free(game)
 
 
 ## A stand-in SDK whose license answers the device limit after a short wait (the real busy -> await

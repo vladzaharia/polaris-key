@@ -51,6 +51,11 @@ const DISCLOSURE_META := &"pkey_disclosure"
 const FREE_HEIGHT_META := &"pkey_free_height"
 ## Meta set on a container the scene hides while every child of it is hidden (so an empty group
 ## adds no gap).
+## Set this meta on a view anchored across the screen to keep the offsets it was given (see
+## `_release_offsets()`).
+## A scroll area a scene scrolls by hand (the settings list, with room for the focus ring).
+const MANUAL_SCROLL_META := &"pkey_manual_scroll"
+const KEEP_OFFSETS_META := &"pkey_keep_offsets"
 const AUTO_HIDE_META := &"pkey_auto_hide"
 const AUTO_HIDDEN_META := &"pkey_auto_hidden"
 ## The group every kit view joins, so `PKeyUiTheme.apply_options()` can re-theme mounted views.
@@ -165,9 +170,7 @@ func _ready() -> void:
 	ensure_pad_bindings()
 	if sdk == null and auto_sdk:
 		sdk = default_sdk()
-	var vp := get_viewport()
-	if vp != null and not vp.size_changed.is_connected(queue_layout):
-		vp.size_changed.connect(queue_layout)
+	_watch_viewport()
 	refresh_view()
 
 
@@ -177,10 +180,45 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_VISIBILITY_CHANGED and _opener != null and not is_visible_in_tree():
 		# The dialog went away (hidden by its host, dismissed): the game's control gets its focus back.
 		restore_opener()
+	elif what == NOTIFICATION_ENTER_TREE and _built:
+		_watch_viewport()
+	elif what == NOTIFICATION_EXIT_TREE and _built and _opener == null:
+		_unwatch_viewport()
+	elif what == NOTIFICATION_EXIT_TREE and _opener != null:
+		_unwatch_viewport()
+		# A game that frees the view instead of hiding it: the control that opened it gets the focus
+		# back (unless the view was only moved to another parent).
+		PKeyUiView._give_back.call_deferred(_opener, weakref(self))
+		_opener = null
 	elif what == NOTIFICATION_PARENTED and _built:
 		layout_content()
 	elif what == NOTIFICATION_RESIZED and _built and is_inside_tree() and outer_view() == self:
 		queue_layout()
+
+
+var _watched: Viewport = null
+
+
+## Follow the viewport the view is in now (a view moved into another one, a SubViewport, follows that
+## one's size and focus, not the one it was first added to).
+func _watch_viewport() -> void:
+	var vp := get_viewport() if is_inside_tree() else null
+	if vp == _watched:
+		return
+	_unwatch_viewport()
+	_watched = vp
+	if vp != null:
+		vp.size_changed.connect(queue_layout)
+		vp.gui_focus_changed.connect(_on_gui_focus_changed)
+
+
+func _unwatch_viewport() -> void:
+	if _watched != null and is_instance_valid(_watched):
+		if _watched.size_changed.is_connected(queue_layout):
+			_watched.size_changed.disconnect(queue_layout)
+		if _watched.gui_focus_changed.is_connected(_on_gui_focus_changed):
+			_watched.gui_focus_changed.disconnect(_on_gui_focus_changed)
+	_watched = null
 
 
 static var _pad_bound := false
@@ -486,6 +524,14 @@ func _guard_for_modal() -> bool:
 func remember_opener() -> void:
 	var f := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
 	_opener = f if f != null and f != self and not is_ancestor_of(f) else null
+
+
+static func _give_back(opener: Control, view: WeakRef) -> void:
+	var v = view.get_ref()
+	if v != null and (v as Node).is_inside_tree():
+		return
+	if is_instance_valid(opener) and opener.is_inside_tree() and is_focusable(opener):
+		opener.grab_focus()
 
 
 ## Give the focus back to the control that opened this view, if it is still there.
@@ -848,6 +894,7 @@ func layout_content() -> void:
 		return
 	if not is_inside_tree():
 		return
+	_release_offsets()
 	var before := metrics
 	metrics = _measure()
 	var views := _views()
@@ -865,6 +912,23 @@ func layout_content() -> void:
 		# re-sort a container whose child's minimum changed that way, so re-sort them all.
 		_resort_all(self)
 	_schedule_checks()
+
+
+## A view anchored across an axis of its parent (a full-screen scene) is exactly that big: the
+## engine's `set_anchors_and_offsets_preset()` (a game's own call, or ours) writes the view's
+## minimum size at that moment into its offsets, and a view first laid out before its content settled
+## would then stay wider or shorter than the screen for good. The kit owns the offsets of such a view
+## (a game that wants margins around it wraps it in a MarginContainer, or sets the `KEEP_OFFSETS_META`
+## meta). This makes the arrangement a function of the size, not of how the view got there.
+func _release_offsets() -> void:
+	if get_parent() is Container or has_meta(KEEP_OFFSETS_META):
+		return
+	if is_zero_approx(anchor_left) and is_equal_approx(anchor_right, 1.0) and not (is_zero_approx(offset_left) and is_zero_approx(offset_right)):
+		offset_left = 0.0
+		offset_right = 0.0
+	if is_zero_approx(anchor_top) and is_equal_approx(anchor_bottom, 1.0) and not (is_zero_approx(offset_top) and is_zero_approx(offset_bottom)):
+		offset_top = 0.0
+		offset_bottom = 0.0
 
 
 ## For a few frames after a layout pass, check that every container holds its children at their
@@ -927,7 +991,9 @@ func _check_sorted() -> void:
 	if _fit_squeeze():
 		_flips = 0
 		_checks_left = 3
-		layout_content()
+		# What a view renders can depend on the squeeze (a lede dropped at step 3): render again, not
+		# only arrange, so the result is the same as a view that was first shown at this squeeze.
+		refresh_view()
 	var rows_changed := false
 	for v in _views():
 		if (v as PKeyUiView).fit_action_rows():
@@ -947,6 +1013,22 @@ func _check_sorted() -> void:
 		_reveal_focus()
 
 
+var _reveal_pending := false
+
+
+## A control took the focus: once the frame's layout has been sorted, bring it into view in the scroll
+## areas it sits in (the engine's own follow-focus measures positions a re-sort is about to move, and
+## a pad's focus could end on a button below the visible page).
+func _on_gui_focus_changed(ctl: Control) -> void:
+	if ctl == null or outer_view() != self or not (ctl == self or is_ancestor_of(ctl)) or _reveal_pending:
+		return
+	_reveal_pending = true
+	await get_tree().process_frame
+	_reveal_pending = false
+	if is_inside_tree():
+		_reveal_focus()
+
+
 ## Once the layout has settled, bring the focused control into view in every scroll area it sits in
 ## (a squeezed card that still scrolls must never leave the focused primary off screen).
 func _reveal_focus() -> void:
@@ -955,7 +1037,7 @@ func _reveal_focus() -> void:
 		return
 	var n := f.get_parent()
 	while n != null and n != get_parent():
-		if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+		if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and not n.has_meta(MANUAL_SCROLL_META):
 			(n as ScrollContainer).ensure_control_visible(f)
 		n = n.get_parent()
 
@@ -964,6 +1046,8 @@ func _reveal_focus() -> void:
 ## text had not finished wrapping).
 func _scrolls_stale() -> bool:
 	for v in _views():
+		if (v as PKeyUiView)._layout_stale():
+			return true
 		for sc in (v as PKeyUiView)._scrolls:
 			if not sc.has_meta(&"pkey_fit") or sc.get_child_count() == 0:
 				continue
@@ -972,6 +1056,12 @@ func _scrolls_stale() -> bool:
 			var should: bool = fit[1] and content != null and content.get_combined_minimum_size().y > float(fit[0]) + 0.5
 			if should != (sc.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED):
 				return true
+	return false
+
+
+## True when a decision this view took in `_arrange()` (the height of a list of its own, say) no
+## longer matches the measurements it would take from the layout now: the view is laid out again.
+func _layout_stale() -> bool:
 	return false
 
 

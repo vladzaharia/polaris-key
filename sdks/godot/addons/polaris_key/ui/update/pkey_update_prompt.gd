@@ -135,8 +135,15 @@ func _arrange(m: Dictionary) -> void:
 	_product.visible = _covering and _product.visible
 	_title.theme_type_variation = "PKeyTitle" if _covering else "PKeySection"
 	if _covering:
-		if get_theme_stylebox("panel") is StyleBoxEmpty:
+		if has_theme_stylebox_override("panel") and get_theme_stylebox("panel") is StyleBoxEmpty:
+			# The strip's transparent panel (with or without the safe area folded into its margins)
+			# gives way to the scrim, and the safe area is baked into the scrim's panel instead: a
+			# modal laid out fresh at the size (the strip's panel was the first one it had) gets the
+			# same insets as one that was resized to it.
 			remove_theme_stylebox_override("panel")
+			_safe_base = null
+			_safe_applied = [0.0, 0.0, 0.0, 0.0]
+			_apply_safe_area(m["insets"])
 		mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
 		_float_strip()

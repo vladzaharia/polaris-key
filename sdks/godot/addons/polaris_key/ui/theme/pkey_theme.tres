@@ -305,12 +305,17 @@ content_margin_left = 21.333334
 content_margin_top = 4.0
 content_margin_right = 21.333334
 content_margin_bottom = 4.0
-bg_color = Color(1, 1, 1, 0.14)
-border_color = Color(1, 1, 1, 0.14)
-corner_radius_top_left = 16
-corner_radius_top_right = 16
-corner_radius_bottom_right = 16
-corner_radius_bottom_left = 16
+bg_color = Color(0.225, 0.225, 0.225, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.21)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m1qqs"]
 content_margin_left = 21.333334
@@ -325,6 +330,35 @@ corner_radius_bottom_right = 16
 corner_radius_bottom_left = 16
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gdijk"]
+content_margin_left = 21.333334
+content_margin_top = 4.0
+content_margin_right = 21.333334
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.122499995)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tnj8k"]
+content_margin_left = 21.333334
+content_margin_top = 4.0
+content_margin_right = 21.333334
+content_margin_bottom = 4.0
+bg_color = Color(1, 1, 1, 0.14)
+border_color = Color(1, 1, 1, 0.14)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_068di"]
 content_margin_left = 28.0
 content_margin_top = 28.0
 content_margin_right = 28.0
@@ -332,7 +366,7 @@ content_margin_bottom = 28.0
 bg_color = Color(0, 0, 0, 0.42)
 border_color = Color(0, 0, 0, 0.42)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tnj8k"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_obyxo"]
 content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
@@ -344,7 +378,7 @@ corner_radius_top_right = 999
 corner_radius_bottom_right = 999
 corner_radius_bottom_left = 999
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_068di"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_n3q1c"]
 content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
@@ -356,7 +390,7 @@ corner_radius_top_right = 999
 corner_radius_bottom_right = 999
 corner_radius_bottom_left = 999
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_obyxo"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_kyihx"]
 content_margin_left = 21.333334
 content_margin_top = 4.0
 content_margin_right = 21.333334
@@ -475,16 +509,18 @@ PKeyRail/base_type = &"PanelContainer"
 PKeyRail/styles/panel = SubResource("StyleBoxFlat_ah0mw")
 PKeyRailItem/base_type = &"Button"
 PKeyRailItem/colors/font_pressed_color = Color(1, 1, 1, 1)
-PKeyRailItem/styles/hover_pressed = SubResource("StyleBoxFlat_ab4f5")
-PKeyRailItem/styles/pressed = SubResource("StyleBoxFlat_m1qqs")
+PKeyRailItem/styles/hover = SubResource("StyleBoxFlat_ab4f5")
+PKeyRailItem/styles/hover_pressed = SubResource("StyleBoxFlat_m1qqs")
+PKeyRailItem/styles/normal = SubResource("StyleBoxFlat_gdijk")
+PKeyRailItem/styles/pressed = SubResource("StyleBoxFlat_tnj8k")
 PKeyRow/base_type = &"HBoxContainer"
 PKeyRow/constants/separation = 14
 PKeyScrim/base_type = &"PanelContainer"
-PKeyScrim/styles/panel = SubResource("StyleBoxFlat_gdijk")
+PKeyScrim/styles/panel = SubResource("StyleBoxFlat_068di")
 PKeySeatOff/base_type = &"PanelContainer"
-PKeySeatOff/styles/panel = SubResource("StyleBoxFlat_tnj8k")
+PKeySeatOff/styles/panel = SubResource("StyleBoxFlat_obyxo")
 PKeySeatOn/base_type = &"PanelContainer"
-PKeySeatOn/styles/panel = SubResource("StyleBoxFlat_068di")
+PKeySeatOn/styles/panel = SubResource("StyleBoxFlat_n3q1c")
 PKeySection/base_type = &"Label"
 PKeySection/font_sizes/font_size = 20
 PKeySections/base_type = &"VBoxContainer"
@@ -499,7 +535,7 @@ PKeyTitle/font_sizes/font_size = 24
 PKeyWarning/base_type = &"Label"
 PKeyWarning/colors/font_color = Color(0.8784314, 0.627451, 0.1882353, 1)
 TextEdit/styles/focus = SubResource("StyleBoxFlat_ct3dd")
-TextEdit/styles/normal = SubResource("StyleBoxFlat_obyxo")
+TextEdit/styles/normal = SubResource("StyleBoxFlat_kyihx")
 metadata/pkey_stock = true
 metadata/pkey_density = "spacious"
 metadata/pkey_unit = 0.8888888888888888

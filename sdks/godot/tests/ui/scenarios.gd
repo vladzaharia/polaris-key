@@ -306,7 +306,12 @@ func settings(advanced: bool, overrides: Dictionary) -> Control:
 	p.sdk = sdk
 	p.show_advanced = advanced
 	add(p)
-	p.tree_exited.connect(sdk.queue_free)
+	# The SDK goes with the panel, not when a harness re-parents the panel (the matrix does, to put
+	# it in its game stand-in): a freed SDK left every later layout of the panel with an empty list.
+	p.tree_exited.connect(func() -> void:
+		(func() -> void:
+			if is_instance_valid(sdk) and (not is_instance_valid(p) or not p.is_inside_tree()):
+				sdk.queue_free()).call_deferred())
 	return p
 
 
