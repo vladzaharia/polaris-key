@@ -65,7 +65,7 @@
         <!-- Personal tokens (pkeyp_), packages only, one per machine. -->
         <section class="card" aria-labelledby="tok-title">
           <div class="card-head">
-            <div class="title"><h2 id="tok-title">Your packages tokens</h2><p>Each token is shown once.</p></div>
+            <div class="title"><h2 id="tok-title">Your packages tokens</h2></div>
             <button class="btn primary sm"><i class="ic ic-plus"></i>Create token</button>
           </div>
           <table class="table fixed stack-phone" aria-label="Your packages tokens">
@@ -73,13 +73,13 @@
             <thead><tr><th>Token</th><th>Last used</th><th>Expires</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
             <tbody>
               <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-laptop"></i></span><div><div class="cell-title">pkey feeds setup on mara-mbp</div><div class="cell-sub"><span class="mono">pkeyp_…7Q2M</span> · made by the CLI, Oct 7</div></div></div></td>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-laptop"></i></span><div><div class="cell-title">pkey feeds setup on mara-mbp</div><div class="cell-sub"><span class="mono">pkeyp_…7Q2M</span> · made Oct 7</div></div></div></td>
                 <td><span class="cell-label">Last used</span>2 hours ago</td>
                 <td><span class="cell-label">Expires</span><span class="nowrap">Jan 5, 2027</span></td>
                 <td class="end"><button class="btn outline sm tap-44">Revoke</button></td>
               </tr>
               <tr>
-                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-server"></i></span><div><div class="cell-title">Build server</div><div class="cell-sub"><span class="mono">pkeyp_…K4TN</span> · made here, Sep 21</div></div></div></td>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-server"></i></span><div><div class="cell-title">Build server</div><div class="cell-sub"><span class="mono">pkeyp_…K4TN</span> · made Sep 21</div></div></div></td>
                 <td><span class="cell-label">Last used</span>Oct 6</td>
                 <td><span class="cell-label">Expires</span><span class="nowrap">Dec 20, 2026</span></td>
                 <td class="end"><button class="btn outline sm tap-44">Revoke</button></td>
@@ -91,11 +91,10 @@
         <!-- F-37: one combined setup for every package manager, the same renderer the CLI writes from. -->
         <section class="card" aria-labelledby="setup-title">
           <div class="card-head">
-            <div class="title"><h2 id="setup-title">Set up your package managers</h2><p>In your home folder, never a repository.</p></div>
+            <div class="title"><h2 id="setup-title">Set up your package managers</h2></div>
           </div>
           <div class="card-body mk-stack-3">
             <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
-            <p class="type-small muted">Signs in, makes a token and sets up npm, pnpm, Yarn, Bun, uv, pip and Docker</p>
             <span class="links links-end"><a class="link" href="#"><i class="ic ic-copy"></i>Copy the npx command</a><a class="link quiet" href="#">pkey CLI docs<i class="ic ic-arrow-up-right"></i></a></span>
           </div>
           <div class="card-body mk-stack-3">
@@ -109,7 +108,7 @@
 <span class="t-p">@djdl:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/djdl/</span>
 <span class="t-p">@diceroll:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/diceroll/</span>
 <span class="t-p">//pkg.plrs.im/npm/:_authToken</span>=<span class="t-v">${PKEY_PACKAGES_TOKEN}</span></pre>
-              <div class="code-foot"><i class="ic ic-info sm"></i><span>Only <span class="mono">@djdl</span> and <span class="mono">@diceroll</span> come from here; everything else stays on npmjs.com. Set <span class="mono">PKEY_PACKAGES_TOKEN</span> to your token.</span></div>
+              <div class="code-foot"><i class="ic ic-info sm"></i><span>Set <span class="mono">PKEY_PACKAGES_TOKEN</span> to your token.</span></div>
             </div>
           </div>
         </section>
@@ -130,12 +129,13 @@
         <div class="field">
           <label class="field-label">Label</label>
           <div class="input focus"><span class="grow">Work laptop</span></div>
-          <span class="hint">Name the machine, to tell tokens apart</span>
+          <span class="hint">Name the machine</span>
         </div>
         <ul class="icon-lines">
           <li><i class="ic ic-lock"></i><span>Packages only</span></li>
           <li><i class="ic ic-calendar-clock"></i><span>Expires Jan&nbsp;5,&nbsp;2027 (90 days)</span></li>
-          <li><i class="ic ic-boxes"></i><span>Reaches DJDL, Diceroll and any product you get a license for later</span></li>
+          <li><i class="ic ic-boxes"></i><span>Reaches DJDL and Diceroll</span></li>
+          <li><i class="ic ic-plus"></i><span>Also reaches products you license later</span></li>
         </ul>
       </div>
       <div class="dialog-foot">
