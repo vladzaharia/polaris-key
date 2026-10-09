@@ -23505,9 +23505,11 @@ dd .mono {
 }
 /* At tablet widths a table never squeezes its cells into each other: it keeps its content width
    and scrolls inside its region, the first column pinned (B4). */
+/* B1 (round 2): a table at tablet widths keeps a sensible minimum (--table-min, 860px: it fits a
+   1024px tablet's canvas, and scrolls in its region below that), never its max-content width. */
 @container screen (min-width: 640px) and (max-width: 1279px) {
   :is(.workbench > .table-card, .table-scroll) > .table {
-    min-width: max-content;
+    min-width: var(--table-min, 860px);
   }
 }
 @container screen (min-width: 640px) and (max-width: 1279px) {
@@ -23515,3 +23517,391 @@ dd .mono {
     table-layout: auto;
   }
 }
+
+/* ══ Brand v2, round 2 (UX review FIX-FIRST, 2026-10-09) ═══════════════════════════════════════ */
+
+/* The ink action is the brand's action-neutral role once UK-58 generates it; until then the same
+   values. Hover, pressed and disabled steps; a disabled label keeps 3:1 in both themes. */
+:root,
+[data-theme="dark"] {
+  --mk-action: var(--pk-action-neutral, #f6f8ff);
+  --mk-action-on: var(--pk-action-neutral-on, #060912);
+  --mk-action-hover: var(--pk-action-neutral-hover, #dbe2f4);
+  --mk-action-pressed: var(--pk-action-neutral-pressed, #c3cbe0);
+  --mk-action-disabled-on: #8e97ad;
+  --mk-ink-wash: color-mix(in oklab, var(--pk-text-strong) 7%, transparent);
+}
+[data-theme="light"] {
+  --mk-action: var(--pk-action-neutral, #060912);
+  --mk-action-on: var(--pk-action-neutral-on, #ffffff);
+  --mk-action-hover: var(--pk-action-neutral-hover, #262d40);
+  --mk-action-pressed: var(--pk-action-neutral-pressed, #3c4458);
+  --mk-action-disabled-on: #5d667b;
+  --mk-ink-wash: color-mix(in oklab, var(--pk-text-strong) 5%, transparent);
+}
+.btn.primary:hover {
+  background: var(--mk-action-hover);
+}
+.btn.primary:active {
+  background: var(--mk-action-pressed);
+}
+.btn.primary:is([disabled], .disabled, .is-disabled) {
+  color: var(--mk-action-disabled-on);
+}
+/* A disabled destructive button keeps a readable label in dark (m2). */
+.btn.danger:is([disabled], .disabled, .is-disabled) {
+  opacity: 1;
+  border-color: var(--pk-danger-border);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-danger);
+}
+
+/* Keyboard focus draws the one violet ring on every control, like the drawn .focus state. */
+:is(.btn, a, button, [role="button"], [role="tab"], [role="radio"], [role="switch"], [role="checkbox"], [tabindex], .input, .select, .textarea, .search-field):focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+/* ── B2: the accent never encodes a state ───────────────────────────────────────────────────────
+ * States read through words, glyphs, shape and the status tones (success, warning, danger); a
+ * change, an override, a selection or a "new" mark is ink: a 2px ink bar, a strong edge, a label.
+ * The accent stays on context (rule, chip, tile, nav marker, links, current wizard step).
+ */
+.pill.accent,
+.pill.info,
+.card-row .pill.this-device {
+  border-color: var(--pk-border-strong);
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+.count.accent,
+.count.info {
+  background: var(--mk-fill-strong);
+  color: var(--pk-text-strong);
+}
+.status.accent,
+.status.info,
+.status.ready {
+  color: var(--pk-text-default);
+}
+.status.ready > .ic,
+.status.info > .ic,
+.status.accent > .ic {
+  color: var(--pk-text-strong);
+}
+.callout.accent,
+.callout.info {
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-sunken);
+}
+.callout.accent > .ic,
+.callout.info > .ic,
+.toast.info > .ic {
+  color: var(--pk-text-strong);
+}
+.icon-line.accent,
+.icon-line.accent > .ic:first-child,
+.icon-list > li.accent,
+.device-meta > .this,
+.source.own,
+.role-tag.super > .ic,
+.toc-nav > a > .dot,
+.changed-note,
+.was {
+  color: var(--pk-text-strong);
+}
+.source.own,
+.changed-note {
+  font-weight: 500;
+}
+.val-on::before,
+.timeline-item::before,
+.meter > i.on,
+.date-span-track::after,
+.rank.on,
+.marked > .rank,
+.spinner {
+  background: var(--pk-text-strong);
+}
+.rank.on,
+.marked > .rank {
+  color: var(--pk-surface-raised);
+}
+.spinner {
+  background: none;
+  border-top-color: var(--pk-text-strong);
+}
+.task.running .task-mark {
+  border-top-color: var(--pk-text-strong);
+}
+.progress::after {
+  background: var(--pk-text-muted);
+}
+.meter > i.cur {
+  box-shadow: inset 0 0 0 1.5px var(--pk-text-strong);
+}
+.timeline-item.warning::before {
+  background: var(--pk-warning);
+}
+.timeline-item.danger::before {
+  background: var(--pk-danger);
+}
+/* Changed, overridden, marked or "next" rows: an ink bar and a quiet ink wash. */
+.setting-row.changed,
+.setting-row.changed + .card-note,
+.item-row.marked,
+.table tr.marked > td,
+.table.stack-phone tr.marked,
+.table.stack-phone.two-line tr.marked,
+.check-row.next,
+.card-body.editing {
+  background: var(--mk-ink-wash);
+}
+.setting-row.changed,
+.setting-row.changed + .card-note,
+.item-row.marked,
+.table tr.marked > td:first-child,
+.table.stack-phone tr.marked,
+.table.stack-phone.two-line tr.marked {
+  box-shadow: inset 2px 0 0 var(--pk-text-strong);
+}
+.check-row.next {
+  box-shadow: inset 3px 0 0 var(--pk-text-strong);
+}
+.ov-feature.current {
+  border-color: var(--pk-border-strong);
+}
+.ov-feature.current::before {
+  box-shadow: inset 3px 0 0 var(--pk-text-strong);
+}
+.ov-feature.current > .ov-feature-state {
+  background: var(--mk-ink-wash);
+}
+:is(.input, .select, .textarea).changed,
+.field.changed :is(.input, .select, .textarea) {
+  border-color: var(--pk-text-strong);
+  box-shadow: 0 0 0 1px var(--pk-text-strong);
+}
+.card.editor-card {
+  border-color: var(--pk-border-strong);
+}
+.save-bar {
+  border-color: var(--pk-border-strong);
+  background: var(--pk-surface-overlay);
+}
+.save-bar-msg > .ic {
+  color: var(--pk-text-strong);
+}
+/* Selections and recommendations are ink too (lead answer 2). */
+.table tr.selected td,
+.table tr.recommended td,
+.item-row.recommended,
+.card.tint {
+  background: var(--mk-ink-wash);
+}
+.table tr.selected td:first-child,
+.table tr.recommended td:first-child,
+.item-row.recommended {
+  box-shadow: inset 2px 0 0 var(--pk-text-strong);
+}
+.pick-tile.on,
+.role-tile.on,
+.filter.solid.on,
+.jump-nav > a.on {
+  border-color: var(--mk-action);
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+.role-tile.on > .rt-name > .ic {
+  color: var(--pk-text-strong);
+}
+.segmented.matrix.fit > .on {
+  background: var(--mk-fill);
+  box-shadow: inset 0 0 0 1px var(--mk-action);
+}
+.token-field.focus {
+  border-color: var(--pk-border-strong);
+  box-shadow: none;
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+/* A value field and an id tag are values, not context. */
+.key-field {
+  background: var(--pk-surface-sunken);
+}
+.tag {
+  background: var(--mk-fill);
+  color: var(--pk-text-strong);
+}
+
+/* A button never shrinks below its label (round 2: squeezed labels touched their edges). */
+.btn:not(.icon) {
+  min-width: min-content;
+}
+/* The sidebar keeps the open page in view (lead answer 4): its scroll comes to rest on the active
+   item, the context header pinned at the top and the foot at the bottom, as the console scrolls it
+   into view on load. */
+@container screen (min-width: 1024px) {
+  .console > .sidebar {
+    scroll-snap-type: y mandatory;
+    scroll-padding-block: 72px 112px;
+  }
+  .console > .sidebar :is(.nav-item.active, .nav-label.active) {
+    scroll-snap-align: center;
+  }
+  .console > .sidebar > .ctx {
+    position: sticky;
+    top: calc(-1 * var(--sp-3));
+    z-index: 2;
+    box-shadow: 0 0 0 var(--sp-3) var(--pk-surface-page);
+  }
+}
+@container screen (min-width: 1024px) and (max-width: 1279px) {
+  .console > .sidebar > .ctx {
+    top: calc(-1 * var(--sp-2));
+    box-shadow: 0 0 0 var(--sp-2) var(--pk-surface-page);
+  }
+}
+
+/* No text under 12px (m5): avatar initials and inline code in meta lines. The :is() list only
+   raises specificity over the screen and pass layers that set smaller sizes. */
+.avatar:is(.avatar, .sm, .md, .violet, .x-pad-specificity) {
+  font-size: 12px;
+}
+:not(pre) > code {
+  font-size: max(12px, 0.9em);
+}
+/* An empty state's heading at h2 takes the same step as its h3 (m6: never the UA's bold). */
+.empty h2 {
+  font-size: var(--fs-card);
+  line-height: var(--lh-card);
+  font-weight: 600;
+  color: var(--pk-text-strong);
+}
+/* Tables in a board's frames take their frame's width; a scrolling table on a phone stays within
+   twice its region (round 2 check), and a stacked one keeps none. */
+:is(.board-frame, .board-item) {
+  --table-min: 0px;
+}
+@container screen (max-width: 639px) {
+  .table.scroll {
+    min-width: min(var(--table-min, 880px), 640px);
+  }
+  .table.scroll.stack-phone {
+    min-width: 0;
+  }
+  /* A phone button's long label wraps rather than widening the page. */
+  :is(.dialog-foot, .drawer-foot, .page-actions, .task-actions, .hosted-actions, .btn-row) > .btn:not(.icon),
+  .btn.primary:not(.icon) {
+    height: auto;
+    min-height: 36px;
+    padding-block: var(--sp-1);
+    white-space: normal;
+    text-align: center;
+  }
+}
+/* A wide table that scrolls sideways at tablet widths pins its first column (M7). */
+@container screen (min-width: 640px) and (max-width: 1279px) {
+  :is(.table-card, .table-scroll) > .table.scroll :is(th, td):first-child,
+  .table-scroll .table :is(th, td):first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+  }
+  :is(.table-card, .table-scroll) > .table.scroll td:first-child,
+  .table-scroll .table td:first-child {
+    background: var(--pk-surface-raised);
+    box-shadow: 1px 0 0 var(--mk-line);
+  }
+}
+@container screen (max-width: 639px) {
+  .action-pair > .btn {
+    padding-inline: var(--sp-3);
+  }
+}
+/* The pinned foot sits on the sidebar's last line, so the last item scrolls clear of it. */
+@container screen (min-width: 1024px) {
+  .console > .sidebar {
+    padding-bottom: 0;
+  }
+  .console > .sidebar > .sidebar-foot {
+    margin-bottom: 0;
+  }
+}
+
+/* products.settings-presentation: the preview's sign-in card parts. */
+[data-screen="products.settings-presentation"] .pv-signin-head {
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
+[data-screen="products.settings-presentation"] .pv-signin-body {
+  padding: var(--sp-3);
+}
+
+/* M4: the passport is art-led and never ends in a void: the art grows to fill the pane, the
+   icon, the request and who and where sit at its foot, so the pane is as tall as the form with
+   nothing empty under the identity. */
+@media (min-width: 960px) and (orientation: landscape) {
+  .hosted-card.passport > .hosted-head {
+    justify-content: flex-end;
+  }
+  .hosted-card.passport > .hosted-head > .hosted-art {
+    flex: 1 1 auto;
+    min-height: 158px;
+    height: auto;
+  }
+  .hosted-card.passport > .hosted-head > .grow {
+    flex: none;
+  }
+}
+
+/* M5: the portal's phone bar. The selected tab is a neutral fill with a 3:1 edge in both themes;
+   Activate is a tab like its siblings (no ring that reads as selected or as focus); the
+   something-to-add dot is ink. */
+@container screen (max-width: 639px) {
+  .portal-tabbar > a.active {
+    background: var(--mk-fill-strong);
+    box-shadow: inset 0 0 0 1px var(--pk-border-strong);
+    color: var(--pk-text-strong);
+  }
+  .portal-tabbar > a.act {
+    border-color: transparent;
+    color: var(--pk-text-muted);
+  }
+  .portal-tabbar > a > .dot {
+    background: var(--pk-text-strong);
+  }
+}
+[data-theme="light"] .portal-tabbar > a.active {
+  background: var(--pk-surface-sunken);
+}
+/* The focused task's title spans the frame; the consequence sits beside the action. */
+.portal-page.task > .task-title {
+  width: 100%;
+  max-width: 640px;
+}
+.task-actions > .task-note {
+  flex: 1 1 200px;
+  align-self: center;
+}
+@media (min-width: 1024px) and (max-height: 900px) {
+  .task-frame {
+    max-width: 1040px;
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+  }
+  .portal-page.task > :is(.crumbs, .task-title) {
+    max-width: 1040px;
+  }
+}
+.task-main > .btn { align-self: flex-start; }
+/* An identity row whose media is a 40px picture (Account → Profile). */
+.item-row.profile {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+}
+@container (max-width: 559px) {
+  .item-row.profile {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+}
+.check-row.next { background: none; }

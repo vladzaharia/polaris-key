@@ -35,14 +35,14 @@
   [data-screen="config.effective"] .eff tr.grp td {
     height: var(--row-h-head);
     font-size: var(--fs-meta);
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--pk-text-subtle);
     background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
   }
   [data-screen="config.effective"] .eff tr.here-row td:first-child {
-    box-shadow: inset 2px 0 0 var(--pk-accent);
+    box-shadow: inset 2px 0 0 var(--pk-text-strong);
   }
   [data-screen="config.effective"] .eff tr.open td,
   [data-screen="config.effective"] .eff tr.detail > td {
@@ -81,7 +81,7 @@
     box-shadow: none;
   }
   [data-screen="config.effective"] .pips .pip.w {
-    background: var(--pk-accent);
+    background: var(--pk-text-strong);
     box-shadow: none;
   }
   [data-screen="config.effective"] .pips .pip.x {
@@ -90,7 +90,7 @@
     outline-offset: -1px;
   }
   [data-screen="config.effective"] .chain .stat.here {
-    background: var(--pk-accent-subtle);
+    background: var(--mk-fill);
   }
   [data-screen="config.effective"] .chain .stat.here .stat-label {
     color: var(--pk-text-strong);
@@ -110,9 +110,9 @@
     color: var(--pk-text-muted);
   }
   [data-screen="config.effective"] .trail tr.won .num {
-    background: var(--pk-accent);
+    background: var(--mk-action);
     box-shadow: none;
-    color: var(--pk-accent-on);
+    color: var(--mk-action-on);
   }
   [data-screen="config.effective"] .trail tr.skip td {
     color: var(--pk-text-subtle);
@@ -174,7 +174,7 @@
       box-shadow: inset 2px 0 0 var(--pk-warning);
     }
     [data-screen="config.effective"] .eff tr.here-row {
-      box-shadow: inset 2px 0 0 var(--pk-accent);
+      box-shadow: inset 2px 0 0 var(--pk-text-strong);
     }
     [data-screen="config.effective"] .eff tr.open td,
     [data-screen="config.effective"] .eff tr.detail > td,
@@ -219,7 +219,7 @@
     }
   }
   [data-screen="config.effective"] .order .list-row.this .icon-tile {
-    box-shadow: inset 0 0 0 1px var(--pk-accent);
+    box-shadow: inset 0 0 0 1px var(--pk-text-strong);
   }
 </style>
 

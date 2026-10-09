@@ -17,6 +17,55 @@
     border-radius: var(--pk-radius-sm);
     aspect-ratio: auto;
   }
+  [data-screen="products.settings-presentation"] .pv-body {
+    border-radius: 0 0 calc(var(--pk-radius-xl) - 1px) calc(var(--pk-radius-xl) - 1px);
+    background: var(--pk-surface-page);
+    color: var(--pk-text-default);
+  }
+  [data-screen="products.settings-presentation"] .pv-signin-head {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--mk-line);
+    background: var(--pk-surface-sunken);
+  }
+  [data-screen="products.settings-presentation"] .pv-signin-body {
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="products.settings-presentation"] .pv-field {
+    display: block;
+    height: 24px;
+    border: 1px solid var(--pk-border-strong);
+    border-radius: var(--pk-radius-md);
+    background: var(--pk-surface-sunken);
+  }
+  [data-screen="products.settings-presentation"] .pv-button {
+    display: grid;
+    place-items: center;
+    height: 24px;
+    border-radius: var(--pk-radius-md);
+    background: var(--mk-action);
+    color: var(--mk-action-on);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  [data-screen="products.settings-presentation"] .pv-swatch > i {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose));
+    box-shadow: inset 0 0 0 1px var(--mk-line);
+  }
+  [data-screen="products.settings-presentation"] .pv-open {
+    display: none;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="products.settings-presentation"] .pv-card {
+      display: none;
+    }
+    [data-screen="products.settings-presentation"] .pv-open {
+      display: flex;
+    }
+  }
 </style>
 
 <div class="console kit-prod" data-service="core">
@@ -104,10 +153,10 @@
             <div class="btn-row"><button class="btn outline sm">Revert to manifest</button><button class="btn ghost icon sm" aria-label="More for Hero art: Replace, Delete copy"><i class="ic ic-ellipsis"></i></button></div>
           </div>
           <div class="setting-row with-icon">
-            <span class="icon-tile sm neutral"><i class="ic ic-palette"></i></span>
+            <span class="icon-tile sm neutral pv-swatch" aria-hidden="true"><i></i></span>
             <div>
               <div class="setting-title">Accent<span class="pill sm">Manifest</span></div>
-              <div class="setting-desc"><span class="mono">#ff7a4d</span> from the icon; customer surfaces only</div>
+              <div class="setting-desc"><span class="mono">#ff7a4d</span> from the icon, on customer surfaces only</div>
             </div>
             <div class="btn-row"><button class="btn outline sm">Change</button></div>
           </div>
@@ -123,33 +172,45 @@
         </section>
 
         <div class="mk-rail">
-          <section class="card" aria-labelledby="pv-title">
+          <!-- The preview draws in the theme its switch names (here Dark), whatever the console's theme:
+               a data-theme on its body re-points every token. Sample data; uploaded art is never recoloured. -->
+          <section class="card pv-card" aria-labelledby="pv-title">
             <div class="card-head">
               <div class="title mk-cluster baseline"><h2 id="pv-title">Preview</h2><span class="pill sm"><i class="dot"></i>Sample data</span></div>
               <div class="segmented sm" role="radiogroup" aria-label="Preview theme"><span class="on" role="radio" aria-checked="true"><i class="ic ic-moon sm"></i>Dark</span><span role="radio" aria-checked="false"><i class="ic ic-sun sm"></i>Light</span></div>
             </div>
-            <div class="card-body mk-stack-4">
-              <figure class="mk-stack-2">
-                <figcaption class="type-meta muted">Sign-in card</figcaption>
-                <div class="pv-frame">
-                  <div class="card-row"><span class="logo sm" data-product="djdl"></span><span class="grow type-small"><strong>DJDL</strong> wants you to sign in</span></div>
-                </div>
-              </figure>
-              <figure class="mk-stack-2">
-                <figcaption class="type-meta muted">Library tile</figcaption>
-                <div class="pv-frame">
-                  <div class="art" data-product="djdl"></div>
-                  <div class="card-row"><span class="logo sm" data-product="djdl"></span><strong class="grow">DJDL</strong><span class="pill sm">Studio</span></div>
-                </div>
-              </figure>
-              <figure class="mk-stack-2">
-                <figcaption class="type-meta muted">Discover card</figcaption>
-                <div class="pv-frame">
-                  <div class="card-row"><span class="logo sm" data-product="djdl"></span><div class="grow"><div class="cell-title">DJDL</div><div class="cell-sub">A DJ app for macOS and Windows</div></div></div>
-                </div>
-              </figure>
+            <div class="card-body pv-body" data-theme="dark">
+              <div class="mk-stack-4">
+                <figure class="mk-stack-2">
+                  <figcaption class="type-meta muted">Sign-in card</figcaption>
+                  <div class="pv-frame">
+                    <div class="pv-signin-head"><span class="logo sm" data-product="djdl"></span><span class="type-small"><strong>DJDL</strong> wants you to sign in</span></div>
+                    <div class="pv-signin-body mk-stack-2">
+                      <strong class="type-small">Sign in</strong>
+                      <span class="pv-field"></span>
+                      <span class="pv-button">Continue</span>
+                    </div>
+                  </div>
+                </figure>
+                <figure class="mk-stack-2">
+                  <figcaption class="type-meta muted">Library tile</figcaption>
+                  <div class="pv-frame">
+                    <div class="art" data-product="djdl"></div>
+                    <div class="card-row"><span class="logo sm" data-product="djdl"></span><strong class="grow">DJDL</strong><span class="pill sm">Studio</span></div>
+                  </div>
+                </figure>
+                <figure class="mk-stack-2">
+                  <figcaption class="type-meta muted">Discover card</figcaption>
+                  <div class="pv-frame">
+                    <div class="art" data-product="djdl"></div>
+                    <div class="card-row"><span class="logo sm" data-product="djdl"></span><div class="grow"><div class="cell-title">DJDL</div><div class="cell-sub">A DJ app for macOS and Windows</div></div></div>
+                  </div>
+                </figure>
+              </div>
             </div>
           </section>
+          <!-- Phone: the preview is a sheet behind one button. -->
+          <button class="btn outline block pv-open"><i class="ic ic-eye"></i>Preview</button>
         </div>
       </div>
     </div>
