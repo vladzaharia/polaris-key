@@ -6,6 +6,20 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+Local-trust fixes (SEC-WP-16 slice C).
+
+- **Revocation and a build block end offline use at once.** A hard 401 deletes the document it
+  answered for; a 403 build block deletes the licence document. The `blocked` and
+  `last_sync_unauthorized` hints are display-only.
+- **Discovery can switch the licence gate on, never off.** The gate follows the build's
+  `expected_services` (default: licence and config) OR discovery. A config-only product must
+  pass `expected_services` without `license`.
+- **Breaking: `verify_jws(..., typ=)` and `verify_*_doc(..., last_accepted_issued_at=)` are required
+  keyword arguments;** `require_typ` is gone. Pass `None` for "no floor".
+- **A desktop device whose stored id differs from its platform anchor re-activates once.** The
+  id is re-derived at every start; `ioreg` and `reg.exe` run by absolute path.
+- Network-path verification uses the effective clock. `b64url_decode` refuses a trailing newline.
+
 Fail-closed, leak and error-model fixes (SP-48). Each **breaking** line names what to change.
 
 - **Breaking: an unknown `expected_services` slug raises.** `PolarisError("invalid-options")`

@@ -21,7 +21,7 @@ import uuid
 from typing import Optional
 
 from ..core.b64url import b64url_encode
-from .fingerprint import DEFAULT_IO, FingerprintIO, read_linux_anchor
+from .fingerprint import DEFAULT_IO, IOREG_PATH, FingerprintIO, read_linux_anchor, reg_exe_path
 
 __all__ = ["derive_device_id", "device_id_from_raw", "raw_os_device_id"]
 
@@ -44,7 +44,7 @@ def raw_os_device_id(
     io = io or DEFAULT_IO
     try:
         if platform == "darwin":
-            out = io.run(["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"], 2.0)
+            out = io.run([IOREG_PATH, "-rd1", "-c", "IOPlatformExpertDevice"], 2.0)
             m = _IOREG_UUID_RE.search(out or "")
             return m.group(1) if m else None
         if platform == "win32":
@@ -60,7 +60,7 @@ def raw_os_device_id(
             except Exception:
                 # Fall back to parsing `reg query` output if winreg is unavailable.
                 out = io.run(
-                    ["reg", "query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"],
+                    [reg_exe_path(), "query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"],
                     2.0,
                 )
                 m = _REG_GUID_RE.search(out or "")
