@@ -165,6 +165,22 @@ const violations = (page: Page): Promise<string[]> =>
   page.evaluate(() => (window as unknown as { __v: string[] }).__v.splice(0));
 
 /** What has focus: its accessible-ish name, or "body". */
+/**
+ * Waits until React has committed what a fill typed AND run the passive effects that follow it:
+ * a dialog registers "holds unsaved input" from an effect, and Escape pressed before that
+ * effect's re-render reaches the dialog's handler closes it instead of asking "Discard your
+ * changes?" (CI under load, 2026-10-09: the ask never came). Two frames and a task is past it.
+ */
+const afterTyping = (page: Page): Promise<void> =>
+  page.evaluate(
+    () =>
+      new Promise<void>((done) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => setTimeout(done, 0)),
+        ),
+      ),
+  );
+
 const focused = (page: Page): Promise<string> =>
   page.evaluate(() => {
     const el = document.activeElement as HTMLElement | null;
@@ -214,6 +230,7 @@ describe("Create license (C-17)", () => {
         await dialog.getByLabel(/^Email/).fill("grace@example.com");
         await shot(page, `create-license-holder-${theme}-${width}`);
 
+        await afterTyping(page);
         await page.keyboard.press("Escape");
         await dialog.getByText("Discard your changes?").waitFor();
         await page.waitForTimeout(100);
@@ -268,6 +285,7 @@ describe("License record dialogs (C-20, C-21)", () => {
         await page.waitForTimeout(200);
         expect(await focused(page)).toMatch(/^input:Name/);
         await holder.getByLabel(/^Name/).fill("Ada King");
+        await afterTyping(page);
         await page.keyboard.press("Escape");
         await holder.getByText("Discard your changes?").waitFor();
         await shot(page, `edit-holder-discard-${theme}-${width}`);

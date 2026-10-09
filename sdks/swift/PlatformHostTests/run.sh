@@ -146,15 +146,36 @@ xcodebuild test-without-building "${XB[@]}" "${TIMEOUTS[@]}" \
 echo "run.sh: StoreKit warm-up: $(grep -cE "Test Case .* passed" "$BUILD/logs/xcodebuild-warmup.log" || true) of 2 passed"
 settle "after the StoreKit warm-up"
 
-set +e
-xcodebuild test-without-building "${XB[@]}" "${TIMEOUTS[@]}" \
-  -resultBundlePath "$BUILD/logs/result-$(date +%s).xcresult" \
-  >"$BUILD/logs/xcodebuild-test.log" 2>&1
-rc=$?
-set -e
-grep -E "Test Case .*(passed|failed)|error:|\*\* TEST [A-Z]+ \*\*|Executed [0-9]+ test" "$BUILD/logs/xcodebuild-test.log" || true
+# Two separate xcodebuild runs, StoreKit first. The kit-focus test drives the software keyboard and
+# rotates the scene for minutes in the host app; run before the StoreKit tests in the same session
+# it left StoreKit answering "unknown" to every purchase and AppTransaction call (macos-26 CI,
+# 2026-10-09: 4 of 4 StoreKit tests failed at once; the same tests passed the run before the
+# kit-focus test existed). So the services run first, in their own app process, and the kit
+# focus test runs after them in a fresh one.
+rc=0
+run_suite() { # name, then the -only-testing selectors
+  local name="$1" r=0
+  shift
+  set +e
+  xcodebuild test-without-building "${XB[@]}" "${TIMEOUTS[@]}" "$@" \
+    -resultBundlePath "$BUILD/logs/result-$name-$(date +%s).xcresult" \
+    >"$BUILD/logs/xcodebuild-test-$name.log" 2>&1
+  r=$?
+  set -e
+  echo "run.sh: $name suite (exit $r)"
+  grep -E "Test Case .*(passed|failed)|error:|\*\* TEST [A-Z]+ \*\*|Executed [0-9]+ test" "$BUILD/logs/xcodebuild-test-$name.log" || true
+  if [ "$r" -ne 0 ]; then
+    echo "run.sh: $name FAILED (exit $r); log: $BUILD/logs/xcodebuild-test-$name.log" >&2
+    rc=$r
+  fi
+}
+run_suite services \
+  -only-testing:PKPlatformHostTests/StoreKitHostTests \
+  -only-testing:PKPlatformHostTests/KeychainHostTests \
+  -only-testing:PKPlatformHostTests/DistributorHostTests
+settle "after the services suite"
+run_suite kit-focus -only-testing:PKPlatformHostTests/KitFocusHostTests
 if [ "$rc" -ne 0 ]; then
-  echo "run.sh: FAILED (exit $rc); log: $BUILD/logs/xcodebuild-test.log" >&2
   exit "$rc"
 fi
 echo "run.sh: hosted PolarisKeyPlatform tests passed"
