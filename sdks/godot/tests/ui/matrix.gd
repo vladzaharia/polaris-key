@@ -627,7 +627,15 @@ static func _walk(node: Node, view: Control, safe: Rect2, kind: String, out: Pac
 		elif scrolled and c is Label:
 			# Inside a scroll area a word still never breaks across lines.
 			_word_breaks(c as Label, view, out)
+			_code_lines(c as Label, view, out)
 		_walk(c, view, safe, kind, out, leaves)
+
+
+## The sign-in user code is one line (DL11: a code may break only at its hyphen, and the layout fits
+## it to its width instead).
+static func _code_lines(l: Label, view: Control, out: PackedStringArray) -> void:
+	if l.name == &"UserCode" and l.text != "" and l.is_visible_in_tree() and l.get_line_count() > 1:
+		out.append("%s (the user code) breaks over %d lines (%.0f px wide)" % [_path(view, l), l.get_line_count(), l.size.x])
 
 
 ## A word never breaks across lines (a label squeezed to a sliver wraps a letter per line).
@@ -659,6 +667,7 @@ static func _leaf(c: Control, view: Control, safe: Rect2, kind: String, out: Pac
 		if l.text != "" and l.get_visible_line_count() < l.get_line_count():
 			out.append("%s clips its text (%d of %d lines)" % [_path(view, c), l.get_visible_line_count(), l.get_line_count()])
 		_word_breaks(l, view, out)
+		_code_lines(l, view, out)
 		if l.text != "" and l.autowrap_mode == TextServer.AUTOWRAP_OFF:
 			var w := PKeyUiView.text_width(l, l.text)
 			if w > l.size.x + 1.0:

@@ -116,8 +116,10 @@ func _build() -> void:
 	# An address is one word: past the width it breaks rather than push the card off screen.
 	_url.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_code = label(_steps, "UserCode", "PKeyCode", true)
-	# One line while the room allows; a last resort breaks it rather than push the card off screen.
-	_code.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	# One line: the code is fitted to its width (`_fit_code()`, never under the title's size); a last
+	# resort breaks it at its hyphen only, never inside a group of letters.
+	_code.autowrap_mode = TextServer.AUTOWRAP_WORD
+	_code.resized.connect(_fit_code)
 	_qr = qr_tile(_qr_column)
 	_timing = vbox(_steps, "Timing", "PKeyTight")
 	_expires = label(_timing, "Expires", "PKeyMuted")
@@ -205,7 +207,7 @@ func _side_by_side() -> bool:
 	if not (is_landscape() and not phone_screen() and (_qr_wanted() or (state == "starting" and _pad()))):
 		return false
 	# Only while the QR code, its gaps and a text column wide enough for the code fit the room.
-	var text_min := maxf(role("card_width") * 0.5, text_width(_code, _code.text if _code.text != "" else "WDJB-MJHT"))
+	var text_min := maxf(role("card_width") * 0.5, _code_min_width())
 	return _qr_px(true) + role("space_3") * 2.0 + role("column_gap") + text_min <= room_x()
 
 
@@ -258,7 +260,12 @@ func _column_mode() -> bool:
 	var m := layout_metrics()
 	var room: Vector2 = m["room"]
 	# (Not while a QR code shows: its tile is as wide as the column the actions would take.)
-	return squeeze_level() >= 2 and not _side_by_side() and not _qr_wanted() and room.x >= room.y * 1.3 and room.x >= 560.0 * float(m["scale"]) and not phone_screen()
+	if squeeze_level() < 2 or _side_by_side() or _qr_wanted() or phone_screen():
+		return false
+	# ... and only while the text column left beside the actions still holds the user code.
+	if room_x() - role("card_width") * 0.5 - role("column_gap") < _code_min_width(false):
+		return false
+	return room.x >= room.y * 1.3 and room.x >= 560.0 * float(m["scale"])
 
 
 func _arrange(m: Dictionary) -> void:
@@ -304,6 +311,7 @@ func _arrange(m: Dictionary) -> void:
 	for l in [_title, _status, _instructions, _url, _code, _expires, _device]:
 		(l as Label).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if centred else _start
 	_actions.set_meta(&"pkey_align", BoxContainer.ALIGNMENT_CENTER if centred else BoxContainer.ALIGNMENT_BEGIN)
+	_fit_code()
 	_product.centered = centred
 	_title_row.alignment = BoxContainer.ALIGNMENT_CENTER if centred else BoxContainer.ALIGNMENT_BEGIN
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -312,6 +320,46 @@ func _arrange(m: Dictionary) -> void:
 	_avatar.custom_minimum_size = Vector2.ONE * roundf(role("control_height") * 0.8)
 	_initials.add_theme_font_size_override("font_size", maxi(14, roundi(role("control_height") * 0.34)))
 	_tick_loading()
+
+
+## Fit the user code to the width it gets: the theme's code size while it fits on one line, smaller
+## (never under the title's size) when the column is narrower; a pure function of the width, so a
+## fresh layout and a resized one agree.
+func _code_floor() -> int:
+	return mini(get_theme_font_size("font_size", "PKeyCode"), maxi(get_theme_font_size("font_size", "PKeyTitle"), 8))
+
+
+## The width the code needs at its smallest size (the title's), whatever size it is drawn at now.
+func _code_min_width(placeholder := true) -> float:
+	var text := _code.text if _code.text != "" else ("WDJB-MJHT" if placeholder else "")
+	return _code.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _code_floor()).x
+
+
+func _fit_code() -> void:
+	if _code == null or not _code.is_inside_tree() or _fitting:
+		return
+	# The theme's size for the code, read from the dialog (the label's own override is ours).
+	var base := get_theme_font_size("font_size", "PKeyCode")
+	var avail := _code.size.x
+	if _code.text == "" or avail < 8.0 or base <= 0:
+		return
+	var floor_size := _code_floor()
+	var font := _code.get_theme_font("font")
+	var sz := base
+	while sz > floor_size and font.get_string_size(_code.text, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x > avail - 1.0:
+		sz -= 1
+	var has := _code.has_theme_font_size_override("font_size")
+	if (sz == base and not has) or (sz != base and has and _code.get_theme_font_size("font_size") == sz):
+		return
+	_fitting = true
+	if sz == base:
+		_code.remove_theme_font_size_override("font_size")
+	else:
+		_code.add_theme_font_size_override("font_size", sz)
+	_fitting = false
+
+
+var _fitting := false
 
 
 ## Start a sign-in through `sdk.identity` and follow it to the end.
