@@ -8,7 +8,7 @@
   "uxRows": ["UX-33"],
   "summary": "DJDL's Packages page on Sep 29, the day before its first package was declared: one empty card that says DJDL declares no packages yet, shows the .pkey/release declaration for a package and the CI publish command, and makes clear there is nothing to turn on.",
   "compare": [
-    "Same frame as packages.feeds: DJDL's Product context, Ship builds open, Packages active with no count, Distribution accent; the header keeps Service tokens and no switch or New feed button.",
+    "Same frame as packages.feeds: DJDL's Product context, Ship builds open, Packages active with no count, Release accent; the header keeps Service tokens and no switch or New feed button.",
     "The empty card's title says what is true in DJDL's words ('DJDL declares no packages yet'); the one sentence says what to do ('Declare a package in .pkey/release.'); the snippet shows how.",
     "The snippet is a real package deliverable for .pkey/release (kind: package, ecosystem npm with the six ecosystems in a comment, the scoped name, the tarball artifact match), and its foot gives the publish command with --deliverable and --dir.",
     "One link to the docs for package deliverables; no cleanup callout, no machine or CI cards until a feed exists.",

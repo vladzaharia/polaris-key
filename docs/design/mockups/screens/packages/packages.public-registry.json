@@ -8,7 +8,7 @@
   "uxRows": [],
   "summary": "F-35's registry wizard, one pattern for every feed type with a public upstream: DJDL's djdl-crates to PyPI.org on Oct 2 at its last step (the name claimed, the trusted publisher added through a deep link, the CI step verified, and the per-package approval, irreversible and limited to stable and beta, with a typed confirmation), then the same card at its Approve step for npm to npmjs (@djdl/crate-schema) and a container image to GHCR (Diceroll's table-server).",
   "compare": [
-    "Reached from the PyPI feed's ⋯ menu ('Publish to PyPI.org…'); crumbs Packages › PyPI › djdl-crates; Distribution accent; Packages active in the sidebar with the count of feeds on Oct 2 (2).",
+    "Reached from the PyPI feed's ⋯ menu ('Publish to PyPI.org…'); crumbs Packages › PyPI › djdl-crates; Release accent; Packages active in the sidebar with the count of feeds on Oct 2 (2).",
     "No subtitle: the card's title says Trusted publishing and the steps name the CI workflow. Which tracks go is said once, in the Approve step's chips.",
     "The card head is 'Trusted publishing' with its progress ('3 of 4 done' and a bar) and the precondition: only a Public package can go; djdl-crates is Public since Sep 12.",
     "Steps: Claim the name (a pending publisher reserves djdl-crates for example-org/djdl), Add the trusted publisher on PyPI.org (the exact owner, repository, workflow and environment values, who added it and when, 'Open on PyPI.org'), Verify (what was checked, with the release.yml job: environment pypi, id-token: write, 'pkey feeds publish-public --deliverable pypi.crates').",

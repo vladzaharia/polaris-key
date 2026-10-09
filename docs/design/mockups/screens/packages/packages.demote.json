@@ -19,7 +19,8 @@
     "No masthead tile (lead answer 3): this is a list, record or step, not a service's landing page; the orientation chip carries the context.",
     "Ship builds is one identity (B5): Release cyan rule, chip, tile and nav marker, the Package glyph, crumb '<Product> › Ship builds'; no per-page green or tangerine.",
     "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
-    "Round 2 (UX review): Outcomes are neutral text with glyphs (B2); the table scrolls in a labelled region with its first column pinned at tablet widths (M7)."
+    "Round 2 (UX review): Outcomes are neutral text with glyphs (B2); the table scrolls in a labelled region with its first column pinned at tablet widths (M7).",
+    "B17: each lane's license count, and beta's Licenses link, are license; lanes, logs and the dialog are release."
   ],
   "status": "mockup",
   "designReview": {
