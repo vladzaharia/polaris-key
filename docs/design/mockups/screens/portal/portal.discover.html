@@ -21,21 +21,6 @@
   [data-screen="portal.discover"] .toast .btn.link {
     font-weight: 600;
   }
-  /* Actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone. */
-  [data-screen="portal.discover"] .ua-phone {
-    display: none !important;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="portal.discover"] .ua-desk {
-      display: none !important;
-    }
-    [data-screen="portal.discover"] .btn.ua-phone {
-      display: inline-flex !important;
-    }
-    [data-screen="portal.discover"] span.ua-phone {
-      display: inline !important;
-    }
-  }
 </style>
 
 <div class="portal" data-service="core">

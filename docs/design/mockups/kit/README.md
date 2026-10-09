@@ -146,6 +146,15 @@ Also new: `.page.columns.split` (Home: attention 2/3 beside Platform ready 1/3 f
 2560, axe at 390/1024/1440/1920 in both themes, and the spacing rule). Screen-level spacing that
 predated the rule now lives in the kit, scoped to its screen, at the end of `mockup.css`.
 
+The copy pass and the owner's notes (2026-10-09) added: `.choice[data-service]` (a feature card
+edged in its feature's accent; the ink check still says chosen), a search placeholder that ends in
+an ellipsis, the device-following `.ua-desk` / `.ua-phone` actions for every portal tile, an empty
+collection (a page head, then one empty-state card) centred across and down the canvas, an empty
+portal page's following strip at its foot, a `.hosted-callout` sentence per line, a 72px
+`.card-head.h56.sub` only while its subtitle is there, and `.hint-slot` reserving nothing in one
+column. The published page now renders each frame with its `data-screen`, so screen-scoped rules
+apply there as they do in `shoot.mjs` and `check.mjs`.
+
 ## Tokens
 
 | Group      | Tokens                                                                                                                                                     |

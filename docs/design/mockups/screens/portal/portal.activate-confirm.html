@@ -31,18 +31,6 @@
     transform: translateY(-2px);
     box-shadow: var(--pk-elevation-2);
   }
-  /* Quick actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone. */
-  [data-screen="portal.activate-confirm"] .ua-phone {
-    display: none !important;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="portal.activate-confirm"] .ua-desk {
-      display: none !important;
-    }
-    [data-screen="portal.activate-confirm"] .ua-phone {
-      display: inline-flex !important;
-    }
-  }
 </style>
 
 <div class="portal modal-open" data-service="core">

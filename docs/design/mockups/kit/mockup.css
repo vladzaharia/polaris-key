@@ -4688,6 +4688,28 @@ kbd,
   justify-content: center;
   margin-top: var(--sp-2);
 }
+/* An empty collection (the page head, then one card that is only an empty state): the state sits
+   in the middle of the canvas, across and down, not in its top-left corner (owner note,
+   commerce.offers-empty). */
+.main:has(> .page > .page-head + .card:last-child > .empty:only-child) {
+  display: flex;
+  flex-direction: column;
+}
+.main > .page:has(> .page-head + .card:last-child > .empty:only-child) {
+  flex: 1 0 auto;
+  width: 100%;
+}
+.page > .page-head + .card:last-child:has(> .empty:only-child) {
+  align-self: center;
+  width: 100%;
+  margin-block: auto;
+}
+/* An empty portal page: the empty state takes the room, so what follows it (Missing a license?)
+   sits at the page's foot (owner note, portal.library-empty). */
+.portal-page > .empty:not(:last-child) {
+  flex: 1 0 auto;
+  justify-content: center;
+}
 
 /*
  * List rows: a leading avatar or icon, the text, a trailing meta (a time, a count), one row
@@ -5509,6 +5531,22 @@ pre.code-plain {
 }
 .ptile-foot > .btn:first-child {
   flex: 1;
+}
+/* Quick actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone,
+   so a tile's foot holds one of the two and never spills ("Email me the download", owner note). */
+.ua-phone {
+  display: none !important;
+}
+@container screen (max-width: 639px) {
+  .ua-desk {
+    display: none !important;
+  }
+  .btn.ua-phone {
+    display: inline-flex !important;
+  }
+  span.ua-phone {
+    display: inline !important;
+  }
 }
 .platforms {
   display: inline-flex;
