@@ -42999,7 +42999,7 @@ async function runCommand(argv2, io) {
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
-        return await cmdSdk(parsed, cwd, stdout, ci.fetchImpl);
+        return await cmdSdk(parsed, cwd, stdout, stderr, ci.fetchImpl);
       case "mirror":
         return await cmdMirror(parsed, cwd, stdout, ci.fetchImpl);
       case "auth":
@@ -43427,7 +43427,7 @@ function cmdTrust(parsed, stdout) {
 `);
   return 0;
 }
-async function cmdSdk(parsed, cwd, stdout, fetchImpl) {
+async function cmdSdk(parsed, cwd, stdout, stderr, fetchImpl) {
   const lang = flagString(parsed, "lang");
   if (lang === void 0) {
     const product2 = flagString(parsed, "product") ?? parsed.positional[0];
@@ -43476,6 +43476,10 @@ ${SDK_CONFIG_USAGE}`
     ...kid !== void 0 && publicKey !== void 0 ? { expectPin: { kid, publicKey } } : {},
     ...fetchImpl ? { fetchImpl } : {}
   });
+  if (Object.keys(facts.pinnedKeys).length === 1)
+    stderr.write(
+      "warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.\n"
+    );
   const out = flagString(parsed, "out");
   const pkg = flagString(parsed, "package");
   const content = renderSdkConfig(lang, facts, {
