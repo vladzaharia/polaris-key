@@ -31,6 +31,10 @@ const SIZES := [
 	["1170x2532@3", Vector2i(1170, 2532), 3.0, [0.0, 47.0, 0.0, 34.0], 3.0],
 	["1536x2048", Vector2i(1536, 2048), 1.0, null, 2.0],
 	["3440x1440", Vector2i(3440, 1440), 1.0, null, 0.0],
+	# A phone held sideways: a short screen with a notch at its side.
+	["2532x1170@3", Vector2i(2532, 1170), 3.0, [47.0, 0.0, 47.0, 21.0], 3.0],
+	["1334x750@2", Vector2i(1334, 750), 2.0, null, 2.0],
+	["750x1334@2", Vector2i(750, 1334), 2.0, [0.0, 20.0, 0.0, 0.0], 2.0],
 ]
 
 ## A game's project stretch settings turn its window into a logical size and a scale; the checks
@@ -481,6 +485,8 @@ static func problems(view: PKeyUiView, kind: String, screen: String, strict := f
 			var content := s.get_child(0) as Control if s.get_child_count() > 0 else null
 			if s.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and content != null and content.get_combined_minimum_size().y > s.size.y + 1.0:
 				out.append("%s needs its scroll fallback (%.0f > %.0f)" % [_path(view, s), content.get_combined_minimum_size().y, s.size.y])
+	if view is PKeySettingsPanel:
+		out.append_array(_settings_column_problems(view as PKeySettingsPanel))
 	# Pad-only (a TV, even one whose OS is a phone's, or a big tablet-sized screen): the way to free a
 	# device is its QR code, never dropped for a "mobile" device.
 	if view.pad_only():
@@ -595,32 +601,100 @@ static func _visible_unscrolled(ctl: Control, view: Control, screen_rect: Rect2)
 	return true
 
 
+## The settings rows' controls end on one right edge (a switch, a value, the last stepper button, a
+## locked row's text), the advanced switch ends there too, and a stepper's gaps are even.
+static func _settings_column_problems(p: PKeySettingsPanel) -> PackedStringArray:
+	var out := PackedStringArray()
+	var edge := NAN
+	for k in p._controls:
+		var n: Dictionary = p._controls[k]
+		var row := n["row"] as Control
+		if not row.is_visible_in_tree():
+			continue
+		var line := n["line"] as Control
+		var last: Control = null
+		for ch in line.get_children():
+			if ch is Control and (ch as Control).visible:
+				last = ch as Control
+		if last == null:
+			continue
+		var end := last.get_global_rect().end.x
+		if is_nan(edge):
+			edge = end
+		elif absf(end - edge) > 1.0:
+			out.append("%s ends at %.1f, not on the column edge %.1f" % [row.name, end, edge])
+		if n.has("minus") and n.has("plus") and (n["minus"] as Control).is_visible_in_tree():
+			var input := n["input"] as Control
+			var left := input.get_global_rect().position.x - (n["minus"] as Control).get_global_rect().end.x
+			var right := (n["plus"] as Control).get_global_rect().position.x - input.get_global_rect().end.x
+			if absf(left - right) > 1.0 and not (n["input"] is HSlider):
+				out.append("%s has uneven stepper gaps (%.1f and %.1f)" % [row.name, left, right])
+	if not is_nan(edge) and p._advanced.is_visible_in_tree() and absf(p._advanced.get_global_rect().end.x - edge) > 1.0:
+		out.append("the advanced switch ends at %.1f, not on the column edge %.1f" % [p._advanced.get_global_rect().end.x, edge])
+	return out
+
+
+## The control a screen focuses first, as a pad or a keyboard opens it, is on screen and inside every
+## scroll area above it (a list that opens scrolled away from its focus leaves a pad's D-pad changing
+## a value unseen). A coroutine.
+static func first_focus_problems(tree: SceneTree, view: PKeyUiView, kind: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	if kind != "full":
+		return out
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = true
+	view.ensure_focus(true)
+	for i in 8:
+		await tree.process_frame
+	var f := view.get_viewport().gui_get_focus_owner()
+	if f == null or not (view == f or view.is_ancestor_of(f)):
+		return out
+	var r := f.get_global_rect()
+	if not view.get_viewport_rect().grow(1.0).encloses(r):
+		out.append("%s has the first focus but is off screen: %s" % [_path(view, f), r])
+	var n := f.get_parent()
+	while n != null and n != view.get_parent():
+		if n is ScrollContainer and (n as ScrollContainer).is_visible_in_tree() and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			if not (n as ScrollContainer).get_global_rect().grow(1.0).encloses(r):
+				out.append("%s has the first focus but is outside its scroll area %s: %s" % [_path(view, f), (n as ScrollContainer).get_global_rect(), r])
+		n = n.get_parent()
+	return out
+
+
 ## A tight case keeps its primary (and the user code) reachable through the scroll fallback: give each one
 ## that is not on screen at the top the focus, let the layout settle, and require it to be INSIDE the
 ## visible part of every scroll area above it and of the screen (the scroll must follow the focus; a
 ## scroll container merely being above it proves nothing). A coroutine.
-static func reach_problems(tree: SceneTree, view: PKeyUiView, kind: String) -> PackedStringArray:
+static func reach_problems(tree: SceneTree, view: PKeyUiView, kind: String, tight := false) -> PackedStringArray:
 	var out := PackedStringArray()
-	if kind != "full" or view is PKeySettingsPanel or view is PKeyDevMenuSection:
+	if kind != "full" or view is PKeyDevMenuSection:
 		return out
 	var screen_rect := view.get_viewport_rect()
 	var pending: Array = []
-	for ctl in view.find_children("*", "Control", true, false):
+	# A screen's primary action; the settings list has none, so every control in its focus chain.
+	var candidates: Array = view.focus_order() if view is PKeySettingsPanel else view.find_children("*", "Control", true, false)
+	for ctl in candidates:
 		if not ctl.is_visible_in_tree():
 			continue
-		var primary: bool = ctl is Button and ctl.theme_type_variation == &"PKeyPrimary"
-		if primary and not _visible_unscrolled(ctl, view, screen_rect) and PKeyUiView.is_focusable(ctl):
+		var wanted: bool = view is PKeySettingsPanel or (ctl is Button and ctl.theme_type_variation == &"PKeyPrimary")
+		if wanted and not _visible_unscrolled(ctl, view, screen_rect) and PKeyUiView.is_focusable(ctl):
 			pending.append(ctl)
 	for ctl in pending:
 		ctl.grab_focus()
 		for i in 4:
 			await tree.process_frame
 		var r: Rect2 = ctl.get_global_rect()
-		var inside := screen_rect.grow(1.0).encloses(r)
+		# A tight settings row (a 36 px host font on a phone's width) is wider than the screen, so only
+		# its vertical reach is held.
+		var cut := Rect2(Vector2(-1e6, screen_rect.position.y), Vector2(2e6, screen_rect.size.y)) if tight and view is PKeySettingsPanel else screen_rect
+		var inside := cut.grow(1.0).encloses(r)
 		var n: Node = ctl.get_parent()
 		while n != null and n != view.get_parent():
 			if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
-				inside = inside and (n as ScrollContainer).get_global_rect().grow(1.0).encloses(r)
+				var sr := (n as ScrollContainer).get_global_rect()
+				if tight and view is PKeySettingsPanel:
+					sr = Rect2(Vector2(-1e6, sr.position.y), Vector2(2e6, sr.size.y))
+				inside = inside and sr.grow(1.0).encloses(r)
 			n = n.get_parent()
 		if not inside:
 			out.append("%s has the focus but is not inside the visible scroll area: %s" % [_path(view, ctl), r])

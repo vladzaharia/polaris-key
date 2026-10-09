@@ -78,6 +78,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 			t.check("matrix: %s / %s / %s fits every size" % [entry[0], preset, locale], failed.is_empty(), "; ".join(failed.slice(0, 4)))
 	await _fresh_layouts(t, tree, mx, sizes, only)
 	await _pad_flows(t, tree, mx)
+	await _settings_opened_directly(t, tree, mx)
 	await _live_resize(t, tree, mx)
 	await _safe_area(t, tree, mx)
 	await _refresh_stability(t, tree, mx)
@@ -99,7 +100,7 @@ static func _view_problems(tree: SceneTree, v: PKeyUiView, entry: Array, preset:
 	# (A 36 px host font on a 640 px wide canvas is the one tight case; see MATRIX.problems.)
 	if not ([entry[0], preset, s[0]] in MATRIX.TIGHT_CASES and s[1].x <= 640):
 		probs.append_array(_focus(v))
-	probs.append_array(await MATRIX.reach_problems(tree, v, entry[3]))
+	probs.append_array(await MATRIX.reach_problems(tree, v, entry[3], [entry[0], preset, s[0]] in MATRIX.TIGHT_CASES))
 	return probs
 
 
@@ -121,7 +122,9 @@ func _fresh_layouts(t: PKeyTestContext, tree: SceneTree, mx, sizes: Array, only:
 				row_sizes = row_sizes.filter(func(r): return float(r[4]) <= 0.0 or minf(r[1].x, r[1].y) * 1.0 / float(r[4]) >= 600.0)
 			for s in row_sizes:
 				var st: Dictionary = await mx.stage(tree, entry, s[1], s[2], s[3], preset, false, s[4])
-				var probs := await _view_problems(tree, st["view"], entry, preset, s)
+				# First, while nothing in the view has the focus yet: the checks after it move the focus.
+				var probs := await MATRIX.first_focus_problems(tree, st["view"], entry[3])
+				probs.append_array(await _view_problems(tree, st["view"], entry, preset, s))
 				if not probs.is_empty():
 					failed.append("%s: %s" % [s[0], probs[0] + (" (+%d more)" % (probs.size() - 1) if probs.size() > 1 else "")])
 				layouts += 1
@@ -187,6 +190,77 @@ static func _press(vp: SubViewport, action: String) -> void:
 		e.action = action
 		e.pressed = pressed
 		vp.push_input(e)
+
+
+## The settings panel opened the way a game opens it: created and added once, straight into its UI at
+## the device's size (no harness re-parenting), anchored over the screen, then left alone. On a pad
+## the first focus is inside the visible list, and so is the control a D-pad Down moves it to, also
+## on a short landscape screen (a phone held sideways), where the list used to open scrolled to its
+## last row with the focus out of view.
+func _settings_opened_directly(t: PKeyTestContext, tree: SceneTree, mx) -> void:
+	mx.use_locale("en")
+	var sc := MATRIX.SCENARIOS.new()
+	var cases := [
+		["2532x1170@3", Vector2i(2532, 1170), 3.0, [47.0, 0.0, 47.0, 21.0], 3.0],
+		["1334x750@2", Vector2i(1334, 750), 2.0, null, 2.0],
+		["2400x1080", Vector2i(2400, 1080), 1.0, [96.0, 0.0, 96.0, 48.0], 2.75],
+		["pixel-art 640x360", Vector2i(1920, 1080), 3.0, null, 0.0],
+		["640x360", Vector2i(640, 360), 1.0, null, 0.0],
+		["800x600", Vector2i(800, 600), 1.0, null, 0.0],
+		["1280x720", Vector2i(1280, 720), 1.0, null, 0.0],
+		["1170x2532@3", Vector2i(1170, 2532), 3.0, [0.0, 47.0, 0.0, 34.0], 3.0],
+		["750x1334@2", Vector2i(750, 1334), 2.0, [0.0, 20.0, 0.0, 0.0], 2.0],
+	]
+	for preset in ["dark", "native", "custom"]:
+		var failed: Array = []
+		for c in cases:
+			PKeyUiView.pointer_last = false
+			PKeyUiView._pointer_known = true
+			PKeyUiView.safe_insets_override = c[3]
+			PKeyUiView.mobile_override = {"dpr": c[4]} if float(c[4]) > 0.0 else false
+			PKeyUiView.pad_only_override = false
+			var vp := SubViewport.new()
+			vp.size = c[1]
+			vp.size_2d_override = Vector2i((Vector2(c[1]) / float(c[2])).round())
+			vp.size_2d_override_stretch = not is_equal_approx(float(c[2]), 1.0)
+			vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+			tree.root.add_child(vp)
+			var host := Control.new()
+			host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			match preset:
+				"native":
+					host.theme = MATRIX.game_theme()
+			vp.add_child(host)
+			var sdk: Node = await sc.settings_sdk({})
+			tree.root.add_child(sdk)
+			MATRIX.apply_preset(preset)
+			var p := PKeySettingsPanel.new()
+			p.auto_sdk = false
+			p.sdk = sdk
+			p.theme = load(PKeyUiTheme.NEUTRAL_PATH)
+			p.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			host.add_child(p)
+			for i in 30:
+				await tree.process_frame
+			await tree.create_timer(0.3).timeout
+			var scroll: ScrollContainer = p._scroll
+			var inside := func() -> bool:
+				var f := vp.gui_get_focus_owner()
+				return f != null and p.is_ancestor_of(f) and (not scroll.is_ancestor_of(f) or scroll.get_global_rect().grow(0.5).encloses(f.get_global_rect()))
+			if not inside.call():
+				failed.append("%s: the first focus %s is not in view (scroll %d of %d)" % [c[0], vp.gui_get_focus_owner(), scroll.scroll_vertical, int(scroll.get_v_scroll_bar().max_value - scroll.size.y)])
+			_joy(vp, JOY_BUTTON_DPAD_DOWN)
+			for i in 6:
+				await tree.process_frame
+			if not inside.call():
+				failed.append("%s: after D-pad Down the focus %s is not in view" % [c[0], vp.gui_get_focus_owner()])
+			vp.free()
+			sdk.queue_free()
+			await tree.process_frame
+		t.check("settings opened directly: %s, the first focus and the next are in view at every size" % preset, failed.is_empty(), "; ".join(failed.slice(0, 4)))
+	PKeyUiView.safe_insets_override = null
+	PKeyUiView.mobile_override = null
+	PKeyUiView.pad_only_override = null
 
 
 ## What a pad does on a screen it opens cold, in the Polaris Key look and a game's own: nothing is

@@ -1041,6 +1041,14 @@ func _reveal_focus() -> void:
 		if n is ScrollContainer and (n as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED and not n.has_meta(MANUAL_SCROLL_META):
 			(n as ScrollContainer).ensure_control_visible(f)
 		n = n.get_parent()
+	for v in _views():
+		(v as PKeyUiView)._revealed(f)
+
+
+## A view that scrolls its own list (`MANUAL_SCROLL_META`) brings the focused control `f` into view
+## here, once the layout has settled.
+func _revealed(_f: Control) -> void:
+	pass
 
 
 ## Whether a scroll area's last decision no longer matches its content (measured on a frame whose

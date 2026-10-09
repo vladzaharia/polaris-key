@@ -36,6 +36,9 @@ var rows: Array = []
 var section := 0
 
 var _frame: VBoxContainer
+var _head: VBoxContainer
+var _scroll_box: VBoxContainer
+var _advanced_row: MarginContainer
 var _product: PKeyProductHeader
 var _body: BoxContainer
 var _rail_panel: PanelContainer
@@ -60,11 +63,11 @@ var _writing := false
 func _build() -> void:
 	name = "PKeySettingsPanel"
 	_frame = vbox(card_panel("Card", false), "Frame", "PKeySections")
-	var head := vbox(_frame, "Head", "PKeyTight")
-	_product = product_header(head, "Product")
+	_head = vbox(_frame, "Head", "PKeyTight")
+	_product = product_header(_head, "Product")
 	_product.card = true
-	_title = label(head, "Title", "PKeyTitle")
-	_empty = label(head, "Empty", "PKeyMuted")
+	_title = label(_head, "Title", "PKeyTitle")
+	_empty = label(_head, "Empty", "PKeyMuted")
 	_body = columns(_frame, "Body")
 	_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_rail_panel = PanelContainer.new()
@@ -116,6 +119,7 @@ func _build() -> void:
 	_scroll.get_v_scroll_bar().visibility_changed.connect(_apply_inset)
 	_scroll.get_v_scroll_bar().value_changed.connect(func(_v: float) -> void: _update_fade())
 	var box := vbox(_inset, "Body", "PKeySections")
+	_scroll_box = box
 	_list = vbox(box, "Rows", "PKeySections")
 	_advanced = CheckButton.new()
 	_advanced.name = "AdvancedToggle"
@@ -127,7 +131,11 @@ func _build() -> void:
 	_advanced.toggled.connect(func(on: bool):
 		show_advanced = on
 		refresh_view())
-	box.add_child(_advanced)
+	# The switch's edges are the rows' edges: the margins are the grouped list's own (see `_arrange`).
+	_advanced_row = MarginContainer.new()
+	_advanced_row.name = "AdvancedRow"
+	_advanced_row.add_child(_advanced)
+	box.add_child(_advanced_row)
 	_powered_by = brand_node(_frame, "PoweredBy", BRAND_POWERED_BY)
 
 
@@ -162,6 +170,9 @@ func _apply_width(width: float) -> void:
 
 
 func _arrange(m: Dictionary) -> void:
+	var held := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	if held != null and not is_ancestor_of(held):
+		held = null
 	var rail := _rail_wanted(m)
 	_rail_panel.visible = rail and not _groups.is_empty()
 	set_columns(_body, rail)
@@ -173,6 +184,10 @@ func _arrange(m: Dictionary) -> void:
 			heading.visible = not rail
 	for i in _rail_buttons.size():
 		(_rail_buttons[i] as Button).set_pressed_no_signal(i == section)
+	# The rail appearing (or going) hides the rows (or the rail) the focus was on; the engine drops it.
+	if held != null and not is_focusable(held):
+		_refocus.call_deferred()
+	_set_head_scrolls(not _rail_panel.visible and _head_should_scroll())
 	super(m)
 	var stack := _is_narrow()
 	for k in _controls:
@@ -187,6 +202,7 @@ func _arrange(m: Dictionary) -> void:
 		line.alignment = BoxContainer.ALIGNMENT_END
 		_size_control(n, stack)
 	_narrow_lists(stack)
+	_align_advanced_row()
 	_apply_inset()
 	var want := _list_height()
 	if not is_equal_approx(_scroll.custom_minimum_size.y, want):
@@ -259,12 +275,21 @@ func _is_narrow() -> bool:
 func _rail_wanted(m: Dictionary) -> bool:
 	if not (bool(m.get("wide", false)) and _groups.size() > 1 and not phone_bleed()):
 		return false
-	var head := 0.0
+	var head := _frame_fixed_height() + float(_frame.get_theme_constant("separation"))
+	return _rail.get_combined_minimum_size().y + end_padding(_rail_panel) <= available_height() - head
+
+
+## The height the frame spends above its body, the head counted wherever it sits (in the frame, or
+## scrolling with the list).
+func _frame_fixed_height() -> float:
+	var h := 0.0
+	var sep := float(_frame.get_theme_constant("separation"))
 	for ch in _frame.get_children():
 		if ch is Control and (ch as Control).visible and ch != _body and ch != _powered_by:
-			head += (ch as Control).get_combined_minimum_size().y + float(_frame.get_theme_constant("separation"))
-	head += float(_frame.get_theme_constant("separation"))
-	return _rail.get_combined_minimum_size().y + end_padding(_rail_panel) <= available_height() - head
+			h += (ch as Control).get_combined_minimum_size().y + sep
+	if _head.get_parent() != _frame:
+		h += _head.get_combined_minimum_size().y + sep
+	return h
 
 
 func _frame_head_height() -> float:
@@ -275,6 +300,42 @@ func _frame_head_height() -> float:
 	if _rail_panel.visible and _body.vertical:
 		h += _rail_panel.get_combined_minimum_size().y
 	return h + float(_frame.get_theme_constant("separation"))
+
+
+## On a short screen with no rail the head (product, title) would leave the rows a few dozen pixels:
+## it scrolls with the list instead, and the list gets the whole height. A function of the size.
+func _head_should_scroll() -> bool:
+	var room := available_height() - _frame_fixed_height() - float(_frame.get_theme_constant("separation"))
+	if _powered_by.visible:
+		room -= _powered_by.get_combined_minimum_size().y + role("section_gap")
+	var rows := _scroll_box.get_combined_minimum_size().y
+	if _head.get_parent() == _scroll_box:
+		rows -= _head.get_combined_minimum_size().y + float(_scroll_box.get_theme_constant("separation"))
+	return rows > room and room < role("control_height") * 3.5
+
+
+func _set_head_scrolls(on: bool) -> void:
+	var target: Node = _scroll_box if on else _frame
+	if _head.get_parent() == target:
+		return
+	_head.get_parent().remove_child(_head)
+	target.add_child(_head)
+	target.move_child(_head, 0)
+
+
+## The switch ends where the rows' controls end and its label starts where their labels do: it takes
+## the grouped list's own side margins.
+func _align_advanced_row() -> void:
+	var left := 0
+	var right := 0
+	if not _groups.is_empty():
+		var panel := (_groups[0]["node"] as Control).find_child("List", false, false) as PanelContainer
+		if panel != null:
+			var box := panel.get_theme_stylebox("panel")
+			left = roundi(box.get_content_margin(SIDE_LEFT))
+			right = roundi(box.get_content_margin(SIDE_RIGHT))
+	_advanced_row.add_theme_constant_override("margin_left", left)
+	_advanced_row.add_theme_constant_override("margin_right", right)
 
 
 ## The largest height up to `room` at which a whole row ends (the pane's own row boundaries).
@@ -326,6 +387,7 @@ func _render() -> void:
 	_title.text = t.text("settings_title")
 	var has_advanced := rows.any(func(r): return r["advanced"] and r["visible"])
 	_advanced.visible = has_advanced
+	_advanced_row.visible = has_advanced
 	_advanced.text = t.text("settings_advanced")
 	_advanced.set_pressed_no_signal(show_advanced)
 	var shown := rows.filter(func(r): return r["visible"] and (show_advanced or not r["advanced"]))
@@ -453,6 +515,8 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 		l.set_meta(DATA_META, true)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# The value ends on the column's right edge, as every control does.
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		ctl = l
 		ctl.name = "Input"
 		ctl.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -511,6 +575,8 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 				# The visible minus and plus are the steppers: the engine's own arrows go.
 				sp.add_theme_icon_override("updown", ImageTexture.create_from_image(Image.create(1, 1, false, Image.FORMAT_RGBA8)))
 				sp.add_theme_constant_override("buttons_width", 0)
+				sp.add_theme_constant_override("set_min_buttons_width_from_icons", 0)
+				sp.add_theme_constant_override("field_and_buttons_separation", 0)
 				# Left and right are minus and plus a step on a pad (and on a keyboard when the
 				# caret cannot move that way); up and down still move focus.
 				var le := sp.get_line_edit()
@@ -627,22 +693,55 @@ func _nudge(ctl: Control, by: float) -> void:
 		(ctl as Range).value += by
 
 
-## Scroll so `ctl`'s row is fully in view with room for its focus ring and the gap to the next row.
+## Scroll so `ctl`'s row is fully in view with room for its focus ring and the gap to the next row:
+## from the top while the row ends on the first page (the heading above it stays in view), by the
+## control itself when the row is taller than the list.
 func _ensure_visible(ctl: Control) -> void:
 	if not is_inside_tree() or not _scroll.is_visible_in_tree():
 		return
-	var row: Control = ctl
-	while row != null and row.get_parent() != null and not (row.get_parent() is VBoxContainer and row.get_parent().name == "Rows"):
-		row = row.get_parent_control()
+	var row := _row_of(ctl)
 	if row == null:
 		return
-	var margin := float(PKeyUiTheme.RING_WIDTH + PKeyUiTheme.RING_OFFSET) + role("section_gap")
-	var top := row.global_position.y - _inset.global_position.y - margin
-	var bottom := row.global_position.y + row.size.y - _inset.global_position.y + margin
-	if top < _scroll.scroll_vertical:
+	var ring := float(PKeyUiTheme.RING_WIDTH + PKeyUiTheme.RING_OFFSET)
+	var margin := ring + role("section_gap")
+	var origin := _inset.global_position.y
+	var top := row.global_position.y - origin - margin
+	var bottom := row.global_position.y + row.size.y - origin + margin
+	var page := _scroll.size.y
+	if bottom - top > page:
+		top = ctl.global_position.y - origin - ring
+		bottom = ctl.global_position.y + ctl.size.y - origin + ring
+	if bottom <= page:
+		_scroll.scroll_vertical = 0
+	elif top < _scroll.scroll_vertical:
 		_scroll.scroll_vertical = maxi(0, int(top))
-	elif bottom > _scroll.scroll_vertical + _scroll.size.y:
-		_scroll.scroll_vertical = int(bottom - _scroll.size.y)
+	elif bottom > _scroll.scroll_vertical + page:
+		_scroll.scroll_vertical = int(bottom - page)
+
+
+## The direct child of the list's column that holds `ctl` (a row, or the advanced switch), or null
+## when `ctl` is not in the scrolling list (a rail button).
+func _row_of(ctl: Control) -> Control:
+	var n: Node = ctl
+	while n != null and n != _scroll_box:
+		var p := n.get_parent()
+		if p == _scroll_box or (p is VBoxContainer and p.name == &"Rows" and p != _list):
+			return n as Control
+		n = p
+	return null
+
+
+func _refocus() -> void:
+	var to := _initial_focus()
+	if to != null and to.is_inside_tree() and is_focusable(to) and not _has_focus_inside():
+		to.grab_focus()
+
+
+## The layout has settled: a control focused while the list was still taking its height is brought
+## into view now.
+func _revealed(f: Control) -> void:
+	if _scroll.is_ancestor_of(f):
+		_ensure_visible(f)
 
 
 func _size_control(n: Dictionary, stack := false) -> void:
@@ -652,7 +751,7 @@ func _size_control(n: Dictionary, stack := false) -> void:
 			(n[k] as Control).custom_minimum_size = Vector2(h, h)
 	if n.has("input") and n["input"] is HSlider:
 		# A narrow panel gets a shorter slider (the track still has room to be dragged and stepped).
-		(n["input"] as Control).custom_minimum_size = Vector2(h * 1.25 if stack else role("space_10") * 2.0, h * 0.5)
+		(n["input"] as Control).custom_minimum_size = Vector2(h if stack else role("space_10") * 2.0, h * 0.5)
 	if n["input"] is TextEdit:
 		(n["input"] as Control).custom_minimum_size.y = roundf(h * 1.5)
 	size_glyph(n["lock"], 14.0, get_theme_color("font_color", "PKeyMuted"))
@@ -765,24 +864,18 @@ func _after_wire() -> void:
 				target.focus_neighbor_left = target.get_path_to(rail_btn)
 
 
-## The first rail button when there is one, else the first row's control.
+## The first editable row's control; a section with none (every row locked) puts the focus on its
+## rail item, else on the advanced switch.
 func _initial_focus() -> Control:
 	var chain := focus_order()
 	for ctl in chain:
-		if not _rail_buttons.has(ctl):
-			_settle_at_top.call_deferred(ctl)
+		if not _rail_buttons.has(ctl) and ctl != _advanced:
 			return ctl
+	if _rail_panel.visible and not _rail_buttons.is_empty():
+		var rail_btn: Button = _rail_buttons[clampi(section, 0, _rail_buttons.size() - 1)]
+		if is_focusable(rail_btn):
+			return rail_btn
 	return chain[0] if not chain.is_empty() else null
-
-
-## The list opens at its top (the first section and its heading in view) when the first control it
-## focuses is on that first page: the focus follows a control without scrolling the heading away.
-func _settle_at_top(ctl: Control) -> void:
-	if not is_instance_valid(ctl) or not ctl.is_inside_tree() or not ctl.has_focus() or not _scroll.is_visible_in_tree():
-		return
-	var bottom := ctl.global_position.y + ctl.size.y - _inset.global_position.y
-	if bottom + float(PKeyUiTheme.RING_WIDTH + PKeyUiTheme.RING_OFFSET) <= _scroll.size.y:
-		_scroll.scroll_vertical = 0
 
 
 ## The store edits go to: PolarisKey.config's, else a new in-memory one installed there.

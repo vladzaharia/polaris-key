@@ -1,7 +1,7 @@
 == catalog ==
-Card/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Frame/Head/Product/Name: Label "Polaris Key SDK"
-Card/Frame/Head/Title: Label "Settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
@@ -31,12 +31,12 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_red
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 6]
-Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [focus 7]
+Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedRow/AdvancedToggle: CheckButton "Show advanced settings" [focus 7]
 Card/Frame/Body/Pane/Fade: TextureRect
 == advanced shown ==
-Card/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Frame/Head/Product/Name: Label "Polaris Key SDK"
-Card/Frame/Head/Title: Label "Settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
@@ -72,12 +72,12 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Network/List/Rows/Row_net_prox
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 8]
-Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [pressed, focus 9]
+Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedRow/AdvancedToggle: CheckButton "Show advanced settings" [pressed, focus 9]
 Card/Frame/Body/Pane/Fade: TextureRect
 == local override, dependsOn hidden ==
-Card/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Frame/Head/Product/Name: Label "Polaris Key SDK"
-Card/Frame/Head/Title: Label "Settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/Category: Label "Operations"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Operations/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
@@ -108,10 +108,11 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_the
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 7]
-Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedToggle: CheckButton "Show advanced settings" [focus 8]
+Card/Frame/Body/Pane/Scroll/Inset/Body/AdvancedRow/AdvancedToggle: CheckButton "Show advanced settings" [focus 8]
 Card/Frame/Body/Pane/Fade: TextureRect
 == empty ==
-Card/Frame/Head/Product/Monogram/Initial: Label "P"
-Card/Frame/Head/Product/Name: Label "Polaris Key SDK"
-Card/Frame/Head/Title: Label "Settings"
-Card/Frame/Head/Empty: Label "There are no settings to show."
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "Polaris Key SDK"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Title: Label "Settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Empty: Label "There are no settings to show."
+Card/Frame/Body/Pane/Fade: TextureRect
