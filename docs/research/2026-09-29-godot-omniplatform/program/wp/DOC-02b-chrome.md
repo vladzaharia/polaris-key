@@ -5,7 +5,7 @@
 | Phase       | DOC: Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/) (site design) |
 | Size        | 0.4–0.6 engineer-weeks                                                                                             |
 | Depends on  | [DOC-01](DOC-01-docs-mockups.md), [DOC-02a](DOC-02a-shared-components.md)                                          |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [AX-06](AX-06-markdown-twins-llms-files-agent-kit-and-schemas.md)          |
 | Role        | `pkey-implementer`                                                                                                 |
 | Plan mode   | no                                                                                                                 |
 | Gates       | `docs-generated`, `docs-links`, `ui-snapshots`                                                                     |

@@ -5,7 +5,7 @@
 | Phase       | DOC: Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/) (Reference and contribute) |
 | Size        | 0.6 engineer-weeks                                                                                                              |
 | Depends on  | [DOC-03a](DOC-03a-skeleton-and-contracts.md), [DOC-05a](DOC-05a-help-messages.md)                                               |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [AX-10](AX-10-sdk-skills-should-tier.md)                                                |
 | Role        | `pkey-implementer`                                                                                                              |
 | Plan mode   | no                                                                                                                              |
 | Gates       | `drift-gate`, `docs-generated`, `docs-links`                                                                                    |

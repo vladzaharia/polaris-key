@@ -96,6 +96,10 @@
       "title": "Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/)"
     },
     {
+      "id": "AX",
+      "title": "Agent experience: READMEs, llms files, skills, a CLI machines can drive and an eval harness (docs/research/2026-10-08-llm-audit/)"
+    },
+    {
       "id": "X",
       "title": "Optional SDKs"
     },
@@ -1616,7 +1620,20 @@
         "SP-64",
         "SP-65",
         "UK-51",
-        "SP-54"
+        "SP-54",
+        "AX-01",
+        "AX-02",
+        "AX-03a",
+        "AX-03b",
+        "AX-04",
+        "AX-05",
+        "AX-06",
+        "AX-07",
+        "AX-08",
+        "AX-09",
+        "AX-12",
+        "AX-14",
+        "AX-16"
       ],
       "planMode": false,
       "gates": ["docs-links"],
@@ -16317,6 +16334,476 @@
         "design/PORTAL §8"
       ],
       "brief": "wp/PX-26-wide-zoomed-layouts.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-01",
+      "title": "README truth pass and package metadata",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §3.1, §3.2, §8.3 (AX-01)"
+      ],
+      "brief": "wp/AX-01-readme-truth-pass-and-package-metadata.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-02",
+      "title": "READMEs for every directory without one",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["P0-42"],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §3.1, §3.2, §8.3 (AX-02)"
+      ],
+      "brief": "wp/AX-02-readmes-for-every-directory-without-one.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-03a",
+      "title": "The `CLAUDE.md` split, the move table, role agents",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.7],
+      "deps": [],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3 (AX-03a)"
+      ],
+      "brief": "wp/AX-03a-claude-md-split-move-table-role-agents.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-03b",
+      "title": "The `AGENTS.md` router, repo map, short rules, nested files",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 0.9],
+      "deps": ["AX-03a", "P0-42", "DOC-03a"],
+      "planMode": false,
+      "gates": ["docs-generated"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3 (AX-03b)"
+      ],
+      "brief": "wp/AX-03b-agents-md-router-repo-map-nested-files.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-04",
+      "title": "`pnpm gate` in the repo",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["P0-43"],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §4.4, §8.3, §10 decision 13 (AX-04)"
+      ],
+      "brief": "wp/AX-04-pnpm-gate-in-the-repo.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-05",
+      "title": "LLM eval harness, suites and baseline",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.8, 2.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["ci"],
+      "humanInputs": [
+        "An API key with a spending cap for CI eval runs, and the cap (owner step; plan decision 9; the baseline's token counts from AX-05 size the cap)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["docs/research/2026-10-08-llm-audit/README.md §7, §8.3 (AX-05)"],
+      "brief": "wp/AX-05-llm-eval-harness-suites-and-baseline.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-06",
+      "title": "Markdown twins, `llms` files, the public agent kit and schemas",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.1, 1.6],
+      "deps": ["DOC-03b", "DOC-02b", "AX-07"],
+      "planMode": false,
+      "gates": [
+        "rule-10",
+        "threat-model",
+        "docs:privacy",
+        "docs-generated",
+        "docs-links"
+      ],
+      "humanInputs": [
+        "Submit llms.txt to Context7 once the developer docs are public (owner step; plan decision 11; the AI-crawler and robots.txt part is decided)"
+      ],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §4.1 to §4.3, §8.3 (AX-06)"
+      ],
+      "brief": "wp/AX-06-markdown-twins-llms-files-agent-kit-and-schemas.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-07",
+      "title": "The agent kit: layout, release zip, generated references, lint",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.4, 1.9],
+      "deps": ["P0-42", "AX-03a"],
+      "planMode": false,
+      "gates": ["drift-gate", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §5.1, §5.5, §8.3 (AX-07)"
+      ],
+      "brief": "wp/AX-07-the-agent-kit-layout-release-zip-references-lint.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-08",
+      "title": "`pkey agents`, the product-repo block, the console card",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["AX-07", "P0-45", "ST-41"],
+      "planMode": false,
+      "gates": ["threat-model", "ui-snapshots", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §4.5, §8.3 (AX-08)"
+      ],
+      "brief": "wp/AX-08-pkey-agents-product-repo-block-console-card.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-09",
+      "title": "SDK skills, must tier",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.3, 1.8],
+      "deps": ["AX-05", "AX-07", "SP-45b"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §5.2, §8.3 (AX-09)"
+      ],
+      "brief": "wp/AX-09-sdk-skills-must-tier.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-10",
+      "title": "SDK skills, should tier",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["AX-09", "SP-35", "SP-41", "SP-42", "DOC-12a"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §5.2, §8.3 (AX-10)"
+      ],
+      "brief": "wp/AX-10-sdk-skills-should-tier.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-11",
+      "title": "Drop-in skills: servers and CLI hosts",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["AX-09", "SP-64"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §5.2, §8.3 (AX-11)"
+      ],
+      "brief": "wp/AX-11-drop-in-skills-servers-and-cli-hosts.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-12",
+      "title": "Product skills, must tier",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.3, 1.8],
+      "deps": ["AX-05", "AX-07"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §5.3, §8.3 (AX-12)"
+      ],
+      "brief": "wp/AX-12-product-skills-must-tier.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-13",
+      "title": "Product skills, should tier",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.1],
+      "deps": ["AX-12"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §5.3, §8.3 (AX-13)"
+      ],
+      "brief": "wp/AX-13-product-skills-should-tier.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-14",
+      "title": "Platform skills, must tier",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["AX-03a", "AX-05", "AX-07"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §5.4, §8.3 (AX-14)"
+      ],
+      "brief": "wp/AX-14-platform-skills-must-tier.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-15",
+      "title": "Platform skills, should tier",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.4],
+      "deps": ["AX-14"],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §5.4, §8.3 (AX-15)"
+      ],
+      "brief": "wp/AX-15-platform-skills-should-tier.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-16",
+      "title": "The CLI for agents: `--json` everywhere, codes, `pkey explain`",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["P0-45"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "drift-gate"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §8.1, §8.3 (AX-16)"
+      ],
+      "brief": "wp/AX-16-the-cli-for-agents-json-codes-pkey-explain.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-17",
+      "title": "`pkey mcp`: a local, read-only MCP server",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.2, 1.6],
+      "deps": ["AX-06", "AX-07", "AX-16", "SP-35"],
+      "planMode": false,
+      "gates": ["threat-model"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": ["docs/research/2026-10-08-llm-audit/README.md §6, §8.3 (AX-17)"],
+      "brief": "wp/AX-17-pkey-mcp-a-local-read-only-mcp-server.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-18",
+      "title": "Public MCP and skills index on key.plrs.im",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["AX-17"],
+      "planMode": false,
+      "gates": ["rule-9", "rule-10", "threat-model", "docs:privacy"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §6.2, §8.3 (AX-18)"
+      ],
+      "brief": "wp/AX-18-public-mcp-and-skills-index-on-key-plrs-im.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-19",
+      "title": "Operator reads: `pkey product status` and two MCP tools",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["AX-17", "AX-21"],
+      "planMode": false,
+      "gates": ["threat-model"],
+      "humanInputs": ["The owner's go (plan §8.1)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §6.2, §6.3, §8.3 (AX-19)"
+      ],
+      "brief": "wp/AX-19-operator-reads-pkey-product-status-and-two-mcp-tools.md",
+      "status": "todo",
+      "deferred": "the owner's go (plan §8.1); also waits for AX-21's token scope"
+    },
+    {
+      "id": "AX-20",
+      "title": "Evals on a schedule, and the safety bar",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "cli-ci",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["AX-05", "AX-09", "AX-12", "AX-14"],
+      "planMode": false,
+      "gates": ["ci"],
+      "humanInputs": [
+        "An API key with a spending cap for CI eval runs, and the cap (owner step; plan decision 9; the baseline's token counts from AX-05 size the cap)"
+      ],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §7.4, §8.3 (AX-20)"
+      ],
+      "brief": "wp/AX-20-evals-on-a-schedule-and-the-safety-bar.md",
+      "status": "todo"
+    },
+    {
+      "id": "AX-21",
+      "title": "A `product:read` token scope bound to one product",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["ST-34"],
+      "planMode": false,
+      "gates": ["threat-model"],
+      "humanInputs": ["The owner's go (plan §8.1)"],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §6.2, §8.3, review B4 (AX-21)"
+      ],
+      "brief": "wp/AX-21-product-read-token-scope-bound-to-one-product.md",
+      "status": "todo",
+      "deferred": "the owner's go (plan §8.1)"
+    },
+    {
+      "id": "AX-22",
+      "title": "Doc comments on every exported SDK symbol",
+      "phase": "AX",
+      "stage": "LLM audit (2026-10-08)",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["SP-35"],
+      "planMode": false,
+      "gates": ["all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": true,
+      "refs": [
+        "docs/research/2026-10-08-llm-audit/README.md §9, §8.3, review minor 9 (AX-22)"
+      ],
+      "brief": "wp/AX-22-doc-comments-on-every-exported-sdk-symbol.md",
       "status": "todo"
     }
   ]

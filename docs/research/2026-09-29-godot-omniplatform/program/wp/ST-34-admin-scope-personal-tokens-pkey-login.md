@@ -5,7 +5,7 @@
 | Phase       | ST: Settings, access control and console shell (DX consolidation D: Administration, access control and console identity)                                               |
 | Size        | 1–1.4 engineer-weeks                                                                                                                                                   |
 | Depends on  | [F-33](F-33-personal-tokens-pkeyp-packages-read.md), [ST-30](ST-30-console-sign-in-on-polaris-key-accounts.md), [P0-45](P0-45-pkey-command-registry-context-doctor.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                                                                                                 |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [AX-21](AX-21-product-read-token-scope-bound-to-one-product.md)                                                                |
 | Role        | `pkey-implementer`                                                                                                                                                     |
 | Plan mode   | no                                                                                                                                                                     |
 | Gates       | `threat-model`                                                                                                                                                         |

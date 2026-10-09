@@ -18,6 +18,12 @@ The developer sections (`start/`, `build/`, `features/`, `reference/`) are publi
 
 - The landing copy labels only the Operate card "For console members"; the start path is public.
 
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- The fresh-reader run may use AX-05's harness (suite `first-product`).
+
 ## Goal
 
 The pages and parts below ship and meet the docs plan's common definition of done (§6.3) and this package's own checks.

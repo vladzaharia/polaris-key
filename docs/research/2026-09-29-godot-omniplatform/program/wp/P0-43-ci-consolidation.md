@@ -1,16 +1,16 @@
 # P0-43 CI consolidation
 
-| Field       | Value                                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                     |
-| Size        | 1–1.5 engineer-weeks                                                                                                                      |
-| Depends on  | [P0-42](P0-42-generator-registry-pnpm-gen.md)                                                                                             |
-| Unblocks    | [P0-46](P0-46-lint-baselines-debt-ledgers.md), [P0-51](P0-51-1-0-readiness-review.md), [SP-36](SP-36-examples-in-one-tree-built-in-ci.md) |
-| Role        | `pkey-implementer`                                                                                                                        |
-| Plan mode   | no                                                                                                                                        |
-| Gates       | none beyond the green gate                                                                                                                |
-| Human input | none                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                 |
+| Field       | Value                                                                                                                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | P0: Hygiene, unblockers and code quality (DX consolidation B: Foundations (code quality the feature tracks build on))                                                              |
+| Size        | 1–1.5 engineer-weeks                                                                                                                                                               |
+| Depends on  | [P0-42](P0-42-generator-registry-pnpm-gen.md)                                                                                                                                      |
+| Unblocks    | [P0-46](P0-46-lint-baselines-debt-ledgers.md), [P0-51](P0-51-1-0-readiness-review.md), [SP-36](SP-36-examples-in-one-tree-built-in-ci.md), [AX-04](AX-04-pnpm-gate-in-the-repo.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                 |
+| Plan mode   | no                                                                                                                                                                                 |
+| Gates       | none beyond the green gate                                                                                                                                                         |
+| Human input | none                                                                                                                                                                               |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                          |
 
 ## Consolidation 2026-10-07
 

@@ -5,12 +5,18 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK usability review (2026-10-08)) |
 | Size        | 1.2–1.6 engineer-weeks                                                             |
 | Depends on  | [SP-45a](SP-45a-developer-docs-two-lanes-per-sdk-on-today-s.md)                    |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                             |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [AX-09](AX-09-sdk-skills-must-tier.md)     |
 | Role        | `pkey-implementer`                                                                 |
 | Plan mode   | no                                                                                 |
 | Gates       | `docs-generated`, `docs-links`, `ci`, `ci:macos`                                   |
 | Human input | none                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                          |
+
+## LLM audit (2026-10-08)
+
+The [LLM audit plan](../../../2026-10-08-llm-audit/README.md) §9 changes this package. Where it differs from the text below, it wins.
+
+- The snippet lane also compiles SDK-tagged fences under `packages/agent-kit/skills/` (AX-07 and the skill packages). AX-09 waits for this package.
 
 ## Goal
 
