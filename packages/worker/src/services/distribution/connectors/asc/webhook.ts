@@ -67,6 +67,7 @@ import {
 } from "./map.js";
 import { ascRun, finishRun } from "./run.js";
 import { ASC_CONNECTOR, ascSetup } from "./setup.js";
+import { BodyTooLargeError, readBodyBytes } from "../../../../core/cappedBody.js";
 
 /** How long a processed `data.id` is remembered (7 days, as for GitHub deliveries). */
 export const ASC_DELIVERY_TTL_SECONDS = 604_800;
@@ -97,10 +98,12 @@ const unauthorized = () =>
   errorResponse(401, "unauthorized", "invalid webhook signature");
 
 async function readBody(req: Request): Promise<Uint8Array | null> {
-  const declared = Number(req.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > MAX_WEBHOOK_BODY) return null;
-  const buf = new Uint8Array(await req.arrayBuffer());
-  return buf.byteLength > MAX_WEBHOOK_BODY ? null : buf;
+  try {
+    return await readBodyBytes(req, MAX_WEBHOOK_BODY);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError) return null;
+    throw e;
+  }
 }
 
 function deliveryKey(product: string, id: string): string {

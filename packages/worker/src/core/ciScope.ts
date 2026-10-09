@@ -25,6 +25,7 @@ import {
   type CiPrincipal,
   type CiScope,
 } from "./ciVocabulary.js";
+import { BodyTooLargeError, readBodyText } from "./cappedBody.js";
 
 export type { CiPrincipal, CiScope } from "./ciVocabulary.js";
 export { CI_SCOPES, CI_TOKEN_PREFIX } from "./ciVocabulary.js";
@@ -99,11 +100,13 @@ export async function readCiJson(
 ): Promise<Record<string, unknown> | Response> {
   const bad = (message: string) =>
     errorResponse(400, ErrorCode.BadRequest, message, { reason: "bad_body" });
-  const declared = Number(req.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > maxBytes)
-    return bad("request body too large");
-  const raw = await req.text();
-  if (raw.length > maxBytes) return bad("request body too large");
+  let raw: string;
+  try {
+    raw = await readBodyText(req, maxBytes);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError) return bad("request body too large");
+    throw e;
+  }
   if (raw.trim() === "") return {};
   try {
     const v: unknown = JSON.parse(raw);

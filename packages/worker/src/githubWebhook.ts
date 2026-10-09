@@ -19,9 +19,13 @@ import {
   syncReleaseStoreReport,
   type FetchImpl,
 } from "./services/release/sync.js";
+import { BodyTooLargeError, readBodyBytes } from "./core/cappedBody.js";
 
 /** How long a processed `X-GitHub-Delivery` GUID is remembered (7 days). */
 const DELIVERY_TTL_SECONDS = 604_800;
+
+/** Largest webhook body read (SEC-WEB-2). The events acted on (push, release) are a few KiB. */
+const MAX_WEBHOOK_BODY = 5 * 1024 * 1024;
 /** KV scope for delivery GUIDs. Not a legal product slug (`^[a-z0-9-]+$`), so it can't collide. */
 const PLATFORM_SCOPE = "_platform";
 
@@ -232,7 +236,15 @@ export async function handleGithubWebhook(
     );
   }
 
-  const raw = new Uint8Array(await req.arrayBuffer());
+  // SEC-WEB-2: streamed and capped BEFORE the HMAC, so a chunked flood is cut at the cap.
+  let raw: Uint8Array;
+  try {
+    raw = await readBodyBytes(req, MAX_WEBHOOK_BODY);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError)
+      return errorResponse(413, "body_too_large", "webhook body too large");
+    throw e;
+  }
   const ok = await verifySignature(
     secret,
     raw,

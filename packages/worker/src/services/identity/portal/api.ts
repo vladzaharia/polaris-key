@@ -132,6 +132,7 @@ import {
 } from "./deviceLogin.js";
 import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
 import { handleProfileApi } from "./profile.js";
+import { readBodyText } from "../../../core/cappedBody.js";
 
 export function portalJson(
   body: unknown,
@@ -171,7 +172,7 @@ function isMutation(method: string): boolean {
 }
 
 export async function readBody(req: Request): Promise<Record<string, unknown>> {
-  const raw = await req.text();
+  const raw = await readBodyText(req);
   if (!raw.trim()) return {};
   try {
     const parsed = JSON.parse(raw) as unknown;

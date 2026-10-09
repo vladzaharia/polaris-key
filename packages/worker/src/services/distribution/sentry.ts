@@ -67,6 +67,7 @@ import {
   recordEvent,
   upsertObject,
 } from "./connectors/state.js";
+import { BodyTooLargeError, readBodyBytes } from "../../core/cappedBody.js";
 
 export const SENTRY_CONNECTOR = "sentry";
 export const SENTRY_LABEL = "Sentry";
@@ -197,10 +198,12 @@ const unauthorized = () =>
   errorResponse(401, "unauthorized", "invalid webhook signature");
 
 async function readBody(req: Request): Promise<Uint8Array | null> {
-  const declared = Number(req.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > MAX_SENTRY_BODY) return null;
-  const buf = new Uint8Array(await req.arrayBuffer());
-  return buf.byteLength > MAX_SENTRY_BODY ? null : buf;
+  try {
+    return await readBodyBytes(req, MAX_SENTRY_BODY);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError) return null;
+    throw e;
+  }
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> =>

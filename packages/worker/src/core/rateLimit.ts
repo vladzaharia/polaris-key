@@ -214,6 +214,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   // The images are public and nothing secret is behind the limit, so an outage must not blank
   // every icon on every page.
   imgHost: "open",
+  // SEC-CFG-11: per-device cap on config-document fetches; a cost budget, nothing secret behind it.
+  configDocument: "open",
 };
 
 function failModeFor(bucket: string): FailMode {

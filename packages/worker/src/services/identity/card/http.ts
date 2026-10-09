@@ -11,6 +11,7 @@ import {
 } from "../../../core/platform.js";
 import { renderBrandPage } from "../../../core/brandHtml.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
+import { readBodyText } from "../../../core/cappedBody.js";
 
 /** A JSON answer. `cookies` become separate `Set-Cookie` fields. */
 export function cardJson(
@@ -137,7 +138,7 @@ export async function readJsonObject(
   req: Request,
 ): Promise<Record<string, unknown> | null> {
   try {
-    const raw = await req.text();
+    const raw = await readBodyText(req);
     if (!raw.trim()) return {};
     const parsed = JSON.parse(raw) as unknown;
     return parsed && typeof parsed === "object" && !Array.isArray(parsed)

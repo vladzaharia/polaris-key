@@ -145,6 +145,7 @@ import {
   updateArtefact,
   type ArtefactRef,
 } from "../../core/singleUse.js";
+import { readBodyJson, readBodyText } from "../../core/cappedBody.js";
 
 const FLOW_TTL_SECONDS = 600;
 /** The poll cadence advertised by `/identity/auth/device/start`, enforced server-side (R8-02). */
@@ -1591,7 +1592,7 @@ export async function handleAuthDeviceStart(
   if (limited) return limited;
   let body: Record<string, unknown> = {};
   try {
-    const text = await req.text();
+    const text = await readBodyText(req);
     body = text ? (JSON.parse(text) as Record<string, unknown>) : {};
   } catch {
     return errorResponse(400, "bad_request", "invalid json");
@@ -1668,7 +1669,7 @@ export async function handleAuthDeviceStart(
 
 /** The CSRF token the confirmation form posts back, from either an HTML form body or JSON. */
 async function readConfirmToken(req: Request): Promise<string | null> {
-  const text = await req.text().catch(() => "");
+  const text = await readBodyText(req).catch(() => "");
   if (!text) return null;
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
     const body = tryParseJson(text) as Record<string, unknown> | undefined;
@@ -1892,7 +1893,7 @@ function renderDeviceEntry(
 async function readEntryForm(
   req: Request,
 ): Promise<{ userCode: string | null; csrf: string | undefined }> {
-  const text = await req.text().catch(() => "");
+  const text = await readBodyText(req).catch(() => "");
   if ((req.headers.get("content-type") ?? "").includes("application/json")) {
     // Only a JSON object is a form: `1`, `"x"`, `true` or `null` would make the `in` below throw
     // (an uncaught 500 on an unauthenticated route), so any other shape reads as an empty form.
@@ -2792,7 +2793,7 @@ export async function handleAuthChoose(
   if (req.method === "GET")
     return renderChooser(req, env, db, product, c, now, hooks);
 
-  const form = new URLSearchParams(await req.text().catch(() => ""));
+  const form = new URLSearchParams(await readBodyText(req).catch(() => ""));
   const token = form.get("choice") ?? "";
   // Spend the page's token (single-use): a second submit of the same page, or a page rendered
   // before another tab's, goes back to a fresh render and changes nothing.
@@ -3364,7 +3365,7 @@ export async function handleAuthDevicePoll(
   if (req.method !== "POST") return methodNotAllowed();
   let body: Record<string, unknown>;
   try {
-    body = (await req.json()) as Record<string, unknown>;
+    body = (await readBodyJson(req)) as Record<string, unknown>;
   } catch {
     return errorResponse(400, "bad_request", "invalid json");
   }
