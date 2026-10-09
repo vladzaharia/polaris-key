@@ -49,13 +49,13 @@ const DISCLOSURE_META := &"pkey_disclosure"
 ## Meta set on a control whose height the layout leaves alone (every other button and input is
 ## the theme's `control_height`).
 const FREE_HEIGHT_META := &"pkey_free_height"
-## Meta set on a container the scene hides while every child of it is hidden (so an empty group
-## adds no gap).
-## Set this meta on a view anchored across the screen to keep the offsets it was given (see
-## `_release_offsets()`).
 ## A scroll area a scene scrolls by hand (the settings list, with room for the focus ring).
 const MANUAL_SCROLL_META := &"pkey_manual_scroll"
+## Set this meta on a view anchored across the screen to keep the offsets it was given (see
+## `_release_offsets()`).
 const KEEP_OFFSETS_META := &"pkey_keep_offsets"
+## Meta set on a container the scene hides while every child of it is hidden (so an empty group
+## adds no gap).
 const AUTO_HIDE_META := &"pkey_auto_hide"
 const AUTO_HIDDEN_META := &"pkey_auto_hidden"
 ## The group every kit view joins, so `PKeyUiTheme.apply_options()` can re-theme mounted views.
@@ -187,9 +187,8 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_EXIT_TREE and _opener != null:
 		_unwatch_viewport()
 		# A game that frees the view instead of hiding it: the control that opened it gets the focus
-		# back (unless the view was only moved to another parent).
+		# back (unless the view was only moved to another parent, which keeps its opener).
 		PKeyUiView._give_back.call_deferred(_opener, weakref(self))
-		_opener = null
 	elif what == NOTIFICATION_PARENTED and _built:
 		layout_content()
 	elif what == NOTIFICATION_RESIZED and _built and is_inside_tree() and outer_view() == self:
@@ -528,8 +527,10 @@ func remember_opener() -> void:
 
 static func _give_back(opener: Control, view: WeakRef) -> void:
 	var v = view.get_ref()
-	if v != null and (v as Node).is_inside_tree():
-		return
+	if v != null:
+		if (v as Node).is_inside_tree():
+			return
+		v._opener = null
 	if is_instance_valid(opener) and opener.is_inside_tree() and is_focusable(opener):
 		opener.grab_focus()
 

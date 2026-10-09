@@ -308,10 +308,14 @@ func settings(advanced: bool, overrides: Dictionary) -> Control:
 	add(p)
 	# The SDK goes with the panel, not when a harness re-parents the panel (the matrix does, to put
 	# it in its game stand-in): a freed SDK left every later layout of the panel with an empty list.
+	var panel_ref: WeakRef = weakref(p)
+	var sdk_ref: WeakRef = weakref(sdk)
 	p.tree_exited.connect(func() -> void:
 		(func() -> void:
-			if is_instance_valid(sdk) and (not is_instance_valid(p) or not p.is_inside_tree()):
-				sdk.queue_free()).call_deferred())
+			var s := sdk_ref.get_ref() as Node
+			var panel := panel_ref.get_ref() as Node
+			if s != null and (panel == null or not panel.is_inside_tree()):
+				s.queue_free()).call_deferred())
 	return p
 
 

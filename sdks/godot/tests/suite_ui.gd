@@ -430,6 +430,27 @@ func _dialogs_take_focus(t: PKeyTestContext) -> void:
 	await _tree().process_frame
 	await _tree().process_frame
 	t.check("dialog focus: settings freed by the game gives the focus back", _tree().root.gui_get_focus_owner() == game, str(_tree().root.gui_get_focus_owner()))
+	# A view the game moves to another parent keeps the control that opened it; closing it later
+	# still gives that control the focus back.
+	game.grab_focus()
+	await _tree().process_frame
+	var moved := PKeySettingsPanel.new()
+	moved.sdk = sdk
+	moved.auto_sdk = false
+	_tree().root.add_child(moved)
+	await _tree().create_timer(0.35).timeout
+	var stand_in := Control.new()
+	_tree().root.add_child(stand_in)
+	moved.get_parent().remove_child(moved)
+	stand_in.add_child(moved)
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("dialog focus: a re-parented view keeps its opener", moved.get("_opener") == game, str(moved.get("_opener")))
+	moved.visible = false
+	await _tree().process_frame
+	await _tree().process_frame
+	t.check("dialog focus: a re-parented view, once closed, gives the focus back", _tree().root.gui_get_focus_owner() == game, str(_tree().root.gui_get_focus_owner()))
+	_free(stand_in)
 	sdk.queue_free()
 	_free(game)
 
