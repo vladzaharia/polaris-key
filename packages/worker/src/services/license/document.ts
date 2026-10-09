@@ -176,10 +176,7 @@ export async function handleLicenseDocument(
 
   const etag = await licenseDocETag(doc);
   if (req.headers.get("if-none-match") === etag) {
-    return new Response(null, {
-      status: 304,
-      headers: { etag, "cache-control": "no-store" },
-    });
+    return new Response(null, { status: 304, headers: { etag } });
   }
   let jws: string;
   try {
