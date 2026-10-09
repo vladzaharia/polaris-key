@@ -83,6 +83,22 @@ mise exec node@22 -- node tools/mockups/shoot.mjs --gallery --out /Users/vlad/Re
     "Your license covers versions released until Sep 30, 2026. 4.1.3 is the newest of those, and
     it keeps working." → "Your license covers versions in 4.1.x, the latest of which is 4.1.3".
   - Remove repetition and padding words, never information the screen needs to do its job.
+  - **No explainer subtitles** (the owner, 2026-10-09: "remove all extraneous comments or
+    subtitles"). A card, section, dialog or drawer heading stands alone: "Anyone with the key"
+    loses "No email or account: whoever enters the key gets the license on that device." A
+    sub-line stays only when it carries a fact the reader needs to decide (a limit, a unit, a
+    source, a consequence). If the heading reads ambiguous alone, tighten the heading instead of
+    keeping both. The same holds for page ledes, field hints that restate the label, captions that
+    narrate the frame, and "You can…" or reassurance lines. Kept: labels, errors, statuses, the
+    consequence line before a destructive action, metadata, catalog strings and the one short
+    empty-state sentence.
+  - **One fact per line** (the owner, 2026-10-09). A line that packs facts together with commas,
+    "and", "too", semicolons, "·" or parentheses (a limit plus a behaviour, a status plus a
+    consequence plus a count) is rewritten and split: each fact its own short line, label and
+    value row, or hint, where the reader needs it. "Keys the game adds itself sync too, up to 256
+    keys and 64 KiB per player" → "Keys the game adds itself also sync", then "Keys per player: up
+    to 256" and "Size per player: up to 64 KiB". A meta line of plain values (an email and a date)
+    stays one line.
 
 ## Brand v2 (lead decisions B1–B16, 2026-10-09)
 

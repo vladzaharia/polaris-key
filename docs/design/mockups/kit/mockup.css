@@ -17156,12 +17156,13 @@ span.dash::before {
   min-height: var(--card-head-h);
   padding-block: var(--sp-2);
 }
-.card-head.h56.sub {
+/* The 72px head only while the subtitle is there: a head that lost its sub-line is the 56px one. */
+.card-head.h56.sub:has(> .title > p) {
   min-height: var(--card-head-h-sub);
   align-items: flex-start;
   padding-block: var(--sp-4);
 }
-.card-head.h56.sub > .btn {
+.card-head.h56.sub:has(> .title > p) > .btn {
   margin-block: calc(-1 * var(--sp-0-5)) 0;
 }
 
