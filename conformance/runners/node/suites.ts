@@ -687,7 +687,7 @@ const docOpts = (c: DocCase): VerifyOptions => ({
   expectedIss: c.expectedIss,
   deviceId: c.deviceId,
   now: c.now,
-  lastAcceptedIssuedAt: c.lastAcceptedIssuedAt,
+  lastAcceptedIssuedAt: c.lastAcceptedIssuedAt ?? null,
   checkFreshness: c.checkFreshness,
 });
 
@@ -976,6 +976,7 @@ export function defineCorpusSuites({
           expectedAud: c.expectedAud,
           deviceId: c.deviceId,
           now: c.systemClock,
+          lastAcceptedIssuedAt: null,
           checkFreshness: false,
         };
         let license: LicenseDoc | null = null;

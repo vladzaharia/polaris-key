@@ -204,6 +204,7 @@ const verifyOpts = (
   device: string,
   now: number,
 ): Parameters<typeof verifyLicenseDoc>[1] => ({
+  lastAcceptedIssuedAt: null,
   trust: TRUST,
   expectedAud: "djdl",
   deviceId: device,

@@ -69,11 +69,15 @@ None of the SDKs will let a product talk to a service it doesn't run. `client.ca
    expecting;
 3. the suite default: **License + Config on**, Release/Update/Identity **off**.
 
+The licence **gate** is stricter than capability negotiation: it is on when the build's
+`expectedServices` (default License + Config) names `license`, or when a discovery document says
+so. Unsigned discovery can switch the gate on, never off.
+
 A sub-client whose service is off refuses every call with a `PolarisError` (`service-unavailable`
 or the language's equivalent) rather than silently no-op-ing, and a product with License off
 reports gate status **`not-applicable`** with `isLicensed()`/`is_licensed()` true — a
-config-only product boots usable instead of sitting on "needs activation" forever. Name
-`expectedServices` for what the build actually ships against: an unreachable control plane
+config-only product boots usable instead of sitting on "needs activation" forever. A
+config-only product names `expectedServices` without `license`. An unreachable control plane
 should never be able to silently take a service away by omission.
 
 ## `supports()`: typed "unsupported here"

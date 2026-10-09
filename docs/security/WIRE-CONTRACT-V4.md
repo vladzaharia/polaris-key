@@ -469,8 +469,10 @@ A release signed by a delegated content key passes **`dataOnlyRefusal(path, head
 
 Two validation profiles per licence and config document, selected by `checkFreshness`: **[C]**
 
-- **Network path** (`checkFreshness: true`): reject if `now > expiresAt + CLOCK_SKEW_SECONDS` or `issuedAt > now + CLOCK_SKEW_SECONDS`. A stale or future-dated document must never enter the cache.
+- **Network path** (`checkFreshness: true`): `now` is the **effective clock** (§4.2) in licence, config and trust-manifest verification, never the bare system clock. Reject if `now > expiresAt + CLOCK_SKEW_SECONDS` or `issuedAt > now + CLOCK_SKEW_SECONDS`. A stale or future-dated document must never enter the cache.
 - **Reload path** (`checkFreshness: false`): the document is _expected_ to be past `expiresAt` (that is what offline operation is); only `graceUntil` bounds it, enforced by the gate against `effectiveNow` (§4.2). Used for cache reload **and bundle import** (§7).
+
+**Required floor.** Every licence and config verify call names its per-type floor. "No floor" is an explicit `null` (`lastAcceptedIssuedAt: number | null`), never an omitted argument: a call that names no floor is a type error in a typed SDK and a rejection in an untyped one.
 
 Always enforced on both paths, both document types **[C]**: `typ` matches expectation · `iss === "key.plrs.im"` · `aud` equals the expected product · `deviceId` equals the local device id · `graceUntil ≥ expiresAt` · `graceUntil ≤ issuedAt + MAX_GRACE_SECONDS` (a hostile signer cannot grant a century of grace) · anti-replay: a document with `issuedAt` lower than the currently-accepted document's `issuedAt` for the same type is rejected (per-type floors). The feed has the same two profiles (§4.4); the record has no freshness at all.
 
@@ -591,7 +593,7 @@ It returns the record and its SHA-256. The host then matches its bytes: a single
 
 ### 4.1 Cache record v3
 
-`CACHE_VERSION = 3`, unchanged: v4 adds two optional slices, which a v3 loader ignores and a v4 loader treats as "no floor yet". One Core-owned record per product; **signed artifacts only**, plus two unsigned hints that can only _tighten_ the gate:
+`CACHE_VERSION = 3`, unchanged: v4 adds two optional slices, which a v3 loader ignores and a v4 loader treats as "no floor yet". One Core-owned record per product; **signed artifacts only**, plus two unsigned hints (`lastSyncUnauthorized`, `blocked`) that are for display: no verdict depends on them, because the document each answered for is deleted when the hint is set (§4.3):
 
 ```jsonc
 {
@@ -630,7 +632,9 @@ Both document sources and the trust manifest feed the floor; the v4 feed and rel
 
 ### 4.3 Revocation while offline
 
-Unchanged semantics: a recorded hard 401 (`lastSyncUnauthorized`) yields `revoked` offline; a device that never reconnects learns nothing new and runs out at `graceUntil`. For bundle-activated installs the grace bound **is** the revocation lever — stated, not pretended otherwise.
+A hard 401 on `/license/document` or `/config/document`, after the single re-acquire or re-register, **removes that slice** (`docs.<slice>` and its ETag) in the same write that sets `lastSyncUnauthorized: true`. A 403 `version_blocked` or `channel_not_allowed` removes `docs.license` in the same write that sets `blocked`. The token is kept, so the gate still reports `revoked` or the block; the hints are display state. Clearing either hint therefore yields `needs-activation`, never a usable document. A device that never reconnects learns nothing new and runs out at `graceUntil`. For bundle-activated installs the grace bound **is** the revocation lever — stated, not pretended otherwise.
+
+**Residual.** Restoring a full pre-revocation snapshot of the state directory and the token store works until `graceUntil`: the client holds no signed revocation state beyond what it was last told.
 
 ### 4.4 The feed `seq` floor, its ceiling, and the canonical channel [C]
 
@@ -647,6 +651,8 @@ A client keeps one floor per (aud, **canonical channel**), derived from `feeds[c
 - **401 handling:** exactly one `POST /<p>/license/token` re-acquire attempt, then one retry of the failed fetch. (Registered-without-license devices re-register instead; same single-attempt rule.)
 - **Build gate placement (D-20):** channel/version-window enforcement returns `403 {"error":{"code":"version_blocked"|"channel_not_allowed"},"allowedRange":{…}}` on **`/license/document`** (and identity's `/session`). The config document enforces device authentication only. The channel names, the header normalisation and the entitlement predicate the gate applies are §5.1.
 - **Client metadata headers** on every product-scoped call: `X-PKey-Device`, `X-PKey-Version`, `X-PKey-Channel`, `X-PKey-SDK`, `X-PKey-SDK-Version`, `X-PKey-Platform`, `X-PKey-Arch`. Their values are §5.2.
+- **Gate input `licenseServiceEnabled`** is the build's declaration OR discovery's: `expectedServices` (default: licence and config) contains `license`, or a discovery loaded this session says `license.enabled: true`. Unsigned discovery can switch the licence gate **on**, never off. A config-only product names `expectedServices` without `license`. Discovery still governs sub-client availability (D-21).
+- **Redirects.** For every product-scoped call a same-origin hop keeps the headers; a cross-origin hop drops `Authorization` and every `X-PKey-*` header and is followed only for GET and HEAD; a 307 or 308 on a non-GET to another origin, and any https to http hop, is refused with `insecure-redirect`; more than 5 hops is `too-many-redirects`.
 - **Gate function** (client-side, shared implementation): input `{ licenseServiceEnabled, activation: "token"|"bundle"|null, doc, now, highWaterMark, lastSyncUnauthorized, blocked, lastVerifiedAt }` with `now := max(now, highWaterMark)`. `licenseServiceEnabled: false` ⇒ status **`not-applicable`**, `isUsable = true`. `activation: null` ⇒ `needs-activation`. Otherwise the state machine is unchanged (`ok` → `grace` → `expired`; `revoked` on recorded 401; blocked states from the unsigned hint). **[C]** via gate-matrix v2.
 
 ### 5.1 Channel vocabulary
@@ -984,6 +990,8 @@ stays 4 and `DISCOVERY_VERSION` stays 2, because every SDK's discovery parser ig
 does not know.
 
 ## 6. Device principal
+
+- **Device id binding (desktop file stores).** On macOS, Windows and Linux the SDK derives the device id from the platform anchor (`deviceIdFromRaw(product, raw)`, §6.1) at every start. A stored id is used only when no anchor is readable. A stored id that disagrees with the derived one is discarded together with the token and the grant slices of the cache (`trustJws`, `docs`, `etags`, the bundle marker and both hints): `deactivate()` without the network call. The update slices are kept. The anchor probes run by absolute path (`/usr/sbin/ioreg`, `%SystemRoot%\System32\reg.exe`), never through `PATH`. Keychain and Keystore stores keep their stored id. The device re-activates once; the server coalesces the stale seat by hardware id.
 
 - **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `pkeyt_` tokens are rejected (pre-launch, no migration).
 - **Registration policy** (per product, manifest key `devices.registration`, default derived — `requires-license` if license enabled, else `requires-identity` if identity enabled, else `open`):

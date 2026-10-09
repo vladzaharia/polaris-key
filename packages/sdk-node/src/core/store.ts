@@ -28,7 +28,11 @@ import {
   type Store,
   type StoreStatus,
 } from "@polaris-key/client-core";
-import { deriveDeviceId } from "../devices/deviceId.js";
+import {
+  deriveDeviceId,
+  deviceIdFromRaw,
+  rawDeviceId,
+} from "../devices/deviceId.js";
 import { printAs, REDACTED } from "./redact.js";
 
 export { CACHE_VERSION };
@@ -96,17 +100,27 @@ function readMaybe(path: string): string | null {
   }
 }
 
+export interface FileStoreOptions {
+  /** Where the hardware anchor comes from. Default: the platform probe (`rawDeviceId`). A
+   *  test seam: a test that plants a fixed device id passes `() => null` ("no anchor is
+   *  readable", so the stored id is used). Hosts never need it. */
+  readAnchor?: () => string | null;
+}
+
 /** 0600 file-backed store under `<configDir>/<product>/`. */
 export class FileStore implements Store {
   private readonly dir: string;
   private readonly tokenPath: string;
   private readonly cachePath: string;
   private readonly devicePath: string;
+  private readonly anchor: () => string | null;
 
   constructor(
     private readonly productSlug: string,
     configDir: string,
+    options: FileStoreOptions = {},
   ) {
+    this.anchor = options.readAnchor ?? (() => rawDeviceId());
     this.dir = join(configDir, productSlug);
     mkdirSync(this.dir, { recursive: true, mode: 0o700 });
     this.tokenPath = join(this.dir, "token");
@@ -126,9 +140,17 @@ export class FileStore implements Store {
   async getDeviceId() {
     const existing = readMaybe(this.devicePath)?.trim();
     if (existing) return existing;
-    const id = deriveDeviceId(this.productSlug);
+    const id = deviceIdFromRaw(this.productSlug, this.anchor() ?? randomUUID());
     writeSecure(this.devicePath, id);
     return id;
+  }
+  /** The hardware anchor this store binds its device id to (CLI-1). */
+  readAnchor() {
+    return this.anchor();
+  }
+  /** Rewrite the stored id (device binding, CLI-1). */
+  async setDeviceId(id: string) {
+    writeSecure(this.devicePath, id);
   }
   async readCache(): Promise<CacheRecordV3 | null> {
     const raw = readMaybe(this.cachePath);
@@ -188,6 +210,8 @@ export interface KeyringStoreOptions {
   platform?: NodeJS.Platform;
   /** Default: `node:sea`'s `isSea()`. Only EXPLAINS an unavailable keyring in `detail`. */
   isSea?: () => Promise<boolean> | boolean;
+  /** Test seam for the device-id anchor; see `FileStoreOptions.readAnchor`. */
+  readAnchor?: () => string | null;
 }
 
 /**
@@ -222,7 +246,9 @@ export class KeyringStore implements Store {
     configDir: string,
     options: KeyringStoreOptions = {},
   ) {
-    this.files = new FileStore(productSlug, configDir);
+    this.files = new FileStore(productSlug, configDir, {
+      readAnchor: options.readAnchor,
+    });
     this.tokenPath = join(configDir, productSlug, "token");
     // Rebranded with the rest of the identifier registry (§8). Pre-launch, so there is no
     // `pkey:` entry to migrate — a host that somehow has one simply re-activates.
@@ -359,6 +385,14 @@ export class KeyringStore implements Store {
 
   getDeviceId() {
     return this.files.getDeviceId();
+  }
+
+  setDeviceId(id: string) {
+    return this.files.setDeviceId(id);
+  }
+
+  readAnchor() {
+    return this.files.readAnchor();
   }
 
   readCache() {

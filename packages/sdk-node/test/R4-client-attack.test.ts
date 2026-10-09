@@ -157,7 +157,7 @@ function plantCache(
   deviceId: string,
   token: string | null = TOKEN,
 ): void {
-  const store = new FileStore(PRODUCT, configDir); // creates <dir>/<product>/ 0700
+  const store = new FileStore(PRODUCT, configDir, { readAnchor: () => null }); // creates <dir>/<product>/ 0700
   void store;
   const productDir = join(configDir, PRODUCT);
   writeFileSync(join(productDir, "managed.json"), JSON.stringify(record));
@@ -187,7 +187,7 @@ function clientOn(
     baseUrl: "https://k.test",
     version: "1.2.3",
     trust: { pinnedKeys: { [VENDOR_KID]: VENDOR_PUB } },
-    store: new FileStore(PRODUCT, configDir),
+    store: new FileStore(PRODUCT, configDir, { readAnchor: () => null }),
     // Core's trust cadence has its own pins; the tests that need it turn it on explicitly so
     // an unrelated request never lands in the middle of a call-count assertion.
     trustRefresh: false,

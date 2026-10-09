@@ -243,6 +243,7 @@ describe("a config-only product (D-08)", () => {
     const jws = await res.text();
 
     const doc = await verifyConfigDoc(jws, {
+      lastAcceptedIssuedAt: null,
       trust: TRUST,
       expectedAud: "cfgonly",
       deviceId: "dev-registered",
@@ -372,6 +373,7 @@ describe("a licensed product's config document (R1)", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toBe("application/jwt");
     const doc = await verifyConfigDoc(await res.text(), {
+      lastAcceptedIssuedAt: null,
       trust: TRUST,
       expectedAud: "djdl",
       deviceId: "dev-1",
@@ -475,6 +477,7 @@ describe("a license-only product", () => {
     });
     expect(res.status).toBe(200);
     const doc = await verifyLicenseDoc(await res.text(), {
+      lastAcceptedIssuedAt: null,
       trust: TRUST,
       expectedAud: "liconly",
       deviceId: "dev-1",

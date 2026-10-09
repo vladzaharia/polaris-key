@@ -193,6 +193,8 @@ export async function inspectBundle(
     expectedAud: opts.product,
     deviceId: opts.deviceId,
     now: opts.now,
+    // Explicit "no floor" (LIC-16); the bundle anti-replay floors are the later wire batch.
+    lastAcceptedIssuedAt: null,
     checkFreshness: false,
   };
   const docs: VerifiedBundle["docs"] = {};

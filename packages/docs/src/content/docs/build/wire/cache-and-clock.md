@@ -43,8 +43,9 @@ host's load procedure).
 | `lastSyncUnauthorized`         | No      | A recorded hard `401`                                                                                          |
 | `blocked`                      | No      | The last `403` version/channel block                                                                           |
 
-The unsigned fields are unsigned **deliberately**: they can only ever make the gate _stricter_.
-Clearing them gains an attacker nothing that deleting the whole file would not.
+The two hints are for display: no verdict depends on them. A hard `401` removes the document it
+answered for, and a `403` build block removes the licence document, in the same write that sets
+the hint. Clearing a hint therefore yields `needs-activation`, never a usable document.
 
 What is emphatically **not** in the record: decoded documents, bare keys, and plaintext
 counters. Version 1 of this file persisted the decoded doc, a bare `trustedKeys` map, and three
@@ -175,6 +176,7 @@ transition below is rollback-resistant without a trusted local clock:
 
 ```
 licenseServiceEnabled: false   →  not-applicable   (isUsable)
+                                  (on when the build declares `license` OR discovery says so)
 activation: null               →  needs-activation
 blocked hint present           →  the block reason
 lastSyncUnauthorized           →  revoked
@@ -187,12 +189,25 @@ otherwise                      →  ok               (isUsable)
 ## Revocation while offline
 
 A recorded hard `401` — set after exactly one token re-acquire attempt has also failed — yields
-`revoked` offline. A device that never reconnects learns nothing new and runs out at
-`graceUntil`.
+`revoked` offline. The same write removes the slice that answered `401` (`docs.<slice>` and its
+ETag), and a `403` `version_blocked` or `channel_not_allowed` removes `docs.license`. The token
+is kept, so the gate still reports `revoked` or the block. A device that never reconnects learns
+nothing new and runs out at `graceUntil`. Restoring a full pre-revocation snapshot of the state
+directory and the token store works until `graceUntil`.
 
 For bundle-activated installs, the grace bound **is** the revocation lever. There is no
 credential to revoke and no connection on which to learn about it. The contract states this
 rather than pretending otherwise (spec §4.3).
+
+## Device binding on desktop
+
+A desktop file store does not trust its stored device id. At every start the SDK re-derives the
+id from the platform anchor (`ioreg`, the registry's `MachineGuid`, `/etc/machine-id`) with
+`deviceIdFromRaw(product, raw)`. A stored id that disagrees is discarded with the token and the
+grant slices of the cache (`trustJws`, `docs`, `etags`, the bundle marker and both hints); the
+update slices stay. The device re-activates once. A stored id is used only when no anchor is
+readable. The probes run by absolute path (`/usr/sbin/ioreg`, `%SystemRoot%\System32\reg.exe`),
+never through `PATH`. Keychain and Keystore stores keep their stored id.
 
 ## The six inherited offline invariants
 
