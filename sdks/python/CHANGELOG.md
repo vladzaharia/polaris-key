@@ -6,7 +6,7 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
-Local-trust fixes (SEC-WP-16 slice C).
+Local-trust fixes.
 
 - **Revocation and a build block end offline use at once.** A hard 401 deletes the document it
   answered for; a 403 build block deletes the licence document. The `blocked` and

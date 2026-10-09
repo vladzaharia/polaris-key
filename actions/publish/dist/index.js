@@ -13656,7 +13656,7 @@ var DISPLAY_TEXT_STRIP = [
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-CFB6JUCV.js
+// ../shared-protocol/dist/chunk-J3YZDZLH.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var PROTOCOL_VERSION = 4;
 var MAX_JSON_DEPTH = 64;
@@ -24847,8 +24847,17 @@ function payloadCapFor(requested) {
   return Math.max(MAX_DOC_BYTES, Math.floor(requested));
 }
 var B64URL_RE = /^[A-Za-z0-9_-]*$/;
+var B64URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+function isCanonicalB64url(s) {
+  if (!B64URL_RE.test(s)) return false;
+  const rem = s.length % 4;
+  if (rem === 1) return false;
+  if (rem === 0) return true;
+  const last = B64URL_ALPHABET.indexOf(s[s.length - 1]);
+  return rem === 2 ? (last & 15) === 0 : (last & 3) === 0;
+}
 function base64UrlDecodeStrict(s) {
-  if (!B64URL_RE.test(s)) return null;
+  if (!isCanonicalB64url(s)) return null;
   try {
     return base64UrlDecode(s);
   } catch {
@@ -25245,7 +25254,10 @@ async function importSigningKey(pem) {
   );
 }
 async function importVerifyKey(rawBase64Url) {
-  const raw = base64UrlDecode(rawBase64Url);
+  const raw = base64UrlDecodeStrict(rawBase64Url);
+  if (raw === null) {
+    throw new Error("Ed25519 public key is not canonical base64url");
+  }
   if (raw.length !== 32) {
     throw new Error(`Ed25519 public key must be 32 bytes, got ${raw.length}`);
   }
@@ -25314,7 +25326,8 @@ async function verifyJws(jws, trustedKeys, opts = {}) {
   }
   const sigBytes = base64UrlDecodeStrict(encSig);
   if (!sigBytes) return null;
-  if (!ed25519Prechecks(base64UrlDecode(rawKey2), sigBytes)) return null;
+  const keyBytes = base64UrlDecodeStrict(rawKey2);
+  if (!keyBytes || !ed25519Prechecks(keyBytes, sigBytes)) return null;
   let ok;
   try {
     ok = await crypto.subtle.verify(

@@ -9,7 +9,7 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
-Local-trust fixes (SEC-WP-16 slice F).
+Local-trust fixes.
 
 - **Revocation and a build block end offline use at once.** A hard 401 deletes the document it
   answered for, and its ETag, in the same cache write that records it; a 403 build block deletes
