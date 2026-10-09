@@ -450,6 +450,7 @@ export interface GithubOidcClaims extends JWTPayload {
   runner_environment?: string;
   event_name?: string;
   run_id?: string;
+  sha?: string;
 }
 
 export type OidcVerifyResult =
