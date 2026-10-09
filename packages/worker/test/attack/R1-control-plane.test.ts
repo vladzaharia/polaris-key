@@ -49,6 +49,8 @@ const PLATFORM_GROUP = "platform-admins";
 function adminEnv(kv: KvMock, slugs: string[] = []): Env {
   const env = makeEnv(kv, slugs);
   env.ADMIN_SESSION_SECRET = ADMIN_SECRET;
+  // SEC-IDN-20: no fallback; the shared key is set explicitly to keep exercising the domain tags.
+  env.PORTAL_SESSION_SECRET = ADMIN_SECRET;
   env.PLATFORM_ADMIN_GROUP = PLATFORM_GROUP;
   env.PLATFORM_OIDC_ISSUER = "https://id.example";
   env.PLATFORM_OIDC_CLIENT_ID = "polaris-admin";
@@ -264,7 +266,7 @@ describe("R1-01 login CSRF / session fixation (admin OIDC)", () => {
 describe("R1-02 cross-realm session signing", () => {
   it("R1-02a: FIXED — the shared key survives, but the two realms now sign DIFFERENT messages", async () => {
     const env = adminEnv(new KvMock());
-    expect(env.PORTAL_SESSION_SECRET).toBeUndefined();
+    expect(env.PORTAL_SESSION_SECRET).toBe(ADMIN_SECRET);
 
     const { token } = await issuePortalSession(
       env,

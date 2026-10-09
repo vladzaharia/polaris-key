@@ -245,11 +245,14 @@ export async function handleGithubWebhook(
       return errorResponse(413, "body_too_large", "webhook body too large");
     throw e;
   }
-  const ok = await verifySignature(
-    secret,
-    raw,
-    req.headers.get("x-hub-signature-256"),
-  );
+  // SEC-SUP-22: during a rotation the previous secret still verifies.
+  const sig = req.headers.get("x-hub-signature-256");
+  const previous = env.GITHUB_WEBHOOK_SECRET_PREVIOUS;
+  const ok =
+    (await verifySignature(secret, raw, sig)) ||
+    (typeof previous === "string" &&
+      previous !== "" &&
+      (await verifySignature(previous, raw, sig)));
   if (!ok) return errorResponse(401, "unauthorized", "invalid signature");
 
   // Replay protection (R6-06). A captured delivery (body + signature) was previously an

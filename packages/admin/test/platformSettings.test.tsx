@@ -312,7 +312,7 @@ function view(over: Record<string, unknown> = {}) {
       {
         code: "portal_session_secret_unset",
         message:
-          "PORTAL_SESSION_SECRET is not set, so customer portal sessions are signed with ADMIN_SESSION_SECRET and the two realms share key material.",
+          "PORTAL_SESSION_SECRET is not set, so customer portal sessions cannot be signed.",
         names: ["PORTAL_SESSION_SECRET"],
       },
     ],

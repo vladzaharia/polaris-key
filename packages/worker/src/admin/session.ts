@@ -104,10 +104,8 @@ async function sessionKey(env: Env): Promise<CryptoKey> {
 /**
  * Domain-separation tag mixed into the signed message (R1-02).
  *
- * The admin and portal realms can be signed by the SAME raw key — identity's
- * `portal/session.ts` falls
- * back to `ADMIN_SESSION_SECRET` when `PORTAL_SESSION_SECRET` is unset, which `wrangler.toml`
- * documents as a supported deployment. Before this tag, the only thing stopping a portal
+ * The admin and portal realms once shared a raw key (the portal fell back to
+ * `ADMIN_SESSION_SECRET`; removed in SEC-WP-21). Before this tag, the only thing stopping a portal
  * cookie (obtainable by anyone with an email address) from being replayed as an admin cookie
  * was that the two JSON bodies happened to carry different field names: add a `sub` and a
  * `groups` array to `PortalSession` — both natural next features — and the realms collapse.
