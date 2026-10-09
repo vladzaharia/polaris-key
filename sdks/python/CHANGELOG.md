@@ -6,6 +6,28 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+Trust custody and offline bundles.
+
+- **Pin two keys.** A verified manifest signed by one pinned key that lists another pinned key as
+  `revoked` (its exact bytes) retires that pin on this install for good. The manifest is stored as
+  signed evidence (`pinRevocations`) and re-checked at every start. A manifest that revokes its own
+  signer is refused; a retired pin signs nothing.
+- **Trust-manifest statuses outside `active`, `staged` and `retired` are skipped.** The match is
+  exact and case-sensitive; an entry with no status, or a non-canonical `publicKey`, is skipped, not
+  fatal.
+- **Non-canonical base64url is refused** in JWS segments and trust keys (`b64url_decode` raises).
+- **A rotated product still syncs.** When the default trust manifest is signed by a key you do not
+  pin, the client asks for it signed by each pinned key (`?signer=`), up to
+  `MAX_TRUST_SIGNER_ATTEMPTS` requests.
+- **Breaking: a bundle-activated install re-imports its bundle after upgrading.** The cache keeps
+  the signed bundle (`bundle`) instead of an `importedBundle` marker, which is no longer read;
+  `ImportedBundle` is gone. `activation == "bundle"` now needs the bundle to re-verify and its
+  licence document to be the cached one.
+- **A bundle past its 30-day window needs a fresh mint,** and each document in it must be
+  newer than the cached one of its type; re-importing the same bundle changes nothing.
+  `inspect_bundle` and `verify_bundle` take required `floors=`, plus `tombstones=` and `profile=`;
+  `import_bundle` takes the trust manager.
+
 Local-trust fixes.
 
 - **Revocation and a build block end offline use at once.** A hard 401 deletes the document it
