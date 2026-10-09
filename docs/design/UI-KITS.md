@@ -909,11 +909,25 @@ hand-tuned mockup colours and were replaced by it. The rules the draft left open
 
 ### 3.5 Bring your own design system
 
-No new kits for host design systems; instead the brand package publishes: a **Tailwind v4 preset**
-(from `css/theme.css`), **MUI, Mantine and Chakra theme objects** generated from the tokens, a
-**shadcn/ui registry** (`npx shadcn add https://key.plrs.im/r/activate.json`) whose components are
-built on the React headless hooks, and "go native" recipes that render each screen with host
-components over layer (c).
+No new kits for host design systems. UK-22 (a Tailwind v4 preset, MUI, Mantine and Chakra theme
+objects, a shadcn registry) is dropped; the recipes (UK-31) show how to map a host's tokens onto
+`--pk-*` and how to go native over layer (c).
+
+### 3.6 Provider buttons
+
+The theme sets the provider buttons' radius, height, density and type. Each provider keeps its own
+fill, logo and label colours: Apple black, white or white-outline per scheme, Google light, dark or
+neutral, Steam its own. Never the product accent, never a glow. They sit in the logo-only row at
+equal widths. Under `native`, `SignInWithAppleButton` and the platform's own controls are used
+unchanged. The passkey and email rows are kit secondaries. The theming board shows the provider row
+under default, core, compact and native.
+
+### 3.7 What a theme change must re-render
+
+Root surfaces, text, fields, focus, buttons, provider rows, dialogs, skeletons, progress, toasts
+and empty states, together. The theme API test covers this list, and custom accents are tested on
+light and dark surfaces. No shared component hard-codes a customer's product name or artwork.
+EXPERIENCE §3 lists the same parts for the console and portal.
 
 ---
 
@@ -930,28 +944,64 @@ React exports bare names from `@polaris-key/react`. Headless names follow each l
 | Component             | What it is                                                                                                                                                                                                                                                                                                                                       | States                                                                                                                                        | Priority |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | **PolarisKeyGate**    | The drop-in root. Boots, gates, and runs every flow below as needed; renders the app when licensed; adds the grace banner, update prompt and toasts                                                                                                                                                                                              | booting · needs-activation · licensed · grace · blocked (revoked, expired, version too old/new, channel not entitled) · error                 | must     |
-| **Boot**              | First-paint screen while the stage machine runs (`ui.stages`): product hero, a neutral indicator, consent for metered downloads, offline and blocked stops                                                                                                                                                                                       | progress · consent · fetching · offline · blocked · error                                                                                     | must     |
+| **Boot**              | First-paint screen while the stage machine runs (`ui.stages`): product hero, a neutral indicator (the 2 px shimmer in `text-strong` at low alpha, never a part-filled bar; the accent only on the consent action), consent for metered downloads, offline and blocked stops                                                                                                                                                                                       | progress · consent · fetching · offline · blocked · declined · rolled-back · error                                                                                     | must     |
 | **Welcome**           | The gate's first screen: product hero, Sign in, Use a license key, and the extras the product supports (trial, restore purchase, activate offline)                                                                                                                                                                                               | default · busy · capability-limited (only the paths the build supports, GO)                                                                   | must     |
 | **SignIn**            | **The one sign-in form** (SIGN-IN.md §3.17): its body morphs through Sign in (the logo-only provider row with native Apple and Google behind it, Continue in browser on desktop, Sign in on your phone or computer on TV) → SignInHandoff → LicenseChoice (→ ReplaceDevice) → Done, with `presentation` `inline` (default), `sheet` or `browser` | methods · handoff · code · finishing · choose · replace · key · done · error · expired                                                        | must     |
 | **SignInHandoff**     | Step 2 of the form, in place: "Finish in your browser" with Open browser again, Cancel and Use a code instead; the code view (the RFC 8628 user code, the countdown; a QR only on TV and console); moves on by itself                                                                                                                            | starting · waiting · no browser · code · link copied · finishing · denied · expired · cancelled                                               | must     |
 | **Activate**          | License key entry with live verdict: the key field names the product and tier as soon as it parses, catches cut-short keys (EXPERIENCE P2), paste button, Return submits                                                                                                                                                                         | empty · typing · parsed · cut short · busy · rejected · device limit (hands to DeviceLimit) · done                                            | must     |
-| **OfflineActivation** | Request code (text + QR), load or drop a response file, paste box                                                                                                                                                                                                                                                                                | default · loaded · rejected signature · done                                                                                                  | must     |
+| **OfflineActivation** | Two numbered actions: 1 send the request (the code with Copy, and a QR), 2 load the response (file, drop or paste), then the verdict. A loaded file is not an activation until its signature verifies                                                                                                                                                                                                                                                                                | default · loaded · rejected signature · done                                                                                                  | must     |
 | **DeviceLimit**       | The focused **Replace a device** flow (PORTAL §4.25; SIGN-IN.md §3.7, D-08): seat meter, devices as radio rows, least recent preselected, the "Replace <device>?" confirm, **Replace and continue**                                                                                                                                              | default · busy · removed · failed · browser mode (opens `manageUrl`)                                                                          | must     |
 | **LicenseChoice**     | Step 3 of the form (SIGN-IN.md §3.6; I-04 §G): license rows (the tier pill with "{n} of {limit} devices" and a seat meter; origins in plain words, SIGN-IN.md O-17), full licenses without a radio, **Replace a device** as a step in place, the key field                                                                                       | loading · many · one · current · keep · new · create · all full · mixed · replace open · raced · none (keys) · none (no keys) · grant expired | must     |
 | **Devices**           | Device list: icon by form factor, friendly name, platform and last seen, "This device", rename (inline, not an always-open form, RE), Remove with an L1 inline confirm                                                                                                                                                                           | loading · list · renaming · confirming · empty · browser mode                                                                                 | must     |
 | **UpdatePrompt**      | Available / downloading / ready / mandatory / blocked / store outlet, with notes and the right verb per outlet ("Update on the App Store", "Restart when ready", "Get it on Steam")                                                                                                                                                              | available · downloading · ready · mandatory · blocked · store · platform · revoked-required-content · up to date                              | must     |
-| **UpdateProgress**    | Compact download and install progress for app updates and content packs: toast, pill, or inline row                                                                                                                                                                                                                                              | queued · downloading · installing · paused (metered) · failed · done                                                                          | must     |
+| **UpdateProgress**    | Compact download and install progress for app updates and content packs: toast, pill, or inline row. Verification happens inside downloading; installing is apply; the copy never says installed before apply                                                                                                                                                                                                                                              | queued · downloading · installing · paused (metered) · failed · done                                                                          | must     |
 | **ReleaseNotes**      | The changelog for one or many versions, from `ReleaseClient.changelog()`                                                                                                                                                                                                                                                                         | loading · list · empty · error                                                                                                                | must     |
 | **StatusScreen**      | Blocking states with their fix: revoked ("Use a different key", "Sign out"), expired ("Renew"), version too old ("Update"), too new, channel not entitled                                                                                                                                                                                        | one per state, each with a primary fix                                                                                                        | must     |
 | **GraceBanner**       | Offline grace: deadline and countdown, Reconnect, dismissible per session (the prop doc already promises it, RE)                                                                                                                                                                                                                                 | days left · last day · expired → StatusScreen                                                                                                 | must     |
-| **AccountAndLicense** | The settings pane: product and tier, holder (a floating license shows "Not in an account · Add your name and email", S-24), Manage (portal), Devices, Cloud Sync status, Updates (automatic, channel, check now, version), managed settings, Sign out, Powered-by                                                                                | loading · signed in · key-only (no account) · offline                                                                                         | must     |
+| **AccountAndLicense** | The settings pane: product and tier, holder (a floating license shows "Not in an account · Add your name and email", S-24), Manage (portal), Devices (the seat count only from the roster or the `device_limit` body, else omitted), Cloud Sync status, Updates (automatic, channel, check now, version), managed settings, Sign out, Powered-by                                                                                | loading · signed in · key-only (no account) · offline                                                                                         | must     |
 | **Settings**          | Config-catalog-driven settings with typed controls (switch, slider, select, text), categories, search above 12 rows, provenance as text, locked rows "Set by <org>", reset                                                                                                                                                                       | loading · list · dirty · saving · locked · error                                                                                              | must     |
-| **Paywall**           | Entitlement-gated upsell: what a tier adds, purchase or redeem; StoreKit 2 views on Apple, Play Billing on Android, the portal elsewhere                                                                                                                                                                                                         | loading · offers · purchasing · purchased · restore · not available here                                                                      | must     |
+| **Paywall**           | Entitlement-gated upsell: what a tier adds, purchase or redeem; StoreKit draws the store on Apple (the kit computes no per-month price or saving); Play Billing on Android; the portal elsewhere. Web checkout waits for the owner's `commerce: go`; until then "not available here" hands off to the portal                                                                                                                                                                                                         | loading · offers · purchasing · purchased · restore · not available here                                                                      | must     |
 | **EntitlementGate**   | Renders children only when an entitlement holds; otherwise a slot or the Paywall                                                                                                                                                                                                                                                                 | entitled · not entitled · loading                                                                                                             | must     |
 | **CloudSyncStatus**   | A small status: synced time, syncing, conflict, offline; opens details                                                                                                                                                                                                                                                                           | synced · syncing · offline · conflict · error                                                                                                 | should   |
 | **About**             | Product, version, build, licenses (OSS notices), the Powered-by badge, Copy diagnostics                                                                                                                                                                                                                                                          | default                                                                                                                                       | should   |
 | **ChannelPicker**     | Release channel choice, locked when the outlet fixes it                                                                                                                                                                                                                                                                                          | default · locked                                                                                                                              | should   |
 | **Toast**             | Bottom-right (bottom full width on phones), one line plus a consequence, ≤ 2 actions, 6 s with a visible timer, errors persist (EXPERIENCE §7)                                                                                                                                                                                                   | info · success · warning · error · with progress                                                                                              | must     |
+
+**Must not.** Each component keeps one protected behaviour, which UK-02b turns into a negative
+fixture:
+
+| Component         | Must not                                                   |
+| ----------------- | ---------------------------------------------------------- |
+| PolarisKeyGate    | flash activation during a cached-session check             |
+| Boot              | animate invented progress, or trap metered consent off-screen |
+| SignIn            | restart the flow or erase account context on a step change |
+| SignInHandoff     | use the public user code as the polling handle             |
+| Activate          | require an account for a floating key                      |
+| OfflineActivation | treat a loaded file as a verified activation               |
+| DeviceLimit       | delete local files when access is removed                  |
+| LicenseChoice     | blur keep, create and add-to-account into one outcome      |
+| Devices           | say "This device" when the runtime does not know it        |
+| UpdatePrompt      | offer a restart the browser cannot perform on a desktop product |
+| UpdateProgress    | say installed when only the download verified              |
+| ReleaseNotes      | execute remote markup                                      |
+| StatusScreen      | collapse the five refusals into one error                  |
+| GraceBanner       | extend grace visually                                      |
+| AccountAndLicense | silently attach a floating license                         |
+| Settings          | expose hidden values through a theme                       |
+| Paywall           | invent checkout                                            |
+| EntitlementGate   | treat a style override as authorization                    |
+| CloudSyncStatus   | imply universal backup                                     |
+| About             | copy diagnostics unredacted                                |
+| ChannelPicker     | lock the picker without saying why                         |
+| Toast             | be the only record of an error                             |
+
+**Verification recipe.** For each component state: a fixture render at the phone-portrait and
+desktop rows (§7.1) with the variants long product name, a `de` and a `ja` pack, a custom light
+accent (`#ff6a3d`, which resolves to the ink label), a response delayed past the DL7 threshold,
+cancellation and a recoverable failure; the Must not as a negative case; the semantic outcome
+asserted independently of the animation (the reduced-motion render reaches the same state). A
+matrix cell is complete only with runtime evidence or a documented N/A reason in the kit's parity
+row.
 
 **Styled parts** shared by the screens, each exported on its own: `ProductHeader`, `KeyField`,
 `CodeDisplay` (user code + copy), `QrCode` (forced black on white, with a larger view), `SeatMeter`,
@@ -967,11 +1017,9 @@ the integration cost.
 // React: web, Electron renderer, Tauri webview, Next.js client component (4 lines)
 import { PolarisKeyGate } from "@polaris-key/react";
 import "@polaris-key/react/styles.css";
+import polarisKey from "./polaris-key.json"; // the generated config module
 
-<PolarisKeyGate
-  product="tidewater"
-  publishableKey={import.meta.env.VITE_PK_KEY}
->
+<PolarisKeyGate config={polarisKey}>
   <App />
 </PolarisKeyGate>;
 ```
@@ -979,7 +1027,7 @@ import "@polaris-key/react/styles.css";
 ```html
 <!-- Any web page, Angular, Vue, Svelte, htmx (2 lines; the module injects its own styles and fonts) -->
 <script type="module" src="https://key.plrs.im/elements/1/pk.js"></script>
-<pk-gate product="tidewater" publishable-key="pk_live_…"
+<pk-gate product="tidewater" config='{"product":"tidewater",…}'
   ><my-app></my-app
 ></pk-gate>
 ```
@@ -1018,8 +1066,9 @@ registerPolarisKey({ ipcMain, client }); // main
 exposePolarisKey(); // preload
 ```
 
-The constructor names follow each SDK. Every kit takes a `client` built the same way, and every web
-kit takes `product` plus `publishableKey`. The gate fixes today's lifecycle traps:
+The constructor names follow each SDK. Every kit takes a `client` built the same way, and the React
+kit takes the generated config module and the elements take `product` plus a `config` attribute
+(SETUP.md D18; there is no publishable key or other credential). The gate fixes today's lifecycle traps:
 
 - it starts itself (Compose `gate.start()`, KO);
 - it never flashes the sign-in card before the real state loads (SW);
@@ -1050,6 +1099,14 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
   - a paste control inside the field (`PasteButton` on iOS, `content_paste` on Android); consoles
     open the platform virtual keyboard instead;
   - submit on Return (`.submitLabel(.go)` with an ASCII keyboard on iOS).
+- **The key field is visible and private, not masked.** People compare its prefix and last six
+  against the purchase email. No autocorrect or personalised learning (Android
+  `noPersonalizedLearning`; no spellcheck or autocorrect on Apple, Qt and the web), excluded from
+  autofill saving, middle-truncated at rest, and never written to logs, analytics, crash tags or
+  `--json`. Terminals mask entry. The Android keyboard draws no suggestion strip for it.
+- **Godot's Welcome order is the exception.** A game's key path is the common one and a pad has no
+  keyboard, so on keyboard platforms the key field and Activate lead; on pad-only devices Sign in
+  comes first and is the filled primary.
 - **Keys stay on one line and are never end-truncated or wrapped.** A key that does not fit gives
   way in the middle, keeping the prefix and the last six characters ("pkey_tidewater_7Q2M…3WPLDA"),
   because those are what people compare against the purchase email; the field scrolls to the caret
@@ -1095,8 +1152,7 @@ kits).
 >   your browser", **Open browser again**, **Cancel** and **Use a code instead** (D-61, D-62,
 >   D-66);
 > - **no QR on any desktop surface** (D-67): the code view shows the URL, the code with **Copy**
->   and **Open browser**. That supersedes the QR line below for desktop sheets and the QR in the
->   macOS `desktop-sign-in` mockup;
+>   and **Open browser**. The `desktop-sign-in` board's QR is retired;
 > - the tab ends on the hosted desktop ReturnStep ("You can close this tab and return to <App>",
 >   no timer), and the app comes to the front with the toast "Signed in as <name> · <Tier>
 >   license" (D-63–D-65);
@@ -1142,9 +1198,11 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
   - the determinate countdown ring with "code expires in 4:12";
   - **Open browser again** (primary) and **Cancel** (secondary).
 
-  The QR sits beside the code when the card is ≥ 560 px (web), and behind "Scan with your phone
-  instead" when narrower. **Desktop sheets, dialogs and terminals show no QR** (SIGN-IN.md D-67).
-  The screen moves on by itself.
+  A QR appears only where DL14 allows it: TV, console, pad-only screens and an offline-activation
+  request. On web, tablet, phone and desktop the code view shows the URL with Copy, the code with
+  Copy, the countdown ring, **Open browser again** (primary), **Cancel** and **Use a code
+  instead** (SIGN-IN.md D-67). The device-code title is **Sign in with a code** in every kit. The
+  screen moves on by itself.
 
 - **TV and consoles** (tvOS, Android TV, Godot on console or Steam Deck in game mode) open on the
   device-code path:
@@ -1199,7 +1257,9 @@ draw neither a list nor a QR.
 The in-app radio list above arrives with I-13's `choose` response, which carries the list. There
 is no key-authenticated device removal.
 
-Browser mode (no device API) links to the portal flow instead. The copy never shows `dev-2` or
+Browser mode (no device API) links to the portal flow instead. On the key path it is the only
+mode, titled **Replace a device**. The seat meter and count appear only when the roster or the
+`device_limit` body supplies them. The copy never shows `dev-2` or
 `macos` (RE).
 
 #### UpdatePrompt and UpdateProgress
@@ -1237,7 +1297,7 @@ Mockups: [web](ui-kits/shots/web-update-dark.png), [iOS banner](ui-kits/shots/io
   area and never over the HUD. The modal waits for the results or pause screen, with default focus
   on **Later** and input ignored for 250 ms after it opens.
 - **UpdateProgress** is its own component for background content packs: the Godot toast ("38 of 91
-  MB · 1 min left"), the Android foreground-service notification, a Live Activity on iOS.
+  MB · 1 min left"), the Android foreground-service notification, a Live Activity on iOS that tracks a content-pack download (an App Store app cannot update itself). Verification happens inside downloading; installing is apply; the copy never says installed before apply.
 
 #### AccountAndLicense and Settings
 
@@ -1260,8 +1320,11 @@ Mockups: [web](ui-kits/shots/web-settings-light.png),
   literal `true` never do (RE).
 - **Provenance and locks:**
   - "From <Developer>" groups the developer's pushed defaults that the user can still change.
-  - A row locked by a policy shows its value as text with a lock and names who set it ("Set by
-    Fennick Studio"; on consoles, "Set by your parent or guardian").
+  - "Managed settings" groups the rows a policy locks. A locked row shows its value as text with a
+    lock and names its config source ("Set by <developer>"). A host may pass its own lock reason
+    through the kit API (host-owned, shown verbatim, never invented by the kit); "Set by your
+    parent or guardian" is a host string, not a source Polaris Key knows.
+  - A source that is not the product's developer never appears under "From <Developer>".
   - Provenance is text, not equal-weight chips (GO).
 - **Embedding:** the pane embeds into the host's own settings and inherits the host's font: a React
   component, a SwiftUI `Section` set, a Compose `LazyListScope` extension, a Godot `PKeyAccountTab`
@@ -1290,6 +1353,10 @@ WCAG 2.2 AA in both themes (BRAND §9) plus:
    always see it.
 10. Reduced transparency (`prefers-reduced-transparency`, Reduce Transparency, Godot
     `ui_reduce_transparency`) turns every glass surface opaque.
+11. Native desktop contrast settings: Windows Contrast themes (Compose Desktop and Qt read the
+    high-contrast flag and switch to system colours; Electron gets forced-colors from Chromium),
+    macOS Increase Contrast (hairlines and separators at full contrast, accent fills keep 3:1) and
+    GNOME high contrast through the Settings portal `contrast` key.
 
 ### 4.5 Powered by
 
