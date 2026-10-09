@@ -66,9 +66,7 @@
   [data-screen="config.catalog-empty"] .adds-group > summary {
     display: flex;
     align-items: center;
-    gap: var(--sp-2);
     min-height: 48px;
-    padding: 0 var(--card-px);
     list-style: none;
     cursor: pointer;
     font-size: var(--fs-small);
@@ -81,7 +79,6 @@
   [data-screen="config.catalog-empty"] .adds-toggle {
     display: inline-flex;
     align-items: center;
-    gap: var(--sp-1);
     font-weight: 400;
     letter-spacing: 0;
     text-transform: none;
@@ -92,7 +89,6 @@
   [data-screen="config.catalog-empty"] .adds-group .count { font-weight: 400; }
   [data-screen="config.catalog-empty"] .empty-strip > * { flex: 1 1 0; justify-content: center; }
   [data-screen="config.catalog-empty"] .empty-strip .btn.link code { font-size: var(--fs-small); background: none; padding: 0; }
-  [data-screen="config.catalog-empty"] .choice-title .pill { margin-left: var(--sp-2); }
 </style>
 
 <div class="console kit-cfg" data-service="config">
@@ -125,7 +121,7 @@
     </div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -136,7 +132,8 @@
   <main class="main">
     <div class="page">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Catalog</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="config" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Managed config</a></nav>
+<div class="page-icon mast" data-service="config" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Catalog</h1><span class="pill"><i class="dot"></i>v1 · empty</span></div>
       </header>
 

@@ -13,7 +13,8 @@
     "What changes: a card of rows, each the old value struck and the new one added: Devices 4 → 12 (10 from Studio, 2 from a seat pack), Release tracks stable → stable, beta, Duration Ends Sep 14, 2027 → Lifetime, Includes recording, 4 decks → recording, stems, 4 decks.",
     "Moving up also says what stays (offline days 14 set on this license, fingerprint Normal, the 3 add-ons) and why it sticks (still an Automatic grant; Studio is the top tier). Cancel and Move to Studio.",
     "Moving down: Devices 4 → 3 ('She has 3, so none is signed out'), Duration → Lifetime, Includes → 2 decks, no recording; a warning 'Her next sign-in moves it back to Education' / 'Verified email domain example.edu gives Education. To keep her on Free, change that rule first.'; Open Access, Cancel and Move to Free.",
-    "Phone: the rows' values wrap under their chips; buttons stack with the primary on top."
+    "Phone: the rows' values wrap under their chips; buttons stack with the primary on top.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency."
   ],
   "status": "mockup",
   "designReview": {

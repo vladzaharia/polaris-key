@@ -1,0 +1,17 @@
+{
+  "id": "config.catalog-review-states",
+  "title": "Review a catalog draft: other states",
+  "area": "config",
+  "surface": "dialog",
+  "packages": ["U-29", "U-31"],
+  "uxRows": [],
+  "summary": "Three states of the catalog review step as frames: nothing to publish (the draft matches v9), a validation error pinned to its entry with the fix, and a publish that failed with nothing lost (devices still get v9, the draft is kept, Publish again).",
+  "compare": [
+    "Nothing to publish: an empty state with one sentence of what happened and two ways out (Back to editing, Discard draft); Publish stays in place, disabled, described by the sentence.",
+    "A validation error is shown at its entry with the reason and the fix (Fix it opens the entry), never as a toast; Publish waits.",
+    "Publish failed: a danger callout says what failed and that nothing changed (devices still get v9, the draft is kept); the primary becomes 'Publish v10 again'.",
+    "Every frame uses the same header as config.catalog-review; no state introduces a second filled primary."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

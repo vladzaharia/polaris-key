@@ -1,0 +1,18 @@
+{
+  "id": "portal.account",
+  "title": "Account",
+  "area": "portal",
+  "surface": "portal",
+  "packages": ["PX-31", "I-34", "F-33", "PX-W19"],
+  "uxRows": [],
+  "summary": "Mara's Account page at Profile: the display h1, the canonical section list (Profile, Sign-in methods, Connected apps, Packages, Where you're signed in, Appearance, Your data) as a jump list on the side and a strip on narrow screens, the Profile identity row, her sign-in methods and the one package token that serves every product's feeds.",
+  "compare": [
+    "One section list everywhere, in this order (B12, portal-28): Profile · Sign-in methods · Connected apps · Packages · Where you're signed in · Appearance · Your data. 'Access tokens' is gone; package tokens live only in Packages.",
+    "The h1 is the display step (48/52, 32/36 on a phone), no full stop, no eyebrow, no slogan (B12).",
+    "Package tokens are account-wide (F-33): revoking says it stops installs on every machine using it; product pages only point here.",
+    "Risky actions sit in their own sections (Your data); Sign out is outlined in the header; no filled primary on the page.",
+    "Phone: the section strip scrolls with its fade only while it overflows; the bottom bar stays."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

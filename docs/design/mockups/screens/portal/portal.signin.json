@@ -1,0 +1,18 @@
+{
+  "id": "portal.signin",
+  "title": "Sign in to the portal",
+  "area": "portal",
+  "surface": "portal",
+  "packages": ["PX-12", "I-08", "P0-38"],
+  "uxRows": [],
+  "summary": "The direct sign-in at key.plrs.im when no app is asking: 'Sign in to Polaris Key', identifier first (email, Continue), the logo-only provider row (Apple, Google, Steam), a passkey ghost button and the quiet links, on the static star field with no art beside the card.",
+  "compare": [
+    "Identifier first, then the logo-only provider row and the passkey button; no 'or' rule on the portal-direct card (the app card keeps its own).",
+    "No app header, no product art beside or above the card (B12; the optional requesting-product cover is PX-33, only for app sign-in ≥1180 and only if the owner asks).",
+    "Continue is ink (B2); provider buttons use only the providers' allowed fills (white with a 3:1 edge in light), never a tint.",
+    "Inputs are at least 16px on touch so phones don't zoom (portal-08); the star field stays static.",
+    "Phone: the card is edge to edge; Help, Privacy, Terms under it."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

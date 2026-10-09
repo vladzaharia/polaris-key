@@ -49,9 +49,6 @@
     border-radius: 999px;
     background: var(--mk-fill);
   }
-  [data-screen="config.cloud-sync-usage"] .stack-bar > i + i {
-    margin-left: 2px;
-  }
   [data-screen="config.cloud-sync-usage"] .stack-bar > i:last-child {
     min-width: 4px;
   }
@@ -98,10 +95,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group" data-service="sync">
-      <button class="nav-label" aria-expanded="true">Cloud Sync<i class="ic ic-chevron-down sm"></i></button>
-      <a class="nav-item active" href="#"><i class="ic ic-cloud"></i><span class="nav-text">Cloud Sync</span></a>
-    </div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label active" href="#" aria-current="page">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -112,7 +106,8 @@
   <main class="main">
     <div class="page columns">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Cloud Sync</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="sync" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a></nav>
+<div class="page-icon mast" data-service="sync" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Cloud Sync</h1></div>
         <p class="page-sub"><span class="status"><i class="ic ic-circle-check"></i>Verified on iOS, Android and Steam</span><span class="status muted"><i class="ic ic-circle-dashed"></i>itch.io not seen yet</span></p>
         <div class="page-actions">

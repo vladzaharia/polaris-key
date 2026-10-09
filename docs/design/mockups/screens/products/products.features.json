@@ -22,7 +22,11 @@
     "Phone: the column header hides, each row puts the switch top-right beside the name, status drops under the description, nested switches span the full width, the Discover segmented control sits under its text, every switch is 44×24, and the tab strip fades at its right edge where it scrolls.",
     "Every switch is the console accent: one track colour and one knob colour in both themes. The service colour stays on each row's glyph tile.",
     "A switch that turns something on applies at once: it shows a spinner while saving; a failed save puts the switch back and shows an inline error on the row saying what went wrong and how to retry.",
-    "The Diceroll sidebar shows one count, on Devices (26,315, ST-36's device pill)."
+    "The Diceroll sidebar shows one count, on Devices (26,315, ST-36's device pill).",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page.",
+    "The features table spans the canvas (no 1200px cap); prose in it stays at 72ch; the hub's four tabs are an underline tablist; History is a ghost (admin-1-36).",
+    "Feature rows keep a subtle glyph tile, never a solid accent chip, and no accent top-rule cards (site-08 dropped: accent marks context only, B2/B6)."
   ],
   "status": "mockup",
   "designReview": {

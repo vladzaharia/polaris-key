@@ -1,0 +1,129 @@
+<style>
+  /* admin.platform-status: the summary table's columns, so Check and Result scan down. */
+  [data-screen="admin.platform-status"] .sum .c-check {
+    width: 28%;
+  }
+  [data-screen="admin.platform-status"] .sum .c-result {
+    width: 40%;
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item active" href="#" aria-current="page"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+    <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a></nav>
+        <div class="page-heading"><h1>Status</h1></div>
+        <div class="page-actions">
+          <span class="freshness">Checked 40 s ago</span>
+          <button class="btn ghost icon" aria-label="Pause refreshing"><i class="ic ic-circle-pause"></i></button>
+        </div>
+      </header>
+
+      <!-- ST-09 (UX-30): Deployment and Operations in one page, led by one check · result · next action
+           table (study 383). Retry and a destructive repair are separate controls; logs are redacted. -->
+      <section class="card" aria-labelledby="sum-title">
+        <div class="card-head"><div class="title"><h2 id="sum-title">Checks</h2></div></div>
+        <table class="table fixed stack-phone sum" aria-labelledby="sum-title">
+          <colgroup><col class="c-check"><col class="c-result"><col></colgroup>
+          <thead><tr><th>Check</th><th>Result</th><th>Next action</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-title">Worker deployment</div><div class="cell-sub">v0.9.2 · <span class="mono">4da41c8</span></div></td>
+              <td><span class="cell-label">Result</span><span class="status"><i class="ic ic-circle-check"></i>Live since Oct 8, 14:02</span></td>
+              <td><span class="cell-label">Next</span><span class="subtle">None</span></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title">Storage bindings</div><div class="cell-sub">D1, R2, KV, queues</div></td>
+              <td><span class="cell-label">Result</span><span class="status"><i class="ic ic-circle-check"></i>All 6 present</span></td>
+              <td><span class="cell-label">Next</span><span class="subtle">None</span></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title">Recent automation</div><div class="cell-sub">Cron, queues, heartbeats</div></td>
+              <td><span class="cell-label">Result</span><span class="status warning"><i class="ic ic-triangle-alert"></i>12 webhook deliveries failed</span></td>
+              <td><span class="cell-label">Next</span><button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Retry 12</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="mk-grid-2 top">
+        <section class="card" aria-labelledby="areas-title">
+          <div class="card-head"><div class="title"><h2 id="areas-title">Health by area</h2></div></div>
+          <div class="card-rows">
+            <div class="card-row"><i class="svc" data-service="license"></i><span class="grow">Licensing</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row"><i class="svc" data-service="config"></i><span class="grow">Managed config</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row"><i class="svc" data-service="release"></i><span class="grow">Ship builds</span><span class="status warning"><i class="ic ic-triangle-alert"></i>Webhooks behind</span></div>
+            <div class="card-row"><i class="svc" data-service="identity"></i><span class="grow">Sign-in</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row"><i class="svc" data-service="sync"></i><span class="grow">Cloud Sync</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+            <div class="card-row"><i class="svc" data-service="commerce"></i><span class="grow">Commerce</span><span class="status"><i class="ic ic-circle-check"></i>OK</span></div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="queue-title">
+          <div class="card-head"><div class="title"><h2 id="queue-title">Queues</h2></div></div>
+          <div class="card-rows">
+            <div class="card-row"><div class="grow"><div class="cell-title">Webhook deliveries</div><div class="cell-sub">12 in dead letters since 09:14 · endpoint answered 503</div><div class="cell-sub">Purge, in the menu, deletes them for good</div></div><button class="btn ghost icon sm" aria-label="More for Webhook deliveries: Purge dead letters"><i class="ic ic-ellipsis"></i></button></div>
+            <div class="card-row"><div class="grow"><div class="cell-title">Store uploads</div><div class="cell-sub">0 waiting · last ran 3 min ago</div></div></div>
+            <div class="card-row"><div class="grow"><div class="cell-title">Email</div><div class="cell-sub">0 waiting · last sent 1 min ago</div></div></div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="cron-title">
+          <div class="card-head"><div class="title"><h2 id="cron-title">Scheduled jobs</h2></div></div>
+          <div class="card-rows">
+            <div class="list-row"><span class="icon-tile muted"><i class="ic ic-clock"></i></span><span class="list-row-text"><strong>Every minute</strong>: heartbeats, store uploads, 4 steps</span><span class="list-row-meta">40 s ago</span></div>
+            <div class="list-row"><span class="icon-tile muted"><i class="ic ic-clock"></i></span><span class="list-row-text"><strong>Hourly</strong>: rotations, cleanup, 6 steps</span><span class="list-row-meta">09:00</span></div>
+            <div class="list-row"><span class="icon-tile muted"><i class="ic ic-clock"></i></span><span class="list-row-text"><strong>Daily</strong>: domain checks, usage, 5 steps</span><span class="list-row-meta">06:00</span></div>
+          </div>
+        </section>
+
+        <section class="card" aria-labelledby="store-title">
+          <div class="card-head"><div class="title"><h2 id="store-title">Storage and schema</h2></div></div>
+          <dl class="kv-rows">
+            <div><dt>D1</dt><dd>2.1 GB of 10 GB</dd></div>
+            <div><dt>R2</dt><dd>184 GB · 41,220 objects</dd></div>
+            <div><dt>Migrations</dt><dd><span class="mono">0031</span> applied · none pending</dd></div>
+            <div><dt>Indexes</dt><dd>All 14 required present</dd></div>
+          </dl>
+        </section>
+      </div>
+
+      <section class="card" aria-labelledby="dep-title">
+        <div class="card-head"><div class="title"><h2 id="dep-title">Deploys</h2></div></div>
+        <div class="card-rows">
+          <div class="list-row"><span class="icon-tile muted"><i class="ic ic-rocket"></i></span><span class="list-row-text"><strong>v0.9.2</strong> <span class="mono">4da41c8</span> by GitHub Actions</span><span class="list-row-meta">Oct 8, 14:02</span></div>
+          <div class="list-row"><span class="icon-tile muted"><i class="ic ic-rocket"></i></span><span class="list-row-text"><strong>v0.9.1</strong> <span class="mono">a71e0b2</span> by GitHub Actions</span><span class="list-row-meta">Oct 2, 10:40</span></div>
+        </div>
+      </section>
+      <p class="icon-line type-small muted"><i class="ic ic-eye-off"></i><span>Logs on this page are redacted: tokens, keys and emails never show.</span></p>
+    </div>
+  </main>
+</div>

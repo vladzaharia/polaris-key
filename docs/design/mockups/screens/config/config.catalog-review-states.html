@@ -1,0 +1,55 @@
+<div class="board" data-service="config">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>Review a catalog draft: other states</h1>
+    </header>
+    <div class="frame-grid fixed-cards">
+      <figure class="board-item">
+        <figcaption><strong>Nothing to publish</strong></figcaption>
+        <div class="board-frame">
+          <header class="page-head is-record">
+            <div class="page-heading"><h2 class="type-section">Review draft v10</h2></div>
+            <div class="page-actions"><button class="btn primary" disabled aria-disabled="true" aria-describedby="none-text">Publish v10</button></div>
+          </header>
+          <div class="empty">
+            <span class="empty-icon muted"><i class="ic ic-check"></i></span>
+            <h3>Nothing to publish</h3>
+            <p id="none-text">Draft v10 matches v9: your edits were undone.</p>
+            <div class="btn-row"><button class="btn outline">Back to editing</button><button class="btn ghost">Discard draft</button></div>
+          </div>
+        </div>
+      </figure>
+      <figure class="board-item">
+        <figcaption><strong>A validation error, at its entry</strong></figcaption>
+        <div class="board-frame">
+          <header class="page-head is-record">
+            <div class="page-heading"><h2 class="type-section">Review draft v10</h2></div>
+            <div class="page-actions"><button class="btn primary" disabled aria-disabled="true" aria-describedby="inv-text">Publish v10</button></div>
+          </header>
+          <section class="card" aria-labelledby="inv-entry">
+            <div class="card-head"><div class="title"><h3 id="inv-entry" class="mono">quality.floor</h3></div><a class="nlink" href="#">Fix it</a></div>
+            <div class="card-body">
+              <p class="error-text" id="inv-text"><i class="ic ic-circle-x"></i>The default <span class="mono">mp3-256</span> is no longer an allowed value. Pick another default, then review again.</p>
+            </div>
+          </section>
+        </div>
+      </figure>
+      <figure class="board-item">
+        <figcaption><strong>Publish failed, nothing lost</strong></figcaption>
+        <div class="board-frame">
+          <header class="page-head is-record">
+            <div class="page-heading"><h2 class="type-section">Review draft v10</h2></div>
+            <div class="page-actions"><button class="btn primary"><i class="ic ic-refresh-cw"></i>Publish v10 again</button></div>
+          </header>
+          <div class="callout danger" role="alert">
+            <i class="ic ic-circle-x"></i>
+            <div class="grow">
+              <div class="callout-title">Publish didn’t finish</div>
+              <div class="callout-text">Polaris Key didn’t answer in time (504). Nothing changed: devices still get v9 and your draft is kept.</div>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </div>
+  </div>
+</div>

@@ -18,7 +18,9 @@
     "Four sizes: the six windows fill 3×2 at wide and 2×3 at desktop and tablet, one a row on phone (the art takes a third of a window under 720px, so the form keeps about 360px; under 560px of window the art becomes a band above the form). Windows keep their own height, tops aligned. Other answers closes the board across every column: five up at wide, one row per answer (label, message, actions) at desktop and tablet, stacked on phone.",
     "While a request runs, the primary says what is happening ('Activating…', 'Replacing…') and the form locks until Polaris Key answers.",
     "A visible 'Kit preview · fixture product' callout, as on sdk.react-sign-in.",
-    "Board copy: the lede is 'The key path, from Have a license key? to DJDL is ready.'; each caption is the state name plus one sentence; the floating license and the once-only recommendation are said here, not on the board. In another account reads 'This DJDL license is in another Polaris Key account.' with Sign in to that account and Use a different key."
+    "Board copy: the lede is 'The key path, from Have a license key? to DJDL is ready.'; each caption is the state name plus one sentence; the floating license and the once-only recommendation are said here, not on the board. In another account reads 'This DJDL license is in another Polaris Key account.' with Sign in to that account and Use a different key.",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13).",
+    "A full license reads neutral, as sdk.swiftui-sign-in (DL6)."
   ],
   "status": "mockup",
   "designReview": {

@@ -12,7 +12,11 @@
     "Dialog (.dialog.lg.scroll.fade, 64 from the top): When someone has (A group · An email domain · A claim), Group djdl-press and From Pocket ID side by side with 'Only groups from this connection count.', They get (A tier · An add-on) with Studio beside it and Studio's limits on one line, Label people see 'Press access' ('Shown on Discover and in the portal.').",
     "Match preview: '4 accounts have djdl-press today'; Noor Haddad gets Studio, Iris Moreau Standard → Studio, Theo Lindqvist 'Studio, made by hand: no change'; '1 more: Felix Brandt gets Studio' with Show all 4; 'Changes apply at each person’s next sign-in. Licenses made by hand or bought never change.'",
     "Foot: Cancel and Add rule; the body scrolls and fades above the foot when the window is short.",
-    "Phone: a bottom sheet; Group and From stack; Add rule on top, full width."
+    "Phone: a bottom sheet; Group and From stack; Add rule on top, full width.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "The Add rule dialog takes the kit head (core rule, 20/28 title, no tile) and the ink primary; fields stay 36px (admin-1-25)."
   ],
   "status": "mockup",
   "designReview": {

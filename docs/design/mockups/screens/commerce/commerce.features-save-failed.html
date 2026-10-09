@@ -33,7 +33,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item active" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -44,6 +44,8 @@
     <!-- One column, capped at 1280 from 1600: the page has no rail. -->
     <div class="page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip product" aria-hidden="true"><span class="logo xs" data-product="djdl"></span></span><a href="#">DJDL</a></nav>
+<div class="page-icon mast" aria-hidden="true"><span class="logo lg" data-product="djdl"></span></div>
         <div class="page-heading"><h1>Settings</h1></div>
       </header>
 
@@ -127,7 +129,7 @@
             <div class="feature-row-text">
               <div class="feature-row-name">Cloud Sync</div>
               <p class="feature-row-desc">Each person’s settings and crates, the same on every Mac and PC.</p>
-              <div class="reqs"><span>Needs</span><span class="req met" aria-label="Managed config is on">Managed config</span><span class="req met" aria-label="Sign-in is on">Sign-in</span></div>
+              <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Managed config is on">Managed config</span><span role="img" class="req met" aria-label="Sign-in is on">Sign-in</span></div>
             </div>
             <span class="switch touch on" role="switch" aria-checked="true" aria-label="Cloud Sync"></span>
           </div>
@@ -139,7 +141,7 @@
             <div class="feature-row-text">
               <div class="feature-row-name">Commerce</div>
               <p class="feature-row-desc">Sell tiers and add-ons on the App Store, Steam, Microsoft Store and itch.io.</p>
-              <div class="reqs"><span>Needs</span><span class="req met" aria-label="Licensing is on">Licensing</span></div>
+              <div class="reqs"><span>Needs</span><span role="img" class="req met" aria-label="Licensing is on">Licensing</span></div>
               <div class="feature-row-note failure">
               <div class="mk-stack-2" role="alert">
                 <div class="icon-line danger"><i class="ic ic-circle-x"></i><span>Commerce didn’t turn on; nothing changed.</span></div>

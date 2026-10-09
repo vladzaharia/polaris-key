@@ -1,0 +1,18 @@
+{
+  "id": "config.entry-draft-stale",
+  "title": "Edit catalog: the repository moved",
+  "area": "config",
+  "surface": "console",
+  "packages": ["U-31", "U-29"],
+  "uxRows": [],
+  "summary": "DJDL's catalog editor when v10 arrives from .pkey/schema while a console draft is open: a warning notice that stays put names the commit and how many edits conflict, the conflicting entry is marked in the list, and its field shows both sides with Keep mine or Take the repo's; Review waits until the conflict is settled and nothing in the draft is lost.",
+  "compare": [
+    "The 'changed while open' notice is warning-toned, role=status, and never animated away (U-31); it says who committed what, when, and how many of the person's edits conflict (admin-2-21, guide state 'conflicts').",
+    "The conflicting entry carries a merge glyph in the list; the field shows the draft's side and the repository's side, then Keep mine and Take the repo's, both outlined, per entry.",
+    "Nothing is lost: the side not taken is kept in Activity; non-conflicting repo changes merge without asking.",
+    "Review 1 change is disabled until every conflict is settled, and the notice explains why (aria-describedby).",
+    "The draft dot is the section accent (Config yellow) and conflict uses the warning tone with its own glyph, so changed and conflicting read differently."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

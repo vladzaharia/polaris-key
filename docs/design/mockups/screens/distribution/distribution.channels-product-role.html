@@ -1,0 +1,281 @@
+<style>
+  /* distribution.channels-product-role: the Channels page for a role that can read Ship builds but not publish. */
+  /* Ready is default text with the info dot, so it never reads as a link. */
+  [data-screen="distribution.channels-product-role"] .status.ready {
+    color: var(--pk-text-default);
+  }
+  [data-screen="distribution.channels-product-role"] .status.ready > .ic {
+    color: var(--pk-info);
+  }
+  /* Column widths: Delivery and Sales are fixed, so What customers do takes the rest of the width
+     (full values at wide; chips of at most 240px, truncated in the middle, below 1600). */
+  [data-screen="distribution.channels-product-role"] .inuse .c-name {
+    width: 36%;
+  }
+  [data-screen="distribution.channels-product-role"] .inuse .c-state {
+    width: 160px;
+  }
+  [data-screen="distribution.channels-product-role"] .inuse .c-go {
+    width: 56px;
+  }
+  @container screen (max-width: 1599px) {
+    [data-screen="distribution.channels-product-role"] .inuse .cust .value-chip {
+      max-width: min(240px, 100%);
+    }
+  }
+  @container screen (max-width: 1279px) {
+    [data-screen="distribution.channels-product-role"] .inuse .c-name {
+      width: 43%;
+    }
+    [data-screen="distribution.channels-product-role"] .inuse .c-state {
+      width: 112px;
+    }
+  }
+  @container screen (max-width: 1100px) {
+    [data-screen="distribution.channels-product-role"] .inuse .c-name {
+      width: auto;
+    }
+  }
+  /* A Not set up card's foot: its note wraps beside the action, so every card's button keeps the right edge. */
+  [data-screen="distribution.channels-product-role"] .card-foot > .foot-text {
+    flex: 1 1 0%;
+    min-width: 0;
+  }
+</style>
+
+<div class="console" data-service="release">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="release">
+      <button class="nav-label" aria-expanded="true">Ship builds<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item" href="#"><i class="ic ic-package"></i><span class="nav-text">Releases</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-git-branch"></i><span class="nav-text">Release tracks</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
+      <a class="nav-item active" href="#" aria-current="page"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a>
+      <div class="nav-sub">
+        <a class="nav-item" href="#"><i class="ic ic-polaris"></i><span class="nav-text">Polaris Key</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-app-store"></i><span class="nav-text">App Store</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-google-play"></i><span class="nav-text">Google Play</span><span class="nav-dot" title="Attention"></span></a>
+        <a class="nav-item" href="#"><i class="ic ic-itch"></i><span class="nav-text">itch.io</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-package-open"></i><span class="nav-text">Obtainium</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-square-terminal"></i><span class="nav-text">Scoop</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-terminal"></i><span class="nav-text">winget</span></a>
+        <a class="nav-item" href="#"><i class="ic ic-steam"></i><span class="nav-text">Steam</span><span role="img" class="nav-note" aria-label="Setup: step 2 of 4 for you">2 of 4</span></a>
+      </div>
+      <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
+    </div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page cap">
+      <header class="page-head">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
+<div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
+        <div class="page-heading"><h1>Channels</h1></div>
+        <!-- The platforms Diceroll builds decide which channels show; the scope is stated once, here. -->
+        <div class="page-sub">
+          <div role="group" class="mk-cluster" aria-label="Diceroll's platforms">
+            <span class="pill"><i class="ic ic-apple"></i>iOS</span>
+            <span class="pill"><i class="ic ic-android"></i>Android</span>
+            <span class="pill"><i class="ic ic-windows"></i>Windows x64</span>
+            <span class="pill"><i class="ic ic-linux"></i>Linux x86_64</span>
+            <a class="link small" href="#">Add a platform</a>
+          </div>
+        </div>
+        <!-- A role that can read Ship builds but not publish: the action stays in place, disabled, and says who can. -->
+        <div class="page-actions">
+          <span class="freshness">Build from CI, 22 min ago</span>
+          <button class="btn primary" disabled aria-disabled="true" aria-describedby="who-can"><i class="ic ic-rocket"></i>Publish 1.9.0</button>
+        </div>
+      </header>
+
+      <!-- Why the actions are off, once, with who can do them (the config.cloud-sync-product-role pattern). -->
+      <div class="callout info" id="who-can">
+        <i class="ic ic-lock"></i>
+        <div class="grow">
+          <div class="callout-title">You can see Diceroll’s channels; publishing and setup are for Release managers</div>
+          <div class="callout-text">Ana Lima and Jun Park can publish 1.9.0 or set up a channel. <a class="nlink" href="#">Ask for access</a></div>
+        </div>
+      </div>
+
+      <!-- The one channel problem, said once with its fix; its row below carries Attention. A warning row has no pill (EXPERIENCE §11.3). -->
+      <section class="card alert" aria-label="Needs attention">
+        <div class="card-rows">
+          <div class="attn-row bare">
+            <span class="attn-subject"><i class="ic ic-triangle-alert attn-glyph" aria-hidden="true"></i><i class="ic ic-google-play" aria-hidden="true"></i>Google Play</span>
+            <span class="attn-text">Service account key expires Oct 16; uploads and purchase checks stop then.</span>
+            <span class="meta">Release managers replace it</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- In use: Live, Ready and Attention, one row each; Delivery and Sales side by side (A-20's four states per side). The whole row opens the channel. -->
+      <section class="section" aria-labelledby="inuse-title">
+        <div class="section-head">
+          <div class="mk-cluster baseline"><h2 id="inuse-title">In use</h2><span class="count">7</span></div>
+        </div>
+        <div class="table-card">
+          <table class="table fixed stack-phone row-links reflow inuse" aria-labelledby="inuse-title">
+            <colgroup><col class="c-name"><col class="cust-col"><col class="c-state"><col class="c-state"><col class="c-go"></colgroup>
+            <thead>
+              <tr><th>Channel</th><th class="cust">What customers do</th><th>Delivery</th><th>Sales</th><th class="end"><span class="sr-only">Open</span></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="core"><i class="ic ic-polaris"></i></span><div><a class="cell-title" href="#">Polaris Key</a><div class="cell-sub"><span class="nowrap">1.8.2 on stable</span> · <span class="nowrap">1.9.0 on beta</span> · <span class="nowrap">1.10.0-dev.3 on dev</span></div><div class="row-chip"><span class="value-chip"><i class="ic ic-globe"></i><span class="mid"><span>dl.plrs.im/</span><span>diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy dl.plrs.im/diceroll"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
+                <td class="cust hide-narrow"><span class="value-chip"><i class="ic ic-globe"></i><span class="mid"><span>dl.plrs.im/</span><span>diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy dl.plrs.im/diceroll"><i class="ic ic-copy"></i></button></span></td>
+                <td class="hide-narrow"><span class="status"><i class="ic ic-circle-check"></i>Live</span></td>
+                <td class="hide-narrow"><div class="status-stack"><span class="status ready"><i class="ic ic-circle-dot"></i>Ready</span><span class="meta">No offers yet</span></div></td>
+                <td class="end hide-narrow"><i class="ic ic-chevron-right subtle"></i></td>
+                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status"><i class="ic ic-circle-check"></i>Live</span><span class="subtle" aria-hidden="true">·</span><span class="meta">Sales</span><span class="status ready"><i class="ic ic-circle-dot"></i>Ready</span></span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-app-store"></i></span><div><a class="cell-title" href="#">App Store</a><div class="cell-sub"><span class="nowrap">1.8.2 on the App Store</span> · <span class="nowrap">1.9.0 (214) on TestFlight</span></div><div class="row-chip"><span class="value-chip" title="apps.apple.com/app/id6478123905"><i class="ic ic-external-link"></i><span class="mid"><span>apps.apple.com/app/</span><span>id6478123905</span></span><button class="btn ghost icon xs" aria-label="Copy apps.apple.com/app/id6478123905"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
+                <td class="cust hide-narrow"><span class="value-chip" title="apps.apple.com/app/id6478123905"><i class="ic ic-external-link"></i><span class="mid"><span>apps.apple.com/app/</span><span>id6478123905</span></span><button class="btn ghost icon xs" aria-label="Copy apps.apple.com/app/id6478123905"><i class="ic ic-copy"></i></button></span></td>
+                <td class="hide-narrow"><span class="status"><i class="ic ic-circle-check"></i>Live</span></td>
+                <td class="hide-narrow"><span class="status"><i class="ic ic-circle-check"></i>Live</span></td>
+                <td class="end hide-narrow"><i class="ic ic-chevron-right subtle"></i></td>
+                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status"><i class="ic ic-circle-check"></i>Live</span><span class="subtle" aria-hidden="true">·</span><span class="meta">Sales</span><span class="status"><i class="ic ic-circle-check"></i>Live</span></span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-google-play"></i></span><div><a class="cell-title" href="#">Google Play</a><div class="cell-sub"><span class="nowrap">1.8.2 in production</span> · <span class="nowrap">1.9.0 on closed testing</span></div><div class="row-chip"><span class="value-chip" title="play.google.com/store/apps/details?id=com.example.diceroll"><i class="ic ic-external-link"></i><span class="mid"><span>play.google.com/store/apps/details?id=com.</span><span>example.diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy play.google.com/store/apps/details?id=com.example.diceroll"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
+                <td class="cust hide-narrow"><span class="value-chip" title="play.google.com/store/apps/details?id=com.example.diceroll"><i class="ic ic-external-link"></i><span class="mid"><span>play.google.com/store/apps/details?id=com.</span><span>example.diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy play.google.com/store/apps/details?id=com.example.diceroll"><i class="ic ic-copy"></i></button></span></td>
+                <td class="hide-narrow"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Attention</span></td>
+                <td class="hide-narrow"><span class="meta nowrap-meta">Key expires Oct 16</span></td>
+                <td class="end hide-narrow"><i class="ic ic-chevron-right subtle"></i></td>
+                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status warning"><i class="ic ic-triangle-alert"></i>Attention</span><span class="nowrap-meta"><span class="meta">Sales</span> <span class="meta">Key expires Oct 16</span></span></span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-itch"></i></span><div><a class="cell-title" href="#">itch.io</a><div class="cell-sub"><span class="nowrap">1.8.2 on stable</span> · <span class="nowrap">Windows x64, Linux x86_64</span></div><div class="row-chip"><span class="value-chip" title="twelvepips.itch.io/diceroll"><i class="ic ic-external-link"></i><span class="mid"><span>twelvepips.itch.io/</span><span>diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy twelvepips.itch.io/diceroll"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
+                <td class="cust hide-narrow"><span class="value-chip" title="twelvepips.itch.io/diceroll"><i class="ic ic-external-link"></i><span class="mid"><span>twelvepips.itch.io/</span><span>diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy twelvepips.itch.io/diceroll"><i class="ic ic-copy"></i></button></span></td>
+                <td class="hide-narrow"><span class="status"><i class="ic ic-circle-check"></i>Live</span></td>
+                <td class="hide-narrow"><span class="status muted">Not set up</span></td>
+                <td class="end hide-narrow"><i class="ic ic-chevron-right subtle"></i></td>
+                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status"><i class="ic ic-circle-check"></i>Live</span></span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-package-open"></i></span><div><a class="cell-title" href="#">Obtainium</a><div class="cell-sub"><span class="nowrap">1.8.2 on stable</span> · <span class="nowrap">from Polaris Key</span></div><div class="row-chip"><span class="value-chip sans"><i class="ic ic-qr-code"></i><span><span class="long">Add to Obtainium · </span>QR code</span><button class="btn ghost icon xs" aria-label="Copy the Add to Obtainium link"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
+                <td class="cust hide-narrow"><span class="value-chip sans"><i class="ic ic-qr-code"></i><span><span class="long">Add to Obtainium · </span>QR code</span><button class="btn ghost icon xs" aria-label="Copy the Add to Obtainium link"><i class="ic ic-copy"></i></button></span></td>
+                <td class="hide-narrow"><span class="status"><i class="ic ic-circle-check"></i>Live</span></td>
+                <td class="hide-narrow"><span class="subtle" title="Obtainium doesn’t sell"><span aria-hidden="true">—</span><span class="sr-only">Doesn’t sell</span></span></td>
+                <td class="end hide-narrow"><i class="ic ic-chevron-right subtle"></i></td>
+                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status"><i class="ic ic-circle-check"></i>Live</span></span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-square-terminal"></i></span><div><a class="cell-title" href="#">Scoop</a><div class="cell-sub"><span class="nowrap">1.8.2 on stable</span> · <span class="nowrap">from the Windows x64 .zip</span></div><div class="row-chip"><span class="value-chip" title="scoop install https://key.plrs.im/diceroll/distribution/scoop/stable.json"><i class="ic ic-terminal"></i><span class="mid"><span>scoop install https://key.plrs.im/diceroll/distribution/</span><span>scoop/stable.json</span></span><button class="btn ghost icon xs" aria-label="Copy the Scoop install command"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
+                <td class="cust hide-narrow"><span class="value-chip" title="scoop install https://key.plrs.im/diceroll/distribution/scoop/stable.json"><i class="ic ic-terminal"></i><span class="mid"><span>scoop install https://key.plrs.im/diceroll/distribution/</span><span>scoop/stable.json</span></span><button class="btn ghost icon xs" aria-label="Copy the Scoop install command"><i class="ic ic-copy"></i></button></span></td>
+                <td class="hide-narrow"><span class="status"><i class="ic ic-circle-check"></i>Live</span></td>
+                <td class="hide-narrow"><span class="subtle" title="Scoop doesn’t sell"><span aria-hidden="true">—</span><span class="sr-only">Doesn’t sell</span></span></td>
+                <td class="end hide-narrow"><i class="ic ic-chevron-right subtle"></i></td>
+                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status"><i class="ic ic-circle-check"></i>Live</span></span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-terminal"></i></span><div><a class="cell-title" href="#">winget</a><div class="cell-sub"><span class="nowrap">Gets 1.9.0 when stable reaches 100%</span></div><div class="row-chip"><span class="value-chip" title="winget install TwelvePips.Diceroll"><i class="ic ic-terminal"></i><span class="mid"><span>winget install TwelvePips.</span><span>Diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy the winget install command"><i class="ic ic-copy"></i></button></span></div></div><i class="ic ic-chevron-right row-go show-narrow" aria-hidden="true"></i></div></td>
+                <td class="cust hide-narrow"><span class="value-chip" title="winget install TwelvePips.Diceroll"><i class="ic ic-terminal"></i><span class="mid"><span>winget install TwelvePips.</span><span>Diceroll</span></span><button class="btn ghost icon xs" aria-label="Copy the winget install command"><i class="ic ic-copy"></i></button></span></td>
+                <td class="hide-narrow"><span class="status ready"><i class="ic ic-circle-dot"></i>Ready</span></td>
+                <td class="hide-narrow"><span class="subtle" title="winget doesn’t sell"><span aria-hidden="true">—</span><span class="sr-only">Doesn’t sell</span></span></td>
+                <td class="end hide-narrow"><i class="ic ic-chevron-right subtle"></i></td>
+                <td class="show-narrow"><span class="mk-cluster"><span class="meta">Delivery</span><span class="status ready"><i class="ic ic-circle-dot"></i>Ready</span></span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Not set up: only the person's steps are counted; One click when every credential is already held (A-33). Each card is one value line and its foot. -->
+      <section class="section" aria-labelledby="setup-title">
+        <div class="section-head">
+          <div class="mk-cluster baseline"><h2 id="setup-title">Not set up</h2><span class="count">4</span></div>
+        </div>
+        <div class="mk-grid-2 pinned">
+          <article class="card" aria-labelledby="alt-title">
+            <div class="card-head plain">
+              <span class="icon-tile sm neutral"><i class="ic ic-app-window"></i></span>
+              <div class="title"><h3 id="alt-title">AltStore and SideStore</h3><p>Install source · iOS</p></div>
+              <button class="btn ghost icon sm" aria-label="More for AltStore and SideStore: Not using Diceroll on AltStore and SideStore"><i class="ic ic-ellipsis"></i></button>
+            </div>
+            <div class="card-body tight grow two-line"><p>iPhone players add Diceroll’s source once, from your download page.</p></div>
+            <div class="card-foot fixed between">
+              <span class="pill accent sm" title="No steps for you"><i class="ic ic-zap"></i>One click</span>
+              <button class="btn outline sm" disabled aria-disabled="true">Turn on</button>
+            </div>
+          </article>
+
+          <article class="card" aria-labelledby="steam-title">
+            <div class="card-head plain">
+              <span class="icon-tile sm neutral"><i class="ic ic-steam"></i></span>
+              <div class="title"><h3 id="steam-title">Steam</h3><p>Store · Windows x64 and Linux x86_64</p></div>
+              <button class="btn ghost icon sm" aria-label="More for Steam: Not using Diceroll on Steam"><i class="ic ic-ellipsis"></i></button>
+            </div>
+            <div class="card-body tight grow two-line"><p>Sell Diceroll on Steam, Steam Deck included.</p></div>
+            <div class="card-foot fixed between">
+              <span class="foot-text type-small muted clamp-1" title="Step 2 of 4: create the app in Steamworks">Step 2 of 4: create the app in Steamworks</span>
+              <button class="btn outline sm" disabled aria-disabled="true">Continue</button>
+            </div>
+          </article>
+
+          <article class="card" aria-labelledby="ms-title">
+            <div class="card-head plain">
+              <span class="icon-tile sm neutral"><i class="ic ic-microsoft-store"></i></span>
+              <div class="title"><h3 id="ms-title">Microsoft Store</h3><p>Store · Windows x64</p></div>
+              <button class="btn ghost icon sm" aria-label="More for Microsoft Store: Not using Diceroll on the Microsoft Store"><i class="ic ic-ellipsis"></i></button>
+            </div>
+            <div class="card-body tight grow two-line">
+              <p class="icon-line warning"><i class="ic ic-triangle-alert"></i><span>Needs an installer: the Store takes .msix, .msi or .exe; Diceroll ships a .zip.</span></p>
+            </div>
+            <div class="card-foot fixed">
+              <button class="btn outline sm" disabled aria-disabled="true"><i class="ic ic-file-code-2"></i>Add an MSIX build</button>
+            </div>
+          </article>
+
+          <article class="card" aria-labelledby="flat-title">
+            <div class="card-head plain">
+              <span class="icon-tile sm neutral"><i class="ic ic-layers"></i></span>
+              <div class="title"><h3 id="flat-title">Flathub</h3><p>Store · Linux x86_64</p></div>
+              <button class="btn ghost icon sm" aria-label="More for Flathub: Not using Diceroll on Flathub"><i class="ic ic-ellipsis"></i></button>
+            </div>
+            <div class="card-body tight grow two-line"><p>Players get Diceroll and its updates from Flathub.</p></div>
+            <div class="card-foot fixed between">
+              <span class="foot-text type-small muted clamp-1" title="2 steps for you: submit, then merge its pull request">2 steps for you: submit, then merge its pull request</span>
+              <button class="btn outline sm" disabled aria-disabled="true">Set up</button>
+            </div>
+          </article>
+        </div>
+
+        <!-- The rest of the in-scope channels: the whole row is the disclosure. -->
+        <button class="card fold-row" aria-expanded="false" aria-controls="more-channels"><i class="ic ic-chevron-right"></i><span class="fold-row-text"><strong>3 more channels</strong><span>AltStore PAL, F-Droid repository, App Installer</span></span></button>
+
+        <p class="icon-line type-small muted"><i class="ic ic-eye-off"></i><span>Not using: Snap Store, chosen by Ana Lima on <span class="nowrap">Sep 30. <span class="subtle">Undo is for Release managers</span></span></span></p>
+      </section>
+    </div>
+  </main>
+</div>
