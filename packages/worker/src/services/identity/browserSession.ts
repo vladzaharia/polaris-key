@@ -20,6 +20,7 @@
  * exactly the order and with exactly the fail-closed behaviour they had before the move.
  */
 
+import { isSameOriginRequest } from "../../core/browserRequestGuard.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
 import { Catalog } from "@polaris-key/catalog";
 import {
@@ -116,11 +117,19 @@ function sessionKey(product: string, hash: string): string {
 function readCookie(req: Request, name: string): string | null {
   const raw = req.headers.get("cookie");
   if (!raw) return null;
+  // SEC-IDN-13: a duplicate may be a planted copy (cookie tossing), so it fails closed; a
+  // malformed percent-encoding is "no cookie", not a 500.
+  const values = new Set<string>();
   for (const part of raw.split(";")) {
     const [k, ...v] = part.trim().split("=");
-    if (k === name) return decodeURIComponent(v.join("="));
+    if (k === name) values.add(v.join("="));
   }
-  return null;
+  if (values.size !== 1) return null;
+  try {
+    return decodeURIComponent(values.values().next().value ?? "") || null;
+  } catch {
+    return null;
+  }
 }
 
 function setCookieHeader(product: string, token: string): string {
@@ -467,6 +476,9 @@ export async function handleBrowserSessionLicense(
   settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
+  // SEC-IDN-3: a cross-site page must not be able to open a session for a key it holds.
+  if (!isSameOriginRequest(req))
+    return errorResponse(403, "forbidden", "cross-site request refused");
   if (
     !(await rateLimitOk(
       env,

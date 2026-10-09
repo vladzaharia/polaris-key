@@ -1,3 +1,4 @@
+import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportJWK,
@@ -1361,10 +1362,11 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
     );
   }
 
-  const callback = (state: string, code = "auth-code") =>
+  const callback = async (state: string, code = "auth-code") =>
     handleAuthCallback(
       new Request(
         `https://key.plrs.im/djdl/identity/auth/callback?code=${code}&state=${state}`,
+        { headers: { cookie: await bindFlow(env, "djdl", state) } },
       ) as unknown as Request,
       env,
       db,

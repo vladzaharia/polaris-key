@@ -10,6 +10,7 @@ import {
   type Env,
 } from "../../../core/platform.js";
 import { renderBrandPage } from "../../../core/brandHtml.js";
+import { readGuardedJsonObject } from "../../../core/browserRequestGuard.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 
 /** A JSON answer. `cookies` become separate `Set-Cookie` fields. */
@@ -132,20 +133,12 @@ export function cardPage(
   );
 }
 
-/** A request body as a JSON object, or `null` when it is not one. */
-export async function readJsonObject(
+/** A request body as a JSON object, or `null` when it is not one, is not same-origin JSON, or is
+ *  too large (SEC-IDN-2). */
+export function readJsonObject(
   req: Request,
 ): Promise<Record<string, unknown> | null> {
-  try {
-    const raw = await req.text();
-    if (!raw.trim()) return {};
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
+  return readGuardedJsonObject(req);
 }
 
 /** A plausible email address, normalised (trimmed, lower-case), or `null`. */

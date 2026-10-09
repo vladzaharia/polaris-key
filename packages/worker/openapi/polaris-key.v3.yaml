@@ -7774,8 +7774,8 @@ paths:
         refused, and the attach is never committed for a mint that cannot succeed. A decision sent before the device was shown the
         identity, or an attach with nothing attachable, is answered with `confirm` again and
         changes nothing. A user-code holder cannot reach any of this: it needs the device code.
-        The flow's starter can, which is why the open R1-07 (no browser binding) also covers
-        this decision.
+        The flow's starter can, but the IdP callback is bound to the browser that confirmed
+        the flow, so a phished victim's sign-in never reaches this decision.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: Authorization

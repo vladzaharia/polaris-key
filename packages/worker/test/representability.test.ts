@@ -13,6 +13,7 @@
  *    own body shape, never as a throw.
  */
 
+import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportJWK,
@@ -776,6 +777,7 @@ describe("OIDC sign-in stores an unsignable name or email as null", () => {
     const res = await handleAuthCallback(
       new Request(
         `https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S`,
+        { headers: { cookie: await bindFlow(w.env, SLUG, "S") } },
       ) as unknown as Request,
       w.env,
       w.db,

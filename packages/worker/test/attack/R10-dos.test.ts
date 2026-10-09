@@ -918,7 +918,7 @@ async function seedOidc(db: Db): Promise<void> {
     "https://idp.example",
     "client-id",
     null,
-    null,
+    JSON.stringify(["https://key.plrs.im/djdl/identity/auth/callback"]),
     "{}",
   );
 }

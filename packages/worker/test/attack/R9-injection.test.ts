@@ -7,6 +7,7 @@
  * NOTE: these tests assert the CURRENT (vulnerable) behaviour so they fail loudly when a
  * fix lands. Read them as "this is what an attacker can do today".
  */
+import { bindFlow } from "../flowBinderHelper.js";
 import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -637,6 +638,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     const res = await handleAuthCallback(
       req(
         `https://key.plrs.im/${SLUG}/identity/auth/callback?code=ATTACKER_CODE&state=ATTACKER_STATE`,
+        { headers: { cookie: await bindFlow(env, SLUG, "ATTACKER_STATE") } },
       ),
       env,
       db,
@@ -674,7 +676,9 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
 
     const calls = recordGlobalFetch();
     const res = await handleAuthCallback(
-      req(`https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S`),
+      req(`https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S`, {
+        headers: { cookie: await bindFlow(env, SLUG, "S") },
+      }),
       env,
       db,
       product,
@@ -711,6 +715,7 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       await handleAuthCallback(
         req(
           `https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S3`,
+          { headers: { cookie: await bindFlow(env, SLUG, "S3") } },
         ),
         env,
         db,
@@ -744,7 +749,12 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
     );
     const calls = recordGlobalFetch();
     await handleAuthCallback(
-      req(`https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S2`),
+      req(
+        `https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S2`,
+        {
+          headers: { cookie: await bindFlow(env, SLUG, "S2") },
+        },
+      ),
       env,
       db,
       product,
@@ -1272,7 +1282,7 @@ describe("R9-06 safeReturnTo: /manage is allowed on the product flow, denied on 
     env.PLATFORM_OIDC_CLIENT_ID = "platform-client";
     await seedProduct(db, SLUG);
     await seedProductSecret(db, SLUG, "OIDC_CLIENT_SECRET", "sekrit");
-    await seedCustomOidc(db, "https://id.example", { redirectUris: null });
+    await seedCustomOidc(db, "https://id.example");
     const product = (await loadProduct(env, db, SLUG))!;
 
     const res = await handleAuthStart(

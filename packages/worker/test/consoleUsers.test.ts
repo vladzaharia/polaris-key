@@ -11,6 +11,7 @@
  *   - per-subject export and data deletion go through Core's subject-store registry;
  *   - the operator step-up: `/manage/login?stepUp=1`, `auth_time`, and the hash `returnTo`.
  */
+import { bindAdminFlow } from "./flowBinderHelper.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -953,9 +954,9 @@ describe("operator step-up", () => {
     };
     const db = makeTestDb();
     const cb = await handleAdminCallback(
-      new Request(
-        `https://key.plrs.im/manage/callback?code=c&state=${state}`,
-      ) as unknown as Request,
+      new Request(`https://key.plrs.im/manage/callback?code=c&state=${state}`, {
+        headers: { cookie: await bindAdminFlow(env, state) },
+      }) as unknown as Request,
       env,
       db,
       NOW,
