@@ -169,7 +169,7 @@ class CorpusV2Test : ConformanceSuite() {
                     verified += m.doc!!.issuedAt
                 }
             }
-            val reload = VerifyOptions(trust, aud, deviceId, now = system, checkFreshness = false)
+            val reload = VerifyOptions(trust, aud, deviceId, lastAcceptedIssuedAt = null, now = system, checkFreshness = false)
             val license = c["licenseJws"].stringValue?.let { verifyLicenseDoc(it, reload) }
             license?.let { verified += it.issuedAt }
             c["configJws"].stringValue?.let { verifyConfigDoc(it, reload) }?.let { verified += it.issuedAt }
