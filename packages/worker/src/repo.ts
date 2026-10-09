@@ -475,28 +475,6 @@ export async function insertProductKey(
   );
 }
 
-export function stmtRetireProductKeys(
-  product: string,
-  at: number,
-): DbStatement {
-  return {
-    sql: "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active'",
-    params: [at, product],
-  };
-}
-
-export function stmtSetProductKeyStatus(
-  product: string,
-  kid: string,
-  status: "active" | "staged" | "retired" | "revoked",
-  at: number,
-): DbStatement {
-  return {
-    sql: "UPDATE product_keys SET status = ?, rotated_at = ? WHERE product = ? AND kid = ?",
-    params: [status, at, product, kid],
-  };
-}
-
 export async function getProductSecret(
   db: Db,
   product: string,
