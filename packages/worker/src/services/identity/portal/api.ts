@@ -1,4 +1,5 @@
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
+import { constantTimeEqual } from "../../../platform/compare.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
@@ -1416,7 +1417,8 @@ export async function handlePortalApi(
   const { session, sessionIdHash } = sessionResult;
   if (isMutation(req.method)) {
     const presented = req.headers.get(PORTAL_CSRF_HEADER);
-    if (!presented || presented !== session.csrf) return forbidden("csrf");
+    if (!presented || !constantTimeEqual(presented, session.csrf))
+      return forbidden("csrf");
   }
   // Erasure is dispatched BEFORE the per-request link sweep: re-deriving license links for an
   // account that is about to be deleted is pure waste, and it is the one request where a

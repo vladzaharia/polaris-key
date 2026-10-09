@@ -20,6 +20,7 @@
 // carried over: a compatibility alias for a path nobody can still be calling is a second code
 // path for free.
 
+import { constantTimeEqual } from "../../platform/compare.js";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { createSignInRequest } from "./passthrough/request.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -1692,7 +1693,7 @@ async function confirmDeviceFlow(
 ): Promise<Response> {
   if (!sameOriginPost(req))
     return errorResponse(403, "forbidden", "confirmation failed");
-  if (!record.csrf || !token || token !== record.csrf)
+  if (!record.csrf || !token || !constantTimeEqual(token, record.csrf))
     return errorResponse(403, "forbidden", "confirmation failed");
 
   // The confirmation is an authorization input for the poll, so it is recorded on

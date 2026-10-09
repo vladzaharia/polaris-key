@@ -22,3 +22,23 @@ describe("SEC-WP-22 licensing hardening", () => {
     expect(bad(undefined)).toBe(false);
   });
 });
+
+describe("SEC-INF-8 RateLimitDO input validation", () => {
+  it("rejects windowSec 0", async () => {
+    const { RateLimitDO } = await import("../src/rateLimitDo.js");
+    const dobj = new RateLimitDO({ storage: {} } as never, {} as never);
+    const res = await dobj.fetch(
+      new Request("https://x/", {
+        method: "POST",
+        body: JSON.stringify({
+          bucket: "b",
+          id: "i",
+          limit: 1,
+          windowSec: 0,
+          now: 5,
+        }),
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+});
