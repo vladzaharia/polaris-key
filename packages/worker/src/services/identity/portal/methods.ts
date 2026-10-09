@@ -497,6 +497,7 @@ async function emailVerify(
     recipient: flow.email,
     flowId: ref.id,
     code,
+    req,
   });
   if (!result.ok) {
     const attempts = flow.attempts + 1;

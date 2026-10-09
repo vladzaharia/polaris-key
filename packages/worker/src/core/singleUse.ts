@@ -210,6 +210,24 @@ export function redeemArtefact(
   );
 }
 
+/** `redeemArtefact`, also saying whether a live artefact was there to guess against (`live`). */
+export function redeemArtefactLive(
+  env: Env,
+  ref: ArtefactRef,
+  proof: string,
+): Promise<{ ok: true; payload: string } | { ok: false; live: boolean }> {
+  return read<{ ok: true; payload: string } | { ok: false; live: boolean }>(
+    env,
+    ref,
+    { op: "redeem", proof },
+    (out) =>
+      out.ok === true && typeof out.value === "string"
+        ? { ok: true, payload: out.value }
+        : { ok: false, live: out.live === true },
+    { ok: false, live: false },
+  );
+}
+
 export interface ArtefactUpdate {
   /** Top-level fields the stored JSON object must hold first; `null` means "absent". */
   expect?: Record<string, unknown>;
