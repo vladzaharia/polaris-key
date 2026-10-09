@@ -34,8 +34,8 @@ an issue on the product itself, and a product that runs no services.
 - **Pills mean attention** (EXPERIENCE §1 and §7, ADMIN.md §5.11). Only `danger`, `warning` and
   `info` are pills, each with an icon and a word, at the right edge. A healthy card draws nothing.
   There is no "Setup complete" pill and no healthy badge.
-- **Accents have roles** (BRAND §5.4). A service accent marks its service's glyph only. Status
-  colours never change. The focus ring is always violet.
+- **Accents have roles** (BRAND §5.4). A service accent marks its service's glyph and the states of elements that reference that service (B17). Status
+  colours never change. The focus ring takes the accent of the service the element references (B17).
 
 ## What every direction shares
 
@@ -138,7 +138,7 @@ three rows (services with an issue first, then the table's order) and a fourth r
 for the rest, with "3 more". A footer line says when the product last synced or changed.
 
 **Product accent.** The monogram tile, and the card's edge under the pointer: `border-color:
-solid`, a hairline that is never a status. The focus ring stays violet.
+solid`, a hairline that is never a status. The focus ring takes the product's service accent (B17).
 
 **Height.** One row is 155 px and four rows are 251 px. A row stretches to its tallest card, and the
 footer is pinned to the bottom, so the stretch gap sits above the footer rather than under the
@@ -311,7 +311,7 @@ Today the same facts cost Overview one to three reads per service per product.
   or a figure is plain text; a click on it falls through to the product.
 - **Focus order.** The name comes first, then the services in reading order: left to right in A and
   C; in B top to bottom, then the "more" chips. That is at most eight stops per card. Focus on the
-  name rings the whole card. Focus on a service rings only that link (violet, 2 px, offset 2 px).
+  name rings the whole card. Focus on a service rings only that link (that service's accent, 2 px, offset 2 px; B17).
   Today's card uses `has-[a:focus-visible]`, which would also ring the card when a service has
   focus. The implementation narrows it to the name link (`has-[a[data-card-link]:focus-visible]`).
 - **Names.**

@@ -166,11 +166,12 @@ violet accent, no `data-service` attribute. Specifically:
   full stop, no label above it. It clamps so it reflows at 200 % zoom and 320 px; a long name takes
   at most two lines. Card `h2`s and dialogs keep their size.
 - **Colour:** neutral chrome; the primary action is neutral ink (`action-neutral`: near-white on
-  dark, near-black on light, label in the page colour) and danger stays red. `--pk-accent` (core
-  violet) marks context only: the active nav marker, links, selection, focus and small counts.
-  Gold (`--pk-signed`) only on _Signed_ chips. Status colours always with an icon and a word. No
-  other service's accent, and no chartreuse, as a fill, band or panel: the portal is a core
-  surface.
+  dark, near-black on light, label in the page colour) and danger stays red. The active nav
+  marker, links, selection, hover, checked states, focus and small counts take the accent of the
+  service the element references (B17; `--pk-accent`, core violet, on Library, Discover and
+  Account). Gold (`--pk-signed`) only on _Signed_ chips. Status colours always with an icon and a
+  word, never in a service accent. No other service's accent, and no chartreuse, as a fill, band
+  or panel: the portal is a core surface.
 - **Illustration:** the stationary star (BRAND §7.7) is the only illustration, on empty, error and
   no-context screens. A sparse static star field sits behind the login card on wide screens. The
   star and the star field never animate; everything else moves only through the shared motion
@@ -419,7 +420,7 @@ star field (`surface-page`, no art behind it). The card has three slots:
   Google** or **Continue with Steam** (`aria-label`, repeated as the hover tooltip), and the row is a
   `role="group"` labelled "Or continue with". In "add a method" contexts the names read **Connect
   Apple** and **Connect Google** (§4.10).
-- **Focus and hover:** the standard violet 2 px ring with 2 px offset on `:focus-visible` (02 shows it
+- **Focus and hover:** the standard 2 px ring in the referenced service's accent (core violet here, B17) with 2 px offset on `:focus-visible` (02 shows it
   on Google), and `border-strong` on hover. The buttons are 52 px tall, so every target clears 44 px.
 - **1 to 3 buttons.** The row has as many buttons as the product ships providers. Three split the
   row into thirds (01); two split it in half (02, 06, 07, 08); one keeps the width of a half-row
@@ -1545,7 +1546,7 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
    `role="img"` with a list label.
 3. **Status** is always icon plus word; the seat meter is `role="img"` with a text label; the
    "Not included" reason is visible text.
-4. **Focus:** the violet 2 px ring with 2 px offset everywhere; dialogs trap focus and return it to
+4. **Focus:** the 2 px ring with 2 px offset everywhere, in the referenced service's accent (core violet unless the element belongs to another service, B17); dialogs trap focus and return it to
    the opener; the inline device confirm moves focus to its heading; after adding a product, focus lands
    on the new product's `h1`.
 5. **Forms:** visible labels; errors inline with `aria-invalid` and `aria-describedby`; the code

@@ -115,7 +115,7 @@ fixes:**
 
 - **Surfaces:** `surface.page | raised | overlay | sunken`.
 - **Text:** `text.strong | default | muted | subtle | onAccent`.
-- **Borders:** `border.subtle | strong`, plus `focus`.
+- **Borders:** `border.subtle | strong`, plus `focus` (the ring in the referenced service's accent, B17).
 - **Accent families** (`solid`, `fg`, `on`, `subtle`), per section:
 
   | Section      | Family                  |
@@ -393,10 +393,12 @@ them. Glyphs follow the BRAND service icon set (§1.1).
 
 **Rules.**
 
-- **What accents color.** Context only: nav marker, the canvas rule, the masthead tile, links,
-  selected row, sidebar glyph, charts. **Status colors never change by section** and an accent is
-  never a status: service green is not success, Config yellow is not warning. The **focus ring is
-  violet everywhere**.
+- **What accents color.** Context and interaction: nav marker, the canvas rule, the masthead tile,
+  links, selected row, sidebar glyph, charts, and the focus ring, hover and checked states, each in
+  the accent of the service the element references (B17: `fg` for text and edges, `solid` for
+  fills; a Config row in a mixed list is config yellow). The primary button is neutral action ink
+  (B2). **Status colors never change by section and are never drawn in a service accent**: service
+  green is not success, Config yellow is not warning.
 - **Ship builds is one identity** (B5). Every Ship builds page, and every dialog opened from one,
   shows the Package glyph, Release cyan chrome (rule, tile, nav marker) and the crumb
   `<Product> › Ship builds › <Page>`. Distribution green stays on Commerce and Sales surfaces;
