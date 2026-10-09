@@ -148,10 +148,7 @@ export async function verifyAppleJws(
     if (signed > now + 300) return reject("invalid_jws");
     // SEC-CRY-8 / SEC-COM-13: where the caller wants a live signature (a notification, the
     // Server API copy), signedDate cannot be backdated to a time an old or leaked leaf was valid.
-    if (
-      opts.maxAgeSeconds !== undefined &&
-      signed < now - opts.maxAgeSeconds
-    )
+    if (opts.maxAgeSeconds !== undefined && signed < now - opts.maxAgeSeconds)
       return reject("invalid_jws");
     at = signed;
   } else if (opts.maxAgeSeconds !== undefined) return reject("invalid_jws");
