@@ -1,0 +1,128 @@
+{
+  "id": "identity.connections",
+  "title": "Platform → Connections",
+  "area": "identity",
+  "surface": "console",
+  "packages": [
+    "I-31",
+    "I-30",
+    "I-32",
+    "P0-28",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "The one Platform → Connections page, grouped by kind: the built-in Apple, Google and Steam providers with status; single sign-on connections at platform or product scope with their DNS-verified domains (SSO required per domain); email delivery and Turnstile; and the store team keys that replace the old Store connections page. Session lengths are read-only deploy-time facts.",
+  "compare": [
+    "Sidebar is the Platform context with Connections active (Home, Members, Connections, Settings, Packages, Status, Activity); its warning count equals the warning pills on the page (3: a domain waiting for DNS, the Google Play key expiry, Steamworks not set up). There is no separate Store connections, Identity or Policies item.",
+    "Sign-in providers: Apple, Google, Steam, each with its mark, quiet status text ('Working · last sign-in 12 min ago', never a pill when healthy), which products' cards show it and why (where they ship), and Edit. A provider whose secret comes from a deployment variable shows a neutral 'Set by deployment' pill and 'Move into Polaris Key'. On a new deployment a provider reads 'Not set up' (a neutral pill), names the products whose cards would show it, and offers 'Set up Steam' as an outline button; it is a warning only when a product's channel needs it.",
+    "Single sign-on is one card with two labelled groups. Organizations: name and issuer host, Scope (Platform), Domains, who signs in with it (Customers, Operators, Customers and operators), last sign-in, and a pill at the right edge only for a problem. Product connections: name and issuer host, Product (the product's logo and name), What it does, who signs in, last sign-in. Last sign-in is always relative ('6 min ago', '3 h ago').",
+    "Domain chips have three shapes, not just three icons: SSO required is filled (accent-subtle) with a shield and an 'SSO only' tag, verified is outlined with a tick, waiting is warning-tinted with a clock. A connection holds several domains. The legend sits under the organizations and draws the same chips; it says email codes and passkeys work for every other address.",
+    "Pocket ID appears as an ordinary platform connection (seeded from PLATFORM_OIDC_* on first deploy) with 'Set by deployment' while the env override exists. Studio Okta matches admin.sso-rules (studio.example.com, operators).",
+    "Product connections say what they do on their product in the What it does column: 'A button on DJDL's sign-in card' (DJDL store) or 'Trades the game's Firebase sign-in' (Diceroll accounts). They have no domains.",
+    "Email and Bot protection sit side by side: delivery status as status text, the sender, a 7-day count, 'Send a test email'; Turnstile's scope and today's failures.",
+    "Stores: one row per store team key, healthy rows as status text; Google Play's key expiry as a warning pill with 'Replace key'; Steamworks 'Not set up' (warning pill) with 'Connect Steam' as an outline button, as on Home, naming what stops without it (uploads and in-game Steam sign-in). 'Add SSO connection' in the header is the page's only primary.",
+    "No policy knobs: no session-length fields, no method-strength switch. The footnote states the deploy-time session lengths.",
+    "Phone: the sidebar folds into the menu button; each connection stacks (name and chevron, domain chips, then one meta line with scope, who and when, the problem first in warning text); provider and store rows put their pill, then their action, under the text (the kit's phone rule for actions); Email and Bot protection both put their status under the title."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: one primary, three chip shapes, product connections as their own group, and the sidebar count matches the pills. The first-run provider state is described, not drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Two filled primary buttons: 'Add SSO connection' and 'Connect Steam' on Steamworks; Home draws Connect Steam as an outline button.",
+        "resolution": "'Connect Steam' is an outline button; 'Add SSO connection' is the only primary. The compare line no longer calls it the row's primary."
+      },
+      {
+        "severity": "minor",
+        "issue": "Product connections put sentences in the Domains column and a bare product name in Scope.",
+        "resolution": "Product connections are their own labelled group, 'Product connections', with its own column labels (Product, What it does). Product shows the product's logo before its name; the row's icon is a neutral key tile, so the logo isn't repeated."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Verified, SSO required' and 'Verified' chips differ only by a 12 px icon.",
+        "resolution": "SSO-required chips are filled (accent-subtle) with an 'SSO only' tag; verified chips are outlined; waiting stays warning-tinted. The legend draws the same chips."
+      },
+      {
+        "severity": "minor",
+        "issue": "The sidebar count says 2 while the page shows three warning pills; Last sign-in mixes formats.",
+        "resolution": "The count is 3 on every Platform page in the area (connections, connection, connection-enforce, connection-audience, connection-new and its states). Last sign-in is relative throughout ('3 h ago' for Studio Okta)."
+      },
+      {
+        "severity": "minor",
+        "issue": "No first-run provider state; on phone the compare promised actions on the right but the render put them under the text; Email and Bot protection placed status differently.",
+        "resolution": "Phone: the render keeps the kit's rule (an action goes under its text) and the compare line now says so; Email and Bot protection both put status under the title. First-run: described in the compare (neutral 'Not set up' pill, the products whose cards would show it, 'Set up Steam' outline), not drawn, declined: every provider is in use by DJDL and Diceroll in this story, so drawing one as not set up would contradict identity.app-sign-in and identity.sign-in."
+      },
+      {
+        "severity": "major",
+        "issue": "Spacing scale inconsistent (16, 24 and 32 used at random); card header heights and title sizes vary.",
+        "resolution": "Opt-in .rhythm on the page: 24 between cards in a group, 12 group title to first card, 32 between groups; card header at least 56; card titles 18/600; stat tiles 24. The global tokens are unchanged (existing values); muted and meta text already met 4.5:1 and 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Legend row repeated the pills; 'Single sign-on 5' count disagreed with the rows; subtitles restated their titles; 'Working' repeated beside a green check.",
+        "resolution": "Legend, count chip and the restating subtitles deleted (chip tooltips kept); Organizations subtitle 'Every other address gets email codes and passkeys.'; green check rows show the check and the date only.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Email, Bot protection and Sessions had uneven internals; the third card misaligned at 1024.",
+        "resolution": "One skeleton: title plus chip, one stat block, a fixed 56px action row; pinned to one height; two columns at tablet with the odd card across. Wide keeps the right rail.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Row heights and button heights varied; the two Steam rows read as a contradiction.",
+        "resolution": "One 56px row; one 32px action height (36 on phone); rows renamed 'Steam (web sign-in)' and 'Steamworks (publisher key)'. The Lakeside domain chips still wrap on two lines at 1440 (one line only above about 1500px).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone rows about 160px with repeated labels and tiny actions.",
+        "resolution": "Row actions 36px on phone; check and last sign-in on one line. The 80px label column of the kit's stacked rows was left (existing value).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Merge Email, Bot protection and Sessions into one strip; Organizations beside Product connections at 1920; move the 3-up row above the tables.",
+        "resolution": "declined: this changes structure and priority; the right rail on wide stays and the desktop row gets one skeleton.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Drop the second line under Stores and the 'Not set up' explanation under the pill.",
+        "resolution": "declined: they are the only place that says what stops working; only wrap and height were fixed.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 1
+}

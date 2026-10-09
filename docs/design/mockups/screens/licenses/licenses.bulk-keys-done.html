@@ -1,0 +1,99 @@
+<div class="board cols-2 wide-3 floor" data-service="license">
+  <div class="board-title">
+    <h1>Create keys in bulk: after Create</h1>
+    <p>The New license drawer of licenses.bulk-keys once Create 200 keys has run. The keys are shown once, in a CSV; Polaris Key keeps only a hash of each.</p>
+  </div>
+
+  <!-- Done, before the download. -->
+  <figure class="board-item">
+    <div class="board-stage">
+    <aside class="drawer" aria-labelledby="bd-1">
+      <div class="drawer-head"><h2 id="bd-1">New license</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="drawer-body">
+        <div class="callout success"><i class="ic ic-circle-check"></i><div class="grow"><div class="callout-title">200 keys created</div><div class="callout-text">Each is a floating Standard license.</div></div></div>
+        <p class="hint">Download now: this is the only time the keys can be shown.</p>
+        <section class="card tint neutral-phone" aria-label="Keys file">
+          <div class="item-row">
+            <span class="icon-tile sm neutral"><i class="ic ic-file-lock"></i></span>
+            <div class="item-text"><div class="item-title mono wrap-name">djdl-mixer-bundle-oct-2026.csv</div><div class="item-desc">18 KB</div></div>
+            <div class="item-end"><button class="btn primary"><i class="ic ic-download"></i>Download CSV</button></div>
+          </div>
+        </section>
+      </div>
+      <div class="drawer-foot std"><a class="btn ghost start" href="#">Open batch<i class="ic ic-arrow-right"></i></a><button class="btn outline">Close</button></div>
+    </aside>
+    </div>
+    <figcaption><strong>Done</strong>The stepper goes; Download CSV is the only primary.</figcaption>
+  </figure>
+
+  <!-- Done, after the download. -->
+  <figure class="board-item">
+    <div class="board-stage">
+    <aside class="drawer" aria-labelledby="bd-2">
+      <div class="drawer-head"><h2 id="bd-2">New license</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="drawer-body">
+        <div class="callout success"><i class="ic ic-circle-check"></i><div class="grow"><div class="callout-title">200 keys created</div><div class="callout-text">Each is a floating Standard license.</div></div></div>
+        <section class="card" aria-label="Keys file">
+          <div class="item-row">
+            <span class="icon-tile sm neutral"><i class="ic ic-file-lock"></i></span>
+            <div class="item-text"><div class="item-title mono wrap-name">djdl-mixer-bundle-oct-2026.csv</div><div class="item-desc"><span class="icon-text"><i class="ic ic-circle-check"></i>Downloaded at 10:42</span></div></div>
+            <div class="item-end"><button class="btn outline"><i class="ic ic-download"></i>Download again</button></div>
+          </div>
+        </section>
+        <p class="hint">Download again works until you close this.</p>
+      </div>
+      <div class="drawer-foot std"><a class="btn ghost start" href="#">Open batch<i class="ic ic-arrow-right"></i></a><button class="btn primary">Done</button></div>
+    </aside>
+    </div>
+    <figcaption><strong>Downloaded</strong>Download again becomes the secondary; Done closes without asking.</figcaption>
+  </figure>
+
+  <!-- Closing before any download. -->
+  <figure class="board-item">
+    <div class="board-stage">
+      <aside class="drawer" aria-hidden="true">
+      <div class="drawer-head"><h2>New license</h2><button class="btn ghost icon sm" aria-label="Close" tabindex="-1"><i class="ic ic-x"></i></button></div>
+        <div class="drawer-body">
+          <div class="callout success"><i class="ic ic-circle-check"></i><div class="grow"><div class="callout-title">200 keys created</div><div class="callout-text">Each is a floating Standard license.</div></div></div>
+        <section class="card tint neutral-phone" aria-label="Keys file">
+          <div class="item-row">
+            <span class="icon-tile sm neutral"><i class="ic ic-file-lock"></i></span>
+            <div class="item-text"><div class="item-title mono wrap-name">djdl-mixer-bundle-oct-2026.csv</div><div class="item-desc">18 KB</div></div>
+            <div class="item-end"><button class="btn primary" tabindex="-1"><i class="ic ic-download"></i>Download CSV</button></div>
+          </div>
+        </section>
+        </div>
+        <div class="drawer-foot std"><button class="btn outline" tabindex="-1">Close</button></div>
+      </aside>
+      <div class="overlay center">
+        <div class="dialog sm caution" role="alertdialog" aria-labelledby="bd-close">
+          <div class="dialog-head"><i class="ic ic-triangle-alert"></i><h2 id="bd-close">Close without the CSV?</h2></div>
+          <div class="dialog-body"><p>The 200 keys can’t be shown again, so nobody could use them.</p></div>
+          <div class="dialog-foot std"><button class="btn danger-outline">Close without keys</button><button class="btn primary"><i class="ic ic-download"></i>Download CSV</button></div>
+        </div>
+      </div>
+    </div>
+    <figcaption><strong>Closing early</strong>Close, Esc or × before any download asks first; the safe action is the primary.</figcaption>
+  </figure>
+
+  <!-- Partial result. -->
+  <figure class="board-item">
+    <div class="board-stage">
+    <aside class="drawer" aria-labelledby="bd-4">
+      <div class="drawer-head"><h2 id="bd-4">New license</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="drawer-body">
+        <div class="callout warning"><i class="ic ic-triangle-alert"></i><div class="grow"><div class="callout-title">Created 120 of 200 keys</div><div class="callout-text">Polaris Key stopped answering. Retry makes the other 80 in the same batch, with their own CSV.</div></div><button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Retry</button></div>
+        <section class="card tint neutral-phone" aria-label="Keys file">
+          <div class="item-row">
+            <span class="icon-tile sm neutral"><i class="ic ic-file-lock"></i></span>
+            <div class="item-text"><div class="item-title mono wrap-name">djdl-mixer-bundle-oct-2026.csv</div><div class="item-desc">11 KB</div></div>
+            <div class="item-end"><button class="btn primary"><i class="ic ic-download"></i>Download CSV</button></div>
+          </div>
+        </section>
+      </div>
+      <div class="drawer-foot std"><a class="btn ghost start" href="#">Open batch<i class="ic ic-arrow-right"></i></a><button class="btn outline">Close</button></div>
+    </aside>
+    </div>
+    <figcaption><strong>Partial result</strong>The CSV covers the keys that exist; no key is made twice.</figcaption>
+  </figure>
+</div>

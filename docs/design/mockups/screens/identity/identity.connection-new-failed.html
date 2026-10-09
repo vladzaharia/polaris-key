@@ -1,0 +1,101 @@
+<style>
+  /* identity.connection-new-failed: only what the kit does not already say (no spacing here). */
+  [data-screen="identity.connection-new-failed"] .dl .mono {
+    overflow-wrap: anywhere;
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span><span class="count warning">3</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page wizard-col">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Connections</a><i class="ic ic-chevron-right"></i>Add SSO connection</nav>
+        <div class="page-heading"><h1>Add SSO connection</h1></div>
+      </header>
+
+      <!-- The wizard kit (ST-39): discovery, client, test sign-in with the claims preview, domains, audience. -->
+      <section class="wizard centered" aria-labelledby="wz-title">
+        <div class="wizard-head">
+          <ol class="stepper">
+            <li class="step done"><span class="step-mark"></span><span class="step-label">Provider<small>Kestrel Labs · Keycloak</small></span></li>
+            <li class="step done"><span class="step-mark"></span><span class="step-label">Client<small>Secret sealed</small></span></li>
+            <li class="step current"><span class="step-mark"></span><span class="step-label">Test sign-in<small>Didn’t work</small></span></li>
+            <li class="step"><span class="step-mark"></span><span class="step-label">Domains<small>DNS check</small></span></li>
+            <li class="step"><span class="step-mark"></span><span class="step-label">Who signs in</span></li>
+          </ol>
+          <div class="step-line"><span>Step 3 of 5 · Test sign-in</span><span class="progress" style="--v: 60%"></span></div>
+        </div>
+
+        <div class="wizard-body">
+          <div class="mk-stack-1">
+            <h2 id="wz-title">Test sign-in</h2>
+            <p class="muted">Sign in once with a Kestrel Labs account to see what it sends. Nothing goes live until the last step.</p>
+          </div>
+
+          <div class="callout danger actions-end">
+            <i class="ic ic-circle-x"></i>
+            <div class="grow">
+              <div>
+                <div class="callout-title">Kestrel Labs didn’t accept the client secret</div>
+                <div class="callout-text">Copy the secret again from Keycloak (Clients → polaris-key → Credentials) and paste it on the Client step.</div>
+              </div>
+              <div class="callout-actions">
+                <button class="btn ghost sm"><i class="ic ic-refresh-cw"></i>Try again</button>
+                <button class="btn outline sm"><i class="ic ic-arrow-left"></i>Back to Client</button>
+              </div>
+            </div>
+          </div>
+
+          <section class="card flat" aria-labelledby="err-title">
+            <div class="card-head">
+              <div class="title"><h3 id="err-title">What Kestrel Labs answered</h3></div>
+            </div>
+            <div class="card-body">
+              <dl class="dl stack-narrow">
+                <dt>Response</dt><dd class="mono">HTTP 401 · unauthorized_client: Invalid client or Invalid client credentials</dd>
+                <dt>Request</dt><dd class="mono">POST https://sso.kestrel.example.com/realms/kestrel/protocol/openid-connect/token</dd>
+                <dt>When</dt><dd>Oct 7, 2026, 14:22</dd>
+              </dl>
+            </div>
+          </section>
+        </div>
+
+        <div class="wizard-foot foot-stack">
+          <button class="btn ghost">Cancel</button>
+          <span class="foot-reason">Fix the client to continue</span>
+          <div class="btn-row ml-auto">
+            <button class="btn outline"><i class="ic ic-arrow-left"></i>Back</button>
+            <button class="btn primary disabled" disabled aria-disabled="true">Continue to domains<i class="ic ic-arrow-right"></i></button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

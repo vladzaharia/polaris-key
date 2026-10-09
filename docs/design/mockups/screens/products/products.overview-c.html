@@ -1,0 +1,251 @@
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item active" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span><span class="count">412</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- Concept C, guided setup first: attention pinned on top, the setup stepper leads, facts and
+         activity sit in one compact pair under it (in the aside at wide). -->
+    <div class="page columns">
+      <header class="page-head">
+        <div class="page-icon"><span class="logo lg" data-product="djdl"></span></div>
+        <div class="page-heading"><h1>DJDL</h1><span class="slug">djdl</span></div>
+        <p class="page-sub">A DJ app for macOS and Windows</p>
+        <div class="page-actions">
+          <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+
+      <!-- Pinned: DJDL's slice of the one attention read. -->
+      <section class="card warning" aria-labelledby="attn-title">
+        <h2 id="attn-title" class="sr-only">Needs attention</h2>
+        <div class="card-rows">
+          <div class="attn-row">
+            <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
+            <span class="attn-subject" data-service="config"><i class="svc"></i>Managed config</span>
+            <span class="attn-text">Required secret <code>identity.acoustidKey</code> has no value in the Default profile.</span>
+            <a class="link" href="#">Set secret<i class="ic ic-arrow-right"></i></a>
+          </div>
+        </div>
+      </section>
+
+      <!-- The setup stepper: one step per enabled feature, canonical order; the first open step is open. -->
+      <section class="card" aria-labelledby="int-title">
+        <div class="card-head">
+          <div class="title"><h2 id="int-title">Integration</h2></div>
+          <!-- Offered because macOS has a Verified feature (ST-41); never automatic. -->
+          <button class="btn ghost sm" aria-label="Hide Integration"><i class="ic ic-eye-off"></i>Hide</button>
+        </div>
+
+        <div class="card-body tight">
+          <div class="progress-stats">
+            <div class="progress-stat">
+              <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="meta">2 of 5 verified</span></div>
+              <div class="progress success" style="--v: 40%"></div>
+              <span class="meta">Swift SDK 2.1.0 on arm64, last seen 4 min ago</span>
+            </div>
+            <div class="progress-stat">
+              <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-windows"></i>Windows</span><span class="meta">Not seen yet</span></div>
+              <div class="progress" style="--v: 0%"></div>
+              <a class="link" href="#">Add the SDK<i class="ic ic-arrow-right"></i></a>
+            </div>
+          </div>
+        </div>
+
+        <ol class="guide" aria-label="Integration steps" style="--guide-steps: 5">
+          <li class="guide-step done">
+            <div class="guide-row">
+              <span class="guide-mark"></span>
+              <div class="guide-title"><h3><button aria-expanded="false">Licensing</button></h3></div>
+              <span class="plat-badges">
+                <span class="plat-badge verified" role="img" aria-label="macOS: Verified Oct 7, 10:42" title="macOS: Verified Oct 7, 10:42"><i class="ic ic-apple"></i></span>
+                <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+              </span>
+              <i class="ic ic-chevron-right guide-chevron"></i>
+            </div>
+          </li>
+          <li class="guide-step done">
+            <div class="guide-row">
+              <span class="guide-mark"></span>
+              <div class="guide-title"><h3><button aria-expanded="false">Managed config</button></h3></div>
+              <span class="plat-badges">
+                <span class="plat-badge verified" role="img" aria-label="macOS: Verified Oct 7, 10:44" title="macOS: Verified Oct 7, 10:44"><i class="ic ic-apple"></i></span>
+                <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+              </span>
+              <i class="ic ic-chevron-right guide-chevron"></i>
+            </div>
+          </li>
+          <li class="guide-step current open">
+            <div class="guide-row">
+              <span class="guide-mark"></span>
+              <div class="guide-title">
+                <h3><button aria-expanded="true" aria-controls="g-release">Ship builds</button></h3>
+                <span class="guide-sub">First CI publish Oct 6</span>
+              </div>
+              <span class="plat-badges">
+                <span class="plat-badge after" role="img" aria-label="macOS: After the console step" title="macOS: After the console step"><i class="ic ic-apple"></i></span>
+                <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+              </span>
+              <i class="ic ic-chevron-down guide-chevron"></i>
+            </div>
+            <div class="guide-body" id="g-release">
+              <div>
+                <p class="eyebrow">In the console</p>
+                <div class="mk-stack-3">
+                  <div class="mk-stack-1">
+                    <strong>Sparkle signing key</strong>
+                    <span class="type-small muted">macOS updates need one. Run this in the repository, then push.</span>
+                  </div>
+                  <div class="cmd"><span>pkey release keys init --sparkle</span><button class="btn ghost icon xs" aria-label="Copy command"><i class="ic ic-copy"></i></button></div>
+                </div>
+              </div>
+              <div>
+                <p class="eyebrow">Drop-in kit<span class="end"><a class="link quiet" href="#" aria-label="Integrate Ship builds directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span></p>
+                <div class="code">
+                  <div class="code-head">
+                    <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span></div>
+                    <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+                  </div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
+
+<span class="t-t">PolarisSparkle</span>.<span class="t-f">start</span>(client: client)</pre>
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="guide-step waiting">
+            <div class="guide-row">
+              <span class="guide-mark"></span>
+              <div class="guide-title">
+                <h3><button aria-expanded="false">Sign-in</button></h3>
+                <span class="guide-sub">Waiting for the first sign-in</span>
+              </div>
+              <span class="plat-badges">
+                <span class="plat-badge waiting" role="img" aria-label="macOS: Waiting for the first sign-in" title="macOS: Waiting for the first sign-in"><i class="ic ic-apple"></i></span>
+                <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+              </span>
+              <i class="ic ic-chevron-right guide-chevron"></i>
+            </div>
+          </li>
+          <li class="guide-step">
+            <div class="guide-row">
+              <span class="guide-mark"></span>
+              <div class="guide-title">
+                <h3><button aria-expanded="false">Cloud Sync</button></h3>
+                <span class="guide-sub"><a class="link" href="#">Set storage per account</a></span>
+              </div>
+              <span class="plat-badges">
+                <span class="plat-badge after" role="img" aria-label="macOS: After the console step" title="macOS: After the console step"><i class="ic ic-apple"></i></span>
+                <span class="plat-badge unseen" role="img" aria-label="Windows: Not seen yet" title="Windows: Not seen yet"><i class="ic ic-windows"></i></span>
+              </span>
+              <i class="ic ic-chevron-right guide-chevron"></i>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- The compact lower pair: the features' facts, then recent activity. In the aside at wide. -->
+      <div class="mk-pair">
+        <section class="card" aria-labelledby="feat-title">
+          <div class="card-head">
+            <div class="title"><h2 id="feat-title">Features</h2></div>
+            <a class="btn link" href="#">Manage features<i class="ic ic-arrow-right"></i></a>
+          </div>
+          <div class="stats strip compact cols-3">
+            <div class="stat" data-service="license">
+              <span class="stat-label"><i class="svc"></i><a href="#">Licensing</a></span>
+              <span class="stat-value">240 <small>licenses</small></span>
+              <span class="stat-foot">Standard · 3 waiting</span>
+            </div>
+            <div class="stat" data-service="config">
+              <span class="stat-label"><span class="glyph issue"><i class="svc"></i></span><a href="#" aria-label="Managed config: 1 needs attention">Managed config</a></span>
+              <span class="stat-value">v4 <small>catalog</small></span>
+              <span class="stat-foot">12 settings · 3 secrets</span>
+            </div>
+            <div class="stat" data-service="release">
+              <span class="stat-label"><i class="svc"></i><a href="#">Ship builds</a></span>
+              <span class="stat-value">4.2.0 <small>stable</small></span>
+              <span class="stat-foot">4.3.0-beta.2 on beta · Oct 6</span>
+            </div>
+            <div class="stat" data-service="identity">
+              <span class="stat-label"><i class="svc"></i><a href="#">Sign-in</a></span>
+              <span class="stat-value">312 <small>accounts</small></span>
+              <span class="stat-foot">Pocket ID · members, admins</span>
+            </div>
+            <div class="stat" data-service="sync">
+              <span class="stat-label"><i class="svc"></i><a href="#">Cloud Sync</a></span>
+              <span class="stat-value"><small>Not syncing yet</small></span>
+            </div>
+            <div class="stat off" data-service="commerce">
+              <span class="stat-label"><i class="svc"></i><a href="#" aria-label="Commerce: off. Turn it on in Features">Commerce</a></span>
+              <span class="stat-value"><small>Off</small></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card aside span-3" aria-labelledby="act-title">
+          <div class="card-head">
+            <div class="title"><h2 id="act-title">Recent activity</h2></div>
+            <a class="btn link" href="#">Open Activity<i class="ic ic-arrow-right"></i></a>
+          </div>
+          <div class="card-rows">
+            <div class="list-row">
+              <span class="avatar">MF</span>
+              <span class="list-row-text"><strong>Mara Fennick</strong> activated a MacBook Pro (macOS 15.1, Standard)</span>
+              <span class="list-row-meta">Today, 10:42</span>
+            </div>
+            <div class="list-row">
+              <span class="icon-tile muted"><i class="ic ic-github"></i></span>
+              <span class="list-row-text"><strong>CI</strong> published 4.2.0 to stable from <span class="mono">example-org/djdl</span></span>
+              <span class="list-row-meta">Oct 6, 16:20</span>
+            </div>
+            <div class="list-row">
+              <span class="avatar violet">AL</span>
+              <span class="list-row-text"><strong>Ada Lindqvist</strong> published catalog v4: 2 settings changed, 1 secret added</span>
+              <span class="list-row-meta">Oct 6, 11:05</span>
+            </div>
+            <!-- At wide the aside has room for two more. -->
+            <div class="list-row wide-only">
+              <span class="avatar violet">AL</span>
+              <span class="list-row-text"><strong>Ada Lindqvist</strong> turned on Cloud Sync</span>
+              <span class="list-row-meta">Oct 5, 09:30</span>
+            </div>
+            <div class="list-row wide-only">
+              <span class="avatar">TO</span>
+              <span class="list-row-text"><strong>Tomás Okafor</strong> joined as editor</span>
+              <span class="list-row-meta">Oct 4, 15:12</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,185 @@
+<style>
+  /* sdk.client-doctor: from 1280, two columns (the debug run over the call, the no-network run
+     over the checks). Below 1280 one column in the order: debug run, no-network run, the call,
+     the checks. */
+  [data-screen="sdk.client-doctor"] .board-grid {
+    --cols-desktop: repeat(2, minmax(0, 1fr));
+  }
+  [data-screen="sdk.client-doctor"] .board-page {
+    max-width: 1600px;
+  }
+  @container screen (max-width: 1279px) {
+    [data-screen="sdk.client-doctor"] .board-col {
+      display: contents;
+    }
+    [data-screen="sdk.client-doctor"] .o1 { order: 1; }
+    [data-screen="sdk.client-doctor"] .o2 { order: 2; }
+    [data-screen="sdk.client-doctor"] .o3 { order: 3; }
+    [data-screen="sdk.client-doctor"] .o4 { order: 4; }
+    [data-screen="sdk.client-doctor"] .checks-card {
+      max-width: 720px;
+    }
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>doctor() says what’s missing</h1>
+    </header>
+
+    <div class="board-grid">
+      <div class="board-col">
+        <section class="section o1">
+          <div class="section-head"><h2>What a debug run prints</h2></div>
+          <div class="window ide">
+            <div class="window-bar"><span class="term-dots"><i></i><i></i><i></i></span>Diceroll — Godot Engine</div>
+            <div class="window-body">
+              <div class="ide-bar"><span>Scene</span><span>Project</span><span class="hide-narrow">Debug</span><span class="hide-narrow">Editor</span><span class="hide-narrow">Help</span><span class="end"><i class="ic ic-circle-dot sm"></i>Running · main.tscn</span></div>
+              <div class="ide-tabs"><span class="on">Output</span><span>Debugger <span class="c-warn">(1)</span></span><span class="hide-narrow">Audio</span><span class="hide-narrow">Animation</span><span class="hide-narrow">Polaris Key</span><span class="end hide-narrow"><i class="ic ic-search sm"></i>Filter messages</span></div>
+<pre class="term-body hide-phone"><span class="c-dim">Godot Engine v4.5.stable.official · https://godotengine.org
+Metal 3.2 · Forward+ · Using Device: Apple M3 Pro</span>
+
+<span class="c-warn">Polaris Key: packs.ensure("neon") was refused.</span>
+<span class="c-b">Polaris Key doctor</span> <span class="c-dim">· Diceroll 1.4.0 · macOS 26.0 arm64 · Godot SDK 0.9.2</span>
+  <span class="c-ok"><span class="g">✓</span></span> Server             <span class="c-dim">key.plrs.im answered in 140 ms</span>
+  <span class="c-ok"><span class="g">✓</span></span> polaris-key.json   <span class="c-dim">res://polaris-key.json, product diceroll</span>
+  <span class="c-ok"><span class="g">✓</span></span> Version            <span class="c-dim">1.4.0, from application/config/version</span>
+  <span class="c-ok"><span class="g">✓</span></span> Signing key        <span class="c-dim">diceroll-2026 matches key.plrs.im</span>
+  <span class="c-err"><span class="g">✗</span></span> <span class="c-b">Release key</span>        none pinned, so packs and updates can’t be verified
+                       <span class="c-accent">Fix:</span> Import file… in the Polaris Key dock, or run
+                       pkey sdk add godot in this project.
+                       <span class="c-u c-accent">key.plrs.im/manage/#/p/diceroll/integration</span>
+  <span class="c-err"><span class="g">✗</span></span> <span class="c-b">Features</span>           expects Cloud Sync, which is off for Diceroll
+                       <span class="c-accent">Fix:</span> download polaris-key.json again, or turn on
+                       Sign-in, then Cloud Sync, in Features.
+                       <span class="c-u c-accent">key.plrs.im/manage/#/p/diceroll/features</span>
+  <span class="c-warn"><span class="g">!</span></span> Store              not running under Steam, so Steam purchases
+                       aren’t checked in this run
+  <span class="c-ok"><span class="g">✓</span></span> Clock              <span class="c-dim">within 1 s of key.plrs.im</span>
+<span class="c-err">2 to do</span><span class="c-dim"> · 1 warning</span></pre>
+<pre class="term-body show-phone"><span class="c-dim">Godot Engine v4.5.stable.official
+Metal 3.2 · Forward+ · Apple M3 Pro</span>
+
+<span class="c-warn">Polaris Key: packs.ensure("neon") was
+refused.</span>
+<span class="c-b">Polaris Key doctor</span>
+<span class="c-dim">Diceroll 1.4.0 · macOS 26.0 arm64 ·
+Godot SDK 0.9.2</span>
+  <span class="c-ok"><span class="g">✓</span></span> Server
+    <span class="c-dim">key.plrs.im answered in 140 ms</span>
+  <span class="c-ok"><span class="g">✓</span></span> polaris-key.json
+    <span class="c-dim">res://polaris-key.json, product diceroll</span>
+  <span class="c-ok"><span class="g">✓</span></span> Version
+    <span class="c-dim">1.4.0, from application/config/version</span>
+  <span class="c-ok"><span class="g">✓</span></span> Signing key
+    <span class="c-dim">diceroll-2026 matches key.plrs.im</span>
+  <span class="c-err"><span class="g">✗</span></span> <span class="c-b">Release key</span>
+    none pinned, so packs and updates
+    can’t be verified
+    <span class="c-accent">Fix:</span> Import file… in the Polaris Key
+    dock, or run pkey sdk add godot in
+    this project.
+    <span class="c-u c-accent">key.plrs.im/manage/#/p/diceroll/</span>
+    <span class="c-u c-accent">integration</span>
+  <span class="c-err"><span class="g">✗</span></span> <span class="c-b">Features</span>
+    expects Cloud Sync, which is off for
+    Diceroll
+    <span class="c-accent">Fix:</span> download polaris-key.json again,
+    or turn on Sign-in, then Cloud Sync,
+    in Features.
+    <span class="c-u c-accent">key.plrs.im/manage/#/p/diceroll/</span>
+    <span class="c-u c-accent">features</span>
+  <span class="c-warn"><span class="g">!</span></span> Store
+    not running under Steam, so Steam
+    purchases aren’t checked in this run
+  <span class="c-ok"><span class="g">✓</span></span> Clock
+    <span class="c-dim">within 1 s of key.plrs.im</span>
+<span class="c-err">2 to do</span><span class="c-dim"> · 1 warning</span></pre>
+            </div>
+          </div>
+        </section>
+
+        <section class="section o3">
+          <div class="section-head"><h2>The call</h2></div>
+          <div class="code wrap-phone" data-service="core">
+            <div class="code-head">
+              <div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="hide-phone">Swift</span><span class="hide-phone">Kotlin</span><span class="active">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
+              <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+            </div>
+<pre><span class="t-c"># For a support screen, ask for the report yourself:</span>
+<span class="hl"><span class="t-k">var</span> report := <span class="t-k">await</span> PolarisKey.<span class="t-f">doctor</span>()</span>
+<span class="t-k">for</span> check <span class="t-k">in</span> report.checks:
+  <span class="t-k">if not</span> check.ok:
+    support_log.<span class="t-f">add</span>(check.title, check.fix, check.console_url)</pre>
+            <div class="code-foot"><i class="ic ic-info sm"></i><span>Each check has <code>id</code>, <code>ok</code>, <code>severity</code>, <code>title</code>, <code>detail</code>, <code>fix</code> and a console link.</span></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="board-col">
+        <section class="section o2">
+          <div class="section-head"><h2>When key.plrs.im can’t be reached</h2></div>
+          <div class="term">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">Output — no network</span></div>
+<pre class="term-body hide-phone"><span class="c-warn">Polaris Key: boot() couldn’t reach key.plrs.im, and this Mac has no saved
+license yet.</span>
+<span class="c-b">Polaris Key doctor</span> <span class="c-dim">· Diceroll 1.4.0 · macOS 26.0 arm64 · Godot SDK 0.9.2</span>
+  <span class="c-err"><span class="g">✗</span></span> <span class="c-b">Server</span>             couldn’t reach key.plrs.im (timed out after 10 s)
+                       <span class="c-accent">Fix:</span> check the network or a firewall, or baseUrl in
+                       polaris-key.json.
+  <span class="c-ok"><span class="g">✓</span></span> polaris-key.json   <span class="c-dim">res://polaris-key.json, product diceroll</span>
+  <span class="c-ok"><span class="g">✓</span></span> Version            <span class="c-dim">1.4.0, from application/config/version</span>
+  <span class="c-dim"><span class="g">–</span> Signing key        not checked; pins read from the file</span>
+  <span class="c-dim"><span class="g">–</span> Features           not checked</span>
+  <span class="c-dim"><span class="g">–</span> Clock              not checked</span>
+<span class="c-err">1 to do</span><span class="c-dim"> · 3 not checked</span></pre>
+<pre class="term-body show-phone"><span class="c-warn">Polaris Key: boot() couldn’t reach
+key.plrs.im, and this Mac has no saved
+license yet.</span>
+<span class="c-b">Polaris Key doctor</span>
+<span class="c-dim">Diceroll 1.4.0 · macOS 26.0 arm64 ·
+Godot SDK 0.9.2</span>
+  <span class="c-err"><span class="g">✗</span></span> <span class="c-b">Server</span>
+    couldn’t reach key.plrs.im (timed out
+    after 10 s)
+    <span class="c-accent">Fix:</span> check the network or a firewall,
+    or baseUrl in polaris-key.json.
+  <span class="c-ok"><span class="g">✓</span></span> polaris-key.json
+    <span class="c-dim">res://polaris-key.json, product diceroll</span>
+  <span class="c-ok"><span class="g">✓</span></span> Version
+    <span class="c-dim">1.4.0, from application/config/version</span>
+  <span class="c-dim"><span class="g">–</span> Signing key
+    not checked; pins read from the file</span>
+  <span class="c-dim"><span class="g">–</span> Features
+    not checked</span>
+  <span class="c-dim"><span class="g">–</span> Clock
+    not checked</span>
+<span class="c-err">1 to do</span><span class="c-dim"> · 3 not checked</span></pre>
+          </div>
+        </section>
+        <section class="section o4">
+          <div class="section-head"><h2>The checks</h2></div>
+          <section class="card checks-card">
+            <table class="table compact stack-phone no-media sdk-checks">
+              <thead><tr><th>Check</th><th>What it checks</th></tr></thead>
+              <tbody>
+                <tr><td><span class="cell-title">Server</span></td><td>key.plrs.im, or the file’s <code>baseUrl</code>, answers</td></tr>
+                <tr><td><span class="cell-title">polaris-key.json</span></td><td>Found, valid, for this product</td></tr>
+                <tr><td><span class="cell-title">Version</span></td><td>App version is a semver</td></tr>
+                <tr><td><span class="cell-title">Signing key</span></td><td>Pins match key.plrs.im’s keys, staged included</td></tr>
+                <tr><td><span class="cell-title">Release key</span></td><td>One is pinned, so updates and packs verify</td></tr>
+                <tr><td><span class="cell-title">Features</span></td><td>File’s features match the product’s</td></tr>
+                <tr><td><span class="cell-title">Store</span></td><td>StoreKit, Google Play or Steam, whichever this build runs</td></tr>
+                <tr><td><span class="cell-title">Clock</span></td><td>Device time against Polaris Key’s</td></tr>
+                <tr><td><span class="cell-title">Web origin</span></td><td>React only: page origin is the product’s</td></tr>
+              </tbody>
+            </table>
+            <div class="table-foot"><i class="ic ic-shield-check sm"></i><span>Release builds print nothing. The report holds no license key or secret.</span></div>
+          </section>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>

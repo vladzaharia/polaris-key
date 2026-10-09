@@ -1,0 +1,103 @@
+{
+  "id": "licenses.access",
+  "title": "Access",
+  "area": "licenses",
+  "surface": "console",
+  "packages": [
+    "P2-10",
+    "LX-36",
+    "LX-38",
+    "PS-12",
+    "F-34",
+    "P4-34"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's one Access page: who gets a license automatically (Nobody, Everyone who signs in, or Rules by identity provider group, verified email domain or claim, each giving a tier or an add-on), the Anonymous devices tier, Discover visibility, and the gates on update checks, app downloads, packs and packages as one matrix in one vocabulary, with a readiness error on a rule that can't match, Check a person, and one unsaved change (App downloads Customers → Public) in the save bar.",
+  "order": 6,
+  "compare": [
+    "Header: 'Access' and History; no subtitle.",
+    "Wide (.page.columns): Anonymous devices and Discover sit in the 400px aside; below 1600 they are two cards side by side under Automatic licenses; phone one column.",
+    "Automatic licenses: 'Issued at sign-in or from Discover, tied to the account with no key. They only ever move up a tier.'; three choices (Nobody, Everyone who signs in, Rules: chosen).",
+    "Rules table: When · Gets · Label people see · Accounts · ⋯. Group studio-pro (Studio, 38), Group members (Standard, 412), Verified email domain example.edu (Education, 57), Claim vpnAccess is true (Polaris VPN add-on, ⚠ 0) with its readiness error under it ('Pocket ID doesn’t send vpnAccess, so this rule can’t match' / 'Add the claim to Pocket ID’s claim map in Connections.', Open Connections), and the shaded fallback Everyone else who signs in (Trial, 143).",
+    "Foot: Add rule and 'When several match, the higher tier wins; add-ons add to it.'",
+    "Anonymous devices: They get Free, '1 device, 2 decks, no recording. Nothing requires sign-in or a key.'",
+    "Discover: Hidden, People who can get it (chosen), Everyone signed in (typed djdl to confirm), one line each.",
+    "Updates, downloads and packages: a legend band (Public, Signed in, Customers, Holds an entitlement), then rows with the same four-option matrix: Update checks (Customers), App downloads marked with 'was Customers' (Public), Packs (Stem separation models: Holds stems; Controller mappings: Public), Packages (npm @djdl: Public; Signed in and Entitlement don't apply).",
+    "Check a person: email (verified), groups, claims; the result 'Dana gets Education, plus Polaris VPN' and a tick or cross per gate, App downloads 'Public · unsaved'.",
+    "Save bar at the page's end (pinned while dirty in the built screen): '1 change: App downloads goes Public, so anyone can download DJDL 4.2.0 without signing in.' with Discard and Save access.",
+    "Phone: rules flow under their title, each matrix goes two by two, Check a person stacks."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: kit table, item rows, segmented matrix, card split and save bar; wide uses the aside; 0 screen spacing.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "40 spacing declarations: a div-grid rules table, custom gate rows and legend, verdict list and a sticky save bar drawn mid-page.",
+        "resolution": "Kit only: .table.stack-phone.flow with tr.note-row and tr.shaded, .choices.cols-3, .item-row with .segmented.matrix and .rows-label, .card-split, .icon-list, .save-bar, .page.columns with an .aside grid."
+      },
+      {
+        "severity": "minor",
+        "issue": "The subtitle narrated the page; card descriptions restated titles; 'can't match' was said in the count and the callout; the verdict note repeated the rule's error.",
+        "resolution": "Cut to one statement each."
+      },
+      {
+        "severity": "major",
+        "issue": "Desktop was a 2,350px single column while wide and tablet reflowed into a rail.",
+        "resolution": "Rail from 1280px (.page.columns.rail-360): Anonymous devices, Discover and Check a person in a 360px sticky column (.rail-cards, align-items start) beside Updates, downloads and packages. The rules table spans the full width above, because at 744px beside a rail its 'Label people see' column wrapped to three lines.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Fourth audience segment ellipsized ('Entitlement…') at every size.",
+        "resolution": "Label is 'Entitlement' and the matrix is content-width (.segmented.matrix.fit, 88px minimum, never ellipsized); on phone a 2x2 grid with 44px cells and a filled selected state.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The unsaved change was stated four times; subtitles restated titles.",
+        "resolution": "Subtitles on Anonymous devices and Discover removed; 'Public · unsaved' is 'Public'; the save bar says '1 change: App downloads goes Public.'; the row bar, 'was Customers' and the save bar stay; the tier-wins footer stays once.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Card heads varied (56 and 72); the save bar was only reachable at the end of a long page.",
+        "resolution": "Heads are .card-head.h56 (72 with a subtitle); the save bar is drawn pinned (.save-bar.pinned: lifted, with the safe-area inset) spanning the page. The warning callout already starts at the row text's x, so it was left. A sticky bar would overlay full-page captures, so the built screen does the pinning.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Delete the four-audience legend or turn it into tooltips; collapse Check a person to a closed disclosure.",
+        "resolution": "declined: The legend explains the segment meanings on first use and tooltips are invisible on touch; collapsing hides a core feature. Check a person moved into the rail instead.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Change the Save access button colour to the licence lime, or drop it to 'Entitled' wording everywhere.",
+        "resolution": "declined: Purple is the Access service accent; the kit's colours do not change in a spacing pass.",
+        "round": "multi-review"
+      }
+    ]
+  }
+}

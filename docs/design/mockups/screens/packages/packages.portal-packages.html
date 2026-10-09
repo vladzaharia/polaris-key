@@ -1,0 +1,122 @@
+<!-- packages.portal-packages: Account → Packages in the customer portal; layout from the kit only. -->
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <nav class="portal-nav" aria-label="Portal"><a href="#">Library <span class="count">2</span></a><a href="#">Discover <span class="count">4</span></a></nav>
+    <div class="portal-actions">
+      <button class="btn outline sm"><i class="ic ic-key-round"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">MF</span><span>Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <div class="mk-split">
+      <div class="mk-stack-2"><h1>Account</h1><p class="muted">Mara Fennick · mara@example.com</p></div>
+      <div><button class="btn outline sm"><i class="ic ic-log-out"></i>Sign out</button></div>
+    </div>
+
+    <!-- Account's sections: a side nav from 1280px, the pill row from 640px, a picker on phone. -->
+    <div class="with-toc">
+      <nav class="toc-nav" aria-label="Account"><a href="#">Profile</a><a href="#">Sign-in methods</a><a href="#">Connected apps</a><a href="#">Access tokens</a><a href="#">Where you’re signed in</a><a class="on" href="#" aria-current="page">Packages</a><a href="#">Appearance</a><a href="#">Your data</a></nav>
+      <nav class="jump-nav" aria-label="Account"><a href="#">Profile</a><a href="#">Sign-in methods</a><a href="#">Connected apps</a><a href="#">Access tokens</a><a href="#">Where you’re signed in</a><a class="on" href="#" aria-current="page">Packages</a><a href="#">Appearance</a><a href="#">Your data</a></nav>
+      <div class="select toc-select" role="button" aria-label="Account section: Packages"><i class="ic ic-boxes"></i><span class="grow">Packages</span><i class="ic ic-chevrons-up-down"></i></div>
+
+      <div class="toc-body">
+        <!-- F-33: every package the account may install, across products, from its usable licenses. -->
+        <section class="card" aria-labelledby="pk-title">
+          <div class="card-head">
+            <div class="title"><h2 id="pk-title">Packages</h2></div>
+          </div>
+          <table class="table fixed stack-phone flow" aria-label="Packages you can install">
+            <colgroup><col style="width: 52%"><col style="width: 28%"><col style="width: 20%"></colgroup>
+            <thead><tr><th>Package</th><th>Ecosystem</th><th class="num">Stable</th></tr></thead>
+            <tbody>
+              <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="djdl"></span><span>DJDL · Standard license</span></span></td></tr>
+              <tr>
+                <td><div class="cell-title type-mono">@djdl/source-kit</div><div class="cell-sub">Write DJDL source plugins</div></td>
+                <td>npm</td>
+                <td class="num type-mono">2.3.0</td>
+              </tr>
+              <tr>
+                <td><div class="cell-title type-mono">@djdl/crate-schema</div><div class="cell-sub">Types for DJDL crate files</div></td>
+                <td>npm</td>
+                <td class="num type-mono">1.0.2</td>
+              </tr>
+              <tr>
+                <td><div class="cell-title type-mono">djdl-crates</div><div class="cell-sub">Read and write DJDL crates</div></td>
+                <td><div class="cell-stack"><span>PyPI</span><span class="cell-sub"><span class="pill sm"><i class="ic ic-globe"></i>Also on PyPI.org</span></span></div></td>
+                <td class="num type-mono">1.1.0</td>
+              </tr>
+              <tr class="group-row"><td colspan="3"><span class="mk-cluster"><span class="logo xs" data-product="diceroll"></span><span>Diceroll · Supporter license</span></span></td></tr>
+              <tr>
+                <td><div class="cell-title type-mono">@diceroll/dice-notation</div><div class="cell-sub">Parse and roll “2d6+1” in your bots and tools</div></td>
+                <td>npm</td>
+                <td class="num type-mono">3.0.1</td>
+              </tr>
+              <tr>
+                <td><div class="cell-title type-mono">diceroll/table-server</div><div class="cell-sub">Host a private Diceroll table for your group</div></td>
+                <td>Docker</td>
+                <td class="num type-mono">1.7.3</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Personal tokens (pkeyp_), packages only, one per machine. -->
+        <section class="card" aria-labelledby="tok-title">
+          <div class="card-head">
+            <div class="title"><h2 id="tok-title">Your packages tokens</h2><p>Each token is shown once.</p></div>
+            <button class="btn primary sm"><i class="ic ic-plus"></i>Create token</button>
+          </div>
+          <table class="table fixed stack-phone" aria-label="Your packages tokens">
+            <colgroup><col style="width: 46%"><col style="width: 19%"><col style="width: 19%"><col style="width: 16%"></colgroup>
+            <thead><tr><th>Token</th><th>Last used</th><th>Expires</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-laptop"></i></span><div><div class="cell-title">pkey feeds setup on mara-mbp</div><div class="cell-sub"><span class="mono">pkeyp_…7Q2M</span> · made by the CLI, Oct 7</div></div></div></td>
+                <td><span class="cell-label">Last used</span>2 hours ago</td>
+                <td><span class="cell-label">Expires</span><span class="nowrap">Jan 5, 2027</span></td>
+                <td class="end"><button class="btn outline sm tap-44">Revoke</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-server"></i></span><div><div class="cell-title">Build server</div><div class="cell-sub"><span class="mono">pkeyp_…K4TN</span> · made here, Sep 21</div></div></div></td>
+                <td><span class="cell-label">Last used</span>Oct 6</td>
+                <td><span class="cell-label">Expires</span><span class="nowrap">Dec 20, 2026</span></td>
+                <td class="end"><button class="btn outline sm tap-44">Revoke</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- F-37: one combined setup for every package manager, the same renderer the CLI writes from. -->
+        <section class="card" aria-labelledby="setup-title">
+          <div class="card-head">
+            <div class="title"><h2 id="setup-title">Set up your package managers</h2><p>In your home folder, never a repository.</p></div>
+          </div>
+          <div class="card-body mk-stack-3">
+            <div class="cmd"><span>pkey feeds setup --write</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
+            <p class="type-small muted">Signs in, makes a token and sets up npm, pnpm, Yarn, Bun, uv, pip and Docker</p>
+            <span class="links links-end"><a class="link" href="#"><i class="ic ic-copy"></i>Copy the npx command</a><a class="link quiet" href="#">pkey CLI docs<i class="ic ic-arrow-up-right"></i></a></span>
+          </div>
+          <div class="card-body mk-stack-3">
+            <p class="eyebrow">Or by hand</p>
+            <div class="code fade-x wrap-phone">
+              <div class="code-head">
+                <div class="code-tabs fade"><span class="active">npm, pnpm</span><span>Yarn</span><span>Bun</span><span>uv, pip</span><span>Docker</span></div>
+                <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+              </div>
+<pre tabindex="0" role="region" aria-label="Code"><span class="t-c"># ~/.npmrc</span>
+<span class="t-p">@djdl:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/djdl/</span>
+<span class="t-p">@diceroll:registry</span>=<span class="t-s">https://pkg.plrs.im/npm/diceroll/</span>
+<span class="t-p">//pkg.plrs.im/npm/:_authToken</span>=<span class="t-v">${PKEY_PACKAGES_TOKEN}</span></pre>
+              <div class="code-foot"><i class="ic ic-info sm"></i><span>Only <span class="mono">@djdl</span> and <span class="mono">@diceroll</span> come from here; everything else stays on npmjs.com. Set <span class="mono">PKEY_PACKAGES_TOKEN</span> to your token.</span></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+  <nav class="portal-tabbar"><a href="#"><i class="ic ic-layout-grid"></i>Library</a><a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a><a href="#"><i class="ic ic-sparkles"></i>Discover</a></nav>
+</div>

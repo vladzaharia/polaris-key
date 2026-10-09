@@ -1,0 +1,54 @@
+{
+  "id": "licenses.detail-holders",
+  "title": "License record by holder",
+  "area": "licenses",
+  "surface": "console",
+  "packages": [
+    "LX-30",
+    "LX-14",
+    "LX-29",
+    "LX-38"
+  ],
+  "uxRows": [],
+  "summary": "The license record's header, holder card and origin card for the two holder states licenses.detail doesn't draw: Waiting (Tomás Okafor, made by hand) and Floating (a key from the Controller bundle batch), covering the By hand and Key batch origins.",
+  "order": 4,
+  "compare": [
+    "A board of two page slices (.board.cols-1), each the record's header, tabs, holder card and origin card on the same rail layout as licenses.detail.",
+    "Waiting: 'Tomás Okafor' with 'Waiting for sign-in' in the info tone; tomas@example.com and the id; Tier: Standard ▾, Resend invitation (primary) and ⋯ (Change email, Change tier, Revoke).",
+    "Invitation card: 'Moves into his account at his first sign-in with this email, verified.' and Change email…; Sent Oct 2 (Not opened yet), Devices none until he signs in; foot: 'Change email sends a new invitation; the old link stops working.'",
+    "By hand origin: Created Oct 2, 2026 by Ada Lovelace, the reason, 'Access rules never change it.', Open Activity.",
+    "Floating: titled by the masked key in mono with Active; the Floating pill and the license id; Tier: Standard ▾, Assign to a person (primary) and ⋯ (Change tier, Disable key, Revoke). No email anywhere.",
+    "Anyone with the key: Key (only its hash is kept), First used Oct 6, 2026 on Studio-PC · Windows 11 · DJDL 4.2.0, Devices 1 of 5, Library (adding the key moves the license into that account).",
+    "Key batch origin: Controller bundle · Oct 2026, created Oct 6, 2026 by Ada Lovelace, 41 of 200 used, and Disable unused keys turning off the other 159; Open batch."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: real page slices on the kit board with kv-rows; 0 screen spacing; the holder state said once.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "A custom frame and fact grid (18 spacing declarations) with a 24px title off the type scale.",
+        "resolution": "Kit only: .board.cols-1, .board-frame, .page-head with h2.type-page, .mk-with-rail, .kv-rows with .source, .icon-line."
+      },
+      {
+        "severity": "minor",
+        "issue": "Waiting was said four times (status, pill, card title, invitation line) and 'Anyone with the key' twice; 'Since' and 'Invitation sent' repeated the cards.",
+        "resolution": "Status once in the header, the holder card names the rest."
+      },
+      {
+        "severity": "minor",
+        "issue": "Devices rows duplicated the tab count; mechanism sentences repeated.",
+        "resolution": "Devices rows removed from the Invitation and Floating cards; the Library row and the 'old link stops working' footer removed; heads are .card-head.h56; tab strip is .tabs.scroller. The label and value already sit side by side on phone for short values.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

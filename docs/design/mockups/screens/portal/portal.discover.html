@@ -1,0 +1,152 @@
+<style>
+  /* portal.discover: one tile just added through the access policy, one still to add. No spacing:
+     the kit's portal parts. */
+  [data-screen="portal.discover"] .pill.tier {
+    color: var(--pk-text-strong);
+  }
+  /* Just added: a green edge; "In your library" sits on the art. */
+  [data-screen="portal.discover"] .ptile.added {
+    border-color: var(--pk-success-border);
+  }
+  /* Store links: accent text links with the store's glyph, quieter than Add to library. */
+  [data-screen="portal.discover"] .stores .link {
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklab, var(--pk-accent-fg) 35%, transparent);
+    text-underline-offset: 3px;
+  }
+  [data-screen="portal.discover"] .stores .link > .ic-arrow-up-right {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="portal.discover"] .toast .btn.link {
+    font-weight: 700;
+  }
+  /* Actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone. */
+  [data-screen="portal.discover"] .ua-phone {
+    display: none !important;
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="portal.discover"] .ua-desk {
+      display: none !important;
+    }
+    [data-screen="portal.discover"] .btn.ua-phone {
+      display: inline-flex !important;
+    }
+    [data-screen="portal.discover"] span.ua-phone {
+      display: inline !important;
+    }
+  }
+</style>
+
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <nav class="portal-nav" aria-label="Portal">
+      <a href="#">Library <span class="count">1</span></a>
+      <a class="active" href="#">Discover <span class="count accent">1<span class="sr-only"> to add</span></span></a>
+    </nav>
+    <div class="portal-actions">
+      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">DW</span><span>Dana Whitfield</span><i class="ic ic-chevron-down"></i></span>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <div class="mk-stack-2">
+      <h1>Discover</h1>
+      <p class="muted">Free and eligible products</p>
+    </div>
+
+    <div class="portal-grid">
+      <!-- DJDL (Discover: People who can get it): the access rule "Verified email domain example.edu
+           gets Education", labelled "Education license" (licenses.access). Add to library ran the same
+           issuance as signing in to DJDL (LX-38): Automatic grant, no key, one license per account. -->
+      <article class="ptile added" aria-labelledby="d-djdl">
+        <div class="art" data-product="djdl">
+          <span class="pill success on-art"><i class="ic ic-circle-check"></i>In your library</span>
+        </div>
+        <div class="ptile-head">
+          <span class="logo lg" data-product="djdl"></span>
+          <div class="ptile-title"><h2 id="d-djdl"><a href="#">DJDL</a></h2><span>Example Audio</span></div>
+        </div>
+        <div class="ptile-body">
+          <div class="mk-stack-3">
+            <div class="pill-row">
+              <div class="mk-cluster">
+                <span class="pill sm tier"><i class="ic ic-key-round"></i>Education</span>
+                <span class="pill sm"><i class="ic ic-monitor-smartphone"></i>2 devices</span>
+              </div>
+              <span class="platforms" role="img" aria-label="macOS and Windows"><i class="ic ic-apple"></i><i class="ic ic-windows"></i></span>
+            </div>
+            <ul class="icon-lines">
+              <li><i class="ic ic-calendar-clock"></i><span>1 year of updates <span class="muted">· then keeps the last version</span></span></li>
+            </ul>
+            <!-- Why you can add it, always shown (owner, 2026-10-04): the fact the access rule matched. -->
+            <div class="callout"><i class="ic ic-building-2"></i><span class="callout-text">You have a confirmed example.edu email</span></div>
+          </div>
+        </div>
+        <div class="ptile-foot">
+          <!-- DJDL hasn't been seen on this device yet, so its covered build comes before Open (§5.4). -->
+          <button class="btn outline ua-desk"><i class="ic ic-download"></i>Download for macOS</button>
+          <button class="btn outline ua-phone"><i class="ic ic-mail"></i>Email me the download</button>
+        </div>
+        <div class="ptile-links"><a class="link" href="#">Go to DJDL<i class="ic ic-arrow-right"></i></a></div>
+      </article>
+
+      <!-- Diceroll (Discover: Everyone signed in): everyone gets Free, so Add to library is offered;
+           the paid tiers are sold on the stores (obtain paths shown as links). -->
+      <article class="ptile" aria-labelledby="d-diceroll">
+        <div class="art" data-product="diceroll"></div>
+        <div class="ptile-head">
+          <span class="logo lg" data-product="diceroll"></span>
+          <div class="ptile-title"><h2 id="d-diceroll"><a href="#">Diceroll</a></h2><span>Example Games</span></div>
+        </div>
+        <div class="ptile-body">
+          <div class="mk-stack-3">
+            <div class="pill-row">
+              <div class="mk-cluster">
+                <span class="pill sm tier"><i class="ic ic-key-round"></i>Free</span>
+                <span class="pill sm"><i class="ic ic-monitor-smartphone"></i>3 devices</span>
+              </div>
+              <span class="platforms" role="img" aria-label="iOS, Android, Windows and Linux"><i class="ic ic-smartphone"></i><i class="ic ic-android"></i><i class="ic ic-windows"></i><i class="ic ic-linux"></i></span>
+            </div>
+            <ul class="icon-lines">
+              <li><i class="ic ic-calendar-clock"></i><span>Lifetime</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="ptile-foot">
+          <button class="btn outline"><i class="ic ic-plus"></i>Add to library</button>
+        </div>
+        <div class="ptile-links stores">
+              <span>Buy Standard or packs on</span>
+              <a class="link" href="#" aria-label="Buy Standard or packs on Steam (opens Steam)"><i class="ic ic-steam"></i>Steam<i class="ic ic-arrow-up-right"></i></a>
+              <a class="link" href="#" aria-label="Buy Standard or packs on the App Store (opens the App Store)"><i class="ic ic-app-store"></i>App Store<i class="ic ic-arrow-up-right"></i></a>
+              <a class="link" href="#" aria-label="Buy Standard or packs on Google Play (opens Google Play)"><i class="ic ic-google-play"></i>Google Play<i class="ic ic-arrow-up-right"></i></a>
+              <a class="link" href="#" aria-label="Buy Standard or packs on itch.io (opens itch.io)"><i class="ic ic-itch"></i>itch.io<i class="ic ic-arrow-up-right"></i></a>
+        </div>
+      </article>
+
+    </div>
+    <p class="page-note">Purchases appear in your library automatically.</p>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+
+  <!-- role=status; it stays until dismissed while it carries an action. -->
+  <div class="toasts">
+    <div class="toast success" role="status">
+      <i class="ic ic-circle-check"></i>
+      <div class="grow">
+        <div class="toast-title">Added to your library</div>
+        <div class="toast-text">Sign in to DJDL with dana@example.edu</div>
+      </div>
+      <button class="btn ghost icon xs" aria-label="Dismiss"><i class="ic ic-x"></i></button>
+    </div>
+  </div>
+
+  <nav class="portal-tabbar" aria-label="Portal">
+    <a href="#"><i class="ic ic-layout-grid"></i>Library</a>
+    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+    <a class="active" href="#" aria-label="Discover, 1 to add"><i class="ic ic-sparkles"></i>Discover<span class="dot" aria-hidden="true"></span></a>
+  </nav>
+</div>

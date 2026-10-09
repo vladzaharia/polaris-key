@@ -1,0 +1,50 @@
+{
+  "id": "licenses.access-confirm",
+  "title": "Saving Access",
+  "area": "licenses",
+  "surface": "dialog",
+  "packages": [
+    "P2-10",
+    "LX-36",
+    "PS-12"
+  ],
+  "uxRows": [],
+  "summary": "What Save access on licenses.access asks before the two changes that alter who gets DJDL (Automatic licenses Rules → Nobody, and Rules → Everyone who signs in, with the typed slug), and the saved state: the save bar gone and a toast that names the change with View in History.",
+  "order": 7,
+  "compare": [
+    "Rules → Nobody: 'Stop automatic licenses for DJDL?' (caution); the change as Rules struck, Nobody added; 650 automatic licenses stay on their tiers; new sign-ins get nothing; Discover stops offering DJDL to people without a license; the 4 rules are kept. Keep Rules and Stop automatic licenses.",
+    "Rules → Everyone who signs in: 'Give every signed-in account a DJDL license?'; every account that signs in gets Trial (14 days of Standard, then Free); nobody moves down (38 Studio, 412 Standard, 57 Education); rules kept but off; type djdl to confirm. Keep Rules and Give everyone Trial.",
+    "Saved: a slice of the page with the gates (App downloads now Public, no change marks, no save bar) and a toast 'Saved access' / 'App downloads are now Public.' with View in History, at the slice's bottom right.",
+    "Phone: dialogs full width, buttons stacked with the primary on top."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: kit dialogs, diff chips, icon lists, item rows and toast; 0 screen spacing.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "15 spacing declarations: custom change line, outcome rows, saved header and toast placement.",
+        "resolution": "Kit only: .diff-old/.diff-new, .icon-list, .board-frame with .toast, .item-row with .segmented.matrix, .board.cols-2.wide-3 and .board-item.full."
+      },
+      {
+        "severity": "minor",
+        "issue": "Outcomes ran two sentences each; the saved header and the toast both said it was saved; the toast repeated the save bar's sentence.",
+        "resolution": "One clause per outcome; the toast alone confirms, in one sentence."
+      },
+      {
+        "severity": "minor",
+        "issue": "Dialogs left-clustered, 40% of the board empty; long bodies; toast squeezed on phone.",
+        "resolution": "Dialogs centre in their tile at 520px (.dlg-center), titles on one line; each body is the change line, one assurance line and the rules line; the toast stacks message then a 44px action on phone (.toast.wrap-action).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

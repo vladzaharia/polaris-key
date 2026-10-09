@@ -1,0 +1,267 @@
+<style>
+  /* sdk.react-sign-in: DJDL's accent, from its icon (coral between the brand's orange and rose). */
+  [data-screen="sdk.react-sign-in"] {
+    --kit-accent: color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose));
+    --kit-accent-on: var(--pk-text-on-accent);
+    --kit-accent-subtle: color-mix(in oklab, var(--kit-accent) 13%, var(--pk-surface-raised));
+  }
+  /* From 1600: four windows to a row, then the code across the board. */
+  @container screen (min-width: 1600px) {
+    [data-screen="sdk.react-sign-in"] .frame-grid.windows {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  [data-screen="sdk.react-sign-in"] .code-end {
+    align-self: start;
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>DJDL signs in with the React kit</h1>
+      <div class="callout info one-line"><i class="ic ic-info"></i><div class="grow"><div class="callout-text"><strong>Kit preview:</strong> React kit with DJDL’s facts (Sign-in on, licenses by group, own site).</div></div></div>
+    </header>
+
+    <div class="frame-grid windows top fit-rows cap-strip">
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Sign in to DJDL</h2>
+                  <p class="kit-lede">Use the email you bought DJDL with.</p>
+                </div>
+                <button class="kit-btn primary block">Continue in browser<i class="ic ic-arrow-up-right"></i></button>
+                <div class="kit-rule"></div>
+                <div class="kit-links center"><a class="kit-link" href="#"><i class="ic ic-key-round"></i>Have a license key?</a></div>
+                <p class="kit-foot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>1 · Sign in.</strong> No provider logos (DJDL has no connections).</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Sign in to DJDL</h2>
+                  <p class="kit-lede">Use the email you bought DJDL with.</p>
+                </div>
+                <div class="kit-stack">
+                  <div class="kit-state" role="alert"><i class="ic ic-wifi-off"></i><span><b>Can’t reach Polaris Key</b>Check this computer’s internet connection, then try again.</span></div>
+                  <button class="kit-btn primary block">Try again<i class="ic ic-arrow-up-right"></i></button>
+                </div>
+                <div class="kit-rule"></div>
+                <div class="kit-links center"><a class="kit-link" href="#"><i class="ic ic-key-round"></i>Have a license key?</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>1b · Offline.</strong> No browser opens until Polaris Key answers.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Finish in your browser</h2>
+                  <p class="kit-lede">We opened Polaris Key in your browser. Sign in there and DJDL continues by itself.</p>
+                </div>
+                <div class="kit-stack">
+                  <div class="kit-waiting" role="status"><span class="kit-breath"></span>Waiting for your browser…</div>
+                  <div class="kit-actions"><button class="kit-btn">Open browser again</button><button class="kit-btn ghost">Cancel</button></div>
+                </div>
+                <div class="kit-links"><a class="kit-link" href="#">Use a code instead</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>2 · Finish in your browser.</strong> Reads “Finishing sign-in…” while DJDL redeems the code.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">This sign-in took too long</h2>
+                  <p class="kit-lede">A sign-in link works for 10 minutes.</p>
+                </div>
+                <div class="kit-actions"><button class="kit-btn primary">Sign in again<i class="ic ic-arrow-up-right"></i></button><button class="kit-btn">Cancel</button></div>
+                <div class="kit-links"><a class="kit-link" href="#">Use a code instead</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>2b · Sign-in didn’t finish.</strong> Shows cancelled or couldn’t open your browser.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Sign in with a code</h2>
+                  <p class="kit-lede">On any phone or computer, go to <strong>key.plrs.im/device</strong> and enter this code.</p>
+                </div>
+                <div class="kit-stack">
+                  <div class="kit-code"><b>WDJB-MJHT</b><button class="kit-btn sm"><i class="ic ic-copy"></i>Copy</button></div>
+                  <div class="kit-count" role="status"><span class="kit-ring"></span>Waiting · code expires in 4:12</div>
+                  <p class="kit-hint">Check the code there matches this one.</p>
+                </div>
+                <div class="kit-actions"><button class="kit-btn">Open browser<i class="ic ic-arrow-up-right"></i></button><button class="kit-btn ghost">Cancel</button></div>
+                <div class="kit-links"><a class="kit-link" href="#">Use browser sign-in</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>2c · Use a code instead.</strong> <em>Open browser</em> fills in the code at key.plrs.im/device.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <div class="kit-person"><span class="avatar">MF</span>Signed in as Mara Fennick<a class="kit-link" href="#">Not you?</a></div>
+                  <h2 class="kit-title">Choose a license</h2>
+                  <p class="kit-lede">DJDL will use it on Mara’s PC.</p>
+                </div>
+                <div class="kit-options" role="radiogroup" aria-label="Licenses for DJDL">
+                  <div class="kit-option on">
+                    <span class="kit-radio"></span>
+                    <div class="kit-option-text">
+                      <span class="kit-option-title">Automatic grant</span>
+                      <span class="kit-line"><span class="kit-pill">Standard</span>2 of 5 devices · Lifetime</span>
+                      <span class="kit-seats"><i class="u"></i><i class="u"></i><i></i><i></i><i></i></span>
+                    </div>
+                  </div>
+                  <div class="kit-option">
+                    <i class="ic ic-ban"></i>
+                    <div class="kit-option-text">
+                      <span class="kit-option-title">Key ending Q2KD7H</span>
+                      <span class="kit-line"><span class="kit-pill">Standard</span><span><span class="warn">No free devices</span> · Lifetime</span></span>
+                      <button class="kit-btn sm">Replace a device</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="kit-links"><a class="kit-link" href="#"><i class="ic ic-key-round"></i>Use a license key instead</a></div>
+                <div class="kit-actions"><button class="kit-btn primary">Use this license and continue</button><button class="kit-btn">Cancel</button></div>
+                <p class="kit-foot"><i class="ic ic-lock"></i><span>Polaris Key signs you in for DJDL. Halcyon Sound never sees your codes or passkeys.</span></p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>3 · Choose a license.</strong> The first license with a free device is preselected.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <div class="kit-person"><span class="avatar">MF</span>Signed in as mara@example.com<a class="kit-link" href="#">Not you?</a></div>
+                  <h2 class="kit-title">No DJDL license in this account</h2>
+                  <p class="kit-lede">Bought it with another email? Sign in with that account instead.</p>
+                </div>
+                <div class="kit-field">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input"><span class="ph">pkey_djdl_…</span><button class="kit-btn sm">Paste</button></div>
+                </div>
+                <div class="kit-actions"><button class="kit-btn primary">Add and use on this device</button><button class="kit-btn">Cancel</button></div>
+                <div class="kit-links"><a class="kit-link" href="#">Use another account</a><a class="kit-link" href="#">Get DJDL<i class="ic ic-arrow-up-right"></i></a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>3b · No license in this account.</strong> Never a dead end.</figcaption>
+      </figure>
+      <figure class="board-item">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="host-app">
+              <aside class="host-side">
+                <div class="host-brand"><span class="logo sm" data-product="djdl"></span>DJDL</div>
+                <span class="host-nav on"><i class="ic ic-music"></i>Library</span>
+                <span class="host-nav"><i class="ic ic-archive"></i>Crates</span>
+                <span class="host-nav"><i class="ic ic-download"></i>Downloads</span>
+                <span class="host-nav"><i class="ic ic-globe"></i>Sources</span>
+                <span class="host-nav"><i class="ic ic-settings"></i>Settings</span>
+                <div class="host-account"><span class="avatar sm">MF</span><span><b>Mara Fennick</b>Standard license</span></div>
+              </aside>
+              <section class="host-main">
+                <div class="host-head"><h3>Library</h3><span>1,284 tracks · 38 crates</span></div>
+                <div class="host-rows">
+                  <div class="th"><span>Title</span><span>Artist</span><span>BPM</span><span>Key</span></div>
+                  <div><span>Low Orbit</span><span>Kessa Vale</span><span>124</span><span>8A</span></div>
+                  <div><span>Night Ferry (Extended Mix)</span><span>The Harbor Lights</span><span>118</span><span>5A</span></div>
+                  <div><span>Glasswork</span><span>Ondine</span><span>126</span><span>11B</span></div>
+                  <div><span>Tidal Lock</span><span>Marlowe &amp; Finch</span><span>122</span><span>2A</span></div>
+                  <div><span>Paper Lanterns</span><span>Juno Reyes</span><span>120</span><span>4B</span></div>
+                  <div><span>Static Bloom</span><span>Okafor Twins</span><span>128</span><span>9A</span></div>
+                  <div><span>Coastline Radio</span><span>Mirela Dunn</span><span>116</span><span>7B</span></div>
+                  <div><span>Second Wind</span><span>Kessa Vale</span><span>124</span><span>8B</span></div>
+                  <div><span>Afterhours, Lisbon</span><span>Tavi Moreno</span><span>122</span><span>1A</span></div>
+                  <div><span>Northbound</span><span>Ondine</span><span>125</span><span>6A</span></div>
+                </div>
+              </section>
+              <div class="kit-toast" role="status"><i class="ic ic-circle-check"></i><span>Signed in as Mara Fennick · Standard license</span></div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>4 · Signed in.</strong> The account row is the kit’s AccountAndLicense part.</figcaption>
+      </figure>
+      <figure class="board-item span-all code-end cap-top">
+        <div class="code" data-service="core">
+          <div class="code-head">
+            <div class="code-tabs"><span>main.ts</span><span class="active">renderer.tsx</span></div>
+            <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+          </div>
+<pre><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
+<span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> } <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
+<span class="t-k">import</span> <span class="t-s">"@polaris-key/react/styles.css"</span>;
+
+<span class="t-c">// In Electron the provider uses the main process's bridge, which</span>
+<span class="t-c">// runs the browser sign-in and holds the device key.</span>
+<span class="t-f">createRoot</span>(root).<span class="t-f">render</span>(
+  &lt;<span class="t-t">PolarisKeyProvider</span> <span class="t-p">config</span>={polarisKey}&gt;
+    &lt;<span class="t-t">PolarisKeyGate</span>&gt;
+      &lt;<span class="t-t">Library</span> /&gt;
+    &lt;/<span class="t-t">PolarisKeyGate</span>&gt;
+  &lt;/<span class="t-t">PolarisKeyProvider</span>&gt;,
+);</pre>
+          <div class="code-foot"><i class="ic ic-info sm"></i><span>No theme set: the Polaris look in DJDL’s accent. <code>theme</code> restyles it.</span></div>
+        </div>
+        <figcaption><strong>What the Electron build writes.</strong></figcaption>
+      </figure>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,158 @@
+{
+  "id": "entitlements.consumables",
+  "title": "License: entitlements and consumables",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-42",
+    "LX-14",
+    "LX-09",
+    "LX-35",
+    "CM-28"
+  ],
+  "uxRows": [
+    "UX-07"
+  ],
+  "summary": "A Diceroll player's license on its Entitlements tab: what her devices get with the source of every value (tier, add-ons, overrides), the add-ons the license holds in one store · date · state order, and the Gems consumable led by its balance, then bought, redeemed and refunded, and its redemption ledger, including a Google Play refund after part of the purchase was redeemed.",
+  "compare": [
+    "The Entitlements tab is the second tab of the license record (Status, Entitlements, Keys, Devices, Activity) and holds three things: the effective set, the add-ons held, and each consumable's ledger. There are no separate Grants or Config overrides tabs.",
+    "Every effective value shows where it comes from as a tag: the tier (Premium), an add-on, or an override; a quantity shows its parts (Premium 6 + Loadout pack +2 + Neon dice pack +1 = 9). The card has no subtitle (the tags say the order). Gems is not a row here: its balance shows once, in the Gems card. Override… opens the license's entitlement override editor.",
+    "Add-ons held list each purchase in one order, store · date · state: 'App Store · Oct 2', 'Google Play · renews Nov 4', 'App Store · Oct 5 · 450 of 1,200 redeemed', 'Google Play · Oct 1 · refunded Oct 3' (the state in the danger colour). No pills on healthy rows.",
+    "The Gems card leads with the balance (1,350), then Bought 2,700, Redeemed 1,200 ('4 times · 350 reversed') and Refunded 150: four figures in one row, two by two on phone; the numbers add up (2,700 − 1,200 − 150 = 1,350). No figure repeats a list on the page (purchase counts are the Add-ons rail's).",
+    "The ledger is newest first with the time zone named, a running balance, the device and app version for each redemption, the store order id for each purchase, and the request id; a filter switches between All, Bought, Redeemed and Refunds.",
+    "A refund after redemption removes only the units not yet redeemed (never below zero): the refund row reads '500 gems from Oct 1 · Google Play · removes the 150 left', and the earlier redemption alone says it was reversed, in the warning colour with the warm tint, with the game's acknowledgement. Status words take the cell's body size, so every row has one baseline.",
+    "The foot states the two guarantees in words: a repeated request id redeems nothing; a refund never takes the balance below zero.",
+    "Comp gems… comps a gems add-on; there is no free-form balance edit. The header's 'Comp an add-on…' is the license-side verb; the add-on record's 'Comp to…' is its pair (the object chosen in the step is the other one).",
+    "Phone: the effective set and add-ons stack; From folds under each entitlement, the quantity keeping its signs ('Premium 6 + Loadout pack +2 + Neon dice pack +1'); the four figures go two by two; the ledger keeps When (the date over its time, no comma), Event and Gems, with the device and running balance on a line under the event, each fact kept whole ('balance 1,650'); the Reversed row keeps its warning icon and colour; the tabs fit with a 16 px gap and the cut-off Activity fades at the edge; nothing scrolls the page sideways.",
+    "On desktop the Add-ons card sits in the rail beside the effective set, at its own height (never stretched to match); it ends with a link to purchases in Activity (no count: the rows are the count)."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: the tab bar scrolls visibly, the reversed redemption keeps its warning and balance on phone, and the add-ons card fills its row.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The tab bar cuts Activity off mid-word ('Act') on phone; the same kit problem as on the license record.",
+        "resolution": "Kit fix in kit/mockup.css: .tabs uses a 16 px gap below 640 px and has a sticky end cap (.tabs::after). The cap sits in the free space when the tabs fit, and when they overflow it sticks to the right edge and fades the cut-off tab. It is static CSS, not a scroll-driven animation, because shoot.mjs freezes animations and the screenshot has to show it. Checked at 390 px: Status, Entitlements, Keys and Devices fit, and Activity fades at the edge, so the bar reads as scrollable. Tabs on a card take the card's surface (--mk-tabs-bg)."
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone's Reversed row loses its warning icon, colour and running balance; on desktop the Add-ons card leaves an empty hole in the right column; 'Comp an add-on…' here vs 'Comp to…' on the add-on record.",
+        "resolution": "On phone the Reversed row keeps the warning icon and colour ('Reversed Oct 3 by the refund') and adds 'balance 750'. On desktop the Add-ons card stretches to the row's height, with its count in a foot ('6 purchases · 1 refunded', Purchases in Activity). The verbs stay a pair: 'Comp an add-on…' on a license (the add-on is chosen in the step) and 'Comp to…' on an add-on (the license is chosen), and the compare records the pair. Adding it to the copy rules (EXPERIENCE.md) is for the lead, outside the mockups directory. Also: the id chip uses the id-card icon."
+      },
+      {
+        "severity": "major",
+        "issue": "The compare asked for the balance first and four figures; the render showed three and left the answer (the balance) in another table.",
+        "resolution": "The Gems card leads with Balance 1,350, then Bought 2,700, Redeemed 1,200 ('4 times · 350 reversed') and Refunded 150 as four tiles (.stats.strip.quad, 2×2 on phone); the '3 purchases' and '1 purchase' sub-lines are gone; the Gems row left 'What Elif’s devices get', so the balance appears once. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The effective-set subtitle and the rail's '6 purchases · 1 refunded' restated the From tags and the rows; two rows described the same reversal; mixed type sizes put Event 3px off the row's baseline; phone broke dates and balances mid-fact.",
+        "resolution": "Cut the subtitle and the rail count (kept 'Purchases in Activity →'); add-on meta in one order, store · date · state; the Oct 3 refund row reads '500 gems from Oct 1 · Google Play · removes the 150 left' and only the Oct 2 row states the reversal; status words take the cell's 14/20 and sit on the row's baseline; phone When is the date over its time with no comma; 'Balance 1,650' stays whole; the phone quantity line keeps its signs.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Cap the effective-set card at 760px and stack the Gems figures under Add-ons in the aside.",
+        "resolution": "declined: The Gems figures must sit with the ledger they add up. Space after a table's last left-aligned column is normal. The accepted four-tile Gems strip fixes the sparse 538px tiles.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Keep the Gems row in the effective table with its From tag turned into a 'Ledger' link.",
+        "resolution": "declined: The balance would still appear twice. The accepted fix shows it once, in the Gems card on the same tab.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Draw the missing states and flows now: catalog-states, addons-empty, addon-states, save failed, the read-only viewer, the edit drawer and file confirmation, New add-on, the Remove and Change-to-units confirms, the Override editor, Comp flows, Create codes, the Preview at a date result, the canceled subscription and the move-major confirm.",
+        "resolution": "declined: The owner scoped this pass to spacing and kept the content, so new screens are logged for the area's next states round, not drawn now. The behaviour they need is already in the accepted compare items. After convergence, Override, Comp an add-on and Preview at a date belong to licenses.detail. Create codes belongs to commerce. The read-only state is a cross-area RBAC kit pattern. The ledger's empty and error states follow ADMIN.md T2's generic table states.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Accept three Gems figures and a two-row phone save bar as better drifts.",
+        "resolution": "declined: Both are fixed in the render instead: the balance tile is restored, and the phone save bar becomes one row. The compares already describe that.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The Gems card meta line held five facts, the footnote explained mechanism, the tiles were unequal and two primary actions competed.",
+        "resolution": "'Redeemed in the game with consume()' removed; the ledger's Details hold the item and device only, with the request or order id behind a copy icon; 'balance X' leaves the Event sub-line (the Balance column has it; on phone it sits under the amount, right-aligned). 'Newest first' is the sort marker on the When header, which also carries 'PDT' once. The footnote is a tooltip on the Gems title. All four tiles share label, value and caption (Balance 'Bought − redeemed − refunded', Bought '3 purchases', Redeemed '4 times · 350 reversed', Refunded '1 refund'). 'Comp gems…' is removed from the card and the page keeps one comp action. Details are capped at about 520px with an ellipsis from 1280.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Columns stretched to 1560px at wide and the refund state appeared three times.",
+        "resolution": "The entitlement table is a fixed grid (label 280, value 120, From the rest) so the pills sit beside the value; from 1440 the Add-ons card sits beside the table and stretches to its height; the Add-ons card subtitle labels gem purchases as the ledger's source and 'refunded Oct 3' appears once there.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4",
+          "ux1"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'Activity' clipped to 'Activ' with no scroll cue and ledger rows were uneven.",
+        "resolution": "Phone tabs use a tighter gap (.tabs.tight) so a five-tab record fits 390 with the kit's end-cap fade as the cue; ledger rows are two lines with the amount and balance right-aligned; the warning row reads 'Reversed by the Oct 3 refund' (on phone; desktop keeps the full note, which carries the Ember-table fact).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Remove the gem purchases from the Add-ons card, or relabel it 'Active add-ons'.",
+        "resolution": "declined: the Add-ons card is the place to see and refund a purchase; removing rows would remove content.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "minor",
+        "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
+        "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Gaps of 24, 32 and 48px and meta type of 12/20 against 13/22 drifted between screens.",
+        "resolution": "Under .ent2: 32px section gap, card head 56px (72px with a subtitle), meta type 12/18 in the muted token, sentence-case 12px label (.eyebrow), content caps .page.form-page 1280 and .page.table-page 1600; the page-title to first-section gap equals the section gap (the page is one flex column).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      }
+    ]
+  },
+  "order": 12
+}

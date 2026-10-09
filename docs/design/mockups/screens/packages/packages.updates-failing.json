@@ -1,0 +1,63 @@
+{
+  "id": "packages.updates-failing",
+  "title": "Updates, a broken updater",
+  "area": "packages",
+  "surface": "console",
+  "order": 11,
+  "packages": [
+    "P2-11",
+    "P2-12"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Updates page on Oct 9, when 4.2.2 shipped with the wrong SUPublicEDKey: the macOS card in attention with its signature failures, what went wrong in words, how to fix it and what owners of 4.2.2 must do.",
+  "compare": [
+    "Same page as packages.updates two days later; the sidebar's Updates item carries a danger count.",
+    "The macOS head shows a danger pill '12 signature failures' with 'since Oct 9, 10:20' beside it, under the title; nothing else on the page changes tone.",
+    "Setup: the key and the appcast stay done; the blocked step 'Builds carry the same key' says what went wrong (4.2.2, built Oct 9 with kZ8r…Q1c= in Info.plist, not pJ3m…vWc= from .pkey/release, so its copies refuse every update you sign) and, under it as the kit's failed-task body, the fix: put back the key the command prints and publish 4.2.3 (owners of 4.2.2 get it from the download page or Library), the command with Copy, and 'Email the 37 people on 4.2.2'.",
+    "The foot counts since the failure (212 update checks, 37 copies on 4.2.2); the start time is said once, in the head.",
+    "Phone: the fix stays in the setup column above the code; the command wraps inside its block, never widening the page."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "4 UX designers, triaged by a lead designer",
+    "date": "2026-10-08",
+    "verdict": "Spacing and copy trimmed per the multi-review triage; see findings.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Same layout rule and trims as Updates.",
+        "resolution": "See packages.updates: one Update rules rule, sticky code pane, chips removed, rows shortened.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The key mismatch and its count are said in the banner, header, stats and button.",
+        "resolution": "Said once in the failing step: 'Version 4.2.2 was built with the wrong key (kZ8r…Q1c=, expected pJ3m…vWc=). Put back the key from the command below and publish 4.2.3.'; the count stays in the stat strip; button 'Email the 37 owners of 4.2.2'; the code pane is sticky.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX2",
+          "UX4",
+          "UX1"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
+        "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

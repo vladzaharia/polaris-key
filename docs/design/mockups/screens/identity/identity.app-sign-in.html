@@ -1,0 +1,239 @@
+<div class="console" data-service="identity">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <!-- Product context (ST-45): Diceroll's six features; Sign-in holds the one App sign-in page (I-29). -->
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="identity">
+      <button class="nav-label" aria-expanded="true">Sign-in<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item active" href="#"><i class="ic ic-log-in"></i><span class="nav-text">App sign-in</span><span class="count warning">1</span></a>
+    </div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page rhythm">
+      <header class="page-head">
+        <div class="page-heading"><h1>App sign-in</h1></div>
+        <div class="page-actions">
+          <button class="btn ghost hide-phone"><i class="ic ic-history"></i>History</button>
+          <button class="btn ghost icon show-phone" aria-label="History"><i class="ic ic-history"></i></button>
+        </div>
+      </header>
+
+      <nav class="jump-nav only-narrow" aria-label="On this page">
+          <a class="on" href="#s-status">Status</a>
+          <a href="#s-methods">Sign-in methods</a>
+          <a href="#s-pc">Product connection</a>
+          <a href="#s-gets">What Diceroll gets</a>
+          <a href="#s-terms">Terms</a>
+          <a href="#s-keys">License keys</a>
+          <a href="#s-portal">Customer portal</a>
+          <a href="#s-pres">Presentation</a>
+        </nav>
+
+      <div class="mk-with-rail rail-360">
+
+        <div class="mk-main">
+          <!-- Status: the Sign-in feature switch. Turning it off names Cloud Sync (identity.sign-in-off). -->
+          <section class="card" id="s-status" aria-labelledby="h-status">
+            <div class="card-head"><div class="title"><h2 id="h-status">Status</h2></div></div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile"><i class="svc"></i></span>
+              <div><div class="setting-title">Sign-in</div><div class="setting-desc">1,208 players signed in this week.</div></div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="Sign-in for Diceroll"></span>
+            </div>
+          </section>
+
+          <!-- Methods (I-29): email and passkeys always on; shortcuts derived from channels, overridable. -->
+          <section class="card" id="s-methods" aria-labelledby="h-methods">
+            <div class="card-head"><div class="title"><h2 id="h-methods">Sign-in methods</h2></div></div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="ic ic-mail"></i></span>
+              <div><div class="setting-title">Email code and passkeys</div><div class="setting-desc">Off only for addresses whose organization requires its own sign-in.</div></div>
+              <span class="status muted"><i class="ic ic-lock"></i>Always on</span>
+            </div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="ic ic-apple"></i></span>
+              <div><div class="setting-title">Apple</div><div class="setting-desc">Diceroll ships on the App Store</div></div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="Apple on Diceroll's card"></span>
+            </div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="gmark"></i></span>
+              <div><div class="setting-title">Google</div><div class="setting-desc">Diceroll ships on Google Play</div></div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="Google on Diceroll's card"></span>
+            </div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
+              <div><div class="setting-title">Steam</div><div class="setting-desc">Diceroll sells on Steam. A web sign-in: the Steam app isn’t needed.</div></div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="Steam on Diceroll's card"></span>
+            </div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="ic ic-building-2"></i></span>
+              <div><div class="setting-title">Single sign-on</div><div class="setting-desc">Pocket ID, Lakeside University · 3 domains</div></div>
+              <a class="link" href="#">Connections<i class="ic ic-arrow-right"></i></a>
+            </div>
+
+            <div class="card-band"><p class="eyebrow">Inside the game</p></div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="ic ic-gamepad-2"></i></span>
+              <div><div class="setting-title">Game Center<small>iOS</small></div><div class="setting-desc">412 sign-ins this week</div></div>
+              <span class="status"><i class="ic ic-circle-check"></i>Working</span>
+            </div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="ic ic-google-play"></i></span>
+              <div><div class="setting-title">Play Games<small>Android</small></div><div class="setting-desc">377 sign-ins this week</div></div>
+              <span class="status"><i class="ic ic-circle-check"></i>Working</span>
+            </div>
+            <div class="setting-row with-icon">
+              <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
+              <div><div class="setting-title">Steam<small>Steam builds</small></div><div class="setting-desc">Players on Steam use the browser sign-in until Steamworks has a publisher key.</div></div>
+              <span class="mk-cluster"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Needs Steamworks</span><a class="link" href="#">Connect Steam<i class="ic ic-arrow-right"></i></a></span>
+            </div>
+          </section>
+
+          <!-- Product connection (I-32): Diceroll's own account system, token exchange only. Edited in its own dialog. -->
+          <section class="card" id="s-pc" aria-labelledby="h-pc">
+            <div class="card-head"><div class="title"><h2 id="h-pc">Product connection</h2><p>Trades a Firebase token for a sign-in</p></div></div>
+            <div class="setting-row with-icon">
+              <span class="logo sm" data-product="diceroll"></span>
+              <div><div class="setting-title">Diceroll accounts</div><div class="setting-desc">Firebase</div></div>
+              <button class="btn outline sm">Edit</button>
+            </div>
+            <div class="card-body">
+              <dl class="dl rows-40 stack-narrow">
+                <dt>Issuer</dt><dd><div class="mk-stack-1"><span class="mono">https://securetoken.google.com/diceroll-prod</span><span class="meta">Keys from Google’s published set</span></div></dd>
+                <dt>Token exchange</dt><dd><div class="mk-cluster"><span class="status"><i class="ic ic-circle-check"></i>On</span><span class="mono">POST /diceroll/identity/token</span></div></dd>
+                <dt>Sign-in button</dt><dd>None: Firebase has no sign-in page</dd>
+                <dt>Emails</dt><dd>Never taken as confirmed; a player confirms theirs with a code once</dd>
+                <dt>Linked players</dt><dd>1,920 · last exchange 2 min ago</dd>
+              </dl>
+            </div>
+            <div class="card-foot between"><a class="link" href="#">All connections<i class="ic ic-arrow-right"></i></a><button class="btn ghost sm"><i class="ic ic-plus"></i>Add another</button></div>
+          </section>
+
+          <!-- What the app gets (I-34): identity.claims {required, optional}. -->
+          <section class="card" id="s-gets" aria-labelledby="h-gets">
+            <div class="card-head">
+              <div class="title"><div class="mk-cluster baseline"><h2 id="h-gets">What Diceroll gets</h2><span class="pill sm"><i class="ic ic-file-code-2"></i>.pkey/product</span></div></div>
+            </div>
+            <div class="card-body tight"><p class="icon-line type-small muted"><i class="ic ic-info"></i><span>Changing one here takes it over from the manifest: resyncs leave it alone until you revert it.</span></p></div>
+            <div class="setting-row">
+              <div><div class="setting-title">License for this device</div><div class="setting-desc">The one the player picks, or the one the access policy gives</div></div>
+              <span class="status muted"><i class="ic ic-lock"></i>Always</span>
+            </div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Screen name</div><div class="setting-desc">Shown on leaderboards and in shared dice rooms</div></div>
+              <div class="segmented sm fixed-224"><span class="on">Required</span><span>Optional</span><span>Not asked</span></div>
+            </div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Picture</div><div class="setting-desc"><span class="share-line"><span class="progress" style="--v: 48%"></span>48% share</span></div></div>
+              <div class="segmented sm fixed-224"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
+            </div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Email</div><div class="setting-desc"><span class="share-line"><span class="progress" style="--v: 61%"></span>61% share</span></div></div>
+              <div class="segmented sm fixed-224"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
+            </div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Cloud Sync</div><div class="setting-desc"><span>Off keeps saves on that device only</span><span class="share-line"><span class="progress" style="--v: 94%"></span>94% share</span></div></div>
+              <div class="segmented sm fixed-224"><span>Required</span><span class="on">Optional</span><span>Not asked</span></div>
+            </div>
+          </section>
+
+          <!-- Terms (I-33): Polaris Key's always; the product's version from the manifest, URLs from the listing. -->
+          <section class="card" id="s-terms" aria-labelledby="h-terms">
+            <div class="card-head"><div class="title"><h2 id="h-terms">Terms</h2></div></div>
+            <div class="setting-row">
+              <div><div class="setting-title">Polaris Key’s Terms and Privacy Policy</div><div class="setting-desc">Once per account</div></div>
+              <span class="status muted"><i class="ic ic-lock"></i>Always</span>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-title">Diceroll’s terms<small>2026-10</small></div><div class="setting-desc">Links from Diceroll’s listing. Players accept again when the version changes.</div></div>
+              <a class="link" href="#">Edit listing<i class="ic ic-arrow-right"></i></a>
+            </div>
+          </section>
+
+          <!-- Key entry (I-09's setting, I-35's manifest block): taken over from the manifest. -->
+          <section class="card" id="s-keys" aria-labelledby="h-keys">
+            <div class="card-head">
+              <div class="title"><div class="mk-cluster baseline"><h2 id="h-keys">License keys</h2><span class="pill sm"><i class="ic ic-pencil"></i>Changed here · <code>.pkey/product</code> says 5</span></div><p>For players who type a key instead of signing in.</p></div>
+              <button class="btn ghost sm">Revert to manifest…</button>
+            </div>
+            <div class="setting-row stack-narrow">
+              <div><div class="setting-title">Key entries before an account is needed</div><div class="setting-desc">Counted across the portal and the game. Activated devices keep working.</div></div>
+              <div class="segmented sm fixed-224"><span>5</span><span class="on">10</span><span>25</span><span>No limit</span></div>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-title">A key adds its license to whoever enters it</div><div class="setting-desc">Off: only to the account with the buyer’s email.</div></div>
+              <span class="switch" role="switch" aria-checked="false" aria-label="A key adds its license to whoever enters it"></span>
+            </div>
+          </section>
+        </div>
+
+        <div class="mk-rail">
+        <nav class="toc-nav in-rail" aria-label="On this page">
+          <p class="eyebrow">On this page</p>
+          <a class="on" href="#s-status">Status</a>
+          <a href="#s-methods">Sign-in methods</a>
+          <a href="#s-pc">Product connection</a>
+          <a href="#s-gets">What Diceroll gets</a>
+          <a href="#s-terms">Terms</a>
+          <a href="#s-keys">License keys</a>
+          <a href="#s-portal">Customer portal</a>
+          <a href="#s-pres">Presentation</a>
+        </nav>
+          <!-- Customer portal: the two portal switches that remain (portal.enabled, keyReissue). -->
+          <section class="card" id="s-portal" aria-labelledby="h-portal">
+            <div class="card-head"><div class="title"><h2 id="h-portal">Customer portal</h2></div></div>
+            <div class="setting-row">
+              <div><div class="setting-title">Show Diceroll in players’ libraries</div><div class="setting-desc">With its licenses and devices</div></div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="Show Diceroll in players’ libraries"></span>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-title">Show a lost key again</div></div>
+              <span class="switch on" role="switch" aria-checked="true" aria-label="Show a lost key again"></span>
+            </div>
+          </section>
+
+          <!-- Presentation is Core's (HA-12): read-only here; it replaces the old "App name" field. -->
+          <section class="card" id="s-pres" aria-labelledby="h-pres">
+            <div class="card-head">
+              <div class="title"><h2 id="h-pres">Presentation</h2></div>
+              <a class="link" href="#">Edit in Settings<i class="ic ic-arrow-right"></i></a>
+            </div>
+            <div class="setting-row with-icon">
+              <span class="logo" data-product="diceroll"></span>
+              <div><div class="setting-title">Diceroll</div><div class="setting-desc">Example Games</div></div>
+              <span class="swatch-chip"><i style="--swatch: #ec4c55"></i>Accent<span class="mono">#EC4C55</span></span>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

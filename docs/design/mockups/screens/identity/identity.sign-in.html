@@ -1,0 +1,48 @@
+<div class="hosted" data-service="core">
+  <div class="hosted-brand"><i class="pk-mark sm"></i>Polaris Key</div>
+
+  <main class="hosted-card" aria-labelledby="si-title">
+    <!-- App request header (passthrough): Presentation from Core, the device label from the SDK. -->
+    <header class="hosted-head">
+      <span class="logo lg" data-product="djdl"></span>
+      <div class="grow">
+        <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+        <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+      </div>
+    </header>
+
+    <div class="hosted-body">
+      <h1 id="si-title">Sign in</h1>
+      <p class="hosted-lede">Use your DJDL purchase email or a work or school email.</p>
+
+      <!-- Identifier first. autocomplete="username webauthn": the browser offers saved passkeys as you type. -->
+      <div class="field">
+        <label class="field-label" for="si-email">Email</label>
+        <div class="input focus" id="si-email"><span class="ph"><span class="caret"></span>name@example.com</span></div>
+      </div>
+      <button class="btn primary block">Continue<i class="ic ic-arrow-right"></i></button>
+
+      <div class="hosted-or">or</div>
+
+      <!-- DJDL's product connection: its store's own account system (I-32), only on DJDL's card. -->
+      <button class="btn outline block"><span class="logo xs" data-product="djdl"></span>Continue with your DJDL store account</button>
+
+      <!-- Built-in providers, derived from where DJDL ships: macOS (Apple) and the general Google. -->
+      <div class="provider-row" role="group" aria-label="Or continue with">
+        <a class="provider" href="#" aria-label="Continue with Apple" title="Continue with Apple"><i class="ic ic-apple"></i></a>
+        <a class="provider" href="#" aria-label="Continue with Google" title="Continue with Google"><i class="gmark lg"></i></a>
+      </div>
+
+      <button class="btn ghost block"><i class="ic ic-fingerprint"></i>Sign in with a passkey</button>
+
+      <div class="hosted-links row-14">
+        <a href="#"><i class="ic ic-key-round sm"></i>Have a license key?</a>
+        <a href="#"><i class="ic ic-smartphone sm"></i>Sign in with another device</a>
+      </div>
+    </div>
+
+    <footer class="hosted-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+  </main>
+
+  <nav class="hosted-legal centered" aria-label="Legal"><a href="#">Help</a><span>·</span><a href="#">Privacy</a><span>·</span><a href="#">Terms</a></nav>
+</div>

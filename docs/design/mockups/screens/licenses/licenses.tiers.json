@@ -1,0 +1,116 @@
+{
+  "id": "licenses.tiers",
+  "title": "Tiers",
+  "area": "licenses",
+  "surface": "console",
+  "packages": [
+    "LX-44",
+    "LX-33",
+    "LX-34",
+    "LX-41",
+    "LX-43"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Tiers: the ordered list (drag, or each row's menu, to reorder; the higher tier wins) beside the Education tier open in four groups, Duration (fixed 365 days, then keeps the last version), Limits (devices, offline days, release tracks, versions, fingerprint mode), Includes (entitlements and Cloud Sync storage) and Profile, with one unsaved change in the save bar that says how many licenses it reaches.",
+  "order": 10,
+  "compare": [
+    "Header: 'Tiers' and New tier (the page's primary, ADMIN.md §5.1); no subtitle and no count (the sidebar shows 5).",
+    "Order: a card titled 'Order' with 'Best first. When several licenses or rules apply, the higher tier wins.' Each row: a drag handle, the rank, the name with its license count, and a ⋯ menu (Move up, Move down, Duplicate, Delete). Education, the open tier, is marked with the accent wash and edge.",
+    "Wide: the page is 1180px of content, centred; the list is 300px and sticky beside the editor; tablet 272px; below 900px the list folds into a tier select above the editor.",
+    "Editor head: 'Education', 'Used by 57 licenses' as a link to the filtered list, Preview at a date… and ⋯ (Duplicate, Delete).",
+    "Exactly four groups, each a label column and its fields (.form-section): Duration, Limits, Includes, Profile (LX-44). The field column stops at 640px, so a control stays near its words at wide.",
+    "Duration: Lifetime, Fixed length or Renewing; Runs for 365 days with 'From the day the license starts. One starting today ends Oct 7, 2027.'; When it ends: Keeps the last version, Stops working, Moves to another tier, each with one line.",
+    "Limits ('Blank uses the platform default. A license can override any of these.'): Devices 2, Offline days 14 outlined in the accent with 'was 7', Release tracks with stable locked (lock, dashed edge, 'Always included' tooltip) and 'Choosing dev also includes beta.', Versions Any to Any with Only 4.x, Fingerprint mode Normal with the 'From .pkey/product' pill and 'Normal allows up to 2 hardware changes. Changing it here takes it over from the manifest.'",
+    "Includes: recording, stems, decks, polarisVpn and Cloud Sync storage as rows of key, one line and its control (switch or number); no kind tag, the control says the kind. Open Entitlements under the rows.",
+    "Profile: one select (Classroom) and the three settings it sets.",
+    "One save bar under the editor card (the built screen pins it to the window while dirty): '1 change. Applies to 54 of 57 licenses; 3 keep their own offline days.' with Discard and Save Education.",
+    "Phone: the list stays above the editor, each group's label goes over its fields, the save bar's buttons share the width."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: the page is the kit's .mk-editor with item rows, .form-section groups, .radio-list and the kit save bar; 0 screen spacing; repeated facts and narration cut.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The screen drew its own list, editor head, groups and save bar with 37 spacing declarations; the save bar was sticky, so a full-page shot drew it over Release tracks.",
+        "resolution": "Kit only: .mk-editor (list 360/400, stacking below 1280), .item-row.lead.keep-end with .rank and .marked, .form-section, .radio-list, .card-rows.flush, the kit .save-bar drawn under the card."
+      },
+      {
+        "severity": "major",
+        "issue": "At wide the Includes rows stretched 900px, a switch far from its key.",
+        "resolution": "The field column of a .form-section stops at 640px (kit)."
+      },
+      {
+        "severity": "minor",
+        "issue": "Repeated or narrating copy: the subtitle restated the editor, the list note repeated under the list, group descriptions restated their fields, kind tags repeated the control, 'stable is always included' repeated the lock, and the example box repeated the end option.",
+        "resolution": "Cut to the one fact each: the higher-tier rule in the Order head, one line per option, the end date folded into Runs for's hint, no kind tags."
+      },
+      {
+        "severity": "major",
+        "issue": "Dead rails at wide and a 280px empty strip inside the editor; Order column ran 1000px past its content.",
+        "resolution": "Page capped at 1180px of content (.page.cap.cap-1180) so wide adds margin; Order is 300px (272 at tablet) and sticky (.sticky-top, 88px); the form column keeps its 200px label column and 640px field column, so toggles and number fields end at the field column edge.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Order stacked above the editor at tablet, pushing the editor 560px down; phone had no switcher.",
+        "resolution": "Two columns down to 900px (Order 272px at tablet); below 900px Order folds into the .mk-editor-switch select and the editor starts the page.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Field rhythm uneven (8, 12, 24); Only 4.x chip off the inputs' line; the two card heads did not share a baseline.",
+        "resolution": "One rhythm (.fld-rhythm): 24 between groups, 8 label to control, 6 control to helper; Only 4.x is a 36px button (.btn.match); both heads are .card-head.h56.sub with the title on the same line. The left-rail helper sentences were left as written (they wrap in the 200px label column but never set a section's height).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Repeated facts in Order rows and the editor head.",
+        "resolution": "Order rows drop the summary line (the editor shows the details) and keep the licence count; the slug is gone (it equals the lowercased name); '57 licenses' stays once, in the editor head; 'Add-ons can add more.' cut.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Order list rows wrapped unevenly (name and count on one line in some rows, two in others).",
+        "resolution": "Count under the name in every row (.mk-editor.tiers .item-title > small), so rows share one height.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1"
+        ]
+      },
+      {
+        "issue": "Add a live 'What changes' preview card at wide to fill the strip.",
+        "resolution": "declined: It adds a new component with new content. A width cap solves the dead space without it.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Cut or rewrite most helper lines (fingerprint, versions, 'Blank uses…', 'Choosing dev also includes beta', 'Applies to 54 of 57', and the like).",
+        "resolution": "declined: Most of these state a rule or a consequence that is not stated elsewhere. The save bar sentence is the consequence of the save. Only the exact duplicates were accepted.",
+        "round": "multi-review"
+      }
+    ]
+  }
+}

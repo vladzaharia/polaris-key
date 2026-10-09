@@ -1,0 +1,403 @@
+<style>
+  /* Space under the open drawer's frame before Other states. */
+  [data-screen="admin.invite"] .board.below {
+    margin-top: var(--sp-8);
+  }
+  /* admin.invite: no spacing of its own. Idle controls in the drawer are raised, not tinted, so
+     they don't read as disabled; on phone the drawer is a full-screen sheet in the flow. */
+  [data-screen="admin.invite"] :is(.drawer, .board-item) :is(.select, .radio:not(.on) > .box) {
+    background: var(--pk-surface-raised);
+  }
+  /* The open drawer is a cell over the whole console, so the page is at least as tall as the
+     drawer and nothing under the screen is covered. */
+  @container screen (min-width: 640px) {
+    [data-screen="admin.invite"] .console > .topbar {
+      grid-row: 1;
+    }
+    [data-screen="admin.invite"] .console > .sidebar {
+      grid-area: 2 / 1;
+    }
+    [data-screen="admin.invite"] .console > .main {
+      grid-area: 2 / 2;
+    }
+    [data-screen="admin.invite"] .console > .overlay.end {
+      position: relative;
+      grid-area: 1 / 1 / -1 / -1;
+    }
+  }
+  /* The Members page behind drops its last-sign-in column below 1280px, as on Members. */
+  @container screen (max-width: 1279px) {
+    [data-screen="admin.invite"] .members .c-seen {
+      display: none;
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="admin.invite"] .console {
+      display: block;
+      min-height: 0;
+    }
+    [data-screen="admin.invite"] .console > :not(.overlay) {
+      display: none;
+    }
+    [data-screen="admin.invite"] .console > .overlay.end {
+      position: static;
+    }
+    [data-screen="admin.invite"] .drawer {
+      width: 100%;
+      border-left: 0;
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page cap-table gap-6">
+      <header class="page-head">
+        <div class="page-heading"><h1>Members</h1></div>
+        <div class="page-actions">
+          <button class="btn primary"><i class="ic ic-user-plus"></i>Invite people</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Members">
+        <a class="tab active" href="#">Members <span class="count">10</span></a>
+        <a class="tab" href="#">SSO rules <span class="count">3</span></a>
+        <a class="tab" href="#">Roles</a>
+      </nav>
+
+      <!-- The root rule is computed from the deploy (PLATFORM_ADMIN_GROUP). Shown, never editable. -->
+      <div class="callout">
+        <i class="ic ic-lock-keyhole"></i>
+        <div class="grow">
+          <div class="callout-title">Root rule: everyone in <code>polaris-admins</code> is a Superadmin</div>
+        </div>
+        <a class="link" href="#">Open SSO rules<i class="ic ic-arrow-right"></i></a>
+      </div>
+
+      <section class="section gap-6" aria-label="Members">
+        <div class="toolbar">
+          <div class="search-field"><i class="ic ic-search"></i><span>Search by name or email</span></div>
+          <div class="chip-row fade">
+            <span class="filter solid"><i class="ic ic-plus"></i>Role</span>
+            <span class="filter solid"><i class="ic ic-plus"></i>Product</span>
+            <span class="filter solid"><i class="ic ic-plus"></i>Access from</span>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <table class="table stack-phone members rows-56">
+            <thead>
+              <tr><th>Member</th><th>Roles</th><th>Access from</th><th class="c-seen hide-narrow">Last console sign-in</th><th class="row-menu"><span class="sr-only">Actions</span></th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar violet">AL</span><div><div class="cell-title mk-cluster baseline">Ada Lindqvist <span class="meta">You</span></div><div class="cell-sub">ada@example.com<span class="fold"> · Passkey, today</span></div></div></div></td>
+                <td><span class="role-tags"><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone"><span class="icon-text"><i class="ic ic-lock-keyhole"></i>Root rule<span class="slug">polaris-admins</span></span></div></td>
+                <td class="c-seen hide-narrow"><div>Today, 09:12</div><div class="cell-sub">Passkey</div></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Ada Lindqvist"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">JW</span><div><div class="cell-title">Jonas Weber</div><div class="cell-sub">jonas@example.com<span class="fold"> · Pocket ID, Oct 6</span></div></div></div></td>
+                <td><span class="role-tags"><span class="role-tag super"><i class="ic ic-crown"></i>Superadmin</span></span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone"><span class="icon-text"><i class="ic ic-lock-keyhole"></i>Root rule<span class="slug">polaris-admins</span></span></div></td>
+                <td class="c-seen hide-narrow"><div>Oct 6, 17:40</div><div class="cell-sub">Pocket ID</div></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Jonas Weber"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">PR</span><div><div class="cell-title">Priya Raman</div><div class="cell-sub">priya@example.com<span class="fold"> · Passkey, today</span></div></div></div></td>
+                <td><span class="role-tags">
+                  <span class="role-tag"><i class="ic ic-shield"></i>Platform admin</span>
+                  <span class="role-tag"><span class="logo xs" data-product="djdl"></span>DJDL admin</span>
+                </span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone">
+                  <span class="icon-text"><i class="ic ic-user-check"></i><span class="by">Added by </span>Ada Lindqvist<span class="meta">Sep 12</span></span>
+                  <span class="icon-text"><i class="ic ic-plus"></i>Created DJDL<span class="meta">Sep 14</span></span>
+                </div></td>
+                <td class="c-seen hide-narrow"><div>Today, 08:55</div><div class="cell-sub">Passkey</div></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Priya Raman"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">KM</span><div><div class="cell-title">Kenji Mori</div><div class="cell-sub">kenji@example.com<span class="fold"> · Pocket ID, today</span></div></div></div></td>
+                <td><span class="role-tags"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span></span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone"><span class="icon-text"><i class="ic ic-user-check"></i><span class="by">Added by </span>Ada Lindqvist<span class="meta">Sep 30</span></span></div></td>
+                <td class="c-seen hide-narrow"><div>Today, 10:02</div><div class="cell-sub">Pocket ID</div></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Kenji Mori"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">SO</span><div><div class="cell-title">Sam Okoye</div><div class="cell-sub">sam@example.com<span class="fold"> · Pocket ID, Oct 5</span></div></div></div></td>
+                <td><span class="role-tags">
+                  <span class="role-set"><span class="role-tag"><i class="ic ic-layers"></i>All products admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds</span></span>
+                  <span class="role-tag"><span class="logo xs" data-product="djdl"></span>DJDL admin</span>
+                </span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone">
+                  <span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">release-managers</span></span>
+                  <span class="icon-text"><i class="ic ic-user-check"></i><span class="by">Added by </span>Priya Raman<span class="meta">Oct 2</span></span>
+                </div></td>
+                <td class="c-seen hide-narrow"><div>Oct 5, 14:18</div><div class="cell-sub">Pocket ID</div></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Sam Okoye"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">LO</span><div><div class="cell-title">Lucía Ortega</div><div class="cell-sub">lucia@example.com<span class="fold"> · Pocket ID, Oct 6</span></div></div></div></td>
+                <td><span class="role-tags">
+                  <span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds, <i class="svc" data-service="commerce"></i>Commerce</span></span>
+                </span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone"><span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">diceroll-store</span></span></div></td>
+                <td class="c-seen hide-narrow"><div>Oct 6, 11:31</div><div class="cell-sub">Pocket ID</div></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Lucía Ortega"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">FB</span><div><div class="cell-title">Felix Brandt</div><div class="cell-sub">felix@studio.example.com<span class="fold"> · Studio Okta, Oct 4</span></div></div></div></td>
+                <td><span class="role-tags">
+                  <span class="role-set"><span class="role-tag"><span class="logo xs" data-product="djdl"></span>DJDL admin</span><span class="role-areas"><i class="svc" data-service="config"></i>Managed config</span></span>
+                </span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone">
+                  <span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">@studio.example.com</span></span>
+                  <span class="icon-text"><i class="ic ic-user-check"></i><span class="by">Added by </span>Priya Raman<span class="meta">Oct 4</span></span>
+                </div></td>
+                <td class="c-seen hide-narrow"><div>Oct 4, 16:05</div><div class="cell-sub">Studio Okta</div></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Felix Brandt"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar">NH</span><div><div class="cell-title">Noor Haddad</div><div class="cell-sub">noor@studio.example.com<span class="fold"> · Studio Okta, today</span></div></div></div></td>
+                <td><span class="role-tags"><span class="role-tag"><i class="ic ic-log-in"></i>Console access</span></span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone"><span class="icon-text"><i class="ic ic-waypoints"></i>SSO rule<span class="slug">@studio.example.com</span></span></div></td>
+                <td class="c-seen hide-narrow"><div>Today, 11:20</div><div class="cell-sub">Studio Okta</div></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for Noor Haddad"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <!-- An invite is a role binding on an email, converted at the first strong sign-in. -->
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar pending"><i class="ic ic-mail"></i></span><div><div>ines@example.com</div></div></div></td>
+                <td><span class="role-tags"><span class="role-tag"><span class="logo xs" data-product="djdl"></span>DJDL admin</span></span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone"><span class="icon-text"><i class="ic ic-send"></i>Invited by Priya Raman<span class="meta">Oct 6</span></span></div></td>
+                <td class="c-seen hide-narrow"><span class="subtle">—</span></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for ines@example.com"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="avatar pending"><i class="ic ic-mail"></i></span><div><div>marco@example.com</div></div></div></td>
+                <td><span class="role-tags"><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="commerce"></i>Commerce</span></span></span></td>
+                <td class="type-small"><div class="mk-stack-1 merge-phone"><span class="icon-text"><i class="ic ic-send"></i>Invited by Kenji Mori<span class="meta">Today</span></span></div></td>
+                <td class="c-seen hide-narrow"><span class="subtle">—</span></td>
+                <td class="row-menu"><button class="btn ghost icon hit" aria-label="More for marco@example.com"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+  <!-- Invite people: a binding on each email. Step-up, notify and audit on send. -->
+  <div class="overlay end">
+    <aside class="drawer" aria-labelledby="invite-title">
+      <div class="drawer-head">
+        <div class="grow"><h2 id="invite-title">Invite people</h2><p class="type-small muted">They join at their first sign-in with a passkey or SSO.</p></div>
+        <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
+      </div>
+      <div class="drawer-body">
+        <div class="field">
+          <span class="field-label">Email addresses</span>
+          <div class="token-field focus">
+            <span class="token">hana@example.com<i class="ic ic-x"></i></span>
+            <span class="token">theo@example.com<i class="ic ic-x"></i></span>
+            <span class="token invalid"><i class="ic ic-triangle-alert"></i>marta@example<i class="ic ic-x"></i></span>
+            <span class="caret"></span>
+          </div>
+          <span class="error-text"><i class="ic ic-circle-x"></i>marta@example needs a domain, such as marta@example.com. It isn’t counted until it’s fixed.</span>
+          <span class="hint">Separate addresses with commas or spaces.</span>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Role</span>
+          <div class="choices cols-2 tiles-phone">
+            <div class="choice"><div class="choice-title"><i class="ic ic-log-in"></i>Console access</div><div class="choice-desc">Can sign in. Sees nothing until someone adds another role.</div></div>
+            <div class="choice on"><div class="choice-title"><i class="ic ic-boxes"></i>Product admin</div><div class="choice-desc">Manages the products you pick, or only some areas of them.</div></div>
+            <div class="choice"><div class="choice-title"><i class="ic ic-shield"></i>Platform admin</div><div class="choice-desc">Platform settings, connections, packages and new products.</div></div>
+            <div class="choice"><div class="choice-title"><i class="ic ic-crown"></i>Superadmin</div><div class="choice-desc">Everything, including every role and SSO rule.</div></div>
+            <p class="choice-note">Manages the products you pick, or only some areas of them.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Products</span>
+          <div class="mk-stack-2">
+            <span class="radio on"><span class="box"></span>One product</span>
+            <div class="radio-detail"><div class="select"><span class="logo xs" data-product="diceroll"></span><span class="grow">Diceroll</span><i class="ic ic-chevrons-up-down"></i></div></div>
+            <span class="radio"><span class="box"></span>All products, including ones added later</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Areas</span>
+          <div class="mk-stack-2">
+            <span class="radio"><span class="box"></span>Every area of Diceroll</span>
+            <span class="radio on"><span class="box"></span>Only these areas</span>
+            <div class="radio-detail mk-stack-2">
+              <div class="mk-cluster">
+                <span class="chip"><i class="ic ic-layout-dashboard"></i>Core</span>
+                <span class="chip"><i class="svc" data-service="license"></i>Licensing</span>
+                <span class="chip"><i class="svc" data-service="config"></i>Managed config</span>
+                <span class="chip on"><i class="svc" data-service="release"></i>Ship builds</span>
+                <span class="chip on"><i class="svc" data-service="commerce"></i>Commerce</span>
+                <span class="chip"><i class="ic ic-key-square"></i>Keys</span>
+                <span class="chip"><i class="ic ic-settings"></i>Settings</span>
+                <span class="chip"><i class="ic ic-users"></i>Members</span>
+              </div>
+              <span class="hint">Sign-in and Cloud Sync are off for Diceroll.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="callout">
+          <i class="ic ic-eye"></i>
+          <div class="grow">
+            <div class="callout-title"><span class="mono">hana@</span> and <span class="mono">theo@</span> will manage Ship builds and Commerce in Diceroll</div>
+          </div>
+        </div>
+        <p class="hint">Emails each invite and tells every Superadmin. Expires Oct 14.</p>
+      </div>
+      <div class="drawer-foot sticky-foot">
+        <button class="btn outline">Cancel</button>
+        <button class="btn primary" title="Passkey required" aria-label="Invite 2 people. Passkey required"><i class="ic ic-fingerprint"></i>Invite 2 people</button>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- Other states of the drawer, as Ada Lindqvist (a Superadmin) sees it unless the caption says otherwise. -->
+<section class="board below states-grid" aria-label="Other states">
+  <div class="board-title"><h1>Other states</h1></div>
+
+  <figure class="board-item">
+    <div class="mk-stack-3">
+      <div class="toast success">
+        <i class="ic ic-circle-check"></i>
+        <div class="grow"><div class="toast-title">Invited 2 people</div></div>
+        <button class="btn ghost xs">Undo</button>
+      </div>
+      <div class="card">
+        <table class="table stack-phone">
+          <tbody>
+            <tr>
+              <td><div class="cell-with-logo"><span class="avatar pending"><i class="ic ic-mail"></i></span><div><div>hana@example.com</div></div></div></td>
+              <td><span class="role-tags"><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds, <i class="svc" data-service="commerce"></i>Commerce</span></span></span></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="avatar pending"><i class="ic ic-mail"></i></span><div><div>theo@example.com</div></div></div></td>
+              <td><span class="role-tags"><span class="role-set"><span class="role-tag"><span class="logo xs" data-product="diceroll"></span>Diceroll admin</span><span class="role-areas"><i class="svc" data-service="release"></i>Ship builds, <i class="svc" data-service="commerce"></i>Commerce</span></span></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <figcaption><strong>After sending.</strong>Undo removes both invites.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <div class="card">
+      <div class="card-body">
+        <div class="field">
+          <span class="field-label">Email addresses</span>
+          <div class="token-field focus">
+            <span class="token">hana@example.com<i class="ic ic-x"></i></span>
+            <span class="token"><span class="avatar">FB</span>felix@studio.example.com<i class="ic ic-x"></i></span>
+            <span class="caret"></span>
+          </div>
+          <div class="icon-line type-small"><i class="ic ic-info"></i><span><strong>felix@studio.example.com</strong> is Felix Brandt (DJDL admin · Managed config). Sending adds Diceroll admin for Ship builds and Commerce; no invite is sent.</span></div>
+        </div>
+      </div>
+      <div class="card-foot">
+        <span class="foot-note"><i class="ic ic-fingerprint"></i>Passkey required</span>
+        <button class="btn outline">Cancel</button>
+        <button class="btn primary"><i class="ic ic-send"></i>Invite 1 person and update 1</button>
+      </div>
+    </div>
+    <figcaption><strong>An address that is already a member.</strong>An SSO-covered address works the same; repeats merge into one chip.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <div class="mk-stack-3">
+      <div class="card">
+        <div class="card-body tight">
+          <div class="mk-cluster">
+            <span class="foot-note"><i class="ic ic-fingerprint"></i>Passkey required</span>
+            <button class="btn outline">Cancel</button>
+            <button class="btn primary"><i class="ic ic-link"></i>Create invite links</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="title"><h3>Invite links for 2 people</h3><p>Email isn’t set up, so nothing was sent. Send each person their own link.</p></div>
+          <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
+        </div>
+        <div class="card-body mk-stack-5">
+          <div class="field">
+            <span class="field-label">hana@example.com<span class="optional">Diceroll admin · Ship builds, Commerce</span></span>
+            <div class="mk-cluster no-wrap"><div class="input mono readonly"><span class="grow">key.plrs.im/manage/invite/h7Q2XK4M</span></div><button class="btn outline"><i class="ic ic-copy"></i>Copy</button></div>
+          </div>
+          <div class="field">
+            <span class="field-label">theo@example.com<span class="optional">Diceroll admin · Ship builds, Commerce</span></span>
+            <div class="mk-cluster no-wrap"><div class="input mono readonly"><span class="grow">key.plrs.im/manage/invite/R9TW2LPD</span></div><button class="btn outline"><i class="ic ic-copy"></i>Copy</button></div>
+          </div>
+          <p class="hint">Each link works once, for that address only, and expires Oct 14.</p>
+        </div>
+        <div class="card-foot"><button class="btn primary">Done</button></div>
+      </div>
+    </div>
+    <figcaption><strong>Email delivery is off.</strong>One link per address, nothing emailed.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <div class="card">
+      <div class="card-body mk-stack-6">
+        <div class="field">
+          <span class="field-label">Role</span>
+          <div class="choices cols-2 tiles-phone">
+            <div class="choice"><div class="choice-title"><i class="ic ic-log-in"></i>Console access</div><div class="choice-desc">Can sign in. Sees nothing until someone adds another role.</div></div>
+            <div class="choice on"><div class="choice-title"><i class="ic ic-boxes"></i>Product admin</div><div class="choice-desc">Of DJDL, the product you admin, or only some areas of it.</div></div>
+            <div class="choice disabled"><div class="choice-title"><i class="ic ic-shield"></i>Platform admin</div><div class="choice-desc">Only a Superadmin can give this role.</div></div>
+            <div class="choice disabled"><div class="choice-title"><i class="ic ic-crown"></i>Superadmin</div><div class="choice-desc">Only a Superadmin can give this role.</div></div>
+            <p class="choice-note">Of DJDL, the product you admin, or only some areas of it.</p>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label">Products</span>
+          <div class="mk-stack-2">
+            <span class="radio on"><span class="box"></span>One product</span>
+            <div class="radio-detail"><div class="select"><span class="logo xs" data-product="djdl"></span><span class="grow">DJDL</span><i class="ic ic-chevrons-up-down"></i></div></div>
+            <span class="radio disabled"><span class="box"></span>All products, including ones added later</span>
+            <span class="hint radio-detail">Only a Superadmin can give All products.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption><strong>A Platform admin opens the drawer.</strong>Nobody gives more than they hold.</figcaption>
+  </figure>
+</section>

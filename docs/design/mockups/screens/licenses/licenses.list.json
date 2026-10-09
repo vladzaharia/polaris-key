@@ -1,0 +1,111 @@
+{
+  "id": "licenses.list",
+  "title": "Licenses",
+  "area": "licenses",
+  "surface": "console",
+  "packages": [
+    "LX-30",
+    "LX-13",
+    "LX-15",
+    "LX-38",
+    "LX-41",
+    "LX-29",
+    "P0-29"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Licenses list in the Product context: holder state (In an account, Waiting, Floating) as the first filter and as a pill in the Holder column, a tier pill on every license, the duration line, devices against the resolved limit, and the origin, with Automatic grant for licenses the Access rules issued. Bulk floating keys start from the header; the empty, no-match, loading and error states are in licenses.list-states.",
+  "order": 1,
+  "compare": [
+    "Sidebar is DJDL's Product context: Overview, Integration, Access, Devices, Users, Activity, then the Licensing group open with Licenses (active, 1,284), Tiers, Add-ons and Entitlements; Enrollment, Settings and the old Batches nav item are gone.",
+    "Header: h1 'Licenses' with no count chip (the sidebar, the All segment and the table foot carry 1,284) and one line of live state shown nowhere else: '650 are Automatic grants from your Access rules' (38 + 412 + 57 + 143, Access's rule counts). Actions on the title's 36px line: Batches (ghost), Create keys in bulk (outline) and New license (primary, the license accent). Create keys in bulk opens the New license drawer on 'Anyone with the key' (licenses.bulk-keys).",
+    "The holder segmented control reads All, In an account, Waiting, Floating, each with a server count, on its own row 32 under the header; search and the facets (Tier, Duration, Origin, Batch, each a dashed chip until set) sit 16 under it, with Columns and Export at the toolbar end; the table 16 under that.",
+    "The first column is 'License': a 28px avatar (tinted initials) with the name over the email, or a dashed placeholder with the key glyph and the masked key in mono for a floating license. The second is 'Holder', exactly one pill: 'In an account' (user icon), 'Waiting' (info tone, mail icon) with 'Invited <date>' under it, or 'Floating' (key icon), with 'Never used' under it while no device has entered the key. 'Anyone with the key' isn't repeated on the row: the Floating pill says it.",
+    "Every row has a tier pill (layers icon in the license accent). No row says 'No tier' or a dash: every license has a tier (LX-33).",
+    "Duration uses the portal's words (LX-15), the term over what follows it: Lifetime; 'Ends Sep 14, 2027' over 'Then keeps the last version'; a Trial pill 'Trial ends Oct 12' over 'Then Free'; 'Updates ended at 4.1' over 'Keeps working'; and a danger pill only for Past due, over 'Renews yearly, by hand'.",
+    "Devices shows 'n of limit' over a 4px bar at the column's width, the limit from the one resolver (license, then tier, then platform default, plus seat-pack add-ons); a full license turns the number and the bar warning, nothing more.",
+    "Origin reads 'Automatic grant' (sparkles icon, accent) over the rule that issued it, its group or domain as a mono chip as on Access (Group `members`, Domain `example.edu`, or Everyone who signs in); 'By hand' over who; or 'Key batch' over the batch label. It is the first column to go: it hides below 1440px, so a row never scrolls sideways at desktop or tablet.",
+    "Rows are one height: every two-line cell (a title over its sub line, a pill over its date) is a .cell-stack, so no row grows past its neighbours.",
+    "No row selection or bulk actions (UX-36 is parked); each row ends in a ⋯ menu; the foot reads '1–10 of 1,284' with previous and next (cursor paging, P0-29).",
+    "Other states: first run, no match, loading and error are drawn in licenses.list-states; the error is inline in the table body with Retry and keeps the filters.",
+    "Wide: the table takes the width, Origin included. Tablet: the 56px rail, Origin hidden, every other column on one line. Phone: the title row ends in ⋯ (Batches); Create keys in bulk and New license each take a full-width row; the holder control becomes a neutral dashed chip 'Holder: All'; each row is the name, then the holder and tier pills with the device count (a device glyph and 'n of limit'), then the duration on its own line, the ⋯ menu at the row's top right; Origin hides."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: every inline and ad-hoc spacing replaced with kit primitives (0 left), one 57px row height, a phone layout drawn by the kit's flowing stacked rows, Origin hidden below 1440px so tablet no longer scrolls sideways, and the facts on each row said once.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "At tablet (1024) the table was 1134px wide in a 920px column and scrolled sideways; on phone the custom grid gave every cell the 56px row height, so each license took 160px of mostly blank space.",
+        "resolution": "Origin hides below 1440px; the phone rows use .table.stack-phone.flow (title, then the cells as one wrapping line, the duration on its own line with td.flow-end) and the ⋯ menu as td.row-menu."
+      },
+      {
+        "severity": "major",
+        "issue": "Row heights varied from 57 to 60px because pills and icon text sat in line boxes taller than their 20px.",
+        "resolution": "Two-line cells are .cell-stack (kit), so every row is the same height."
+      },
+      {
+        "severity": "minor",
+        "issue": "Facts repeated on a row or the page: 'Anyone with the key' beside the Floating pill, 'Keeps working on 4.1' under 'Updates ended at 4.1', the waiting count in both the subtitle and the Waiting segment, and the invitation date in the Duration column.",
+        "resolution": "Subtitle is the one fact shown nowhere else; the invitation date and 'Never used' sit under their holder pill; the duplicated words are gone."
+      },
+      {
+        "severity": "minor",
+        "issue": "The screen set its own padding, gaps and margins (15 declarations) and custom key tiles, seat meters and holder chips.",
+        "resolution": "Kit only: .avatar.md (and .pending for a floating key), .meter-head, .cell-stack, .icon-text, .show-phone chips; the style block holds one colour and one visibility rule."
+      },
+      {
+        "severity": "major",
+        "issue": "Eight of ten rows showed the same pill, so exceptions did not stand out; 250px gaps at wide.",
+        "resolution": "'In an account' and 'Lifetime' are muted text (.quiet-cell); a pill stays for Waiting and Floating; Duration (224px) and Devices (136px) have fixed widths; the Devices bar is capped at 96px and left-aligned; the page is capped at 1440px of content (.cap-1440).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Two stacked control bars and a bare-number subtitle.",
+        "resolution": "Tabs left with Columns and Export on one row, search and filters on the row under it at 8px; the '650 are Automatic grants' subtitle is removed (the Origin column shows it).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Phone cards ran 120-165px with a ragged pill row.",
+        "resolution": "Three lines (.table.cards-phone): name with the device count at the end, the email, then the tier and at most one state; 'In an account' and 'Lifetime' are not drawn on phone, the holder and duration sub-lines are left to the record; file-like tokens wrap.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Fold Origin into a single cell and drop its second line; drop the Holder or Origin column.",
+        "resolution": "declined: The owner said keep the data and structure. The Origin second line is information, not duplication.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Move Batches into the tab row or the overflow menu; hide the sidebar Licenses count badge.",
+        "resolution": "declined: Batches is an action and tabs are filters. The sidebar count is a kit-wide pattern, not a licenses decision.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Add a right-hand preview panel, or a Batch or Last-seen column, to use the wide space.",
+        "resolution": "declined: Adding a column or panel adds new content. Capping the width solves the dead space without it.",
+        "round": "multi-review"
+      }
+    ]
+  }
+}

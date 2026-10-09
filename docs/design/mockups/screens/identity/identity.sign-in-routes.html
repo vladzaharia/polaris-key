@@ -1,0 +1,154 @@
+<div class="board" data-service="core">
+  <div class="board-page">
+    <header class="board-head">
+      <h1>After Continue: where the address goes</h1>
+      <p>Only the body changes; the header and footer stay.</p>
+    </header>
+
+    <div class="board-grid">
+      <!-- The rule, in the order the card applies it (I-30). Lettered, so it never reads as the pins. -->
+      <aside class="card rules-strip" aria-labelledby="rule-title">
+        <div class="card-head"><div class="title"><h2 id="rule-title">How the card picks the way in</h2></div></div>
+        <div class="card-body">
+          <ol class="num-list alpha">
+            <li><span>A <strong>verified domain</strong> of a connection: the card offers that connection’s sign-in first. Platform connections route on every product’s card, a product connection only on its own.</span></li>
+            <li><span><strong>SSO required</strong>: the connection is the only way in, with no email code, passkey or fallback while it’s down. A saved passkey for such an address is refused and routed there (pin 5).</span></li>
+            <li><span>Any other address gets an <strong>email code</strong>. A remembered method shows as “You usually sign in with …”.</span></li>
+            <li><span>The answer reveals only that a domain uses single sign-on, never whether an account exists. The check is rate-limited.</span></li>
+            <li><span>Domains are re-checked daily; one whose DNS record disappears stops routing at once.</span></li>
+          </ol>
+        </div>
+      </aside>
+
+      <div class="frame-grid fixed-cards">
+        <!-- 1. Verified domain, SSO required. -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">1</span><span><strong>SSO required</strong>dana@example.edu</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <span class="id-chip"><span>dana@example.edu</span><a href="#">Change</a></span>
+              <div class="hosted-org"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
+              <p class="hosted-lede">Lakeside University requires its own sign-in for example.edu addresses.</p>
+              <div class="hosted-actions">
+                <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
+                <span class="hint">You come back here once you’ve signed in.</span>
+              </div>
+            </div>
+            <footer class="hosted-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+          </div>
+        </figure>
+
+        <!-- 2. Verified domain, SSO not required: the connection first, an email code still works. -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">2</span><span><strong>SSO first</strong>sam.ito@students.example.edu</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <span class="id-chip"><span>sam.ito@students.example.edu</span><a href="#">Change</a></span>
+              <div class="hosted-org"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
+              <p class="hosted-lede">students.example.edu signs in through Lakeside University.</p>
+              <div class="hosted-actions">
+                <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
+                <button class="btn outline block"><i class="ic ic-mail"></i>Email me a code instead</button>
+              </div>
+            </div>
+            <footer class="hosted-foot echo"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+          </div>
+        </figure>
+
+        <!-- 3. No connection for the domain: the email code (CodeStep, unchanged). -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">3</span><span><strong>Email code</strong>mara.fennick@example.com</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <h1>Check your email</h1>
+              <p class="hosted-lede">We sent a code and a sign-in link to <strong>mara.fennick@example.com</strong>. Both work for 10 minutes.</p>
+              <div class="field">
+                <span class="field-label">Code</span>
+                <div class="code-cells" aria-label="6-digit code"><span>4</span><span>8</span><span>1</span><span class="on"></span><span></span><span></span></div>
+                <span class="hint">Or open the link in the email. Keep this tab open.</span>
+              </div>
+              <div class="hosted-actions">
+                <button class="btn primary block disabled">Continue</button>
+                <div class="hosted-links plain"><span>Send a new code in 0:42</span><a href="#">Use a different email</a></div>
+              </div>
+            </div>
+            <footer class="hosted-foot echo"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+          </div>
+        </figure>
+
+        <!-- 4. SSO required and the connection is down: no fallback, and it says so. -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">4</span><span><strong>Connection down</strong>dana@example.edu</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <span class="id-chip"><span>dana@example.edu</span><a href="#">Change</a></span>
+              <h1>Can’t reach Lakeside University</h1>
+              <div class="callout danger">
+                <i class="ic ic-circle-x"></i>
+                <div class="grow"><div class="callout-text">example.edu addresses sign in only through Lakeside University. Try again in a few minutes, or contact its IT help desk if it keeps failing.</div></div>
+              </div>
+              <div class="hosted-actions">
+                <button class="btn primary block"><i class="ic ic-refresh-cw"></i>Try again</button>
+                <div class="hosted-links plain"><a href="#">Use a different email</a></div>
+              </div>
+            </div>
+            <footer class="hosted-foot echo"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+          </div>
+        </figure>
+
+        <!-- 5. A saved passkey picked on the first step, for an address whose domain requires SSO. -->
+        <figure class="board-item">
+          <figcaption class="mk-cluster no-wrap"><span class="anno">5</span><span><strong>Saved passkey, SSO required</strong>dana@example.edu</span></figcaption>
+          <div class="hosted-card">
+            <header class="hosted-head">
+              <span class="logo lg" data-product="djdl"></span>
+              <div class="grow">
+                <div class="hosted-title"><strong>DJDL</strong> wants you to sign in</div>
+                <div class="hosted-sub"><span>Example Audio</span><span aria-hidden="true">·</span><span><i class="ic ic-monitor sm"></i>on Studio Mac mini</span></div>
+              </div>
+            </header>
+            <div class="hosted-body">
+              <span class="id-chip"><span>dana@example.edu</span><a href="#">Change</a></span>
+              <p class="hosted-note"><i class="ic ic-info sm"></i><span>Lakeside University requires its own sign-in for example.edu, so your passkey can’t be used here.</span></p>
+              <div class="hosted-org"><span class="icon-tile muted"><i class="ic ic-building-2"></i></span><h1>Lakeside University</h1></div>
+              <div class="hosted-actions">
+                <button class="btn primary block">Continue to Lakeside University<i class="ic ic-arrow-right"></i></button>
+                <span class="hint">You come back here once you’ve signed in.</span>
+              </div>
+            </div>
+            <footer class="hosted-foot echo"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for DJDL. Example Audio never sees your codes or passkeys.</span></footer>
+          </div>
+        </figure>
+      </div>
+
+    </div>
+  </div>
+</div>

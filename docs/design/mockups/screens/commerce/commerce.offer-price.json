@@ -1,0 +1,62 @@
+{
+  "id": "commerce.offer-price",
+  "title": "Change price (typed confirmation)",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "The Change price dialog over the Dice skins editor: a new base price of $3.99, what Apple's price points and Google Play's conversion will set (with examples and territory counts), Steam named as unchanged with what to do there, and a typed confirmation of the offer id before the prices go to both stores.",
+  "compare": [
+    "The page behind is the offer editor (as commerce.offer), dimmed by the scrim; the dialog sits in the middle of the first viewport on desktop and is the last child of the console.",
+    "The title says what the action is (Change the price of Dice skins); the first field is the new base price with the current one in the label (Now $2.99) and a hint that it must be one of Apple's price points. An invalid price is drawn in commerce.offer-price-invalid.",
+    "One row per store that will change, with its mark: App Store (Apple's $3.99 price point sets all 174 territories, with four example prices) and Google Play (converted for all 173 countries, with four example prices).",
+    "Steam is listed muted as 'Steam isn't changed' with the exact value and place to set it (3.99 USD on DLC 2817450 in Steamworks). No store without a price API is ever sent a price.",
+    "The body says when it happens (as soon as you confirm) and what doesn't change (players who already bought keep it).",
+    "The typed confirmation follows ADMIN.md's L3 rule for an existing In-App Purchase price: type the app's name as App Store Connect shows it, 'Diceroll' (the same word every App Store L3 action asks for; the Worker compares it too). It is drawn as a neutral confirm word (.confirm-word.neutral) because nothing is lost; the confirm button stays disabled until it matches.",
+    "The button names the outcome and the count: 'Change price on 2 stores' (primary, not danger: nothing is lost; EXPERIENCE.md §7). Cancel is the neutral button. While sending, the button shows its busy state and the dialog can't be dismissed.",
+    "After confirming, a toast says 'Price changed on App Store and Google Play' and the editor's table shows the new examples. If one store refuses, the dialog stays open with each store's result and a retry for the failed one (commerce.offer-price-failed).",
+    "Phone: a bottom sheet (grab handle, rounded top, at most 90% of the screen tall with the body scrolling), the buttons pinned full width with the primary on top."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the typed word follows ADMIN.md's L3 rule as a neutral chip, the dialog is a bottom sheet on phone, and the invalid-price and partial-failure states are drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[house rules] The dialog types the offer id, while ADMIN.md's L3 row types the app's name as App Store Connect shows it; the confirm word is drawn in danger red on a non-destructive, primary action.",
+        "resolution": "Types 'Diceroll', the app's name in App Store Connect (ADMIN.md L3, notes/S-14 §7.1, A-17g), drawn with the new kit chip .confirm-word.neutral. The button stays primary because nothing is lost (EXPERIENCE.md §7: a danger icon only for destructive actions); ADMIN.md's L3 row still says intent danger, so the lead should reconcile it with EXPERIENCE.md §7 in CM-23's ADMIN.md amendment. The editor's hint now says what is typed."
+      },
+      {
+        "severity": "major",
+        "issue": "[flow / missing states] No partial success, no invalid price, no disabled confirm before the word matches, no sending state.",
+        "resolution": "Added commerce.offer-price-invalid ($3.95: inline error naming the nearest price points with Use $3.99 / Use $3.49; rows wait; confirm disabled while the price is invalid or the word is untyped) and commerce.offer-price-failed (App Store Changed; Google Play refused with the cause and the fix in Play Console; Try Google Play again retries only that store; the editor shows the mismatch). The sending state (busy button, not dismissible, per-row spinners) is in their compare lists; commerce.offer-stop-selling also shows the button disabled mid-typing."
+      },
+      {
+        "severity": "major",
+        "issue": "[consistency with house rules] On phone the dialog is anchored to the top with 12px margins, not a bottom sheet (ADMIN.md §Overlays).",
+        "resolution": "Uses the kit's new opt-in .overlay.sheet: below 640px a bottom sheet with a grab handle and rounded top, at most 90% tall with the body scrolling, buttons pinned full width, primary on top. Compare item 9 updated."
+      },
+      {
+        "severity": "minor",
+        "issue": "Dialog title and close misaligned; two icon tile sizes; reassurance copy far from the price; confirm label on two lines; four sample currencies.",
+        "resolution": "Title and close share a 32px row; one 24px tile; 'Players who already bought Dice skins keep it' sits under the price field; the confirm label is one line with the product name as a mono chip; two sample currencies.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Drop the typed confirmation for price changes.",
+        "resolution": "declined: The consolidation plan (2.7) requires a typed confirmation for store price changes; an owner decision.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 15
+}

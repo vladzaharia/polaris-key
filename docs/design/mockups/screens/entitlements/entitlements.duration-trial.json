@@ -1,0 +1,114 @@
+{
+  "id": "entitlements.duration-trial",
+  "title": "Tier duration: trial",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-41",
+    "LX-43",
+    "LX-44"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Pro trial tier as a state of the licenses.tiers editor: Trial chosen among the six presets, 14 days that end by moving the license to Standard with its devices kept, the note that a billing provider's free trial shows on the subscription instead, and the trial's timeline. No unsaved change, so no save bar.",
+  "compare": [
+    "The tier record is a state of the licenses.tiers editor, the one tier record (LX-44): h1 Tiers, New tier as the page's one primary; the Order list beside the open record (360px, 400 at wide; stacked above the record below 1280), best first, each row a rank, the tier's name, its license count and a one-line summary; the open tier is the marked row.",
+    "The record head says the tier's name and id, 'Used by N licenses →' (the Licenses list filtered to this tier), 'Declared in .pkey/product', Preview at a date… (hidden on phone; also in ⋯) and ⋯ (Duplicate, Delete). There are no tabs and no breadcrumb page.",
+    "Four groups, edited in place, a hairline apart: Duration, Limits, Includes, Profile (Profile only while Managed config is on). Each group's label sits in a 200px column (over its fields under 720px of card), and the field column stops at 640px, so every control stays near its label at every width.",
+    "Duration offers six presets in one radiogroup, each a title over one line: Lifetime, Fixed, Trial, Version-scoped, Renewing, and Renewing, keeps the last version. LX-43's 'free' is the Lifetime preset on a tier with no offer: a tier carries no price, so there is no seventh preset.",
+    "The lit preset is derived from the fields. When the fields match no preset, no option is chosen and a line under the list reads 'Custom: Fixed 365 days, keeps the last version'. Choosing a preset overwrites only the fields it owns, and each changed field gets its 'was …' mark.",
+    "Under the presets come the chosen preset's settings, then 'When it ends' in licenses.tiers' words and order (Keeps the last version, Stops working, Moves to another tier, each with its line), then Versions (Any version, One major line, A range): versions are set here only, never in Limits.",
+    "The group ends with the worked timeline ('What a … license does') in DJDL's real names and versions.",
+    "Limits: Devices and Offline days are short number fields (never stretched); blank uses the platform default and a license can override each. Release tracks are chips with stable always on (locked); choosing dev also includes beta. Fingerprint mode is a segmented control with its 'From .pkey/product' badge; changing it takes it over from the manifest.",
+    "Includes lists each entitlement label first with its key in muted mono under it and its control at the end of the 640px column (a switch named by its row, or a number with its unit), then Add an entitlement. Profile is a select (at most 320px) with '3 values: …' and Open profile.",
+    "One save bar for the record, under it and pinned to the window while anything is unsaved: 'N changes. Applies to X of Y licenses; .pkey/product stops changing <tier>.', Discard and 'Save <tier>'. On phone it is one 56px row: 'N changes', Discard, Save. Leaving with unsaved changes asks first.",
+    "Words: Duration and Limits, never 'terms' or 'policy'; 'Release tracks', not 'channels'.",
+    "Trial's settings: Runs for (14 days, counted from when the license is issued); When it ends with Moves to another tier chosen, which reveals Then moves to (a select, Standard) with the hint 'Devices stay activated.'; Versions Any version; and a neutral note that a free trial run by DJDL's billing shows as Trialing on the license's subscription and doesn't need this tier.",
+    "The reminder email is a fact in the timeline (3 days before the end), not a setting, with a neutral grey dot. The timeline's dates add up: Oct 7 start, Oct 18 reminder, Oct 21 moves to Standard, naming exactly what turns off (lossless audio, stem separation, crates past Standard's 25). Changing the license's tier to Pro before then ends the trial.",
+    "Limits shows the trial's own values (5 devices, 7 offline days, stable only). Includes says 'Matches Pro': the list is compared with Pro, not linked to it (each tier owns its entitlements, LX-34)."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass: the reminder is now a neutral event, and the record follows the tier's single in-place editing pattern.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The Reminder email event has an amber (warning) dot, the colour Pro uses for Past due.",
+        "resolution": "The reminder's dot is now neutral grey (text-subtle). Warning stays for things that went wrong, such as Past due. Also applied from the Pro review: Limits, Includes and Profile edit in place, Versions reads 'from Duration', Fingerprint mode 'platform default', Profile '3 values: …', and the tier is 2nd of 4 in list order."
+      },
+      {
+        "severity": "blocking",
+        "issue": "The tier record was drawn twice (here and licenses.tiers) with incompatible layout, words and save bar, so LX-43 and LX-44 builders could not meet 'A tier is edited on one record'. At wide the Includes switches sat about 1,100px from their labels, Limits inputs were 380px wide for 1–2 digits, and the presets went 6-up and wrapped.",
+        "resolution": "Redrawn as a state of the licenses.tiers editor frame: h1 Tiers; the Order list (360px, 400 at wide, stacked over the record below 1280) with this tier marked; the record head (name, id, 'Used by N licenses →', 'Declared in .pkey/product', Preview at a date…, ⋯); four .form-section groups, Duration, Limits, Includes, Profile, with the field column capped at 640. Duration holds the six presets as a .radio-list (a title over one line), then the chosen preset's settings in licenses.tiers' 'When it ends' wording and order, Versions as radios (set only here), grace, and the worked timeline last. Limits: Devices and Offline days as .input.short; Release tracks with the locked stable chip; Fingerprint mode as the segmented control with its 'From .pkey/product' badge. Includes rows are label first with the key in muted mono under it. The breadcrumb page, the Tier | Licenses tabs and the separate cards are gone. The save bar sits under the record. Licenses-area follow-up: licenses.tiers takes this Duration group in place of its 3-segment control. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #3 (blocking: two tier records)",
+          "reviewer #1 (wide stretch, stretched Limits inputs, wide 3×2 presets)",
+          "reviewer #4 (label 1,100px from control at wide)",
+          "reviewer #3 (ownership signal, license count in the save bar)"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Subtitles restated their titles (Includes, Profile), the 'Renews every' hint described the mechanism and was wrong for store and checkout subscriptions, and facts repeated across the page.",
+        "resolution": "Cut the Includes and Profile subtitles (the frame's one-line group notes stay), cut the 'Renews every' hint; on duration-trial the 'Then moves to' hint is 'Devices stay activated.' and the Includes line is 'Matches Pro'; on duration-version the timeline item '5.0.0-beta.1 is out of reach' reads 'DJDL says “Your license covers DJDL 4.x”.' and the notice uses new-major's words.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
+        "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Use one DJDL tier set and one set of license counts across entitlements and licenses (now 4 tiers and 240 licenses vs 5 tiers and 1,284).",
+        "resolution": "declined: DJDL's fixtures differ across six areas, not two. That is the cross-area consistency pass, which was paused for this spacing pass (commit db2a650fd). Until then, the converged record lists this area's tiers.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "Same editor failures as entitlements.duration: empty left column, timeline under the inputs, repeated groups and facts.",
+        "resolution": "Same rebuild as entitlements.duration (sticky Order card, stacked groups, sticky timeline aside beside the preset, one radio row, trimmed copy).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Versions applied to a trial, 'Moves to another tier' was a radio plus a select, and two sentences narrated mechanism.",
+        "resolution": "The Versions group is gone for Trial. Runs for and Then moves to are one control each; 'Devices stay activated.' and 'Counted from when the license is issued.' are deleted. The billing-run callout is a one-line note under the select: 'Billing-run trials show as Trialing on the license, not here.' (under the control, not inline on the radio, so the Trial row stays one line).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2"
+        ]
+      }
+    ]
+  },
+  "order": 5
+}

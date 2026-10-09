@@ -1,0 +1,40 @@
+{
+  "id": "packages.portal-token-revoke",
+  "title": "Portal: revoke a packages token",
+  "area": "packages",
+  "surface": "dialog",
+  "order": 17,
+  "packages": [
+    "F-33"
+  ],
+  "uxRows": [],
+  "summary": "The confirmation behind Revoke on Account → Packages: it names the token and the machine where package installs stop, how to set that machine up again, and the token that keeps working.",
+  "compare": [
+    "Opens over Account → Packages; a small danger dialog with the warning icon.",
+    "The title names the token by its label: 'Revoke “pkey feeds setup on mara-mbp”?'.",
+    "The body says what stops in plain words (the package managers on mara-mbp can't reach DJDL's or Diceroll's packages) and how to undo it (run 'pkey feeds setup --write' there again); a quiet line names the token that keeps working (Build server).",
+    "Cancel (outline) and the danger 'Revoke token'.",
+    "Phone: the kit's bottom sheet with the buttons pinned full width, the danger button on top."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "4 UX designers, triaged by a lead designer",
+    "date": "2026-10-08",
+    "verdict": "Spacing and copy trimmed per the multi-review triage; see findings.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Revoke copy is longer than it needs to be.",
+        "resolution": "'Package managers on mara-mbp lose access to DJDL and Diceroll. Run pkey feeds setup --write there to reconnect.'",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

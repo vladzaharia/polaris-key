@@ -1,0 +1,204 @@
+<style>
+  /* products.sidebar-contexts: screen details only; the board's layout is the kit's .board-spec. */
+  [data-screen="products.sidebar-contexts"] .figcaption-title {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="products.sidebar-contexts"] .menu-item .end .ic {
+    color: var(--pk-accent-fg);
+  }
+  [data-screen="products.sidebar-contexts"] .ctx.open {
+    border-color: var(--pk-accent);
+    box-shadow: 0 0 0 1px var(--pk-accent);
+  }
+  [data-screen="products.sidebar-contexts"] .switcher {
+    right: 0;
+    z-index: 5;
+  }
+  [data-screen="products.sidebar-contexts"] .switcher .menu {
+    min-width: 0;
+  }
+  /* The nav under the open menu is not drawn: the menu is the only thing in focus; the hidden nav keeps the frame as tall as the menu. */
+  [data-screen="products.sidebar-contexts"] .dimmed {
+    visibility: hidden;
+    height: 340px;
+    overflow: hidden;
+  }
+  [data-screen="products.sidebar-contexts"] .sidebar-foot.dimmed {
+    display: none;
+  }
+  [data-screen="products.sidebar-contexts"] .menu-item .count-text {
+    margin-left: var(--sp-2);
+    font-size: var(--fs-meta);
+    color: var(--pk-text-muted);
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="products.sidebar-contexts"] .menu-item .count-text {
+      display: none;
+    }
+  }
+</style>
+
+<div class="board kit-prod" data-service="core">
+  <div class="board-page board-spec">
+    <header class="board-head">
+      <h1>Sidebar contexts</h1>
+    </header>
+
+    <div class="board-grid">
+      <!-- 1. Platform context: off any product. On phone, the menu drawer over the page. -->
+      <figure class="board-item">
+        <div class="sidebar-frame drawer">
+          <div class="sidebar-frame-top"><button class="btn ghost icon sm show-phone" aria-label="Close menu"><i class="ic ic-x"></i></button><i class="pk-mark sm"></i><span class="strong">Polaris Key</span><span class="avatar sm violet">AL</span></div>
+          <div class="sidebar-frame-body">
+            <nav class="sidebar" aria-label="Platform">
+              <div class="ctx">
+                <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+                <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+                <i class="ic ic-chevrons-up-down"></i>
+              </div>
+              <a class="nav-item active" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+              <div class="sidebar-foot hide-phone">
+                <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+              </div>
+            </nav>
+            <div class="sidebar-frame-page" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <figcaption class="mk-stack-1"><strong class="figcaption-title">Platform</strong><span>Home and platform pages.</span></figcaption>
+      </figure>
+
+      <!-- 2. Product context: DJDL, five features on, Licensing open. -->
+      <figure class="board-item">
+        <div class="sidebar-frame">
+          <div class="sidebar-frame-top"><i class="pk-mark sm"></i><span class="strong">Polaris Key</span><span class="avatar sm violet">AL</span></div>
+          <nav class="sidebar" aria-label="DJDL">
+            <div class="ctx">
+              <span class="logo sm" data-product="djdl"></span>
+              <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+              <i class="ic ic-chevrons-up-down"></i>
+            </div>
+            <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span><span class="count">412</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+            <div class="nav-group" data-service="license">
+              <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
+              <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-badge-check"></i><span class="nav-text">Entitlements</span></a>
+            </div>
+            <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="sidebar-foot">
+              <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+              <a class="nav-item hide-phone" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+            </div>
+          </nav>
+        </div>
+        <figcaption class="mk-stack-1"><strong class="figcaption-title">Product: DJDL</strong><span>Its pages, then one group per feature that is on.</span></figcaption>
+      </figure>
+
+      <!-- 3. The switcher, open from the context header. -->
+      <figure class="board-item">
+        <div class="sidebar-frame">
+          <div class="sidebar-frame-top"><i class="pk-mark sm"></i><span class="strong">Polaris Key</span><span class="avatar sm violet">AL</span></div>
+          <nav class="sidebar" aria-label="DJDL">
+            <div class="popover-anchor">
+              <div class="ctx open" role="button" aria-expanded="true" aria-haspopup="menu">
+                <span class="logo sm" data-product="djdl"></span>
+                <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+                <i class="ic ic-chevrons-up-down"></i>
+              </div>
+              <div class="popover switcher">
+                <div class="menu" role="menu">
+                  <div class="input sm"><i class="ic ic-search"></i><span class="ph grow">Find a product</span><kbd>⌘K</kbd></div>
+                  <a class="menu-item" href="#" role="menuitem"><i class="ic ic-polaris"></i>Platform</a>
+                  <div class="menu-sep"></div>
+                  <span class="menu-label">Products</span>
+                  <a class="menu-item active" href="#" role="menuitem"><span class="logo xs" data-product="djdl"></span>DJDL<span class="pips" role="img" aria-label="Licensing, Managed config, Ship builds, Sign-in, Cloud Sync"><i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="identity"></i><i class="pip" data-service="sync"></i></span><span class="count-text">5 features</span><span class="end"><i class="ic ic-check"></i></span></a>
+                  <a class="menu-item" href="#" role="menuitem"><span class="logo xs" data-product="diceroll"></span>Diceroll<span class="pips" role="img" aria-label="Licensing, Managed config, Ship builds, Commerce"><i class="pip" data-service="license"></i><i class="pip" data-service="config"></i><i class="pip" data-service="release"></i><i class="pip" data-service="commerce"></i></span><span class="count-text">4 features</span></a>
+                  <a class="menu-item" href="#" role="menuitem"><span class="logo xs" data-product="polaris-key"></span>Polaris Key<span class="pips" role="img" aria-label="Ship builds, Sign-in"><i class="pip" data-service="release"></i><i class="pip" data-service="identity"></i></span><span class="end">System</span></a>
+                  <div class="menu-sep"></div>
+                  <a class="menu-item" href="#" role="menuitem"><i class="ic ic-plus"></i>New product</a>
+                </div>
+              </div>
+            </div>
+            <div class="dimmed">
+              <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+              <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+              <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+              <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+              <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+              <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+              <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+            </div>
+            <div class="sidebar-foot dimmed">
+              <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+              <a class="nav-item hide-phone" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+            </div>
+          </nav>
+        </div>
+        <figcaption class="mk-stack-1"><strong class="figcaption-title">Switching</strong><span>Platform, then each product with a dot per feature.</span></figcaption>
+      </figure>
+
+      <!-- 4. Permission filtering: a DJDL editor never sees Access or Settings. -->
+      <figure class="board-item">
+        <div class="sidebar-frame">
+          <div class="sidebar-frame-top"><i class="pk-mark sm"></i><span class="strong">Polaris Key</span><span class="avatar sm">TO</span></div>
+          <nav class="sidebar" aria-label="DJDL">
+            <div class="ctx">
+              <span class="logo sm" data-product="djdl"></span>
+              <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub">You’re an editor</span></span>
+              <i class="ic ic-chevrons-up-down"></i>
+            </div>
+            <a class="nav-item active" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span><span class="count">412</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+            <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+            <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+            <div class="sidebar-foot hide-phone">
+              <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+            </div>
+          </nav>
+        </div>
+        <figcaption class="mk-stack-1"><strong class="figcaption-title">Product: DJDL, as Tomás Okafor</strong><span>Editors see no Access or Settings.</span></figcaption>
+      </figure>
+
+      <!-- The rules: a row under the frames on desktop, a column beside them on tablet and wide. -->
+      <div class="rules mk-grid-3">
+        <div class="callout">
+          <i class="ic ic-layout-grid"></i>
+          <div class="grow"><div class="callout-title">One context at a time</div><div class="callout-text">Opening a product switches to it; Platform goes back to Home.</div></div>
+        </div>
+        <div class="callout">
+          <i class="ic ic-layers"></i>
+          <div class="grow"><div class="callout-title">Features drive the groups</div><div class="callout-text">A feature’s group appears, in canonical order, when it turns on and goes when it turns off.</div></div>
+        </div>
+        <div class="callout">
+          <i class="ic ic-lock"></i>
+          <div class="grow"><div class="callout-title">Hidden, never dead-ended</div><div class="callout-text">A link to a page someone can’t use opens one that names who can give access.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

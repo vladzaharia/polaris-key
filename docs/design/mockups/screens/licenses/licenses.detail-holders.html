@@ -1,0 +1,104 @@
+<style>
+  /* licenses.detail-holders: colour only; spacing comes from the kit. */
+  [data-screen="licenses.detail-holders"] .ic-layers {
+    color: var(--pk-accent-fg);
+  }
+</style>
+
+<div class="board cols-1 floor" data-service="license">
+  <div class="board-title">
+    <h1>License record by holder</h1>
+    <p>The header, holder and origin of a Waiting and a Floating license. The rest is as on licenses.detail.</p>
+  </div>
+
+  <!-- Waiting: assigned to an email that hasn't signed in yet (LX-30). Made by hand. -->
+  <figure class="board-item">
+    <div class="board-frame">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Tomás Okafor</nav>
+        <div class="page-heading"><h2 class="type-page">Tomás Okafor</h2><span class="status info"><i class="ic ic-mail"></i>Waiting for sign-in</span></div>
+        <div class="page-sub mk-cluster-3">
+          <span>tomas@example.com</span>
+          <span class="id"><i class="ic ic-id-card"></i>lic_01J9R2…KD4M<i class="ic ic-copy"></i></span>
+        </div>
+        <div class="page-actions">
+          <button class="btn outline" aria-label="Tier: Standard. Change tier"><i class="ic ic-layers"></i><span class="muted">Tier</span>Standard<i class="ic ic-chevron-down"></i></button>
+          <button class="btn primary"><i class="ic ic-send"></i>Resend invitation</button>
+          <button class="btn outline icon" aria-label="More: Change email, Change tier, Revoke"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+      <nav class="tabs scroller"><a class="tab active" href="#">Status</a><a class="tab" href="#">Entitlements <span class="count">4</span></a><a class="tab" href="#">Keys <span class="count">0</span></a><a class="tab" href="#">Devices <span class="count">0</span></a><a class="tab" href="#">Activity</a></nav>
+      <div class="mk-with-rail">
+        <section class="card" aria-labelledby="w-inv">
+          <div class="card-head h56 sub">
+            <div class="title"><h3 id="w-inv">Invitation</h3><p>Moves into his account at his first sign-in with this email, verified.</p></div>
+            <button class="btn outline sm"><i class="ic ic-pencil"></i>Change email…</button>
+          </div>
+          <dl class="kv-rows">
+            <div><dt>Sent</dt><dd>Oct 2<span class="source">Not opened yet</span></dd></div>
+          </dl>
+        </section>
+        <div class="mk-rail">
+          <section class="card" aria-labelledby="w-origin">
+            <div class="card-head h56">
+              <div class="title"><h3 id="w-origin">By hand</h3></div>
+              <a class="btn link" href="#">Open Activity<i class="ic ic-arrow-right"></i></a>
+            </div>
+            <dl class="kv-rows">
+              <div><dt>Created</dt><dd>Oct 2, 2026<span class="source">Ada Lovelace</span></dd></div>
+              <div><dt>Reason</dt><dd>“Beta tester, Berlin meetup”</dd></div>
+            </dl>
+            <div class="card-body tight"><div class="icon-line type-small muted"><i class="ic ic-shield-check"></i><span>Access rules never change it.</span></div></div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <figcaption><strong>Waiting</strong>Resend invitation is the primary; Change email is on the invitation and in ⋯. Origin: By hand.</figcaption>
+  </figure>
+
+  <!-- Floating: no holder; its key activates devices (LX-30). From a key batch (LX-29). -->
+  <figure class="board-item">
+    <div class="board-frame">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i><span class="mono">pkey_djdl_7HJM…Q2KD</span></nav>
+        <div class="page-heading"><h2 class="type-page mono">pkey_djdl_7HJM…Q2KD</h2><span class="status"><i class="ic ic-circle-check"></i>Active</span></div>
+        <div class="page-sub mk-cluster-3">
+          <span class="pill sm"><i class="ic ic-key-round"></i>Floating</span>
+          <span class="id"><i class="ic ic-id-card"></i>lic_01J9VX…2P8A<i class="ic ic-copy"></i></span>
+        </div>
+        <div class="page-actions">
+          <button class="btn outline" aria-label="Tier: Standard. Change tier"><i class="ic ic-layers"></i><span class="muted">Tier</span>Standard<i class="ic ic-chevron-down"></i></button>
+          <button class="btn primary"><i class="ic ic-user-plus"></i>Assign to a person</button>
+          <button class="btn outline icon" aria-label="More: Change tier, Disable key, Revoke"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+      <nav class="tabs scroller"><a class="tab active" href="#">Status</a><a class="tab" href="#">Entitlements <span class="count">4</span></a><a class="tab" href="#">Keys <span class="count">1</span></a><a class="tab" href="#">Devices <span class="count">1</span></a><a class="tab" href="#">Activity</a></nav>
+      <div class="mk-with-rail">
+        <section class="card" aria-labelledby="f-key">
+          <div class="card-head h56 sub">
+            <div class="title"><h3 id="f-key">Anyone with the key</h3><p>No email or account: whoever enters the key gets the license on that device.</p></div>
+          </div>
+          <dl class="kv-rows">
+            <div><dt>Key</dt><dd>Only its hash is kept, so it can’t be shown again</dd></div>
+            <div><dt>First used</dt><dd>Oct 6, 2026, on Studio-PC · Windows 11 · DJDL 4.2.0</dd></div>
+          </dl>
+        </section>
+        <div class="mk-rail">
+          <section class="card" aria-labelledby="f-origin">
+            <div class="card-head h56">
+              <div class="title"><h3 id="f-origin">Key batch</h3></div>
+              <a class="btn link" href="#">Open batch<i class="ic ic-arrow-right"></i></a>
+            </div>
+            <dl class="kv-rows">
+              <div><dt>Batch</dt><dd>Controller bundle · Oct 2026</dd></div>
+              <div><dt>Created</dt><dd>Oct 6, 2026<span class="source">Ada Lovelace</span></dd></div>
+              <div><dt>Used</dt><dd class="tnum">41 of 200</dd></div>
+            </dl>
+            <div class="card-body tight"><div class="icon-line type-small muted"><i class="ic ic-ban"></i><span>Disable unused keys, on the batch, turns off the other 159.</span></div></div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <figcaption><strong>Floating</strong>Titled by its masked key; no email anywhere. Assign to a person is the primary. Origin: Key batch.</figcaption>
+  </figure>
+</div>

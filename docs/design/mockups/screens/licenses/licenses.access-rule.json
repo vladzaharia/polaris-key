@@ -1,0 +1,52 @@
+{
+  "id": "licenses.access-rule",
+  "title": "Add an access rule",
+  "area": "licenses",
+  "surface": "dialog",
+  "packages": [
+    "LX-36",
+    "P2-10",
+    "LX-38"
+  ],
+  "uxRows": [],
+  "summary": "The Add a rule dialog over DJDL's dimmed Access page: a group from Pocket ID (bound to that connection) gives the Studio tier with the label 'Press access', and the match preview counts the four accounts the rule covers today and shows three of them, one per outcome: a new license, an automatic Standard license that moves up, and one made by hand that stays. The dialog fits the window with its buttons always visible.",
+  "order": 8,
+  "compare": [
+    "Behind: the saved Access page (App downloads on Customers, no save bar), scroll-locked under the scrim.",
+    "Dialog (.dialog.lg.scroll.fade, 64 from the top): When someone has (A group · An email domain · A claim), Group djdl-press and From Pocket ID side by side with 'Only groups from this connection count.', They get (A tier · An add-on) with Studio beside it and Studio's limits on one line, Label people see 'Press access' ('Shown on Discover and in the portal.').",
+    "Match preview: '4 accounts have djdl-press today'; Noor Haddad gets Studio, Iris Moreau Standard → Studio, Theo Lindqvist 'Studio, made by hand: no change'; '1 more: Felix Brandt gets Studio' with Show all 4; 'Changes apply at each person’s next sign-in. Licenses made by hand or bought never change.'",
+    "Foot: Cancel and Add rule; the body scrolls and fades above the foot when the window is short.",
+    "Phone: a bottom sheet; Group and From stack; Add rule on top, full width."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: the kit's modal frame, scroll dialog and item rows; 0 screen spacing; the page behind is the reworked Access page.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "55 spacing declarations, most of them a copy of the old Access page's custom layout, plus custom preview rows and a scroll hack.",
+        "resolution": "Kit only: .console.modal-open, .overlay.top.sheet, .dialog.lg.scroll.fade, .mk-grid-2, .card.sunken with .item-row and .avatar.md."
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone the rule-kind control ran past the sheet; 'at next sign-in' was on every preview row; the note restated Automatic licenses' rule.",
+        "resolution": "Shorter options, timing said once in the preview's foot."
+      },
+      {
+        "severity": "minor",
+        "issue": "The third preview row was clipped; three outcome formats; 12px helpers.",
+        "resolution": "Preview rows share one right-aligned outcome (Gets Studio, Standard to Studio, No change; Theo's 'made by hand' moves to his sub-line); the 'Studio: lifetime, 10 devices…' line is removed, so three rows and the footer fit; helpers are 13px (.floor); dialog foot is 40px buttons, 12px gap (.std).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

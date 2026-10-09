@@ -1,0 +1,69 @@
+<div class="hosted" data-service="core">
+  <div class="hosted-brand"><i class="pk-mark sm"></i>Polaris Key</div>
+
+  <main class="hosted-card" aria-labelledby="fin-title">
+    <header class="hosted-head">
+      <span class="logo lg" data-product="diceroll"></span>
+      <div class="grow">
+        <div class="hosted-title"><strong>Diceroll</strong> wants you to sign in</div>
+        <div class="hosted-sub"><span>Example Games</span><span aria-hidden="true">·</span><span><i class="ic ic-smartphone sm"></i>on Tomás’s iPhone</span></div>
+      </div>
+    </header>
+
+    <!-- FinishStep (PX-21, I-33): the email gate and the new-account step, merged, for every new account,
+         here after a first Google sign-in. -->
+    <div class="hosted-body">
+      <h1 id="fin-title">Create your account</h1>
+
+      <!-- Google vouches for the address, so it is plain text: no field, no code. -->
+      <div class="field">
+        <span class="field-label">Email<span class="status ml-auto"><i class="ic ic-circle-check"></i>Confirmed by Google</span></span>
+        <div class="fixed-value"><i class="ic ic-lock"></i><span>tomas.okafor@example.com</span></div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="fin-name">Screen name</label>
+        <div class="input" id="fin-name"><span class="grow">Tomás Okafor</span></div>
+        <div class="mk-stack-2" role="group" aria-label="Use a name from">
+          <span class="type-meta">Use a name from</span>
+          <div class="mk-cluster">
+            <span class="chip on"><i class="gmark sm"></i>Tomás Okafor</span>
+            <span class="chip"><i class="gmark sm"></i>Tomás</span>
+            <span class="chip"><i class="ic ic-mail"></i>tomas.okafor</span>
+          </div>
+        </div>
+        <span class="hint">Shown in Polaris Key and in emails. An app gets it only when you agree.</span>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Picture</span>
+        <div class="pick-tiles" role="radiogroup" aria-label="Picture">
+          <div class="pick-tile on" role="radio" aria-checked="true"><span class="photo lg badged"><i class="gmark sm"></i></span><span>Google</span><span class="meta">In use</span></div>
+          <div class="pick-tile" role="radio" aria-checked="false"><span class="avatar lg">TO</span><span>Initials</span><span class="meta">From your name</span></div>
+          <div class="pick-tile add" role="radio" aria-checked="false"><span class="pick-media"><i class="ic ic-upload"></i></span><span>Upload</span><span class="meta">PNG or JPEG</span></div>
+        </div>
+      </div>
+
+      <!-- No birth date here: Google sent none and Diceroll gates nothing. The field shows only when a
+           connection supplied a birthdate claim (prefilled, with its source) or a product gates content. -->
+
+      <!-- Terms: Polaris Key's own (recorded as a platform acceptance), then Diceroll's, when due. -->
+      <div class="check-list">
+        <span class="check"><span class="box"></span><span>I agree to Polaris Key’s <a class="link" href="#">Terms</a> and <a class="link" href="#">Privacy Policy</a>.</span></span>
+        <span class="check"><span class="box"></span><span class="mk-stack-1"><span>I agree to Diceroll’s <a class="link" href="#">Terms</a> and <a class="link" href="#">Privacy Policy</a>.</span><span class="meta">From Example Games · October 2026</span></span></span>
+      </div>
+
+      <span class="check quiet"><span class="box"></span><span>Add a passkey after this, so next time is one tap</span></span>
+
+      <div class="hosted-actions">
+        <button class="btn primary block disabled" disabled aria-disabled="true" aria-describedby="fin-why">Create account and continue</button>
+        <span class="hint" id="fin-why">Agree to both terms to continue.</span>
+        <button class="btn ghost block">Cancel sign-in</button>
+      </div>
+    </div>
+
+    <footer class="hosted-foot"><i class="ic ic-lock sm"></i><span>Polaris Key signs you in for Diceroll. Example Games never sees your codes or passkeys.</span></footer>
+  </main>
+
+  <nav class="hosted-legal centered" aria-label="Legal"><a href="#">Help</a><span>·</span><a href="#">Privacy</a><span>·</span><a href="#">Terms</a></nav>
+</div>

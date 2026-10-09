@@ -1,0 +1,74 @@
+{
+  "id": "packages.portal-token",
+  "title": "Portal: new packages token",
+  "area": "packages",
+  "surface": "dialog",
+  "order": 16,
+  "packages": [
+    "F-33"
+  ],
+  "uxRows": [],
+  "summary": "The moment after Create token on Account → Packages: the new 'Work laptop' pkeyp_ token shown once, what it can do and for how long on two lines, the combined npm setup with the token filled in for the home folder, and Done and the close button held until the person says they stored it.",
+  "compare": [
+    "Opens over Account → Packages, which stays dimmed and already lists the new 'Work laptop' token with a 'New' marker beside the two older ones.",
+    "The title says what to do now ('Copy your packages token now'); the first line says it is shown only once and what to do if it is lost.",
+    "The token sits in the key field with its own Copy; under it, two lines: 'Work laptop · packages only · expires Jan 5, 2027' and 'Reaches DJDL, Diceroll and any product you get a license for later', with non-breaking spaces in the date.",
+    "The combined setup uses the same tabs and renderer as the page with the real token in place of PKEY_PACKAGES_TOKEN; its foot says the file is for the home folder, never a project, because the token is in it.",
+    "No scope picker, product picker or binding: a personal token is packages-only by construction.",
+    "'I've stored the token somewhere safe' is unchecked, and Done, the close button and Escape all wait for it.",
+    "Phone: the kit's bottom sheet; the token ellipsizes inside its field with Copy visible, the code tabs scroll under a fade that ends before Copy, the code scrolls sideways, and Done takes the full width."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the label step exists, the safeguard can't be skipped with the X, and the meta reads in two clean lines.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[Missing step] The dialog shows 'Work laptop', but no step lets the person name the token or see the expiry before it exists.",
+        "resolution": "Added packages.portal-token-create: a Label field ('Work laptop', with the browser's suggestion 'Mac · Safari' in the hint), the fixed line 'Packages only · expires in 90 days, on Jan 5, 2027 · reaches DJDL, Diceroll and any product you get a license for later', 'Your other tokens keep working', Cancel and Create token. This dialog follows it."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Flow/visual] The X and Escape skip the 'stored it' check; the meta wraps mid-date on phone; the Docker tab is clipped under Copy.",
+        "resolution": "The close button is disabled until 'I've stored the token somewhere safe' is checked, like Done, and Escape follows the same rule (compare). The meta is two lines with non-breaking spaces in the date. On phone the tab strip fades before Copy."
+      },
+      {
+        "severity": "major",
+        "issue": "[Flow] 'Your packages token' (singular) with one row and a 'Create token' primary: creating might replace the laptop's token or add a second; the dialog's 'Work laptop' label implies a second.",
+        "resolution": "The section is 'Your packages tokens' and lists every token (pkey feeds setup on mara-mbp, Build server); its subtitle says 'A new token never replaces another, and each is shown once'. Create token opens the label step (packages.portal-token-create), which says 'Your other tokens keep working'. Only a CLI rerun on the same machine replaces the token it made there (packages.feeds-setup)."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Copy/visual] 'Read and write Read and write DJDL crates'; djdl-crates is a Public feed under 'With your Standard license'; Revoke has no confirmation; on phone the Docker tab is clipped under Copy ('Dc'); Sign out sits lower than the H1.",
+        "resolution": "Duplicate fixed ('Read and write DJDL crates'). The djdl-crates row says 'Public, also on PyPI.org'. Revoke opens packages.portal-token-revoke ('Package installs on mara-mbp stop…', naming the token that keeps working). On phone the code tabs scroll under a fade that ends before Copy, so Docker shows as a fading tab. Sign out lines up with the H1."
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the token and code are truncated; the disabled Done looks broken.",
+        "resolution": "Token wraps across lines (.wrap-phone-token); code soft-wraps at 12px with a fade; checkbox on a 44px row (.tap-row); disabled Done uses the kit's muted disabled style with a 'Tick the box to continue' hint; the repeated 'Reaches DJDL, Diceroll…' line and 'packages only' segment are gone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4",
+          "UX2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
+        "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "id": "commerce.purchases-empty",
+  "title": "Purchases: none yet",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-29"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Purchases before the first verified purchase: no tabs, toolbar or empty table, just the kit's first-run empty state saying where purchases come from and how to see one now (a test purchase), linking to Storefronts' test-purchase step.",
+  "compare": [
+    "First-run empty state (EXPERIENCE.md §9): an icon in the Commerce tint, 'No purchases yet', one paragraph and one action; tabs, filters, Export CSV and the table appear with the first purchase.",
+    "The action goes to the test-purchase step on Storefronts (the one Accept test purchases switch), not to a per-store page.",
+    "The page sub-line keeps the refund rule, so it reads the same before and after the first purchase.",
+    "Phone: the empty state centres in its card; the button fills the width."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Wide empty-state panel.",
+        "resolution": "Card capped at 640px like offers-empty.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      }
+    ]
+  },
+  "order": 21
+}

@@ -1,0 +1,225 @@
+<style>
+  /* identity.connection-enforce: identity.connection under its dialog; only what the kit does not already say (no spacing here). */
+  [data-screen="identity.connection-enforce"] .icon-tile.muted > .ic {
+    color: var(--pk-text-strong);
+  }
+  /* A URL in the client facts wraps rather than run past a narrow card. */
+  [data-screen="identity.connection-enforce"] .dl .mono {
+    overflow-wrap: anywhere;
+  }
+  /* The DNS record's text, fields and check line share one measure. */
+  [data-screen="identity.connection-enforce"] tr.detail .callout > .grow {
+    max-width: 760px;
+  }
+</style>
+
+<div class="console modal-open" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span><span class="count warning">3</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- From 1280: the main column and a 360px sticky rail (what it gives people, the client, delete); below, one column. -->
+    <div class="page rhythm">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Connections</a><i class="ic ic-chevron-right"></i>Lakeside University</nav>
+        <div class="page-heading"><h1>Lakeside University</h1></div>
+        <p class="page-sub">Platform connection · Keycloak</p>
+        <div class="page-actions">
+          <button class="btn ghost icon" aria-label="More actions"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-log-in"></i>Test sign-in</button>
+        </div>
+      </header>
+
+      <div class="stats row-3">
+        <div class="stat"><span class="stat-label"><i class="ic ic-log-in"></i>Last sign-in</span><span class="stat-value">2 h ago</span><span class="stat-foot">dana@example.edu, into DJDL</span></div>
+        <div class="stat"><span class="stat-label"><i class="ic ic-users"></i>Accounts</span><span class="stat-value">83 <small>of 88</small></span><span class="stat-foot">Signed in through it</span></div>
+        <div class="stat"><span class="stat-label"><i class="ic ic-activity"></i>Errors</span><span class="stat-value">0</span><span class="stat-foot">Last 7 days</span></div>
+      </div>
+
+      <div class="mk-with-rail rail-360">
+      <div class="mk-main">
+      <!-- Domains (I-30): DNS TXT verified, re-checked daily, failing closed; SSO required per domain. -->
+      <section class="card" aria-labelledby="h-domains">
+        <div class="card-head">
+          <div class="title"><h2 id="h-domains">Email domains</h2><p>SSO required turns off email codes and passkeys for that domain. Re-checked today, 06:00.</p></div>
+          <button class="btn outline sm"><i class="ic ic-plus"></i>Add domain</button>
+        </div>
+        <table class="table stack-phone" aria-labelledby="h-domains">
+          <thead><tr><th>Domain</th><th>Verification</th><th>SSO required</th><th class="num">Accounts</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-globe"></i></span><span class="cell-title mono">example.edu</span></div></td>
+              <td><span class="cell-label">Verification</span><span class="status"><i class="ic ic-circle-check"></i>Verified</span></td>
+              <td><span class="cell-label">SSO</span><span class="mk-cluster no-wrap"><span class="switch on" role="switch" aria-checked="true" aria-label="SSO required for example.edu"></span>Required</span></td>
+              <td class="num"><span class="cell-label">Accounts</span>57</td>
+              <td class="end hide-narrow"><button class="btn ghost icon sm" aria-label="More for example.edu"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-globe"></i></span><span class="cell-title mono">students.example.edu</span></div></td>
+              <td><span class="cell-label">Verification</span><span class="status"><i class="ic ic-circle-check"></i>Verified</span></td>
+              <td><span class="cell-label">SSO</span><span class="mk-cluster no-wrap"><span class="switch" role="switch" aria-checked="false" aria-label="SSO required for students.example.edu"></span>Not required</span></td>
+              <td class="num"><span class="cell-label">Accounts</span>31</td>
+              <td class="end hide-narrow"><button class="btn ghost icon sm" aria-label="More for students.example.edu"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-globe"></i></span><span class="cell-title mono">music.example.edu</span></div></td>
+              <td><span class="cell-label">Verification</span><span class="pill warning sm"><i class="ic ic-clock"></i>Not verified yet</span></td>
+              <td><span class="cell-label">SSO</span><span class="mk-cluster no-wrap muted"><span class="switch disabled" role="switch" aria-checked="false" aria-disabled="true" aria-label="SSO required for music.example.edu"></span></span></td>
+              <td class="num muted"><span class="cell-label">Accounts</span>0</td>
+              <td class="end hide-narrow"><button class="btn ghost icon sm" aria-label="More for music.example.edu"><i class="ic ic-ellipsis"></i></button></td>
+            </tr>
+            <!-- The pending domain's TXT record, until it is found (an unverified domain never routes). -->
+            <tr class="detail">
+              <td colspan="5">
+                <div class="callout warning">
+                  <i class="ic ic-clock"></i>
+                  <div class="grow mk-stack-4">
+                    <div class="callout-text">Add this TXT record at the DNS host for <strong>music.example.edu</strong>. Until it’s found, addresses there get an email code.</div>
+                    <dl class="record scroll">
+                      <dt>Type</dt><dd><span>TXT</span></dd>
+                      <dt>Name</dt><dd><span>_polaris-key.music.example.edu</span><button class="btn ghost icon sm" aria-label="Copy name"><i class="ic ic-copy"></i></button></dd>
+                      <dt>Value</dt><dd><span>polaris-key-verify=4f9c2e7a1b8d6053c1e7</span><button class="btn ghost icon sm" aria-label="Copy value"><i class="ic ic-copy"></i></button></dd>
+                    </dl>
+                    <div class="mk-split center">
+                      <div class="status-stack"><span class="status warning"><i class="ic ic-circle-x"></i>No record found 4 min ago</span><span class="meta">Checked every 10 minutes for 7 days</span></div>
+                      <div><button class="btn outline sm full-phone"><i class="ic ic-refresh-cw"></i>Check now</button></div>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Audience: customers, operators or both. -->
+      <section class="card" aria-labelledby="h-who">
+        <div class="card-head">
+          <div class="title"><h2 id="h-who">Who signs in with it</h2></div>
+        </div>
+        <div class="card-body">
+          <div class="choices fit" role="radiogroup" aria-label="Who signs in with it">
+            <div class="choice on" role="radio" aria-checked="true"><div class="choice-title">Customers</div><div class="choice-desc">People signing in to products and to Polaris Key.</div></div>
+            <div class="choice" role="radio" aria-checked="false"><div class="choice-title">Operators</div><div class="choice-desc">Console members. Their role comes from an SSO rule in Members.</div></div>
+            <div class="choice" role="radio" aria-checked="false"><div class="choice-title">Customers and operators</div><div class="choice-desc">Both, from the same domains.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Claim map: groups, name, picture, birthdate. -->
+      <section class="card" aria-labelledby="h-claims">
+        <div class="card-head">
+          <div class="title"><h2 id="h-claims">What Polaris Key reads</h2><p>Only these claims, from verified ID tokens. Name and picture start a new account’s profile.</p></div>
+          <button class="btn outline sm"><i class="ic ic-pencil"></i>Edit claim map</button>
+        </div>
+        <table class="table stack-phone flow" aria-labelledby="h-claims">
+          <thead><tr><th>Field</th><th>Claim</th><th>Last seen</th></tr></thead>
+          <tbody>
+            <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-users"></i></span><span class="cell-title">Groups</span></div></td><td><span class="cell-label">Claim</span><span class="mono">groups</span></td><td><span class="cell-label">Last seen</span><span class="mk-cluster"><span class="id">students</span><span class="id">music-dept</span></span></td></tr>
+            <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-user-round"></i></span><span class="cell-title">Name</span></div></td><td><span class="cell-label">Claim</span><span class="mono">name</span></td><td><span class="cell-label">Last seen</span>Dana Whitfield</td></tr>
+            <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-image"></i></span><span class="cell-title">Picture</span></div></td><td><span class="cell-label">Claim</span><span class="mono">picture</span></td><td><span class="cell-label">Last seen</span><span class="mk-cluster no-wrap"><span class="photo" aria-hidden="true"></span><span class="muted">Copied on sign-in</span></span></td></tr>
+            <tr><td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-calendar"></i></span><span class="cell-title">Birth date</span></div></td><td><span class="cell-label">Claim</span><span class="muted">Not mapped</span></td><td><span class="cell-label">Last seen</span><span class="muted">Not sent; apps never receive it</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      </div>
+
+      <!-- Secondary: what uses this connection elsewhere, and the client. -->
+      <div class="mk-rail">
+        <!-- Rules elsewhere that use this connection's groups and domains: linked, never edited here. -->
+        <section class="card" aria-labelledby="h-uses">
+          <div class="card-head">
+            <div class="title"><h2 id="h-uses">What it gives people</h2></div>
+          </div>
+          <div class="card-rows">
+            <div class="list-row">
+              <span class="logo sm" data-product="djdl"></span>
+              <div class="list-row-text"><div class="strong bold">DJDL Access</div><div class="type-small muted"><span class="mono">example.edu</span> gets an Education license · 57 accounts</div></div>
+              <a class="link" href="#">Open<i class="ic ic-arrow-right"></i></a>
+            </div>
+            <div class="list-row">
+              <span class="icon-tile muted"><i class="ic ic-users"></i></span>
+              <div class="list-row-text"><div class="strong bold">Console</div><div class="type-small muted">No SSO rule uses Lakeside University</div></div>
+              <a class="link" href="#">SSO rules<i class="ic ic-arrow-right"></i></a>
+            </div>
+          </div>
+        </section>
+
+        <!-- The client: issuer, sealed secret, the redirect URI to register. -->
+        <section class="card" aria-labelledby="h-client">
+          <div class="card-head">
+            <div class="title"><h2 id="h-client">Client</h2></div>
+          </div>
+          <div class="card-body mk-stack-3">
+            <dl class="dl stack-narrow">
+              <dt>Issuer</dt><dd><div class="mono">https://login.example.edu/realms/lakeside</div><div class="meta">Discovery refreshed 6 h ago</div></dd>
+              <dt>Client ID</dt><dd class="mono">polaris-key</dd>
+              <dt>Client secret</dt><dd><div class="mk-cluster"><span class="mk-cluster-1 no-wrap"><i class="ic ic-lock sm"></i>Sealed · set Sep 28, 2026</span><button class="btn outline xs"><i class="ic ic-refresh-cw"></i>Replace secret</button></div></dd>
+            </dl>
+            <dl class="record scroll">
+              <dt>Redirect URI</dt><dd><span>https://key.plrs.im/signin/callback/lakeside-university</span><button class="btn ghost icon sm" aria-label="Copy redirect URI"><i class="ic ic-copy"></i></button></dd>
+            </dl>
+          </div>
+        </section>
+
+        <section class="card danger" aria-labelledby="h-danger">
+          <div class="card-body mk-stack-3">
+            <div class="mk-stack-1"><h2 id="h-danger" class="type-card">Delete Lakeside University</h2><p class="type-small muted">Removes sign-in for 88 addresses.</p></div>
+            <div><button class="btn danger-outline">Delete connection…</button></div>
+          </div>
+        </section>
+      </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Turning SSO required on asks first; turning it off applies at once with a toast. -->
+  <div class="overlay center sheet">
+    <div class="dialog scroll" role="dialog" aria-modal="true" aria-labelledby="enf-title" aria-describedby="enf-lead">
+      <div class="dialog-head">
+        <i class="ic ic-shield-check lg"></i>
+        <h2 id="enf-title">Require SSO for this domain?</h2>
+        <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
+      </div>
+      <div class="dialog-body">
+        <p id="enf-lead">Addresses there will sign in only through Lakeside University, on every product and on Polaris Key.</p>
+        <ul class="bullets">
+          <li><strong>Email codes and passkeys stop</strong> at each person’s next sign-in.</li>
+          <li><strong>31 accounts</strong> use this domain; 5 are sent to Lakeside University next time.</li>
+          <li><strong>No other way in</strong> while Lakeside University is down.</li>
+        </ul>
+        <p class="type-small muted">Turning it off brings email codes back at once.</p>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn outline">Cancel</button>
+        <button class="btn primary">Require SSO for students.example.edu</button>
+      </div>
+    </div>
+  </div>
+</div>

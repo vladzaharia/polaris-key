@@ -1,0 +1,43 @@
+{
+  "id": "commerce.offer-price-failed",
+  "title": "Change price: one store refused",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "The Change price dialog after confirming, when the App Store took $3.99 but Google Play refused: the title says 1 of 2 stores, each store's row shows its result (Changed; Not changed with why and the fix in Play Console), Steam is unchanged, and Try Google Play again retries only that store.",
+  "compare": [
+    "The dialog stays open after a partial result; its title states the count ('Price changed on 1 of 2 stores') and the first line says what each store now charges.",
+    "Each store row shows its own result: App Store 'Changed' as success status with the time; Google Play as a danger row: its name, a Not changed pill, the cause in Play Console's words (the service account lacks Manage store presence), the exact account to fix, and Open Play Console.",
+    "Try Google Play again (primary, focused) retries only the failed store with the same idempotency key; the typed confirmation isn't asked again. Close leaves the offer in a mismatch the editor shows: 'Base price $3.99 · Google Play still at $2.99' as a warning on the Price card, with the same retry.",
+    "Nothing is rolled back on the store that succeeded; the base price is recorded as $3.99 with Google Play's mismatch listed, and Activity records both outcomes.",
+    "While sending, the confirm button shows its busy state ('Changing price on 2 stores…') and the dialog can't be dismissed; each row shows a spinner until its store answers.",
+    "Phone: the same bottom sheet; the failed row's text wraps and its link stays under it."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "multi-review",
+    "verdict": "",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Dialog title and close misaligned; two icon tile sizes; reassurance copy far from the price; confirm label on two lines; four sample currencies.",
+        "resolution": "Title and close share a 32px row; one 24px tile; 'Players who already bought Dice skins keep it' sits under the price field; the confirm label is one line with the product name as a mono chip; two sample currencies; the Google Play service account is its own copyable mono row.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Drop the typed confirmation for price changes.",
+        "resolution": "declined: The consolidation plan (2.7) requires a typed confirmation for store price changes; an owner decision.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 17
+}

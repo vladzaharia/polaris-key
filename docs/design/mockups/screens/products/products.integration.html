@@ -1,0 +1,317 @@
+<style>
+  /* products.integration: only what the kit does not already say. */
+  /* Light theme: comments one step darker than the kit's, so 12 px code clears 4.5:1. */
+  :root[data-theme="light"] [data-screen="products.integration"] .t-c {
+    color: color-mix(in oklab, var(--mk-syn-com) 90%, var(--pk-text-strong));
+  }
+</style>
+
+<div class="console kit-prod" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <!-- Product context (ST-45): the product's own pages, then its features, Settings last. -->
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span><span class="count">412</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- From 1440 Your app is a sticky rail beside the feature cards; below that it is one summary row above them. -->
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Integration</h1></div>
+        <div class="page-actions">
+          <button class="btn ghost hide-phone"><i class="ic ic-book-open"></i>Guide</button>
+          <a class="btn ghost hide-phone" href="#" aria-label="Integrate directly with your own UI: SDK docs">Integrate directly with your own UI<i class="ic ic-arrow-up-right"></i></a>
+        </div>
+      </header>
+
+      <!-- Below 1440: Your app as one row; Add the SDK sits behind its disclosure. -->
+      <section class="card int-summary" aria-label="Your app">
+        <div class="int-summary-row">
+          <h2>Your app</h2>
+          <div class="int-summary-plats">
+            <span><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="meta tnum">2 of 5 features verified</span></span>
+            <span><span class="platform-name"><i class="ic ic-windows"></i>Windows</span><span class="meta">Not seen yet</span></span>
+          </div>
+          <div class="int-summary-actions">
+            <button class="btn ghost sm int-sdk-toggle" aria-expanded="false">Add the SDK<i class="ic ic-chevron-down"></i></button>
+            <button class="btn outline sm">Change SDKs</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="int-grid">
+        <div class="int-main">
+
+      <!-- One card per enabled feature, canonical order: the console steps beside the drop-in UI kit; one status pill in the head. -->
+      <section class="card int-card fold-phone" aria-labelledby="f-license">
+        <div class="card-head">
+          <span class="icon-tile" data-service="license"><i class="svc"></i></span>
+          <div class="title">
+            <h2 id="f-license">Licensing</h2>
+          </div>
+          <span class="status-pill ok">Verified Oct 7</span>
+          <button class="btn ghost sm int-show" aria-expanded="false" aria-label="Show Licensing">Show<i class="ic ic-chevron-down"></i></button>
+        </div>
+        <div class="card-split wide-end stack-narrow">
+          <div>
+            <div class="tasks">
+              <div class="task done">
+                <span class="task-mark"></span>
+                <div class="task-title">Standard tier</div>
+                <div class="task-desc">5 devices, lifetime, 30 days offline.</div>
+              </div>
+              <div class="task done">
+                <span class="task-mark"></span>
+                <div class="task-title">Access policy</div>
+                <div class="task-desc">The <span class="mono">members</span> group gets Standard when they sign in.</div>
+              </div>
+              <div class="task">
+                <span class="task-mark"></span>
+                <div class="task-title mk-cluster baseline">Test license<span class="meta regular">Optional</span></div>
+                <div class="task-desc">A Standard license to try the gate with. The key shows once.</div>
+                <div class="task-action"><button class="btn outline sm"><i class="ic ic-key-round"></i>Create</button></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="code">
+                <div class="code-head">
+                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+                </div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+
+<span class="t-c">// Activation and the license gate, before DJDL opens.</span>
+<span class="t-t">WindowGroup</span> {
+  <span class="t-t">ContentView</span>()
+    .<span class="t-f">polarisKey</span>(client)
+}
+
+<span class="t-c">// Shown only with the polarisVpn entitlement.</span>
+<span class="t-t">PolarisEntitled</span>(<span class="t-s">"polarisVpn"</span>) { <span class="t-t">VpnToggle</span>() }</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- A feature whose console steps are done and which is Verified folds to one row. -->
+      <section class="card feature-fold" aria-labelledby="f-config">
+        <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
+        <div class="title">
+          <h2 id="f-config">Managed config</h2>
+          <span class="int-fold-tick" role="img" aria-label="Verified on macOS"><i class="ic ic-circle-check"></i></span>
+        </div>
+        <button class="btn ghost sm">Show<i class="ic ic-chevron-down"></i></button>
+      </section>
+
+      <section class="card int-card" aria-labelledby="f-ship">
+        <div class="card-head">
+          <span class="icon-tile" data-service="release"><i class="svc"></i></span>
+          <div class="title">
+            <h2 id="f-ship">Ship builds</h2>
+            <p>Releases from CI to every channel.</p>
+          </div>
+          <span class="status-pill ok">CI verified Oct 6</span>
+          <button class="btn ghost sm int-show" aria-expanded="false" aria-label="Show Ship builds">Show<i class="ic ic-chevron-down"></i></button>
+        </div>
+        <div class="card-split wide-end stack-narrow">
+          <div>
+            <div class="tasks">
+              <div class="task done">
+                <span class="task-mark"></span>
+                <div class="task-title">Publish from CI</div>
+                <div class="task-desc">From <span class="mono">example-org/djdl</span>.</div>
+              </div>
+              <div class="task done">
+                <span class="task-mark"></span>
+                <div class="task-title">Download page</div>
+                <div class="task-desc">macOS and Windows builds at <a class="link" href="#">key.plrs.im/djdl</a>.</div>
+              </div>
+              <div class="task" id="sparkle-key">
+                <span class="task-mark"></span>
+                <div class="task-title">Sparkle signing key</div>
+                <div class="task-desc mk-stack-2">
+                  <span>macOS updates need one. Run this in the repository, then push.</span>
+                  <div class="cmd"><span>pkey release keys init <span class="nowrap">--sparkle</span></span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="code">
+                <div class="code-head">
+                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+                </div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
+
+<span class="t-c">// Sparkle's update window, on DJDL's signed feed</span>
+<span class="t-c">// and the license's release track.</span>
+<span class="t-t">PolarisSparkle</span>.<span class="t-f">start</span>(client: client)</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card int-card fold-phone" aria-labelledby="f-signin">
+        <div class="card-head">
+          <span class="icon-tile" data-service="identity"><i class="svc"></i></span>
+          <div class="title">
+            <h2 id="f-signin">Sign-in</h2>
+          </div>
+          <span class="status-pill wait">Waiting for the first sign-in</span>
+          <button class="btn ghost sm int-show" aria-expanded="false" aria-label="Show Sign-in">Show<i class="ic ic-chevron-down"></i></button>
+        </div>
+        <div class="card-split wide-end stack-narrow">
+          <div>
+            <div class="tasks">
+              <div class="task done">
+                <span class="task-mark"></span>
+                <div class="task-title">Connection</div>
+                <div class="task-desc">Pocket ID, with the <span class="mono">members</span> and <span class="mono">admins</span> groups.</div>
+              </div>
+              <div class="task done">
+                <span class="task-mark"></span>
+                <div class="task-title">Sign-in surfaces</div>
+                <div class="task-desc">Browser sign-in on macOS and Windows, returning to DJDL.</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="code">
+                <div class="code-head">
+                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+                </div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+
+<span class="t-c">// Browser sign-in; sign-out is in the account menu.</span>
+<span class="t-t">PolarisAccount</span>()</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card int-card fold-phone" aria-labelledby="f-sync">
+        <div class="card-head">
+          <span class="icon-tile" data-service="sync"><i class="svc"></i></span>
+          <div class="title">
+            <h2 id="f-sync">Cloud Sync</h2>
+            <p>Settings and crates that follow each person across devices.</p>
+          </div>
+          <span class="status-pill wait">Not verified yet</span>
+          <button class="btn ghost sm int-show" aria-expanded="false" aria-label="Show Cloud Sync">Show<i class="ic ic-chevron-down"></i></button>
+        </div>
+        <div class="card-split wide-end stack-narrow">
+          <div>
+            <div class="tasks">
+              <div class="task done">
+                <span class="task-mark"></span>
+                <div class="task-title">Synced settings</div>
+                <div class="task-desc">9 editable settings sync by default, including <span class="mono">quality.floor</span> and <span class="mono">ui.theme</span>.</div>
+              </div>
+              <div class="task" id="sync-storage">
+                <span class="task-mark"></span>
+                <div class="task-title">Storage per account</div>
+                <div class="task-desc">Standard has none yet. 50 MB holds about 2,000 crates.</div>
+                <div class="task-action"><button class="btn outline sm">Set storage</button></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="code">
+                <div class="code-head">
+                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+                </div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+
+<span class="t-c">// DJDL's editable settings, synced, with the sync state.</span>
+<span class="t-t">PolarisSettings</span>()</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Off features never get a card: one row links to Features. -->
+      <section class="card feature-fold add" aria-labelledby="f-commerce">
+        <span class="icon-tile sm muted" data-service="commerce"><i class="svc"></i></span>
+        <div class="title">
+          <h2 id="f-commerce">Commerce is off</h2>
+          <span class="muted small">Sell DJDL’s tiers and add-ons on storefronts.</span>
+        </div>
+        <a class="link" href="#">Open Features<i class="ic ic-arrow-right"></i></a>
+      </section>
+
+      <!-- Offered after the first Verified feature (ST-41): a quiet line, never automatic. -->
+      <div class="int-foot">
+        <button class="btn link"><i class="ic ic-eye-off"></i>Hide Integration</button>
+        <span>(still in ⌘K)</span>
+      </div>
+        </div>
+
+        <!-- From 1440: Your app, sticky beside the cards. -->
+        <aside class="int-rail" aria-label="Your app">
+          <section class="card" aria-labelledby="app-title">
+            <div class="card-head">
+              <div class="title"><h2 id="app-title">Your app</h2></div>
+              <button class="btn outline sm">Change SDKs</button>
+            </div>
+            <div class="int-app-body">
+              <section>
+                <p class="eyebrow">Add the SDK<span class="end"><span class="segmented sm"><span class="on">One command</span><span>By hand</span></span></span></p>
+                <div class="code">
+                  <div class="code-head"><span class="code-file">Terminal</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> \
+    --product djdl \
+    --expect <span class="t-s">djdl-2026@sha256:3f9a…</span></pre>
+                </div>
+                <p class="hint">Run it in the Xcode project’s folder; for Windows, run it again with <code>kotlin</code>.</p>
+                <p class="hint int-kit-note"><i class="ic ic-info"></i><span>The drop-in UI kit, written for DJDL. Pins come from <span class="mono">polaris-key.json</span>.</span></p>
+              </section>
+              <section>
+                <p class="eyebrow">Platforms</p>
+                <div class="progress-stat">
+                  <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="meta">2 of 5 features verified</span></div>
+                  <div class="progress success" style="--v: 40%"></div>
+                  <span class="meta">Last seen 4 min ago · Swift SDK 2.1.0, arm64</span>
+                </div>
+                <div class="progress-stat">
+                  <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-windows"></i>Windows</span><span class="meta">Not seen yet</span></div>
+                  <div class="progress" style="--v: 0%"></div>
+                </div>
+              </section>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,157 @@
+{
+  "id": "entitlements.duration-version",
+  "title": "Tier duration: version-scoped, the major-line helper",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-41",
+    "LX-43",
+    "LX-44",
+    "LX-33"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Pro 4 tier as a state of the licenses.tiers editor: Version-scoped chosen, the major line as one control (3.x / 4.x / 5.x / Other…) under Versions, runs forever within the line, and the new-major notice above the editor because 5.0.0-beta.1 has just been published above Pro 4's line.",
+  "compare": [
+    "The tier record is a state of the licenses.tiers editor, the one tier record (LX-44): h1 Tiers, New tier as the page's one primary; the Order list beside the open record (360px, 400 at wide; stacked above the record below 1280), best first, each row a rank, the tier's name, its license count and a one-line summary; the open tier is the marked row.",
+    "The record head says the tier's name and id, 'Used by N licenses →' (the Licenses list filtered to this tier), 'Declared in .pkey/product', Preview at a date… (hidden on phone; also in ⋯) and ⋯ (Duplicate, Delete). There are no tabs and no breadcrumb page.",
+    "Four groups, edited in place, a hairline apart: Duration, Limits, Includes, Profile (Profile only while Managed config is on). Each group's label sits in a 200px column (over its fields under 720px of card), and the field column stops at 640px, so every control stays near its label at every width.",
+    "Duration offers six presets in one radiogroup, each a title over one line: Lifetime, Fixed, Trial, Version-scoped, Renewing, and Renewing, keeps the last version. LX-43's 'free' is the Lifetime preset on a tier with no offer: a tier carries no price, so there is no seventh preset.",
+    "The lit preset is derived from the fields. When the fields match no preset, no option is chosen and a line under the list reads 'Custom: Fixed 365 days, keeps the last version'. Choosing a preset overwrites only the fields it owns, and each changed field gets its 'was …' mark.",
+    "Under the presets come the chosen preset's settings, then 'When it ends' in licenses.tiers' words and order (Keeps the last version, Stops working, Moves to another tier, each with its line), then Versions (Any version, One major line, A range): versions are set here only, never in Limits.",
+    "The group ends with the worked timeline ('What a … license does') in DJDL's real names and versions.",
+    "Limits: Devices and Offline days are short number fields (never stretched); blank uses the platform default and a license can override each. Release tracks are chips with stable always on (locked); choosing dev also includes beta. Fingerprint mode is a segmented control with its 'From .pkey/product' badge; changing it takes it over from the manifest.",
+    "Includes lists each entitlement label first with its key in muted mono under it and its control at the end of the 640px column (a switch named by its row, or a number with its unit), then Add an entitlement. Profile is a select (at most 320px) with '3 values: …' and Open profile.",
+    "One save bar for the record, under it and pinned to the window while anything is unsaved: 'N changes. Applies to X of Y licenses; .pkey/product stops changing <tier>.', Discard and 'Save <tier>'. On phone it is one 56px row: 'N changes', Discard, Save. Leaving with unsaved changes asks first.",
+    "Words: Duration and Limits, never 'terms' or 'policy'; 'Release tracks', not 'channels'.",
+    "Version-scoped's settings live under Versions: One major line is chosen and reveals one control, the chips 3.x, 4.x, 5.x and 'Other…' (which reveals a typed field), with the hint 'Every 4.x release, betas included.' and 'Set a range instead'. The stored range ('Saved as 4.0.0 to 4.999999.999999') shows only after Set a range instead, never as a tooltip. Within the line offers Runs forever (chosen) or Runs a set number of days.",
+    "Safety: on a tier that has licenses, the save bar never applies a line change on its own. Widening the line opens entitlements.extend-major. Narrowing or moving it opens an L1 caution confirm whose consequences read '64 licenses stop covering 4.x; devices on 4.2.0 are refused at their next check', with the button 'Move Pro 4 to 5.x'.",
+    "The new-major notice sits between the header and the editor, in new-major's words: '5.0.0-beta.1 is DJDL’s first 5.x build' / 'Pro 4’s 64 licenses cover 4.x, so they won’t get 5.x.', with Start a 5.x tier… and Extend Pro 4 to 5.x… (outline) and the kit's corner × (aria-label 'Dismiss for everyone'). Dismiss is L0: a toast 'Dismissed for everyone. Both actions stay in Pro 4's menu.' with Undo.",
+    "Pro 4's record ⋯ carries 'Start a 5.x tier…' and 'Extend to 5.x…' while a 5.x build exists that no tier covers.",
+    "The timeline explains a refused out-of-line install in the customer's words ('DJDL says “Your license covers DJDL 4.x”.'), keeps one 'today' (Today · Runs 4.2.0, the newest 4.x; Published today · 5.0.0-beta.1 is out of reach), and ends 'Keeps working on 4.x · For good'.",
+    "Phone: the notice's two actions share one row under its text, the × stays in its corner; the chips wrap."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass: the new-major notice now has the same title and actions as on Licenses, in outline buttons, and the timeline no longer shows today twice.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The notice's title, copy and actions differ from Licenses ('… is outside 4.x', an 'extend' with no button, no Dismiss), and its filled primary clashes with the info tint.",
+        "resolution": "Same notice as on Licenses: '5.0.0-beta.1 is DJDL’s first 5.x build', the same text, and Start a 5.x tier… and Extend Pro 4 to 5.x… as outline buttons, with Dismiss as a ghost button. No filled button sits in the callout (rule added to kit/README.md under Callouts)."
+      },
+      {
+        "severity": "minor",
+        "issue": "The timeline shows 'Today: Runs 4.2.0' and then 'Oct 7, 2026: 5.0.0-beta.1 is out of reach' as if they were two days, and the Settings sentence reads awkwardly.",
+        "resolution": "The 4.2.0 event stays 'Today' ('Runs 4.2.0, the newest 4.x'), and the beta event is dated 'Published today'. The sentence now reads 'The first time a 5.x build is published, on any track, the Licenses page and this record show a notice with Start a 5.x tier… until someone dismisses it.' Also applied from the Pro review: the groups edit in place, Fingerprint mode reads 'platform default', and the tier is 3rd of 4 in list order."
+      },
+      {
+        "severity": "blocking",
+        "issue": "The tier record was drawn twice (here and licenses.tiers) with incompatible layout, words and save bar, so LX-43 and LX-44 builders could not meet 'A tier is edited on one record'. At wide the Includes switches sat about 1,100px from their labels, Limits inputs were 380px wide for 1–2 digits, and the presets went 6-up and wrapped.",
+        "resolution": "Redrawn as a state of the licenses.tiers editor frame: h1 Tiers; the Order list (360px, 400 at wide, stacked over the record below 1280) with this tier marked; the record head (name, id, 'Used by N licenses →', 'Declared in .pkey/product', Preview at a date…, ⋯); four .form-section groups, Duration, Limits, Includes, Profile, with the field column capped at 640. Duration holds the six presets as a .radio-list (a title over one line), then the chosen preset's settings in licenses.tiers' 'When it ends' wording and order, Versions as radios (set only here), grace, and the worked timeline last. Limits: Devices and Offline days as .input.short; Release tracks with the locked stable chip; Fingerprint mode as the segmented control with its 'From .pkey/product' badge. Includes rows are label first with the key in muted mono under it. The breadcrumb page, the Tier | Licenses tabs and the separate cards are gone. The save bar sits under the record. Licenses-area follow-up: licenses.tiers takes this Duration group in place of its 3-segment control. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #3 (blocking: two tier records)",
+          "reviewer #1 (wide stretch, stretched Limits inputs, wide 3×2 presets)",
+          "reviewer #4 (label 1,100px from control at wide)",
+          "reviewer #3 (ownership signal, license count in the save bar)"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Subtitles restated their titles (Includes, Profile), the 'Renews every' hint described the mechanism and was wrong for store and checkout subscriptions, and facts repeated across the page.",
+        "resolution": "Cut the Includes and Profile subtitles (the frame's one-line group notes stay), cut the 'Renews every' hint; on duration-trial the 'Then moves to' hint is 'Devices stay activated.' and the Includes line is 'Matches Pro'; on duration-version the timeline item '5.0.0-beta.1 is out of reach' reads 'DJDL says “Your license covers DJDL 4.x”.' and the notice uses new-major's words.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The major line showed the same value twice side by side (a '4.x' field next to a '✓ 4.x' chip) and stated the range twice; one chip click plus Save would cut off 64 paying licenses with no confirmation, while the gentler widen went through a guarded dialog (ADMIN.md §5.2).",
+        "resolution": "One control: chips 3.x / 4.x / 5.x plus 'Other…' (reveals the input), hint 'Every 4.x release, betas included.', the stored range only after 'Set a range instead'. The compare adds the safety rule: widening opens entitlements.extend-major; narrowing or moving opens an L1 caution confirm ('64 licenses stop covering 4.x; devices on 4.2.0 are refused at their next check', 'Move Pro 4 to 5.x'); the save bar never applies a line change on its own.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Dismissing the notice would leave both new-major actions with no way back to them.",
+        "resolution": "Pro 4's ⋯ carries 'Start a 5.x tier…' and 'Extend to 5.x…' while an uncovered 5.x build exists (drawn in the ⋯ button's label); the compare makes Dismiss L0 with the toast and Undo.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone the notice's Dismiss sat alone on a third row, its padding offsetting its text.",
+        "resolution": "Dismiss is the kit's corner × (.callout-close, aria-label 'Dismiss for everyone'); the two outline actions share one row on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
+        "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Move the stored version range, and renew's one-day margin, into tooltips.",
+        "resolution": "declined: ADMIN.md P6 puts no facts in hover-only places, and tooltips are invisible on touch. Instead the stored range appears after 'Set a range instead', and the margin lives on the license's Runs until value.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Use one DJDL tier set and one set of license counts across entitlements and licenses (now 4 tiers and 240 licenses vs 5 tiers and 1,284).",
+        "resolution": "declined: DJDL's fixtures differ across six areas, not two. That is the cross-area consistency pass, which was paused for this spacing pass (commit db2a650fd). Until then, the converged record lists this area's tiers.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "Same editor failures as entitlements.duration.",
+        "resolution": "Same rebuild as entitlements.duration (sticky Order card, stacked groups, sticky timeline aside, one radio row, trimmed copy, Major line owned by Version-scoped).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "4.x coverage was stated four times.",
+        "resolution": "The banner reads '5.0.0-beta.1 is the first 5.x build. Pro 4's 64 licenses stop at 4.x.' with Start a 5.x tier… as the primary and Extend Pro 4… secondary; the Versions line stays; the timeline is cut to 'Starts' and 'Never ends'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2"
+        ]
+      }
+    ]
+  },
+  "order": 6
+}

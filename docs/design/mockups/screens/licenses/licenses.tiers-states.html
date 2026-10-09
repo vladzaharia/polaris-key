@@ -1,0 +1,170 @@
+<div class="board cols-2 start floor" data-service="license">
+  <div class="board-title">
+    <h1>Tiers states</h1>
+    <p>The other states of licenses.tiers.</p>
+  </div>
+
+  <!-- Trial: When it ends = Moves to another tier. -->
+  <figure class="board-item">
+    <div class="board-frame">
+      <section class="card" aria-labelledby="ts-trial">
+        <div class="card-head"><div class="title"><h3 id="ts-trial">Trial</h3></div></div>
+        <div class="form-section">
+          <div class="form-section-label"><h3>Duration</h3></div>
+          <div class="form">
+            <div class="mk-cluster"><div class="segmented" role="radiogroup" aria-label="Length"><span>Lifetime</span><span class="on">Fixed length</span><span>Renewing</span></div></div>
+            <div class="field">
+              <label class="field-label">Runs for</label>
+              <div class="input short"><span class="grow tnum">14</span><span class="affix">days</span></div>
+              <span class="hint">From the day the license starts. One starting today moves to Free on Oct 21, 2026.</span>
+            </div>
+            <div class="field">
+              <label class="field-label">When it ends</label>
+              <div class="radio-list" role="radiogroup">
+                <div class="radio-option"><span class="radio"><span class="box"></span>Keeps the last version</span></div>
+                <div class="radio-option"><span class="radio"><span class="box"></span>Stops working</span></div>
+                <div class="radio-option"><span class="radio on"><span class="box"></span>Moves to another tier</span>
+                  <div class="mk-cluster-3"><span>Then</span><div class="select short"><span class="grow">Free</span><i class="ic ic-chevrons-up-down"></i></div><span class="hint">1 device · 2 decks · no recording</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <figcaption><strong>Moves to another tier</strong>Reveals Then, a select of the other tiers.</figcaption>
+  </figure>
+
+  <!-- Validation: inline under each field; the save bar says how many need fixing. -->
+  <figure class="board-item">
+    <div class="board-frame">
+      <div class="mk-stack-6">
+        <section class="card" aria-labelledby="ts-edu">
+          <div class="card-head"><div class="title"><h3 id="ts-edu">Education</h3></div></div>
+          <div class="form-section">
+            <div class="form-section-label"><h3>Duration</h3></div>
+            <div class="form">
+              <div class="field invalid">
+                <label class="field-label">Runs for</label>
+                <div class="input short"><span class="grow tnum">0</span><span class="affix">days</span></div>
+                <span class="error-text"><i class="ic ic-circle-x"></i>Enter at least 1 day.</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-section">
+            <div class="form-section-label"><h3>Limits</h3></div>
+            <div class="form">
+              <div class="field invalid">
+                <label class="field-label">Versions</label>
+                <div class="mk-cluster no-wrap"><div class="input short mono invalid"><span class="grow">5.0</span></div><span class="muted">to</span><div class="input short mono invalid"><span class="grow">4.9</span></div></div>
+                <span class="error-text"><i class="ic ic-circle-x"></i>“From” must be lower than “to”. Swap them, or clear one for no limit.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <div class="save-bar danger" role="region" aria-label="Unsaved changes">
+          <p class="save-bar-msg"><i class="ic ic-circle-x"></i><span>3 changes. <a href="#">Fix 2 fields</a> to save.</span></p>
+          <button class="btn ghost">Discard</button>
+          <button class="btn primary" disabled>Save Education</button>
+        </div>
+      </div>
+    </div>
+    <figcaption><strong>Fields that need fixing</strong>Each error sits under its field; the save bar’s link jumps to the first, and Save waits for both.</figcaption>
+  </figure>
+
+  <!-- Order: a row's menu, with keyboard reordering and Delete disabled while used. -->
+  <figure class="board-item room-below">
+    <div class="board-frame">
+      <section class="card" aria-labelledby="ts-order">
+        <div class="card-head"><div class="title"><h3 id="ts-order">Order</h3><p>Best first. When several licenses or rules apply, the higher tier wins.</p></div></div>
+        <div class="card-rows">
+          <div class="item-row lead keep-end">
+            <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">1</span>
+            <div class="item-text"><div class="item-title">Studio<small>38 licenses</small></div></div>
+            <div class="item-end"><button class="btn ghost icon xs" aria-label="Studio: more"><i class="ic ic-ellipsis"></i></button></div>
+          </div>
+          <div class="item-row lead keep-end">
+            <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">2</span>
+            <div class="item-text"><div class="item-title">Standard<small>612 licenses</small></div></div>
+            <div class="item-end"><button class="btn ghost icon xs" aria-label="Standard: more"><i class="ic ic-ellipsis"></i></button></div>
+          </div>
+          <div class="item-row lead keep-end marked" aria-current="true">
+            <i class="ic ic-grip-vertical" aria-hidden="true"></i><span class="rank">3</span>
+            <div class="item-text"><div class="item-title">Education<small>57 licenses</small></div></div>
+            <div class="item-end">
+              <div class="popover-anchor">
+                <button class="btn ghost icon xs" aria-label="Education: more" aria-expanded="true"><i class="ic ic-ellipsis"></i></button>
+                <div class="popover right anchor-below" role="menu"><div class="menu">
+                  <a class="menu-item" href="#" role="menuitem"><i class="ic ic-arrow-up"></i>Move up<span class="end">above Standard<kbd>↑</kbd></span></a>
+                  <a class="menu-item" href="#" role="menuitem"><i class="ic ic-arrow-down"></i>Move down<span class="end">below Trial<kbd>↓</kbd></span></a>
+                  <a class="menu-item" href="#" role="menuitem"><i class="ic ic-copy"></i>Duplicate</a>
+                  <div class="menu-sep"></div>
+                  <span class="menu-item disabled" role="menuitem" aria-disabled="true"><i class="ic ic-trash-2"></i>Delete</span>
+                  <p class="menu-note">Used by 57 licenses. Move them to another tier first.</p>
+                </div></div>
+              </div>
+            </div>
+          </div>
+          <div class="item-row lead keep-end">
+            <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">4</span>
+            <div class="item-text"><div class="item-title">Trial<small>143 licenses</small></div></div>
+            <div class="item-end"><button class="btn ghost icon xs" aria-label="Trial: more"><i class="ic ic-ellipsis"></i></button></div>
+          </div>
+          <div class="item-row lead keep-end">
+            <i class="ic ic-grip-vertical subtle" aria-hidden="true"></i><span class="rank">5</span>
+            <div class="item-text"><div class="item-title">Free<small>434 licenses</small></div></div>
+            <div class="item-end"><button class="btn ghost icon xs" aria-label="Free: more"><i class="ic ic-ellipsis"></i></button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <figcaption><strong>Reordering without a mouse</strong>Move up and Move down name the neighbour; a focused handle moves with ↑ and ↓. Delete is disabled while licenses use the tier.</figcaption>
+  </figure>
+
+  <!-- Leaving with unsaved changes: picking another tier, or another page. -->
+  <figure class="board-item">
+    <div class="board-frame board-stage">
+      <section class="card" aria-label="Education, edited">
+        <div class="card-head"><div class="title"><h3>Education</h3></div></div>
+        <div class="form-section">
+          <div class="form-section-label"><h3>Limits</h3></div>
+          <div class="form">
+            <div class="mk-cluster-6">
+              <div class="field"><label class="field-label">Devices</label><div class="input short"><span class="grow tnum">2</span></div></div>
+              <div class="field changed"><label class="field-label">Offline days<span class="was">was 7</span></label><div class="input short"><span class="grow tnum">14</span></div></div>
+            </div>
+            <div class="field">
+              <label class="field-label">Release tracks</label>
+              <div class="mk-cluster"><span class="chip on locked">stable</span><span class="chip">beta</span><span class="chip">dev</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <div class="overlay center">
+        <div class="dialog sm" role="dialog" aria-labelledby="ts-discard">
+          <div class="dialog-head"><h2 id="ts-discard">Discard 1 change to Education?</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+          <div class="dialog-body"><p>Offline days goes back to 7 and Studio opens.</p></div>
+          <div class="dialog-foot std"><button class="btn">Keep editing</button><button class="btn danger">Discard</button></div>
+        </div>
+      </div>
+    </div>
+    <figcaption><strong>Leaving with a change</strong>Asked on picking another tier, or leaving the page, with changes unsaved.</figcaption>
+  </figure>
+
+  <!-- stable is always included. -->
+  <figure class="board-item room-below">
+    <div class="board-frame">
+      <section class="card" aria-labelledby="ts-tracks">
+        <div class="card-head"><div class="title"><h3 id="ts-tracks">Release tracks</h3><p>Choosing dev also includes beta.</p></div></div>
+        <div class="card-body">
+          <div class="mk-cluster">
+            <span class="popover-anchor"><span class="chip on locked focus" aria-disabled="true" aria-describedby="ts-tip">stable</span><span class="popover anchor-below"><span class="tooltip" id="ts-tip" role="tooltip">Always included</span></span></span>
+            <span class="chip on">beta</span>
+            <span class="chip">dev</span>
+          </div>
+        </div>
+      </section>
+    </div>
+    <figcaption><strong>Locked stable</strong>A lock and a dashed edge, so stable doesn’t read as a choice; hover or focus shows “Always included”.</figcaption>
+  </figure>
+</div>

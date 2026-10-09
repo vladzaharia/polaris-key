@@ -1,0 +1,99 @@
+<style>
+  /* packages.feeds-setup: the laptop run beside the CI run and the rerun from 1280px (at wide, each
+     column as wide as its 80-column terminal); one column below. */
+  [data-screen="packages.feeds-setup"] .board-grid {
+    --cols-desktop: minmax(0, 1fr) minmax(0, 1fr);
+    --cols-wide: minmax(0, 1fr) minmax(0, 1fr);
+  }
+</style>
+
+<div class="board" data-service="core">
+  <div class="board-page">
+    <header class="board-head">
+      <h1>pkey feeds setup --write</h1>
+      <p>Sets up every package manager with its own packages-only token. Never writes into a project.</p>
+    </header>
+
+    <div class="board-grid equal">
+      <div class="board-col">
+        <figure class="board-item">
+          <figcaption><strong>On a laptop</strong>Each file is merged, never replaced: other registries in ~/.npmrc stay as they were.</figcaption>
+          <div class="term cols-80 fade-x wrap-phone">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/code/djdl-sources</span></div>
+<pre class="term-body" tabindex="0" role="region" aria-label="Terminal output"><span class="c-prompt">❯</span> pkey feeds setup --write
+<span class="c-b">Polaris Key packages</span> <span class="c-dim">· key.plrs.im</span>
+
+To sign in, open <span class="c-accent c-u">https://key.plrs.im/device</span> and enter <span class="c-b">QFJT-7KWD</span>
+<span class="c-dim">Opened it in your browser. Waiting for you to approve…</span>
+<span class="c-ok">✓</span> Signed in as <span class="c-b">Mara Fennick</span> <span class="c-dim">(mara@example.com)</span>
+<span class="c-ok">✓</span> Made a packages-only token <span class="c-accent">pkeyp_…7Q2M</span> <span class="c-dim">“pkey feeds setup on mara-mbp”</span>
+  <span class="c-dim">Expires Jan 5, 2027.</span>
+
+<span class="c-b">You can install from 4 feeds in 2 products</span>
+  DJDL       <span class="c-dim">npm</span> @djdl <span class="c-dim">· PyPI</span> djdl-crates
+  Diceroll   <span class="c-dim">npm</span> @diceroll <span class="c-dim">· Docker</span> diceroll/table-server
+
+<span class="c-b">Writing to your home folder, never to this project</span>
+  <span class="c-ok">✓</span> npm, pnpm    ~/.npmrc                 <span class="c-dim">@djdl, @diceroll</span>
+  <span class="c-ok">✓</span> Yarn         ~/.yarnrc.yml            <span class="c-dim">@djdl, @diceroll</span>
+  <span class="c-ok">✓</span> Bun          ~/.bunfig.toml           <span class="c-dim">@djdl, @diceroll</span>
+  <span class="c-ok">✓</span> uv, pip      ~/.netrc                 <span class="c-dim">sign-in for pkg.plrs.im</span>
+  <span class="c-ok">✓</span> Docker       ~/.docker/config.json    <span class="c-dim">pkg.plrs.im, in the macOS keychain</span>
+  <span class="c-warn">▲</span> PyPI index   <span class="c-warn">not written:</span> pip can’t keep an index to djdl-crates only
+                 Add it per project: <span class="c-accent">pkey feeds setup --print pypi</span>
+  <span class="c-dim">○ Swift, Gradle  nothing to install yet</span>
+
+<span class="c-ok">Done.</span> Try it:
+  npm install @djdl/source-kit
+  docker pull pkg.plrs.im/diceroll/table-server:1.7.3
+
+<span class="c-prompt">❯</span> <span class="cursor"></span></pre>
+          </div>
+        </figure>
+      </div>
+
+      <div class="board-col">
+        <figure class="board-item">
+          <figcaption><strong>In CI</strong>The service token comes from the repository’s secrets.</figcaption>
+          <div class="term cols-80 fade-x wrap-phone">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">GitHub Actions — djdl-plugins</span></div>
+<pre class="term-body" tabindex="0" role="region" aria-label="Terminal output"><span class="c-prompt">❯</span> pkey feeds setup --print npm --token-env PKEY_TOKEN &gt;&gt; ~/.npmrc
+<span class="c-dim">Printed for DJDL (polaris-key.json), using $PKEY_TOKEN: service token</span>
+<span class="c-accent">pkeyci_…R8VQ</span> <span class="c-dim">“Plugin CI”. Nothing signed in, no token made.</span>
+<span class="c-prompt">❯</span> cat ~/.npmrc
+@djdl:registry=https://pkg.plrs.im/npm/djdl/
+//pkg.plrs.im/npm/:_authToken=${PKEY_TOKEN}
+<span class="c-prompt">❯</span> npm ci
+added 214 packages in 6s</pre>
+          </div>
+        </figure>
+
+        <figure class="board-item">
+          <figcaption><strong>Again, a week later</strong>An expired code, then a rerun that replaces only this machine’s token.</figcaption>
+          <div class="term cols-80 fade-x wrap-phone">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/code/djdl-sources, Oct 14</span></div>
+<pre class="term-body" tabindex="0" role="region" aria-label="Terminal output"><span class="c-prompt">❯</span> pkey feeds setup --write
+To sign in, open <span class="c-accent c-u">https://key.plrs.im/device</span> and enter <span class="c-b">MZRP-4HXC</span>
+<span class="c-err">✗</span> The code MZRP-4HXC expired before it was approved (codes last 10 minutes).
+  Run it again for a new code: <span class="c-accent">pkey feeds setup --write</span>
+<span class="c-prompt">❯</span> pkey feeds setup --write
+To sign in, open <span class="c-accent c-u">https://key.plrs.im/device</span> and enter <span class="c-b">TQ7N-2LDV</span>
+<span class="c-ok">✓</span> Signed in as <span class="c-b">Mara Fennick</span> <span class="c-dim">(mara@example.com)</span>
+<span class="c-ok">✓</span> Replaced this machine’s token <span class="c-accent">pkeyp_…7Q2M</span> with <span class="c-accent">pkeyp_…X8WB</span>
+  <span class="c-dim">“pkey feeds setup on mara-mbp”. The old one stopped working just now;</span>
+  <span class="c-dim">your other tokens are untouched.</span>
+
+<span class="c-b">Writing to your home folder, never to this project</span>
+  <span class="c-ok">✓</span> npm, pnpm    ~/.npmrc                 <span class="c-dim">@diceroll</span>
+  <span class="c-warn">▲</span> npm, pnpm    <span class="c-warn">kept:</span> ~/.npmrc already sends @djdl to npm.example.com
+                 Replace it: <span class="c-accent">pkey feeds setup --write --force</span>
+  <span class="c-ok">✓</span> Yarn, Bun, uv, pip, Docker  <span class="c-dim">updated with the new token</span>
+
+<span class="c-warn">Done, with 1 warning.</span>
+<span class="c-prompt">❯</span> <span class="cursor"></span></pre>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </div>
+</div>

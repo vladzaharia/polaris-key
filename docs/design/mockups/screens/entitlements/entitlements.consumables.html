@@ -1,0 +1,267 @@
+<style>
+  /* entitlements.consumables: only what the kit does not already say. */
+  /* A redemption a refund reversed: the warm warning tint on the row, its note in the warning colour. */
+  [data-screen="entitlements.consumables"] tr.reversed td {
+    background: var(--mk-warning-tint);
+  }
+  [data-screen="entitlements.consumables"] .reversed-note,
+  [data-screen="entitlements.consumables"] .reversed-note > .ic {
+    color: var(--pk-warning);
+  }
+  /* The add-ons rail lists a store, a date and a redemption count per row: the aside's width. */
+  [data-screen="entitlements.consumables"] .mk-with-rail {
+    --rail-w: var(--aside-w);
+  }
+  /* Wide: the add-ons card sits beside the table and stretches to its height. */
+  @container screen (min-width: 1440px) {
+    [data-screen="entitlements.consumables"] .mk-with-rail {
+      align-items: stretch;
+    }
+    [data-screen="entitlements.consumables"] .mk-rail > .card {
+      flex: 1;
+    }
+  }
+  /* The entitlement table is one fixed grid, so the From pills sit beside the value at every width. */
+  @container screen (min-width: 640px) {
+    [data-screen="entitlements.consumables"] .table.grid-fixed {
+      table-layout: fixed;
+    }
+  }
+  [data-screen="entitlements.consumables"] .table td.when {
+    color: var(--pk-text-muted);
+    white-space: nowrap;
+  }
+  /* Phone: the event and its summary line take the width; When and Gems keep their own. */
+  @container screen (max-width: 639px) {
+    [data-screen="entitlements.consumables"] .table th:first-child {
+      width: 100%;
+    }
+    [data-screen="entitlements.consumables"] .ledger th:first-child {
+      width: auto;
+    }
+    [data-screen="entitlements.consumables"] .ledger th:nth-child(2) {
+      width: 100%;
+    }
+    [data-screen="entitlements.consumables"] .ledger-band .segmented {
+      width: 100%;
+    }
+    [data-screen="entitlements.consumables"] .ledger-band .segmented > span {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="console kit-next ent2" data-service="license">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">18,406</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">2</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">8</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page table-page">
+      <header class="page-head">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Elif Yıldız</nav>
+        <div class="page-heading"><h1>Elif Yıldız</h1></div>
+        <p class="page-sub"><span>elif@example.com · In an account · Premium</span><span class="id hide-phone"><i class="ic ic-id-card"></i>lic_01J9X…7FQA<i class="ic ic-copy"></i></span></p>
+        <div class="page-actions">
+          <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+          <button class="btn outline"><i class="ic ic-gift"></i>Comp an add-on…</button>
+        </div>
+      </header>
+
+      <nav class="tabs tight"><a class="tab" href="#">Status</a><a class="tab active" href="#">Entitlements</a><a class="tab" href="#">Keys</a><a class="tab" href="#">Devices <span class="count">3</span></a><a class="tab" href="#">Activity</a></nav>
+
+      <!-- The effective set beside the add-ons that feed it. -->
+      <div class="mk-with-rail">
+        <!-- LX-14 on LX-09's resolver: the effective set, each value with its source. -->
+        <section class="card" aria-labelledby="eff-title">
+          <div class="card-head">
+            <div class="title"><h2 id="eff-title">What Elif’s devices get</h2></div>
+            <button class="btn outline sm"><i class="ic ic-pencil"></i>Override…</button>
+          </div>
+          <table class="table grid-fixed">
+            <colgroup><col class="c-label"><col class="c-value"><col></colgroup>
+            <thead><tr><th>Entitlement</th><th>Value</th><th class="hide-phone">From</th></tr></thead>
+            <tbody>
+              <tr><td><div class="cell-title">No ads</div><div class="cell-sub mono">ads.off</div><div class="cell-sub show-phone">Premium</div></td><td><span class="val-on">On</span></td>
+                <td class="hide-phone"><span class="pill sm"><i class="ic ic-layers"></i>Premium</span></td></tr>
+              <tr><td><div class="cell-title">Obsidian dice</div><div class="cell-sub mono">pack.obsidian</div><div class="cell-sub show-phone">Premium</div></td><td><span class="val-on">On</span></td>
+                <td class="hide-phone"><span class="pill sm"><i class="ic ic-layers"></i>Premium</span></td></tr>
+              <tr><td><div class="cell-title">Neon dice</div><div class="cell-sub mono">pack.neon</div><div class="cell-sub show-phone">Neon dice pack</div></td><td><span class="val-on">On</span></td>
+                <td class="hide-phone"><span class="pill sm"><i class="ic ic-puzzle"></i>Neon dice pack</span></td></tr>
+              <tr><td><div class="cell-title">Season pass</div><div class="cell-sub mono">pass.season</div><div class="cell-sub show-phone">Season pass</div></td><td><span class="val-on">On</span></td>
+                <td class="hide-phone"><span class="pill sm"><i class="ic ic-puzzle"></i>Season pass</span></td></tr>
+              <tr><td><div class="cell-title">Loadout slots</div><div class="cell-sub mono">loadouts</div><div class="cell-sub show-phone"><span class="nowrap">Premium 6</span> + <span class="nowrap">Loadout pack +2</span> + <span class="nowrap">Neon dice pack +1</span></div></td><td class="tnum strong">9</td>
+                <td class="hide-phone"><span class="mk-cluster-1"><span class="pill sm"><i class="ic ic-layers"></i>Premium 6</span><span class="pill sm"><i class="ic ic-puzzle"></i>Loadout pack +2</span><span class="pill sm"><i class="ic ic-puzzle"></i>Neon dice pack +1</span></span></td></tr>
+              <tr><td><div class="cell-title">Release tracks</div><div class="cell-sub mono">channels</div><div class="cell-sub show-phone">Premium</div></td><td class="strong">stable</td>
+                <td class="hide-phone"><span class="pill sm"><i class="ic ic-layers"></i>Premium</span></td></tr>
+              <tr><td><div class="cell-title">Device limit</div><div class="cell-sub mono">deviceLimit</div><div class="cell-sub show-phone">Premium</div></td><td class="tnum strong">5</td>
+                <td class="hide-phone"><span class="pill sm"><i class="ic ic-layers"></i>Premium</span></td></tr>
+              <tr><td><div class="cell-title">Cloud Sync storage</div><div class="cell-sub mono">pkey.cloudSync.bytes</div><div class="cell-sub show-phone">Premium</div></td><td class="tnum strong nowrap">50 MB</td>
+                <td class="hide-phone"><span class="pill sm"><i class="ic ic-layers"></i>Premium</span></td></tr>
+            </tbody>
+          </table>
+          <div class="table-foot">Not given: Supporter skins</div>
+        </section>
+
+        <!-- Add-ons held by this license (LX-35), each with its source and actions. -->
+        <div class="mk-rail">
+          <section class="card" aria-labelledby="held-title">
+            <div class="card-head">
+              <div class="title"><h2 id="held-title">Add-ons</h2><p>Gem purchases are the ledger’s source.</p></div>
+            </div>
+            <div class="card-rows">
+              <div class="card-row">
+                <span class="icon-tile sm"><i class="ic ic-dice-5"></i></span>
+                <div class="grow"><div class="strong">Neon dice pack</div><div class="cell-sub"><span class="nowrap">App Store</span>&nbsp;· <span class="nowrap">Oct 2</span></div></div>
+                <button class="btn ghost icon xs" aria-label="Actions for Neon dice pack"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="card-row">
+                <span class="icon-tile sm"><i class="ic ic-crown"></i></span>
+                <div class="grow"><div class="strong">Season pass</div><div class="cell-sub"><span class="nowrap">Google Play</span>&nbsp;· <span class="nowrap">renews Nov 4</span></div></div>
+                <button class="btn ghost icon xs" aria-label="Actions for Season pass"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="card-row">
+                <span class="icon-tile sm"><i class="ic ic-layers"></i></span>
+                <div class="grow"><div class="strong">Loadout pack</div><div class="cell-sub"><span class="nowrap">Steam</span>&nbsp;· <span class="nowrap">Sep 14</span></div></div>
+                <button class="btn ghost icon xs" aria-label="Actions for Loadout pack"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="card-row">
+                <span class="icon-tile sm"><i class="ic ic-coins"></i></span>
+                <div class="grow"><div class="strong">1,200 gems</div><div class="cell-sub"><span class="nowrap">App Store</span>&nbsp;· <span class="nowrap">Oct 5</span>&nbsp;· <span class="nowrap">450 of 1,200 redeemed</span></div></div>
+                <button class="btn ghost icon xs" aria-label="Actions for 1,200 gems"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="card-row">
+                <span class="icon-tile sm muted"><i class="ic ic-coins"></i></span>
+                <div class="grow"><div class="strong">500 gems</div><div class="cell-sub"><span class="nowrap">Google Play</span>&nbsp;· <span class="nowrap">Oct 1</span>&nbsp;· <span class="nowrap text-danger">refunded Oct 3</span></div></div>
+                <button class="btn ghost icon xs" aria-label="Actions for 500 gems, refunded"><i class="ic ic-ellipsis"></i></button>
+              </div>
+              <div class="card-row">
+                <span class="icon-tile sm"><i class="ic ic-coins"></i></span>
+                <div class="grow"><div class="strong">500 gems ×2</div><div class="cell-sub"><span class="nowrap">Google Play</span>&nbsp;· <span class="nowrap">Sep 28</span>&nbsp;· <span class="nowrap">400 of 1,000 redeemed</span></div></div>
+                <button class="btn ghost icon xs" aria-label="Actions for 500 gems ×2"><i class="ic ic-ellipsis"></i></button>
+              </div>
+            </div>
+            <div class="card-foot start"><a class="link" href="#">Purchases in Activity<i class="ic ic-arrow-right"></i></a></div>
+          </section>
+        </div>
+      </div>
+
+      <!-- LX-42: a consumable's ledger. The balance leads the card (and is the ledger's running total); it shows nowhere else on the page. -->
+      <section class="card" aria-labelledby="gems-title">
+        <div class="card-head">
+          <div class="title">
+            <h2 id="gems-title">Gems<span class="info-tip" tabindex="0" role="img" aria-label="How the ledger counts" data-tip="A repeated request id redeems nothing.&#10;A refund never takes the balance below zero."><i class="ic ic-info"></i></span></h2>
+          </div>
+        </div>
+        <div class="stats strip quad">
+          <div class="stat"><span class="stat-label"><i class="ic ic-coins"></i>Balance</span><span class="stat-value">1,350</span><span class="stat-foot">Bought − redeemed − refunded</span></div>
+          <div class="stat"><span class="stat-label"><i class="ic ic-circle-plus"></i>Bought</span><span class="stat-value">2,700</span><span class="stat-foot">3 purchases</span></div>
+          <div class="stat"><span class="stat-label"><i class="ic ic-arrow-up-right"></i>Redeemed</span><span class="stat-value">1,200</span><span class="stat-foot"><span class="nowrap">4 times</span>&nbsp;· <span class="nowrap">350 reversed</span></span></div>
+          <div class="stat"><span class="stat-label"><i class="ic ic-circle-minus"></i>Refunded</span><span class="stat-value">150</span><span class="stat-foot">1 refund</span></div>
+        </div>
+        <div class="card-body tight ledger-band">
+          <div class="mk-split">
+            <div><span class="segmented sm" role="radiogroup" aria-label="Show"><span class="on" role="radio" aria-checked="true">All</span><span role="radio" aria-checked="false">Bought</span><span role="radio" aria-checked="false">Redeemed</span><span role="radio" aria-checked="false">Refunds</span></span></div>
+          </div>
+        </div>
+        <table class="table ledger">
+          <thead><tr><th class="sorted" aria-sort="descending">When <span class="muted">PDT</span><i class="ic ic-arrow-down"></i></th><th>Event</th><th class="num">Gems</th><th class="num hide-phone">Balance</th><th class="hide-phone">Details</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="when"><span class="hide-phone nowrap">Oct 7, 09:41</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Oct 7</span><span class="meta">09:41</span></span></span></td>
+              <td><span class="status muted"><i class="ic ic-arrow-up-right"></i>Redeemed</span><div class="cell-sub show-phone"><span class="nowrap">Elif’s iPad</span></div></td>
+              <td class="num strong">−300<div class="cell-sub show-phone">balance 1,350</div></td>
+              <td class="num hide-phone">1,350</td>
+              <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">From 1,200 gems · Elif’s iPad</span><button class="btn ghost icon xs copy-id" aria-label="Copy request rq_7c1e…a04f"><i class="ic ic-copy"></i></button></span></td>
+            </tr>
+            <tr>
+              <td class="when"><span class="hide-phone nowrap">Oct 6, 21:03</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Oct 6</span><span class="meta">21:03</span></span></span></td>
+              <td><span class="status muted"><i class="ic ic-arrow-up-right"></i>Redeemed</span><div class="cell-sub show-phone"><span class="nowrap">Steam Deck</span></div></td>
+              <td class="num strong">−150<div class="cell-sub show-phone">balance 1,650</div></td>
+              <td class="num hide-phone">1,650</td>
+              <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">From 1,200 gems · Steam Deck</span><button class="btn ghost icon xs copy-id" aria-label="Copy request rq_51d9…7b2e"><i class="ic ic-copy"></i></button></span></td>
+            </tr>
+            <tr>
+              <td class="when"><span class="hide-phone nowrap">Oct 5, 18:22</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Oct 5</span><span class="meta">18:22</span></span></span></td>
+              <td><span class="status"><i class="ic ic-circle-plus"></i>Bought</span><div class="cell-sub show-phone"><span class="nowrap">App Store</span></div></td>
+              <td class="num text-success">+1,200<div class="cell-sub show-phone">balance 1,800</div></td>
+              <td class="num hide-phone">1,800</td>
+              <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">1,200 gems · Elif’s iPad</span><button class="btn ghost icon xs copy-id" aria-label="Copy App Store order 2000000741203"><i class="ic ic-copy"></i></button></span></td>
+            </tr>
+            <tr>
+              <td class="when"><span class="hide-phone nowrap">Oct 3, 08:15</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Oct 3</span><span class="meta">08:15</span></span></span></td>
+              <td><span class="status danger"><i class="ic ic-circle-minus"></i>Refunded</span><div class="cell-sub show-phone"><span class="nowrap">500 gems from Oct 1</span></div></td>
+              <td class="num strong">−150<div class="cell-sub show-phone">balance 600</div></td>
+              <td class="num hide-phone">600</td>
+              <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">500 gems from Oct 1 · removes the 150 left</span></span></td>
+            </tr>
+            <tr class="reversed">
+              <td class="when"><span class="hide-phone nowrap">Oct 2, 19:02</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Oct 2</span><span class="meta">19:02</span></span></span></td>
+              <td><span class="status muted"><i class="ic ic-arrow-up-right"></i>Redeemed</span><div class="show-phone"><div class="cell-sub icon-line reversed-note"><i class="ic ic-triangle-alert"></i><span><span>Reversed by the Oct 3 refund</span></span></div></div></td>
+              <td class="num strong">−350<div class="cell-sub show-phone">balance 750</div></td>
+              <td class="num hide-phone">750</td>
+              <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">From 500 gems (Oct 1) · Elif’s Pixel 8</span></span>
+                <div class="icon-line type-small reversed-note detail"><i class="ic ic-triangle-alert"></i><span class="detail-text">Reversed by the Oct 3 refund; Diceroll acknowledged and took back the Ember table</span></div></td>
+            </tr>
+            <tr>
+              <td class="when"><span class="hide-phone nowrap">Oct 1, 12:40</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Oct 1</span><span class="meta">12:40</span></span></span></td>
+              <td><span class="status"><i class="ic ic-circle-plus"></i>Bought</span><div class="cell-sub show-phone"><span class="nowrap">Google Play</span></div></td>
+              <td class="num text-success">+500<div class="cell-sub show-phone">balance 1,100</div></td>
+              <td class="num hide-phone">1,100</td>
+              <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">500 gems · Elif’s Pixel 8</span><button class="btn ghost icon xs copy-id" aria-label="Copy Google Play order GPA.3391-2201-7745-11208"><i class="ic ic-copy"></i></button></span></td>
+            </tr>
+            <tr>
+              <td class="when"><span class="hide-phone nowrap">Sep 30, 20:11</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Sep 30</span><span class="meta">20:11</span></span></span></td>
+              <td><span class="status muted"><i class="ic ic-arrow-up-right"></i>Redeemed</span><div class="cell-sub show-phone"><span class="nowrap">Steam Deck</span></div></td>
+              <td class="num strong">−400<div class="cell-sub show-phone">balance 600</div></td>
+              <td class="num hide-phone">600</td>
+              <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">From 500 gems ×2 · Steam Deck</span><button class="btn ghost icon xs copy-id" aria-label="Copy request rq_0e8a…c31d"><i class="ic ic-copy"></i></button></span></td>
+            </tr>
+            <tr>
+              <td class="when"><span class="hide-phone nowrap">Sep 28, 16:05</span><span class="show-phone"><span class="cell-stack"><span class="nowrap">Sep 28</span><span class="meta">16:05</span></span></span></td>
+              <td><span class="status"><i class="ic ic-circle-plus"></i>Bought</span><div class="cell-sub show-phone"><span class="nowrap">Google Play</span></div></td>
+              <td class="num text-success">+1,000<div class="cell-sub show-phone">balance 1,000</div></td>
+              <td class="num hide-phone">1,000</td>
+              <td class="hide-phone"><span class="detail type-small muted"><span class="detail-text">500 gems ×2 · Elif’s Pixel 8</span><button class="btn ghost icon xs copy-id" aria-label="Copy Google Play order GPA.3317-4402-9921-07215"><i class="ic ic-copy"></i></button></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+</div>

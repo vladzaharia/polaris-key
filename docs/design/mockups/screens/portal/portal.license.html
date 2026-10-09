@@ -1,0 +1,269 @@
+<style>
+  /* portal.license: only what the kit does not already say. No spacing: the kit's product page parts. */
+  [data-screen="portal.license"] .pill.tier {
+    color: var(--pk-text-strong);
+  }
+  /* One column under 1100px: the cards in the jump bar's order (Get it, License, Devices, Cloud Sync,
+     DJDL knows you as, What's new, Help). */
+  @container screen (max-width: 1099px) {
+    [data-screen="portal.license"] .s-get { order: 1; }
+    [data-screen="portal.license"] .s-license { order: 2; }
+    [data-screen="portal.license"] .s-devices { order: 3; }
+    [data-screen="portal.license"] .s-sync { order: 4; }
+    [data-screen="portal.license"] .s-knows { order: 5; }
+    [data-screen="portal.license"] .s-new { order: 6; }
+    [data-screen="portal.license"] .s-help { order: 7; }
+  }
+  /* A phone is not a Mac (PORTAL.md §5.4, decided by the device): no tinted row for it. */
+  @container screen (max-width: 639px) {
+    [data-screen="portal.license"] .table tr.recommended td {
+      background: none;
+    }
+  }
+</style>
+
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <nav class="portal-nav" aria-label="Portal">
+      <a class="active" href="#">Library <span class="count">2</span></a>
+      <a href="#">Discover</a>
+    </nav>
+    <div class="portal-actions">
+      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">PR</span><span>Priya Raman</span><i class="ic ic-chevron-down"></i></span>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <div><a class="link" href="#"><i class="ic ic-arrow-left"></i>Library</a></div>
+
+    <!-- A healthy license: no status pill. The one solid button is the build for this device. -->
+    <header class="product-hero">
+      <div class="art" data-product="djdl"></div>
+      <div class="product-hero-row">
+        <span class="logo" data-product="djdl"></span>
+        <div class="product-hero-title">
+          <h1>DJDL</h1>
+          <p>by <a href="#">Example Audio</a></p>
+        </div>
+        <div class="product-hero-actions">
+          <button class="btn primary lg hide-phone"><i class="ic ic-download"></i>Download for macOS</button>
+          <button class="btn primary lg show-phone"><i class="ic ic-mail"></i>Email me the download</button>
+          <button class="btn outline icon lg" aria-label="More for DJDL"><i class="ic ic-ellipsis"></i></button>
+        </div>
+        <p class="product-hero-note show-phone">We'll email priya@example.edu a link for your Mac or PC.</p>
+      </div>
+    </header>
+
+    <div class="product-layout">
+      <!-- Below 1280px: the jump bar, the page's own order, License marked (the route's section). -->
+      <nav class="jump-nav" aria-label="On this page">
+        <a href="#">Get it</a>
+        <a class="on" href="#" aria-current="location">License</a>
+        <a href="#">Devices <span class="count">3</span></a>
+        <a href="#">Cloud Sync</a>
+        <a href="#">What's new</a>
+        <a href="#">Help</a>
+      </nav>
+      <!-- From 1280px: the in-page nav, the same order. -->
+      <nav class="toc-nav" aria-label="On this page">
+        <a href="#">Get it</a>
+        <a class="on" href="#" aria-current="location">License</a>
+        <a href="#">Devices <span class="count">3</span></a>
+        <a href="#">Cloud Sync</a>
+        <a href="#">What's new</a>
+        <a href="#">Help</a>
+      </nav>
+
+      <div class="product-col">
+        <!-- Get it: one downloads table, each file once; the build for this Mac is the tinted first row.
+             The license runs Stable only, so no release-track picker (P2-13). -->
+        <section class="card s-get" aria-labelledby="get-h">
+          <div class="card-head">
+            <div class="title"><h2 id="get-h">Get it</h2></div>
+            <span class="head-meta">4.2.0 · Oct 6, 2026</span>
+          </div>
+          <table class="table">
+            <thead>
+              <tr><th>Platform</th><th class="hide-phone">SHA-256</th><th class="end"><span class="sr-only">Download</span></th></tr>
+            </thead>
+            <tbody>
+              <tr class="recommended">
+                <td><div class="cell-with-logo"><span class="icon-tile muted"><i class="ic ic-apple"></i></span>
+                  <div><div class="cell-title">macOS · Universal</div>
+                    <div class="cell-sub"><span class="hide-phone">For your Mac · </span>.dmg · 84 MB</div></div></div></td>
+                <td class="hide-phone"><span class="id">9f2c41…b07e<button class="btn ghost icon xs" aria-label="Copy the macOS SHA-256"><i class="ic ic-copy"></i></button></span></td>
+                <td class="end"><button class="btn outline sm" aria-label="Download for macOS, Universal"><i class="ic ic-download"></i><span class="hide-narrow">Download</span></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile muted"><i class="ic ic-windows"></i></span>
+                  <div><div class="cell-title">Windows · x64</div><div class="cell-sub">.exe installer · 71 MB</div></div></div></td>
+                <td class="hide-phone"><span class="id">41d8a0…6c2f<button class="btn ghost icon xs" aria-label="Copy the Windows x64 SHA-256"><i class="ic ic-copy"></i></button></span></td>
+                <td class="end"><button class="btn outline sm" aria-label="Download for Windows, x64"><i class="ic ic-download"></i><span class="hide-narrow">Download</span></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile muted"><i class="ic ic-windows"></i></span>
+                  <div><div class="cell-title">Windows · Arm64</div><div class="cell-sub">.exe installer · 68 MB</div></div></div></td>
+                <td class="hide-phone"><span class="id">c07e19…a4d1<button class="btn ghost icon xs" aria-label="Copy the Windows Arm64 SHA-256"><i class="ic ic-copy"></i></button></span></td>
+                <td class="end"><button class="btn outline sm" aria-label="Download for Windows, Arm64"><i class="ic ic-download"></i><span class="hide-narrow">Download</span></button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-foot"><a class="link" href="#">SHA256SUMS<i class="ic ic-download"></i></a></div>
+        </section>
+
+        <!-- Cloud Sync: storage is an entitlement of the license; the 1 GB is said here only. -->
+        <section class="card s-sync" aria-labelledby="sync-h">
+          <div class="card-head">
+            <div class="title"><h2 id="sync-h">Cloud Sync</h2></div>
+            <div class="progress-inline"><span>37 MB of 1 GB used</span><div class="progress neutral" style="--v: 4%"></div></div>
+          </div>
+          <table class="table compact">
+            <thead><tr><th>Synced data</th><th class="num">Items</th><th class="num">Size</th></tr></thead>
+            <tbody>
+              <tr><td>Crates</td><td class="num tnum">1,240</td><td class="num tnum">31 MB</td></tr>
+              <tr><td>Cue points</td><td class="num tnum">18,920 tracks</td><td class="num tnum">6.2 MB</td></tr>
+              <tr><td>Settings</td><td class="num tnum">9</td><td class="num tnum">3 KB</td></tr>
+            </tbody>
+          </table>
+          <div class="card-foot start stack-phone">
+            <button class="btn outline sm"><i class="ic ic-download"></i>Export synced data</button>
+            <button class="btn danger-outline sm"><i class="ic ic-trash-2"></i>Delete synced data</button>
+          </div>
+        </section>
+
+        <!-- What's new: Markdown drawn formatted, the summary first, the rest in place (ST-36). -->
+        <section class="card s-new" aria-labelledby="new-h">
+          <div class="card-head"><div class="title"><h2 id="new-h">What's new in 4.2.0</h2></div></div>
+          <div class="card-body">
+            <div class="mk-stack-3">
+              <div class="md">
+                <h3>Highlights</h3>
+                <ul>
+                  <li><strong>Stem separation</strong> runs on the GPU on Apple silicon, about 3× faster on an M3. It needs the <em>Stem separation</em> add-on or Studio.</li>
+                  <li><strong>Mappings for 6 more controllers</strong>, 48 in all. Each one downloads the first time you plug it in.</li>
+                  <li>Crates sync between your Mac and PC with <a href="#">Cloud Sync</a>.</li>
+                </ul>
+              </div>
+              <div><button class="btn link" aria-expanded="false">Show full notes<i class="ic ic-chevron-down"></i></button></div>
+            </div>
+          </div>
+          <table class="table compact">
+            <thead><tr><th>Earlier versions</th><th class="end">Released</th></tr></thead>
+            <tbody>
+              <tr><td class="tnum">4.1.3</td><td class="end tnum">Sep 22, 2026</td></tr>
+              <tr><td class="tnum">4.1.2</td><td class="end tnum">Sep 9, 2026</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="card s-help" aria-labelledby="help-h">
+          <div class="card-head plain">
+            <div class="title"><h2 id="help-h">Help</h2><p>Example Audio handles DJDL's licenses and downloads.</p></div>
+            <button class="btn outline sm"><i class="ic ic-external-link"></i>Contact Example Audio</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="product-col">
+        <!-- License: the tier at the top right, the term on a timeline (LX-41, LX-15), no key (LX-38),
+             add-ons with their source (LX-15). Same license as licenses.detail. -->
+        <section class="card s-license" aria-labelledby="lic-h">
+          <div class="card-head">
+            <div class="title"><h2 id="lic-h">License</h2></div>
+            <span class="pill tier"><i class="ic ic-key-round"></i>Education</span>
+          </div>
+          <div class="card-body">
+            <div class="mk-stack-5">
+              <div class="license-term">
+                <div class="mk-stack-1">
+                  <strong>Updates until Sep 14, 2027</strong>
+                  <span class="type-small muted">Then keeps working on the last version</span>
+                </div>
+                <div class="term-chart" style="--term-today: 4.4%" aria-hidden="true">
+                  <div class="term-today"><span>Today, Oct 7</span></div>
+                  <div class="term-track"><div class="progress" style="--v: 6%"></div><div class="term-after"></div><span class="term-mark"></span></div>
+                  <div class="term-scale"><span><span>Sep 14, 2026</span><span>Sep 14, 2027</span></span><span>Last version</span></div>
+                </div>
+                <span class="status"><i class="ic ic-circle-check"></i>You're on the latest version</span>
+              </div>
+              <dl class="dl cols">
+                <div><dt>License source</dt><dd>Automatic grant</dd></div>
+                <div><dt>Works offline for</dt><dd>14 days</dd></div>
+                <div><dt>Release track</dt><dd>Stable</dd></div>
+                <div><dt>License key</dt><dd>None, sign in instead</dd></div>
+                <div class="full"><dt>Included</dt><dd>4 decks · Recording · Cloud Sync</dd></div>
+              </dl>
+            </div>
+          </div>
+          <table class="table compact">
+            <thead><tr><th>Add-ons</th><th class="end">Source</th></tr></thead>
+            <tbody>
+              <tr><td><div class="cell-title">Polaris VPN</div><div class="cell-sub">Lifetime</div></td><td class="end">Automatic grant</td></tr>
+              <tr><td><div class="cell-title">Stem separation</div><div class="cell-sub">Ends Dec 31, 2026</div></td><td class="end">From Example Audio</td></tr>
+              <tr><td><div class="cell-title">Extra devices (2)</div><div class="cell-sub">Lifetime</div></td><td class="end">From Example Audio</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Devices: the count lives here and in the nav (ST-36); the meter is neutral (a limit, not an error). -->
+        <section class="card s-devices" aria-labelledby="dev-h">
+          <div class="card-head">
+            <div class="title"><h2 id="dev-h">Devices</h2><p>2 with Education, 2 from Extra devices</p></div>
+            <div class="progress-inline"><span>3 of 4 in use</span><div class="meter neutral" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div></div>
+          </div>
+          <div class="card-rows">
+            <div class="device-row">
+              <span class="icon-tile muted"><i class="ic ic-laptop"></i></span>
+              <div>
+                <div class="device-name">Priya's MacBook Air</div>
+                <div class="device-meta"><span>macOS · 4.2.0</span> · <span class="this hide-phone">This device</span><span class="show-phone">last seen today</span></div>
+              </div>
+              <button class="btn outline sm" aria-label="Remove Priya's MacBook Air">Remove</button>
+            </div>
+            <div class="device-row">
+              <span class="icon-tile muted"><i class="ic ic-monitor"></i></span>
+              <div>
+                <div class="device-name">B12 studio iMac</div>
+                <div class="device-meta"><span>macOS · 4.2.0</span> · <span>last seen Oct 5</span></div>
+              </div>
+              <button class="btn outline sm" aria-label="Remove B12 studio iMac">Remove</button>
+            </div>
+            <div class="device-row">
+              <span class="icon-tile muted"><i class="ic ic-laptop"></i></span>
+              <div>
+                <div class="device-name">Gig laptop</div>
+                <div class="device-meta"><span>Windows · 4.1.3</span> · <span>last seen Sep 30</span></div>
+              </div>
+              <button class="btn outline sm" aria-label="Remove Gig laptop">Remove</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- DJDL has Sign-in on: the account a new device signs in with. -->
+        <section class="card s-knows" aria-labelledby="knows-h">
+          <div class="card-head"><div class="title"><h2 id="knows-h">DJDL knows you as</h2></div></div>
+          <div class="card-rows">
+            <div class="device-row">
+              <span class="avatar">PR</span>
+              <div>
+                <div class="device-name">Priya Raman</div>
+                <div class="device-meta"><span>priya@example.edu</span> · <span>passkey</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-foot start"><a class="btn link" href="#">Manage sign-in methods<i class="ic ic-arrow-right"></i></a></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+
+  <nav class="portal-tabbar" aria-label="Portal">
+    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
+    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+    <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
+  </nav>
+</div>

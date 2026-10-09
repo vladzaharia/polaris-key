@@ -1,0 +1,160 @@
+<style>
+  /* commerce.features-save-failed: colours only; every space comes from the kit. The row whose
+     save failed carries a danger edge until the change goes through. */
+  [data-screen="commerce.features-save-failed"] .feature-row.failed {
+    box-shadow: inset 3px 0 0 var(--pk-danger);
+  }
+</style>
+
+<div class="console cm2" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <!-- The save failed, so the sidebar is unchanged: no Commerce group. -->
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item active" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- One column, capped at 1280 from 1600: the page has no rail. -->
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Settings</h1></div>
+      </header>
+
+      <nav class="tabs" aria-label="Settings">
+        <a class="tab" href="#">General</a>
+        <a class="tab" href="#">Presentation</a>
+        <a class="tab active" href="#" aria-current="page">Features</a>
+        <a class="tab" href="#">Advanced</a>
+      </nav>
+
+      <!-- Saves are per switch; what turning a feature off takes with it is in the confirm dialog. -->
+      <div class="callout">
+        <i class="ic ic-info"></i>
+        <div class="grow"><div class="callout-text">Each switch saves on its own.</div></div>
+      </div>
+
+      <!-- Canonical order: Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce.
+           Requirements come from tools/services.json; a feature's own switches nest under it. -->
+      <section class="card" aria-label="Features">
+        <div class="feature-rows">
+          <div class="feature-row">
+            <span class="icon-tile sm" data-service="license"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Licensing</div>
+              <p class="feature-row-desc">Tiers, add-ons, entitlements and who gets a license automatically.</p>
+            </div>
+            <span class="switch touch on" role="switch" aria-checked="true" aria-label="Licensing"></span>
+          </div>
+
+          <div class="feature-row">
+            <span class="icon-tile sm" data-service="config"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Managed config</div>
+              <p class="feature-row-desc">Settings, secrets and minted tokens, with a profile per tier.</p>
+            </div>
+            <span class="switch touch on" role="switch" aria-checked="true" aria-label="Managed config"></span>
+            <div class="feature-subs">
+              <div class="setting-row">
+                <div><div class="setting-title">Minted tokens</div><div class="setting-desc">Follows DJDL’s token recipes: 1 approved</div></div>
+                <span class="status"><i class="ic ic-circle-check"></i>On</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-row">
+            <span class="icon-tile sm" data-service="release"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Ship builds</div>
+              <p class="feature-row-desc">Releases from CI, DJDL’s channels and the download page.</p>
+            </div>
+            <span class="switch touch on" role="switch" aria-checked="true" aria-label="Ship builds"></span>
+            <div class="feature-subs">
+              <div class="setting-row">
+                <div><div class="setting-title">In-app updates</div><div class="setting-desc">Sparkle on macOS and WinSparkle on Windows check DJDL’s signed feed.</div></div>
+                <span class="switch touch on" role="switch" aria-checked="true" aria-label="In-app updates"></span>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-title">Package feeds</div><div class="setting-desc">Packages on pkg.plrs.im for DJDL’s customers.</div></div>
+                <span class="switch touch" role="switch" aria-checked="false" aria-label="Package feeds"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-row">
+            <span class="icon-tile sm" data-service="identity"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Sign-in</div>
+              <p class="feature-row-desc">People sign in to DJDL with their Polaris Key account.</p>
+            </div>
+            <span class="switch touch on" role="switch" aria-checked="true" aria-label="Sign-in"></span>
+            <div class="feature-subs">
+              <div class="setting-row">
+                <div><div class="setting-title">Customer portal</div><div class="setting-desc">key.plrs.im/djdl, where people see their license, devices and downloads.</div></div>
+                <span class="switch touch on" role="switch" aria-checked="true" aria-label="Customer portal"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="feature-row">
+            <span class="icon-tile sm" data-service="sync"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Cloud Sync</div>
+              <p class="feature-row-desc">Each person’s settings and crates, the same on every Mac and PC.</p>
+              <div class="reqs"><span>Needs</span><span class="req met" aria-label="Managed config is on">Managed config</span><span class="req met" aria-label="Sign-in is on">Sign-in</span></div>
+            </div>
+            <span class="switch touch on" role="switch" aria-checked="true" aria-label="Cloud Sync"></span>
+          </div>
+
+          <!-- A failed save: the switch is back where it was and the row says what failed, that
+               nothing changed, and Try again. No toast; an error never dismisses itself. -->
+          <div class="feature-row failed">
+            <span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span>
+            <div class="feature-row-text">
+              <div class="feature-row-name">Commerce</div>
+              <p class="feature-row-desc">Sell tiers and add-ons on the App Store, Steam, Microsoft Store and itch.io.</p>
+              <div class="reqs"><span>Needs</span><span class="req met" aria-label="Licensing is on">Licensing</span></div>
+              <div class="feature-row-note failure">
+              <div class="mk-stack-2" role="alert">
+                <div class="icon-line danger"><i class="ic ic-circle-x"></i><span>Commerce didn’t turn on; nothing changed.</span></div>
+                <div class="mk-cluster"><button class="btn outline xs"><i class="ic ic-refresh-cw"></i>Try again</button><span class="meta">Reference</span><span class="id">7F3C-21A9<i class="ic ic-copy"></i></span></div>
+              </div>
+              </div>
+            </div>
+            <span class="switch touch" role="switch" aria-checked="false" aria-label="Commerce"></span>
+          </div>
+        </div>
+        <div class="card-foot start">
+          <span class="type-small muted">Service names and the registration policy are read-only under <a class="link" href="#">Advanced</a>.</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+</div>

@@ -1,0 +1,96 @@
+<style>
+  /* commerce.offers-import: colours only; every space comes from the kit. */
+  [data-screen="commerce.offers-import"] .cell-title.mono {
+    font-weight: 400;
+  }
+</style>
+
+<div class="console cm2" data-service="commerce">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span><span class="count">412</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="commerce">
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
+    </div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Offers</h1></div>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-download"></i>Import from stores</button>
+          <button class="btn primary"><i class="ic ic-plus"></i>New offer</button>
+        </div>
+      </header>
+
+      <!-- Import and suggest (CM-23): store products with no offer, matched to Licensing by name.
+           Each suggestion is added or dismissed; nothing is created until you add it. -->
+      <section class="card" aria-labelledby="sug-title">
+        <div class="card-head">
+          <div class="title"><h2 id="sug-title">Found on the App Store</h2><p>4 found: 3 can be added, 1 has no match · Checked Oct 7, 10:51</p></div>
+          <button class="btn outline sm"><i class="ic ic-plus"></i>Add all 3</button>
+        </div>
+        <table class="table fixed stack-phone flush" aria-labelledby="sug-title">
+          <colgroup><col style="width: 38%"><col style="width: 34%"><col style="width: 28%"></colgroup>
+          <thead><tr><th>In-app purchase</th><th>Suggested offer</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-title mono">com.example.djdl.pro</div><div class="cell-sub">Non-consumable</div></td>
+              <td><div><div class="cell-title">DJDL Pro</div><div class="cell-sub">Tier Pro · one-time</div></div></td>
+              <td class="end"><div class="mk-cluster end pair-12"><button class="btn ghost sm">Dismiss</button><button class="btn outline sm"><i class="ic ic-plus"></i>Add offer</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title mono">com.example.djdl.pro.yearly</div><div class="cell-sub">Auto-renewable, yearly</div></td>
+              <td><div><div class="cell-title">DJDL Pro yearly</div><div class="cell-sub">Tier Pro · yearly subscription</div></div></td>
+              <td class="end"><div class="mk-cluster end pair-12"><button class="btn ghost sm">Dismiss</button><button class="btn outline sm"><i class="ic ic-plus"></i>Add offer</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title mono">com.example.djdl.stems</div><div class="cell-sub">Non-consumable</div></td>
+              <td><div><div class="cell-title">Stem separation</div><div class="cell-sub">Add-on Stem separation · one-time</div></div></td>
+              <td class="end"><div class="mk-cluster end pair-12"><button class="btn ghost sm">Dismiss</button><button class="btn outline sm"><i class="ic ic-plus"></i>Add offer</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="cell-title mono">com.example.djdl.cloudcrates</div><div class="cell-sub">Auto-renewable, monthly</div></td>
+              <td><div><div class="cell-title muted">No match</div><div class="cell-sub">Licensing has no Cloud crates</div></div></td>
+              <td class="end"><a class="link" href="#">Add it in Licensing<i class="ic ic-arrow-right"></i></a></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- No offers exist yet: added suggestions arrive as drafts. One line, not a second card. -->
+      <p class="hint">Added offers show here as drafts.</p>
+    </div>
+  </main>
+</div>

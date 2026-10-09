@@ -1,0 +1,193 @@
+<style>
+  /* sdk.start-call: the file beside where each SDK reads it; the start call in all six SDKs (two
+     up at tablet and desktop, three at wide, Swift's tabs on phone); then how the file gets into a
+     project. At wide the first column hugs the JSON. */
+  [data-screen="sdk.start-call"] .board-grid {
+    --cols-desktop: minmax(0, 1fr) minmax(0, 1fr);
+    --cols-wide: minmax(0, 640px) minmax(0, 1fr);
+  }
+  [data-screen="sdk.start-call"] .board-aside {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @container screen (min-width: 1600px) {
+    [data-screen="sdk.start-call"] .board-aside {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 1023px) {
+    [data-screen="sdk.start-call"] .board-aside {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>polaris-key.json and the start call</h1>
+    </header>
+
+    <div class="board-grid">
+      <section class="section">
+        <div class="section-head"><h2>The file</h2></div>
+        <div class="code wrap-phone" data-service="core">
+          <div class="code-head"><span class="code-file">polaris-key.json</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-o">{</span>
+  <span class="t-p">"$schema"</span><span class="t-o">:</span> <span class="t-s">"https://key.plrs.im/schemas/v1/sdk-config.schema.json"</span><span class="t-o">,</span>
+  <span class="t-p">"configVersion"</span><span class="t-o">:</span> <span class="t-n">1</span><span class="t-o">,</span>
+  <span class="t-p">"productSlug"</span><span class="t-o">:</span> <span class="t-s">"djdl"</span><span class="t-o">,</span>
+  <span class="t-p">"baseUrl"</span><span class="t-o">:</span> <span class="t-s">"https://key.plrs.im"</span><span class="t-o">,</span>
+  <span class="t-p">"pinnedKeys"</span><span class="t-o">: {</span>
+    <span class="t-p">"djdl-2026"</span><span class="t-o">:</span> <span class="t-s">"P0nMyA9QpvpspaIXBjtb6PfXZu4jIiGPlNzkRm28_6E"</span>
+  <span class="t-o">},</span>
+  <span class="t-p">"pinnedReleaseKeys"</span><span class="t-o">: {</span>
+    <span class="t-p">"djdl-rk-2026"</span><span class="t-o">:</span> <span class="t-s">"u4Xw9QeLr2Tn7VbK0cJm5HsZ1yAfD8gPq3oWi6NtE_k"</span>
+  <span class="t-o">},</span>
+  <span class="t-p">"expectedServices"</span><span class="t-o">: [</span><span class="t-s">"license"</span><span class="t-o">,</span> <span class="t-s">"config"</span><span class="t-o">,</span> <span class="t-s">"release"</span><span class="t-o">,</span>
+    <span class="t-s">"distribution"</span><span class="t-o">,</span> <span class="t-s">"update"</span><span class="t-o">,</span> <span class="t-s">"identity"</span><span class="t-o">,</span> <span class="t-s">"sync"</span><span class="t-o">]</span>
+<span class="t-o">}</span></pre>
+          <div class="code-foot"><i class="ic ic-info sm"></i><span>Public keys only; safe to commit. Never fetched.</span></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><h2>Where each SDK reads it</h2></div>
+        <section class="card">
+          <table class="table compact flush sdk-reads">
+            <thead><tr><th>SDK</th><th>Reads from</th><th>App version</th></tr></thead>
+            <tbody>
+              <tr><td><span class="cell-title">Node</span></td><td><span>Beside <code>package.json</code>, or a path you pass</span></td><td><span><code>package.json</code>, or Electron’s app version</span></td></tr>
+              <tr><td><span class="cell-title">React</span></td><td><span>A JSON import, bundled at build time</span></td><td><span>The <code>version</code> prop, if the app has one</span></td></tr>
+              <tr><td><span class="cell-title">Python</span></td><td><span>A path, or package data</span></td><td><span>You pass <code>version=</code></span></td></tr>
+              <tr><td><span class="cell-title">Swift</span></td><td><span>The app bundle</span></td><td><span><code>CFBundleShortVersionString</code></span></td></tr>
+              <tr><td><span class="cell-title">Kotlin</span></td><td><span>Android <code>assets/</code>, or the JVM classpath</span></td><td><span><code>versionName</code></span></td></tr>
+              <tr><td><span class="cell-title">Godot</span></td><td><span><code>res://polaris-key.json</code>, kept by the export filter</span></td><td><span><code>application/config/version</code></span></td></tr>
+            </tbody>
+          </table>
+        </section>
+      </section>
+    </div>
+
+    <section class="section">
+      <div class="section-head"><h2>The start call</h2></div>
+
+      <!-- Phone: one block, Swift's tab with the other five behind “5 more”. -->
+      <div class="code show-phone wrap-phone" data-service="core">
+        <div class="code-head">
+          <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span class="more">5 more<i class="ic ic-chevron-down"></i></span></div>
+          <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
+        </div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+
+<span class="hl"><span class="t-k">let</span> pk = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</span>
+<span class="hl"><span class="t-k">await</span> pk.<span class="t-f">boot</span>()</span>
+
+<span class="t-k">if await</span> pk.<span class="t-f">isLicensed</span>() {
+  <span class="t-f">openLibrary</span>()
+} <span class="t-k">else</span> {
+  <span class="t-c">// or .polarisKeyGate(pk) from PolarisKeyUI</span>
+  <span class="t-f">showSignIn</span>()
+}</pre>
+      </div>
+
+      <!-- 640 and up: all six, once each, Swift first. -->
+      <div class="board-aside hide-phone">
+        <div class="code wrap-phone" data-service="core">
+          <div class="code-head"><span class="code-file">Swift · App.swift (macOS)</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">import</span> <span class="t-t">PolarisKey</span>
+
+<span class="hl"><span class="t-k">let</span> pk = <span class="t-k">try await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()</span>
+<span class="hl"><span class="t-k">await</span> pk.<span class="t-f">boot</span>()</span>
+
+<span class="t-k">if await</span> pk.<span class="t-f">isLicensed</span>() {
+  <span class="t-f">openLibrary</span>()
+} <span class="t-k">else</span> {
+  <span class="t-c">// or .polarisKeyGate(pk) from PolarisKeyUI</span>
+  <span class="t-f">showSignIn</span>()
+}</pre>
+        </div>
+        <div class="code wrap-phone" data-service="core">
+          <div class="code-head"><span class="code-file">Node · main.ts</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">import</span> { <span class="t-t">PolarisKeyClient</span> }
+  <span class="t-k">from</span> <span class="t-s">"@polaris-key/node"</span>;
+
+<span class="t-k">const</span> pk = <span class="t-k">await</span> <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>();
+<span class="t-k">await</span> pk.<span class="t-f">boot</span>();
+
+<span class="t-k">if</span> (!(<span class="t-k">await</span> pk.<span class="t-f">isLicensed</span>())) {
+  <span class="t-k">await</span> <span class="t-f">showSignIn</span>(pk);
+}</pre>
+        </div>
+        <div class="code wrap-phone" data-service="core">
+          <div class="code-head"><span class="code-file">React · main.tsx</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">import</span> polarisKey <span class="t-k">from</span> <span class="t-s">"../polaris-key.json"</span>;
+<span class="t-k">import</span> { <span class="t-t">PolarisKeyProvider</span>, <span class="t-t">PolarisKeyGate</span> }
+  <span class="t-k">from</span> <span class="t-s">"@polaris-key/react"</span>;
+
+<span class="t-c">// The provider runs fromConfig() and boot().</span>
+<span class="t-f">createRoot</span>(root).<span class="t-f">render</span>(
+  &lt;<span class="t-t">PolarisKeyProvider</span> <span class="t-p">config</span>={polarisKey}&gt;
+    &lt;<span class="t-t">PolarisKeyGate</span>&gt;&lt;<span class="t-t">App</span> /&gt;&lt;/<span class="t-t">PolarisKeyGate</span>&gt;
+  &lt;/<span class="t-t">PolarisKeyProvider</span>&gt;,
+);</pre>
+        </div>
+        <div class="code wrap-phone" data-service="core">
+          <div class="code-head"><span class="code-file">Python · app.py</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-k">from</span> polaris_key <span class="t-k">import</span> <span class="t-t">PolarisKeyClient</span>
+
+pk = <span class="t-t">PolarisKeyClient</span>.<span class="t-f">from_config</span>(
+    <span class="t-s">"polaris-key.json"</span>, <span class="t-p">version</span>=<span class="t-s">"4.2.1"</span>
+)
+pk.<span class="t-f">boot</span>()
+
+<span class="t-k">if not</span> pk.<span class="t-f">is_licensed</span>():
+    <span class="t-f">show_sign_in</span>(pk)</pre>
+        </div>
+        <div class="code wrap-phone" data-service="core">
+          <div class="code-head"><span class="code-file">Kotlin · Main.kt (Windows)</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-c">// Android: PolarisKeyAndroid.client(context)</span>
+<span class="t-k">val</span> pk = <span class="t-t">PolarisKeyClient</span>.<span class="t-f">fromConfig</span>()
+pk.<span class="t-f">boot</span>()
+
+<span class="t-k">if</span> (!pk.<span class="t-f">isLicensed</span>()) <span class="t-f">showSignIn</span>(pk)</pre>
+        </div>
+        <div class="code wrap-phone" data-service="core">
+          <div class="code-head"><span class="code-file">Godot · main.gd</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
+<pre><span class="t-c"># The PolarisKey autoload reads</span>
+<span class="t-c"># res://polaris-key.json itself.</span>
+<span class="t-k">func</span> <span class="t-f">_ready</span>() <span class="t-o">-></span> <span class="t-t">void</span>:
+  <span class="t-k">await</span> PolarisKey.<span class="t-f">boot</span>()
+  <span class="t-k">if not</span> PolarisKey.<span class="t-f">is_licensed</span>():
+    $SignIn.<span class="t-f">show</span>()</pre>
+        </div>
+      </div>
+
+      <p class="board-note"><i class="ic ic-info"></i><span><code>boot()</code> checks the license, syncs managed config and registers the device. When start fails, a debug build prints what is wrong. <a class="link" href="#">See doctor()<i class="ic ic-arrow-right"></i></a></span></p>
+    </section>
+
+      <section class="section">
+        <div class="section-head"><h2>How it gets into the project</h2></div>
+        <section class="card">
+          <div class="card-rows">
+            <div class="item-row top">
+              <span class="icon-tile sm"><i class="ic ic-square-terminal"></i></span>
+              <div class="item-text"><div class="item-title">pkey sdk add</div><div class="item-desc">Adds the SDK and writes the file; pins keys that match Integration’s fingerprint.</div></div>
+              <div class="item-more mk-stack-2">
+                <div class="cmd one-line wrap-phone"><span>pkey sdk add swift --dir macos/ --expect djdl-2026@sha256:3f9a0c…e41b</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
+                <p class="type-meta">Outside DJDL’s repository, add <code>--product djdl</code>, as Integration’s copy does.</p>
+              </div>
+            </div>
+            <div class="item-row top">
+              <span class="icon-tile sm"><i class="ic ic-download"></i></span>
+              <div class="item-text"><div class="item-title">Download on Integration</div><div class="item-desc">The same file, with the active and the staged signing keys, for adding the SDK by hand.</div></div>
+            </div>
+            <div class="item-row top">
+              <span class="icon-tile sm"><i class="ic ic-godot"></i></span>
+              <div class="item-text"><div class="item-title">Import file… in the Godot dock</div><div class="item-desc">Writes <code>res://polaris-key.json</code> and adds it to the export filter. No Node needed.</div></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+  </div>
+</div>

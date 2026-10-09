@@ -1,0 +1,86 @@
+{
+  "id": "products.sidebar-contexts",
+  "title": "Sidebar contexts",
+  "area": "products",
+  "surface": "console",
+  "order": 7,
+  "packages": [
+    "ST-45",
+    "ST-29"
+  ],
+  "uxRows": [
+    "UX-09",
+    "UX-13",
+    "UX-14",
+    "UX-26"
+  ],
+  "summary": "The console sidebar's two contexts side by side: Platform (Home and the platform's pages), Product for DJDL (its own pages, one group per feature that's on, Settings last), the switcher open from the context header, and the same product as a DJDL editor with Access and Settings filtered out by permission.",
+  "compare": [
+    "Platform context: header with the Polaris mark, 'Platform', '3 products' and the switcher chevrons; then Home, Members, Connections, Settings, Packages, Status, Activity, and Collapse in the foot. No product pages, no 'Products' item (Home has the products) and no counts.",
+    "Product context: header with the product's logo, name and slug; then Overview, Integration (until hidden), Access, Devices, Users, Activity; then one accent-labelled group per enabled feature in canonical order; Settings and Collapse in the foot. No platform pages. Devices carries the device count (412, ST-36's pill); it is the only count in a product sidebar, the same on Overview, Integration and Settings.",
+    "Feature groups fold to their label and open to their pages (Licensing: Licenses, Tiers, Add-ons, Entitlements). A feature that is off (Commerce on DJDL) has no group at all, not a disabled one.",
+    "The switcher opens from the context header (not the top bar), over the nav, which stays visible and dimmed beneath: a 'Find a product' field with ⌘K, Platform first (back to Home), then every product with its logo and one dot per feature it uses (the Home card's pips, named for screen readers), the current one checked, Polaris Key marked System, and New product last. No 'All products': Platform already lands on Home's product grid.",
+    "Permission filtering: a DJDL editor (Tomás Okafor) sees no Access and no Settings, and the header says 'You're an editor'. Nothing is shown greyed out or as a dead end; a link from elsewhere to a page he can't use opens the page that names who can give access.",
+    "One-time pages (such as the old override migration) appear in the Platform context only while they have something to do.",
+    "The 35-item product sidebar is gone: a product with every feature shows six own pages plus its feature groups folded.",
+    "Phone: the console's sidebar is the menu drawer: ✕ at the top left closes it, the dimmed page shows to its right, and there's no Collapse. The first frame draws that drawer; the other frames stack below it, also without Collapse."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Pass, minor fixes applied: a real phone drawer, the switcher overlays the nav, one count rule, and one dot per feature.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The phone render only stacked the desktop frames (no drawer, scrim, close button or safe area); Collapse appeared though it means nothing in a drawer; in the Switching frame the nav under the popover was removed rather than covered.",
+        "resolution": "On phone the Platform frame is the drawer over a dimmed page, with ✕ at the top left and no Collapse; Collapse is hidden on phone in every frame. The Switching frame keeps DJDL's whole nav (pages and feature groups) dimmed beneath the popover, so it reads as an overlay."
+      },
+      {
+        "severity": "minor",
+        "issue": "Counts disagreed (Devices 412 and Licenses 240 here, none on Overview and Integration, Members 6 on Platform but not on Home); 'Platform' and 'All products' both landed on Home; dots were per service, colour-only and unnamed (7 for DJDL).",
+        "resolution": "One rule: Devices carries the device count (ST-36's pill) in every product sidebar and nothing else has one, so Licenses 240 and Members 6 are gone and Devices is added on Overview, Integration and Settings. 'All products' dropped. Dots are one per feature (DJDL 5, Diceroll 4, Polaris Key 2), 7 px, with role=img and a label naming the features."
+      },
+      {
+        "severity": "major",
+        "issue": "At wide: 230px dead on the right, notes top-aligned in a side column ending 540px above the sidebars' bottom, about 280px of blank inside each panel.",
+        "resolution": "A centred auto-fit 4-up grid (272px columns, capped at 1360, the title lines up with the grid) with the three notes in one full-width row beneath at every size above tablet. 2 x 2 at tablet with the short pair on one row, the tall pair on the next, notes below. The notes never sit in a side column. Panels size to their content with the Collapse row 24px under the last item.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Captions and notes explained the same rules twice; the dimmed nav under the switcher looked half-rendered.",
+        "resolution": "Captions are one sentence each; the three notes stay. The nav behind the open switcher is not drawn, so the menu is the only thing in focus. The phone drawer is 85% wide over the scrim.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Switcher product dots were colour-only.",
+        "resolution": "DJDL and Diceroll rows carry a trailing plain-text '5 features' / '4 features' from tablet width up; the dots keep their accessible names. The Polaris Key row keeps its 'System' tag only: a count beside it did not fit the 236px menu. Platform is not the current context in this frame, so no check is drawn on it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Delete the notes or the captions; a phone carousel or tabs; feature icons for dots; draw one-time pages.",
+        "resolution": "declined: The notes carry the build rules; a carousel or tabs is new interaction; icons would crowd the switcher row (a text count was added); one-time pages add content.",
+        "round": "multi-review"
+      }
+    ]
+  }
+}

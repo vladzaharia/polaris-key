@@ -1,0 +1,160 @@
+{
+  "id": "portal.discover",
+  "title": "Discover",
+  "area": "portal",
+  "surface": "portal",
+  "packages": [
+    "LX-38",
+    "PS-12",
+    "P2-10",
+    "LX-36",
+    "P0-36"
+  ],
+  "uxRows": [],
+  "summary": "Dana's Discover right after she added DJDL: DJDL's access rule for verified example.edu emails gave her Education through the same issuance as signing in, with no key, so the tile shows In your library with its download as the next step, and a toast says to download it and sign in. Diceroll, shown to everyone signed in with Free for every account, still offers Add to library under its store links. Each tile's cover art runs all the way, its whole 16:9 frame edge to edge from the tile's top (owner, 2026-10-08), with In your library on the art.",
+  "compare": [
+    "Header counts: Library 1, Discover 1 as a violet count (products still to add); on phone a dot on the Discover tab (labelled 'Discover, 1 to add') and Activate as the outlined pill, no other nagging.",
+    "Visibility is one setting per product, storefront.polarisKey.visibility (PS-12), worded on the Access page as Hidden (unlisted), People who can get it (eligible) and Everyone signed in (everyone). Hidden never shows; People who can get it shows only when accessFor() or a store or obtain path gives this account something (DJDL); Everyone signed in shows to every account (Diceroll). A product already in the library leaves Discover, except the just-added state until the page reloads.",
+    "Grid (kit .portal-grid, inside the portal's 1248 px content width): 3 columns of the Library's large tile from 1280 px (desktop and wide), 2 from 640 px (tablet), 1 on phone (the reason line and store links need the width; PORTAL.md \u00a74.16's 4-column grid should change to match). At two columns the end tile spans the row and lays its three points side by side.",
+    "Each tile: the cover art at its whole 16:9 frame from the tile's top edge, edge to edge, at most 280 px tall (desktop and wide: two tiles of 610 and 748 px, so the art is 280; tablet 268; phone 201), never a cropped band; the 56 px icon 20 px over the art's lower edge, the name (20/24) with its developer beside it on one line, what you get in the Library's vocabulary (tier pill, device pill, duration line), platform glyphs (platforms only, one image named by them: Diceroll iOS as the phone glyph, Android, Windows, Linux), the reason line in a sunken callout, and one action.",
+    "The reason line is always shown (owner, 2026-10-04): the fact that matched ('You have a confirmed example.edu email'), or 'For everyone with a Polaris Key account'. The rule's label ('Education license') is not repeated beside the Education tier pill, and 'Free' is not repeated beside the Free pill (owner, 2026-10-08: each fact once).",
+    "Discover never says 'offer' (the glossary's Offer is the storefront item, integration.md \u00a72): the title's line says 'Products you can add for free'; the end tile says who it's for.",
+    "Add to library runs the same issuance as signing in to the app (LX-38): no key is made, the license source is 'Automatic grant', and there is one license per account and product even when a sign-in races it.",
+    "Add to library states: busy 'Adding\u2026' with a spinner and the button disabled; failure inline under the button, 'Couldn't add Diceroll. Check your connection and try again.' with Try again; a sign-in that already issued the license wins the race and the tile flips to In your library with no error; withdrawn, inline 'Example Audio no longer gives DJDL to your account.'",
+    "Just added: green edge, an 'In your library' pill on the art's lower right; the action becomes the next step, Download for macOS (outlined: a covered build for this OS comes before Open while the app hasn't been seen on this device), with 'Go to DJDL' as a text link. Phone: 'Email me the download'. PORTAL.md \u00a74.16 and \u00a75.4's precedence need the same change.",
+    "Toast 'DJDL is in your library': 'Download it, then sign in with dana@example.edu.' with Download as an accent text button (phone: 'Get it on your Mac or PC, then sign in with dana@example.edu.' with Email me) and a 28 px close \u00d7 labelled Dismiss. 'No key' is said once, in the end tile. role=status; it stays until dismissed while it carries an action.",
+    "Diceroll: Free for everyone, Add to library, duration 'Lifetime', and 'Buy Standard or packs on' Steam, App Store, Google Play, itch.io as accent links with the arrow-up-right glyph and labels like 'Buy Standard or packs on Steam (opens Steam)', quieter than Add to library. No prices: Polaris Key checkout waits on owner decision 5.",
+    "A product shown to everyone signed in that gives this account nothing free shows its store links as the tile's action instead of Add to library (not drawn).",
+    "Empty: PORTAL.md \u00a74.16's 'Nothing to add right now', 'When a developer makes something available to your account, like a free game, a beta or an app your team gets, it appears here.', Back to your library (not drawn).",
+    "The dashed end tile 'What shows up here' (kit .ptile.end-tile, .media-list): Who it's for (everyone, or people like you: your team, your email's domain, a group you're in), No key (adding one gives you its license at once), Bought something? (purchases go to your library by themselves). No point that narrates the tiles (the store links show themselves).",
+    "Phone: one column, the end tile last, the toast above the bottom bar, the footer above the bar; the account avatar is the same lavender one as on every portal screen. Checks: no sideways scroll from 320 to 2560 px (the account name hides from 640 to 899 px); axe 0 violations at 390, 1024, 1440 and 1920 in both themes."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Needs fixes, now applied: Add to library now leads to the download, the toast offers it and can be dismissed, the phone bar matches the kit, store links read as links, 'offer' is gone and the missing states are specified; the 3-column grid is kept.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "After Add to library the tile and toast offered only 'Open', with no way to get DJDL.",
+        "resolution": "Just-added tile: 'Download for macOS' (outlined) with 'Go to DJDL' as a text link; phone 'Email me the download'. Toast: 'Download it, then sign in with dana@example.edu. No key needed.' with Download (phone: Email me). The PORTAL.md \u00a74.16 and \u00a75.4 precedence change (a covered build for this OS before Open while the app hasn't been seen on this device) is noted for the lead."
+      },
+      {
+        "severity": "minor",
+        "issue": "Toast action was plain text; no dismiss; it sat over the footer.",
+        "resolution": "The action is the kit's accent text button, plus a 28 px close \u00d7 labelled Dismiss; the toast is role=status and the compare list says it stays until dismissed while it carries an action. The phone shot now draws it at the page's end above the bar."
+      },
+      {
+        "severity": "minor",
+        "issue": "No dot on the phone Discover tab; Activate drawn as a plain tab.",
+        "resolution": "The Discover tab carries the kit's .dot, labelled 'Discover, 1 to add'; Activate is the kit's outlined .act pill; the screen's own unused .dot rule is gone."
+      },
+      {
+        "severity": "minor",
+        "issue": "Store links looked like neutral labels, gave no sign of leaving Polaris Key and competed with Add to library.",
+        "resolution": "Accent links with an underline and the arrow-up-right glyph, labelled like 'Buy Standard or packs on Steam (opens Steam)', smaller and quieter than the outlined Add to library."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Lifetime \u00b7 packs sold in the game' mixed selling into the duration; iOS drew the Apple glyph and stores were mixed into the platform row.",
+        "resolution": "Duration 'Lifetime'; buy row 'Buy Standard or packs on \u2026'. Platform glyphs are platforms only: iOS as the phone glyph, Android, Windows and Linux (Diceroll's builds in the distribution screens). Applied to portal.library too."
+      },
+      {
+        "severity": "minor",
+        "issue": "Discover's avatar was solid violet; the other screens use the lavender one.",
+        "resolution": "'avatar sm' (lavender), as on the other portal screens."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Offers to your account' and 'stopped this offer' used 'offer', the glossary's storefront item.",
+        "resolution": "End tile 'Made available to you'; lede 'Products their developers make available to your account'; the withdrawn error 'Example Audio no longer gives DJDL to your account.' (compare list). PORTAL.md \u00a74.16 uses 'offer' throughout: noted for the lead."
+      },
+      {
+        "severity": "minor",
+        "issue": "Missing states (busy, network failure, race, empty, store-links-only tile); 3 columns versus PORTAL.md's 4.",
+        "resolution": "Compare lines: busy 'Adding\u2026' with a spinner and the button disabled; failure inline 'Couldn't add Diceroll. Check your connection and try again.' with Try again; a racing sign-in flips the tile to In your library with no error; the store-links-only tile; the empty state. The end tile gained 'Some show store links'. Kept 3 columns (the Library's large tile; the reason line and store links need the width); PORTAL.md \u00a74.16's 4-column grid is noted for the lead."
+      },
+      {
+        "severity": "major",
+        "issue": "Card art took over half of a tablet tile and pushed the second tile below the fold on phone.",
+        "resolution": "Art is 16:7 capped at 140px (112px on phone); body padding 16, rows on a 24px rhythm; no 16:9 art on tiles.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Wide layout had 336px of dead gutter and a blank lower third.",
+        "resolution": "Content max-width 1520px from 1700px; tile grid auto-fit from 380px; toast anchored to the content column's right edge.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The 'What shows up here' panel narrated mechanism and the subtitle was wrong for an Education grant.",
+        "resolution": "Panel deleted; subtitle 'Free and eligible products'; one muted line under the grid: 'Purchases appear in your library automatically.'",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Primary buttons sat at different heights, store links wrapped into orphans, and the Diceroll audience was stated three times.",
+        "resolution": "Actions at the tile bottom with the store links (and Go to DJDL) in a reserved row under them, so the buttons are level; the 'For everyone' box is gone; the eligibility callout stays on DJDL only.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "'In library' was stated four times (outline, pill, toast, nav count) and the toast button repeated the tile's.",
+        "resolution": "1px green outline plus the pill; toast is 'Added to your library' with one line and no Download button; 32px close target; 12px above the phone bar; Discover count labelled for screen readers.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "One scale step between a 40px title and 18-20px card titles.",
+        "resolution": "Page title 28/36, tile title 20, body 14, meta 12.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      },
+      {
+        "issue": "Move the helper strip to a 320px right rail, or use four tile columns with an end tile.",
+        "resolution": "declined: A rail or a fourth tile brings back the panel that is being removed. A strip under the grid holds at every width.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Show a numeric count on the phone Discover tab instead of the dot, and enlarge tab labels.",
+        "resolution": "declined: The numeric count is in the header on desktop; the phone bar is a kit component and its label size is handled in the kit.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 4
+}

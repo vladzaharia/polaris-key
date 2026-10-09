@@ -1,0 +1,159 @@
+{
+  "id": "config.cloud-sync",
+  "title": "Cloud Sync setup",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-32",
+    "U-01b",
+    "U-05",
+    "U-09",
+    "U-10",
+    "U-23",
+    "ST-16",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's Cloud Sync page, Setup tab: storage per player as the pkey.cloudSync.bytes entitlement (the platform default plus tier values, with players near each limit), what syncs read from the catalog, the per-product ceiling, the platform writes-paused switch, and the saves code.",
+  "compare": [
+    "One page replaces the old read-only Data page: Cloud Sync in the sidebar with Setup and Usage tabs. The sidebar shows Diceroll's six features in canonical order (Licensing, Managed config, Ship builds, Sign-in, Cloud Sync, Commerce) with Sign-in on because Cloud Sync needs it. The page sub is live state only: Verified per platform as status text, including \"itch.io not seen yet\" with the dashed ring (no description restating the title).",
+    "Storage per player is the only quota: the Default row is the platform's registry default (256 MiB), marked with the Platform pill and \"Every product, for tiers that don't set their own\"; one row per tier with its own value, or \"Uses the default\" under the value; players without a license show \"Same as Free\". No by-tier, by-entitlement or unlicensed settings, and no Set by column repeating the row's name.",
+    "One action style in the column, ghost buttons on one right edge: Change on rows with their own value, Set where the tier uses the default, Change… on Default (it opens config.storage-default, the live platform default confirm), and Change in Access for players without a license. On a narrow card each row's action sits beside its title.",
+    "The card names the entitlement once (pkey.cloudSync.bytes) and links to Tiers, where the same value is edited. Over 80% full is warning text only where it needs attention; the foot says when a change applies, that lowering a limit deletes nothing, and links to what players see when a save waits for room.",
+    "What syncs is read from the catalog (version named, Open Catalog): settings sync because they're Editable, with the count, the first keys, the two that stay on each device, and keys the game adds itself (256 keys, 64 KiB).",
+    "Saves is the saves template (a neutral pill): slots, size, kept versions with \"Older versions count toward the player's storage\", the conflict rule in words (Ask the player), what the load screen shows, who can save, and one real slot.",
+    "Limits has exactly two controls: Diceroll's total storage (a meter, the platform default named, Change…) and Pause all writes, marked Platform, off, with what it does and when it was last used; turning it on opens config.pause-writes. Limits and In your game sit side by side, each at its own height.",
+    "In your game: \"Settings sync with no extra code. Saves take one call.\", GDScript first for Godot (then Swift for iOS, Kotlin for Android): config.set_value for a synced setting and cloud_sync.saves for a save with its metadata and the conflict signal.",
+    "A member with a product role only sees config.cloud-sync-product-role; while writes are paused the page is config.cloud-sync-paused.",
+    "Words: \"player\" for a game (Diceroll), \"person\" or \"account\" for an app (DJDL); storage in MiB and GiB, never MB; numbers and units never break across lines. products.integration's Cloud Sync card must say \"Storage per person: 256 MiB by default (Standard uses the default)\" to match this page.",
+    "No word \"Data\" for this page, no access classes, no conflict-mode jargon (lastWrite, revision) and no save-slot setting.",
+    "Phone: each tier row becomes a block with its action beside the title, the What syncs panes stack, and the code tabs scroll sideways. Page-level cards carry no decorative icon tile.",
+    "Wide (1600px and up): the page is two columns. Storage per player, What syncs and In your game take the main column; Limits, the operator's block, is the 400px aside. Below 1600 In your game and Limits sit side by side about 2:1, a section gap apart, and stack on phone.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the platform default is marked and confirmed like one, the actions agree, and the copy, Verified line and layout are corrected.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Change on the Default row edited the platform-wide 256 MiB default with no Platform marking and no confirm naming the products it affects.",
+        "resolution": "The row carries the Platform pill and reads \"Every product, for people whose tier doesn't set it\"; Change… opens ST-16's live platform default confirm, drawn as config.storage-default, which names DJDL and Diceroll with who uses the default in each and confirms with a passkey."
+      },
+      {
+        "severity": "minor",
+        "issue": "Four action treatments in one column (outline, pencil, text Set, nothing).",
+        "resolution": "One ghost style: Change on rows with their own value, Set on Standard (uses the default), Change… on Default, and Change in Access as a link on players without a license."
+      },
+      {
+        "severity": "minor",
+        "issue": "\"Anonymous devices tier (Free)\" read like a second tier or a price, with no way to change it.",
+        "resolution": "\"Same as Free, the tier for players without a license\" with Change in Access."
+      },
+      {
+        "severity": "minor",
+        "issue": "\"Settings need no code\" sat above code that calls set_value.",
+        "resolution": "\"Settings sync with no extra code. Saves take one call.\""
+      },
+      {
+        "severity": "minor",
+        "issue": "The Verified line left out itch.io.",
+        "resolution": "The page sub adds \"itch.io not seen yet\" as muted status with the dashed ring, the products.integration pattern; config.cloud-sync-usage shows it too."
+      },
+      {
+        "severity": "minor",
+        "issue": "It never said whether kept versions count toward storage or what a player sees at the limit.",
+        "resolution": "Keeps adds \"Older versions count toward the player's storage.\"; the card foot links \"What players see then\"."
+      },
+      {
+        "severity": "minor",
+        "issue": "Ragged bottom row, a floating Platform pill and cut code tabs on phone, and \"64 KiB\" breaking.",
+        "resolution": "Limits and In your game stretch to one row height; on phone the pill has its own line and the tabs scroll with a fading edge; numbers and units are joined by non-breaking spaces."
+      },
+      {
+        "severity": "minor",
+        "issue": "No state for a member with a product role only.",
+        "resolution": "Added config.cloud-sync-product-role: Change… on Default and the pause switch are disabled, each with \"Only platform admins …\"."
+      },
+      {
+        "severity": "minor",
+        "issue": "products.integration's DJDL card contradicts this page's storage model and uses MB.",
+        "resolution": "Not changed here, as the finding says: the fix belongs to products.integration, another designer's screen, and goes to the lead to route. The naming and unit rule is now in this screen's compare list."
+      },
+      {
+        "severity": "major",
+        "issue": "Limits stretched to the Diceroll \"In your game\" row, leaving about 170px dead under the Pause switch; wide stretched the table.",
+        "resolution": "Pair is .mk-pair.loose.top (align-items start) so Limits keeps its height; at 1600+ it is the right rail beside Storage and What syncs.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Facts stated twice or mechanism the person does not act on.",
+        "resolution": "Storage subtitle \"Per tier. Entitlement pkey.cloudSync.bytes\"; Default subtitle \"For tiers that don't set their own\" with the Platform pill kept; removed the code-card footer, the \"Every Editable setting syncs\" sentence, the first code comment and \"Last used Sep 22, for 14 min\"; pause helper shortened; \"What players see\" became \"See Usage\"; \"13 sync\" became \"13 settings\".",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "\"Updated 2 min ago\" had no role and the header ran about 90px taller than other pages.",
+        "resolution": "Removed it; Guide stays right in the title row; verification stays in the title meta only; tab-bar gap tightened by the kit (.kit-cfg .page-head + .tabs).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Row actions sat about 40px inside the card edge; labels and blank cells were inconsistent.",
+        "resolution": "Ghost actions in rows and card heads are inset (-12px) so label text ends at the 24px edge; Change... only where a dialog opens; blank cell is an em dash; \"players with data\" removed from Setup rows (Usage owns the counts); column header is \"Near limit\" in both tabs.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Phone: clipped code tabs, orphaned Guide button, Pause (the urgent control) last.",
+        "resolution": "Code tabs show the language only and scroll with a fade, code block scrolls sideways with a fade, Guide is icon-only; Limits (Pause row first) comes directly under the header. Partly done: Guide still renders on its own row under the meta on phone (the kit phone page-actions rule wins over a screen override), not in the title row.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "What syncs used three list styles with dead space under Settings.",
+        "resolution": "Both columns align to start; the two icon lines use one 20px icon column and a 12px gap.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1"
+        ]
+      },
+      {
+        "issue": "Reword players/people/devices across the area; sentence-case eyebrows (UX2)",
+        "resolution": "declined: The house copy rules already distinguish these; uppercase eyebrows are a kit pattern. Only stray places fixed; no global rewrite.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 14
+}

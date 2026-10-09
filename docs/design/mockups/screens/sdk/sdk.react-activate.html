@@ -1,0 +1,203 @@
+<style>
+  /* sdk.react-activate: DJDL's accent, from its icon (coral between the brand's orange and rose). */
+  [data-screen="sdk.react-activate"] {
+    --kit-accent: color-mix(in oklab, var(--pk-service-update) 45%, var(--pk-brand-rose));
+    --kit-accent-on: var(--pk-text-on-accent);
+    --kit-accent-subtle: color-mix(in oklab, var(--kit-accent) 13%, var(--pk-surface-raised));
+  }
+  /* From 1600: three columns. 1 and 1c in the first, the errors 1b and 1d in the second, the device list
+     across two rows in the third; then Other answers (1e) beside 3. */
+  @container screen (min-width: 1600px) {
+    [data-screen="sdk.react-activate"] .frame-grid.windows {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-flow: row;
+    }
+    [data-screen="sdk.react-activate"] .a1  { grid-column: 1; grid-row: 1; }
+    [data-screen="sdk.react-activate"] .a1c { grid-column: 1; grid-row: 2; }
+    [data-screen="sdk.react-activate"] .a3  { grid-column: 3; grid-row: 3; }
+    [data-screen="sdk.react-activate"] .a1b { grid-column: 2; grid-row: 1; }
+    [data-screen="sdk.react-activate"] .a1d { grid-column: 2; grid-row: 2; }
+    [data-screen="sdk.react-activate"] .a1e { grid-column: 1 / span 2; grid-row: 3; }
+    [data-screen="sdk.react-activate"] .a2  { grid-column: 3; grid-row: 1 / span 2; }
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>DJDL activates with a key in the React kit</h1>
+      <div class="callout info one-line"><i class="ic ic-info"></i><div class="grow"><div class="callout-text"><strong>Kit preview:</strong> React kit with DJDL’s facts (Cloud Sync on, Standard, 5 devices).</div></div></div>
+    </header>
+
+    <div class="frame-grid windows top cap-strip">
+      <figure class="board-item a1">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Enter your license key</h2>
+                  <p class="kit-lede">You’ll find it in your purchase email.</p>
+                </div>
+                <div class="kit-field">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input wrap focus"><span>pkey_djdl_7HJM2QKD9XRL4WTPB3NC60</span><button class="kit-btn sm">Paste</button></div>
+                </div>
+                <div class="kit-actions"><button class="kit-btn primary">Activate license</button><button class="kit-btn">Back</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>1 · Enter your license key.</strong> Outline on keyboard focus only; <em>Back</em> returns to Sign in.</figcaption>
+      </figure>
+      <figure class="board-item a1b">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Enter your license key</h2>
+                  <p class="kit-lede">You’ll find it in your purchase email.</p>
+                </div>
+                <div class="kit-field">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input wrap bad"><span>HSND-7HJM-2QKD-9XRL</span><button class="kit-btn sm">Paste</button></div>
+                  <span class="kit-error" role="alert"><i class="ic ic-circle-x"></i><span>That doesn’t look like a license key. Keys start with <code>pkey_</code>.</span></span>
+                </div>
+                <div class="kit-actions"><button class="kit-btn primary">Activate license</button><button class="kit-btn">Back</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>1b · Not a key.</strong> A store code pasted by mistake; nothing is sent.</figcaption>
+      </figure>
+      <figure class="board-item a1c">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Enter your license key</h2>
+                  <p class="kit-lede">You’ll find it in your purchase email.</p>
+                </div>
+                <div class="kit-field kit-locked">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input wrap"><span>pkey_djdl_7HJM2QKD9XRL4WTPB3NC60</span><button class="kit-btn sm" disabled>Paste</button></div>
+                </div>
+                <div class="kit-actions" aria-busy="true"><button class="kit-btn primary busy"><span class="kit-spin"></span>Activating…</button><button class="kit-btn kit-locked" disabled>Back</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>1c · Activating.</strong> Locked until Polaris Key answers; closing cancels.</figcaption>
+      </figure>
+      <figure class="board-item a1d">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Enter your license key</h2>
+                  <p class="kit-lede">You’ll find it in your purchase email.</p>
+                </div>
+                <div class="kit-field">
+                  <label class="kit-label">License key</label>
+                  <div class="kit-input wrap bad"><span>pkey_djdl_7HJM2QKD9XRL4WTPB3NC6O</span><button class="kit-btn sm">Paste</button></div>
+                  <span class="kit-error" role="alert"><i class="ic ic-circle-x"></i><span>We couldn’t find that key. Paste it rather than typing it: l, 1, O and 0 are easy to mix up.</span></span>
+                </div>
+                <div class="kit-actions"><button class="kit-btn primary">Activate license</button><button class="kit-btn">Back</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>1d · Key not found.</strong> An O typed for a 0.</figcaption>
+      </figure>
+      <figure class="board-item a2">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="logo lg" data-product="djdl"></span>
+                  <h2 class="kit-title">Your license is on 5 of 5 devices</h2>
+                  <p class="kit-lede">To use it on this computer, replace one.</p>
+                </div>
+                <div class="kit-devices">
+                  <div class="kit-devices-head">Last used</div>
+                  <div class="kit-device-list" role="radiogroup" aria-label="Devices on this license">
+                    <div class="kit-device on"><span class="kit-radio"></span><i class="ic ic-laptop"></i><span><b>Mara’s MacBook Air</b><small>macOS</small></span><span class="kit-device-when">Sep 14</span></div>
+                    <div class="kit-device"><span class="kit-radio"></span><i class="ic ic-monitor"></i><span><b>Studio PC</b><small>Windows</small></span><span class="kit-device-when">Oct 2</span></div>
+                    <div class="kit-device"><span class="kit-radio"></span><i class="ic ic-monitor"></i><span><b>Mara’s Mac mini</b><small>macOS</small></span><span class="kit-device-when">Oct 5</span></div>
+                    <div class="kit-device"><span class="kit-radio"></span><i class="ic ic-laptop"></i><span><b>Booth laptop</b><small>Windows</small></span><span class="kit-device-when">Oct 6</span></div>
+                    <div class="kit-device"><span class="kit-radio"></span><i class="ic ic-laptop"></i><span><b>Mara’s MacBook Pro</b><small>macOS</small></span><span class="kit-device-when today">today</span></div>
+                  </div>
+                </div>
+                <div class="kit-confirm">
+                  <div class="kit-confirm-text"><b>Replace Mara’s MacBook Air?</b><span>It stops using this license now. You can add it back when a device is free.</span></div>
+                  <div class="kit-actions"><button class="kit-btn danger">Replace and continue</button><button class="kit-btn">Back</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>2 · Replace a device.</strong> Least recently used is preselected; one used today adds a line to the confirm.</figcaption>
+      </figure>
+      <figure class="board-item a3">
+        <div class="window win">
+          <div class="window-bar"><span class="window-title"><span class="logo xs" data-product="djdl"></span>DJDL</span><span class="window-controls"><i class="ic ic-minus"></i><i class="ic ic-square"></i><i class="ic ic-x"></i></span></div>
+          <div class="window-body kit-host">
+            <div class="kit-welcome fit">
+              <div class="art" data-product="djdl"></div>
+              <div class="kit-form">
+                <div class="kit-head">
+                  <span class="kit-done"><i class="ic ic-check"></i></span>
+                  <h2 class="kit-title">DJDL is ready</h2>
+                  <p class="kit-lede">Standard · Lifetime · device&nbsp;5&nbsp;of&nbsp;5</p>
+                </div>
+                <div class="kit-keep">
+                  <div class="kit-keep-head"><span class="kit-pill neutral">Recommended</span>Keep it in your account</div>
+                  <div class="kit-reason"><i class="ic ic-cloud"></i><span><strong>Cloud Sync</strong> keeps your crates and settings the same on every computer</span></div>
+                  <div class="kit-reason"><i class="ic ic-key-round"></i><span><strong>Get your license back</strong> if you lose the key or this computer</span></div>
+                  <div class="kit-reason"><i class="ic ic-monitor-smartphone"></i><span><strong>Move it to a new device</strong> yourself</span></div>
+                  <button class="kit-btn block">Add your name and email</button>
+                </div>
+                <div class="kit-end">
+                  <button class="kit-btn primary block">Start using DJDL</button>
+                  <p class="kit-foot center">Your license works the same without an account.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <figcaption><strong>3 · DJDL is ready.</strong> Only DJDL’s reasons; <em>Start using DJDL</em> stays primary.</figcaption>
+      </figure>
+      <figure class="board-item a1e span-all">
+        <section class="card">
+          <div class="card-head"><h3>Other answers</h3></div>
+          <div class="card-answers">
+            <div class="card-answer"><span class="card-answer-label">For another product</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>That key is for Diceroll, not DJDL.</span></span></div>
+            <div class="card-answer"><span class="card-answer-label">In another account</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>This DJDL license is in another Polaris Key account.</span></span><div class="kit-links"><a class="kit-link" href="#">Sign in to that account</a><a class="kit-link" href="#">Use a different key</a></div></div>
+            <div class="card-answer"><span class="card-answer-label">Revoked</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>That key’s license was revoked. Halcyon Sound can tell you why.</span></span></div>
+            <div class="card-answer"><span class="card-answer-label">Refunded</span><span class="kit-error"><i class="ic ic-circle-x"></i><span>That key’s purchase was refunded, so its license has ended.</span></span></div>
+            <div class="card-answer"><span class="card-answer-label">Offline</span><div class="kit-state" role="alert"><i class="ic ic-wifi-off"></i><span><b>Can’t reach Polaris Key</b>Check this computer’s internet connection, then try again.</span><button class="kit-btn sm">Try again</button></div></div>
+          </div>
+        </section>
+        <figcaption><strong>1e · Other answers.</strong> Offline is a row with <em>Try again</em>; none is a toast.</figcaption>
+      </figure>
+    </div>
+  </div>
+</div>

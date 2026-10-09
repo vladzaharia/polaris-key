@@ -1,0 +1,255 @@
+<style>
+  /* admin.roles: no spacing of its own. Role cards go two by two below 1280px; on phone they become four tiles
+     that pick the matrix column (Area and the one role picked). */
+  @container screen (max-width: 1279px) {
+    [data-screen="admin.roles"] .role-cards {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @container screen (max-width: 639px) {
+    [data-screen="admin.roles"] .role-cards {
+      display: none;
+    }
+    [data-screen="admin.roles"] .matrix tr > :is(:nth-child(2), :nth-child(3), :nth-child(5)) {
+      display: none;
+    }
+    [data-screen="admin.roles"] .matrix th:first-child {
+      width: 60%;
+    }
+    [data-screen="admin.roles"] .matrix th:nth-child(4) {
+      width: 40%;
+    }
+    [data-screen="admin.roles"] .matrix th .ic {
+      display: none;
+    }
+    [data-screen="admin.roles"] .matrix :is(th, .cell-title) {
+      white-space: normal;
+    }
+  }
+</style>
+
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page cap-table gap-6">
+      <header class="page-head">
+        <div class="page-heading"><h1>Members</h1></div>
+      </header>
+
+      <nav class="tabs" aria-label="Members">
+        <a class="tab" href="#">Members <span class="count">10</span></a>
+        <a class="tab" href="#">SSO rules <span class="count">3</span></a>
+        <a class="tab active" href="#">Roles</a>
+      </nav>
+
+      <!-- The four built-in roles. The bodies fill each card, so the feet line up across a row. -->
+<div class="mk-grid-4 role-cards">
+        <article class="card aligned">
+          <div class="card-body mk-stack-2">
+            <h3 class="type-card mk-cluster"><i class="ic ic-crown accent"></i>Superadmin</h3>
+            <p class="type-small muted">Everything, in every product, including products added later. The only role that edits SSO rules.</p>
+          </div>
+          <div class="card-foot start"><div class="mk-stack-1 type-meta"><span>Given by a Superadmin or the root rule</span><span class="muted">2 people</span></div></div>
+        </article>
+        <article class="card aligned">
+          <div class="card-body mk-stack-2">
+            <h3 class="type-card mk-cluster"><i class="ic ic-shield muted"></i>Platform admin</h3>
+            <p class="type-small muted">Platform settings, connections, packages and status, and new products. Sees other products by name only.</p>
+          </div>
+          <div class="card-foot start"><div class="mk-stack-1 type-meta"><span>Given by a Superadmin</span><span class="muted">1 person</span></div></div>
+        </article>
+        <article class="card aligned">
+          <div class="card-body mk-stack-2">
+            <h3 class="type-card mk-cluster"><i class="ic ic-boxes muted"></i>Product admin</h3>
+            <p class="type-small muted">Everything in one product, or in all products. Can be narrowed to some areas, such as Ship builds and Commerce.</p>
+          </div>
+          <div class="card-foot start"><div class="mk-stack-1 type-meta"><span>Given by a Superadmin or that product’s admin</span><span class="muted">5 people</span></div></div>
+        </article>
+        <article class="card aligned">
+          <div class="card-body mk-stack-2">
+            <h3 class="type-card mk-cluster"><i class="ic ic-log-in muted"></i>Console access</h3>
+            <p class="type-small muted">Can sign in and read the docs. Every other role includes it.</p>
+          </div>
+          <div class="card-foot start"><div class="mk-stack-1 type-meta"><span>Given by a Superadmin or a Platform admin</span><span class="muted">1 person</span></div></div>
+        </article>
+      </div>
+
+      <!-- Phone: the four roles as tiles; the picked one switches the matrix column and shows its words. -->
+      <div class="role-tiles" role="tablist" aria-label="Role">
+        <a class="role-tile" role="tab" href="#"><span class="rt-name"><i class="ic ic-crown"></i>Superadmin</span><span class="rt-meta">2 people</span></a>
+        <a class="role-tile" role="tab" href="#"><span class="rt-name"><i class="ic ic-shield"></i>Platform admin</span><span class="rt-meta">1 person</span></a>
+        <a class="role-tile on" role="tab" aria-selected="true" href="#"><span class="rt-name"><i class="ic ic-boxes"></i>Product admin</span><span class="rt-meta">5 people</span></a>
+        <a class="role-tile" role="tab" href="#"><span class="rt-name"><i class="ic ic-log-in"></i>Console access</span><span class="rt-meta">1 person</span></a>
+      </div>
+      <div class="role-detail type-small muted">Everything in one product, or in all products. Can be narrowed to some areas, such as Ship builds and Commerce. Given by a Superadmin or that product’s admin.</div>
+
+      <section class="section" aria-labelledby="matrix-title">
+        <div class="section-head">
+          <div><h2 id="matrix-title">What each role can do</h2><p>A person’s roles add up</p></div>
+          <span class="legend"><i class="ic ic-check"></i>Manage</span>
+        </div>
+        <div class="table-card">
+          <table class="table fixed matrix centered rows-56">
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th><span class="platform-name"><i class="ic ic-crown"></i>Superadmin</span></th>
+                <th><span class="platform-name"><i class="ic ic-shield"></i>Platform admin</span></th>
+                <th><span class="platform-name"><i class="ic ic-boxes"></i>Product admin</span></th>
+                <th><span class="platform-name"><i class="ic ic-log-in"></i>Console access</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="group-row"><td colspan="5">In a product</td></tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-layout-dashboard"></i></span><div><div class="cell-title">Core</div><div class="cell-sub">Overview, Integration, Access, Devices, Users, Activity</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="part">Name only</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="license"><i class="svc"></i></span><div><div class="cell-title">Licensing</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="config"><i class="svc"></i></span><div><div class="cell-title">Managed config</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="release"><i class="svc"></i></span><div><div class="cell-title">Ship builds</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="identity"><i class="svc"></i></span><div><div class="cell-title">Sign-in</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="sync"><i class="svc"></i></span><div><div class="cell-title">Cloud Sync</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm" data-service="commerce"><i class="svc"></i></span><div><div class="cell-title">Commerce</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-key-square"></i></span><div><div class="cell-title">Keys</div><div class="cell-sub">Signing keys, secrets, CI and service tokens</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-settings"></i></span><div><div class="cell-title">Settings</div><div class="cell-sub">Features, presentation, repository, delete product</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-users"></i></span><div><div class="cell-title">Members</div><div class="cell-sub">Who can manage this product</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="part">Invite</span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr class="group-row"><td colspan="5">Platform</td></tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-users"></i></span><div><div class="cell-title">Members and SSO rules</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="part">Invite</span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-link"></i></span><div><div class="cell-title">Connections</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-settings"></i></span><div><div class="cell-title">Platform settings</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-boxes"></i></span><div><div class="cell-title">Packages and Status</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-plus"></i></span><div><div class="cell-title">New products</div></div></div></td>
+                <td><span class="tick"><i class="ic ic-check"></i></span> <span class="part">Create</span></td>
+                <td><span class="part">Create</span></td>
+                <td><span class="subtle">—</span></td>
+                <td><span class="subtle">—</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-book-open"></i></span><div><div class="cell-title">Docs</div></div></div></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="tick" aria-label="Manage"><i class="ic ic-check"></i></span></td>
+                <td><span class="part">Most</span></td>
+                <td><span class="part">Most</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="foot-list">
+            <span><strong>Name only</strong> Name and status on Home.</span>
+            <span><strong>Invite</strong> Platform admin invites Console access and removes people without a platform role. Product admin gives Product admin of its product, up to its own areas.</span>
+            <span><strong>Create</strong> Creating a product makes the person its admin.</span>
+            <span><strong>Most</strong> All but the operator pages.</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

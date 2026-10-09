@@ -1,0 +1,228 @@
+<style>
+  /* config.catalog-empty: Diceroll's empty catalog v1 offering templates by platform; Game is picked and publishes v2 in one step (U-32). */
+  [data-screen="config.catalog-empty"] .callout.warning {
+    border-left: 4px solid var(--pk-warning);
+  }
+  [data-screen="config.catalog-empty"] .nlink {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-decoration-color: var(--pk-border-strong);
+    text-underline-offset: 3px;
+    white-space: nowrap;
+  }
+  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
+     text colour, as commerce's are (the arrow says "link"). */
+  [data-screen="config.catalog-empty"] [data-service="config"] :is(.link, .btn.link) {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.catalog-empty"] .choice-title > .ic {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.catalog-empty"] .choice.on {
+    border-color: var(--pk-text-strong);
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="config.catalog-empty"] .choice.on .choice-title > .ic {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.catalog-empty"] .choice .fit {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.catalog-empty"] .adds tr.grp td {
+    height: var(--row-h-head);
+    font-size: var(--fs-meta);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--pk-text-subtle);
+    background: color-mix(in oklab, var(--pk-surface-sunken) 45%, var(--pk-surface-raised));
+  }
+  [data-screen="config.catalog-empty"] .adds .add-mark {
+    color: var(--pk-success);
+  }
+  /* The preview's two columns: key, then what it starts at. In the rail (a narrow card) the value
+     sits at the right edge; on a wide card (the rail under the main card below 1280px) it is a
+     plain second column, so the eye doesn't cross the card. */
+  [data-screen="config.catalog-empty"] .adds col.k {
+    width: 52%;
+  }
+  @container (min-width: 560px) {
+    [data-screen="config.catalog-empty"] .adds col.k {
+      width: 40%;
+    }
+    [data-screen="config.catalog-empty"] .adds td.end {
+      text-align: left;
+    }
+    [data-screen="config.catalog-empty"] .publish-foot > .btn.block {
+      width: auto;
+    }
+  }
+  /* Wide: the four templates in one row. */
+  @container screen (min-width: 1600px) {
+    [data-screen="config.catalog-empty"] .choices.templates {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  [data-screen="config.catalog-empty"] .adds-group > summary {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: 48px;
+    padding: 0 var(--card-px);
+    list-style: none;
+    cursor: pointer;
+    font-size: var(--fs-small);
+    font-weight: 700;
+    color: var(--pk-text-strong);
+    border-top: 1px solid var(--mk-line);
+  }
+  [data-screen="config.catalog-empty"] .adds-group > summary::-webkit-details-marker { display: none; }
+  [data-screen="config.catalog-empty"] .adds-name { flex: 1; min-width: 0; }
+  [data-screen="config.catalog-empty"] .adds-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    font-size: var(--fs-small);
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.catalog-empty"] .adds-group[open] .adds-toggle .ic { transform: rotate(180deg); }
+  [data-screen="config.catalog-empty"] .adds-group .count { font-weight: 400; }
+  [data-screen="config.catalog-empty"] .empty-strip > * { flex: 1 1 0; justify-content: center; }
+  [data-screen="config.catalog-empty"] .empty-strip .btn.link code { font-size: var(--fs-small); background: none; padding: 0; }
+  [data-screen="config.catalog-empty"] .choice-title .pill { margin-left: var(--sp-2); }
+</style>
+
+<div class="console kit-cfg" data-service="config">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="config">
+      <button class="nav-label" aria-expanded="true">Managed config<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item active" href="#"><i class="ic ic-list-tree"></i><span class="nav-text">Catalog</span><span class="count">0</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Profiles</span><span class="count">1</span></a>
+    </div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Catalog</nav>
+        <div class="page-heading"><h1>Catalog</h1><span class="pill"><i class="dot"></i>v1 · empty</span></div>
+      </header>
+
+      <div class="mk-with-rail">
+        <section class="card" aria-labelledby="tpl-title">
+          <div class="card-head">
+            <div class="title"><h2 id="tpl-title">Start from a template</h2></div>
+          </div>
+          <div class="card-body">
+            <div class="choices cols-2 templates" role="radiogroup" aria-label="Template">
+              <div class="choice on" role="radio" aria-checked="true">
+                <div class="choice-title"><i class="ic ic-gamepad-2"></i>Game<span class="pill sm accent">Recommended</span></div>
+                <div class="choice-desc">Audio, graphics, controls, language and saves</div>
+                
+              </div>
+              <div class="choice" role="radio" aria-checked="false">
+                <div class="choice-title"><i class="ic ic-monitor"></i>Desktop app</div>
+                <div class="choice-desc">Theme, language, updates and a telemetry opt-in.</div>
+              </div>
+              <div class="choice" role="radio" aria-checked="false">
+                <div class="choice-title"><i class="ic ic-square-terminal"></i>Command-line tool</div>
+                <div class="choice-desc">Output format, color and the defaults for each flag.</div>
+              </div>
+              <div class="choice" role="radio" aria-checked="false">
+                <div class="choice-title"><i class="ic ic-globe"></i>Web app</div>
+                <div class="choice-desc">Theme, language and email preferences. Secrets stay on your server.</div>
+              </div>
+            </div>
+          </div>
+          <div class="card-foot between publish-bar">
+            <button class="btn primary hide-phone"><i class="ic ic-rocket"></i>Publish v2 from Game</button>
+            <a class="btn link" href="#">Open in editor<i class="ic ic-arrow-right"></i></a>
+          </div>
+          <div class="card-foot start empty-strip">
+            <button class="btn outline sm"><i class="ic ic-plus"></i>Start empty</button>
+            <a class="btn link" href="#"><code>Commit .pkey/schema</code></a>
+          </div>
+        </section>
+
+        <div class="mk-rail">
+          <!-- Everything is new, so the list is the whole change. -->
+          <section class="card" aria-labelledby="adds-title">
+            <div class="card-head">
+              <div class="title"><h2 id="adds-title">Game template</h2><p>9 Editable settings, 2 collections</p></div>
+            </div>
+            <div class="adds-groups">
+              <details class="adds-group" open>
+                <summary><span class="adds-name">Settings that sync with Cloud Sync</span><span class="count">7</span><span class="adds-toggle">Show entries<i class="ic ic-chevron-down sm"></i></span></summary>
+                <table class="table compact fixed adds" aria-label="Settings that sync with Cloud Sync">
+                  <colgroup><col class="k"><col></colgroup>
+                  <tbody>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>audio.music</code></span></td><td class="end muted">0.8</td></tr>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>audio.sfx</code></span></td><td class="end muted">0.8</td></tr>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>audio.voice</code></span></td><td class="end muted">1.0</td></tr>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>controls.invertY</code></span></td><td class="end muted">false</td></tr>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>controls.haptics</code></span></td><td class="end muted">true</td></tr>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>language</code></span></td><td class="end muted">system</td></tr>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>ui.textSize</code></span></td><td class="end muted">medium</td></tr>
+                                </tbody>
+                </table>
+              </details>
+              <details class="adds-group">
+                <summary><span class="adds-name">Settings that stay on each device</span><span class="count">2</span><span class="adds-toggle">Show entries<i class="ic ic-chevron-down sm"></i></span></summary>
+                <table class="table compact fixed adds" aria-label="Settings that stay on each device">
+                  <colgroup><col class="k"><col></colgroup>
+                  <tbody>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>graphics.quality</code></span></td><td class="end muted">auto</td></tr>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>graphics.resolution</code></span></td><td class="end muted">native</td></tr>
+                                </tbody>
+                </table>
+              </details>
+              <details class="adds-group">
+                <summary><span class="adds-name">Cloud Sync collections</span><span class="count">2</span><span class="adds-toggle">Show entries<i class="ic ic-chevron-down sm"></i></span></summary>
+                <table class="table compact fixed adds" aria-label="Cloud Sync collections">
+                  <colgroup><col class="k"><col></colgroup>
+                  <tbody>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>saves</code></span></td><td class="end muted">Saves · 16 slots</td></tr>
+              <tr><td><span class="mk-cluster no-wrap"><i class="ic ic-plus sm add-mark"></i><code>session</code></span></td><td class="end muted">Session</td></tr>
+                                </tbody>
+                </table>
+              </details>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="mk-action-bar"><button class="btn primary"><i class="ic ic-rocket"></i>Publish v2 from Game</button></div>
+    </div>
+  </main>
+</div>

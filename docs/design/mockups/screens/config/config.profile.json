@@ -1,0 +1,42 @@
+{
+  "id": "config.profile",
+  "title": "Profile: Studio",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-28",
+    "U-29",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Studio profile, the destination of Open Studio profile: the values Studio devices get, where locks (Read-only, Hidden) are set, one unsaved change that makes run.concurrency Read-only, the profile's place in the five-step chain, and who it reaches.",
+  "compare": [
+    "Profiles lists Default first, labelled \"Applies to everyone\", then one profile per tier that has one; a tier without its own profile (Standard) is explained under the list with Give Standard a profile. Licenses never list profiles.",
+    "A profile holds settings and secrets only; entitlements live on the tier, and the card foot says so.",
+    "Each value row: key and label, the value, In the app (Editable, Read-only, Hidden) as one select with its glyph, and remove. Secrets show Configured or Not set, Never listed, and Replace…, never a value.",
+    "A changed row is tinted with the draft marker and a note under it says what changed and its effect from the U-29 read (\"Read-only blocks 1 license's own value (3)\"), matching config.effective's blocked-override case.",
+    "Where it sits shows the five steps with this profile as step 3; Used by gives Studio licenses (38), devices (104) and the overrides its locks block, from the same read as each license's Config tab. Those counts show only here: the header says who the profile covers, and the list says which tier.",
+    "Header: \"1 unsaved change\" as a neutral pill, Preview as… (license, tier or person), Discard and Save profile.",
+    "Phone: the profile list becomes a switcher, each value row becomes a block (key, then value, In the app and remove on one line), and the rail follows. Tablet and desktop: the rail's two cards sit side by side under the values; wide: beside them.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "\"Where it sits\" was a fourth copy of the effective ladder and the primary action sat below two secondaries on phone.",
+        "resolution": "Deleted the card; \"Step 3 of 5\" opens the header meta (facts separated by dots); \"Studio tier\" removed from the list and the table foot; value inputs flex (min 120px); 48px rows; phone has a sticky bar with Discard beside Save profile and Preview as... behind the overflow button.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      }
+    ]
+  },
+  "order": 4
+}

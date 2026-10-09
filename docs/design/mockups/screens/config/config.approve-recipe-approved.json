@@ -1,0 +1,36 @@
+{
+  "id": "config.approve-recipe-approved",
+  "title": "Recipe approved",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-31"
+  ],
+  "uxRows": [],
+  "summary": "The minted-token entry right after Approve with passkey: the drawer has closed, a success toast confirms, the entry reads Approved and minting has resumed.",
+  "compare": [
+    "The drawer closes on success; the toast says exactly what happened: \"Approved. DJDL can mint applemusic.token again.\" (the lifetime is on the page).",
+    "The card head shows Approved as status text with a tick (a healthy state is never a pill); the Catalog nav's warning count and the entry's triangle are gone, and the nav shows 23 again.",
+    "The callout is gone; Lifetime keeps 12 hours with no change marker, and the head's line says when and by whom (Today at 16:58 by Ana Lima).",
+    "There is no approve button anywhere; Approval history stays in the card head.",
+    "What DJDL receives drops the preview label and shows a token minted now.",
+    "Config's gold accent is never the only cue: a selected Type card is a strong neutral border plus the tick, the open entry is a neutral fill with a neutral edge, and every warning callout has a solid warning rail and a triangle, so selected, changed and needs-approval read differently in both themes.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "The toast covered the footer text.",
+        "resolution": "Toast is bottom-centre with 24px clearance (.kit-cfg .toasts) and the page reserves 96px (.toast-clear); the editor behind uses the three-column composition and rail.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1"
+        ]
+      }
+    ]
+  },
+  "order": 10
+}

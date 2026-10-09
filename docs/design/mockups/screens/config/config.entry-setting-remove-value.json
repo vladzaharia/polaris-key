@@ -1,0 +1,44 @@
+{
+  "id": "config.entry-setting-remove-value",
+  "title": "Catalog entry: removing a value in use",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-30",
+    "U-29",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "quality.floor in draft v10 with mp3-320 removed from its allowed values while the Studio profile, 1 license and 4 accounts still use it: an inline warning names them, asks where they move, and Review stays disabled until they have an allowed value.",
+  "compare": [
+    "The removed chip stays in place, dashed and struck, with Undo; the other chips keep their usage tags.",
+    "The warning sits directly under the chips, not in a toast or a dialog, and names everyone affected from the U-29 effective read: the Studio profile with how many licenses it covers, each license that sets its own (by holder), and the accounts as a count with Show them.",
+    "Move them to lists only the values still allowed (flac, aiff, any). Until one is picked the select is in its error state and the error says what to do: \"Choose where they move. Review stays off until then.\"",
+    "Review 2 changes is disabled while anyone would be left on a value that isn't allowed; the same rule holds when the Default's own value is removed (Default must be picked again).",
+    "Nothing moves until v10 is published, and the warning says so. The Review step then lists every profile, license and account that moves, with old and new values.",
+    "The rail's Studio profile row shows mp3-320 struck with \"removed\" in warning text.",
+    "Phone: the warning's list and picker stack inside the callout; the picker fills the width.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Duplicate marker and misaligned selects.",
+        "resolution": "Kept the in-use warning; removed the \"mp3-320 removed\" marker in the side card (em dash instead); \"Move them to\" and Default selects share one 320px track. The shared entry-setting cuts and three-column editor also apply.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1"
+        ]
+      },
+      {
+        "issue": "Hide \"Where it's set\" behind the overflow menu on narrower sizes (UX1)",
+        "resolution": "declined: Conflicts with the rail-on-every-editor decision. The card stays visible and sits in the rail at wide, below the form otherwise.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 3
+}

@@ -1,0 +1,185 @@
+<style>
+  /* commerce.storefronts: colours only; every space comes from the kit. */
+  [data-screen="commerce.storefronts"] .table td.end > .ic {
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="commerce.storefronts"] .cell-title > a {
+    color: inherit;
+  }
+</style>
+
+<div class="console cm2" data-service="commerce">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="commerce">
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item active" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
+    </div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- Wide (≥ 1600): the stat band spans both columns; the storefronts table keeps the main column,
+         the rail holds two cards (Needs attention and the one commerce setting). -->
+    <div class="page columns">
+      <header class="page-head">
+        <div class="page-heading"><h1>Storefronts</h1></div>
+        <div class="page-actions">
+          <span class="freshness">Updated 2 min ago</span>
+          <button class="btn ghost icon" aria-label="Refresh, updated 2 min ago"><i class="ic ic-refresh-cw"></i></button>
+        </div>
+      </header>
+
+      <div class="stats full span-all">
+        <div class="stat">
+          <span class="stat-label"><i class="ic ic-tag sm"></i>On sale</span>
+          <span class="stat-value">4 <small>offers</small></span>
+          <span class="stat-foot">1 draft</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label"><i class="ic ic-receipt sm"></i>Purchases</span>
+          <span class="stat-value">1,071</span>
+          <span class="stat-foot"><span class="delta-up">+8%</span> on the 28 days before</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label"><i class="ic ic-ban sm"></i>Refunds</span>
+          <span class="stat-value">15</span>
+          <span class="stat-foot" title="Refunds include chargebacks">1.4% of purchases</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label"><i class="ic ic-repeat sm"></i>Subscriptions</span>
+          <span class="stat-value">186 <small>active</small></span>
+          <span class="stat-foot">Diceroll Plus · 23 in a free trial</span>
+        </div>
+      </div>
+
+      <!-- Attention for this product's storefronts, from the same server read as Home (ST-44). -->
+      <section class="card aside" aria-labelledby="attn-title">
+        <div class="card-head">
+          <div class="title"><h2 id="attn-title">Needs attention</h2></div>
+        </div>
+        <div class="card-rows">
+          <div class="attn-row">
+            <span class="pill danger"><i class="ic ic-circle-x"></i>Error</span>
+            <span class="attn-subject"><i class="ic ic-google-play"></i>Google Play</span>
+            <span class="attn-text">3 players bought <code>holiday_bundle</code> and got nothing.</span>
+            <a class="link" href="#">Add to an offer<i class="ic ic-arrow-right"></i></a>
+          </div>
+          <div class="attn-row">
+            <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
+            <span class="attn-subject"><i class="ic ic-google-play"></i>Google Play</span>
+            <span class="attn-text">The service account key expires Oct 16. Purchase checks stop then.</span>
+            <a class="link" href="#">Replace key<i class="ic ic-arrow-right"></i></a>
+          </div>
+        </div>
+      </section>
+
+      <!-- One row per storefront that fits Diceroll's platforms, canonical order. A row opens that
+           channel's page on its Sales tab (A-22). State holds what is selling; the subtitle is one
+           slot (freshness, or the next step); numbers are right-aligned; narrow: one line of counts. -->
+      <section class="card span-rows-2" aria-labelledby="sf-title">
+        <div class="card-head">
+          <div class="title"><h2 id="sf-title">Where Diceroll sells</h2></div>
+        </div>
+        <table class="table fixed stack-phone" aria-labelledby="sf-title">
+          <colgroup><col><col style="width: 188px"><col style="width: 96px"><col style="width: 88px"><col style="width: 56px"></colgroup>
+          <thead>
+            <tr><th>Storefront</th><th>State</th><th class="num">Purchases</th><th class="num">Refunds</th><th class="end"><span class="sr-only">Open</span></th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-app-store"></i></span>
+                <div><div class="cell-title"><a href="#">App Store</a></div><div class="cell-sub truncate">Notified 6 min ago</div>
+                  <div class="meta show-narrow">412 purchases · 5 refunds</div></div></div></td>
+              <td><div class="state-line"><span class="status"><i class="ic ic-circle-check"></i>Live</span><span class="meta">3 offers</span></div></td>
+              <td class="num hide-narrow">412</td>
+              <td class="num hide-narrow">5</td>
+              <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-google-play"></i></span>
+                <div><div class="cell-title"><a href="#">Google Play</a></div>
+                  <div class="meta show-narrow">268 purchases · 4 refunds</div></div></div></td>
+              <td><div class="state-line"><span class="pill danger sm"><i class="ic ic-circle-x"></i>Error</span><span class="meta">4 offers</span></div></td>
+              <td class="num hide-narrow">268</td>
+              <td class="num hide-narrow">4</td>
+              <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-steam"></i></span>
+                <div><div class="cell-title"><a href="#">Steam</a></div><div class="cell-sub truncate">Ownership re-checked for 14 days</div>
+                  <div class="meta show-narrow">391 purchases · 6 refunds</div></div></div></td>
+              <td><div class="state-line"><span class="status"><i class="ic ic-circle-check"></i>Live</span><span class="meta">3 offers</span></div></td>
+              <td class="num hide-narrow">391</td>
+              <td class="num hide-narrow">6</td>
+              <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral off"><i class="ic ic-microsoft-store"></i></span>
+                <div><div class="cell-title"><a href="#">Microsoft Store</a></div><div class="cell-sub truncate">Set up in 4 steps</div></div></div></td>
+              <td><div class="state-line"><span class="status muted"><i class="ic ic-circle-dashed"></i>Not set up</span></div></td>
+              <td class="num hide-narrow"><span class="na">—</span></td>
+              <td class="num hide-narrow"><span class="na">—</span></td>
+              <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-itch"></i></span>
+                <div><div class="cell-title"><a href="#">itch.io</a></div><div class="cell-sub truncate">Purchases don’t add to licenses yet</div></div></div></td>
+              <td><div class="state-line"><span class="status info"><i class="ic ic-circle-dot"></i>Ready, not checked</span></div></td>
+              <td class="num hide-narrow"><span class="na">—</span></td>
+              <td class="num hide-narrow"><span class="na">—</span></td>
+              <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+            </tr>
+            <tr>
+              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-polaris"></i></span>
+                <div><div class="cell-title"><a href="#">Polaris Key</a></div><div class="cell-sub truncate" title="Paid checkout isn’t available yet">Free on Discover · 57 added</div></div></div></td>
+              <td><div class="state-line"><span class="status"><i class="ic ic-circle-check"></i>Live</span></div></td>
+              <td class="num hide-narrow"><span class="na">—</span></td>
+              <td class="num hide-narrow"><span class="na">—</span></td>
+              <td class="end hide-narrow chev"><i class="ic ic-chevron-right"></i></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- The one product-level commerce setting (commerce.acceptTestPurchases). -->
+      <section class="card aside" aria-labelledby="test-title">
+        <div class="setting-row">
+          <div>
+            <div class="setting-title" id="test-title">Accept test purchases</div>
+            <div class="setting-desc">Sandbox and test-track purchases add to licenses like real ones. Leave it off on a live game.</div>
+          </div>
+          <span class="switch" role="switch" aria-checked="false" aria-labelledby="test-title"></span>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>

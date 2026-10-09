@@ -1,0 +1,63 @@
+{
+  "id": "identity.app-sign-in-changes",
+  "title": "App sign-in with unsaved changes",
+  "area": "identity",
+  "surface": "console",
+  "packages": [
+    "I-29",
+    "I-34",
+    "I-35"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's App sign-in with two edits waiting for Save: Apple turned off by the operator (the row says 'Off by you' with 'Use the default', and a caution about App Store guideline 4.8) and Email moved from Optional to Required, which takes the value over from the manifest. The SaveBar names both changes and says players are asked again.",
+  "compare": [
+    "Save model: Sign-in methods, What Diceroll gets, License keys and Customer portal are one resource (the product's sign-in settings), so their controls only mark the page dirty and one SaveBar lists every change by section. The Status switch is the Sign-in feature and applies on its own (turning it off asks first: identity.sign-in-off). The product connection is edited in its own dialog from 'Edit'. 'Inside the game' rows have no control.",
+    "A changed row carries an accent bar at its leading edge and 'Not saved' under its text; the rail puts a dot after each section with changes. Leaving the page with changes asks first (useUnsavedChangesGuard).",
+    "An overridden derived provider reads 'Off by you. On by default, as Diceroll ships on the App Store.' with 'Use the default'; after Save the row keeps 'Off by you' and the link, and the derived reason returns only when the default is used again.",
+    "Turning Apple off for a product that ships on iOS while Google or Steam stays on shows the caution under the row at once, before Save, citing App Store Review Guideline 4.8. It is a caution, not a block: Save stays available.",
+    "A value set by identity.claims in .pkey/product says it was taken from the manifest ('was Optional in .pkey/product'); after Save its section shows 'Changed here' and 'Revert to manifest…', as License keys does on identity.app-sign-in.",
+    "The SaveBar sticks to the bottom of the window under the cards column (a mockup draws it where it rests, at the end of the page): the count, each change in words ('Apple off; Email required'), the consequence for players (asked what to share at their next sign-in; the 39% who didn't share their email must share it), 'Discard' and 'Save 2 changes'. Saving shows 'Saving…' and then the toast 'Saved 2 changes to App sign-in'.",
+    "Phone: the caution spans the card under the row, and the SaveBar's buttons share its last row."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Spacing scale inconsistent (16, 24 and 32 used at random); card header heights and title sizes vary.",
+        "resolution": "Opt-in .rhythm on the page: 24 between cards in a group, 12 group title to first card, 32 between groups; card header at least 56; card titles 18/600; stat tiles 24. The global tokens are unchanged (existing values); muted and meta text already met 4.5:1 and 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Same layout holes as app-sign-in.",
+        "resolution": "Rebuilt on the same two-column layout and copy.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Save bar wrapped to 4 or 5 lines on phone (about 130px).",
+        "resolution": "One line '2 changes: Apple off, Email required'; Discard and Save share a row; the 39% consequence moved into the Email row's 'Not saved' note; Apple row subtitle 'Off by you'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      }
+    ]
+  },
+  "order": 5.5
+}

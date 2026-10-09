@@ -1,0 +1,78 @@
+{
+  "id": "packages.portal-packages",
+  "title": "Portal: Packages",
+  "area": "packages",
+  "surface": "portal",
+  "order": 14,
+  "packages": [
+    "F-33",
+    "F-37",
+    "F-34",
+    "F-35"
+  ],
+  "uxRows": [],
+  "summary": "The customer portal's Account → Packages: every package Mara Fennick can install, grouped by product (DJDL and Diceroll), her packages tokens with one per machine, and one combined setup for every package manager with 'pkey feeds setup --write' first, how to run it without installing pkey, and the by-hand files after.",
+  "compare": [
+    "Packages is a section of Account: the account's side nav from 1280px, the account header with Sign out centred on the H1's line. Below 1280px the sections are the pill row with Packages filled; on phone, where six pills don't fit, a section picker reading 'Packages'.",
+    "The package list covers every product the account can install from, in one table grouped by product (a group row with the product's logo and the license that gives it, 'DJDL · Standard license'); each row has the package name in mono, a one-line description, the ecosystem and the stable version. A package from a Public feed says so ('Public, also on PyPI.org'). Feeds the person can't read, waiting feeds and Polaris Key's own SDKs never appear.",
+    "The token section is 'Your packages tokens', a table of every token: label with its pkeyp_ hint and how it was made (by the CLI or here), Last used, Expires with non-breaking dates, and Revoke (which opens packages.portal-token-revoke). The subtitle says packages only, a new token never replaces another and each is shown once.",
+    "Create token is the section's one primary; it opens the label step (packages.portal-token-create), then the shown-once dialog (packages.portal-token). The token itself never appears on this page.",
+    "The combined setup leads with 'pkey feeds setup --write' and exactly what it sets up for this account (npm, pnpm, Yarn, Bun, uv, pip and Docker; pip's index per project), the same list the CLI run prints; the card's subtitle says it goes in the home folder. Under it: 'Don't have pkey? With Node 22, npx runs it once without installing it.' with 'Copy the npx command' and the docs link on their own line.",
+    "Then 'Or by hand' with one tabbed block (npm and pnpm, Yarn, Bun, uv and pip, Docker); the npm file routes both scopes to their owners' feeds with one auth line, and its foot says nothing else leaves npmjs.com.",
+    "Words: license (US), Packages, token; never 'registry token', 'feed token', 'grant' or 'capability'.",
+    "Phone: the top nav gives way to the bottom tab bar, the account sections fold into the picker, each package row puts its ecosystem and version under the description, each token stacks with Last used and Expires labelled and Revoke under them, and the code tabs scroll under a fade that ends before Copy, so the last tab never hides under it."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the setup copy matches the CLI, the page says how to get pkey, and the token model (one per machine, never replaced) is visible.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[Copy says something that doesn't happen] The console card, the portal and the CLI each list different package managers for 'pkey feeds setup --write'; the portal promises pip settings the CLI says it does not write.",
+        "resolution": "The CLI run is the reference (npm and pnpm, Yarn, Bun, uv and pip credentials in ~/.netrc, Docker; pip's index not written; Swift and Gradle only when a feed has something to install). The console card now says the command 'sets up every package manager DJDL's feeds use'; the portal says it 'sets up npm, pnpm, Yarn, Bun, uv, pip and Docker in your home folder. pip's index is added per project.', which is what the run writes for Mara's feeds."
+      },
+      {
+        "severity": "major",
+        "issue": "[Flow] The recommended 'pkey feeds setup --write' assumes the customer has the pkey CLI; nothing says how to get it.",
+        "resolution": "Under the command: 'Don't have pkey? With Node 22, npx runs it once without installing it.' with 'Copy the npx command' and 'Docs: the pkey CLI'. Declined the Homebrew line: there is no Homebrew tap; the CLI ships on the pkg.plrs.im npm feed and as an image (packages/cli/README.md), so the copied command is the scoped npx line from SETUP.md §3.3, never a bare npx that would resolve against npmjs."
+      },
+      {
+        "severity": "major",
+        "issue": "[Flow] 'Your packages token' (singular) with one row and a 'Create token' primary: creating might replace the laptop's token or add a second; the dialog's 'Work laptop' label implies a second.",
+        "resolution": "The section is 'Your packages tokens' and lists every token (pkey feeds setup on mara-mbp, Build server); its subtitle says 'A new token never replaces another, and each is shown once'. Create token opens the label step (packages.portal-token-create), which says 'Your other tokens keep working'. Only a CLI rerun on the same machine replaces the token it made there (packages.feeds-setup)."
+      },
+      {
+        "severity": "minor",
+        "issue": "[Copy/visual] 'Read and write Read and write DJDL crates'; djdl-crates is a Public feed under 'With your Standard license'; Revoke has no confirmation; on phone the Docker tab is clipped under Copy ('Dc'); Sign out sits lower than the H1.",
+        "resolution": "Duplicate fixed ('Read and write DJDL crates'). The djdl-crates row says 'Public, also on PyPI.org'. Revoke opens packages.portal-token-revoke ('Package installs on mara-mbp stop…', naming the token that keeps working). On phone the code tabs scroll under a fade that ends before Copy, so Docker shows as a fading tab. Sign out lines up with the H1."
+      },
+      {
+        "severity": "minor",
+        "issue": "Three intro lines restate their card titles; the table has an Ecosystem column plus a sub-line saying the same.",
+        "resolution": "Packages sub-line removed; tokens 'Each token is shown once.'; setup 'In your home folder, never a repository.'; setup explanations merged into one line and the npx hint is a right-aligned link row; 'Also on PyPI.org' is a badge in the Ecosystem cell; Package/Ecosystem column gap closed; Revoke is 36px with a 44px tap target (.tap-44).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[Phone] Code blocks, terminals and tab strips are silently clipped with no scroll cue; 'also required' cuts Info.plist and Docker.",
+        "resolution": "Kit: .fade-x (edge fade, tabindex 0, role region) and .wrap-phone (soft wrap at 12px on phone) on every code block and terminal; 'also required' is a dot. Gutters (16 phone, 24 up) and card padding (16 phone, 24 up) were already the kit's.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

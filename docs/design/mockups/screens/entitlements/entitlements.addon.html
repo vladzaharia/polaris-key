@@ -1,0 +1,220 @@
+<style>
+  /* entitlements.addon: only what the kit does not already say. */
+  /* The rail holds store SKUs in mono, so it takes the aside's width from desktop up; it stays in view beside the main column. */
+  [data-screen="entitlements.addon"] .mk-with-rail {
+    --rail-w: var(--aside-w);
+  }
+  /* Phone: one column, the summary of where it comes from before who holds it. */
+  @container screen (max-width: 639px) {
+    [data-screen="entitlements.addon"] :is(.mk-main, .mk-rail) {
+      display: contents;
+    }
+    [data-screen="entitlements.addon"] #src-card {
+      order: 1;
+    }
+    [data-screen="entitlements.addon"] #holders-card {
+      order: 2;
+    }
+  }
+</style>
+
+<div class="console kit-next ent2" data-service="license">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">18,406</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">2</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">8</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page form-page">
+      <header class="page-head">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Add-ons</a><i class="ic ic-chevron-right"></i>Neon dice pack</nav>
+        <div class="page-heading"><h1>Neon dice pack</h1></div>
+        <p class="page-sub"><span class="id"><i class="ic ic-puzzle"></i>neon-pack<i class="ic ic-copy"></i></span><span>Declared in <code>.pkey/product</code></span></p>
+        <div class="page-actions">
+          <button class="btn ghost icon" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+          <div class="action-pair">
+            <button class="btn outline"><i class="ic ic-ticket"></i>Create codes…</button>
+            <button class="btn outline"><i class="ic ic-gift"></i>Comp to…</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main: what the add-on holds, what players see, who holds it. Rail: where it comes from. -->
+      <div class="mk-with-rail sticky-rail">
+        <div class="mk-main">
+          <!-- The template (LX-35): entitlements, or units of a consumable. Live: holders read it at refresh. -->
+          <section class="card" aria-labelledby="gives-title">
+            <div class="card-head ghost-action">
+              <div class="title">
+                <h2 id="gives-title">What it gives</h2>
+              </div>
+              <button class="btn ghost sm bordered">Change to units…</button>
+            </div>
+            <div class="card-rows">
+              <div class="setting-row dense top">
+                <div>
+                  <div class="mk-cluster baseline"><span class="setting-title">Neon dice</span><code>pack.neon</code></div>
+                  <div class="setting-desc"><span class="icon-text inline nowrap"><i class="ic ic-toggle-right"></i>On/off</span></div>
+                </div>
+                <div class="end-control">
+                  <span class="val-on">On</span>
+                  <button class="btn ghost icon xs" aria-label="Remove pack.neon"><i class="ic ic-x"></i></button>
+                </div>
+              </div>
+              <div class="setting-row dense top">
+                <div>
+                  <div class="mk-cluster baseline"><span class="setting-title" id="ent-loadouts">Loadout slots</span><code>loadouts</code></div>
+                  <div class="setting-desc one-line"><span class="icon-text inline nowrap"><i class="ic ic-layers"></i>Quantity</span>&nbsp;· <span class="nowrap">Adds to the tier’s 2 or 6</span></div>
+                </div>
+                <div class="end-control">
+                  <div class="stepper-col"><div class="input sm short changed" role="group" aria-labelledby="ent-loadouts"><span class="affix">+</span><span class="grow tnum">2</span></div><span class="was">was +1</span></div>
+                  <button class="btn ghost icon xs" aria-label="Remove loadouts"><i class="ic ic-x"></i></button>
+                </div>
+              </div>
+            </div>
+            <div class="card-row">
+              <button class="btn link"><i class="ic ic-plus"></i>Add an entitlement</button>
+            </div>
+            <div class="card-row wrap-phone">
+              <div class="grow">
+                <div class="setting-title">Platform entitlements</div>
+                <div class="setting-desc">None.</div>
+              </div>
+              <button class="btn link"><i class="ic ic-plus"></i>Add a platform entitlement</button>
+            </div>
+          </section>
+
+          <section class="card" aria-labelledby="shown-title">
+            <div class="card-head">
+              <div class="title">
+                <h2 id="shown-title">Shown to players</h2>
+                <p>Store listings keep their own copy.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="form">
+                <div class="field">
+                  <label class="field-label">Name</label>
+                  <div class="input"><span class="grow">Neon dice pack</span></div>
+                </div>
+                <div class="field">
+                  <label class="field-label">Description <span class="optional">Optional</span></label>
+                  <div class="textarea changed">Twelve glowing dice, the Neon table and an extra loadout slot. Yours on every device you sign in on.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card" id="holders-card" aria-labelledby="holders-title">
+            <div class="card-head">
+              <div class="title"><h2 id="holders-title">Recent holders</h2></div>
+            </div>
+            <div class="card-rows">
+              <div class="list-row">
+                <span class="avatar" aria-hidden="true">EY</span>
+                <div class="list-row-text"><div class="strong">Elif Yıldız</div></div>
+                <span class="list-row-meta">Oct 2</span>
+              </div>
+              <div class="list-row">
+                <span class="avatar" aria-hidden="true">BV</span>
+                <div class="list-row-text"><div class="strong">Bram de Vries</div></div>
+                <span class="list-row-meta">Oct 1</span>
+              </div>
+              <div class="list-row">
+                <span class="avatar" aria-hidden="true">HS</span>
+                <div class="list-row-text"><div class="strong">Hana Sato</div></div>
+                <span class="list-row-meta">Sep 29</span>
+              </div>
+            </div>
+            <div class="card-foot start"><a class="link" href="#">Show all holders<i class="ic ic-arrow-right"></i></a></div>
+          </section>
+        </div>
+
+        <div class="mk-rail">
+          <!-- Sources (LX-35): store purchase, checkout, code, access rule, comp. Each points here. -->
+          <section class="card" id="src-card" aria-labelledby="src-title">
+            <div class="card-head">
+              <div class="title"><h2 id="src-title">Where it comes from</h2><p>1,284 holders</p></div>
+            </div>
+            <div class="card-rows">
+              <div class="card-row top" data-service="commerce">
+                <span class="icon-tile sm"><i class="svc"></i></span>
+                <div class="grow mk-stack-2">
+                  <div><div class="cell-title">Store purchase</div><div class="cell-sub">Offer <a class="link" href="#">Neon dice pack</a></div></div>
+                  <div class="mk-cluster-1">
+                    <span class="id"><i class="ic ic-app-store"></i>com.example.diceroll.pack.neon</span>
+                    <span class="id"><i class="ic ic-google-play"></i>pack_neon</span>
+                    <span class="id"><i class="ic ic-steam"></i>DLC 3412870</span>
+                  </div>
+                </div>
+                <span class="strong tnum">1,226</span>
+              </div>
+              <div class="card-row top">
+                <span class="icon-tile sm"><i class="ic ic-ticket"></i></span>
+                <div class="grow"><div class="cell-title">Codes</div><div class="cell-sub">Dice Con 2026 batch, 200 codes</div><a class="link small" href="#">Open batch<i class="ic ic-arrow-right"></i></a></div>
+                <span class="strong tnum">37</span>
+              </div>
+              <div class="card-row top">
+                <span class="icon-tile sm"><i class="ic ic-shield-check"></i></span>
+                <div class="grow"><div class="cell-title">Access rule</div><div class="cell-sub">Verified email at <span class="mono">rollhouse.example.com</span></div><a class="link small" href="#">Open Access<i class="ic ic-arrow-right"></i></a></div>
+                <span class="strong tnum">9</span>
+              </div>
+              <div class="card-row top">
+                <span class="icon-tile sm"><i class="ic ic-gift"></i></span>
+                <div class="grow"><div class="cell-title">Comps</div><div class="cell-sub">Latest by Alex Lindqvist, Sep 29</div></div>
+                <span class="strong tnum">12</span>
+              </div>
+              <div class="card-row top">
+                <span class="icon-tile sm muted"><i class="ic ic-credit-card"></i></span>
+                <div class="grow"><div class="cell-title muted">Checkout</div><div class="cell-sub">Not on sale through Polaris Key</div></div>
+                <span class="subtle">—</span>
+              </div>
+            </div>
+          </section>
+
+
+        </div>
+      </div>
+
+      <!-- One record, one save bar (ADMIN.md T4): it names what changed and where. -->
+      <div class="save-bar pinned" role="region" aria-label="Unsaved changes">
+        <p class="save-bar-msg"><i class="ic ic-info"></i><span class="hide-phone">2 changes · 1,284 holders affected</span><span class="show-phone">2 changes</span></p>
+        <button class="btn ghost">Discard</button>
+        <button class="btn primary"><span class="hide-phone">Save Neon dice pack</span><span class="show-phone">Save</span></button>
+      </div>
+    </div>
+  </main>
+</div>

@@ -1,0 +1,109 @@
+{
+  "id": "entitlements.addons",
+  "title": "Add-ons",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-35",
+    "LX-44",
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's License → Add-ons collection: every sub-license a license can hold (dice packs, supporter skins, a loadout pack, gem packs, a monthly season pass, playtester access), what each gives, where it comes from and how many licenses hold it, three lines a row on phone, with the five sources as the kit's dismissible legend.",
+  "compare": [
+    "Add-ons is its own page in the Licensing group, between Tiers and Entitlements, in the License accent.",
+    "Each row names the add-on (the one link to its record) with its id in mono, what it gives (an entitlement key; a quantity inside its key's chip, 'loadouts +2'; '500 gems' for a consumable; 'Release track beta' for a channel add-on; 'Renews monthly' when a subscription keeps it), its sources and its holder count, right-aligned. No row is drawn hovered or selected.",
+    "Sources use the five words of the model, each with one icon: App Store, Google Play and Steam (store purchases through an offer's SKU), Checkout (Polaris Key checkout; Supporter skins sells there for the itch.io build, which has no in-app purchases), Codes, Access rule, Comps. No add-on repeats an entitlement list per store.",
+    "The table foot says how many add-ons Commerce sells and links to Commerce → Offers; with Commerce off the store sources and that link are absent and add-ons still come from codes, access rules and comps.",
+    "No pills on healthy rows. The word 'grant' never appears; 'sub-license' only in docs.",
+    "Phone: each row is three lines: the name, the key as the same mono chip desktop uses (Season pass adds 'renews monthly'), and the sources on their own line, each source name kept whole; the id shows on desktop only (the record shows it). Holders stays as the right column with its sort arrow and the row opens the record (More is desktop only); the filters wrap; nothing scrolls sideways.",
+    "Holders is the default sort, shown as the column header in strong text with a down arrow (aria-sort descending); clicking Add-on sorts by name. There is no separate 'Sorted by' text.",
+    "'Where add-ons come from' is the kit's legend: one source per 32px row (its name and how it arrives on one line) on a narrow card, phone and the aside; five equal columns on a card 1080px and wider. It shows until dismissed (the × names 'Dismiss for everyone'), and always on the empty page, where it explains the five sources before the first add-on exists."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: quantities now sit inside their key's chip, no row is drawn hovered, Holders is a real sort control and all five sources appear.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "'+1' sits outside the chips ('pack.neon  loadouts  +1'), so it reads as 'and 1 more'; the Neon dice pack row is drawn in its hover state.",
+        "resolution": "The quantity is inside the key's chip: 'loadouts +1' and 'loadouts +2'. Removed class 'hover' from the Neon dice pack row."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Sorted by holders' is static text, the legend card is permanent, phone source names are lower case, and no add-on shows Checkout or itch.io.",
+        "resolution": "Holders is now the sorted column header (strong text, down arrow, aria-sort) and the static text is gone; Add-on is sortable too. The legend card has a Dismiss button (pinned to its corner on phone) and says it also appears on the empty page. Phone summaries use the desktop names (App Store, Google Play, Steam, Codes, Access rule, Comps). Supporter skins gains Checkout, the Polaris Key checkout that Diceroll's itch.io build links to, and the legend says so."
+      },
+      {
+        "severity": "major",
+        "issue": "On phone a row ran to four lines and 'App / Store' and 'Access / rule' broke inside the name; the legend wrapped raggedly at every size (1/2/2 in the aside, 4 plus an orphan at tablet, 1/1/2/1 on phone).",
+        "resolution": "Phone rows are three lines: the id is hidden (hide-phone), the key keeps desktop's mono chip, and the sources take their own line with each name kept whole. The legend is the kit's .ref-legend.inline: one source per 32px row in narrow cards, the tablet card and the aside; five equal columns from 1080px of card; still dismissible. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Show the 'Where add-ons come from' legend only on the empty page and in the wide aside, with tooltips on the source icons elsewhere.",
+        "resolution": "declined: The dismissible legend is the one place the five sources are defined. Tooltips are hover-only facts (ADMIN.md P6) and fail on touch. Its ragged layout is fixed by the kit legend pattern instead.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Show the add-on id as non-mono 12px text, or remove it.",
+        "resolution": "declined: The add-on id ('neon-pack') and the entitlement key ('pack.neon') are different identifiers, and ids are mono throughout the kit. Phone hides the id per the accepted change.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Draw the missing states and flows now: catalog-states, addons-empty, addon-states, save failed, the read-only viewer, the edit drawer and file confirmation, New add-on, the Remove and Change-to-units confirms, the Override editor, Comp flows, Create codes, the Preview at a date result, the canceled subscription and the move-major confirm.",
+        "resolution": "declined: The owner scoped this pass to spacing and kept the content, so new screens are logged for the area's next states round, not drawn now. The behaviour they need is already in the accepted compare items. After convergence, Override, Comp an add-on and Preview at a date belong to licenses.detail. Create codes belongs to commerce. The read-only state is a cross-area RBAC kit pattern. The ledger's empty and error states follow ADMIN.md T2's generic table states.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The legend card restated the Comes-from column in different words and its layout changed between sizes; two-line rows broke the 57px rhythm.",
+        "resolution": "'Where add-ons come from' card removed; the definitions are a tooltip on the Comes-from header, one noun per source as the column names it (Codes, Comps). Footer is '7 of 8 on sale · Open Offers'. Rows are a fixed 57px: 'Renews monthly' is a pill beside the Gives code, and from 1280 a row's cells stay on one line. The actions column is 40px. Empty filter chips read 'Gives: any' and 'Comes from: any'. Phone shows holders with a 'holders' suffix.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Show only the first three sources as icons with a '+3' chip and make the legend dismissible with remembered state.",
+        "resolution": "declined: the legend card is removed, so remembered state is not needed; icons plus labels on desktop read better than a '+3' chip.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Hide the add-on id unless it differs from the name slug, and change 'Gives' to something other than a code chip.",
+        "resolution": "declined: the id and code are what developers type; hiding them would change the data shown.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "minor",
+        "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
+        "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
+      }
+    ]
+  },
+  "order": 2
+}

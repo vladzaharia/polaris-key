@@ -1,0 +1,202 @@
+<style>
+  /* licenses.detail: colour only; spacing comes from the kit. */
+  [data-screen="licenses.detail"] .ic-layers {
+    color: var(--pk-accent-fg);
+  }
+</style>
+
+<div class="console floor" data-service="license">
+  <header class="topbar" data-service="core">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">1,284</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">5</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">3</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page cap cap-1400">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">Licenses</a><i class="ic ic-chevron-right"></i>Priya Raman</nav>
+        <div class="page-heading"><h1>Priya Raman</h1><span class="status"><i class="ic ic-circle-check"></i>Active</span></div>
+        <div class="page-sub mk-cluster-3">
+          <span class="pill sm"><i class="ic ic-user-round"></i>In an account</span>
+          <span>priya@example.edu</span>
+          <span class="id"><i class="ic ic-id-card"></i>lic_01J9W4…7HJM<i class="ic ic-copy"></i></span>
+        </div>
+        <!-- The tier is a control: it opens Change tier (licenses.change-tier). The ⋯ menu has Change tier… too. -->
+        <div class="page-actions">
+          <div class="action-pair">
+            <button class="btn outline" aria-haspopup="dialog" aria-label="Tier: Education. Change tier"><i class="ic ic-layers"></i><span class="muted">Tier</span>Education<i class="ic ic-chevron-down"></i></button>
+            <button class="btn outline"><i class="ic ic-key-round"></i>Add key</button>
+          </div>
+          <button class="btn outline icon" aria-label="More: Add key, Change tier, Revoke"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+
+      <!-- LX-14: one record, five tabs; Entitlements replaces Config overrides and Grants. -->
+      <nav class="tabs scroller">
+        <a class="tab active" href="#">Status</a>
+        <a class="tab" href="#">Entitlements <span class="count">6</span></a>
+        <a class="tab" href="#">Keys <span class="count">0</span></a>
+        <a class="tab" href="#">Devices <span class="count">3</span></a>
+        <a class="tab" href="#">Activity</a>
+      </nav>
+
+      <!-- What the record is and until when (the rail) comes first below 1280. -->
+      <div class="mk-with-rail rail-first">
+        <div class="mk-main mk-stack-8">
+          <!-- Limits (LX-32, LX-33): one resolver, license > tier > platform default, each value with its source. -->
+          <section class="card" aria-labelledby="limits-title">
+            <div class="card-head h56">
+              <div class="title"><h2 id="limits-title">Limits</h2></div>
+              <button class="btn ghost sm hide-phone"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
+            </div>
+            <table class="table stack-phone flow two-line">
+              <thead><tr><th>Limit</th><th>Value</th><th>From</th><th class="end"><span class="sr-only">Action</span></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><span class="icon-text strong"><i class="ic ic-monitor-smartphone"></i>Devices</span></td>
+                  <td><span class="cell-label">Value</span><strong class="tnum">4</strong></td>
+                  <td><span class="cell-label">From</span>2 from Education, 2 from a seat pack</td>
+                  <td class="end"><button class="btn text xs">Override</button></td>
+                </tr>
+                <tr class="marked">
+                  <td><span class="icon-text strong"><i class="ic ic-wifi-off"></i>Offline days</span></td>
+                  <td><span class="cell-label">Value</span><strong class="tnum">14 days</strong></td>
+                  <td><span class="cell-label">From</span><div class="cell-stack"><span class="accent">Set on this license</span><span class="cell-sub">Education gives 7</span></div></td>
+                  <td class="end"><button class="btn text xs">Use Education’s</button></td>
+                </tr>
+                <tr>
+                  <td><span class="icon-text strong"><i class="ic ic-git-branch"></i>Release tracks</span></td>
+                  <td><span class="cell-label">Value</span><strong>stable</strong></td>
+                  <td><span class="cell-label">From</span>Platform default</td>
+                  <td class="end"><button class="btn text xs">Override</button></td>
+                </tr>
+                <tr>
+                  <td><span class="icon-text strong"><i class="ic ic-tag"></i>Versions</span></td>
+                  <td><span class="cell-label">Value</span><strong>Any</strong></td>
+                  <td><span class="cell-label">From</span>Platform default</td>
+                  <td class="end"><button class="btn text xs">Override</button></td>
+                </tr>
+                <tr>
+                  <td><span class="icon-text strong"><i class="ic ic-fingerprint"></i>Fingerprint mode</span></td>
+                  <td><span class="cell-label">Value</span><strong>Normal</strong></td>
+                  <td><span class="cell-label">From</span>Education, set on the tier only</td>
+                  <td class="end"><a class="link" href="#">Open tier<i class="ic ic-arrow-right"></i></a></td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <!-- Add-ons held (LX-35): every grant references an add-on; source, duration and actions per row. -->
+          <section class="card" aria-labelledby="addons-title">
+            <div class="card-head h56">
+              <div class="title"><h2 id="addons-title">Add-ons</h2></div>
+              <button class="btn outline sm"><i class="ic ic-gift"></i>Comp an add-on…</button>
+            </div>
+            <div class="card-rows">
+              <div class="item-row">
+                <span class="icon-tile sm neutral"><i class="ic ic-shield"></i></span>
+                <div class="item-text"><div class="item-title">Polaris VPN<small class="mono">polarisVpn</small></div><div class="item-desc">Automatic grant: claim <code>vpnAccess</code> is true</div></div>
+                <div class="item-end"><div class="item-meta"><span>Lifetime</span><span class="meta" title="Since Sep 14, 2026">Sep 14, 2026</span></div><button class="btn ghost icon sm" aria-label="Polaris VPN: more"><i class="ic ic-ellipsis"></i></button></div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile sm neutral"><i class="ic ic-audio-waveform"></i></span>
+                <div class="item-text"><div class="item-title">Stem separation<small class="mono">stems</small></div><div class="item-desc">Comp by Ada Lovelace: “October campus workshop”</div></div>
+                <div class="item-end"><div class="item-meta"><span>Ends Dec 31, 2026</span><span class="meta" title="Since Oct 2, 2026">Oct 2, 2026</span></div><button class="btn ghost icon sm" aria-label="Stem separation: more"><i class="ic ic-ellipsis"></i></button></div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile sm neutral"><i class="ic ic-monitor-smartphone"></i></span>
+                <div class="item-text"><div class="item-title">Extra devices<small>Seat pack of 2</small></div><div class="item-desc">Comp by Ada Lovelace: for the B12 studio iMac</div></div>
+                <div class="item-end"><div class="item-meta"><span>Lifetime</span><span class="meta" title="Since Sep 20, 2026">Sep 20, 2026</span></div><button class="btn ghost icon sm" aria-label="Extra devices: more"><i class="ic ic-ellipsis"></i></button></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Devices: the summary here; the Devices tab has the shared DeviceTable. -->
+          <section class="card" aria-labelledby="devices-title">
+            <div class="card-head h56">
+              <div class="title"><h2 id="devices-title">Devices</h2></div>
+              <div class="progress-inline"><span>3 of 4</span><div class="progress" style="--v: 75%"></div></div>
+            </div>
+            <div class="card-rows">
+              <div class="item-row">
+                <span class="icon-tile sm neutral"><i class="ic ic-laptop"></i></span>
+                <div class="item-text"><div class="item-title">Priya’s MacBook Air</div><div class="item-desc">macOS 15.6 · DJDL 4.2.0</div></div>
+                <div class="item-end"><div class="item-meta"><span>6 min ago</span><span class="meta" title="Since Sep 14">Sep 14</span></div><button class="btn ghost icon sm" aria-label="Priya’s MacBook Air: more"><i class="ic ic-ellipsis"></i></button></div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile sm neutral"><i class="ic ic-monitor"></i></span>
+                <div class="item-text"><div class="item-title">B12 studio iMac</div><div class="item-desc">macOS 15.5 · DJDL 4.2.0</div></div>
+                <div class="item-end"><div class="item-meta"><span>2 days ago</span><span class="meta" title="Since Sep 20">Sep 20</span></div><button class="btn ghost icon sm" aria-label="B12 studio iMac: more"><i class="ic ic-ellipsis"></i></button></div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile sm neutral"><i class="ic ic-laptop"></i></span>
+                <div class="item-text"><div class="item-title">Gig laptop</div><div class="item-desc">Windows 11 · DJDL 4.1.3</div></div>
+                <div class="item-end"><div class="item-meta"><span>Sep 30</span><span class="meta" title="Since Sep 16">Sep 16</span></div><button class="btn ghost icon sm" aria-label="Gig laptop: more"><i class="ic ic-ellipsis"></i></button></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="mk-rail sticky-1280">
+          <!-- Duration (LX-41): fixed, one year from the tier, then keeps the last version. -->
+          <section class="card" aria-labelledby="duration-title">
+            <div class="card-head h56">
+              <div class="title"><h2 id="duration-title">Duration</h2></div>
+              <button class="btn outline sm">Change</button>
+            </div>
+            <div class="card-body mk-stack-4">
+              <div class="date-span" style="--v: 6%"><span>Sep 14, 2026</span><div class="date-span-track"><div class="progress" style="--v: 6%"></div><span class="date-span-today">Today · Oct 7</span></div><span class="strong">Sep 14, 2027</span></div>
+              <div class="icon-line"><i class="ic ic-archive subtle"></i><span><strong>Then keeps the last version</strong>, 4.2.0</span></div>
+            </div>
+          </section>
+
+          <!-- Origin (LX-38): the access policy issued it; account-keyed, no key minted. -->
+          <section class="card" aria-labelledby="origin-title">
+            <div class="card-head h56">
+              <div class="title"><h2 id="origin-title">Automatic grant</h2></div>
+              <a class="btn link" href="#">Open Access<i class="ic ic-arrow-right"></i></a>
+            </div>
+            <div class="card-body">
+              <ul class="icon-list small">
+                <li><i class="ic ic-at-sign"></i><span>Verified email domain <code>example.edu</code> gets <strong>Education</strong></span><button class="btn ghost icon xs" aria-label="How it works" title="A rule with a higher tier moves it up at her next sign-in; nothing moves it down. No key: new devices sign in as priya@example.edu. Add key makes one for an offline machine."><i class="ic ic-info"></i></button></li>
+              </ul>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

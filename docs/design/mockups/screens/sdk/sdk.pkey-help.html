@@ -1,0 +1,376 @@
+<style>
+  /* sdk.pkey-help: from 1280, the overview beside everything else: one command's help, then
+     completion and the first run (two up where the column has the room, stacked at desktop),
+     then the run outside a repository. One column below 1280. */
+  [data-screen="sdk.pkey-help"] .board-grid {
+    --cols-desktop: auto minmax(0, 1fr);
+  }
+  /* The run outside a repository at desktop, where its column is narrower than 80 columns. */
+  [data-screen="sdk.pkey-help"] .run-mid {
+    display: none;
+  }
+  @container screen (min-width: 1280px) and (max-width: 1599px) {
+    [data-screen="sdk.pkey-help"] .run-mid {
+      display: block;
+    }
+    [data-screen="sdk.pkey-help"] .run-80 {
+      display: none;
+    }
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-page">
+    <header class="board-head rhythm">
+      <h1>pkey help</h1>
+    </header>
+
+    <div class="board-grid">
+      <div class="board-col">
+      <figure class="board-item cap-top">
+        <figcaption><strong>The overview</strong></figcaption>
+      <div class="term cols-80 hide-phone">
+        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×64</span></div>
+<pre class="term-body"><span class="c-prompt">❯</span> pkey help
+<span class="c-b">pkey</span><span class="c-dim"> · Polaris Key from the command line</span>                                   <span class="c-dim">0.9.0</span>
+
+<span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
+<span class="c-dim">Here </span>  DJDL (djdl) <span class="c-dim">from .pkey/product · key.plrs.im</span>
+
+<span class="c-b">Start</span>
+  init                         Scaffold .pkey/ in this folder
+  validate [--fix]             Check .pkey/; --fix repairs what it safely can
+  doctor                       Manifest, keys, and Verified for each feature
+  sdk add &lt;sdk&gt;                Add an SDK, write polaris-key.json and pin keys
+  login|logout                 Sign in with your Polaris Key account
+
+<span class="c-b">Manifest</span>
+  manifest schemas             Write the .pkey/ JSON Schemas for editors
+  mirror                       Write typed catalog mirrors for each language
+
+<span class="c-b">Releases from CI</span>
+  auth github-oidc             Exchange the job's OIDC token for a CI token
+  release publish              Publish an app or pack release from a build
+  release promote              Move a release to a release track
+  release pin|unpin            Hold a release track on one release, or free it
+  release yank                 Withdraw a release
+  release keys init            Create the release key; --sparkle for Sparkle
+  release delegate|revoke      Let a content key sign packs, or take it back
+  release content-stamp        Write the pkey-content.json a build embeds
+
+<span class="c-b">Channels</span>
+  distribution rollout         Start or change a rollout on a channel
+  distribution pause|resume    Pause or resume that rollout
+  distribution halt|complete   Halt that rollout, or finish it at 100%
+  distribution report          Report a store's availability or submission
+  channel add &lt;channel&gt;        Declare a channel in .pkey/distribution
+  channel sync                 Run every declared channel's CI and PR steps
+  channel pr &lt;channel&gt;         Open the winget, Homebrew, Scoop or Flathub PR
+  channel push itch            Push a build to itch.io with butler
+  channel upload snap          Upload a snap to the release tracks it declares
+
+<span class="c-b">Packages and packs</span>
+  feeds setup                  Print the setup for one package feed
+  feeds prune                  Remove dev builds a stable release replaced
+  transport &lt;store&gt; …          Package a pack for a store's own delivery
+  bundle                       Make an offline bundle for an air-gapped device
+
+<span class="c-b">Listing</span>
+  listing assets               Derive every store's icons, art and screenshots
+  assets push                  Host a file in a listing or presentation slot
+
+<span class="c-b">Shell</span>
+  completion bash|zsh|fish     Print a shell completion script
+  help [command]               This help, or one command's
+
+<span class="c-b">Options</span>
+  --product &lt;slug&gt;             Default: from .pkey/product
+  --base-url &lt;url&gt;             Default: $PKEY_BASE_URL or https://key.plrs.im
+  --json                       JSON for scripts, on every command
+  --no-color, --ascii          Plain text, or ASCII symbols only
+  -h, --help                   Help for a command
+
+<span class="c-dim">Every command and flag: key.plrs.im/docs/reference/cli</span>
+<span class="c-prompt">❯</span> <span class="cursor"></span></pre>
+      </div>
+      <div class="term show-phone">
+        <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×106</span></div>
+<pre class="term-body"><span class="c-prompt">❯</span> pkey help
+<span class="c-b">pkey</span> <span class="c-dim">0.9.0</span>
+<span class="c-dim">Polaris Key from the command line</span>
+
+<span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
+<span class="c-dim">Here </span>  DJDL (djdl) <span class="c-dim">from .pkey/product ·</span>
+       <span class="c-dim">key.plrs.im</span>
+
+<span class="c-b">Start</span>
+  init
+<span class="c-dim">    Scaffold .pkey/ in this folder</span>
+  validate [--fix]
+<span class="c-dim">    Check .pkey/; --fix repairs what it</span>
+<span class="c-dim">    safely can</span>
+  doctor
+<span class="c-dim">    Manifest, keys, and Verified for each</span>
+<span class="c-dim">    feature</span>
+  sdk add &lt;sdk&gt;
+<span class="c-dim">    Add an SDK, write polaris-key.json and</span>
+<span class="c-dim">    pin keys</span>
+  login|logout
+<span class="c-dim">    Sign in with your Polaris Key account</span>
+
+<span class="c-b">Manifest</span>
+  manifest schemas
+<span class="c-dim">    Write the .pkey/ JSON Schemas for</span>
+<span class="c-dim">    editors</span>
+  mirror
+<span class="c-dim">    Write typed catalog mirrors for each</span>
+<span class="c-dim">    language</span>
+
+<span class="c-b">Releases from CI</span>
+  auth github-oidc
+<span class="c-dim">    Exchange the job's OIDC token for a CI</span>
+<span class="c-dim">    token</span>
+  release publish
+<span class="c-dim">    Publish an app or pack release from a</span>
+<span class="c-dim">    build</span>
+  release promote
+<span class="c-dim">    Move a release to a release track</span>
+  release pin|unpin
+<span class="c-dim">    Hold a release track on one release, or</span>
+<span class="c-dim">    free it</span>
+  release yank
+<span class="c-dim">    Withdraw a release</span>
+  release keys init
+<span class="c-dim">    Create the release key; --sparkle for</span>
+<span class="c-dim">    Sparkle</span>
+  release delegate|revoke
+<span class="c-dim">    Let a content key sign packs, or take it</span>
+<span class="c-dim">    back</span>
+  release content-stamp
+<span class="c-dim">    Write the pkey-content.json a build</span>
+<span class="c-dim">    embeds</span>
+
+<span class="c-b">Channels</span>
+  distribution rollout
+<span class="c-dim">    Start or change a rollout on a channel</span>
+  distribution pause|resume
+<span class="c-dim">    Pause or resume that rollout</span>
+  distribution halt|complete
+<span class="c-dim">    Halt that rollout, or finish it at 100%</span>
+  distribution report
+<span class="c-dim">    Report a store's availability or</span>
+<span class="c-dim">    submission</span>
+  channel add &lt;channel&gt;
+<span class="c-dim">    Declare a channel in .pkey/distribution</span>
+  channel sync
+<span class="c-dim">    Run every declared channel's CI and PR</span>
+<span class="c-dim">    steps</span>
+  channel pr &lt;channel&gt;
+<span class="c-dim">    Open the winget, Homebrew, Scoop or</span>
+<span class="c-dim">    Flathub PR</span>
+  channel push itch
+<span class="c-dim">    Push a build to itch.io with butler</span>
+  channel upload snap
+<span class="c-dim">    Upload a snap to the release tracks it</span>
+<span class="c-dim">    declares</span>
+
+<span class="c-b">Packages and packs</span>
+  feeds setup
+<span class="c-dim">    Print the setup for one package feed</span>
+  feeds prune
+<span class="c-dim">    Remove dev builds a stable release</span>
+<span class="c-dim">    replaced</span>
+  transport &lt;store&gt; …
+<span class="c-dim">    Package a pack for a store's own</span>
+<span class="c-dim">    delivery</span>
+  bundle
+<span class="c-dim">    Make an offline bundle for an air-gapped</span>
+<span class="c-dim">    device</span>
+
+<span class="c-b">Listing</span>
+  listing assets
+<span class="c-dim">    Derive every store's icons, art and</span>
+<span class="c-dim">    screenshots</span>
+  assets push
+<span class="c-dim">    Host a file in a listing or presentation</span>
+<span class="c-dim">    slot</span>
+
+<span class="c-b">Shell</span>
+  completion bash|zsh|fish
+<span class="c-dim">    Print a shell completion script</span>
+  help [command]
+<span class="c-dim">    This help, or one command's</span>
+
+<span class="c-b">Options</span>
+  --product &lt;slug&gt;
+<span class="c-dim">    Default: from .pkey/product</span>
+  --base-url &lt;url&gt;
+<span class="c-dim">    Default: $PKEY_BASE_URL or</span>
+<span class="c-dim">    https://key.plrs.im</span>
+  --json
+<span class="c-dim">    JSON for scripts, on every command</span>
+  --no-color, --ascii
+<span class="c-dim">    Plain text, or ASCII symbols only</span>
+  -h, --help
+<span class="c-dim">    Help for a command</span>
+
+<span class="c-dim">Every command and flag:</span>
+<span class="c-dim">key.plrs.im/docs/reference/cli</span>
+<span class="c-prompt">❯</span> <span class="cursor"></span></pre>
+      </div>
+      </figure>
+      </div>
+
+      <div class="board-col">
+        <figure class="board-item cap-top">
+          <figcaption><strong>One command’s help</strong></figcaption>
+        <div class="term hide-phone">
+          <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 68×32</span></div>
+<pre class="term-body"><span class="c-prompt">❯</span> pkey help sdk add
+<span class="c-b">pkey sdk add</span><span class="c-dim"> · Add an SDK to an app and pin the product&#x27;s keys</span>
+
+<span class="c-dim">Usage</span>  pkey sdk add &lt;sdk&gt; [--expect &lt;kid&gt;@sha256:&lt;hex&gt;]
+                         [--dir &lt;path&gt;] [--product &lt;slug&gt;]
+                         [--dry-run] [--json]
+
+<span class="c-b">Arguments</span>
+  &lt;sdk&gt;             node, react, python, swift, kotlin or godot
+
+<span class="c-b">Options</span>
+  --expect &lt;fp&gt;     Required the first time in a folder: the
+                    fingerprint Integration shows.
+  --dir &lt;path&gt;      The app&#x27;s folder. Default: this folder
+  --product &lt;slug&gt;  Default: from .pkey/product
+  --dry-run         Show what would change and write nothing
+
+<span class="c-b">What it does</span><span class="c-dim">, for swift in macos/</span>
+  1  Adds PolarisKey from pkg.plrs.im to DJDL.xcodeproj
+  2  Writes macos/polaris-key.json for djdl on key.plrs.im
+  3  Pins djdl-2026, the staged djdl-2026b and the release key
+     djdl-rk-2026
+
+<span class="c-b">Examples</span>
+  pkey sdk add swift --dir macos/ \
+      --expect <span class="c-accent">djdl-2026@sha256:3f9a0c…e41b</span>
+  pkey sdk add kotlin --dir windows/ \
+      --expect <span class="c-accent">djdl-2026@sha256:3f9a0c…e41b</span>
+
+<span class="c-dim">See also  pkey doctor · key.plrs.im/docs/start/first-product</span></pre>
+        </div>
+        <div class="term show-phone">
+          <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×48</span></div>
+<pre class="term-body"><span class="c-prompt">❯</span> pkey help sdk add
+<span class="c-b">pkey sdk add</span><span class="c-dim"> · Add an SDK to an app and
+pin the product&#x27;s keys</span>
+
+<span class="c-dim">Usage</span>
+  pkey sdk add &lt;sdk&gt;
+    [--expect &lt;kid&gt;@sha256:&lt;hex&gt;]
+    [--dir &lt;path&gt;] [--product &lt;slug&gt;]
+    [--dry-run] [--json]
+
+<span class="c-b">Arguments</span>
+  &lt;sdk&gt;
+<span class="c-dim">    node, react, python, swift, kotlin or
+    godot</span>
+
+<span class="c-b">Options</span>
+  --expect &lt;fp&gt;
+<span class="c-dim">    Required the first time in a folder:
+    the fingerprint Integration shows.</span>
+  --dir &lt;path&gt;
+<span class="c-dim">    The app&#x27;s folder. Default: this folder</span>
+  --product &lt;slug&gt;
+<span class="c-dim">    Default: from .pkey/product</span>
+  --dry-run
+<span class="c-dim">    Show what would change and write
+    nothing</span>
+
+<span class="c-b">What it does</span><span class="c-dim">, for swift in macos/</span>
+  1  Adds PolarisKey from pkg.plrs.im to
+     DJDL.xcodeproj
+  2  Writes macos/polaris-key.json for
+     djdl on key.plrs.im
+  3  Pins djdl-2026, the staged djdl-2026b
+     and the release key djdl-rk-2026
+
+<span class="c-b">Examples</span>
+  pkey sdk add swift --dir macos/ \
+      --expect <span class="c-accent">djdl-2026@sha256:3f9a0c…e41b</span>
+  pkey sdk add kotlin --dir windows/ \
+      --expect <span class="c-accent">djdl-2026@sha256:3f9a0c…e41b</span>
+
+<span class="c-dim">See also
+  pkey doctor
+  key.plrs.im/docs/start/first-product</span></pre>
+        </div>
+        </figure>
+
+        <div class="frame-grid">
+          <figure class="board-item cap-top">
+            <figcaption><strong>Completion</strong></figcaption>
+            <div class="term">
+              <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 56×10</span></div>
+<pre class="term-body"><span class="c-prompt">❯</span> pkey sdk add <span class="cursor"></span>
+<span class="c-b">node</span>    <span class="c-dim">-- Node.js and Electron</span>
+<span class="c-b">react</span>   <span class="c-dim">-- React, in a browser or Electron</span>
+<span class="c-b">python</span>  <span class="c-dim">-- Python apps and terminals</span>
+<span class="c-b">swift</span>   <span class="c-dim">-- iOS, iPadOS and macOS</span>
+<span class="c-b">kotlin</span>  <span class="c-dim">-- Android and JVM desktop</span>
+<span class="c-b">godot</span>   <span class="c-dim">-- Godot 4 games</span></pre>
+            </div>
+          </figure>
+          <figure class="board-item cap-top">
+            <figcaption><strong>First run without --expect</strong></figcaption>
+            <div class="term">
+              <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 56×10</span></div>
+<pre class="term-body"><span class="c-prompt">❯</span> pkey sdk add swift --dir macos/
+<span class="c-err">✗</span> No pin in macos/ yet. Run it again
+  with --expect, copied from Integration:
+  pkey sdk add swift --dir macos/ \
+      --expect <span class="c-accent">&lt;fingerprint&gt;</span>
+<span class="c-dim">  Nothing was written.</span>
+<span class="c-err">❯</span> <span class="cursor"></span></pre>
+            </div>
+          </figure>
+        </div>
+
+        <figure class="board-item cap-top">
+          <figcaption><strong>Outside a repository</strong></figcaption>
+          <div class="term">
+            <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — ~/Downloads — 80×9</span></div>
+<pre class="term-body hide-phone run-80"><span class="c-prompt">❯</span> pkey help
+<span class="c-b">pkey</span><span class="c-dim"> · Polaris Key from the command line</span>                                   <span class="c-dim">0.9.0</span>
+
+<span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
+<span class="c-dim">Here </span>  <span class="c-dim">no product: no .pkey/product here or above; pass --product · key.plrs.im</span>
+
+<span class="c-b">Start</span>
+  init                         Scaffold .pkey/ in this folder</pre>
+<pre class="term-body hide-phone run-mid"><span class="c-prompt">❯</span> pkey help
+<span class="c-b">pkey</span><span class="c-dim"> · Polaris Key from the command line</span>                    <span class="c-dim">0.9.0</span>
+
+<span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
+<span class="c-dim">Here </span>  <span class="c-dim">no product: no .pkey/product here or above; pass --product ·
+       key.plrs.im</span>
+
+<span class="c-b">Start</span>
+  init                         Scaffold .pkey/ in this folder</pre>
+<pre class="term-body show-phone"><span class="c-prompt">❯</span> pkey help
+<span class="c-b">pkey</span> <span class="c-dim">0.9.0</span>
+<span class="c-dim">Polaris Key from the command line</span>
+
+<span class="c-dim">Usage</span>  pkey &lt;command&gt; [options]
+<span class="c-dim">Here </span>  <span class="c-dim">no product: no .pkey/product here
+       or above; pass --product ·
+       key.plrs.im</span>
+
+<span class="c-b">Start</span>
+  init
+<span class="c-dim">    Scaffold .pkey/ in this folder</span></pre>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </div>
+</div>

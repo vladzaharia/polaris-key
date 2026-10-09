@@ -1,0 +1,380 @@
+<div class="console" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item active" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page cap-form">
+      <header class="page-head">
+        <div class="page-heading"><h1>Settings</h1></div>
+        <div class="page-actions">
+          <div class="search-field hide-phone"><i class="ic ic-search"></i><span class="grow muted">Search settings</span><kbd>/</kbd></div>
+          <button class="btn ghost icon show-phone" aria-label="Search settings"><i class="ic ic-search"></i></button>
+          <button class="btn outline"><i class="ic ic-history"></i>History</button>
+        </div>
+      </header>
+
+      <!-- Sections in the order people change them; each is also #/platform/settings/<area>.
+           The nav follows the scroll; below 1280px it is the pill row, on phone the picker. -->
+      <div class="with-toc">
+        <nav class="toc-nav" aria-label="Settings sections">
+          <a class="on" href="#ready" aria-current="true">Platform ready</a>
+          <a href="#defaults">Product defaults<i class="dot"></i></a>
+          <a href="#signin">Sign-in</a>
+          <a href="#storefront">Storefront and hosting</a>
+          <a href="#email">Email and alerts</a>
+          <a href="#licensing">Licensing</a>
+          <a href="#jobs">Jobs<i class="dot"></i></a>
+          <a href="#advanced">Advanced</a>
+          <a href="#recent">Recently changed</a>
+        </nav>
+        <nav class="jump-nav" aria-label="Settings sections">
+          <a class="on" href="#ready">Platform ready</a>
+          <a href="#defaults">Product defaults</a>
+          <a href="#signin">Sign-in</a>
+          <a href="#storefront">Storefront and hosting</a>
+          <a href="#email">Email and alerts</a>
+          <a href="#licensing">Licensing</a>
+          <a href="#jobs">Jobs</a>
+          <a href="#advanced">Advanced</a>
+          <a href="#recent">Recently changed</a>
+        </nav>
+        <div class="select toc-select" aria-label="Settings section"><span class="grow">Platform ready</span><i class="ic ic-chevrons-up-down"></i></div>
+
+        <!-- One order at every width: the open step, the settings, then what changed. -->
+        <div class="toc-body">
+          <!-- 1. Platform ready: a compact banner while a step is open (the same checklist as Home); gone when complete. -->
+          <section class="ready-banner" id="ready" aria-labelledby="ready-title">
+            <div class="rb-lead"><strong id="ready-title">Platform ready</strong><span class="rb-prog">8 of 9<span class="progress success" style="--v: 88.9%"></span></span></div>
+            <div class="rb-task"><span class="task-mark"></span><div class="rb-text"><strong>Store connections</strong><span>Diceroll’s Steam uploads need a Steamworks publisher key.</span></div></div>
+            <button class="btn outline sm"><i class="ic ic-steam"></i>Connect Steam</button>
+            <button class="btn text sm" aria-expanded="false">Show done steps</button>
+          </section>
+
+          <!-- 3. What every product starts with, and who sets its own. -->
+          <section class="section" id="defaults" aria-labelledby="defaults-title">
+            <div class="section-head"><div><h2 id="defaults-title">Product defaults</h2><p>Unless a product sets its own</p></div></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Default media quota<span class="setting-key">assets.quota.mediaBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Icons, screenshots and cover art, per product.</div>
+                    <div class="setting-meta"><span>2 products use this</span><span aria-hidden="true">·</span><span class="mk-cluster-1"><span class="logo xs" data-product="djdl"></span>DJDL sets 8 GB</span></div>
+                  </div>
+                  <div class="setting-control"><div class="input"><span class="grow tnum">5</span><span class="affix">GB</span></div></div>
+                </div>
+                <div class="setting-row changed">
+                  <div>
+                    <div class="setting-title">Default release-file quota<span class="setting-key">assets.quota.releaseBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Builds, installers and packs, per product.</div>
+                    <div class="setting-meta"><span>2 products use this</span><span aria-hidden="true">·</span><span class="mk-cluster-1"><span class="logo xs" data-product="diceroll"></span>Diceroll sets 40 GB</span></div>
+                    <div class="changed-note">Changed from 20 GB, not saved yet</div>
+                  </div>
+                  <div class="setting-control"><div class="input changed"><span class="grow tnum">25</span><span class="affix">GB</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Cloud Sync storage ceiling<span class="setting-key">cloudSync.ceiling.bytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">The most a product can store per account. Every tier stays under it.</div>
+                    <div class="setting-meta"><span class="mk-cluster-1"><span class="logo xs" data-product="djdl"></span>Used by DJDL</span></div>
+                  </div>
+                  <div class="setting-control"><div class="input"><span class="grow tnum">200</span><span class="affix">MB</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Key-entry limit ceiling<span class="setting-key">identity.keyEntry.limit<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">The most key entries a product may allow for a license outside any account. Products can only go lower.</div>
+                    <div class="setting-meta"><span>3 products use this</span></div>
+                  </div>
+                  <div class="setting-control"><div class="input"><span class="grow tnum">10</span><span class="affix">per license</span></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="save-bar" role="region" aria-label="Unsaved changes in Product defaults">
+              <p class="save-bar-msg"><i class="ic ic-info"></i><span>1 change. DJDL gets 25 GB; Diceroll keeps its own 40 GB.</span></p>
+              <span class="foot-note"><i class="ic ic-fingerprint"></i>Passkey required</span>
+              <button class="btn ghost">Discard</button>
+              <button class="btn primary">Save product defaults</button>
+            </div>
+          </section>
+
+          <!-- 4. Sign-in: names and terms only; providers and SSO live in Connections. -->
+          <section class="section" id="signin" aria-labelledby="signin-title">
+            <div class="section-head"><div><h2 id="signin-title">Sign-in</h2><p>Providers and domains are in <a class="link" href="#">Connections<i class="ic ic-arrow-right"></i></a></p></div></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Reserved display names<span class="setting-key">identity.reservedDisplayNames<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">When a product or developer name uses a platform or store name, such as Apple or Steam.</div>
+                  </div>
+                  <div class="setting-control"><div class="segmented sm match-input"><span>Warn</span><span class="on">Refuse</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Extra reserved display terms<span class="setting-key">identity.reservedDisplayTerms<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Names nobody may use, on top of the built-in list.</div>
+                  </div>
+                  <div class="setting-control"><div class="mk-cluster"><span class="token">Polaris Store<i class="ic ic-x"></i></span><span class="token">Plrs<i class="ic ic-x"></i></span><button class="btn ghost icon xs" aria-label="Add a term"><i class="ic ic-plus"></i></button></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Platform terms version<span class="setting-key">identity.termsVersion<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">A new version asks everyone to accept it at their next sign-in.</div>
+                  </div>
+                  <div class="setting-control"><div class="setting-value"><span>2026-09</span><span class="meta">Published Sep 15</span></div><button class="btn outline sm">Publish new version</button></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Console session length</div>
+                    <div class="setting-desc">Fixed, so a stolen session can’t extend itself.</div>
+                  </div>
+                  <div class="setting-control"><div class="setting-value"><span>8 hours</span><span class="meta">Set in code, not a setting</span></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 5. Storefront and hosting: switches apply at once; turning Package feeds off asks first. -->
+          <section class="section" id="storefront" aria-labelledby="sf-title">
+            <div class="section-head"><h2 id="sf-title">Storefront and hosting</h2></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Polaris Key storefront<span class="setting-key">storefront.polarisKey.enabled<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Discover at key.plrs.im. Each product opts in on its Access page.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true" aria-label="Polaris Key storefront"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Hosted assets<span class="setting-key">assets.hosting.enabled<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Icons, screenshots and release files. Off stops new uploads; nothing is deleted.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true" aria-label="Hosted assets"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Package feeds<span class="setting-key">packageFeeds.enabled<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Every product’s feeds on pkg.plrs.im. Off stops them all at once.</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true" aria-label="Package feeds"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Largest package file<span class="setting-key">packageFeeds.maxFileBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">A publish with a bigger file is refused.</div>
+                  </div>
+                  <div class="setting-control"><div class="input"><span class="grow tnum">2</span><span class="affix">GB</span></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 6. Email and alerts -->
+          <section class="section" id="email" aria-labelledby="email-title">
+            <div class="section-head"><h2 id="email-title">Email and alerts</h2></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Sender<span class="setting-key">email.sender<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">The address every email comes from.</div>
+                  </div>
+                  <div class="setting-control"><div class="setting-value"><span>no-reply@key.plrs.im</span><span class="status"><i class="ic ic-circle-check"></i>Verified</span></div><button class="btn outline sm">Change</button></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Daily email limit<span class="setting-key">email.dailyLimit<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Past it, only sign-in codes send until midnight UTC.</div>
+                    <div class="setting-meta"><span>412 sent today</span></div>
+                  </div>
+                  <div class="setting-control"><div class="input"><span class="grow tnum">2,000</span><span class="affix">a day</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Alerts go to<span class="setting-key">alerts.destinations<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Failed jobs, expiring store keys and resync errors, as they happen.</div>
+                  </div>
+                  <div class="setting-control"><div class="mk-cluster"><span class="token"><i class="ic ic-mail"></i>ops@example.com<i class="ic ic-x"></i></span><span class="token"><i class="ic ic-webhook"></i>hooks.example.com/pk<i class="ic ic-x"></i></span><button class="btn ghost icon xs" aria-label="Add a destination"><i class="ic ic-plus"></i></button></div></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 7. Licensing: only the reserved-names rule; tiers carry device limits and offline windows. -->
+          <section class="section" id="licensing" aria-labelledby="lic-title">
+            <div class="section-head"><h2 id="lic-title">Licensing</h2></div>
+            <div class="card">
+              <div class="setting-row">
+                <div>
+                  <div class="setting-title">Reserved entitlement names<span class="setting-key">licensing.reservedNames<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                  <div class="setting-desc">When a catalog declares a system name, such as <code>channels</code>, with the wrong type. No product does today.</div>
+                </div>
+                <div class="setting-control"><div class="segmented sm match-input"><span>Warn</span><span class="on">Refuse</span></div></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 8. Jobs: each job's last run in its row (absorbs Platform Status's job facts, UX-30). -->
+          <section class="section" id="jobs" aria-labelledby="jobs-title">
+            <div class="section-head"><h2 id="jobs-title">Jobs</h2></div>
+            <div class="card">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Lazy deltas<span class="setting-key">deltas.lazy.mode<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Small update patches, for products that ask for them.</div>
+                    <div class="setting-meta"><span>Last patch 14 min ago</span></div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true" aria-label="Lazy deltas"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Largest file to patch<span class="setting-key">deltas.lazy.maxBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Bigger builds download in full.</div>
+                  </div>
+                  <div class="setting-control"><div class="field invalid"><div class="input invalid"><span class="grow tnum">48</span><span class="affix">MiB</span></div><span class="error-text"><i class="ic ic-circle-x"></i>Enter 32 MiB or less.</span></div></div>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Blob collector<span class="setting-key">blobs.gc.mode<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">Deletes stored files unused for the grace period.</div>
+                    <div class="setting-meta"><span>Ran today at 03:17, freed 1.2 GB</span></div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true" aria-label="Blob collector"></span>
+                </div>
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Grace period<span class="setting-key">blobs.gc.graceDays<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+                    <div class="setting-desc">How long a file sits unused before it may be deleted.</div>
+                  </div>
+                  <div class="setting-control"><div class="input"><span class="grow tnum">30</span><span class="affix">days</span></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="save-bar blocked" role="region" aria-label="Unsaved changes in Jobs">
+              <p class="save-bar-msg"><i class="ic ic-circle-x"></i><span>Fix 1 error to save</span></p>
+              <button class="btn ghost">Discard</button>
+              <button class="btn primary" disabled>Save jobs</button>
+            </div>
+          </section>
+
+          <!-- 9. Advanced: deployment values, read-only, folded. -->
+          <section class="section" id="advanced" aria-labelledby="adv-title">
+            <div class="section-head"><div><h2 id="adv-title">Advanced</h2><p>79 deployment values, read-only. They change with a deploy.</p></div><button class="btn outline sm" aria-expanded="false">Show<i class="ic ic-chevron-down"></i></button></div>
+          </section>
+          <!-- 9. The last five platform setting changes, from platform_audit. -->
+          <section class="section" id="recent" aria-labelledby="recent-title">
+            <div class="section-head"><h2 id="recent-title">Recently changed</h2></div>
+            <div class="table-card">
+              <table class="table stack-phone" aria-label="Recently changed">
+                <thead><tr><th>Setting</th><th>Change</th><th>By</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><a class="cell-title" href="#">Default media quota</a><div class="cell-sub">Product defaults</div></td>
+                    <td><span class="cell-label">Change</span><span class="mk-cluster-1 no-wrap"><s class="subtle">2 GB</s><i class="ic ic-arrow-right xs subtle"></i><span>5 GB</span></span></td>
+                    <td><span class="cell-label">By</span><div class="cell-with-logo"><span class="avatar sm">PR</span><div><div>Priya Raman</div><div class="cell-sub">Today, 09:41</div></div></div></td>
+                  </tr>
+                  <tr>
+                    <td><a class="cell-title" href="#">Extra reserved display terms</a><div class="cell-sub">Sign-in</div></td>
+                    <td><span class="cell-label">Change</span><span class="mk-cluster-1 no-wrap">Added <span class="token">Polaris Store</span></span></td>
+                    <td><span class="cell-label">By</span><div class="cell-with-logo"><span class="avatar sm violet">AL</span><div><div>Ada Lindqvist</div><div class="cell-sub">Oct 6, 16:02</div></div></div></td>
+                  </tr>
+                  <tr>
+                    <td><a class="cell-title" href="#">Daily email limit</a><div class="cell-sub">Email and alerts</div></td>
+                    <td><span class="cell-label">Change</span><span class="mk-cluster-1 no-wrap"><s class="subtle">500</s><i class="ic ic-arrow-right xs subtle"></i><span>2,000</span></span></td>
+                    <td><span class="cell-label">By</span><div class="cell-with-logo"><span class="avatar sm">PR</span><div><div>Priya Raman</div><div class="cell-sub">Oct 3, 11:15</div></div></div></td>
+                  </tr>
+                  <tr>
+                    <td><a class="cell-title" href="#">Grace period</a><div class="cell-sub">Jobs</div></td>
+                    <td><span class="cell-label">Change</span><span class="mk-cluster-1 no-wrap"><s class="subtle">14 days</s><i class="ic ic-arrow-right xs subtle"></i><span>30 days</span></span></td>
+                    <td><span class="cell-label">By</span><div class="cell-with-logo"><span class="avatar sm">JW</span><div><div>Jonas Weber</div><div class="cell-sub">Sep 30, 18:22</div></div></div></td>
+                  </tr>
+                  <tr>
+                    <td><a class="cell-title" href="#">Polaris Key storefront</a><div class="cell-sub">Storefront and hosting</div></td>
+                    <td><span class="cell-label">Change</span><span class="mk-cluster-1 no-wrap"><s class="subtle">Off</s><i class="ic ic-arrow-right xs subtle"></i><span>On</span></span></td>
+                    <td><span class="cell-label">By</span><div class="cell-with-logo"><span class="avatar sm violet">AL</span><div><div>Ada Lindqvist</div><div class="cell-sub">Sep 29, 10:05</div></div></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Other states of Platform → Settings. -->
+<section class="board below states-grid" aria-label="Other states">
+  <div class="board-title"><h1>Other states</h1></div>
+
+  <figure class="board-item">
+    <div class="dialog danger">
+      <div class="dialog-head"><i class="ic ic-triangle-alert"></i><h2>Turn off package feeds for every product?</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <p>Installs and updates from these feeds fail until feeds are on again. Nothing is deleted.</p>
+        <ul class="bullets">
+          <li><strong>DJDL</strong>: npm <code>@djdl</code>, PyPI <code>djdl-crates</code> and Swift <code>djdl</code></li>
+          <li><strong>Diceroll</strong>: npm <code>diceroll</code> and the container image <code>diceroll/table-server</code></li>
+        </ul>
+      </div>
+      <div class="dialog-foot"><span class="foot-note"><i class="ic ic-fingerprint"></i>Then your passkey</span><button class="btn outline">Cancel</button><button class="btn danger">Turn off feeds for 2 products</button></div>
+    </div>
+    <figcaption><strong>Turning Package feeds off.</strong>A job asks the same way.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <div class="mk-stack-4">
+      <div class="card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-title">Default release-file quota<span class="setting-key">assets.quota.releaseBytes<i class="ic ic-copy" aria-hidden="true"></i></span></div>
+            <div class="setting-desc">Builds, installers and packs, per product.</div>
+          </div>
+          <div class="setting-control"><div class="input"><span class="grow tnum">25</span><span class="affix">GB</span></div></div>
+        </div>
+      </div>
+      <div class="save-bar saved" role="status">
+        <p class="save-bar-msg"><i class="ic ic-circle-check"></i><span>Saved product defaults.</span></p>
+        <button class="btn ghost">Undo</button>
+      </div>
+    </div>
+    <figcaption><strong>After Save.</strong>The change leads Recently changed.</figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <section class="card" aria-labelledby="ready-done-title">
+      <div class="card-head plain">
+        <div class="title mk-cluster baseline"><h2 id="ready-done-title">Platform ready</h2><span class="status"><i class="ic ic-circle-check"></i>All set</span></div>
+      </div>
+    </section>
+    <figcaption><strong>Platform ready, complete.</strong>One line; its nav entry goes.</figcaption>
+  </figure>
+</section>

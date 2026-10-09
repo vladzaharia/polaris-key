@@ -1,0 +1,115 @@
+{
+  "id": "commerce.purchases",
+  "title": "Purchases",
+  "area": "commerce",
+  "surface": "console",
+  "packages": [
+    "CM-23",
+    "CM-22",
+    "CM-24",
+    "CM-25",
+    "LX-41",
+    "LX-23"
+  ],
+  "uxRows": [],
+  "summary": "Diceroll's one purchase ledger across the App Store, Google Play and Steam: each row says when, which storefront, which offer and SKU, which account (or a floating license when nobody was signed in), which license it landed on and its state with what that did, including refunds and a chargeback that removed what they added at once, a purchase that added nothing, and subscriptions linked to the license that holds them.",
+  "compare": [
+    "One ledger for every source with the columns Bought, Storefront, Offer, Account, License, State; no per-store purchase pages exist (the Sales tab shows this ledger filtered to its store).",
+    "Tabs split the same ledger: All, Refunds and chargebacks, Added nothing (warning count). Search takes an email, a license id or a store order id; filters are chips (Last 28 days on, Storefront, Offer).",
+    "The Offer cell shows the offer name and the store's SKU in mono under it; a purchase with no matching offer reads 'No offer' with the SKU.",
+    "Account shows the person (avatar, name, email) and says 'Steam linked' when the purchase was found through a linked Steam account; a purchase with nobody signed in reads 'No account' with 'Floating license · iPhone 15'.",
+    "License is a mono link to the license with its tier, drawn in the strong text colour with an underline (never the Commerce green, which reads as a state); when the purchase created it (the paid app on Steam or the App Store) the line reads 'Standard · new', and a refunded base purchase reads 'Standard · ended'.",
+    "State: Active is green status text; a subscription shows Free trial to … (info) or Renews … with 'Subscription on the license' linking to the license's subscription panel (the one subscriptions view).",
+    "A full refund or a chargeback is a danger pill with its date, and the line under it says what was removed at once (Dice skins removed at once, License ended at once); a Steam refund says the daily Steam check found it. The State column keeps the card's 20px end padding and its sub-line wraps inside the column.",
+    "A purchase that added nothing is a warning pill 'Added nothing' with 'Add the SKU to an offer' as its one action, which opens the picker (commerce.add-to-offer).",
+    "The page sub-line states the rule: full refund or chargeback removes at once; a partial refund never does. No money amounts are shown.",
+    "Rows open the purchase drawer (commerce.purchase).",
+    "Phone: Export CSV hides, the tabs shorten to 'All', 'Refunds' and 'Added nothing' with their counts so all three fit, and the toolbar wraps; each purchase becomes a stacked row (storefront and time, offer and SKU, account, then state with the license id on the right), with no sideways scrolling."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the State column wraps inside the card, phone tabs fit, license ids are neutral links, and the no-results and empty ledgers are drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[visual / broken render] 'Found by the daily Steam check' runs into the card's right edge and 'Subscription on the license →' nearly touches it.",
+        "resolution": "The last column has the card's 20px end padding and its sub-line wraps at 190px; nothing reaches the card edge on desktop, and phone rows are unaffected."
+      },
+      {
+        "severity": "minor",
+        "issue": "[phone / states] The actionable 'Added nothing 3' tab is cut at the right edge; no empty, no-results, loading or error state is drawn.",
+        "resolution": "Phone tab labels are 'All', 'Refunds', 'Added nothing' with counts, so all three fit. Added commerce.purchases-no-results (filtered empty: what matched nothing, Search all time, Clear search) and commerce.purchases-empty (DJDL's first-run empty state pointing at the test-purchase step); loading (skeleton rows) and error (what happened, Try again, reference id) are in the no-results compare list."
+      },
+      {
+        "severity": "major",
+        "issue": "Tablet: Bought flush to the border, offers and emails clip.",
+        "resolution": "Below 1100 the store is an icon beside the offer, Bought drops the time, License is dropped (it is in the drawer), emails truncate with an ellipsis, last column keeps 24px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Phone: Steam email runs out of the card, 12px padding, five labels and 160px+ cards.",
+        "resolution": "3-line card: offer and state, account (email truncates), store glyph, date and license id; 'Steam linked' on its own line; 16px padding; no labels.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "State cell holds four facts; license ids look like links.",
+        "resolution": "State is the pill and date only (effect lines are in the drawer timeline); the SKU shows only on the issue row; 48px rows; license ids are mono text with a copy icon.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "[wide 1920] Console pages stretch tables and attention rows across the whole width.",
+        "resolution": "Page content is capped at 1280px, left-aligned, from 1600px (.cm2 page cap); attention text is capped at 72ch with its action beside it.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Row sub-lines and legends are small, and chevrons and copy icons have small hit areas.",
+        "resolution": "Sub-lines and legends are at least 12px (13px here) in the muted token that already passes 4.5:1; icon buttons have a 24px target; one table header token and row height are shared.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Move the license tier into the account sub-line and drop it from License.",
+        "resolution": "declined: The tier next to the license id is useful and costs nothing; both facts stay in one cell.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Use extra wide width for a preview rail that replaces the drawer, or centre the content.",
+        "resolution": "declined: A new component that duplicates the drawer; left-aligned capping is the kit pattern.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 19
+}

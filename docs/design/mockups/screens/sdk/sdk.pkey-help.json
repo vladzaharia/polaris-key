@@ -1,0 +1,123 @@
+{
+  "id": "sdk.pkey-help",
+  "title": "pkey help and the command registry",
+  "area": "sdk",
+  "surface": "terminal",
+  "order": 4,
+  "packages": [
+    "P0-45",
+    "SP-33a",
+    "UK-14"
+  ],
+  "uxRows": [],
+  "summary": "pkey help's overview generated from the one command table, run in DJDL's repository so it names the product and base URL it will use; beside it pkey help sdk add and zsh completion for the same command, all from the same registry.",
+  "compare": [
+    "The overview has a header with the version, Usage, and a Here line naming the product from .pkey/product (DJDL, djdl) and the base URL. A second run outside a repository shows Here as 'no product: no .pkey/product here or above; pass --product · key.plrs.im', on one line at 80 columns.",
+    "Groups in this order: Start (init, validate [--fix], doctor, sdk add, login | logout), Manifest, Releases from CI, Channels, Packages and packs, Listing, Shell, then Options with the defaults spelled out ('--product  Default: from .pkey/product'; the Here line already names djdl). The footer is one line: 'Every command and flag: key.plrs.im/docs/reference/cli'.",
+    "Words follow the glossary: release promote moves a release to a release track; distribution rollout acts on a channel; delivery commands are channel commands (add, sync, pr, push itch, upload snap to its release tracks). No 'storefront' outside selling, and no 'outlet', 'grant', 'capability' or 'storefront feed'.",
+    "Removed surfaces are absent: no pkey trust, no pkey sdk --lang, no PKEY_ADMIN_COOKIE, no pkey storefront. Sign-in is pkey login.",
+    "pkey help sdk add shows usage (with the <kid>@sha256:<hex> format), arguments, options, what it does for this folder with DJDL's real kids ('Pins djdl-2026, the staged djdl-2026b and the release key djdl-rk-2026'), examples with --expect for both folders, and See also. --expect reads 'Required the first time in a folder: the fingerprint Integration shows.' No trust on first use is checked through item 9's first-run refusal.",
+    "zsh completion for pkey sdk add lists the six SDKs with one-line descriptions from the same table.",
+    "Layout matches UK-14's terminal kit: 80 columns, bold group headings, two columns of terms and descriptions, dim footer; every line fits in 80 columns. Terminal titles are what zsh shows (zsh — djdl — 80×64, 68×32, 56×10; zsh — ~/Downloads — 80×12), and the state names are bold figcaptions: Completion, First run without --expect, Outside a repository. From 1280 the overview sits beside everything else: the 68-column help, then completion and the first run two up where the column has about 900px (wide, and tablet under the two helps) and stacked at desktop, then the outside run across its column.",
+    "At 44 columns (phone), every string is the same as at 80; each term takes its own line, with its description indented and wrapped under it, and the header prints 'pkey 0.9.0' first with the description under it. Nothing is cut off or reworded.",
+    "A first run without --expect fails with '✗ No pin in macos/ yet. Run it again with --expect, copied from Integration:' and writes nothing."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: delivery commands use the channel noun and 'storefront' is kept for selling, the --expect first-run rule is spelled out and shown, and the 44-column help wraps the same strings.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The 'Channels and storefronts' group uses 'storefront' for delivery commands (PRs, itch push, snap upload), and calls Snap's lanes 'channels', against the glossary (integration.md §2).",
+        "resolution": "The group is now 'Channels'. The delivery commands are 'channel add <channel>', 'channel sync', 'channel pr <channel>' (winget, Homebrew, Scoop, Flathub), 'channel push itch' and 'channel upload snap' ('Upload a snap to the release tracks it declares'). The intro no longer lists storefronts, and the registry card says pkey storefront is gone and 'storefront' is kept for selling. Note for the lead: this renames DC-08's 'pkey storefronts sync' to 'pkey channel sync' under the glossary (storefront as a delivery place → Channel), so DC-08's scope should follow."
+      },
+      {
+        "severity": "major",
+        "issue": "The help never says what a first run without --expect does: Usage shows --expect as optional, while the option says pkey never trusts a key on first use.",
+        "resolution": "--expect now reads 'Required the first time in a folder: the signing key fingerprint Integration shows, as <kid>@sha256:<hex>. pkey pins a key only when it matches; it never trusts a key on first use. Later runs trust keys signed by the pinned key.' Added a terminal for a first run without --expect: '✗ No pin in macos/ yet. Run it again with --expect, copied from Integration:', the command with <fingerprint>, and 'Nothing was written.' Both examples now carry --expect, since the Kotlin app's first run in windows/ needs it too. 'What it does' says the staged key is pinned because the pinned key signed it."
+      },
+      {
+        "severity": "minor",
+        "issue": "The 44-column variants rewrite the copy: a different header, Here without 'from .pkey/product', sdk add help without What it does, the Kotlin example or See also, no docs link, and a shorter fingerprint.",
+        "resolution": "Both narrow runs are regenerated from the same strings as the 80-column ones and only wrapped. Each term gets its own line, with its description indented under it. The header, Here, every sdk add section, both examples, See also, the docs link and the fingerprint 3f9a0c…e41b are identical."
+      },
+      {
+        "severity": "minor",
+        "issue": "The outside-a-repository Here line isn't shown, 'Delete main builds below the newest stable' is unclear, and 'Add an SDK and write polaris-key.json, pinned' ends on a dangling word.",
+        "resolution": "Added a terminal for help run outside a repository: 'Here  no product: no .pkey/product in this folder or above; pass --product · key.plrs.im'. The prune line is now 'Remove dev builds a stable release replaced', the plan's prune rule (prereleases at or below a shipped stable; 'main' is the system product's track, so it isn't named). The suggested 'Remove old builds from package feeds, keeping the newest stable' was declined because it implies older stable releases are removed. The sdk add line is 'Add an SDK, write polaris-key.json and pin keys', which is the suggested wording without 'the', so it fits 80 columns."
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the terminal titles ran onto the traffic lights (a 4px overlap), and some titles were sizes while others were captions; real terminal titles never describe the state.",
+        "resolution": "Every title is what zsh shows (zsh — djdl — 80×64, 68×32, 56×10; zsh — ~/Downloads — 80×12); the state names are bold figcaptions under the windows: Completion, First run without --expect, Outside a repository. The kit's .term-bar is now a 52 · title · 52 grid, so a title never reaches the dots.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The 'Words and removals' card was a reviewer note repeating compare items 3–4 and made its column taller.",
+        "resolution": "Deleted; compare items 3 and 4 still check the words and the removals.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Tablet stretched three short terminals to 928px, each about 60% empty, and wide's third column ended about 840px above the help.",
+        "resolution": "Wide uses the desktop's two columns: the 80-column overview | everything else. In the second column: the 68-column help, then completion and the first run two up where the column is about 900px or wider (wide; tablet below the two helps), stacked at desktop, then the outside run across its column with its Here line on one line at 80 columns (a desktop twin wraps it to the narrower column). Rendered: columns end within about 100px at wide and 160px at desktop.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "--expect took seven lines and four sentences; the footer repeated the help row; the version wrapped onto its own line at 44 columns; the lede explained the mechanism.",
+        "resolution": "--expect: 'Required the first time in a folder: the fingerprint Integration shows.' --product: 'Default: from .pkey/product'. Footer: 'Every command and flag: key.plrs.im/docs/reference/cli'. What it does step 3: 'Pins djdl-2026, the staged djdl-2026b and the release key djdl-rk-2026'. At 44 columns 'pkey 0.9.0' is the first line, the description under it. The lede is dropped. The outside run's Here line reads 'no .pkey/product here or above' so it fits 80 columns. Compare items 1, 2, 5, 7 and 8 updated.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Captions sit under their terminals, so they read as titles for the next block; the wide columns are unbalanced; the last terminal ends in an ellipsis row.",
+        "resolution": "Every terminal has its caption above the window, 8px over it (.cap-top); columns are top-aligned and end within about 30px; the ellipsis row is the real next lines (Start, init).",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Phone line height and group gap.",
+        "resolution": "Line height is 18px on phone (kit default). The 12px group gap was not applied: a blank line in a pre cannot be shortened without restructuring every listing.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1"
+        ]
+      },
+      {
+        "issue": "Add a Show all commands fold on phone, and a 44-col help listing, and a sticky Jump to control.",
+        "resolution": "declined: a fold hides output the page exists to show; the phone listing already re-wraps at 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "d1"
+        ]
+      }
+    ]
+  }
+}

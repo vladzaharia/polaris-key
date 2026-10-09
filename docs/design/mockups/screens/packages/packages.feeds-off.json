@@ -1,0 +1,55 @@
+{
+  "id": "packages.feeds-off",
+  "title": "Packages, feeds off",
+  "area": "packages",
+  "surface": "console",
+  "order": 5,
+  "packages": [
+    "F-34"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Packages page after package feeds were turned off: one card that says declared packages aren't served, who turned them off and when, that nothing was deleted, and Turn on, with the three feeds listed as refusing installs or publishes.",
+  "compare": [
+    "Same frame as packages.feeds with no count on Packages; the header keeps Service tokens.",
+    "One card with the kit's empty layout: a muted pause icon, 'Package feeds are off for DJDL', what that means ('Declared packages aren't served: installs and CI publishes on its 3 feeds are refused'), who and when (Ana Lima, Oct 7 at 14:05), 'Nothing was deleted', and the primary 'Turn on package feeds'.",
+    "Under it, each feed as one dimmed row (ecosystem, namespace, package count or 'no package yet', 'still on PyPI.org' for djdl-crates) with a muted status: 'Refusing installs' or 'Refusing publishes'. No package tables, no cleanup callout, no ⋯ menus while off.",
+    "Phone: the card fills the width; each feed row keeps its status at the right."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "4 UX designers, triaged by a lead designer",
+    "date": "2026-10-08",
+    "verdict": "Spacing and copy trimmed per the multi-review triage; see findings.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "The page changes width when the switch flips; about 700px sits empty; per-row status words repeat the title.",
+        "resolution": "Uses the page container (.page.contained, 1280); one line under the title 'Installs and publishes are refused'; rows show only the exception (Still on PyPI.org); body 'Turned off by Ana Lima on Oct 7, 14:05. Nothing was deleted.'",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Add a note under the button about what turning feeds on does, plus a failure-toast mock (UX3).",
+        "resolution": "declined: new copy and a new state; the page already says 'Nothing was deleted'.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "[Wide] Single-column screens hug the left of a 1920 canvas; the rail leaves 600-750px empty.",
+        "resolution": "Kit: .page.contained (1280, centred), .page.form.centered, and .sticky-rail (360px rail, sticky at top 88px from 1600px); card pairs use .top (align-items:start).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      }
+    ]
+  }
+}

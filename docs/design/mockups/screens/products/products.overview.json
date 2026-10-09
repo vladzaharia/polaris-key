@@ -1,0 +1,660 @@
+{
+  "id": "products.overview",
+  "title": "Product overview",
+  "area": "products",
+  "surface": "console",
+  "order": 3,
+  "packages": [
+    "ST-41",
+    "ST-40",
+    "ST-44"
+  ],
+  "uxRows": [
+    "UX-21",
+    "UX-61",
+    "UX-63"
+  ],
+  "summary": "DJDL's Overview while integration is under way, built from exploration B (status board) with exploration C's setup stepper (owner, 2026-10-08): one hero with the page's one next step ('Set secret', the only primary) beside the Integration gauge (macOS and Windows as equal meters), then a board of feature cards, each its key number; from three columns the last column carries integration down the page, the gauge and under it the Integration steps (one step per feature on a rail with platform badges), and Recent activity runs under the board. Each fact is said once: Windows in the gauge, the drop-in path on the one step whose next work is in the app, the problem in the hero.",
+  "compare": [
+    "One grid for the whole page body (.ov): 4 columns from 1488px of grid width, 3 from 976, 2 from 680, else 1. From 3 columns the board takes every column but the last; the last column holds integration: the hero's Integration pane and, under it, the Integration steps, which span the board's row and the row under it, where Recent activity takes the board's columns. With 2 columns the board takes both, then Recent activity (column 1) beside the steps (column 2, under the hero's pane); in one column: hero, board, steps, activity. Columns follow the grid's width, not the viewport: 4 columns start at a 1792px screen (360px columns), 3 at 1080 (315px), 2 at 728, and the count only rises with the screen: the 56px rail at 1024–1279 never takes a column back.",
+    "Hero, left pane: DJDL's logo, name, slug and identity line ('A DJ app for macOS and Windows'), with ⋯ More ending that row; then the next step: the Warning pill and 'Managed config' subject, the statement 'Required secret identity.acoustidKey has no value in the Default profile.' at 18/24 (text-wrap: pretty, so no word sits alone on its last line: at 1280 it breaks before 'Default profile.'), and 'Set secret →' as the page's one primary (40px; full width on phone). Up to 3 columns the next step sits 32px under the identity. At 4 columns the pane takes the page's column lines: the identity in column 1 and the next step in columns 2–3, each 24px inside its column line and both on the pane's top line, so the content spans the pane (1920: the hero is 246px, its height set by the Integration pane). While the next step is an issue the pane has a 3px warning edge down its full left side (the pane's own ::before, clipped by the hero's corners) and a light warning wash.",
+    "The next step is computed: the first attention item, else the first open console step in canonical order (after the secret: Ship builds › Add Sparkle signing key, which then becomes the hero's statement and primary while its card keeps only the current edge), else the first enabled feature's main action. No Needs attention card and no 'Continue integration'. With two or more attention items the hero states the first and the pill row ends in '+1 more →' (Home's attention list, filtered to DJDL).",
+    "Hero, right pane (sunken): a head row with 'Integration →' at 16/24 on the left (the title links to the Integration page; its arrow is muted and takes the accent on hover) and a quiet 'Hide' on the right (eye-off, muted, aria-label 'Hide Integration'), placed as a section head places its link; Hide is offered because macOS has a Verified feature, never automatic. Then macOS and Windows as two equal meters, each its name, its count or state on the right and a 4px bar: macOS '2 of 5 verified'; Windows 'Not seen yet' (dashed ring) over an empty bar, then 'Add the SDK →' (Integration's SDK picker, Windows selected). Windows is said only here. Pinned to the pane's foot, alone: the code glyph and 'Last seen 4 min ago · Swift SDK 2.1.0 on macOS arm64' (the SDK and the platform never break inside): one line at tablet and 1920, and at 1080–1800 and on phone it breaks only before 'macOS arm64'.",
+    "Features, Integration steps and Recent activity use the same section head (18/24 title; a link on the right where there is one: 'Manage features →', 'Open Activity →'; the steps have none, since the pane's 'Integration →' is the page's one link there). From 3 columns Features and Integration steps share one line and their cards start on one line.",
+    "Each feature card, in canonical order: its service tile (data-service on the tile only, so links keep the console accent), the name at 16/24, the key number on the right at 24/32 with its unit, and one foot line under the name: Licensing '240 licenses', 'Standard · 3 waiting'; Managed config 'v4 catalog', '12 settings · 3 secrets'; Ship builds '4.2.0 stable', '4.3.0-beta.2 on beta · Oct 6'; Sign-in '312 accounts', 'Pocket ID · members, admins'; Cloud Sync no number, 'Not syncing yet'. The name's link covers the card (hover fill, and one focus ring there: the link's own outline is off). No integration strip: integration is in the steps.",
+    "Integration steps (concept C's stepper, kit .guide.flat): one row per enabled feature in canonical order (Commerce is off, so no row), joined by a rail, each the step's mark, its name, at most one line of state or next action, and one 28px tile per platform. Licensing and Managed config: a green tick, a green rail and the name in regular weight, no sub-line. Ship builds is the first open step (.current): the accent ring, the row tinted across the card, and its console step as one verb link, 'Add Sparkle signing key'. Sign-in waits on the app (.waiting): the neutral clock, 'Waiting for the first sign-in' (sign-in never breaks at its hyphen), then 'Drop-in kit →' and the quieter 'Your own UI ↗'. Cloud Sync: an open ring and 'Set storage per account'. No CLI command or kit code on Overview: each link opens that feature on Integration.",
+    "The drop-in path (owner direction): a step's 'Drop-in kit' (that feature on Integration, generated kit code first) and 'Your own UI ↗' (aria-labels 'Sign-in drop-in kit', 'Integrate Sign-in directly with your own UI: Swift SDK docs') sit on its row while its next step is in the app (console done, platform not yet verified). Today that is Sign-in only, so the pair appears once on the page.",
+    "Platform badges: macOS and Windows as 28px tiles, the platform's glyph with its Verified state as a corner mark: green tile and tick (Verified; the time is in the label, 'macOS: Verified Oct 7, 10:42'), clock (Waiting), open ring (After the console step), dashed outline with no mark (Not seen yet). Tiles, not pills (a healthy state never takes pill shape); each has role=img and the full state as its name and title. The mark and the badges centre on the row's first 56px, so a row's name stays level with its mark when it has a second line (Sign-in's row is 80px).",
+    "State is drawn by shape as well as words, and the page has one warning, the hero's: Managed config keeps only the warning dot on its tile, 8px with a 2px ring in the card's surface, and no warning border (aria-label 'Managed config: 1 needs attention'; the problem itself is said once, in the hero), while its step is done (verified on macOS). Where integration continues is the steps' current row, not a card. Commerce is off: a dashed cell in its canonical sixth place, only as tall as its line: muted tile, 'Commerce' at regular weight, 'Turn on →' on the right and 'Off · Sell tiers and add-ons on storefronts' (aria-label 'Commerce: off. Turn on').",
+    "In a board row the cards share one height (number and foot); Commerce's cell is shorter by design. In one column each card is only as tall as its own lines.",
+    "When the operator hides Integration, the hero's right pane and the Integration steps go together (Hide is in the pane, once): the hero's left pane spans the grid (identity and next step; at 4 columns the next step takes columns 2–4) and Recent activity takes the last column beside the board again. Hiding is the operator's recorded choice and is reversible from ⋯ More.",
+    "Desktop 1440: the hero (266px, the identity over the next step), then the board (2 × 3, cards 368px) beside the Integration steps (368px), then Recent activity under the board with one-line rows; the page is 1,158px tall. Wide 1920: the hero is 246px: the identity in column 1, the next step in columns 2–3 on the board's column lines, Integration in column 4 with the steps under it; the board is 3 × 2, Recent activity under it; the content ends at about 970px, inside one 1080 screen. 2560: the page caps at 1760 and centres.",
+    "Tablet 1024 (56px rail, 920px of grid): two columns; the hero's panes 1:1, the board 2 × 3, then Recent activity (column 1, rows stacked with the time 4px under the text) beside the Integration steps (column 2, under the hero's pane). Two columns hold from 680 to 975px of grid (728–1079px screens), and the hero stacks under 800px of grid. Under 680, and on phone 390: one column; the hero stacks (identity, next step with the full-width 'Set secret', then the Integration pane under a hairline), one card per row with the number on the name's line, then the steps, then Recent activity with its rows stacked.",
+    "Recent activity names the product's events without naming the product: 'Mara Fennick activated a MacBook Pro (macOS 15.1, Standard)', 'CI published 4.2.0 to stable from example-org/djdl' (the mono path never breaks), 'Ada Lindqvist published catalog v4: 2 settings changed, 1 secret added', 'Ada Lindqvist turned on Cloud Sync', 'Tomás Okafor joined as editor'.",
+    "No signing key, JWKS URL, SDK chooser, CLI command or kit code on Overview: keys live on Keys & secrets, the SDK and every step's code on Integration (each step's link opens it there). The DJDL sidebar is unchanged (Devices 412, feature groups as muted labels; the 56px rail at tablet).",
+    "Checks: no sideways scroll from 320 to 2560px; axe (WCAG 2.2 AA and best practice) reports 0 violations at 390, 1024, 1440 and 1920 in both themes; one visible h1; no tap target under 24px at 360 or 390; tab order follows the reading order (More, Set secret, Integration, Hide, Add the SDK, the board, the steps' links, then Recent activity); the screen writes no margin, padding or gap."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "redesign",
+    "reviewer": "UX designer (final review of the redesigned Overview: the eight renders, a 320–2560px sweep, axe in both themes and the keyboard), then the lead product designer's fixes, re-rendered and re-measured",
+    "date": "2026-10-08",
+    "verdict": "Fix (good, not great): a real focal point, one primary, a tidy shared grid and a clean phone, held back by a half-empty wide hero, a 3–2–3 column jump at 1000–1080px, a warning border on a Verified card and an orphaned Hide. All ten fixes applied: the wide hero sits on the page's columns (246px at 1920, from 266), columns only rise with the screen, the hero is the one warning, and the Integration link and Hide share the pane's head.",
+    "findings": [
+      {
+        "severity": "major",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "Use of space on wide screens: at 4 columns (from 1800px) the hero's left pane was 1,223–1,283px wide but its content ended at 651px (51–53% used), More sat 510–570px from the slug, and the 266px hero was half empty.",
+        "resolution": "At 4 columns the left pane takes the page's column lines: the identity (logo, name, slug, identity line, More) in column 1, the next step (pill row, statement, Set secret) in columns 2–3, each 24px inside its column line. The hero is 246px at 1920 and 262px at 1792 (where the sighting wraps), not the estimated 180: the Integration pane's head, two meters, Add the SDK and sighting are 196px of content and set the height, so the left pane's 120px sits on the pane titles' top line with room under it. Three columns keep the stacked hero, which fills 85–89%."
+      },
+      {
+        "severity": "major",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "Layout jump between 1000 and 1080px: 3 columns at 1000–1023 (no rail), 2 at 1024–1059 (the 56px rail), 3 again from 1060; at 1000 the 307px columns crammed 'Managed config' against 'v4 catalog', wrapped Commerce's foot, dropped Hide onto its own line and wrapped activity rows to 3 lines.",
+        "resolution": ".ov-grid's 3-column threshold is 976px of grid (was 940), the grid width at 1280: 2 columns up to a 1079px screen, 3 from 1080, so the count never drops as the screen grows and no column is under 315px. At 1000 the board is 2 × 3 with 468px cards, Commerce's foot is one line and Recent activity runs full width with one-line rows."
+      },
+      {
+        "severity": "major",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "The Managed config card contradicted itself: a warning border and dot over its only state line, a green 'Verified', and with the hero's warning edge and Ship builds' accent frame, three framed areas pulled the eye at once.",
+        "resolution": "The card's warning border is gone (.ov-feature.issue removed). The tile keeps the dot, now 8px with a 2px ring in the card's surface, and the link keeps its aria-label 'Managed config: 1 needs attention'. The hero is the page's one warning; Ship builds is the board's one framed card."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "At 1280 (a 314px Integration pane) and narrower, the foot wrapped and 'Hide' sat alone under the 'Last seen' line, indented by its ghost padding, and beside the sighting it read as hiding that line.",
+        "resolution": "Hide moved into the pane's head row: the title on the left, a quiet eye-off 'Hide' (a muted link button, 24px target) on the right, as section heads place their link. The foot holds only the sighting: one line at tablet and 1920, and elsewhere it breaks only before 'macOS arm64'."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "Integration was the only block with no way to its page: Features has 'Manage features →' and Recent activity 'Open Activity →', and the reason for dropping 'Open Integration' (the primary went there) no longer held.",
+        "resolution": "The pane's title is a link to the Integration page: 'Integration' with a muted arrow that takes the accent on hover, beside Hide. Tab order: More, Set secret, Integration, Hide, Add the SDK."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "Ship builds' 3px accent edge stopped at the strip: the strip's background painted over the card's inset shadow, so the edge ran half the card while the hero's ran full height.",
+        "resolution": "The edge is the card's own ::before (full size, above the strip, a 3px inset accent shadow following the 13px corners, no pointer events), so it runs the full height over the tint. The hero's warning edge is a ::before too: a 3px bar down the left pane, clipped by the hero's corners."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "A focused feature card showed two rings: the fact area's 2px outline and the name link's own.",
+        "resolution": "Added .ov-feature-main > h3 > a:focus-visible { outline: none }: the fact area's ring is the only one."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "A repeated fact: 'macOS ·' started the strip lines on Licensing, Managed config and Sign-in while macOS was the only platform seen and the gauge already said so; the page showed 'macOS' six times.",
+        "resolution": "While only one platform has been seen a strip line is its state and time ('Verified', 'Oct 7, 10:42'), and Sign-in's waiting line stands alone; platform names come back once a second platform is seen (items 7 and 8). macOS now appears four times, each a different fact: the identity line, the gauge, the sighting and an activity row."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "An orphan word: at 1280 the hero statement wrapped 'profile.' alone onto its second line.",
+        "resolution": ".hero-statement takes text-wrap: pretty (in the kit, so every hero statement has it): at 1280 the statement breaks before 'Default profile.'."
+      },
+      {
+        "severity": "minor",
+        "decision": "accepted",
+        "raisedBy": [
+          "ux-final"
+        ],
+        "issue": "A wrong number in the spec: item 13 gave the phone page as 1,967px; it measures 1,987px at 390 and 360.",
+        "resolution": "Item 13 says 1,987px at 390 and 360. Items 1, 2, 4, 6, 7, 8, 9, 11, 12, 13 and 16 restate the grid (4 columns from 1488, 3 from 976, 2 from 680: 1792, 1080 and 728px screens), the wide hero (246px), the pane head, the strips and the checks."
+      }
+    ],
+    "previousRounds": [
+      {
+        "round": "final",
+        "reviewer": "Lead product designer, building the final screen from exploration B and the three judges' grafts (judges 1 and 3 picked B, judge 2 picked C), from the eight renders and a 360–2560px sweep",
+        "date": "2026-10-08",
+        "verdict": "Final: exploration B's hero and board, rebuilt on one shared column grid. The hero holds the one next step and the Integration gauge; each feature card is its number and one strip of what integration still needs, with no repeated labels; Recent activity sits in the last column from 940px of grid. The page is 961px at 1440 (B: 1,389) and 1,967px on phone (B: 2,306), with no width cliff.",
+        "findings": [
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "owner"
+            ],
+            "issue": "The previous Overview had no focal point: Needs attention, a dense integration matrix with Windows floating beside it, and cramped feature tiles all carried the same weight.",
+            "resolution": "Exploration B's structure: a hero with the one computed next step as the page's only primary, beside the Integration gauge, then a board of feature cards."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-1",
+              "judge-2",
+              "judge-3"
+            ],
+            "issue": "B's wells repeated 'Console / App / macOS' labels (15–18 times) and 'Drop-in kit · Your own UI' five times, and spent three rows to say a feature was done.",
+            "resolution": "The well is now one strip with no labels: a done feature is one line ('Verified', 'macOS · Oct 7, 10:42'), an open feature shows its one next action. The stateless App row is gone; the drop-in pair appears where a feature's next step is in the app (Sign-in), once on the page."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-3"
+            ],
+            "issue": "A cliff at 1600px: B's 400px aside appeared and the board cards dropped from 420 to 277px, so the wells wrapped until about 1800px.",
+            "resolution": "Columns come from a container query on the page body (.ov): 4 from 1488px of grid width, 3 from 940, 2 from 680. The aside is always one grid column, so a column never drops under about 300px at any width."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-1"
+            ],
+            "issue": "At 1440 Recent activity spanned the full width with times about 1,000px from their text, and pushed the page below the fold.",
+            "resolution": "From 3 columns Recent activity is the last column beside the board, with rows stacked (time 4px under the text); the whole desktop page is 961px."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-1",
+              "judge-2",
+              "judge-3"
+            ],
+            "issue": "Commerce, which is off, was a full card with about 100px of dead space, as heavy as a live feature.",
+            "resolution": "A dashed cell in its canonical place, only as tall as its line: 'Commerce', 'Turn on →', 'Off · Sell tiers and add-ons on storefronts'."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-1",
+              "judge-3"
+            ],
+            "issue": "The hero's Integration pane had 70–80px of void under Windows.",
+            "resolution": "The pane's foot is pinned to its bottom: 'Last seen 4 min ago · Swift SDK 2.1.0 on macOS arm64' and Hide (from A and the previous Overview), so the pane matches the left pane's height."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-1",
+              "judge-3"
+            ],
+            "issue": "Windows had no bar, so '0 of 5' didn't read as a gauge (judge 2 preferred no empty bar).",
+            "resolution": "macOS and Windows are equal meters; Windows' bar is empty under 'Not seen yet'. Two of three judges asked for it, and the pair reads as one gauge."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-1",
+              "judge-3"
+            ],
+            "issue": "Nothing on the board showed where integration continues; the open step was a small link in the third card.",
+            "resolution": "A's open-step treatment: Ship builds, the first open console step, has an accent border, a 3px accent edge and a tinted strip with an outline 'Add Sparkle signing key'; the hero keeps the only filled button."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-2"
+            ],
+            "issue": "The title link stretched over the whole card, including the well and its links, so a click on well whitespace went to the feature home.",
+            "resolution": "The link covers the fact area only; the strip's links and button are their own targets."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-2",
+              "judge-3"
+            ],
+            "issue": "The hero's warning wash was barely visible and vanished in dark.",
+            "resolution": "A 3px warning edge down the hero's left pane (A's attention edge) with a light wash, in both themes."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-1",
+              "judge-3"
+            ],
+            "issue": "'Waiting for the first sign-in' broke at the hyphen; Features was a bare heading while Recent activity was a card head.",
+            "resolution": "'sign-in' never breaks. Both blocks use the section head (title, link on the right), so at desktop and wide the heads share one line."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-2",
+              "judge-3"
+            ],
+            "issue": "With two or more attention items only the first was stated and nothing reached the rest.",
+            "resolution": "Specified: the hero states the first and the pill row ends in '+1 more →' to Home's attention list, filtered to DJDL."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "judge-1",
+              "judge-3"
+            ],
+            "issue": "Cards were tall: a stat block over a three-row well.",
+            "resolution": "A's rail rows inside B's cards: name and foot on the left, the number on the right at 24/32; a card is about 135px."
+          },
+          {
+            "severity": "major",
+            "decision": "declined",
+            "raisedBy": [
+              "judge-1",
+              "judge-3"
+            ],
+            "issue": "Show the next integration step in the hero pane: 'Ship builds › Add Sparkle signing key', its command with Copy, and Drop-in kit / Your own UI.",
+            "resolution": "Declined: 'pkey release keys init --sparkle' isn't a CLI command (packages/cli/src/help.ts has only 'pkey release keys generate'), so the step is a console action; it is said once, on its card, marked current. Once the secret is set the hero's computed next step is this step, so a copy in the pane would say it twice. The pane keeps the gauge."
+          },
+          {
+            "severity": "major",
+            "decision": "declined",
+            "raisedBy": [
+              "judge-2"
+            ],
+            "issue": "Adopt C's stepper with the open step's command and kit code beside it.",
+            "resolution": "Declined: it copies products.integration's step content onto Overview, the stepper implies an order the features don't have, and its pane clipped code from 360 to 1800px. Its ideas that fit (drop-in said once, '2 of 5 verified', the empty Windows bar, the compact pair) are taken."
+          },
+          {
+            "severity": "minor",
+            "decision": "declined",
+            "raisedBy": [
+              "judge-3"
+            ],
+            "issue": "Move ⋯ More to the hero's outer corner.",
+            "resolution": "Declined: it ends the identity row as on every page head; in the card's corner it would read as the Integration pane's menu."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "self"
+            ],
+            "issue": "First render: the nowrap 'sign-in' became its own grid item and dropped under the clock; the platform meta sat 3px below the state; Cloud Sync's 'Not syncing yet' floated as a value beside an empty foot; at 600px two columns wrapped 'Managed config' and 'Ship builds'; the sighting broke inside 'macOS arm64'.",
+            "resolution": "The state text is one span; strip lines centre their parts; 'Not syncing yet' is Cloud Sync's foot and it has no number; two columns start at 680px of grid; the SDK and the platform never break inside."
+          },
+          {
+            "severity": "minor",
+            "decision": "declined",
+            "raisedBy": [
+              "judge-1",
+              "judge-2"
+            ],
+            "issue": "Housekeeping: products.overview-a.json's compare and designReview are a copy of the previous products.overview.json, and products.integration uses 'pkey release keys init --sparkle'.",
+            "resolution": "Out of this screen: the explorations stay as drawn for the owner's comparison. The Integration screen's command needs fixing on that screen."
+          }
+        ]
+      },
+      {
+        "round": "multi-review",
+        "reviewer": "Lead product designer, deciding on five UX reviews (UX1 spacing, UX2 content, UX3 flow, UX4 accessibility and responsive, UX5 first-time operator)",
+        "date": "2026-10-08",
+        "verdict": "Applied: four sizes (56px rail at tablet, main + Recent activity aside at wide), counts in the platform headers, one merged Windows cell, one verb link per open step, 'After the console step', a Features card with a stat strip, terse copy, and the drop-in path first for each feature. Declined items keep content and states for a later states pass or follow ST-40/41/45 and owner rules.",
+        "findings": [
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "The header line '· 240 licenses · 412 devices' repeated the Licensing tile and the sidebar's Devices count; on phone 'devices' sat alone on line 2.",
+            "resolution": "page-sub is the identity line only: 'A DJ app for macOS and Windows'."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX5"
+            ],
+            "issue": "On phone the bare ⋯ sat before the primary, where the thumb reached it first.",
+            "resolution": "Kit phone header: ⋯ More ends the title row; Continue integration takes the full-width row alone."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX5"
+            ],
+            "issue": "The far-right attention count read as a stray badge; the row opened with a filler 'The'.",
+            "resolution": "Count beside the title (kit). Row: 'Required secret identity.acoustidKey has no value in the Default profile.', the same as Home."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "The Integration head restated the meters and grid, hid its only action in a one-item menu, the foot described the mechanism, and three routes led to Integration.",
+            "resolution": "Head is only 'Integration' at the block step (sentence, plug tile and menu deleted). Foot: muted code glyph, 'Last seen 4 min ago · Swift SDK 2.1.0 on macOS arm64', and a ghost 'Hide' (eye-off) on the right. 'Open Integration' removed; the page primary goes there."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "The Windows meter sat over the macOS column at every size; platform names appeared twice within 60px; equal columns overflowed at 1024.",
+            "resolution": "The 66px meter band is gone. macOS's header holds its name, '2 of 5' and a 4px bar (kit .meter-head, 56px header row); Windows shows its name only. The table has a colgroup instead of equal columns (22/19/23/20/16% with the In your app column below)."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX5"
+            ],
+            "issue": "'Windows not seen' was said 7–8 times and the largest open job had no action.",
+            "resolution": "The Windows column is one top-aligned cell spanning the five rows (td rowspan=5): 'Not seen yet' and, under it, 'Add the SDK' (Integration's SDK picker with Windows selected)."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "Each open step was linked twice per row in two looks; two identical 'Finish the console step' links went to different places (WCAG 2.4.9); 'Finish…' read as a command.",
+            "resolution": "The console cell is the open ring and one verb link on one line ('Add Sparkle signing key', 'Set storage per account'; kit .open-step). The macOS cell is a muted, non-link 'After the console step' (kit .after-step, the old .finish-step renamed). Rows are back to 56px."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "'Swift 2.1.0' appeared three times; 'A test license is optional' changed nothing and wrapped rows to 69px; 'CI verified' clashed with the SDK meaning of Verified.",
+            "resolution": "Verified meta is the time only ('Oct 7, 10:42'). The test-license hint is gone. Ship builds' sub-line reads 'First CI publish Oct 6'."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "On phone 'Done' floated unlabelled under the feature name, 'Windows · Not seen yet' repeated five times, and the card was 1,156px tall.",
+            "resolution": "Phone (kit narrow-card rules): under the head, the macOS meter and one line 'Windows · Not seen yet · Add the SDK' (.show-narrow); the merged Windows cell hides (.hide-narrow). Each feature stacks its name, then 'Console', 'App' and 'macOS' lines with labels in one 80px column. Stacked lines sit 4px apart, 8px under the feature name. Measured 969px: the per-feature 'App' line (the owner's 2026-10-08 drop-in direction) adds about 140px, so the 600px target isn't met; every line the triage named is gone."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "Features, the least urgent block, had the loudest heading and five separate boxes; feet repeated the attention row and the Integration step; tiles went 3 + 2 at tablet; tiles looked static.",
+            "resolution": "Features is a card: 'Features' at the block step with 'Manage features →'; the cells are one .stats.strip (kit), each a stretched link with a hover fill. Copy: 'Standard · 3 waiting'; Managed config '12 settings · 3 secrets' with the warning dot on its glyph and aria-label 'Managed config: 1 needs attention'; Cloud Sync 'Not syncing yet' with no foot. Five cells in one row at 1024; 56px rows on phone."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX5"
+            ],
+            "issue": "Activity rows named the product on its own page; on phone the time gap jumped between 4 and 12px and 'example-org/djdl' broke at its hyphen.",
+            "resolution": "'Mara Fennick activated a MacBook Pro (macOS 15.1, Standard)', 'Tomás Okafor joined as editor'. Narrow list rows (kit): the media spans both lines, the time sits 4px under the text, mono paths don't break."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "At 1920 'Set secret' sat 721px from its sentence, activity times 990–1,220px from their text, and platform columns were 404px wide for 170px of content.",
+            "resolution": "The page is .page.columns: the main column (1184px at 1920) holds Needs attention, Integration and Features; Recent activity is the 400px aside (.aside.span-3) with stacked list rows. Below 1600 the order is unchanged."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "At 1024 'Waiting for the first sign-in' ran into the Windows ring, 'Finish the console step' and 'Managed config' overflowed, the meta wrapped mid-value and rows grew to 69px; the attention sentence was cut.",
+            "resolution": "The 56px rail leaves 920px; with the colgroup, the wrapping Verified states (kit) and the cell cuts every row measures 56–57px and no state crosses its column. The attention sentence shows in full."
+          },
+          {
+            "severity": "minor",
+            "decision": "accepted",
+            "raisedBy": [
+              "UX3",
+              "UX5"
+            ],
+            "issue": "Compare contradicted the kit (an accent dot with a halo for Waiting), required the meter band being removed, and never said where Continue integration lands.",
+            "resolution": "Compare rewritten for items 1, 4, 5, 6, 7, 8, 9 and 11, plus new items: In your app, where Continue integration lands (Integration, scrolled to Ship builds › Sparkle signing key), wide and tablet, and the activity copy."
+          },
+          {
+            "severity": "major",
+            "decision": "accepted",
+            "raisedBy": [
+              "owner"
+            ],
+            "issue": "Owner direction (2026-10-08): the console offers the drop-in path and links to the docs for integrating directly on the library with your own UI; the Overview's Integration card leads each feature with the drop-in UI kit and gives each a clear link to integrate directly.",
+            "resolution": "New 'In your app' column, as on Integration's feature cards: 'Drop-in kit' (to that feature on Integration, where the kit code leads) and a quieter 'Your own UI ↗' to the Swift SDK docs (aria-label 'Integrate <feature> directly with your own UI: Swift SDK docs'), side by side so rows stay 56px; an 'App' line on phone. No code or walkthrough on Overview."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX3",
+              "UX5"
+            ],
+            "issue": "States boards: not started, all verified, attention error, a viewer who can't set secrets, empty activity, loading, Integration hidden with a toast.",
+            "resolution": "Declined: New content and states; queued for a states pass on the new system."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX1",
+              "UX2"
+            ],
+            "issue": "Glyph-only attention pills, or icon-only below 1100px.",
+            "resolution": "Declined: Owner rule: issues are pills. Wrapping removes the truncation."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX2",
+              "UX3"
+            ],
+            "issue": "Move page-level titles out of the cards, or set them to 20/28.",
+            "resolution": "Declined: One 18/24 block step inside the card heads (EXPERIENCE §3)."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX2",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "Move Needs attention into the wide rail.",
+            "resolution": "Declined: It is the page's most urgent block and must read first in the main column; the aside takes Recent activity."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX2",
+              "UX4"
+            ],
+            "issue": "Remove the slug beside the h1.",
+            "resolution": "Declined: It is the identity people copy; ST-45 specifies it."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX5"
+            ],
+            "issue": "Rename the Verified vocabulary ('No calls yet', 'Console setup', 'macOS app') and add a legend tooltip.",
+            "resolution": "Declined: ST-40/41 and glossary terms shared with Integration; a legend adds text. Only 'After the console step' was taken."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX2",
+              "UX1",
+              "UX4"
+            ],
+            "issue": "Draw the platform cell under an open console step as an en dash, 'Console step first', or the old words without the link.",
+            "resolution": "Declined: An en dash says nothing; unlinked 'Finish the console step' reads as a broken link. 'After the console step' reads as a state."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX2",
+              "UX5"
+            ],
+            "issue": "Cut the Sign-in foot to 'Pocket ID'; change Ship builds' foot to 'Beta: 4.3.0-beta.2 · Oct 6'.",
+            "resolution": "Declined: 'members, admins' appears nowhere else on the page, so it is information; Ship builds' foot repeats nothing."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX2"
+            ],
+            "issue": "'activated a MacBook Pro (Standard)', dropping macOS 15.1.",
+            "resolution": "Declined: That drops information; only the repeated product name is cut."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX3",
+              "UX5"
+            ],
+            "issue": "A chevron on each Features tile.",
+            "resolution": "Declined: Five more glyphs; each cell is a link with a hover fill instead."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX1",
+              "UX4"
+            ],
+            "issue": "A six-column :has() rule for five tiles.",
+            "resolution": "Declined: Superseded by the strip and the fill-the-last-row rule."
+          },
+          {
+            "severity": "declined",
+            "decision": "declined",
+            "raisedBy": [
+              "UX1",
+              "UX2",
+              "UX3",
+              "UX4",
+              "UX5"
+            ],
+            "issue": "A 64px rail or other rail breakpoints.",
+            "resolution": "Declined: The built console's AppShell starts a 56px rail at 1024–1279."
+          }
+        ]
+      },
+      {
+        "round": 1,
+        "reviewer": "UX designer (visual critique of rendered screenshots)",
+        "date": "2026-10-07",
+        "verdict": "Fixed: the Verified states now follow one four-state definition shared with Integration, the duplicate Continue is gone, and progress is counted per platform.",
+        "findings": [
+          {
+            "severity": "major",
+            "issue": "Verified states contradicted each other: Ship builds had '1 step left' yet macOS said 'Waiting for the first update check'; Cloud Sync had '1 step left' yet macOS said 'Not seen yet' although the Swift SDK had reached Polaris Key from macOS.",
+            "resolution": "Four states defined once (Verified; Waiting for the first …; Finish the console step; Not seen yet) and written into compare. Ship builds macOS and Cloud Sync macOS now read 'Finish the console step' (muted, open ring, a link to the step). Waiting is used only where the console is done (Sign-in on macOS)."
+          },
+          {
+            "severity": "minor",
+            "issue": "The header's Continue integration and the card's outline Continue went to the same place; '2 of 5 verified' didn't say which platform; '1 step left' had no mark.",
+            "resolution": "The card's Continue is removed (only its More menu stays). The meter is one bar per platform: macOS 2 of 5, Windows 0 of 5. '1 step left:' has an open-ring mark and names its step as a link."
+          },
+          {
+            "severity": "minor",
+            "issue": "'3 waiting for an email' instead of the glossary's waiting licenses; on phone Cloud Sync's tile sat alone in a half-empty last row.",
+            "resolution": "Tile reads 'Standard · 3 waiting licenses'. On phone an odd last tile spans both columns."
+          },
+          {
+            "severity": "minor",
+            "issue": "Cross-screen (from sidebar-contexts): this sidebar had no counts while the Sidebar contexts board showed Devices 412 and Licenses 240.",
+            "resolution": "One rule everywhere: Devices carries the device count (ST-36's pill) and nothing else does. Devices 412 added here."
+          }
+        ]
+      }
+    ]
+  }
+}

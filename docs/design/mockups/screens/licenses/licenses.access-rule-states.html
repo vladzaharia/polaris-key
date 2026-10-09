@@ -1,0 +1,136 @@
+<div class="board cols-2 wide-3 floor" data-service="core">
+  <div class="board-title">
+    <h1>Add a rule states</h1>
+    <p>The other states of the Add a rule dialog in licenses.access-rule.</p>
+  </div>
+
+  <!-- Zero matches: it saves, but the preview says why it matches no one. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-zero">
+      <div class="dialog-head"><h2 id="rs-zero">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="form">
+          <div class="mk-grid-2">
+            <div class="field">
+              <label class="field-label">Group</label>
+              <div class="input mono"><span class="grow">djdl-press-eu</span></div>
+            </div>
+            <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+          </div>
+          <div class="field">
+            <label class="field-label">They get</label>
+            <div class="mk-cluster no-wrap"><div class="segmented" role="radiogroup" aria-label="Gets"><span class="on">A tier</span><span>An add-on</span></div><div class="select"><i class="ic ic-layers accent"></i><span class="grow">Studio</span><i class="ic ic-chevrons-up-down"></i></div></div>
+          </div>
+        </div>
+        <div class="callout warning">
+          <i class="ic ic-triangle-alert"></i>
+          <div class="grow"><div class="callout-title">No one has <code>djdl-press-eu</code> yet</div><div class="callout-text">The rule still saves. Check the name matches Pocket ID’s exactly, including case.</div></div>
+        </div>
+      </div>
+      <div class="dialog-foot std"><button class="btn">Cancel</button><button class="btn primary"><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Matches no one</strong>Add rule stays enabled; on Access the rule shows 0 accounts.</figcaption>
+  </figure>
+
+  <!-- Duplicate: the same group from the same connection already has a rule. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-dup">
+      <div class="dialog-head"><h2 id="rs-dup">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="form">
+          <div class="mk-grid-2">
+            <div class="field invalid">
+              <label class="field-label">Group</label>
+              <div class="input mono focus"><span class="grow">studio-pro</span></div>
+              <span class="error-text"><i class="ic ic-circle-x"></i><span><code>studio-pro</code> from Pocket ID already gives Studio. <a href="#">Edit that rule</a> instead.</span></span>
+            </div>
+            <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+          </div>
+          <div class="field">
+            <label class="field-label">They get</label>
+            <div class="mk-cluster no-wrap"><div class="segmented" role="radiogroup" aria-label="Gets"><span class="on">A tier</span><span>An add-on</span></div><div class="select"><i class="ic ic-layers accent"></i><span class="grow">Standard</span><i class="ic ic-chevrons-up-down"></i></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-foot std"><button class="btn">Cancel</button><button class="btn primary" disabled><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Duplicate</strong>Checked once the group and connection are set; Add rule waits for another group.</figcaption>
+  </figure>
+
+  <!-- Blank group on Add rule. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-empty">
+      <div class="dialog-head"><h2 id="rs-empty">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="form">
+          <div class="mk-grid-2">
+            <div class="field invalid">
+              <label class="field-label">Group</label>
+              <div class="input mono focus"><span class="ph grow">members-plus</span></div>
+              <span class="error-text"><i class="ic ic-circle-x"></i><span>Enter the group name exactly as Pocket ID sends it.</span></span>
+            </div>
+            <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+          </div>
+          <div class="field">
+            <label class="field-label">They get</label>
+            <div class="mk-cluster no-wrap"><div class="segmented" role="radiogroup" aria-label="Gets"><span class="on">A tier</span><span>An add-on</span></div><div class="select"><i class="ic ic-layers accent"></i><span class="grow">Studio</span><i class="ic ic-chevrons-up-down"></i></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-foot std"><button class="btn">Cancel</button><button class="btn primary"><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Blank group</strong>After Add rule: focus moves to the field and nothing is saved.</figcaption>
+  </figure>
+
+  <!-- Preview counting. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-load">
+      <div class="dialog-head"><h2 id="rs-load">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="form">
+          <div class="mk-grid-2">
+            <div class="field">
+              <label class="field-label">Group</label>
+              <div class="input mono"><span class="grow">djdl-press</span></div>
+            </div>
+            <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+          </div>
+        </div>
+        <section class="card sunken" aria-busy="true" aria-label="Who has djdl-press">
+          <div class="card-head"><div class="title"><span class="skeleton" style="width: 220px"></span><span class="sr-only" role="status">Counting accounts with djdl-press</span></div></div>
+          <div class="card-rows">
+            <div class="item-row"><span class="skeleton media"></span><div class="item-text mk-stack-2"><span class="skeleton" style="width: 40%"></span><span class="skeleton" style="width: 55%"></span></div><div class="item-end"><span class="skeleton" style="width: 120px"></span></div></div>
+            <div class="item-row"><span class="skeleton media"></span><div class="item-text mk-stack-2"><span class="skeleton" style="width: 34%"></span><span class="skeleton" style="width: 50%"></span></div><div class="item-end"><span class="skeleton" style="width: 96px"></span></div></div>
+          </div>
+        </section>
+      </div>
+      <div class="dialog-foot std"><button class="btn">Cancel</button><button class="btn primary"><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Preview counting</strong>Announced to screen readers only; Add rule works meanwhile.</figcaption>
+  </figure>
+
+  <!-- Preview failed. -->
+  <figure class="board-item">
+    <div class="dialog lg" role="dialog" aria-labelledby="rs-fail">
+      <div class="dialog-head"><h2 id="rs-fail">Add a rule</h2><button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button></div>
+      <div class="dialog-body">
+        <div class="form">
+          <div class="mk-grid-2">
+            <div class="field">
+              <label class="field-label">Group</label>
+              <div class="input mono"><span class="grow">djdl-press</span></div>
+            </div>
+            <div class="field"><label class="field-label">From</label><div class="select"><i class="ic ic-link"></i><span class="grow">Pocket ID</span><i class="ic ic-chevrons-up-down"></i></div></div>
+          </div>
+        </div>
+        <div class="callout">
+          <i class="ic ic-circle-help"></i>
+          <div class="grow"><div class="callout-title">Couldn’t count who has <code>djdl-press</code></div><div class="callout-text">Polaris Key didn’t answer in time. The rule still saves.</div></div>
+          <button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Retry</button>
+        </div>
+      </div>
+      <div class="dialog-foot std"><button class="btn">Cancel</button><button class="btn primary"><i class="ic ic-plus"></i>Add rule</button></div>
+    </div>
+    <figcaption><strong>Preview failed</strong>A neutral callout with Retry; it never blocks Add rule.</figcaption>
+  </figure>
+</div>

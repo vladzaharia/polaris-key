@@ -1,0 +1,52 @@
+{
+  "id": "licenses.bulk-keys",
+  "title": "Create keys in bulk",
+  "area": "licenses",
+  "surface": "dialog",
+  "packages": [
+    "LX-29",
+    "LX-27",
+    "LX-30",
+    "LX-33"
+  ],
+  "uxRows": [],
+  "summary": "The New license drawer over the dimmed, scroll-locked Licenses list, opened by Create keys in bulk, on its Review step: 200 floating Standard keys in the batch 'Mixer bundle · Oct 2026', each limit with its source, the duration from the tier, CSV delivery, and what happens as numbered steps, with an action-named primary at the foot. What happens after Create is in licenses.bulk-keys-done.",
+  "order": 12,
+  "compare": [
+    "Behind: the reworked Licenses list, scroll-locked under the scrim.",
+    "Drawer: 'New license', the stepper band (Tier, Who, Limits, Delivery done; Review current), then the review card with Change on every row: Tier Standard; Who '200 floating keys: anyone with one can use it' in the batch 'Mixer bundle · Oct 2026'; Limits (Devices 5, Offline days 30, Fingerprint Normal from Standard; Release tracks stable, Versions Any by default); Duration Lifetime (Standard); Delivery Download a CSV (key, license id, batch).",
+    "What happens: Polaris Key makes 200 Standard licenses with no holder, one key each; the keys show once, as a CSV you can download until you close this, and only a hash is kept; a key added to a library moves its license into that account.",
+    "Foot: Back and Create 200 keys (primary).",
+    "Phone: a bottom sheet; the stepper shows marks and the current label; the limits keep two columns."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: the kit's drawer with a band, kv-rows with actions and a compact dl; the page behind is the reworked list; 0 screen spacing.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "30 spacing declarations, a copy of the old list's custom table, and a custom review grid with source pills on every limit.",
+        "resolution": "Kit only: .console.modal-open, .overlay.end.sheet, .drawer.scroll with .drawer-band and .stepper.compact, .kv-rows with .kv-action, .dl.compact with .source, .num-list."
+      },
+      {
+        "severity": "minor",
+        "issue": "The summary title repeated every row (200, floating, Standard); the info callout repeated step 2.",
+        "resolution": "Rows say it once; step 2 carries the download window."
+      },
+      {
+        "severity": "minor",
+        "issue": "Em-dash step separators; labels truncated on phone; repeated 'Standard' source tags.",
+        "resolution": "Stepper is .stepper.compact.lined (mark over label, hairline between marks) with every label visible on phone; a limit's source tag shows only when it differs from the tier (Default stays). The drawer body already scrolls above its pinned foot, so 'What happens' is never covered at rest.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "id": "entitlements.new-major",
+  "title": "Licenses: new major notice and duration states",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-43",
+    "LX-41",
+    "LX-14",
+    "LX-23"
+  ],
+  "uxRows": [],
+  "summary": "DJDL's Licenses list, as a state of licenses.list, the day 5.0.0-beta.1 is published: the new-major notice between the header and the holder control, licenses.list's toolbar and columns, a Duration column that shows every subscription and duration state in its 'term over what follows it' form, attention pills in the cells they qualify, and the Duration facet (Renewing, Past due, Updates ended with counts) drawn open under the page.",
+  "compare": [
+    "The page is licenses.list's frame (LX-41's Duration column is built once): h1 Licenses with no count; Batches, Create keys in bulk and New license (the one primary); the holder control (All 240 · In an account · Waiting · Floating, a radiogroup); the toolbar (search name, email, key or id; facets Tier, Duration, Origin, Batch; Columns and Export); columns License, Holder, Tier, Duration, Devices, Origin and ⋯; the pager '1–10 of 240'.",
+    "The notice is an info callout between the header and the holder control: '5.0.0-beta.1 is DJDL’s first 5.x build' / 'Pro 4’s 64 licenses cover 4.x, so they won’t get 5.x.', with Start a 5.x tier… and Extend Pro 4 to 5.x… (outline) and the kit's corner × (aria-label 'Dismiss for everyone'). Dismiss is L0: toast 'Dismissed for everyone. Both actions stay in Pro 4's menu.' with Undo. It appears on the first build of a new major on any release track and shows here and in Pro 4's record until dismissed.",
+    "Duration cells say the term, then what follows it: 'Past due' (pill) over 'Grace until Oct 14 · yearly'; 'Trialing until Oct 24' over 'Then yearly'; 'Renews Oct 3, 2027' over 'Yearly'; 'Canceled, runs until Nov 3' over 'Then keeps the last version'; 'Updates ended at 4.1.3' over 'Keeps working · expired Sep 12'; a trial tier's 'Trial ends Oct 21' (pill) over 'Then Standard'; '4.x, no end date' over 'Version-scoped'; 'Lifetime'. A trial tier and a trialing subscription never share a label.",
+    "Attention pills sit in the cell they qualify: Past due in Duration, Email not verified in Holder. There is no trailing pill column; active, canceled and expired-but-working rows have none.",
+    "Renewing, Past due and Updates ended are options of the Duration facet, each with its count (63, 1, 6), before the kinds of duration; Past due also shows as a facet chip with its count while any license is past due.",
+    "Origin says how a license was issued (By hand and who, External billing through the admin API, Automatic grant and its rule, Key batch); it is the first column to go below 1440.",
+    "Phone: licenses.list's stacked rows (name and email, then holder, tier and devices on one line, then the duration), the holder control as a facet, the notice's two actions on one row under its text; nothing scrolls sideways. Tablet: the search is 240px so it and the five facets fit one row."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: New license is the only primary, the notice's actions are outline, the list reads in list order with units, and the Extend dialog is drawn.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Two filled primary buttons a few pixels apart: New license in the header and Start a 5.x tier… in the notice; on phone they stack.",
+        "resolution": "New license stays the page's only primary. The notice's actions are outline buttons (Start a 5.x tier…, Extend Pro 4 to 5.x…) plus a ghost Dismiss, here, in Pro 4's record and behind the two dialogs. The rule is recorded in kit/README.md under Callouts: a callout's actions are outline or ghost, never primary."
+      },
+      {
+        "severity": "minor",
+        "issue": "Past due shown twice in one row; Northside lacks 'In an account'; the subtitle's tier order doesn't match the records; phone '7 of 10' has no unit; '1–50' has no paging; the Extend Pro 4 to 5.x… confirmation isn't drawn.",
+        "resolution": "Northside keeps the Past due pill, and its Duration line is plain 'Grace until Oct 14'. Its holder line adds '· In an account'. List order is best first (the licensing-core audit: rank, top = best), so tiers are now listed Pro, Pro trial, Pro 4, Standard here and the tier records say 1st, 2nd and 3rd of 4. Phone lines read '7 of 10 devices'. The foot shows '1–50 of 240' with previous and next buttons. The Extend dialog is a new screen, entitlements.extend-major: it names the 64 licenses and 5.0.0-beta.1, and its button is 'Give 64 licenses 5.x'."
+      },
+      {
+        "severity": "major",
+        "issue": "At desktop and wide the attention pills sat up to 1,450px from the holder they describe, the columns stretched ('Devices' about 600px from the name), and a builder of the licenses list would face two targets for LX-41's Duration column.",
+        "resolution": "Redrawn as a state of licenses.list: its header, holder control, toolbar, columns (License, Holder, Tier, Duration, Devices, Origin) and pager; the notice between the header and the holder control; Duration cells in licenses.list's 'term over what follows it' form; Past due in Duration and Email not verified in Holder, with no trailing pill column; Renewing, Past due and Updates ended as Duration facet options with counts (drawn open under the page), Past due also as a facet chip; notice text 'Pro 4’s 64 licenses cover 4.x, so they won’t get 5.x.' The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #4",
+          "reviewer #3 (by extension)"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone Dismiss sat alone on a third row with its padding offsetting its text; the folded table showed a lone 'Holder' header; at tablet 'Updates ended 6' wrapped alone to a second row.",
+        "resolution": "Dismiss is the kit's corner × (.callout-close) and the two actions share one row on phone; licenses.list's stacked table hides its header on phone; the toolbar search is 240px from 1024 to 1279 (.kit-next), so the facets fit 920px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Dismissing the notice would leave both new-major actions with no way back to them.",
+        "resolution": "Compare: Dismiss is L0 with the toast 'Dismissed for everyone. Both actions stay in Pro 4's menu.' and Undo; Pro 4's ⋯ carries both actions while an uncovered 5.x build exists.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The compare asked for repetition the better render had already dropped, so a builder reviewed against it would add it back.",
+        "resolution": "Compare updated to the render: Versions is set once, in Duration (not in Limits); the Subscription panel has no Status fact (the pill carries it); new-major drops the tier-order subtitle and follows licenses.list's pager and h1; the catalog's 'applied in order' foot lives in the Kinds legend; LX-43's 'free' preset is the Lifetime preset on a tier with no offer, so there are six presets.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Show 'In an account' only when it isn't the default.",
+        "resolution": "declined: After convergence, holder state is licenses.list's Holder column value, filterable by its holder tabs. A blank cell for the default would be ambiguous, and a value in its own column isn't a repeated sentence.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Spend the spare width at 1600px and up on extra 'Last check-in' and 'Issued' columns.",
+        "resolution": "declined: That adds content that exists at only one size. Column choice belongs to licenses.list's Columns control, and this pass keeps content.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "The two banner buttons were equal, the phone header pushed the table 360px down and the 'Other states' band read as a bug in the gallery.",
+        "resolution": "'Start a 5.x tier…' is the filled primary and 'Extend Pro 4…' secondary, with the shorter label; on phone the banner buttons are 50/50 and 44px tall; on phone 'New license' is the only primary, 'Create keys in bulk', 'Batches' and Export are in the overflow menu. The band is a 12px mockup-note caption with no card, and the Duration facet is drawn open anchored to its chip (hung under the toolbar on phone). The banner copy now matches entitlements.duration-version.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "'In an account' on 9 of 10 rows was noise and two status systems sat side by side.",
+        "resolution": "The Holder pill shows only for Waiting, Floating and Email not verified (the normal state is read by screen readers only); Past due, Updates ended and Canceled share one warning pill with the plain next state beneath; the standalone Past-due count chip moved into the Duration facet's own Past due 1.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Drop new-major as a separate mockup, or fold the Past-due count into the facet and remove the chip.",
+        "resolution": "declined: the screen is a distinct state with its own banner and dropping it would remove content; the chip fold is accepted.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "minor",
+        "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
+        "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
+      }
+    ]
+  },
+  "order": 7
+}

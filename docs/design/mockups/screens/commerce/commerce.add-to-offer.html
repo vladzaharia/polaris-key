@@ -1,0 +1,208 @@
+<style>
+  /* commerce.add-to-offer: colours only. A SKU is the kit's .id chip; its glyph takes the SKU's state colour. */
+  [data-screen="commerce.add-to-offer"] .id > .ic.ok {
+    color: var(--pk-success);
+  }
+  [data-screen="commerce.add-to-offer"] .id > .ic.review {
+    color: var(--pk-info);
+  }
+  [data-screen="commerce.add-to-offer"] .cell-title > a {
+    color: inherit;
+  }
+</style>
+
+<div class="console cm2 modal-open" data-service="commerce">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Diceroll">
+    <div class="ctx">
+      <span class="logo sm" data-product="diceroll"></span>
+      <span class="ctx-text"><span class="ctx-name">Diceroll</span><span class="ctx-sub mono">diceroll</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="commerce">
+      <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-tag"></i><span class="nav-text">Offers</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-receipt"></i><span class="nav-text">Purchases</span></a>
+    </div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <div class="page-heading"><h1>Offers</h1><span class="count">5</span></div>
+        <div class="page-actions">
+          <button class="btn outline hide-phone"><i class="ic ic-download"></i>Import from stores</button>
+          <button class="btn primary"><i class="ic ic-plus"></i>New offer</button>
+          <a class="btn link show-phone" href="#"><i class="ic ic-download"></i>Import from stores</a>
+        </div>
+      </header>
+
+      <!-- Import and suggest found a store product with no offer (money taken, nothing added), and
+           3.1.3(b) needs an App Store SKU for an add-on that unlocks on iOS. Two rows: no count chip. -->
+      <section class="card" aria-labelledby="attn-title">
+        <div class="card-head">
+          <div class="title"><h2 id="attn-title">Needs attention</h2></div>
+        </div>
+        <div class="card-rows">
+          <div class="attn-row">
+            <span class="pill danger"><i class="ic ic-circle-x"></i>Error</span>
+            <span class="attn-subject"><i class="ic ic-google-play"></i>Google Play</span>
+            <span class="attn-text">3 players bought <code>holiday_bundle</code> and got nothing.</span>
+            <a class="link" href="#">Add to an offer<i class="ic ic-arrow-right"></i></a>
+          </div>
+          <div class="attn-row">
+            <span class="pill warning"><i class="ic ic-triangle-alert"></i>Warning</span>
+            <span class="attn-subject"><i class="ic ic-app-store"></i>App Store</span>
+            <span class="attn-text">Neon dice pack needs an in-app purchase (App Review 3.1.3(b)).</span>
+            <a class="link" href="#">Create on App Store<i class="ic ic-arrow-right"></i></a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Offer rows × storefront SKU chips: the parity view. Only storefronts that are set up get a
+           column; Microsoft Store isn't, so it has none. Under 1040px each offer is a card row. -->
+      <section class="section" aria-label="All offers">
+        <div class="toolbar">
+          <div class="search-field"><i class="ic ic-search"></i><span>Search offers or SKUs</span></div>
+          <span class="filter"><i class="ic ic-plus"></i>State</span>
+          <span class="filter"><i class="ic ic-plus"></i>Billing</span>
+          <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
+        </div>
+        <div class="table-card">
+          <table class="table fixed stack-md" aria-label="Offers by storefront">
+            <colgroup><col style="width: 22%"><col style="width: 16%"><col style="width: 16%"><col style="width: 16%"><col style="width: 15%"><col style="width: 15%"></colgroup>
+            <thead>
+              <tr>
+                <th>Offer</th>
+                <th title="Every App Store SKU starts with Diceroll’s bundle id, com.example.diceroll."><span class="platform-name"><i class="ic ic-app-store"></i>App Store</span></th>
+                <th><span class="platform-name"><i class="ic ic-google-play"></i>Google Play</span></th>
+                <th><span class="platform-name"><i class="ic ic-steam"></i>Steam</span></th>
+                <th><span class="platform-name"><i class="ic ic-itch"></i>itch.io</span></th>
+                <th>State</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-title"><a href="#">Full game</a></div><div class="cell-sub">Tier Standard · one-time</div></td>
+                <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.full"><i class="ic ic-check ok"></i>.full</span></td>
+                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>full_game</span></td>
+                <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>app · base game</span></td>
+                <td><span class="cell-label">itch.io</span><span class="id"><i class="ic ic-circle-dashed"></i>app</span></td>
+                <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title"><a href="#">Dice skins</a></div><div class="cell-sub">Add-on · one-time</div></td>
+                <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.skins"><i class="ic ic-check ok"></i>.skins</span></td>
+                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>skins</span></td>
+                <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>DLC 2817450</span></td>
+                <td><span class="cell-label">itch.io</span><span class="na" title="Game only: itch.io sells the game, not add-ons">—</span></td>
+                <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title"><a href="#">Neon dice pack</a></div><div class="cell-sub">Add-on · one-time</div></td>
+                <td><span class="cell-label">App Store</span><a class="pill warning sm" href="#"><i class="ic ic-triangle-alert"></i>Create</a></td>
+                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>neon_dice</span></td>
+                <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>DLC 2817460</span></td>
+                <td><span class="cell-label">itch.io</span><span class="na" title="Game only: itch.io sells the game, not add-ons">—</span></td>
+                <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title"><a href="#">Diceroll Plus</a></div><div class="cell-sub">Tier Plus · monthly · 7-day trial</div></td>
+                <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.plus.monthly"><i class="ic ic-check ok"></i>.plus.monthly</span></td>
+                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>plus · monthly</span></td>
+                <td><span class="cell-label">Steam</span><span class="na" title="No subscriptions on Steam">—</span></td>
+                <td><span class="cell-label">itch.io</span><span class="na" title="No subscriptions on itch.io">—</span></td>
+                <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+              </tr>
+              <tr>
+                <td><div class="cell-title"><a href="#">Reroll tokens</a></div><div class="cell-sub">Add-on · 25 per purchase</div></td>
+                <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.rerolls25"><i class="ic ic-hourglass review"></i>.rerolls25</span></td>
+                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>rerolls_25</span></td>
+                <td><span class="cell-label">Steam</span><span class="na" title="No consumables on Steam">—</span></td>
+                <td><span class="cell-label">itch.io</span><span class="na" title="No consumables on itch.io">—</span></td>
+                <td><span class="cell-label">State</span><span class="status muted"><i class="ic ic-pencil"></i>Draft</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-foot">
+            <span class="legend">
+              <span><i class="ic ic-check text-success"></i>On the store</span>
+              <span><i class="ic ic-hourglass text-info"></i>In review</span>
+              <span><i class="ic ic-circle-dashed"></i>Purchases not checked</span>
+            </span>
+            <span class="ml-auto">Microsoft Store isn’t set up · <a class="link" href="#">Set it up<i class="ic ic-arrow-right"></i></a></span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Add to an offer (CM-23): one change maps the SKU, re-verifies the 3 purchases and updates
+       those licenses; the toast then says "3 players now have Holiday bundle". -->
+  <div class="overlay center sheet">
+    <div class="dialog lg" role="dialog" aria-labelledby="dlg-title">
+      <div class="dialog-head">
+        <h2 id="dlg-title">Add <span class="mono">holiday_bundle</span> to an offer</h2>
+        <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
+      </div>
+      <div class="dialog-body">
+        <div class="choices cols-1">
+          <div class="choice on">
+            <div class="choice-title">A new offer from <span class="mono">holiday_bundle</span></div>
+            <div class="choice-body mk-stack-2">
+              <div class="mk-grid-2">
+                <div class="field">
+                  <label class="field-label">Name</label>
+                  <div class="input focus"><span class="grow">Holiday bundle</span></div>
+                </div>
+                <div class="field">
+                  <label class="field-label">Sells the add-on</label>
+                  <div class="select"><span class="grow">Holiday dice set</span><i class="ic ic-chevrons-up-down"></i></div>
+                </div>
+              </div>
+              <span class="hint">One-time, as Google Play sells it. Adds <span class="mono">extras.holidayDice</span>.</span>
+            </div>
+          </div>
+          <div class="choice">
+            <div class="choice-title">An existing offer, as its second Google Play SKU</div>
+            <div class="choice-desc">When it sells the same thing as an offer, such as a seasonal Dice skins listing.</div>
+          </div>
+        </div>
+        <div class="callout">
+          <i class="ic ic-refresh-cw"></i>
+          <div class="grow">
+            <div class="callout-title">In the same change</div>
+            <div class="callout-text">Google Play re-verifies the 3 purchases. Kofi Mensah, Aiko Tanaka and 1 more get Holiday dice set with the usual purchase email.</div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn">Cancel</button>
+        <button class="btn primary">Create offer and update 3 licenses</button>
+      </div>
+    </div>
+  </div>
+</div>

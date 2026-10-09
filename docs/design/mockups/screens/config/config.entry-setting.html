@@ -1,0 +1,315 @@
+<style>
+  /* config.entry-setting: DJDL's catalog editor with the setting quality.floor open in draft v10. */
+  [data-screen="config.entry-setting"] .callout.warning {
+    border-left: 4px solid var(--pk-warning);
+  }
+  [data-screen="config.entry-setting"] .nlink {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-decoration-color: var(--pk-border-strong);
+    text-underline-offset: 3px;
+    white-space: nowrap;
+  }
+  /* Config's gold accent reads as a warning, so links on a config page are drawn in the strong
+     text colour, as commerce's are (the arrow says "link"). */
+  [data-screen="config.entry-setting"] [data-service="config"] :is(.link, .btn.link) {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.entry-setting"] .choice-title > .ic {
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.entry-setting"] .choice.on {
+    border-color: var(--pk-text-strong);
+    background: var(--pk-surface-raised);
+  }
+  [data-screen="config.entry-setting"] .choice.on .choice-title > .ic {
+    color: var(--pk-text-strong);
+  }
+  [data-screen="config.entry-setting"] .list-nav-item > .dot.changed {
+    width: 7px;
+    height: 7px;
+    background: var(--pk-warning);
+  }
+  [data-screen="config.entry-setting"] .list-nav-item > .attn {
+    width: 14px;
+    height: 14px;
+    color: var(--pk-warning);
+  }
+  [data-screen="config.entry-setting"] .card-head h2.mono {
+    font-family: var(--pk-font-mono);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+  [data-screen="config.entry-setting"] .textarea.two {
+    min-height: 64px;
+  }
+  [data-screen="config.entry-setting"] .field-label > .btn.icon.xs {
+    width: 24px;
+    min-width: 24px;
+    height: 24px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.entry-setting"] .chip {
+    font-family: var(--pk-font-mono);
+    font-size: 12px;
+  }
+  [data-screen="config.entry-setting"] .chip > .ic {
+    width: 12px;
+    height: 12px;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.entry-setting"] .chip.new {
+    border-color: var(--pk-warning-border);
+    background: var(--pk-warning-subtle);
+  }
+  [data-screen="config.entry-setting"] .chip.add {
+    border-style: dashed;
+    font-family: var(--pk-font-sans);
+    color: var(--pk-text-muted);
+  }
+  [data-screen="config.entry-setting"] .chip.removed {
+    border-style: dashed;
+    color: var(--pk-text-subtle);
+  }
+  [data-screen="config.entry-setting"] .chip.removed > .v {
+    text-decoration: line-through;
+  }
+  [data-screen="config.entry-setting"] .chip.removed > a.chip-note {
+    color: var(--pk-text-strong);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  [data-screen="config.entry-setting"] .select.changed-field {
+    border-color: var(--pk-warning);
+  }
+  [data-screen="config.entry-setting"] .select.changed-field + .hint {
+    color: var(--pk-warning);
+  }
+  [data-screen="config.entry-setting"] .callout.code-only {
+    border-style: dashed;
+    border-color: var(--pk-border-strong);
+    background: transparent;
+  }
+  [data-screen="config.entry-setting"] .card.nokey {
+    border-style: dashed;
+    border-color: var(--pk-border-strong);
+  }
+  [data-screen="config.entry-setting"] .card-row > .ic {
+    color: var(--pk-text-subtle);
+  }
+</style>
+
+<div class="console kit-cfg" data-service="config">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group closed" data-service="license"><button class="nav-label" aria-expanded="false">Licensing<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group" data-service="config">
+      <button class="nav-label" aria-expanded="true">Managed config<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item active" href="#"><i class="ic ic-list-tree"></i><span class="nav-text">Catalog</span><span class="count">23</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Profiles</span><span class="count">2</span></a>
+    </div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs"><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a><i class="ic ic-chevron-right"></i>Edit</nav>
+        <div class="page-heading"><h1>Edit catalog</h1><span class="pill"><i class="dot"></i>Draft v10</span></div>
+        <p class="page-sub"><span>v9 from <code>.pkey/schema</code> · Oct 6. Resync replaces unpublished edits.</span></p>
+        <div class="page-actions row-phone">
+          <div class="segmented sm" aria-label="Editor mode"><span class="on">Form</span><span>JSON</span></div>
+          <button class="btn ghost hide-phone">Discard draft</button>
+          <button class="btn primary">Review 1 change<i class="ic ic-arrow-right"></i></button>
+          <button class="btn ghost icon show-phone" aria-label="More: edit as form or JSON"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+
+      <div class="mk-editor cols-3">
+        <!-- Every entry, grouped by category. Entitlements are Licensing's now, so none are listed. -->
+        <nav class="card list-nav mk-editor-list" aria-label="Catalog entries">
+          <div class="search-field"><i class="ic ic-search"></i><span>Search entries</span></div>
+          <p class="list-nav-label">Quality<span class="end">4</span></p>
+          <a class="list-nav-item mono active" href="#" aria-current="page"><i class="ic ic-sliders-horizontal"></i><span>quality.floor</span><i class="dot changed" title="Changed in this draft"></i></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.losslessOnly</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.bestQuality</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>quality.upgrade.enabled</span></a>
+          <p class="list-nav-label">Run<span class="end">5</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.concurrency</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.searchCount</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.toleranceSec</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.searchTimeoutSec</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>run.cooloffHours</span></a>
+          <p class="list-nav-label">Interface and output<span class="end">2</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>ui.theme</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>outputDir</span></a>
+          <p class="list-nav-label">Identity<span class="end">3</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>identity.enabled</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>identity.strict</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>identity.acoustidKey</span></a>
+          <p class="list-nav-label">VPN<span class="end">4</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.enabled</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.select</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-sliders-horizontal"></i><span>proxy.refreshHours</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>proxy.subscriptionUrl</span></a>
+          <p class="list-nav-label">Accounts<span class="end">4</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>serviceA.oauth</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>serviceB.clientId</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>serviceB.refreshToken</span></a>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-lock"></i><span>serviceC.userToken</span></a>
+          <p class="list-nav-label">Integrations<span class="end">1</span></p>
+          <a class="list-nav-item mono" href="#"><i class="ic ic-stamp"></i><span>applemusic.token</span></a>
+          <div class="list-nav-foot">
+            <div class="mk-cluster-3 type-meta"><span class="mk-cluster-1"><i class="ic ic-sliders-horizontal xs"></i>Setting</span><span class="mk-cluster-1"><i class="ic ic-lock xs"></i>Secret</span><span class="mk-cluster-1"><i class="ic ic-stamp xs"></i>Minted token</span></div>
+            <button class="btn outline sm block"><i class="ic ic-plus"></i>Add entry</button>
+          </div>
+        </nav>
+
+        <!-- Phone: the list folds into one switcher. -->
+        <div class="select mk-editor-switch"><i class="ic ic-list-tree"></i><span class="grow">Entry <span class="mono">quality.floor</span></span><span class="type-small muted">1 of 23</span><i class="ic ic-chevrons-up-down"></i></div>
+
+        <!-- The open entry. -->
+        <section class="card" aria-labelledby="entry-title">
+          <div class="card-head">
+            <div class="title">
+              <div class="mk-cluster baseline"><h2 id="entry-title" class="mono">quality.floor</h2><i class="dot changed" role="img" aria-label="Changed in draft" title="Changed in draft"></i></div>
+              <p>The key can’t change after publish</p>
+            </div>
+            <button class="btn ghost icon sm hide-phone" aria-label="More"><i class="ic ic-ellipsis"></i></button>
+          </div>
+          <div class="card-body form">
+            <div class="mk-grid-2">
+              <div class="field">
+                <label class="field-label">Label</label>
+                <div class="input"><span class="grow">Minimum quality</span></div>
+              </div>
+              <div class="field">
+                <label class="field-label">Category</label>
+                <div class="select"><span class="grow">Quality</span><i class="ic ic-chevrons-up-down"></i></div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">Description <span class="optional">Optional</span></label>
+              <div class="textarea one">Skip a track when no source has it at this quality. People see this under the setting in DJDL’s settings.</div>
+            </div>
+            <div class="field">
+              <label class="field-label">Type<button class="btn ghost icon xs" aria-label="How types and in-app visibility combine"><i class="ic ic-circle-help"></i></button></label>
+              <div class="choices cols-3 brief" role="radiogroup" aria-label="Type">
+                <div class="choice on" role="radio" aria-checked="true">
+                  <div class="choice-title"><i class="ic ic-sliders-horizontal"></i>Setting</div>
+                  <div class="choice-desc">A value DJDL reads. You decide whether people can change it.</div>
+                </div>
+                <div class="choice" role="radio" aria-checked="false">
+                  <div class="choice-title"><i class="ic ic-lock"></i>Secret</div>
+                  <div class="choice-desc">Write-only here. DJDL reads it in code; it’s never listed.</div>
+                </div>
+                <div class="choice" role="radio" aria-checked="false">
+                  <div class="choice-title"><i class="ic ic-stamp"></i>Minted token</div>
+                  <div class="choice-desc">Signed on request from a recipe. Never stored.</div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">Allowed values</label>
+              <div class="mk-cluster">
+                <span class="chip">flac<span class="chip-note">10 set it</span><i class="ic ic-x"></i></span>
+                <span class="chip new" title="Added in this draft">aiff<span class="chip-note">New</span><i class="ic ic-x"></i></span>
+                <span class="chip">mp3-320<span class="chip-note">Studio profile and 5 more</span><i class="ic ic-x"></i></span>
+                <span class="chip">any<span class="chip-note">Default</span><i class="ic ic-x"></i></span>
+                <span class="chip add"><i class="ic ic-plus"></i>Add</span>
+              </div>
+              <span class="hint">Removing one in use asks where its people move. <a class="nlink" href="#">Edit as JSON schema</a></span>
+            </div>
+            <div class="mk-grid-2">
+              <div class="field">
+                <label class="field-label">Default</label>
+                <div class="select mono"><span class="grow">any</span><i class="ic ic-chevrons-up-down"></i></div>
+                <span class="hint">What devices get when nothing else sets it</span>
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">In the app</label>
+              <div class="segmented iconed" role="radiogroup" aria-label="In the app">
+                <span class="on" role="radio" aria-checked="true"><i class="ic ic-pencil sm"></i>Editable</span>
+                <span role="radio" aria-checked="false"><i class="ic ic-lock-keyhole sm"></i>Read-only</span>
+                <span role="radio" aria-checked="false"><i class="ic ic-eye-off sm"></i>Hidden</span>
+              </div>
+              <div class="seg-help">Listed in DJDL’s settings. People can change it, and their choice syncs.</div>
+            </div>
+            <!-- Only for an Editable setting, and only while Cloud Sync is on for DJDL. -->
+            <div class="card compact sunken" data-service="sync">
+              <div class="card-rows">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title"><i class="svc"></i>Syncs with Cloud Sync</div>
+                    <div class="setting-desc">Follows the person to every device</div>
+                  </div>
+                  <span class="switch on" role="switch" aria-checked="true" aria-label="Syncs with Cloud Sync"></span>
+                </div>
+                <div class="card-body">
+                  <div class="mk-grid-2">
+                    <div class="field">
+                      <label class="field-label">Where it syncs</label>
+                      <div class="select"><span class="grow">Every device they use</span><i class="ic ic-chevrons-up-down"></i></div>
+                    </div>
+                    <div class="field">
+                      <label class="field-label">When two devices disagree</label>
+                      <div class="fixed-value"><i class="ic ic-clock"></i><span>The latest change wins</span></div>
+                      <span class="hint">The only rule for a value from a list</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-foot between">
+            <button class="btn danger-outline sm"><i class="ic ic-trash-2"></i>Remove from catalog</button>
+          </div>
+        </section>
+
+        <div class="mk-rail">
+          <!-- U-29: the same effective read, for one key, past the catalog default. -->
+          <section class="card" aria-labelledby="where-title">
+            <div class="card-head">
+              <div class="title"><h2 id="where-title">Where it’s set</h2></div>
+            </div>
+            <div class="card-rows">
+              <div class="card-row"><i class="ic ic-layers"></i><span class="grow">Default profile</span><span class="subtle">Not set</span></div>
+              <div class="card-row"><i class="ic ic-award"></i><span class="grow">Studio profile</span><code>mp3-320</code></div>
+              <div class="card-row"><i class="ic ic-key-round"></i><span class="grow">Licenses</span><a class="nlink" href="#">3 set their own</a></div>
+              <div class="card-row"><i class="ic ic-user-round"></i><span class="grow">Accounts</span><a class="nlink" href="#">12 set their own</a></div>
+            </div>
+            <div class="card-foot start">
+              <button class="btn outline sm"><i class="ic ic-eye"></i>Preview as…</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

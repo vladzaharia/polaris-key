@@ -1,0 +1,208 @@
+{
+  "id": "distribution.publish",
+  "title": "Publish dialog",
+  "area": "distribution",
+  "surface": "dialog",
+  "packages": [
+    "A-24",
+    "P2-08",
+    "A-23"
+  ],
+  "uxRows": [
+    "UX-58"
+  ],
+  "order": 4,
+  "summary": "Publish 1.9.0 for Diceroll over the dimmed Channels page: one dialog for every live channel, with the channels this click affects as checked rows with their own rollout controls, the testing lanes and followers that need no click as one summary line, a channel not yet set up as one line, and production store submission as one typed confirmation. The header and footer stay in view; what happens after the click is distribution.publish-result.",
+  "compare": [
+    "One dialog per release, opened from the release record, the Channels header, each channel's header and Releases tab, and the palette (aria-modal). The title is 'Publish 1.9.0'; the meta line is the signing key as the SignedBadge (the gold glyph and muted 'Signed by diceroll-rk-2026', never a plated pill) and 'From beta to stable'. Platforms and the CI time live on Channels, not here.",
+    "The header and footer stay in view and the body scrolls, capped to the viewport (the dialog starts 64 px down and is at most 100vh − 96 px), with a fade at the body's end whenever it overflows. The whole dialog fits with no body scroll at 1440×900 and at 1024×768. On phone it is a bottom sheet with its typed confirmation and buttons pinned at the bottom.",
+    "The rows list only live channels this click changes (no eyebrow: the title says what they are), each with what will happen there in its own words: a staged rollout of stable on Polaris Key (and that Scoop and Obtainium follow it), a submission for review on the App Store with the build number, a promotion from closed testing on Google Play. Each row's check, tile and rollout control centre on its title's line; the row's leading part is the label of a real checkbox, so the whole row toggles it, and the control stays outside the label.",
+    "Rollout controls appear only where the channel has one, each named for its channel ('Polaris Key rollout', 'App Store release', 'Google Play rollout'): Polaris Key's staged rollout; the App Store's release choice with three options, 'Phased release, 7 days · release when approved', 'Phased release · hold for my click' and 'All at once · release when approved' (the closed select shows 'Phased, 7 days · when approved'); Play's staged rollout percentage.",
+    "A channel in Attention can still publish and says why it needs attention in its row (Google Play's key expires Oct 16, Replace key ↗, which opens in a new tab so the dialog keeps its choices).",
+    "No click needed is one summary line ('4 channels already have 1.9.0 or follow by themselves') with Show. Its detail names them: TestFlight · Beta testers and Google Play closed testing already have 1.9.0 (ticks, with when), and itch.io and winget follow when the stable rollout reaches 100% (clocks). These are never checkboxes. itch.io gets stable only, so it never has a release before Publish.",
+    "A channel not yet set up is never a row: one line says 'Steam isn't set up yet.' with Continue setup ↗ (a new tab, so the dialog keeps its choices); the step count is the sidebar's. 'Setting up' never appears.",
+    "Store submissions need one typed confirmation, shown only while a store submission is checked: the label 'Type 1.9.0 to confirm the store submissions' (the version in mono), the field, and one hint under it: 'Store review can't be undone. Halt everywhere on Rollouts also pauses Apple's phased release and Play's staged rollout.' Untyped, the empty field sits beside the primary; a click with an empty or wrong value focuses the field and shows the inline error 'Type 1.9.0 to confirm the store submissions'. There is no unexplained disabled primary and no automatic production submission anywhere.",
+    "The primary says exactly what happens and how many: 'Publish to 3 channels'; it recounts as rows are unchecked ('Publish to 1 channel'), and with nothing checked it reads 'Choose a channel'. Cancel is beside it. After the click the dialog stays open as per-channel progress (distribution.publish-result) and closes to a toast only when every channel succeeds. On a network failure: 'Can't reach Polaris Key. Nothing was sent.' with Try again, and every input kept.",
+    "Phone: the dialog is a bottom sheet; each row's control sits on the text column, under its text; No click needed shows its summary line and Show only; the typed confirmation (label, field, 'Store review can't be undone.') is pinned in the sheet's foot above the buttons, and the Halt sentence ends the body; the buttons are stacked full width, primary on top (the kit's .sheet)."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the footer is above the fold at 1440×900 and pinned on phone, No click needed is one line, itch.io follows stable, the meta says 'Promotes … from beta to stable', the hint is two lines, App Store release options are named, and the after-click state is drawn as its own screen.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "[layout] At 1440×900 Cancel and Publish fall below the fold; on phone the primary is a screen and a half down.",
+        "resolution": "Header and footer are pinned and the body scrolls, capped to the viewport; the dialog starts 64 px down and is 720 px wide, and No click needed collapses to one line, so at 1440×900 the whole dialog fits (checked with a viewport-only shot, light and dark). On phone it is a full-height sheet with the footer at the bottom (checked at 390×844)."
+      },
+      {
+        "severity": "major",
+        "issue": "[states] Nothing shows what happens after the click; partial success is the realistic outcome.",
+        "resolution": "Drawn as a new screen, distribution.publish-result: each row becomes its channel's progress (Polaris Key done, Google Play sending, the App Store failed with 'Apple didn't accept the submission: build 214 has no export compliance answers. Answer them in App Store Connect, then retry.' and Retry App Store for that channel only). The dialog closes to a toast only when every channel succeeds. Both compare lists say so."
+      },
+      {
+        "severity": "major",
+        "issue": "[versus the plan and other areas] itch.io already had the unpublished 1.9.0, contradicting Release tracks (stable only).",
+        "resolution": "itch.io follows stable: the No click needed line says itch.io and winget follow when the stable rollout reaches 100%, the Channels row says itch.io has 1.8.2 and gets each stable release, and the download page shows the page after the rollout finished."
+      },
+      {
+        "severity": "minor",
+        "issue": "[copy] The meta reads as if 1.9.0 were already on stable and drops the CPUs; the hint packs two ideas into one sentence.",
+        "resolution": "Meta: 'Promotes 1.9.0 from beta to stable · iOS, Android, Windows x64, Linux x86_64 · from CI 22 min ago'. The hint is two lines, one about typing the version, one about Halt everywhere."
+      },
+      {
+        "severity": "minor",
+        "issue": "[flow] The App Store row doesn't say what happens once Apple approves.",
+        "resolution": "The select reads 'Phased, 7 days · when approved' and the compare names its three options: 'Phased release, 7 days · release when approved', 'Phased release · hold for my click', 'All at once · release when approved'."
+      },
+      {
+        "severity": "minor",
+        "issue": "[versus mockup: better than the compare] The render's 'No click needed' beats the compare's 'Already done'.",
+        "resolution": "The compare now says 'No click needed', and the render keeps it."
+      },
+      {
+        "severity": "major",
+        "issue": "On phone the typed field sat at y=885, below the sheet, under a primary that looked ready; on tablet the second hint was cut with no scroll cue.",
+        "resolution": "Phone: the label, field and 'Store review can't be undone.' are pinned in the sheet foot above the stacked buttons (the kit's new .foot-confirm), and the Halt sentence ends the body. The kit's .dialog.scroll.fade already fades at every size when the body overflows; at 1024×768 the dialog now fits with no body scroll (body 532 of 532px), so nothing is cut. Compare line added for the untyped state: the empty field beside the primary; a click with an empty or wrong value focuses it with the inline error 'Type 1.9.0 to confirm the store submissions'; no unexplained disabled primary.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3",
+          "ux2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The 'When you publish' eyebrow restated the title, the label repeated the row descriptions, the hints took two lines and the Steam line repeated the sidebar's step count: about 60px, the tablet overflow.",
+        "resolution": "Eyebrow gone; label 'Type 1.9.0 to confirm the store submissions'; one hint block under the field with both facts; 'Steam isn't set up yet. Continue setup'. The rows' first and last padding sit on the body's 16px rhythm (the kit's new .card-rows.flush.snug), which closed the last 11px: the whole dialog fits at 1024×768 with no body scroll.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The plated Signed pill (removed by EXPERIENCE §6 and §11.3) read as a second warning beside Google Play's real key warning.",
+        "resolution": "Signing is the kit's new .signed-badge: the gold glyph and muted 'Signed by diceroll-rk-2026', then ' · From beta to stable' in .meta-seps. The same in distribution.publish-result.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The checkboxes zig-zagged 10–22px below their titles; the 16px box was the only target for the dialog's main input; two selects shared the name 'Rollout'; the dialog wasn't aria-modal.",
+        "resolution": "All three rows are .item-row.top: the 18px check, the 28px tile and a 32px .select.sm (new) centre on the 20px title line. Each row's check, tile and text are a <label class=\"item-label\"> (new, display: contents) around a real checkbox, so the whole row toggles; the select stays outside. Selects are named per channel; the dialog has aria-modal=\"true\".",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The compare lagged the render (meta, hint, stacked footer) and left flow gaps: the confirmation's visibility, the recount, network failure, and links that would close the dialog.",
+        "resolution": "Compare updated: meta is the signing key and 'From beta to stable'; phone footer stacked full width, primary on top; each phone row's control on the text column; the confirmation shows only while a store submission is checked; the primary recounts ('Publish to 1 channel', 'Choose a channel' with nothing checked); 'Can't reach Polaris Key. Nothing was sent.' with Try again and every input kept; Replace key and Continue setup open in a new tab (↗).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Settle the typed value: version vs the app's name (ADMIN.md §5.2 L3, A-17g), and write it into ADMIN.md.",
+        "resolution": "declined: This is a safety-policy decision in ADMIN.md and A-24's pending security review of the batch typed phrase (audits DC-07), outside the mockups. The mockup keeps the version, which the plan and the compare specify for one confirmation across several stores. Flagged to the lead to reconcile.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Phone footer: Cancel and Publish side by side (1fr 2fr), as in compare item 10.",
+        "resolution": "declined: The kit's .sheet rule is buttons pinned, primary on top, stacked full width. ux1 judged it better for thumbs and for the long label. The compare is updated instead.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Phone: let each rollout select span full width from the check column.",
+        "resolution": "declined: The kit drops a narrow item row's end onto the text column, so the control lines up with what it controls. At 280px every option fits. The compare is updated to 'on the text column'.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Shorten Polaris Key's row to 'Stable, then Scoop and Obtainium'.",
+        "resolution": "declined: It loses where stable goes (dl.plrs.im and the update feeds), which compare item 3 requires. A two-line row is within the kit's item-row rules.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Draw the untyped state as its own phone variant.",
+        "resolution": "declined: A compare line specifies it exactly; no new screens in this pass.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "Gaps of 8, 14, 16, 26, 36 and 18px; the dialog pinned 64 down; 16px checkboxes.",
+        "resolution": "The body uses one scale (16 between groups, 12 inside the field group, a divider between channel rows only); the dialog is centred with a 6vh optical lift (dropped .top); the check targets are 24px (.check.lg) with the whole row as the label; Show uses a tighter right edge.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Two grey footnote groups; different warning copy on phone and desktop.",
+        "resolution": "'Steam isn't set up yet. Continue setup' is folded into 'No click needed'; the helper is 'Store review can't be undone.' at every size and the Halt-on-Rollouts sentence is gone; the Polaris Key row says 'Stable on dl.plrs.im/diceroll and update feeds'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "The phone sheet clipped a sentence behind the foot and Cancel was as heavy as the primary.",
+        "resolution": "Sheet max-height calc(100dvh - 24px); rows tighter; 'No click needed' is the last row and collapsed (the Steam line opens with Show); Cancel is a quiet 44px ghost button.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The amber diamond had no meaning; the decision came after the signing detail.",
+        "resolution": "A key icon labelled 'Signing key'; 'From beta to stable · signed with diceroll-rk-2026'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Draw the confirm field empty and add empty and error dialog variants.",
+        "resolution": "declined: the typed state shows what Publish does; extra states are separate mockup scope.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Remove the Google Play key warning or the No click needed card.",
+        "resolution": "declined: the warning belongs where the key would block the upload; No click needed is the plan's explanation.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Lighten the light-theme scrim.",
+        "resolution": "declined: a shared kit token; changing it per screen would drift.",
+        "round": "multi-review"
+      }
+    ]
+  }
+}

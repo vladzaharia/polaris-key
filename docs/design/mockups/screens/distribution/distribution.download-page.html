@@ -1,0 +1,263 @@
+<style>
+  /* distribution.download-page: the platform lists' order and grouping, the row this device
+     should use, commands that break after a slash, and the wide cap. */
+  /* The platform groups always dissolve into one list in the fixed order: Windows, Android,
+     iPhone and iPad, Linux. At wide that list is two columns, so it reads Windows | Android, then
+     iPhone and iPad | Linux, with equal-height cards in a row. */
+  [data-screen="distribution.download-page"] .dl-group {
+    display: contents;
+  }
+  [data-screen="distribution.download-page"] .dl-plat.p-win {
+    order: 1;
+  }
+  [data-screen="distribution.download-page"] .dl-plat.p-and {
+    order: 2;
+  }
+  [data-screen="distribution.download-page"] .dl-plat.p-ios {
+    order: 3;
+  }
+  [data-screen="distribution.download-page"] .dl-plat.p-linux {
+    order: 4;
+  }
+  /* Desktop and tablet: a 960px column with 32px gutters (the top bar and foot share its edges). */
+  [data-screen="distribution.download-page"] .portal {
+    --portal-max: 960px;
+  }
+  @container screen (min-width: 640px) {
+    [data-screen="distribution.download-page"] .portal-page {
+      max-width: calc(var(--portal-max) + 2 * var(--sp-8));
+      padding-inline: var(--sp-8);
+    }
+    [data-screen="distribution.download-page"] :is(.portal-top, .portal-foot) {
+      padding-inline: max(var(--sp-8), calc((100% - var(--portal-max)) / 2));
+    }
+    /* The pitch starts on the title's left edge, beside the logo. */
+    [data-screen="distribution.download-page"] .portal-hero-body:has(> .portal-hero-action) > .portal-hero-pitch {
+      grid-column: 2;
+    }
+  }
+  [data-screen="distribution.download-page"] .portal-hero > .art {
+    height: 120px;
+  }
+  [data-screen="distribution.download-page"] .portal-hero-body > .logo {
+    margin-top: calc(-1 * var(--sp-10));
+  }
+  /* Wide: the page uses the width, two platform columns in a 1440px column. */
+  @container screen (min-width: 1600px) {
+    [data-screen="distribution.download-page"] .portal {
+      --portal-max: 1440px;
+    }
+    [data-screen="distribution.download-page"] .wide-2 {
+      align-items: stretch;
+    }
+  }
+  /* Rows: 72px high, the mark and the end on the title's line, QR codes 56px so QR rows match. */
+  [data-screen="distribution.download-page"] .card-rows > .item-row {
+    min-height: 72px;
+    align-items: start;
+  }
+  [data-screen="distribution.download-page"] .item-row > .item-end {
+    align-self: start;
+  }
+  [data-screen="distribution.download-page"] .item-row > .icon-tile {
+    margin-top: 2px;
+  }
+  [data-screen="distribution.download-page"] .qr.xs {
+    width: 56px;
+    height: 56px;
+  }
+  [data-screen="distribution.download-page"] .item-end > .qr.xs {
+    margin-block: -8px;
+  }
+  /* Copy hash is a 32px target. */
+  [data-screen="distribution.download-page"] .id:has(> .btn.icon:last-child) {
+    height: 32px;
+  }
+  /* The phone's hero download (Android here); the PC's shows from 640px. */
+  [data-screen="distribution.download-page"] .hero-action-phone {
+    display: none;
+  }
+  @container screen (max-width: 639px) {
+    /* Public page, no tab bar: Sign in stays in the top bar, icon and text. */
+    [data-screen="distribution.download-page"] .portal-actions > .btn.signin {
+      display: inline-flex !important;
+    }
+    /* The visitor's own platform comes first (Android here), then the rest in the fixed order. */
+    [data-screen="distribution.download-page"] .dl-plat.mine {
+      order: -1;
+    }
+    /* The device decides the recommended row: the PC's zip from 640px, Google Play on this phone. */
+    [data-screen="distribution.download-page"] .item-row.recommended.rec-pc {
+      background: transparent;
+    }
+    [data-screen="distribution.download-page"] .item-row.rec-phone {
+      background: var(--pk-accent-subtle);
+    }
+    /* The hero keeps its download on a phone: the visitor's own store, full width. */
+    [data-screen="distribution.download-page"] .portal-hero-body:has(> .hero-action-phone) > .hero-action-phone {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+      grid-column: 1 / -1;
+    }
+    [data-screen="distribution.download-page"] .portal-hero > .art {
+      height: 96px;
+    }
+    [data-screen="distribution.download-page"] .portal-hero-body > .logo.xl {
+      margin-top: calc(-1 * var(--sp-8));
+    }
+  }
+</style>
+
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <div class="portal-actions">
+      <span class="small muted hide-phone">Already have Diceroll in your Library?</span>
+      <button class="btn outline sm signin"><i class="ic ic-log-in"></i>Sign in</button>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <section class="portal-hero" aria-labelledby="dl-title">
+      <div class="art" data-product="diceroll"></div>
+      <div class="portal-hero-body">
+        <span class="logo xl" data-product="diceroll"></span>
+        <div class="mk-stack-1">
+          <h1 id="dl-title">Diceroll</h1>
+          <p class="muted">by <a class="accent" href="#">Twelve Pips Studio</a> · 1.9.0 · <span class="nowrap">released Oct 7, 2026</span></p>
+        </div>
+        <p class="portal-hero-pitch">A pocket roguelike where every room is a roll. Build a bag of strange dice, then break the house.</p>
+        <!-- From 640px: the download for the detected device (a PC here). A Mac visitor reads "Diceroll isn't made for macOS" here, with no button. Under 640 the list marks the phone's own row instead. -->
+        <div class="portal-hero-action">
+          <div class="mk-stack-1">
+            <span class="type-small muted">Recommended for your PC</span>
+            <span class="type-card">Windows x64 · 148 MB</span>
+          </div>
+          <button class="btn primary lg"><i class="ic ic-download"></i>Download</button>
+        </div>
+        <div class="hero-action-phone">
+          <span class="type-small muted">Recommended for this phone</span>
+          <button class="btn primary lg"><i class="ic ic-google-play"></i>Get it on Google Play</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="all-title">
+      <div class="section-head">
+        <h2 id="all-title">Every way to get Diceroll</h2>
+        <span class="mk-cluster type-small muted"><i class="ic ic-shield-check"></i>Check a download with <a class="link" href="#"><span class="mono">SHA256SUMS</span><i class="ic ic-arrow-up-right"></i></a></span>
+      </div>
+
+      <!-- Wide: computers, then phones and tablets, the visitor's group first. Below 1600: one list, Windows, Android, iPhone and iPad, Linux (phone: the visitor's platform first). -->
+      <div class="mk-stack-4 wide-2">
+        <div class="mk-stack-4 dl-group">
+          <article class="card dl-plat p-win" aria-labelledby="p-win">
+            <div class="card-head"><div class="title mk-cluster"><i class="ic ic-windows subtle"></i><h3 id="p-win">Windows</h3><span class="slug">x64</span></div></div>
+            <div class="card-rows fixed-actions">
+              <div class="item-row recommended rec-pc">
+                <span class="icon-tile neutral"><i class="ic ic-download"></i></span>
+                <div class="item-text">
+                  <div class="item-title">Zip file</div>
+                  <div class="mk-cluster type-small muted"><span class="mono">Diceroll-1.9.0-windows-x64.zip</span><span>148 MB</span><span class="id" title="SHA-256">SHA-256 9f2c41…e81a<button class="btn ghost icon xs" aria-label="Copy the SHA-256 of Diceroll-1.9.0-windows-x64.zip"><i class="ic ic-copy"></i></button></span></div>
+                </div>
+                <div class="item-end"><button class="btn outline"><i class="ic ic-download"></i>Download</button></div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile neutral"><i class="ic ic-itch"></i></span>
+                <div class="item-text"><div class="item-title">itch.io</div><div class="item-desc">Same build, with itch.io updates</div></div>
+                <div class="item-end"><button class="btn outline"><i class="ic ic-external-link"></i>Open itch.io</button></div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile neutral"><i class="ic ic-square-terminal"></i></span>
+                <div class="item-text"><div class="item-title">Scoop</div><div class="item-desc">Command line</div></div>
+                <div class="item-more">
+                  <ol class="num-list">
+                    <li><span>No Scoop yet? Install it from <a class="link" href="#">scoop.sh</a>.</span></li>
+                    <li><span>Install Diceroll:</span><div class="cmd one-line"><span>scoop install https://key.plrs.im/diceroll/distribution/scoop/stable.json</span><button class="btn ghost icon xs" aria-label="Copy the install command"><i class="ic ic-copy"></i></button></div></li>
+                    <li><span>Update later:</span><div class="cmd one-line"><span>scoop update diceroll</span><button class="btn ghost icon xs" aria-label="Copy the update command"><i class="ic ic-copy"></i></button></div></li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card dl-plat p-linux" aria-labelledby="p-linux">
+            <div class="card-head"><div class="title mk-cluster"><i class="ic ic-linux subtle"></i><h3 id="p-linux">Linux</h3><span class="slug">x86_64</span></div></div>
+            <div class="card-rows fixed-actions">
+              <div class="item-row">
+                <span class="icon-tile neutral"><i class="ic ic-download"></i></span>
+                <div class="item-text">
+                  <div class="item-title">AppImage</div>
+                  <div class="mk-cluster type-small muted"><span class="mono">Diceroll-1.9.0-linux-x86_64.AppImage</span><span>152 MB</span><span class="id" title="SHA-256">SHA-256 c05e9a…7f13<button class="btn ghost icon xs" aria-label="Copy the SHA-256 of Diceroll-1.9.0-linux-x86_64.AppImage"><i class="ic ic-copy"></i></button></span></div>
+                  <p class="icon-line danger type-small" role="alert"><i class="ic ic-circle-x"></i><span>Couldn’t prepare this download. Try again, or use <a class="link" href="#p-linux-itch">itch.io</a>.</span></p>
+                </div>
+                <div class="item-end"><button class="btn outline"><i class="ic ic-refresh-cw"></i>Try again</button></div>
+              </div>
+              <div class="item-row" id="p-linux-itch">
+                <span class="icon-tile neutral"><i class="ic ic-itch"></i></span>
+                <div class="item-text"><div class="item-title">itch.io</div><div class="item-desc">Same build, with itch.io updates</div></div>
+                <div class="item-end"><button class="btn outline"><i class="ic ic-external-link"></i>Open itch.io</button></div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="mk-stack-4 dl-group">
+          <article class="card dl-plat p-and mine" aria-labelledby="p-and">
+            <div class="card-head">
+              <div class="title mk-cluster"><i class="ic ic-android subtle"></i><h3 id="p-and">Android</h3></div>
+            </div>
+            <div class="card-rows fixed-actions">
+              <div class="item-row rec-phone">
+                <span class="icon-tile neutral"><i class="ic ic-google-play"></i></span>
+                <div class="item-text"><div class="item-title">Google Play</div><div class="item-desc">Free, with in-app purchases</div></div>
+                <div class="item-end">
+                  <span class="qr xs hide-phone" aria-label="QR code for Google Play"><svg viewBox="0 0 29 29" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h7v1h-7zM10 2h2v1h-2zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h1v1h-1zM13 3h1v1h-1zM15 3h3v1h-3zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM10 4h3v1h-3zM17 4h1v1h-1zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h3v1h-3zM16 5h2v1h-2zM20 5h1v1h-1zM22 5h3v1h-3zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM14 6h1v1h-1zM16 6h1v1h-1zM20 6h1v1h-1zM22 6h3v1h-3zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM13 7h1v1h-1zM17 7h2v1h-2zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h7v1h-7zM10 9h2v1h-2zM13 9h4v1h-4zM18 9h1v1h-1zM2 10h1v1h-1zM4 10h1v1h-1zM6 10h3v1h-3zM10 10h1v1h-1zM12 10h1v1h-1zM18 10h1v1h-1zM20 10h3v1h-3zM25 10h1v1h-1zM3 11h2v1h-2zM7 11h1v1h-1zM14 11h1v1h-1zM16 11h1v1h-1zM18 11h1v1h-1zM22 11h1v1h-1zM24 11h3v1h-3zM2 12h1v1h-1zM8 12h1v1h-1zM10 12h1v1h-1zM12 12h2v1h-2zM15 12h2v1h-2zM18 12h1v1h-1zM2 13h2v1h-2zM10 13h2v1h-2zM13 13h4v1h-4zM18 13h2v1h-2zM23 13h1v1h-1zM26 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM7 14h2v1h-2zM10 14h2v1h-2zM14 14h1v1h-1zM17 14h3v1h-3zM24 14h3v1h-3zM7 15h1v1h-1zM10 15h1v1h-1zM14 15h1v1h-1zM18 15h3v1h-3zM22 15h4v1h-4zM2 16h8v1h-8zM12 16h3v1h-3zM16 16h3v1h-3zM20 16h1v1h-1zM23 16h3v1h-3zM2 17h3v1h-3zM6 17h2v1h-2zM10 17h2v1h-2zM14 17h2v1h-2zM19 17h1v1h-1zM23 17h3v1h-3zM3 18h2v1h-2zM8 18h3v1h-3zM14 18h2v1h-2zM18 18h5v1h-5zM25 18h2v1h-2zM10 19h2v1h-2zM14 19h3v1h-3zM18 19h1v1h-1zM22 19h1v1h-1zM26 19h1v1h-1zM2 20h7v1h-7zM11 20h1v1h-1zM13 20h3v1h-3zM17 20h2v1h-2zM20 20h1v1h-1zM22 20h1v1h-1zM26 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM10 21h1v1h-1zM14 21h2v1h-2zM18 21h1v1h-1zM22 21h2v1h-2zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM10 22h1v1h-1zM13 22h1v1h-1zM16 22h1v1h-1zM18 22h5v1h-5zM24 22h3v1h-3zM2 23h1v1h-1zM4 23h3v1h-3zM8 23h1v1h-1zM14 23h2v1h-2zM17 23h6v1h-6zM24 23h2v1h-2zM2 24h1v1h-1zM4 24h3v1h-3zM8 24h1v1h-1zM11 24h2v1h-2zM14 24h1v1h-1zM17 24h1v1h-1zM20 24h1v1h-1zM22 24h1v1h-1zM24 24h1v1h-1zM2 25h1v1h-1zM8 25h1v1h-1zM10 25h3v1h-3zM18 25h2v1h-2zM26 25h1v1h-1zM2 26h7v1h-7zM12 26h1v1h-1zM15 26h2v1h-2zM19 26h1v1h-1zM22 26h2v1h-2zM25 26h1v1h-1z"/></svg></span>
+                  <button class="btn outline"><i class="ic ic-google-play"></i>Get it on Google Play</button>
+                </div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile neutral"><i class="ic ic-package-open"></i></span>
+                <div class="item-text"><div class="item-title">Obtainium</div><div class="item-desc">Gets each release from Twelve Pips Studio, not Google Play</div></div>
+                <div class="item-end">
+                  <span class="qr xs hide-phone" aria-label="QR code that adds Diceroll to Obtainium"><svg viewBox="0 0 29 29" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h7v1h-7zM10 2h1v1h-1zM13 2h1v1h-1zM15 2h4v1h-4zM20 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h1v1h-1zM15 3h1v1h-1zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h1v1h-1zM15 4h1v1h-1zM17 4h1v1h-1zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h1v1h-1zM12 5h3v1h-3zM16 5h3v1h-3zM20 5h1v1h-1zM22 5h3v1h-3zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM14 6h1v1h-1zM20 6h1v1h-1zM22 6h3v1h-3zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM14 7h3v1h-3zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h7v1h-7zM11 9h1v1h-1zM18 9h1v1h-1zM4 10h3v1h-3zM8 10h1v1h-1zM10 10h1v1h-1zM14 10h5v1h-5zM20 10h1v1h-1zM23 10h4v1h-4zM3 11h2v1h-2zM7 11h1v1h-1zM9 11h1v1h-1zM13 11h3v1h-3zM18 11h1v1h-1zM20 11h1v1h-1zM22 11h5v1h-5zM3 12h2v1h-2zM8 12h1v1h-1zM11 12h2v1h-2zM14 12h1v1h-1zM16 12h3v1h-3zM20 12h3v1h-3zM4 13h4v1h-4zM10 13h1v1h-1zM12 13h1v1h-1zM16 13h1v1h-1zM19 13h3v1h-3zM23 13h1v1h-1zM25 13h2v1h-2zM3 14h1v1h-1zM5 14h5v1h-5zM11 14h2v1h-2zM14 14h1v1h-1zM16 14h2v1h-2zM20 14h1v1h-1zM22 14h1v1h-1zM24 14h1v1h-1zM26 14h1v1h-1zM3 15h1v1h-1zM6 15h1v1h-1zM9 15h1v1h-1zM11 15h1v1h-1zM13 15h4v1h-4zM23 15h1v1h-1zM26 15h1v1h-1zM5 16h7v1h-7zM13 16h4v1h-4zM23 16h2v1h-2zM26 16h1v1h-1zM3 17h3v1h-3zM9 17h4v1h-4zM14 17h6v1h-6zM22 17h1v1h-1zM24 17h3v1h-3zM3 18h1v1h-1zM7 18h3v1h-3zM12 18h1v1h-1zM15 18h2v1h-2zM18 18h5v1h-5zM26 18h1v1h-1zM10 19h6v1h-6zM18 19h1v1h-1zM22 19h1v1h-1zM24 19h1v1h-1zM26 19h1v1h-1zM2 20h7v1h-7zM10 20h1v1h-1zM12 20h1v1h-1zM14 20h2v1h-2zM17 20h2v1h-2zM20 20h1v1h-1zM22 20h1v1h-1zM24 20h2v1h-2zM2 21h1v1h-1zM8 21h1v1h-1zM10 21h4v1h-4zM15 21h1v1h-1zM18 21h1v1h-1zM22 21h3v1h-3zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM14 22h1v1h-1zM17 22h6v1h-6zM2 23h1v1h-1zM4 23h3v1h-3zM8 23h1v1h-1zM10 23h1v1h-1zM13 23h1v1h-1zM15 23h1v1h-1zM18 23h1v1h-1zM23 23h2v1h-2zM26 23h1v1h-1zM2 24h1v1h-1zM4 24h3v1h-3zM8 24h1v1h-1zM10 24h1v1h-1zM13 24h1v1h-1zM15 24h1v1h-1zM20 24h2v1h-2zM24 24h2v1h-2zM2 25h1v1h-1zM8 25h1v1h-1zM10 25h6v1h-6zM17 25h4v1h-4zM23 25h3v1h-3zM2 26h7v1h-7zM14 26h1v1h-1zM16 26h2v1h-2zM21 26h1v1h-1zM24 26h1v1h-1zM26 26h1v1h-1z"/></svg></span>
+                  <button class="btn outline"><i class="ic ic-plus"></i>Add to Obtainium</button>
+                </div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile neutral"><i class="ic ic-download"></i></span>
+                <div class="item-text">
+                  <div class="item-title">APK</div>
+                  <div class="mk-cluster type-small muted"><span class="mono">Diceroll-1.9.0-android-arm64.apk</span><span>96 MB</span><span class="id" title="SHA-256">SHA-256 3b7d0e…44c2<button class="btn ghost icon xs" aria-label="Copy the SHA-256 of Diceroll-1.9.0-android-arm64.apk"><i class="ic ic-copy"></i></button></span></div>
+                  <div class="item-desc">For 64-bit Arm phones and tablets. Won’t update a Google Play install.</div>
+                </div>
+                <div class="item-end"><button class="btn outline"><i class="ic ic-download"></i>Download</button></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card dl-plat p-ios" aria-labelledby="p-ios">
+            <div class="card-head">
+              <div class="title mk-cluster"><i class="ic ic-apple subtle"></i><h3 id="p-ios">iPhone and iPad</h3></div>
+            </div>
+            <div class="card-rows fixed-actions">
+              <div class="item-row">
+                <span class="icon-tile neutral"><i class="ic ic-app-store"></i></span>
+                <div class="item-text"><div class="item-title">App Store</div><div class="item-desc">Free, with in-app purchases. Needs iOS 16 or later.</div></div>
+                <div class="item-end">
+                  <span class="qr xs hide-phone" aria-label="QR code for the App Store"><svg viewBox="0 0 29 29" aria-hidden="true" shape-rendering="crispEdges"><path fill="currentColor" d="M2 2h7v1h-7zM10 2h4v1h-4zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h7v1h-7zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM12 3h3v1h-3zM17 3h2v1h-2zM20 3h1v1h-1zM26 3h1v1h-1zM2 4h1v1h-1zM4 4h3v1h-3zM8 4h1v1h-1zM11 4h2v1h-2zM15 4h3v1h-3zM20 4h1v1h-1zM22 4h3v1h-3zM26 4h1v1h-1zM2 5h1v1h-1zM4 5h3v1h-3zM8 5h1v1h-1zM10 5h2v1h-2zM16 5h2v1h-2zM20 5h1v1h-1zM22 5h3v1h-3zM26 5h1v1h-1zM2 6h1v1h-1zM4 6h3v1h-3zM8 6h1v1h-1zM10 6h2v1h-2zM13 6h2v1h-2zM20 6h1v1h-1zM22 6h3v1h-3zM26 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h2v1h-2zM14 7h2v1h-2zM17 7h2v1h-2zM20 7h1v1h-1zM26 7h1v1h-1zM2 8h7v1h-7zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM18 8h1v1h-1zM20 8h7v1h-7zM11 9h2v1h-2zM14 9h1v1h-1zM16 9h1v1h-1zM18 9h1v1h-1zM2 10h2v1h-2zM5 10h2v1h-2zM8 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h3v1h-3zM19 10h3v1h-3zM23 10h2v1h-2zM4 11h1v1h-1zM6 11h2v1h-2zM9 11h1v1h-1zM15 11h1v1h-1zM17 11h2v1h-2zM20 11h2v1h-2zM24 11h1v1h-1zM4 12h1v1h-1zM8 12h8v1h-8zM18 12h2v1h-2zM21 12h1v1h-1zM24 12h2v1h-2zM3 13h3v1h-3zM9 13h1v1h-1zM12 13h1v1h-1zM20 13h2v1h-2zM25 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM8 14h2v1h-2zM12 14h3v1h-3zM16 14h1v1h-1zM18 14h1v1h-1zM22 14h1v1h-1zM24 14h2v1h-2zM3 15h4v1h-4zM9 15h5v1h-5zM17 15h2v1h-2zM22 15h1v1h-1zM25 15h2v1h-2zM2 16h1v1h-1zM8 16h1v1h-1zM11 16h1v1h-1zM15 16h1v1h-1zM18 16h2v1h-2zM23 16h2v1h-2zM4 17h3v1h-3zM10 17h3v1h-3zM15 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM25 17h1v1h-1zM4 18h3v1h-3zM8 18h3v1h-3zM15 18h2v1h-2zM18 18h5v1h-5zM24 18h1v1h-1zM10 19h1v1h-1zM13 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM22 19h1v1h-1zM25 19h2v1h-2zM2 20h7v1h-7zM11 20h1v1h-1zM14 20h1v1h-1zM16 20h1v1h-1zM18 20h1v1h-1zM20 20h1v1h-1zM22 20h1v1h-1zM25 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM12 21h1v1h-1zM14 21h5v1h-5zM22 21h1v1h-1zM2 22h1v1h-1zM4 22h3v1h-3zM8 22h1v1h-1zM10 22h3v1h-3zM14 22h11v1h-11zM2 23h1v1h-1zM4 23h3v1h-3zM8 23h1v1h-1zM13 23h3v1h-3zM17 23h3v1h-3zM21 23h1v1h-1zM23 23h2v1h-2zM2 24h1v1h-1zM4 24h3v1h-3zM8 24h1v1h-1zM11 24h1v1h-1zM14 24h5v1h-5zM20 24h1v1h-1zM22 24h2v1h-2zM25 24h1v1h-1zM2 25h1v1h-1zM8 25h1v1h-1zM11 25h2v1h-2zM14 25h1v1h-1zM20 25h1v1h-1zM23 25h1v1h-1zM2 26h7v1h-7zM13 26h1v1h-1zM16 26h1v1h-1zM23 26h3v1h-3z"/></svg></span>
+                  <button class="btn outline"><i class="ic ic-app-store"></i>Download on the App Store</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <p class="icon-line type-small muted"><i class="ic ic-info"></i><span>Diceroll isn’t made for macOS or for Windows on Arm.</span></p>
+    </section>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · Questions about Diceroll? Contact Twelve Pips Studio at <a class="link" href="mailto:support@example.com">support@example.com</a></footer>
+</div>

@@ -1,0 +1,149 @@
+{
+  "id": "sdk.docs-first-product",
+  "title": "Docs: Your first product",
+  "area": "sdk",
+  "surface": "code",
+  "order": 5,
+  "packages": [
+    "SP-37",
+    "SP-33b",
+    "SP-36"
+  ],
+  "uxRows": [],
+  "summary": "The docs site's one start path, Your first product: five steps that mirror the console (create, add the SDK, start it, use each feature, check Verified) with generated code in synced SDK tabs, a short troubleshooting list and the reshaped sidebar (Start here, Build, Features, Reference).",
+  "compare": [
+    "There is one start path: the sidebar's Start here holds Concepts, Your first product and How Polaris Key works; the old Quickstart by goal, Integrate in 5 minutes and the DJDL onboarding page are gone.",
+    "The five steps mirror the console in order: New product (name and slug, what it's for, platforms), the pkey sdk add command Integration shows, fromConfig() then boot(), each feature's code on Integration, and Verified.",
+    "The example product is Tidewater Studio (tidewater), the docs' one example product (SP-36, SP-37), not DJDL or Diceroll; every snippet uses it.",
+    "Code blocks in steps 2 and 3 are generated and share one SDK tab choice (Swift picked in one switches the other), and all six SDKs are tabs. Step 3's blocks have Copy. Step 2's command shows the fingerprint as a placeholder ('<fingerprint from Integration>') and has no Copy; the lede says to run the command Integration shows. Step 3's two lanes line up: their code heads and links sit on one line each.",
+    "No programme ids anywhere on the page or in the sidebar (no SP-, UK-, P0- or similar), per the developer-page lint.",
+    "Build lists the six generated quick starts, SDK reference (reference only), UI kits (must tier and recipes), the manifest, releases from CI and the per-version Developer changelog.",
+    "Features use the six feature names with their service glyphs, Commerce last, each card a link with a trailing →, all six drawn at rest (the hover state is in the kit gallery). Requirements are stated once, in step 1: Cloud Sync needs Managed config and Sign-in, and Commerce needs Licensing.",
+    "Step 5's pkey doctor excerpt uses the same symbols and words as Integration and pkey doctor (✓ Verified, and Windows, where nothing is seen yet, on one line), and its chip is green at '0 to do'. Step 1 says Tidewater starts with Licensing and Managed config, so the two agree.",
+    "The words follow the glossary: Verified, Not seen yet, Waiting, feature, license (US), and never 'outlet', 'grant', 'capability' or 'Setup complete'.",
+    "Phone: the sidebar folds into the menu button, search becomes an icon, On this page becomes a 44px bar under the header (also from 640 to 1279, where the column beside the article is gone), and each step's number is a 24px badge 8 before its title, with no rail, so the body runs the full width. The code tabs show the picked SDK with '5 more', the definition list stacks, step 2's command fits, and step 5's terminal re-wraps like pkey doctor's 44-column run ('Tidewater Studio (tidewater)' / 'key.plrs.im', '0 to do · 0.9 s' / 'run it on Windows next') with a 12px inset on every side.",
+    "On this page starts on Overview; the header and the sidebar both say 'Developer changelog'.",
+    "Wide: the step 3 lanes and step 5's terminal widen to 920px (.docs-bleed, right edge on the article's), so the Swift lines need no manual wrap; desktop and below keep the wrapped lines. Inline code never splits ('polaris-key.json' stays whole)."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: step 1 is a choice that agrees with step 5, the step 2 command no longer offers a Copy that fails, the step 5 terminal fits a phone, and the navigation and link affordances are consistent.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Step 1's 'What it's for' lists all six features, which reads as Tidewater turning everything on, while step 5's doctor shows only Licensing and Managed config.",
+        "resolution": "Step 1 now reads 'Pick the features you need from Licensing, Managed config, Ship builds, Sign-in, Cloud Sync and Commerce. Tidewater starts with Licensing and Managed config; add the rest later.' It also says a feature turns on only after the ones it needs: Cloud Sync needs Managed config and Sign-in, Commerce needs Licensing, and turning Licensing off later turns Commerce off with it. Step 5 is unchanged and now agrees."
+      },
+      {
+        "severity": "major",
+        "issue": "Step 2's code block has Copy on a command whose fingerprint is elided, so the pasted command fails, and the reader is tempted to drop --expect.",
+        "resolution": "Copy is removed from step 2's block. The fingerprint is a dim placeholder, '--expect <fingerprint from Integration>', and the block's foot says 'Copy the full command from your product's Integration page; it has your fingerprint.'"
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone, the step 5 terminal is cut at the Windows column.",
+        "resolution": "On phone, step 5 shows the 44-column layout from sdk.pkey-doctor: 'Integration on macOS', then 'Integration on Windows', one block each, at 11px. It fits without scrolling."
+      },
+      {
+        "severity": "minor",
+        "issue": "On this page highlights step 2 at the top of the page, the header's 'Changelog' and the sidebar's 'Developer changelog' read as two changelogs, the feature cards have no link affordance, and the active code tab is violet here but cyan on the other SDK screens.",
+        "resolution": "Overview is the active TOC item, and the header link is 'Developer changelog'. Each feature card has a trailing → and a hover state; Managed config is drawn hovered. The code blocks on sdk.start-call, sdk.client-doctor and the kit screens now take the core accent, so the active tab and highlighted lines are violet across the area, as here and on Integration. Terminals keep their ANSI cyan."
+      },
+      {
+        "severity": "major",
+        "issue": "The rail took 56px of a 390px screen; step 5's terminal overflowed by 10px, flush with the right edge, and step 2's command by 26px.",
+        "resolution": "Under 640 the step number is a 24px badge inline before the h2, 8px from it; the rail is hidden and the body is flush (358px). Step 5's terminal re-wraps like pkey doctor's 44-column run with a 12px inset; step 2's command now fits. (Both kit.)",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "At 1024 a page about 3,100px long had no On this page at all.",
+        "resolution": "The phone's 44px On this page bar also shows from 640 to 1279 (kit), its words on the article's edge. Compare item 10 updated.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "'From Integration' appeared three times in step 2; 'in the console's order' described the page; the footer explained a mechanism the reader can't act on.",
+        "resolution": "Intro: 'Create a product, add the SDK and see each feature Verified. The examples use Tidewater Studio.' Step 2 lede: 'In your app's folder, run the command Integration shows. It adds the SDK, writes polaris-key.json and pins Tidewater's keys.' The code-foot note is deleted (the placeholder says where the fingerprint comes from); compare item 4 updated. Step 4 keeps only its first sentence. The footer line about Integration's source and the SDKs' CI is deleted.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "In a static frame Managed config looked selected; the two lanes' code blocks started 20px apart; wide was pixel-identical to desktop; inline code broke as 'polaris-' / 'key.json'.",
+        "resolution": "All six feature cards are drawn at rest (the hover state is in the kit gallery's SDK helpers; compare item 7). The lanes are a subgrid, so code heads and links align. At wide the lanes and step 5's terminal are 920px (.docs-bleed) and the Swift lines are whole. Inline code in the article no longer splits (kit).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "d2"
+        ]
+      },
+      {
+        "issue": "Trim 'Still stuck' to 'Run a debug build: the SDK prints doctor() on the first refusal.' (d2).",
+        "resolution": "declined: the clause it cuts, 'with what's missing and the console page that fixes it', tells a newcomer what doctor() gives them. That is the outcome, not the mechanism.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "minor",
+        "issue": "Follows from the Windows change accepted on sdk.pkey-doctor (raised there by d2): step 5's excerpt of the same command still drew a Windows column of 'Not seen yet'.",
+        "resolution": "The excerpt prints Windows on one line, as pkey doctor now does (80 columns: '  Windows  ○ Not seen yet'; 44 columns: 'Integration on Windows  ○ Not seen yet'). Compare item 8 updated.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d2"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Three left edges (about 301, 382 and 418px) and a 625px column with dead space on both sides.",
+        "resolution": "One content edge: the 920px bleed is gone, so the Step 3 card and the Step 5 terminal sit inside the step column, and \"If something's missing\" and the pager start on the same edge (.on-edge). The article column stays at 760-800px, which was already the wide measure.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Integration and Verified are each explained three or four times; the repo callout uses a different border style from the other cards.",
+        "resolution": "Subtitle, Step 1, Step 4, Step 5 and the Step 1 \"What it's for\" row shortened as triaged; \"Then pick who draws...\" and \"Not seen yet\" are deleted; Step 4 captions are one line each; the repo callout is a standard inline note at the end of Step 1; phone code wraps at 12px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "d1",
+          "ux2",
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Mark the drop-in kit card as Recommended with an accent border.",
+        "resolution": "declined: the consolidation plan treats kits as recipes, and the accent is reserved for the service colour.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3"
+        ]
+      },
+      {
+        "issue": "Fill spare width at 1920 with a sidebar note or a sticky On this page plus a note.",
+        "resolution": "declined: this adds content; the centered article is enough.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2"
+        ]
+      }
+    ]
+  }
+}

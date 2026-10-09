@@ -1,0 +1,44 @@
+{
+  "id": "packages.feeds-turn-off",
+  "title": "Turn off package feeds",
+  "area": "packages",
+  "surface": "dialog",
+  "order": 4,
+  "packages": [
+    "F-34"
+  ],
+  "uxRows": [],
+  "summary": "The confirmation behind 'Turn off package feeds' on DJDL's Packages page: everything that stops across DJDL's 3 feeds (installs, CI publishes, service tokens), what is kept, and a typed confirmation.",
+  "compare": [
+    "Opens from the foot row on Packages, which stays dimmed behind it; a danger dialog with the warning icon.",
+    "The title is a question naming the product ('Turn off package feeds for DJDL?'); the body lists what stops in bold lead-ins: Installs (3 packages, 3,132 installs in the last 30 days, the error people see), CI publishes (the three package names), Service tokens (Plugin CI and Docs build).",
+    "A quiet line says nothing is deleted (versions, tokens and access stay) and that copies on PyPI.org stay there.",
+    "Typed confirmation with the product slug 'djdl' in the kit's danger confirm word; the button says exactly what happens: 'Turn off package feeds'. Cancel is the kit's outline button.",
+    "Phone: the kit's bottom sheet with the buttons pinned full width, the danger button on top."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "4 UX designers, triaged by a lead designer",
+    "date": "2026-10-08",
+    "verdict": "Spacing and copy trimmed per the multi-review triage; see findings.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Narrated bullets; the destructive reassurance is last at 12px muted.",
+        "resolution": "Lead-in removed; bullets 'Installs: 3 packages, 3,132 installs in 30 days', 'CI publishes: release.yml can't publish', 'Service tokens: Plugin CI and Docs build can't install'; 'Nothing is deleted. Copies on PyPI.org stay.' is the first line at 14px. The page behind is the updated Packages page.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "issue": "Remove the Swift 'Declared' step or merge it into one status line.",
+        "resolution": "declined: state data the owner wants kept.",
+        "round": "multi-review"
+      }
+    ]
+  }
+}

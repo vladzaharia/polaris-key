@@ -1,0 +1,158 @@
+{
+  "id": "entitlements.addon",
+  "title": "Add-on record",
+  "area": "entitlements",
+  "surface": "console",
+  "packages": [
+    "LX-35",
+    "LX-44",
+    "LX-25",
+    "LX-36",
+    "CM-23"
+  ],
+  "uxRows": [],
+  "summary": "The Neon dice pack add-on with two unsaved edits: the template it holds (an on/off entitlement and a quantity, 'Gives entitlements' with a quiet, guarded Change to units…), what players see and the latest holders in the main column, every source that gives it (store SKUs through one offer, a code batch, an access rule, comps, and checkout not used) with holder counts that add up in the rail, and one sticky save bar for the record.",
+  "compare": [
+    "The header carries the add-on's name, its id in mono with Copy, the holder count and 'Declared in .pkey/product' (on phone too); the actions are Create codes… and Comp to… (verbs with ellipses because each opens a step), with the rest in More. The license record's matching verb is 'Comp an add-on…'.",
+    "What it gives shows the add-on's type as a fact, 'Gives entitlements', with 'Change to units…' as a muted ghost button in the card head (a guarded structural action, never the card's loudest accent). That opens a confirmation naming the 1,284 holders and what each loses (Neon dice and 1 loadout slot), with the button 'Change to units and remove 2 entitlements'. The Entitlements | Units segmented control appears only in New add-on. Each entitlement row has its label, its key in mono and its kind ('On/off' or 'Quantity'); its value or control stays on the label's line at every width, right-aligned (On in a 40px slot; a quantity as a 96px field, '+2', its 'was +1' as meta, under the field on a narrow card), and the remove × keeps one x down the list. Add an entitlement lists the catalog's keys.",
+    "Platform entitlements on an add-on are only the ones that can add: a release track, devices (a seat pack) or Cloud Sync storage; versions and the tier never appear here. With none, the row says so and the kit's add row follows: '+ Add a platform entitlement'.",
+    "The card head says changes reach every holder at their next refresh and that removing an entitlement asks first with the count. One save bar serves the whole record: it appears only when something changed, sticks to the bottom of the window, and says the effect in numbers without restating which fields changed (the 'was' marks show that): '2 changes. 1,284 holders get 2 loadout slots instead of 1; .pkey/product stops changing this add-on.', with Discard and 'Save Neon dice pack'. On phone it is one row ('2 changes', Discard, Save). There is no disabled Save and no Save inside a card. Leaving with unsaved changes asks first.",
+    "Where it comes from lists the five sources in the model's words: Store purchase (the offer's name and its SKU per storefront in mono, in the Commerce accent), Codes (the batch and redemptions), Access rule (the rule in words, linking to Access), Comps (who gave the latest), Checkout (muted when unused). Counts add up to the holder count (1,226 + 37 + 9 + 12 = 1,284).",
+    "With Commerce off the Store purchase and Checkout rows are absent, not disabled; with Sign-in off the Access rule row is absent.",
+    "Recent holders shows name, tier and source with a date and links to all holders (the Licenses list filtered to this add-on). From 1280 it sits in the main column under Shown to players (beside both at wide), so its dates right-align and the rail holds only Where it comes from, the shorter column.",
+    "Phone: the columns stack (what it gives, what players see, recent holders, then sources), Create codes… and Comp to… share one row under the title, an entitlement's control stays on its label's line, SKUs wrap, and the save bar is one row at the bottom of the screen."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix, then pass: one sticky save bar now says what it saves and what happens to the file, and the add-on's type is a guarded fact instead of a view switch.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "It is unclear what Save covers: the only Save is in What it gives, and Shown to players has editable fields with no Save of its own.",
+        "resolution": "One save bar for the whole record (ADMIN.md T4: one form per separately saved resource, and an add-on's template, name and description are one record), sticky at the bottom of the window while anything is unsaved. It names both cards and the effect: '2 changes, in What it gives and Shown to players. All 1,284 holders get 2 loadout slots from this pack instead of 1 at their next refresh. Once you save, edits to .pkey/product no longer change this add-on.' The button is 'Save Neon dice pack'. Changed fields show 'was +1' and 'Changed'. The card's own Save is gone, and its hint moved into the card head."
+      },
+      {
+        "severity": "major",
+        "issue": "The Entitlements | Units segmented control looks like a view choice but changes what 1,284 holders get, with no confirmation drawn.",
+        "resolution": "Replaced with the fact 'Gives entitlements' and a 'Change to units…' link. The compare specifies its confirmation: it names the 1,284 holders and what each loses (Neon dice and 1 loadout slot), with the button 'Change to units and remove 2 entitlements'. The segmented control stays only in New add-on, before anyone holds it."
+      },
+      {
+        "severity": "minor",
+        "issue": "In dark, the disabled Save (50% opacity on lime) reads as an enabled olive button; phone drops 'Declared in .pkey/product'.",
+        "resolution": "The page no longer draws a disabled Save: the save bar appears only when something changed. 'Declared in .pkey/product' now stays on phone, on the meta line. Declined to change the kit's disabled style: it copies the console's Button (packages/admin/src/ui/Button.tsx, disabled:opacity-50), so a mockup has to draw what the console draws. A neutral disabled primary would be a console change for the lead."
+      },
+      {
+        "severity": "major",
+        "issue": "At desktop the main column ended about 220px above the rail, against the kit rule that the rail is the shorter column; on phone '✓ On' and the quantity field started at different x positions and dropped under their text.",
+        "resolution": "From 1280 to 1599 Recent holders moves into the main column under Shown to players (as at wide), so the rail holds only Where it comes from and the holders' dates right-align. On phone each entitlement's control stays on its label row (.setting-row.top with the kit's .end-control): On in a 40px slot, the quantity as .input.short, 'was +1' as meta under it, the × at one x on every row. The screen opts into the lead's new kit defaults with .kit-next on its console root (in-sentence links underlined, the warm light warning tint, 44px phone targets, the one-row phone save bar, two-up sheet feet, the white light-theme switch knob, the segmented ring, aligned On/Off, status words at the cell size).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The card had two different add controls; a guarded structural action was the card's most prominent accent; the save bar restated which fields changed and ran to 3 lines on phone; the header actions stacked full width on phone.",
+        "resolution": "Platform entitlements gets the kit's add row ('+ Add a platform entitlement') in place of the outline '+ Add'; 'Change to units…' is a muted ghost button in the card head (hung to the text edge when it drops under the title); the save bar reads '2 changes. 1,284 holders get 2 loadout slots instead of 1; .pkey/product stops changing this add-on.' and is one row on phone; Create codes… and Comp to… share one row on phone (.action-pair).",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #1",
+          "reviewer #3",
+          "reviewer #4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Builders would copy ARIA that axe flags: switches named 'On', presets and filters as role=tablist with no tabs, an unnamed breadcrumb nav, glyph-only kind icons.",
+        "resolution": "Switches are <button class=\"switch\" role=\"switch\" aria-checked aria-labelledby=\"<row title>\">; presets, the Versions and When it ends groups, the kind and ledger filters and the holder control are role=radiogroup with role=radio items; crumbs are <nav class=\"crumbs\" aria-label=\"Breadcrumb\">; a glyph that stands alone (a kind icon on phone, a feature glyph) is role=img with an aria-label, and decorative glyphs and avatar initials are aria-hidden. axe-core 4.13 reports 0 violations on all 12 screens, both themes, at 1440 and 390.",
+        "round": "multi-review",
+        "raisedBy": [
+          "reviewer #4"
+        ]
+      },
+      {
+        "issue": "Lay setting-row lists out in two columns in cards 900px and wider, and cap list-row content at 960px.",
+        "resolution": "declined: Splitting one list into two columns breaks the top-to-bottom scan and the 56px row rhythm. After convergence, the 640px form-section field column already keeps controls near their labels. A trailing action at the row's end is the standard list pattern.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Right-align Recent rows' dates at every screen width of 640px and up.",
+        "resolution": "declined: The kit decides by card width, not screen width: a narrow card drops the time under the text. Moving Recent holders into the wide main column at desktop gives the right-aligned dates anyway.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Draw the missing states and flows now: catalog-states, addons-empty, addon-states, save failed, the read-only viewer, the edit drawer and file confirmation, New add-on, the Remove and Change-to-units confirms, the Override editor, Comp flows, Create codes, the Preview at a date result, the canceled subscription and the move-major confirm.",
+        "resolution": "declined: The owner scoped this pass to spacing and kept the content, so new screens are logged for the area's next states round, not drawn now. The behaviour they need is already in the accepted compare items. After convergence, Override, Comp an add-on and Preview at a date belong to licenses.detail. Create codes belongs to commerce. The read-only state is a cross-area RBAC kit pattern. The ledger's empty and error states follow ADMIN.md T2's generic table states.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Update the compares to say the phone dialog feet and the add-on header actions stack full width.",
+        "resolution": "declined: The kit now puts two actions side by side (.kit-next sheet feet, .action-pair). That fixes the reversed visual vs tab order and matches the existing compares, so the render changes and the compares don't.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "Facts repeated and the layout narrated itself.",
+        "resolution": "'1,284 holders' leaves the header meta and stays in the sources card (its subtitle) and the save bar; 'Declared in .pkey/product' stays in the header and leaves the save bar, which reads '2 changes · 1,284 holders affected' (the .pkey/product clause appears only for a manifest-managed field, and neither changed field here is flagged as one). 'What it gives' has no subtitle; 'Shown to players' reads 'Store listings keep their own copy.'; the empty platform row is 'None.' with the add link on its line; the 'Opens the pack neon…' sub-line and the 'Changed' tag are gone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "'Change to units…' was stranded on its own line on phone, the stepper's 'was' mark moved with the width, and the right column was empty for 540px.",
+        "resolution": "'Change to units…' stays on the title row as a right-aligned bordered ghost 32px button that never wraps (.card-head.ghost-action, .btn.ghost.bordered). The stepper is a fixed 96px with 'was +1' beneath at every size (.stepper-col); the quantity meta is one line (.setting-desc.one-line). 'Where it comes from' is a sticky rail (.mk-with-rail.sticky-rail) from 1280; the old three-column wide layout is replaced by the same 2fr/1fr main and rail, with 'Shown to players' stacked under 'What it gives'. The save bar is sticky (.save-bar.pinned) on every size.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The phone page buried the main summary at the bottom.",
+        "resolution": "Where it comes from now precedes Recent holders on phone; holders show name and date only.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Cut 'Recent holders' sub-lines and remove 'Declared in .pkey/product' from the header, not the save bar.",
+        "resolution": "declined: contradicts the accepted rule: the header holds it once because it is a state of the record, while the save bar states the consequence only when the field is manifest-managed.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "minor",
+        "issue": "Row-level buttons, overflow menus and copy icons were 24px or less on phone, and bare text links had no hit area.",
+        "resolution": "The kit's .kit-next rules already give icon buttons in rows a 40px target (the copy icon is one); standalone links take .link.tap (44px on phone, padding not glyph); the header tooltip glyph is a 40px target on phone.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Gaps of 24, 32 and 48px and meta type of 12/20 against 13/22 drifted between screens.",
+        "resolution": "Under .ent2: 32px section gap, card head 56px (72px with a subtitle), meta type 12/18 in the muted token, sentence-case 12px label (.eyebrow), content caps .page.form-page 1280 and .page.table-page 1600; the page-title to first-section gap equals the section gap (the page is one flex column).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      }
+    ]
+  },
+  "order": 3
+}

@@ -1,0 +1,168 @@
+{
+  "id": "admin.platform-settings",
+  "title": "Platform settings",
+  "area": "admin",
+  "surface": "console",
+  "order": 8,
+  "packages": [
+    "ST-09",
+    "ST-11",
+    "ST-16",
+    "ST-27",
+    "I-31"
+  ],
+  "uxRows": [
+    "UX-30",
+    "UX-67"
+  ],
+  "summary": "Platform → Settings rendered from the registry and ordered by how often each part changes: Recently changed (the last five changes from the audit), Platform ready while incomplete, Product defaults with who overrides them, Sign-in, Storefront and hosting, Email and alerts, Licensing, Jobs, and a folded read-only Advanced section, with a rail on desktop and a section picker on phone.",
+  "compare": [
+    "The section nav lists the sections in page order: Platform ready, Product defaults, Sign-in, Storefront and hosting, Email and alerts, Licensing, Jobs, Advanced, Recently changed. Each is also a route (#/platform/settings/<area>), the nav follows the scroll, and a section with unsaved changes carries a dot.",
+    "Recently changed is last: the last five platform setting changes from platform_audit (the setting, its section, old value struck through → new value, who and when). The header's History button is the only way into the full history.",
+    "Platform ready is a compact banner while a step is open: the checklist's meter (8 of 9) and its open step (Store connections: Connect Steam), with the done steps folded. It sits in the flow at every width and goes when complete (Other states).",
+    "Product defaults rows each say how many products use the default and name each product that sets its own value with its logo (DJDL sets 8 GB). The licence device-limit and offline-window defaults are gone: tiers carry them.",
+    "Every registered platform key has a row with its registry key as a quiet mono chip at the end of the title line; no registry area is missing (the drift test that fails on an unrendered key is the check). Rows that aren't registry keys say so ('Set in code, not a setting'). Licensing shows only the reserved-names rule.",
+    "Sign-in keeps names and terms only and links to Connections for providers, SSO and verified domains; there is no sign-in provider, policy or method-strength editor here, and deploy-time values (console session length) are read-only with where they come from.",
+    "Saving: an edited input or chip list marks its row (accent edge, 'Changed from 20 GB, not saved yet') and opens the section's save bar, the one licenses.tiers uses: it says what the change does ('1 change. DJDL gets 25 GB; Diceroll keeps its own 40 GB.'), that it asks for your passkey, and offers Discard and 'Save <section>'. An invalid value shows an error under the input ('Enter 32 MiB or less.') and the bar can't save. After Save the bar says Saved with Undo for a few seconds. Switches apply at once; turning a platform-wide switch off (Package feeds, a job) asks first and names every product affected.",
+    "Storefront and hosting: Polaris Key storefront, Hosted assets and Package feeds are switches; the package feeds policy is only the off switch and the size limit (no other feed settings).",
+    "Email and alerts: the verified sender, the daily limit with today's count, and alert destinations (email and webhook) as removable chips.",
+    "Jobs show each job's switch with its last run in the description (absorbing Platform Status's job facts, UX-30); Advanced is folded, read-only, and counts the deployment values it holds.",
+    "Members, SSO rules and the root rule are not in Settings; Connections holds providers and domains.",
+    "Tablet: the section nav becomes the row of section pills under the header, fading at its right edge. Phone: a section picker; a search icon button sits in the title row and History takes the full width; each setting's control drops under its text (inputs capped at 160px), except switches, which stay at the right."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fix applied: the save model, an inline error and the platform-wide off confirmation are drawn, and every registry row shows its key.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "No save model (changed, Save, Saved, passkey), no inline error, and no confirmation for the platform-wide off switches.",
+        "resolution": "Product defaults shows a changed row ('Changed from 20 GB, not saved yet') and the licenses.tiers save bar: '1 change: Default release-file quota, 20 GB → 25 GB. DJDL gets 25 GB; Diceroll keeps its own 40 GB.', 'Asks for your passkey', Discard, 'Save product defaults'. Jobs shows 48 MiB with 'above the 32 MiB ceiling. Enter 32 or less.' and its bar blocked. Other states: 'Turn off package feeds for every product?' naming DJDL's and Diceroll's feeds, with 'Turn off feeds for 2 products', and the Saved bar with Undo. The Jobs and Package feeds copy says turning off asks first."
+      },
+      {
+        "severity": "minor",
+        "issue": "Several editable rows show no registry key beside the title.",
+        "resolution": "Added packageFeeds.enabled, packageFeeds.maxFileBytes, email.sender, email.dailyLimit, alerts.destinations and identity.termsVersion. These are proposed names: they register with ST-09, ST-11 and ST-27, and today's code doesn't have them yet. Console session length now says 'Set in code, not a setting'."
+      },
+      {
+        "severity": "minor",
+        "issue": "On phone the mono key sits beside the title and forces it to wrap.",
+        "resolution": "On phone the key moves to its own line under the title (flex-basis 100%)."
+      },
+      {
+        "severity": "minor",
+        "issue": "'Largest file to patch' uses MiB while every other limit uses GB or MB.",
+        "resolution": "Kept MiB because the limit really is binary: the worker's deltas.lazy.maxBytes ceiling is 33,554,432 bytes. The description now says so: 'In MiB because the patcher's ceiling is exactly 32 MiB (33.5 MB); you can only lower it.'"
+      },
+      {
+        "severity": "minor",
+        "issue": "Polish: the rail note names Members and Connections as plain text; Recently changed rows show no link affordance; phone drops search; the Platform ready lead describes the interface.",
+        "resolution": "The rail note links Members and Connections; each Recently changed setting name has an accent chevron; on phone a search icon button sits beside History; the lead reads 'One step left: connect Steam so Diceroll's Steam channel can upload builds.'"
+      },
+      {
+        "severity": "major",
+        "issue": "The render showed 700px of history and a checklist before the first setting, and the order differed by width.",
+        "resolution": "One order at every width: Platform ready as a compact banner while a step is open, the settings, then Recently changed last; the History header button is the only entry to full history (the 'All history' link is gone); the nav entry loses its '8 of 9'.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Rows ran 3-4 lines with the mono key competing with the helper text; the page was about 3700px tall on desktop and 6000px on phone.",
+        "resolution": "The key is a quiet chip at the end of the title line (copy glyph on hover or focus); helper text is one line (two on phone) and usage one muted line; 56px floor, 12px row padding; on phone toggles stay on the label row and only inputs stack, capped at 160px with the unit attached; segmented controls match input height (40px on phone). Desktop is now about 3440px and phone about 5570px.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "The same facts were stated two or three times, the error appeared twice, and the clipped chip row had no scroll cue.",
+        "resolution": "Sign-in, Jobs and Product defaults subtitles cut to one clause or deleted; 'asks first' removed (the dialog says it); the nav footnote repeating the Connections link is gone; the field error stays and the save bar reads 'Fix 1 error to save'; the tablet chip row fades at its right edge.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Tables stretched to about 1615px at 1920, so cells sat 275px or more apart and the page widths differed across the area.",
+        "resolution": "Pages cap at one content width, centred: 1280px for tables, 1136px for forms and status pages (kit .page.cap-table, .page.cap-form).",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "major",
+        "issue": "Small muted mono keys, dates and helper text carried facts at subtle colour and under 12px; disabled buttons were near invisible; row-menu targets were 28px.",
+        "resolution": "Fact-bearing small text moves to the muted token and 12px or more; the light subtle token is #4f586d (4.5:1 or better on every surface in both themes); disabled buttons keep a visible border at 0.6 opacity (0.8 on primary); the row-menu trigger is 32px with a 44px hit area (44px on phone); colour-only Adds and Joins carry a glyph.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Other states left 120 to 700px of dead space beside shorter cards, and the captions narrated layout.",
+        "resolution": "Other states sit on one equal-width grid (3 columns from desktop, 2 on tablet, 1 on phone) with the page's card primitive; captions name the state and its trigger.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "severity": "minor",
+        "issue": "Keep Platform ready in the right rail at 1280px and above.",
+        "resolution": "Not applied: the 1136px form cap cannot hold the 200px section nav, a usable settings column and a rail; the compact banner already costs one row, so it stays in the flow at every width.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "Cut the section subtitles entirely and drop the 'Advanced' note.",
+        "resolution": "declined: This is too aggressive. A single short clause is kept where it adds a fact.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux4"
+        ]
+      },
+      {
+        "issue": "h1 plus tabs is the kit's pattern; role names and the glossary are owner and consolidation-plan decisions.",
+        "resolution": "declined: Change the h1 to match each tab, add breadcrumbs on platform pages, or add 'Rename Console access to Viewer' and a glossary entry.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1",
+          "ux2",
+          "ux3"
+        ]
+      }
+    ]
+  }
+}

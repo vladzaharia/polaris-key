@@ -1,0 +1,74 @@
+{
+  "id": "config.approve-recipe",
+  "title": "Approve a minted-token recipe",
+  "area": "config",
+  "surface": "dialog",
+  "packages": [
+    "U-31"
+  ],
+  "uxRows": [],
+  "summary": "Review and approve… for DJDL's applemusic recipe after a repo change: a drawer over the catalog editor with who changed it and where, the one changed field against the last approval, what the change means, who can get a token under DJDL's access policy, and Approve with passkey.",
+  "compare": [
+    "The drawer opens from Review and approve… on the minted-token entry with the editor dimmed behind; there is no separate Edge mint page.",
+    "The screen is one viewport: the page behind doesn't scroll and the drawer fills the height, with its body scrolling and its foot always visible.",
+    "What changed compares every security-relevant field against the last approval, headed \"Approved\": changed fields first, with the old value struck in a danger tint with −, the new value bold in a success tint with +; then an Unchanged sub-head over one value per field. The eyebrow ends with who approved it last and when (\"Ana Lima approved Sep 14\"); the one changed row needs no count.",
+    "A widening change gets a plain warning of what it allows (a leaked token works for 12 hours instead of 1); a narrowing change has none.",
+    "The signing key is never shown, only its state (Sealed Oct 2).",
+    "The only confirm is the passkey (step-up); P0-12 holds: nothing mints until the approval is recorded.",
+    "Phone: the drawer fills the screen, the comparison stays a three-column table inside its card with values on one line, and the buttons fill the width.",
+    "The opening line names who changed the recipe and where (.pkey/schema), with a neutral link to the commit; the consequence (DJDL can't mint this token) is on the page behind, in the callout.",
+    "Who can get one restates the access policy in words (license tiers, sign-in group). The other states are separate screens: anyone at all (config.approve-recipe-open-access), stale (config.approve-recipe-stale), passkey failed (config.approve-recipe-passkey-failed) and after approval (config.approve-recipe-approved).",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the security states are drawn as four screens, the comparison reads at a glance, and the PNG shows one viewport.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Only the happy path was drawn: no acknowledgement for open access, no stale recipe, no failed passkey, no success.",
+        "resolution": "Added config.approve-recipe-open-access (warning row \"Anyone who installs DJDL can get one, with no license\", the acknowledgement checkbox, Approve disabled with \"Tick the box above to approve\"), config.approve-recipe-stale (callout at the top: the recipe changed while you were reviewing, commit 9b1e07d; the comparison reloads to 24 hours and the drawer stays open), config.approve-recipe-passkey-failed (danger strip above the foot: nothing was approved, Try again with passkey) and config.approve-recipe-approved (drawer closed, toast \"Approved. DJDL can mint applemusic.token again\", minting again). Approved is drawn as status text, not a pill, because the kit keeps pills for attention (ADMIN.md §5.11)."
+      },
+      {
+        "severity": "minor",
+        "issue": "\"1 of 6 fields\" was ambiguous, unchanged values sat under one header, the last approver wasn't named, and old and new relied on strike and bold only.",
+        "resolution": "\"1 field changed\"; an Unchanged sub-head above the five unchanged rows; the column reads \"Approved Sep 14 by Ana Lima\"; the old value has a − and a danger tint, the new value a + and a success tint."
+      },
+      {
+        "severity": "minor",
+        "issue": "The sticky 100vh drawer stopped mid-page in the full-page PNG.",
+        "resolution": "The console is clipped to one viewport and the drawer fills its height, as licenses.bulk-keys does; the page behind is the fixed minted-token entry."
+      },
+      {
+        "severity": "minor",
+        "issue": "Five unchanged rows carried no decision and the change was repeated four times.",
+        "resolution": "\"5 fields unchanged\" is a closed disclosure; authorship is one line (Jonah Ortiz · Oct 6 · commit 4f2c9a1); callout \"Tokens will last 12 hours\"; Who-can-get-one is one sentence; editor footer sentence removed; editor banner \"Lifetime changed from 1 to 12 hours in .pkey/schema. Minting is stopped until you approve.\"",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "issue": "Add the commit summary into the empty drawer area, or dim the backdrop less (UX2)",
+        "resolution": "declined: Adds content, against the terse-copy rule. Dead space in a 520px drawer is acceptable.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Neutral primary on dialog commit buttons (UX4)",
+        "resolution": "declined: Contradicts the kit's accent system. Gold for approve is deliberate.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Anchor the CTA row under the content (UX2)",
+        "resolution": "declined: Footer-pinned drawer actions are a pattern UX1 asks to keep.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 6
+}

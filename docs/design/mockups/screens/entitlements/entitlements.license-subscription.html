@@ -1,0 +1,220 @@
+<style>
+  /* entitlements.license-subscription: a state of licenses.detail. Colour and columns only. */
+  [data-screen="entitlements.license-subscription"] .page-actions .ic-layers {
+    color: var(--pk-accent-fg);
+  }
+  /* The facts beside History: two columns, the period on a row of its own. */
+  [data-screen="entitlements.license-subscription"] .sub-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* The stalest device: the warm warning tint and a warning edge, so it reads first. */
+  [data-screen="entitlements.license-subscription"] .item-row.stale {
+    background: var(--mk-warning-tint);
+    box-shadow: inset 3px 0 0 var(--pk-warning);
+  }
+</style>
+<div class="console kit-next ent2" data-service="license">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="DJDL">
+    <div class="ctx">
+      <span class="logo sm" data-product="djdl"></span>
+      <span class="ctx-text"><span class="ctx-name">DJDL</span><span class="ctx-sub mono">djdl</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-layout-dashboard"></i><span class="nav-text">Overview</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-plug"></i><span class="nav-text">Integration</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-shield-check"></i><span class="nav-text">Access</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-monitor-smartphone"></i><span class="nav-text">Devices</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users-round"></i><span class="nav-text">Users</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-activity"></i><span class="nav-text">Activity</span></a>
+    <div class="nav-group" data-service="license">
+      <button class="nav-label" aria-expanded="true">Licensing<i class="ic ic-chevron-down sm"></i></button>
+      <a class="nav-item active" href="#"><i class="ic ic-key-round"></i><span class="nav-text">Licenses</span><span class="count">240</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-layers"></i><span class="nav-text">Tiers</span><span class="count">4</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-puzzle"></i><span class="nav-text">Add-ons</span><span class="count">2</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-list-checks"></i><span class="nav-text">Entitlements</span></a>
+    </div>
+    <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page form-page">
+      <header class="page-head">
+        <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Licenses</a><i class="ic ic-chevron-right" aria-hidden="true"></i>Northside DJ School</nav>
+        <div class="page-heading"><h1>Northside DJ School</h1><span class="pill warning"><i class="ic ic-clock"></i>Past due</span></div>
+        <div class="page-sub mk-cluster-3">
+          <span class="pill sm"><i class="ic ic-user-round"></i>In an account</span>
+          <span><span class="nowrap">Priya Raman</span>&nbsp;· <span class="nowrap">priya@example.com</span></span>
+          <span class="id"><i class="ic ic-id-card"></i>lic_01JA8…4Q2M<i class="ic ic-copy"></i></span>
+        </div>
+        <!-- The tier is a control: it opens Change tier (licenses.change-tier). The ⋯ menu has Change tier… too. -->
+        <div class="page-actions">
+          <button class="btn outline" aria-haspopup="dialog" aria-label="Tier: Pro. Change tier"><i class="ic ic-layers"></i><span class="muted">Tier</span>Pro<i class="ic ic-chevron-down"></i></button>
+          <button class="btn outline hide-phone"><i class="ic ic-key-round"></i>Add key</button>
+          <button class="btn outline icon" aria-label="More: Add key, Change tier, Revoke"><i class="ic ic-ellipsis"></i></button>
+        </div>
+      </header>
+
+      <!-- LX-14: one record, five tabs. -->
+      <nav class="tabs" aria-label="License">
+        <a class="tab active" href="#" aria-current="page">Status</a>
+        <a class="tab" href="#">Entitlements</a>
+        <a class="tab" href="#">Keys <span class="count">1</span></a>
+        <a class="tab" href="#">Devices <span class="count">7</span></a>
+        <a class="tab" href="#">Activity</a>
+      </nav>
+
+      <!-- The health line (UX-07): one callout, one fix; nothing when healthy. -->
+      <div class="callout warning">
+        <i class="ic ic-clock"></i>
+        <div class="grow">
+          <div class="callout-title">Grace ends Oct 14, then it keeps DJDL 4.2.0</div>
+          <div class="callout-text">Renew once Northside’s invoice is paid. <a class="link" href="#">Grace is set in Settings</a></div>
+        </div>
+        <button class="btn outline sm"><i class="ic ic-repeat"></i>Renew…</button>
+      </div>
+
+      <!-- licenses.detail's frame: what the record is and until when (the rail) comes first below 1280. -->
+      <div class="mk-with-rail sticky-rail">
+        <div class="mk-main mk-stack-8">
+          <!-- Core subscriptions (LX-41): the one subscriptions view, for every source. Its ⋯ has Renew… and Cancel subscription…. -->
+          <section class="card" aria-labelledby="sub-title">
+            <div class="card-head">
+              <div class="title"><h2 id="sub-title">Subscription</h2></div>
+              <button class="btn ghost icon sm" aria-label="Subscription: Renew…, Cancel subscription…"><i class="ic ic-ellipsis"></i></button>
+            </div>
+            <div class="card-split stack-md">
+              <dl class="dl cols sub-facts">
+                <!-- Duration (LX-41): from the tier; Change sets this license's own. -->
+                <div class="full"><dt>Duration</dt><dd class="mk-cluster baseline"><span><strong class="nowrap">Renewing, keeps the last version</strong>&nbsp;· <span class="nowrap muted">from Pro</span></span><a class="link tap" href="#">Change</a></dd></div>
+                <div class="full"><dt>Current period</dt><dd class="tnum nowrap">Oct 7, 2025 – Oct 7, 2026</dd></div>
+                <div><dt>Source</dt><dd>Manual</dd></div>
+                <div><dt>Period</dt><dd>Yearly</dd></div>
+              </dl>
+              <div class="mk-stack-3">
+                <p class="eyebrow">History</p>
+                <ol class="timeline">
+                  <li class="timeline-item">
+                    <span class="timeline-when">Oct 2, 2025</span>
+                    <span class="timeline-what">Renewed to Oct 7, 2026 by Alex Lindqvist</span>
+                    <span class="timeline-desc">Invoice INV-2025-0388, paid by bank transfer</span>
+                  </li>
+                  <li class="timeline-item">
+                    <span class="timeline-when">Oct 7, 2024</span>
+                    <span class="timeline-what">Started by Alex Lindqvist</span>
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </section>
+
+          <!-- Limits (LX-32, LX-33): one resolver, license > tier > platform default; only an exception carries a tag. -->
+          <section class="card" aria-labelledby="limits-title">
+            <div class="card-head">
+              <div class="title"><h2 id="limits-title">Limits</h2><p>Values from Pro; overrides marked</p></div>
+              <button class="btn ghost sm hide-phone"><i class="ic ic-calendar-clock"></i>Preview at a date…</button>
+            </div>
+            <table class="table stack-phone flow">
+              <thead><tr><th>Limit</th><th>Value</th><th>From</th><th class="end"><span class="sr-only">Action</span></th></tr></thead>
+              <tbody>
+                <tr class="marked">
+                  <td><span class="icon-text strong"><i class="ic ic-monitor-smartphone"></i>Devices</span></td>
+                  <td><span class="cell-label">Value</span><strong class="tnum">10</strong></td>
+                  <td><span class="cell-label">From</span><div class="cell-stack"><span><span class="pill sm accent">Override</span></span><span class="cell-sub">Pro gives 5</span></div></td>
+                  <td class="end"><button class="btn outline xs">Use Pro’s</button></td>
+                </tr>
+                <tr>
+                  <td><span class="icon-text strong"><i class="ic ic-wifi-off"></i>Offline days</span></td>
+                  <td><span class="cell-label">Value</span><strong class="tnum">30 days</strong></td>
+                  <td><span class="cell-label">From</span><span class="subtle">—</span></td>
+                  <td class="end"><button class="btn outline xs">Override</button></td>
+                </tr>
+                <tr>
+                  <td><span class="icon-text strong"><i class="ic ic-git-branch"></i>Release tracks</span></td>
+                  <td><span class="cell-label">Value</span><strong>stable, beta</strong></td>
+                  <td><span class="cell-label">From</span><span class="subtle">—</span></td>
+                  <td class="end"><button class="btn outline xs">Override</button></td>
+                </tr>
+                <tr>
+                  <td><span class="icon-text strong"><i class="ic ic-tag"></i>Versions</span></td>
+                  <td><span class="cell-label">Value</span><strong>Any</strong></td>
+                  <td><span class="cell-label">From</span><span class="subtle">—</span></td>
+                  <td class="end"><button class="btn outline xs">Override</button></td>
+                </tr>
+                <tr>
+                  <td><span class="icon-text strong"><i class="ic ic-fingerprint"></i>Fingerprint mode</span></td>
+                  <td><span class="cell-label">Value</span><strong>Normal</strong></td>
+                  <td><span class="cell-label">From</span><span class="muted">Set on the tier only</span></td>
+                  <td class="end"><a class="link" href="#">Open tier<i class="ic ic-arrow-right"></i></a></td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <!-- Devices: licenses.detail's rows; the stalest first, with why it is marked. -->
+          <section class="card" aria-labelledby="dev-title">
+            <div class="card-head">
+              <div class="title"><h2 id="dev-title">Devices</h2></div>
+              <div class="progress-inline"><span>7 of 10</span><div class="progress" style="--v: 70%"></div></div>
+              <button class="btn outline sm">Add seats…</button>
+            </div>
+            <div class="card-rows">
+              <div class="item-row stale">
+                <span class="icon-tile sm neutral"><i class="ic ic-monitor"></i></span>
+                <div class="item-text"><div class="item-title">Studio iMac 3</div><div class="item-desc"><span class="icon-text inline warning nowrap"><i class="ic ic-clock"></i>Not seen for 23 days</span>&nbsp;· <span class="nowrap">macOS 15</span>&nbsp;· <span class="nowrap">DJDL 4.2.0</span></div></div>
+                <div class="item-end"><button class="btn outline sm">Deauthorize…</button></div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile sm neutral"><i class="ic ic-monitor"></i></span>
+                <div class="item-text"><div class="item-title">Booth PC 2</div><div class="item-desc"><span class="nowrap">Windows 11</span>&nbsp;· <span class="nowrap">DJDL 4.2.0</span></div></div>
+                <div class="item-end"><div class="item-meta"><span>2 h ago</span></div><button class="btn ghost icon sm" aria-label="Booth PC 2: more"><i class="ic ic-ellipsis"></i></button></div>
+              </div>
+              <div class="item-row">
+                <span class="icon-tile sm neutral"><i class="ic ic-laptop"></i></span>
+                <div class="item-text"><div class="item-title">Priya’s MacBook Pro</div><div class="item-desc"><span class="nowrap">macOS 15</span>&nbsp;· <span class="nowrap">DJDL 4.2.0</span></div></div>
+                <div class="item-end"><div class="item-meta"><span>10 min ago</span></div><button class="btn ghost icon sm" aria-label="Priya’s MacBook Pro: more"><i class="ic ic-ellipsis"></i></button></div>
+              </div>
+            </div>
+            <div class="card-foot start"><a class="link" href="#">Show all devices<i class="ic ic-arrow-right"></i></a></div>
+          </section>
+        </div>
+
+        <div class="mk-rail">
+          <section class="card" aria-labelledby="recent-title">
+            <div class="card-head ghost-action">
+              <div class="title"><h2 id="recent-title">Recent</h2></div>
+              <a class="btn ghost sm" href="#">Open Activity<i class="ic ic-arrow-right"></i></a>
+            </div>
+            <div class="card-rows">
+              <div class="list-row">
+                <span class="icon-tile muted"><i class="ic ic-monitor"></i></span>
+                <span class="list-row-text"><strong>Booth PC 2</strong> activated</span>
+                <span class="list-row-meta">Oct 2</span>
+              </div>
+              <div class="list-row">
+                <span class="avatar violet" aria-hidden="true">AL</span>
+                <span class="list-row-text"><strong>Alex Lindqvist</strong> set the device limit to 10, was 5 from Pro</span>
+                <span class="list-row-meta">Sep 18</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

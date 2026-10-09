@@ -1,0 +1,145 @@
+<style>
+  /* sdk.pkey-doctor: one terminal per size (80 columns; the phone gets 44), the key and notes
+     beside it from 1280 and under it below. */
+  [data-screen="sdk.pkey-doctor"] .board-grid {
+    --cols-desktop: auto minmax(0, 1fr);
+  }
+</style>
+
+<div class="board" data-service="release">
+  <div class="board-page">
+    <header class="board-head">
+      <h1>pkey doctor</h1>
+    </header>
+
+    <div class="board-grid">
+    <!-- 80 columns, as UK-14's terminal kit draws it. -->
+    <div class="term cols-80 hide-phone">
+      <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×40</span></div>
+<pre class="term-body"><span class="c-prompt">❯</span> pkey doctor
+<span class="c-b">DJDL</span> <span class="c-dim">(djdl) · key.plrs.im</span>
+
+<span class="c-b">Manifest</span>
+  <span class="c-ok"><span class="g">✓</span></span> .pkey/ is valid          <span class="c-dim">product, schema and release · no warnings</span>
+  <span class="c-ok"><span class="g">✓</span></span> Signed in                <span class="c-dim">Ada Lindqvist (ada@example.com) · pkey login</span>
+  <span class="c-ok"><span class="g">✓</span></span> polaris-key.json         <span class="c-dim">macos/ and windows/ · pins match key.plrs.im</span>
+
+<span class="c-b">Keys</span>
+  <span class="c-ok"><span class="g">✓</span></span> Signing key              <span class="c-dim">djdl-2026, active</span>
+  <span class="c-ok"><span class="g">✓</span></span> Release key              <span class="c-dim">djdl-rk-2026, pinned</span>
+  <span class="c-warn"><span class="g">!</span></span> Next signing key         djdl-2026b is staged and becomes active Nov 3
+      <span class="c-accent">→</span> pkey sdk add swift --dir macos/
+      <span class="c-accent">→</span> pkey sdk add kotlin --dir windows/
+        <span class="c-dim">pins djdl-2026b beside djdl-2026 in each folder</span>
+
+<span class="c-b">Integration on macOS</span>
+  Licensing                  <span class="c-ok"><span class="g">✓</span> Verified</span>
+  Managed config             <span class="c-ok"><span class="g">✓</span> Verified</span>
+  Ship builds                <span class="c-accent"><span class="g">●</span> Waiting: update check</span>
+  Sign-in                    <span class="c-accent"><span class="g">●</span> Waiting</span>
+  Cloud Sync                 <span class="c-dim"><span class="g">○</span> Not seen yet</span>
+
+<span class="c-b">Integration on Windows</span>       <span class="c-dim"><span class="g">○</span> Not seen yet</span>
+
+<span class="c-b">CI</span>
+  <span class="c-ok"><span class="g">✓</span></span> <span class="c-dim">First release 4.2.0, Oct 6</span>
+
+<span class="c-dim">Commerce                   off</span>
+
+<span class="c-b">Left to do</span>
+  <span class="c-err"><span class="g">✗</span></span> Sparkle signing key      macOS updates need one
+      <span class="c-accent">→</span> pkey release keys init --sparkle  <span class="c-dim">then push</span>
+  <span class="c-err"><span class="g">✗</span></span> Storage per account      Standard has no Cloud Sync storage yet
+      <span class="c-accent">→</span> <span class="c-u">key.plrs.im/manage/#/p/djdl/integration</span>
+
+<span class="c-chip todo">2 to do</span> <span class="c-dim">· 1 warning · 1.2 s</span>
+<span class="c-err">❯</span> <span class="cursor"></span>                                                                       <span class="c-dim">exit 1</span></pre>
+    </div>
+
+    <!-- Narrow: the same run at 44 columns; the platform columns become one block per platform. -->
+    <div class="term show-phone run-44">
+      <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 44×52</span></div>
+<pre class="term-body"><span class="c-prompt">❯</span> pkey doctor
+<span class="c-b">DJDL</span> <span class="c-dim">(djdl) · key.plrs.im</span>
+
+<span class="c-b">Manifest</span>
+  <span class="c-ok"><span class="g">✓</span></span> .pkey/ is valid
+    <span class="c-dim">product, schema and release · no
+    warnings</span>
+  <span class="c-ok"><span class="g">✓</span></span> Signed in
+    <span class="c-dim">Ada Lindqvist (ada@example.com) ·
+    pkey login</span>
+  <span class="c-ok"><span class="g">✓</span></span> polaris-key.json
+    <span class="c-dim">macos/ and windows/ · pins match
+    key.plrs.im</span>
+
+<span class="c-b">Keys</span>
+  <span class="c-ok"><span class="g">✓</span></span> Signing key
+    <span class="c-dim">djdl-2026, active</span>
+  <span class="c-ok"><span class="g">✓</span></span> Release key
+    <span class="c-dim">djdl-rk-2026, pinned</span>
+  <span class="c-warn"><span class="g">!</span></span> Next signing key
+    djdl-2026b is staged and becomes
+    active Nov 3
+      <span class="c-accent">→</span> pkey sdk add swift --dir macos/
+      <span class="c-accent">→</span> pkey sdk add kotlin --dir windows/
+        <span class="c-dim">pins djdl-2026b beside djdl-2026
+        in each folder</span>
+
+<span class="c-b">Integration on macOS</span>
+  <span class="c-ok"><span class="g">✓</span></span> Licensing        <span class="c-ok">Verified</span>
+  <span class="c-ok"><span class="g">✓</span></span> Managed config   <span class="c-ok">Verified</span>
+  <span class="c-accent"><span class="g">●</span></span> Ship builds      <span class="c-accent">Waiting: update check</span>
+  <span class="c-accent"><span class="g">●</span></span> Sign-in          <span class="c-accent">Waiting</span>
+  <span class="c-dim"><span class="g">○</span> Cloud Sync       Not seen yet</span>
+
+<span class="c-b">Integration on Windows</span>  <span class="c-dim"><span class="g">○</span> Not seen yet</span>
+
+<span class="c-b">CI</span>
+  <span class="c-ok"><span class="g">✓</span></span> <span class="c-dim">First release 4.2.0, Oct 6</span>
+
+<span class="c-dim">Commerce  off</span>
+
+<span class="c-b">Left to do</span>
+  <span class="c-err"><span class="g">✗</span></span> Sparkle signing key
+    macOS updates need one
+      <span class="c-accent">→</span> pkey release keys init --sparkle
+        <span class="c-dim">then push</span>
+  <span class="c-err"><span class="g">✗</span></span> Storage per account
+    Standard has no Cloud Sync storage
+    yet
+      <span class="c-accent">→</span> <span class="c-u">key.plrs.im/manage/#/p/djdl/</span>
+        <span class="c-u">integration</span>
+
+<span class="c-chip todo">2 to do</span> <span class="c-dim">· 1 warning · 1.2 s</span>
+<span class="c-err">❯</span> <span class="cursor"></span>                                   <span class="c-dim">exit 1</span></pre>
+    </div>
+
+
+      <div class="board-aside stack join-phone">
+        <section class="card">
+          <div class="card-head"><h2>Symbols</h2></div>
+          <div class="card-body">
+            <dl class="symbol-key two-col">
+              <dt class="symbol-key-sym s-ok">✓</dt><dd><strong>Verified</strong>: SDK answered or CI published</dd>
+              <dt class="symbol-key-sym s-wait">●</dt><dd><strong>Waiting</strong>: console done, app hasn’t called</dd>
+              <dt class="symbol-key-sym s-unseen">○</dt><dd><strong>Not seen yet</strong>: no SDK has reached us</dd>
+              <dt class="symbol-key-sym s-err">✗</dt><dd><strong>To do</strong>: a missing console step or key</dd>
+              <dt class="symbol-key-sym s-warn">!</dt><dd><strong>Warning</strong>: works today, act before a date</dd>
+            </dl>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head"><h2>How it behaves</h2></div>
+          <div class="card-body">
+            <ul class="bullet-list">
+              <li>Exit 1 while anything is to do; <code>--no-color</code> keeps the words.</li>
+              <li><code>--product</code> and <code>--base-url</code> default to <code>.pkey/product</code> and <code>PKEY_BASE_URL</code>; console links follow the base URL.</li>
+              <li>Outside a repository it checks sign-in, the base URL and <code>polaris-key.json</code> in this folder.</li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>

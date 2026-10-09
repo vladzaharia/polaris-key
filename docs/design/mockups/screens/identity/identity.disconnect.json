@@ -1,0 +1,50 @@
+{
+  "id": "identity.disconnect",
+  "title": "Disconnect an app",
+  "area": "identity",
+  "surface": "dialog",
+  "packages": [
+    "I-34",
+    "I-11"
+  ],
+  "uxRows": [],
+  "summary": "Mara's confirmation for Disconnect on Diceroll's Connected apps row: which devices sign out and when, that the game keeps playing because the license stays activated and in her library, what happens to Cloud Sync, and that the developer keeps only what it already received.",
+  "compare": [
+    "Opened by Disconnect on an app row; the whole Account page dims behind it (header included). With the dialog open the page can't scroll, so the dialog is centred in the first viewport on desktop.",
+    "Title 'Disconnect Diceroll?' with the product's icon; the first line names every device that signs out (from the account's devices for this product) and when: the next time the game checks in, within an hour (the app session's refresh interval through I-11's revocation hook; use the server's real figure).",
+    "Bullets: the game keeps playing on those devices because the license stays activated there and stays in the library (named by tier); Cloud Sync stops for this app until the next sign-in and synced saves stay until deleted under Your data (only for products with Cloud Sync); the developer keeps what it already received, named in parentheses, and gets nothing new. identity.sign-in-off describes devices the same way.",
+    "A muted line says the next sign-in asks what to share again (the grant is revoked, so consent shows again).",
+    "Buttons say what happens: 'Keep Diceroll' and the danger 'Disconnect Diceroll'. On success the row leaves the list with a toast 'Diceroll is disconnected' and its devices are signed out through I-11's revocation hook (I-34 acceptance: Disconnect signs the app out).",
+    "Never 'Revoke grant' or 'Deauthorize' in customer copy; the portal verb is Disconnect.",
+    "Phone: the dialog is the portal's bottom sheet (grab handle, 'Disconnect Diceroll' full width above 'Keep Diceroll'). 'Keep Diceroll' has focus when it opens and is visible in both themes."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots)",
+    "date": "2026-10-07",
+    "verdict": "Fixed: the dialog now says exactly what happens on Mara's devices, and it agrees with sign-in-off.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "It didn't say whether Diceroll stops working on Mara's Pixel 8 and Steam Deck, and seemed to contradict sign-in-off's 'devices already activated keep working'.",
+        "resolution": "'Diceroll is signed out on the 2 devices it's on, Mara's Pixel 8 and Steam Deck, the next time it checks in, within an hour.' First bullet: 'The game keeps playing on both. Your Diceroll Standard license stays activated there and stays in your library.' sign-in-off uses the same timing and the same device rule; Connected apps' footnote agrees."
+      },
+      {
+        "severity": "minor",
+        "issue": "'…already received, your screen name, and gets nothing new' read as a list; the compare said the header stays visible but it was blurred.",
+        "resolution": "'Example Games keeps what it already received (your screen name) and gets nothing new.' The compare now says the whole page dims. The dialog is centred on desktop and a bottom sheet on phone, like the other identity dialogs."
+      },
+      {
+        "severity": "minor",
+        "issue": "Danger action the easiest tap; Cancel looked like a second primary in light.",
+        "resolution": "Phone sheet: Keep first, Disconnect second and outlined; Cancel is outline with no focus fill; bullets one clause; destructive label white in dark.",
+        "round": "multi-review",
+        "raisedBy": [
+          "ux1"
+        ]
+      }
+    ]
+  },
+  "order": 12
+}

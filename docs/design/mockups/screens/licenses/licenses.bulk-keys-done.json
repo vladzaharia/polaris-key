@@ -1,0 +1,52 @@
+{
+  "id": "licenses.bulk-keys-done",
+  "title": "Create keys in bulk: after Create",
+  "area": "licenses",
+  "surface": "dialog",
+  "packages": [
+    "LX-29",
+    "LX-27",
+    "LX-30"
+  ],
+  "uxRows": [],
+  "summary": "The New license drawer after Create 200 keys: the one-time CSV before and after its download, the confirmation when closing before any download, and a partial result (120 of 200 created) with Retry.",
+  "order": 13,
+  "compare": [
+    "A board of drawers (.board.cols-2.wide-3), each in a stage with the drawer's own edges.",
+    "Done: a success callout '200 keys created in Mixer bundle · Oct 2026' / 'Each is a floating Standard license.'; the CSV as a tinted file row (djdl-mixer-bundle-oct-2026.csv, 200 rows, 18 KB) with Download CSV, the only primary; 'Download now: this is the only time the keys can be shown.'; Open batch and Close.",
+    "Downloaded: the file row says 'Downloaded at 10:42' with Download again (secondary); 'Download again works until you close this.'; Done closes without asking.",
+    "Closing early: 'Close without the CSV?' over the drawer: 'The 200 keys can’t be shown again, so nobody could use them.'; Close without keys (danger outline) and Download CSV (primary).",
+    "Partial result: a warning 'Created 120 of 200 keys' / 'Polaris Key stopped answering. Retry makes the other 80 in the same batch, with their own CSV.' with Retry; the CSV with 120 rows."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: kit drawers on board stages, callouts and item rows; 0 screen spacing.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "12 spacing declarations and custom done marks, file boxes and a stage scrim.",
+        "resolution": "Kit only: .board-stage with .drawer and .overlay.center, .callout tones, .card.tint with .item-row, .drawer-foot .start."
+      },
+      {
+        "severity": "minor",
+        "issue": "Each drawer repeated the batch and tier in a fact list under the title; the partial result had two warnings.",
+        "resolution": "The callout names the batch once; one warning carries Retry."
+      },
+      {
+        "severity": "minor",
+        "issue": "The count and the once-only warning appeared two or three times.",
+        "resolution": "Banner says '200 keys created'; the file card is the name and size; the once-only line sits once, muted, above the card, and again in the close-early dialog; the file name wraps at its hyphens (.wrap-name); on phone the CSV card is neutral (.neutral-phone).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      }
+    ]
+  }
+}

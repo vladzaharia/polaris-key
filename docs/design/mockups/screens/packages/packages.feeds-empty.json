@@ -1,0 +1,57 @@
+{
+  "id": "packages.feeds-empty",
+  "title": "Packages, nothing declared",
+  "area": "packages",
+  "surface": "console",
+  "order": 3,
+  "packages": [
+    "F-34"
+  ],
+  "uxRows": [
+    "UX-33"
+  ],
+  "summary": "DJDL's Packages page on Sep 29, the day before its first package was declared: one empty card that says DJDL declares no packages yet, shows the .pkey/release declaration for a package and the CI publish command, and makes clear there is nothing to turn on.",
+  "compare": [
+    "Same frame as packages.feeds: DJDL's Product context, Ship builds open, Packages active with no count, Distribution accent; the header keeps Service tokens and no switch or New feed button.",
+    "The empty card's title says what is true in DJDL's words ('DJDL declares no packages yet'); the text says a declared library or image gets its feed on the next resync, open to Customers, and that there's nothing to turn on.",
+    "The snippet is a real package deliverable for .pkey/release (kind: package, ecosystem npm with the six ecosystems in a comment, the scoped name, the tarball artifact match), and its foot gives the publish command with --deliverable and --dir.",
+    "One link to the docs for package deliverables; no cleanup callout, no machine or CI cards until a feed exists.",
+    "Phone: the card fills the width and the snippet scrolls sideways inside its block."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "reviewer": "4 UX designers, triaged by a lead designer",
+    "date": "2026-10-08",
+    "verdict": "Spacing and copy trimmed per the multi-review triage; see findings.",
+    "findings": [
+      {
+        "severity": "minor",
+        "issue": "Dead space under the docs link, a command wrapping inside the code footer, 'open to Customers' mechanism aside.",
+        "resolution": "Page container width; body 'Declare a package in .pkey/release; its feed appears here on the next resync.'; left pane centred against the code pane (.card-split.v-center); the publish command is its own copyable line.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      },
+      {
+        "issue": "Add a 'What you get' row with three feed URLs (UX1).",
+        "resolution": "declined: adds content.",
+        "round": "multi-review"
+      },
+      {
+        "severity": "major",
+        "issue": "[Wide] Single-column screens hug the left of a 1920 canvas; the rail leaves 600-750px empty.",
+        "resolution": "Kit: .page.contained (1280, centred), .page.form.centered, and .sticky-rail (360px rail, sticky at top 88px from 1600px); card pairs use .top (align-items:start).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3"
+        ]
+      }
+    ]
+  }
+}

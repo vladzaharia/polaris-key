@@ -1,0 +1,55 @@
+{
+  "id": "licenses.access-rule-states",
+  "title": "Add a rule: other states",
+  "area": "licenses",
+  "surface": "dialog",
+  "packages": [
+    "LX-36",
+    "P2-10"
+  ],
+  "uxRows": [],
+  "summary": "The Add a rule dialog's states beyond licenses.access-rule: a group no sign-in has sent yet (saves, matches no one), a duplicate of an existing rule (inline error with Edit that rule), a blank group after Add rule, the match preview counting, and the preview failing with Retry.",
+  "order": 9,
+  "compare": [
+    "A board of dialogs (.board.cols-2.wide-3): two a row from 1280px, three at wide, one below; each draws only the fields its state needs.",
+    "Matches no one: Group djdl-press-eu; a warning 'No one has djdl-press-eu yet' / 'The rule still saves. Check the name matches Pocket ID’s exactly, including case.'; Add rule enabled.",
+    "Duplicate: under Group, 'studio-pro from Pocket ID already gives Studio. Edit that rule instead.'; Add rule disabled.",
+    "Blank group: 'Enter the group name exactly as Pocket ID sends it.' under the empty, focused field.",
+    "Preview counting: skeleton head and two skeleton rows in the preview slot; a live region announces the count.",
+    "Preview failed: 'Couldn’t count who has djdl-press' / 'Polaris Key didn’t answer in time. The rule still saves.' with Retry."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "spacing-and-content",
+    "reviewer": "Spacing and content pass against the products.overview and products.home references, all four sizes in both themes",
+    "date": "2026-10-08",
+    "verdict": "Spacing and content pass: the same dialog parts as licenses.access-rule on the kit board; 0 screen spacing.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "10 spacing declarations and custom rows for the preview and its skeleton.",
+        "resolution": "Kit only: .board.cols-2.wide-3, .mk-grid-2, .callout, .card.sunken with .item-row and .skeleton.media."
+      },
+      {
+        "severity": "minor",
+        "issue": "Errors and callouts ran to two or three sentences; captions repeated them.",
+        "resolution": "One sentence of what happened and one of what to do; captions one line."
+      },
+      {
+        "severity": "minor",
+        "issue": "Dialog footers 36px and helper text under 13px.",
+        "resolution": "Footers are .dialog-foot.std (40px buttons, 12px gap); the board is .floor (13px helpers).",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Rewrite the warning, error and loading copy.",
+        "resolution": "declined: The copy already follows the 'what happened, what to do' rule. The change is wording only.",
+        "round": "multi-review"
+      }
+    ]
+  }
+}

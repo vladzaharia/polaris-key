@@ -1,0 +1,53 @@
+{
+  "id": "config.catalog-empty",
+  "title": "Empty catalog: start from a template",
+  "area": "config",
+  "surface": "console",
+  "packages": [
+    "U-32",
+    "ST-42",
+    "ST-45"
+  ],
+  "uxRows": [],
+  "summary": "A new product's Catalog page (drawn for Diceroll before its first publish): catalog v1 was published empty at create, and the page offers templates by platform, Game picked from what the product builds, with what it adds and Publish v2 from Game in one step.",
+  "compare": [
+    "Shown only while the published catalog has no entries; v1 exists already (ST-42's create-time bootstrap), so the page never says \"Publish a catalog first\".",
+    "Four templates, one per platform kind: Game, Desktop app, Command-line tool, Web app. The one matching what the product builds is preselected and says why (\"Matches Diceroll: Godot on iOS, Android, Steam and itch.io\").",
+    "A selected template is drawn as a strong neutral border plus the tick, not a gold fill.",
+    "The side card lists every entry the template adds, grouped (settings that sync, settings that stay on each device, Cloud Sync collections), each with its default; visibility is said once in the card's line (\"every setting Editable\"), and because everything is new, that list is the whole diff.",
+    "Publish v2 from Game is the one primary and publishes in one step (U-32's acceptance); Open in editor is the way to change entries first. Game adds the saves and session collections; Desktop app adds theme, language, updates and a telemetry opt-in; Command-line tool adds output and flag defaults; Web app keeps secrets server-side.",
+    "Starting empty is still offered: Add entry, or commit .pkey/schema to the repo.",
+    "Diceroll's sidebar shows its six features in canonical order with Managed config open on Catalog (0) and Profiles (1, the Default profile).",
+    "Phone: the template cards stack one per row, the adds list follows, and Publish fills the width. Tablet: the adds card drops under the templates. Wide: the four templates sit in one row.",
+    "Spacing and copy pass (2026-10-08): the screen sets no spacing of its own (kit primitives only), and each fact shows once, where it's most useful."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": "multi-review",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "About 320px of dead space under the template picker, the primary action at the foot of a long rail, mechanism subtitles and an 11px caption.",
+        "resolution": "Right preview groups are closed disclosures with counts and \"Show entries\" (the first group is open so the columns end close); Publish v2 moved to a bar directly under the picker (sticky bar on phone); \"What Game adds\" is \"Game template\"; page subtitle, card subtitle, \"Devices get v2\" footer and the \"Matches Diceroll\" caption removed; \"Recommended\" chip; Game description trimmed; Start empty strip has a button and a \"Commit .pkey/schema\" link as equal actions.",
+        "round": "multi-review",
+        "raisedBy": [
+          "UX1",
+          "UX2",
+          "UX3",
+          "UX4"
+        ]
+      },
+      {
+        "issue": "Drop the sidebar 0 badge (UX3)",
+        "resolution": "declined: Shared sidebar chrome used across screens. Leave it.",
+        "round": "multi-review"
+      },
+      {
+        "issue": "Make the preview the main column and the picker a compact row (UX3)",
+        "resolution": "declined: The template choice is the decision in this first-run state. Rebalance heights instead.",
+        "round": "multi-review"
+      }
+    ]
+  },
+  "order": 1
+}
