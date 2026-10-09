@@ -104,7 +104,7 @@ import {
 } from "../accounts/terms.js";
 import { mergeAccounts } from "../accounts/merge.js";
 import { providerVouchesForEmail } from "../providers/vouch.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   CODE_VERIFY_PER_IP_MINUTE,
   emailUnavailable,
@@ -600,7 +600,7 @@ async function gateVerify(
     PORTAL_EMAIL_SCOPE,
     {
       bucket: "portalCodeVerify",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: CODE_VERIFY_PER_IP_MINUTE,
       windowSec: 60,
     },

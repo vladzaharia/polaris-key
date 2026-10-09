@@ -19,7 +19,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { hashKey } from "../crypto.js";
-import { clientIp, rateLimitOk } from "../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
@@ -217,7 +217,7 @@ export async function handleAdminLogin(
   const ok = await rateLimitOk(
     env,
     "_admin",
-    { bucket: "adminLogin", id: clientIp(req), limit: 20, windowSec: 60 },
+    { bucket: "adminLogin", id: clientNetwork(req), limit: 20, windowSec: 60 },
     Math.floor(Date.now() / 1000),
   );
   if (!ok)
@@ -280,7 +280,12 @@ export async function handleAdminCallback(
   const ok = await rateLimitOk(
     env,
     "_admin",
-    { bucket: "adminCallback", id: clientIp(req), limit: 20, windowSec: 60 },
+    {
+      bucket: "adminCallback",
+      id: clientNetwork(req),
+      limit: 20,
+      windowSec: 60,
+    },
     Math.floor(Date.now() / 1000),
   );
   if (!ok)

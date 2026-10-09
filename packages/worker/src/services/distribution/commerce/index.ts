@@ -36,7 +36,7 @@ import { bearer, parseJsonObject } from "../../../core/platform.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
 import { trustRefusal } from "../../../core/deviceTrust.js";
 import type { DeviceRow } from "../../../core/data.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import { isStore, type Store } from "../../../core/storeGrants.js";
 import {
@@ -546,7 +546,7 @@ async function handleAppStoreHook(
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "appStoreHookIp", id: clientIp(ctx.req), ...HOOK_IP_RATE },
+      { bucket: "appStoreHookIp", id: clientNetwork(ctx.req), ...HOOK_IP_RATE },
       now,
     ))
   )
@@ -668,7 +668,7 @@ async function handlePlayHook(ctx: ServiceContext): Promise<Response | null> {
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "playRtdnHookIp", id: clientIp(ctx.req), ...HOOK_IP_RATE },
+      { bucket: "playRtdnHookIp", id: clientNetwork(ctx.req), ...HOOK_IP_RATE },
       now,
     ))
   )

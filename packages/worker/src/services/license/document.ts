@@ -27,7 +27,13 @@ import { sha256Base64Url } from "@polaris-key/jws";
 import type { Env, Db } from "../../core/platform.js";
 import { bearer } from "../../core/platform.js";
 import type { Product } from "../../core/products.js";
-import { ErrorCode, methodNotAllowed, wireError } from "../../core/errors.js";
+import {
+  ErrorCode,
+  errorResponse,
+  methodNotAllowed,
+  wireError,
+} from "../../core/errors.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { deviceMetadata, touchDeviceMetadata } from "../../core/devices.js";
 import { isStrictJsonError, signDoc } from "../../core/signing.js";
 import { HEADER_CHANNEL, HEADER_VERSION } from "@polaris-key/protocol/core";
@@ -107,6 +113,22 @@ export async function handleLicenseDocument(
   settings?: SettingsRegistry,
 ): Promise<Response> {
   if (req.method !== "GET") return methodNotAllowed();
+  // SEC-LIC-13: a per-network bucket (generous: a NAT holds many devices) before any D1 work.
+  if (
+    !(await rateLimitOk(
+      env,
+      product.slug,
+      {
+        bucket: "licenseDoc",
+        id: clientNetwork(req),
+        limit: 300,
+        windowSec: 60,
+      },
+      now,
+    ))
+  ) {
+    return errorResponse(429, "rate_limited", "too many license requests");
+  }
 
   // Licence usability is required here, unlike on the config document: this route hands out a
   // grant, so a dead licence must not be able to mint one. See `auth.ts` for the split.

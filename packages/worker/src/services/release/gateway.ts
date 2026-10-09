@@ -36,7 +36,7 @@ import { appSecurityHeaders } from "../../core/platform.js";
 import type { ProductPublic } from "../../core/products.js";
 import { BLOB_CSP } from "../../core/blobs.js";
 import { errorResponse, json, notFound } from "../../core/errors.js";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { type FetchImpl, getInstallationToken } from "./githubApp.js";
 import {
   type Release,
@@ -272,7 +272,7 @@ export async function serveReleaseSurface(
       product.slug,
       {
         bucket: isArtifact ? "releaseArtifact" : "release",
-        id: clientIp(req),
+        id: clientNetwork(req),
         ...(isArtifact ? ARTIFACT_RATE_LIMIT : METADATA_RATE_LIMIT),
       },
       now,

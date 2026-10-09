@@ -51,7 +51,7 @@ import {
   type Db,
   type Env,
 } from "../../../core/platform.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import {
   artefactRef,
@@ -309,7 +309,7 @@ export async function handleProviderStart(
     "_portal",
     {
       bucket: "portalProviderStart",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: 20,
       windowSec: 60,
     },
@@ -426,7 +426,7 @@ export async function handleProviderCallback(
     "_portal",
     {
       bucket: "portalProviderCallback",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: 20,
       windowSec: 60,
     },
@@ -681,7 +681,7 @@ export async function handleAppleNotifications(
     "_portal",
     {
       bucket: "appleNotifications",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: 120,
       windowSec: 60,
     },

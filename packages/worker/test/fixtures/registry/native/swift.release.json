@@ -34,9 +34,7 @@
   "metadata_json": {
     "name": "acme.AcmeKit",
     "version": "1.0.0",
-    "toolsVersions": [
-      "5.10"
-    ],
+    "toolsVersions": ["5.10"],
     "signatureFormat": "cms-1.0.0"
   },
   "source_json": {

@@ -38,7 +38,7 @@ import {
   json,
   methodNotAllowed,
 } from "../../core/errors.js";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import {
   getActiveSchema,
   getKey,
@@ -474,7 +474,7 @@ export async function handleBrowserSessionLicense(
       product.slug,
       {
         bucket: "browserSessionLicense",
-        id: clientIp(req),
+        id: clientNetwork(req),
         limit: 30,
         windowSec: 60,
       },

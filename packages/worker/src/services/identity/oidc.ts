@@ -66,7 +66,6 @@ import { renderBrandPage } from "../../core/brandHtml.js";
 import { accountDisabledPage } from "./card/http.js";
 import { errorResponse, json, methodNotAllowed } from "../../core/errors.js";
 import {
-  clientIp,
   clientNetwork,
   rateLimitOk,
   type RateLimit,
@@ -1552,7 +1551,7 @@ export async function handleAuthStart(
     env,
     product,
     Math.floor(Date.now() / 1000),
-    { bucket: "authStart", id: clientIp(req), limit: 60, windowSec: 60 },
+    { bucket: "authStart", id: clientNetwork(req), limit: 60, windowSec: 60 },
   );
   if (limited) return limited;
   const rawReturnTo = new URL(req.url).searchParams.get("return_to");
@@ -1587,7 +1586,12 @@ export async function handleAuthDeviceStart(
     env,
     product,
     Math.floor(Date.now() / 1000),
-    { bucket: "authDeviceStart", id: clientIp(req), limit: 60, windowSec: 60 },
+    {
+      bucket: "authDeviceStart",
+      id: clientNetwork(req),
+      limit: 60,
+      windowSec: 60,
+    },
   );
   if (limited) return limited;
   let body: Record<string, unknown> = {};
@@ -2022,7 +2026,7 @@ export async function handleAuthDeviceVerify(
   const now = Math.floor(Date.now() / 1000);
   const limited = await rateLimited(env, product, now, {
     bucket: "authDeviceVerify",
-    id: clientIp(req),
+    id: clientNetwork(req),
     limit: 60,
     windowSec: 60,
   });
@@ -2108,7 +2112,12 @@ export async function handleAuthCallback(
     env,
     product,
     now,
-    { bucket: "authCallback", id: clientIp(req), limit: 60, windowSec: 60 },
+    {
+      bucket: "authCallback",
+      id: clientNetwork(req),
+      limit: 60,
+      windowSec: 60,
+    },
     { bucket: "authCallbackState", id: state, limit: 5, windowSec: 60 },
   );
   if (limited) return limited;
@@ -2752,7 +2761,7 @@ export async function handleAuthChoose(
   if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
   const limited = await rateLimited(env, product, now, {
     bucket: "authChoose",
-    id: clientIp(req),
+    id: clientNetwork(req),
     limit: 60,
     windowSec: 60,
   });
@@ -3382,7 +3391,12 @@ export async function handleAuthDevicePoll(
     env,
     product,
     now,
-    { bucket: "authDevicePoll", id: clientIp(req), limit: 120, windowSec: 60 },
+    {
+      bucket: "authDevicePoll",
+      id: clientNetwork(req),
+      limit: 120,
+      windowSec: 60,
+    },
     { bucket: "authDevicePollCode", id: state, limit: 40, windowSec: 60 },
   );
   if (limited) return limited;

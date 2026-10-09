@@ -48,7 +48,7 @@ import type { Product } from "./products.js";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { getDevice } from "../repo.js";
 import { ErrorCode, methodNotAllowed, wireError } from "./errors.js";
-import { clientIp, rateLimitOk } from "./rateLimit.js";
+import { clientNetwork, rateLimitOk } from "./rateLimit.js";
 import { authorizeRegistration, type ServiceRegistry } from "./registry.js";
 import {
   deviceMetadata,
@@ -113,7 +113,7 @@ export async function handleRegister(
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "register", id: clientIp(req), limit: 10, windowSec: 60 },
+      { bucket: "register", id: clientNetwork(req), limit: 10, windowSec: 60 },
       now,
     ))
   ) {

@@ -18,7 +18,7 @@
 
 import type { PackageEcosystem } from "@polaris-key/manifest";
 import { errorResponse, json } from "../../../../core/errors.js";
-import { clientIp, rateLimitOk } from "../../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../../core/rateLimit.js";
 import {
   FEED_PUBLISH_ROUTE,
   registryHostname,
@@ -142,7 +142,7 @@ export function publishRoute(def: PublishRouteDef): RegistryRoute {
       const auth = await authorizeRegistryPublish(ctx.env, ctx.db, req, {
         owner: ctx.product.slug,
         ecosystem: eco,
-        ip: clientIp(req),
+        ip: clientNetwork(req),
         ...(ctx.waitUntil ? { waitUntil: ctx.waitUntil } : {}),
       });
       if (!auth.ok) {

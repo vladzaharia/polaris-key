@@ -52,7 +52,7 @@ import {
   type Db,
   type Env,
 } from "../../../core/platform.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
@@ -194,7 +194,7 @@ export async function handleSigninEmailStart(
     PORTAL_EMAIL_SCOPE,
     {
       bucket: "portalMagic",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: EMAIL_START_PER_IP_MINUTE,
       windowSec: 60,
     },
@@ -352,7 +352,7 @@ export async function handleSigninEmailResend(
     PORTAL_EMAIL_SCOPE,
     {
       bucket: "portalMagic",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: EMAIL_START_PER_IP_MINUTE,
       windowSec: 60,
     },
@@ -430,7 +430,7 @@ export async function handleSigninEmailVerify(
     PORTAL_EMAIL_SCOPE,
     {
       bucket: "portalCodeVerify",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: CODE_VERIFY_PER_IP_MINUTE,
       windowSec: 60,
     },

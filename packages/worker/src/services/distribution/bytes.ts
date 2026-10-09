@@ -108,7 +108,7 @@ import {
   fixedReleaseSelector,
   type EntitledSelector,
 } from "../../core/entitledAccess.js";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { decideBlob, type BlobDecision } from "./blobAccess.js";
 import {
   decidePayload,
@@ -345,7 +345,7 @@ export async function serveDistributionBytes(
       product.slug,
       {
         bucket: isArtifact ? "releaseArtifact" : "release",
-        id: clientIp(req),
+        id: clientNetwork(req),
         ...(isArtifact ? ARTIFACT_RATE_LIMIT : METADATA_RATE_LIMIT),
       },
       now,
