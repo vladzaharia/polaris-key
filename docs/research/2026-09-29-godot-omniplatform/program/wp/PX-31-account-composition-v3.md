@@ -77,6 +77,13 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `identity.connected-apps`, `packages.portal-packages`, `portal.account`.
+- `doc:PORTAL#4.26`: Acceptance carries the full B12 account nav (Profile, Sign-in methods, Connected apps, Packages, Where you're signed in, Appearance, Your data) and PX-W19's emails Make primary, passkey Rename and Download my data.
+
 ## Acceptance criteria
 
 - [ ] e2e for every anchor at 1440, 1024, 768 and 390 in both themes; axe; UX review in BUILT mode.

@@ -94,6 +94,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 7 mockup item(s):** `commerce.connect-app-store-error`, `commerce.connect-app-store`, `commerce.first-run-connected`, `commerce.first-run`, `commerce.sales-wizard`, `commerce.sales`, `commerce.storefronts`.
+
 ## Acceptance criteria
 
 - [ ] Notifications set up from the wizard with no console of the store

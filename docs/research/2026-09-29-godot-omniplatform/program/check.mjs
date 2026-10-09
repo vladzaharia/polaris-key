@@ -10,8 +10,18 @@
 //   node check.mjs --show <id>          one work package, its dependencies and its dependants
 //   node check.mjs --set <id> <status>  update one status in place (keeps the file's formatting)
 //   node check.mjs --sync-briefs        rewrite each brief's Size / Depends on / Unblocks / Role rows from the graph
+//   node check.mjs --ux [filter] [--json]  UX coverage per area and platform (ux-coverage.json, ux-reviews.json):
+//                                      screens covered, owner packages todo/in-progress/done, % of mockup screens
+//                                      whose every owner is done AND UX-reviewed. The same data feeds the UX drift
+//                                      gate that the default run applies (a mockup screen with no owner fails).
 
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+  statSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -40,11 +50,345 @@ const ID_RE =
   /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM|DOC|AX)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}[a-z]?))$/;
 const DONE = new Set(["done", "dropped"]);
 
+const UX_COVERAGE = join(HERE, "ux-coverage.json");
+const UX_REVIEWS = join(HERE, "ux-reviews.json");
+const REPO_ROOT = join(HERE, "..", "..", "..", "..");
+const MOCKUP_SCREENS = join(REPO_ROOT, "docs", "design", "mockups", "screens");
+
 const raw = readFileSync(GRAPH, "utf8");
 const doc = JSON.parse(raw);
 const wps = doc.workPackages;
 const byId = new Map(wps.map((w) => [w.id, w]));
 const phaseIds = doc.phases.map((p) => p.id);
+
+// ---------------------------------------------------------------------------------------------
+// UX coverage (ux-coverage.json): every design item -> owner work packages -> status.
+// ---------------------------------------------------------------------------------------------
+// Item kinds that must always carry an owner (or be explicitly exempt with a note).
+const UX_KINDS = new Set([
+  "screen",
+  "hosted",
+  "kit-board",
+  "kit-framework",
+  "doc-section",
+  "decision",
+  "owner-rule",
+  "brand-change",
+]);
+const UX_OPEN = new Set([
+  "todo",
+  "planning",
+  "awaiting-approval",
+  "in-progress",
+  "in-review",
+  "blocked",
+]);
+
+const gateCache = new Map();
+function hasUxGate(id) {
+  if (gateCache.has(id)) return gateCache.get(id);
+  const w = byId.get(id);
+  let v = false;
+  if (w) {
+    const f = join(HERE, w.brief ?? "");
+    v = existsSync(f) && readFileSync(f, "utf8").includes("pkey-ux-reviewer");
+  }
+  gateCache.set(id, v);
+  return v;
+}
+
+function loadUx() {
+  if (!existsSync(UX_COVERAGE)) return null;
+  const cov = JSON.parse(readFileSync(UX_COVERAGE, "utf8"));
+  const rev = existsSync(UX_REVIEWS)
+    ? JSON.parse(readFileSync(UX_REVIEWS, "utf8"))
+    : { reviews: {} };
+  return { cov, reviews: rev.reviews ?? {} };
+}
+
+// Mockup screens present in this checkout (docs/design/mockups/screens/<area>/<id>.json).
+function mockupScreensOnDisk() {
+  if (!existsSync(MOCKUP_SCREENS)) return null;
+  const out = [];
+  for (const area of readdirSync(MOCKUP_SCREENS)) {
+    const dir = join(MOCKUP_SCREENS, area);
+    if (!statSync(dir).isDirectory()) continue;
+    for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+      try {
+        const j = JSON.parse(readFileSync(join(dir, f), "utf8"));
+        out.push({
+          id: j.id ?? f.replace(/\.json$/, ""),
+          area,
+          packages: j.packages ?? [],
+        });
+      } catch {
+        out.push({
+          id: f.replace(/\.json$/, ""),
+          area,
+          packages: [],
+          bad: true,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+function uxValidate() {
+  const errors = [];
+  const ux = loadUx();
+  if (!ux) return errors; // coverage not introduced in this checkout
+  const { cov, reviews } = ux;
+  const ids = new Set();
+  const screens = new Map();
+  for (const it of cov.items ?? []) {
+    const at = `ux-coverage ${it.id ?? "?"}:`;
+    if (!it.id || !it.kind) {
+      errors.push(`${at} item needs id and kind`);
+      continue;
+    }
+    if (ids.has(it.id)) errors.push(`${at} duplicate item id`);
+    ids.add(it.id);
+    if (it.kind === "screen") screens.set(it.id, it);
+    if (!Array.isArray(it.owners)) {
+      errors.push(`${at} owners must be an array`);
+      continue;
+    }
+    for (const o of it.owners)
+      if (!byId.has(o)) errors.push(`${at} unknown owner ${o}`);
+    const live = it.owners.filter(
+      (o) => byId.get(o) && byId.get(o).status !== "dropped",
+    );
+    if (UX_KINDS.has(it.kind) && !it.exempt && live.length === 0)
+      errors.push(
+        `${at} no live owner (owners ${it.owners.join(", ") || "none"}): give it a work package, or exempt it with a reason`,
+      );
+    if (it.exempt && !(typeof it.exempt === "string" && it.exempt))
+      errors.push(`${at} exempt must be a non-empty reason string`);
+    // a UI item needs one builder that carries the UX gate (or every owner is already done)
+    if (
+      it.kind === "screen" ||
+      it.kind === "hosted" ||
+      it.kind === "kit-board"
+    ) {
+      const all = live.concat(
+        (it.overlays ?? []).filter(
+          (o) => byId.has(o) && byId.get(o).status !== "dropped",
+        ),
+      );
+      if (
+        live.length &&
+        !live.every((o) => byId.get(o).status === "done") &&
+        !live.some((o) => hasUxGate(o))
+      )
+        errors.push(
+          `${at} no owner carries the pkey-ux-reviewer gate (owners ${all.join(", ")}): add the Screen acceptance block to the package that builds it`,
+        );
+    }
+    for (const o of it.overlays ?? [])
+      if (!byId.has(o)) errors.push(`${at} unknown overlay ${o}`);
+    if (it.gap && !it.resolvedBy && !it.exempt)
+      errors.push(`${at} gap "${it.gap}" has no resolvedBy`);
+  }
+  // drift gate: every mockup screen on disk has an item with at least one live owner
+  const disk = mockupScreensOnDisk();
+  if (disk)
+    for (const s of disk) {
+      const it = screens.get(s.id);
+      if (!it)
+        errors.push(
+          `mockup screen ${s.id} has no entry in ux-coverage.json (add it with an owner)`,
+        );
+    }
+  for (const [id, r] of Object.entries(reviews)) {
+    if (!byId.has(id))
+      errors.push(`ux-reviews.json: unknown work package ${id}`);
+    else if (byId.get(id).status !== "done")
+      errors.push(
+        `ux-reviews.json: ${id} is ${byId.get(id).status}; only done packages carry a recorded UX review`,
+      );
+    if (!r.date || !r.evidence)
+      errors.push(`ux-reviews.json: ${id} needs date and evidence`);
+  }
+  return errors;
+}
+
+// For --set <id> done: the screens a UX-gated package builds when no passing review is recorded.
+function uxReviewMissing(id) {
+  const ux = loadUx();
+  if (!ux || !hasUxGate(id) || uxReviewed(ux.reviews, id)) return undefined;
+  const mine = ux.cov.items.filter(
+    (it) =>
+      (it.kind === "screen" ||
+        it.kind === "hosted" ||
+        it.kind === "kit-board") &&
+      (it.owners.includes(id) || (it.overlays ?? []).includes(id)),
+  );
+  if (!mine.length) return undefined;
+  return `${mine.length} UX item(s) (${mine
+    .slice(0, 3)
+    .map((m) => m.id)
+    .join(", ")}${mine.length > 3 ? ", ..." : ""})`;
+}
+
+function uxReviewed(reviews, id) {
+  const r = reviews[id];
+  return Boolean(r && r.verdict === "pass");
+}
+
+// An item is delivered when every non-dropped owner (and overlay) is done; reviewed when each of those that
+// carries the UX gate also has a passing review in ux-reviews.json.
+function uxStats(items, reviews) {
+  const n = {
+    total: items.length,
+    exempt: 0,
+    built: 0,
+    partial: 0,
+    mockupOnly: 0,
+    gaps: 0,
+    delivered: 0,
+    reviewed: 0,
+    pkgs: { todo: 0, wip: 0, done: 0 },
+  };
+  const seen = new Set();
+  for (const it of items) {
+    const live = it.owners.filter(
+      (o) => byId.get(o) && byId.get(o).status !== "dropped",
+    );
+    const ovl = (it.overlays ?? []).filter(
+      (o) => byId.get(o) && byId.get(o).status !== "dropped",
+    );
+    const everyone = live.concat(ovl);
+    if (it.exempt && !live.length) n.exempt++;
+    if (it.built === "built") n.built++;
+    else if (it.built === "partial") n.partial++;
+    else if (it.built === "mockup-only") n.mockupOnly++;
+    if (it.gap && !it.resolvedBy) n.gaps++;
+    for (const o of everyone) {
+      if (seen.has(o)) continue;
+      seen.add(o);
+      const s = byId.get(o).status;
+      if (s === "done") n.pkgs.done++;
+      else if (
+        ["in-progress", "in-review", "planning", "awaiting-approval"].includes(
+          s,
+        )
+      )
+        n.pkgs.wip++;
+      else n.pkgs.todo++;
+    }
+    const allDone =
+      everyone.length > 0 &&
+      everyone.every((o) => byId.get(o).status === "done");
+    if (allDone) n.delivered++;
+    if (
+      allDone &&
+      everyone.every((o) => !hasUxGate(o) || uxReviewed(reviews, o))
+    )
+      n.reviewed++;
+  }
+  return n;
+}
+
+function uxReport(filter, asJson) {
+  const ux = loadUx();
+  if (!ux) {
+    console.log("No ux-coverage.json.");
+    return;
+  }
+  const { cov, reviews } = ux;
+  const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : "-").padStart(5);
+  const groups = new Map();
+  const add = (section, key, it) => {
+    const label = `${section}|${key}`;
+    if (filter && !label.toLowerCase().includes(filter.toLowerCase())) return;
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(it);
+  };
+  for (const it of cov.items) {
+    if (it.kind === "screen") add("Mockup screens by area", it.area, it);
+    else if (it.kind === "hosted")
+      add("Hosted sign-in, pages and emails", "hosted", it);
+    else if (it.kind === "kit-board")
+      add("Kit boards by platform", it.platform ?? "-", it);
+    else if (it.kind === "kit-framework")
+      add("Kit frameworks by platform", it.platform ?? "-", it);
+    else if (it.kind === "doc-section") add("Design-doc sections", it.area, it);
+    else if (it.kind === "decision")
+      add("Brand decisions B1-B17", "B-rules", it);
+    else if (it.kind === "owner-rule") add("Owner rules", "owner-rules", it);
+    else if (it.kind === "brand-change")
+      add("Brand-transition changes (372)", it.area, it);
+  }
+  const rows = [...groups.entries()].map(([label, items]) => {
+    const [section, key] = label.split("|");
+    return { section, key, ...uxStats(items, reviews) };
+  });
+  if (asJson) {
+    console.log(JSON.stringify({ groups: rows }, null, 2));
+    return;
+  }
+  console.log(
+    `UX coverage: ${cov.items.length} items; mockups ${cov.mockupsRef ?? "?"}; ${Object.keys(reviews).length} package(s) with a recorded UX review`,
+  );
+  const sections = [...new Set(rows.map((r) => r.section))];
+  for (const sec of sections) {
+    console.log(`\n${sec}`);
+    console.log(
+      "  " +
+        "group".padEnd(42) +
+        "items built  part  mock  gap | pkgs todo  wip done | deliv  revwd",
+    );
+    for (const r of rows
+      .filter((x) => x.section === sec)
+      .sort((a, b) => a.key.localeCompare(b.key)))
+      console.log(
+        "  " +
+          r.key.slice(0, 41).padEnd(42) +
+          [r.total, r.built, r.partial, r.mockupOnly, r.gaps]
+            .map((x) => String(x).padStart(5))
+            .join("") +
+          " |      " +
+          [r.pkgs.todo, r.pkgs.wip, r.pkgs.done]
+            .map((x) => String(x).padStart(4))
+            .join("") +
+          " |" +
+          pct(r.delivered, r.total) +
+          " " +
+          pct(r.reviewed, r.total),
+      );
+  }
+  const scr = cov.items.filter((i) => i.kind === "screen");
+  const st = uxStats(scr, reviews);
+  console.log("\nMockup screens, all areas");
+  console.log(
+    `  ${scr.length} screens: ${st.delivered} delivered (every owner done), ${st.reviewed} delivered and UX-reviewed (${pct(st.reviewed, scr.length).trim()})`,
+  );
+  console.log(
+    `  in code today: ${st.built} built, ${st.partial} partial, ${st.mockupOnly} mockup-only; ${st.gaps} unresolved gap flag(s)`,
+  );
+  const owners = new Set(
+    cov.items.flatMap((i) => i.owners.concat(i.overlays ?? [])),
+  );
+  const by = {};
+  for (const o of owners) {
+    const s = byId.get(o)?.status ?? "?";
+    by[s] = (by[s] ?? 0) + 1;
+  }
+  console.log(
+    `  owner packages (distinct): ${owners.size}: ${Object.entries(by)
+      .map(([k, v]) => `${k} ${v}`)
+      .join(", ")}`,
+  );
+  const disk = mockupScreensOnDisk();
+  if (disk) {
+    const inCov = new Set(scr.map((s) => s.id));
+    const pending = scr.filter((s) => !disk.some((d) => d.id === s.id)).length;
+    console.log(
+      `  on disk in this checkout: ${disk.length} mockup screens, ${disk.filter((d) => inCov.has(d.id)).length} covered; ${pending} covered screens await the mockups branch`,
+    );
+  }
+}
 
 function validate() {
   const errors = [];
@@ -171,6 +515,7 @@ function validate() {
     state.set(id, 2);
   };
   for (const w of wps) visit(w.id, []);
+  errors.push(...uxValidate());
   return errors;
 }
 
@@ -318,6 +663,13 @@ function setStatus(id, status) {
     throw new Error(
       `unknown status ${status}; one of ${doc.statuses.join(", ")}`,
     );
+  if (status === "done" && !flag("--no-ux-gate")) {
+    const miss = uxReviewMissing(id);
+    if (miss)
+      throw new Error(
+        `${id} builds ${miss}; record the pkey-ux-reviewer BUILT-mode pass first: node check.mjs --ux-review ${id} pass "<evidence path or PR link>" (or pass --no-ux-gate with a reason in the PR)`,
+      );
+  }
   const start = raw.indexOf(`"id": "${id}"`);
   const next = raw.indexOf(`"id": "`, start + 1);
   const end = next === -1 ? raw.length : next;
@@ -345,7 +697,32 @@ function setStatus(id, status) {
 }
 
 const args = process.argv.slice(2);
-const flag = (f) => args.includes(f);
+function flag(f) {
+  return args.includes(f);
+}
+
+if (flag("--ux-review")) {
+  // node check.mjs --ux-review <id> <pass|fail> "<evidence>": append to the UX review ledger (ux-reviews.json)
+  const i = args.indexOf("--ux-review");
+  const [id, verdict, ...ev] = args.slice(i + 1);
+  if (!byId.has(id)) throw new Error(`unknown work package ${id}`);
+  if (!["pass", "fail"].includes(verdict))
+    throw new Error("verdict must be pass or fail");
+  if (!ev.length) throw new Error("evidence (a path or PR link) is required");
+  const led = existsSync(UX_REVIEWS)
+    ? JSON.parse(readFileSync(UX_REVIEWS, "utf8"))
+    : { reviews: {} };
+  led.reviews[id] = {
+    verdict,
+    date: new Date().toISOString().slice(0, 10),
+    evidence: ev.join(" "),
+  };
+  writeFileSync(UX_REVIEWS, JSON.stringify(led, null, 2) + "\n");
+  console.log(
+    `${id}: UX review ${verdict} recorded in ux-reviews.json (run prettier on it)`,
+  );
+  process.exit(0);
+}
 
 if (flag("--set")) {
   const i = args.indexOf("--set");
@@ -410,6 +787,11 @@ if (flag("--write-index")) {
       `${w.id.padEnd(7)} ${String(f(w.id)).padStart(5)} wk waiting  ${w.role.padEnd(20)} ${w.title}${tags.length ? `  [${tags.join(", ")}]` : ""}`,
     );
   }
+} else if (flag("--ux")) {
+  const i = args.indexOf("--ux");
+  const f =
+    args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : undefined;
+  uxReport(f, flag("--json"));
 } else if (flag("--summary")) {
   const req = wps.filter((w) => !w.optional);
   console.log(

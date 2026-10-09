@@ -79,6 +79,12 @@ This is the MVP's core service ([S-17 §5.4](../../notes/S-17-user-data-sync.md#
 3. Routes, CORS, limits and ceilings.
 4. Merge and deletion hooks; transcripts; load test on staging.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 5 mockup item(s):** `config.cloud-sync-paused`, `config.cloud-sync-usage`, `config.cloud-sync`, `config.pause-writes`, `config.storage-default`.
+
 ## Acceptance criteria
 
 - [ ] Every transcript in [S-17 §5.13](../../notes/S-17-user-data-sync.md#513-wire-impact) for settings is recorded and passes.

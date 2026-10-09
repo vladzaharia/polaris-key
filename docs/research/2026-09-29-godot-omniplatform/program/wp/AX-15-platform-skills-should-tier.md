@@ -48,6 +48,10 @@ Adding a service, an SDK feature, a console screen and fixing a security finding
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+N/A: no screen or state ships in this package (selected by the overview-04 rule on its gate or mention only).
+
 ## Acceptance criteria
 
 - [ ] As AX-09, plus a service task and a screen task added to the M suite.

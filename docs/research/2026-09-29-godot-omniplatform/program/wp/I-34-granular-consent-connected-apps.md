@@ -63,6 +63,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 7 mockup item(s):** `identity.app-sign-in-changes`, `identity.app-sign-in`, `identity.connected-apps`, `identity.consent`, `identity.disconnect`, `portal.account`, `hosted:consent`.
+
 ## Acceptance criteria
 
 - [ ] A declined optional scope is never delivered (test)

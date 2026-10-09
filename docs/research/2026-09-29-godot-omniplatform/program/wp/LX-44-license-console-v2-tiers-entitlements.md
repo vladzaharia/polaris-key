@@ -1,16 +1,16 @@
 # LX-44 License console v2: Tiers and Entitlements pages
 
-| Field       | Value                                                                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (DX consolidation E: Licensing model)                                                      |
-| Size        | 0.8–1.2 engineer-weeks                                                                                                                                |
-| Depends on  | [LX-34](LX-34-entitlement-catalog-in-licensing-tier.md), [LX-35](LX-35-add-on-definitions-grantaddon.md), [ST-07](ST-07-settings-row-v2.md)           |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-41b](LX-41b-console-durations-subscriptions.md), [LX-43](LX-43-licensing-presets-1-x-helper-new-major.md) |
-| Role        | `pkey-implementer`                                                                                                                                    |
-| Plan mode   | no                                                                                                                                                    |
-| Gates       | `console-csp-parity`                                                                                                                                  |
-| Human input | none                                                                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                             |
+| Field       | Value                                                                                                                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (DX consolidation E: Licensing model)                                                                                              |
+| Size        | 0.8–1.2 engineer-weeks                                                                                                                                                                        |
+| Depends on  | [LX-34](LX-34-entitlement-catalog-in-licensing-tier.md), [LX-35](LX-35-add-on-definitions-grantaddon.md), [ST-07](ST-07-settings-row-v2.md)                                                   |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [LX-41b](LX-41b-console-durations-subscriptions.md), [LX-43](LX-43-licensing-presets-1-x-helper-new-major.md), [LX-45](LX-45-bulk-licence-actions.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                            |
+| Plan mode   | no                                                                                                                                                                                            |
+| Gates       | `console-csp-parity`                                                                                                                                                                          |
+| Human input | none                                                                                                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                     |
 
 ## Consolidation 2026-10-07
 
@@ -90,6 +90,12 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 9 mockup item(s):** `licenses.tiers-states`, `licenses.tiers`, `entitlements.addon`, `entitlements.addons`, `entitlements.catalog`, `entitlements.duration-trial`, `entitlements.duration-version`, `entitlements.duration`, `entitlements.start-major`.
 
 ## Acceptance criteria
 

@@ -99,6 +99,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 9 mockup item(s):** `licenses.tiers-states`, `licenses.tiers`, `products.integration`, `entitlements.duration-trial`, `entitlements.duration-version`, `entitlements.duration`, `entitlements.extend-major`, `entitlements.new-major`, `entitlements.start-major`.
+
 ## Acceptance criteria
 
 - [ ] Each preset yields a valid tier and term with no further settings

@@ -451,24 +451,11 @@ the warning status (amber), and the danger status keeps the red end of the warm 
 
 ### 5.4 Using accents
 
-- **The accent marks context only**: the active nav item, the section header rule (the 3 px accent
-  rule on the workspace canvas, [§7.6](#76-console-density-and-layout-data-heavy-tables)),
-  selected rows, links (`fg`), charts and the [section bit](#6-the-section-bit).
-- **The primary action is never the accent.** It is the neutral ink action
-  ([§4.7](#47-action)) in the console, portal and hosted sign-in, so a Distribution green or Config
-  yellow button can never read as success or warning. One filled primary per flow.
-- **Selected nav** = `subtle` fill + a 3 px solid marker on the inline-start edge + `text-strong`
-  at weight 500. The marker passes 3:1 against the sidebar ground (WCAG 1.4.11) and the selection
-  is never colour alone. Never a solid accent pill. Count badges keep their own status colour
-  inside the selected item.
-- **Accent never equals status.** Service green is not success and Config yellow is not warning
-  (Brand Guide Ed. 04 p.26); gold means signed only. Never an accent on a status role, never
-  a large accent background in product chrome (use `subtle`), never in the marks except the
-  section bit.
-- **One section identifier per page header**: the flat service tile of
-  [§7.8](#78-service-icon-tile) (feature landing pages, from 1024 px) or the product icon; never a
-  solid accent plate, never a glow. Platform pages use the Pinned K tile or the kit app icon
-  (`kit/05-app-icons/key/apple/app-icon-{dark,light}.svg`), never a recoloured K.
+- Section chrome only: the active nav item (`subtle` background + `solid` marker), the section
+  header rule, the primary button in that section (`solid` + `on`), links in the section (`fg`),
+  charts that belong to the section.
+- Never as a status. Never as a large background (use `subtle`). Never in the marks, except the
+  [section bit](#6-the-section-bit).
 - States follow the service the element references (`data-service`; core violet on core and platform
   screens; B17): the focus ring, active and selected nav item, hover, checked controls (checkbox,
   radio, switch, segmented, tab, chip) and borders that mark context. Text and edges use `fg`, fills
@@ -477,10 +464,6 @@ the warning status (amber), and the danger status keeps the red end of the warm 
   config yellow. Status colours are never drawn in a service accent. The filled primary button is the
   exception: it stays the neutral action ink (B2). Kits keep their platform look with the product
   accent.
-- Light-theme rules, markers and tiles use the theme `solid` (3:1), not a brighter display fill;
-  whether a decorative `display` fill is added for the tile is UK-58's decision.
-- Ship builds is one identity: Release cyan on Releases, Release tracks, Rollouts, Channels,
-  Packages, Updates and Health. Update tangerine and Packs orange are marketing and docs only.
 
 ---
 
@@ -812,10 +795,8 @@ is nothing to browse. It never lists owners, packages or versions.
 - Leave ¼-glyph clear space around marks and lockups.
 - Use the compact lockup when the full one would shrink the mark below 48 px.
 - Reserve gold for signing keys, signed records and verified signatures.
-- Use the Star Cut for the delivery family and the bytes host; the Pinned K for everything else
-  (Commerce included).
-- Keep the focus ring visible, in the accent of the service the element references (core violet
-  on core screens).
+- Use the Star Cut for the delivery family and the bytes host; the Pinned K for everything else.
+- Keep the focus ring visible, in the accent of the service the element references (core violet on core screens).
 - Use the tokens; add a token (in `source.ts`, with tests) rather than a one-off hex.
 
 **Don't**

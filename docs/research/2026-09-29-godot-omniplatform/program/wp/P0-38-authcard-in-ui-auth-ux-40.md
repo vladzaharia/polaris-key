@@ -100,6 +100,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 20 mockup item(s):** `identity.consent`, `identity.device-code-states`, `identity.device-code`, `identity.device-confirm`, `identity.finish`, `identity.key-step`, `identity.refusals`, `identity.sign-in-routes`, `identity.sign-in`, `portal.signin`, `hosted:signin-card`, `hosted:app-header-passport`, `hosted:device-code-entry`, `hosted:device-code-states`, `hosted:device-confirm`, `hosted:license-choice`, `hosted:key-on-ramp`, `hosted:refusals`, `hosted:magic-link-landing`, `hosted:brand-page-shell`.
+
 ## Acceptance criteria
 
 - [ ] One AuthCard used by portal sign-in, step-up and console sign-in

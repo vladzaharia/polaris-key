@@ -141,6 +141,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 2. Template, snapshot tests, the create-time send.
 3. `send-key` route, rate limit, audit, OpenAPI.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 2 mockup item(s):** `licenses.bulk-keys-done`, `licenses.bulk-keys`.
+
 ## Acceptance criteria
 
 - [ ] Create with `deviceLimit` stores it and the effective limit follows LX-14a's precedence (test).

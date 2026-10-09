@@ -63,6 +63,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 2. Wait for the approved `plans/I-32.md` (written by `pkey-wire-planner`).
 3. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `identity.app-sign-in`, `identity.connections`, `identity.sign-in`.
+
 ## Acceptance criteria
 
 - [ ] Custom issuers migrate without losing licences

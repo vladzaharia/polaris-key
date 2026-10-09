@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                                                                        |
 | Size        | 0.7–1 engineer-weeks                                                                                                                                                                                                                |
 | Depends on  | [LX-06](LX-06-licensing-settings.md), [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md), [LX-14a](LX-14a-per-license-device-limit.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-12](CM-12-console-commerce.md)                                                                                                                                                          |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [CM-12](CM-12-console-commerce.md), [LX-45](LX-45-bulk-licence-actions.md)                                                                                                                  |
 | Role        | `pkey-implementer`                                                                                                                                                                                                                  |
 | Plan mode   | no                                                                                                                                                                                                                                  |
 | Gates       | console CSP parity; docsLinks                                                                                                                                                                                                       |
@@ -116,6 +116,13 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Tabs.
 2. Actions.
 3. Editors and report.
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 6 mockup item(s):** `licenses.change-tier`, `licenses.detail-holders`, `licenses.detail`, `entitlements.consumables`, `entitlements.license-subscription`, `entitlements.new-major`.
+- `licenses.change-tier`: Add the Change tier dialog (licenses.change-tier) to the acceptance; it builds on LX-33's tier-change rules.
 
 ## Acceptance criteria
 

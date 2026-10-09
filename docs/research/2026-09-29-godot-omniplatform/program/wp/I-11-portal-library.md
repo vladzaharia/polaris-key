@@ -128,6 +128,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 3. Account settings, merge flow and sessions.
 4. Export, deletion and the revocation hook.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 2 mockup item(s):** `identity.connected-apps`, `identity.disconnect`.
+
 ## Acceptance criteria
 
 - [ ] For a product with Identity on, at the entry limit the modal cannot be skipped and the licence attaches only under the claim rules (tests).

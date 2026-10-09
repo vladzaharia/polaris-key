@@ -55,6 +55,12 @@ Swift, Kotlin and Godot expose collections like U-22, with `Codable`, `@Serializ
 
 1. API. 2. Transcripts and scenarios.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `config.cloud-sync`.
+
 ## Acceptance criteria
 
 - [ ] Three SDKs replay the records transcripts and scenarios; macOS and Android CI green.

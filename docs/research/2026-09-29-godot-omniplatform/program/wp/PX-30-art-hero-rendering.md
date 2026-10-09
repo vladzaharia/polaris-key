@@ -77,6 +77,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- `B6.10`, `OR-fullbleed-art`: Assert full-bleed 16:9 art and no text drawn over customer art.
+
 ## Acceptance criteria
 
 - [ ] Baselines at 1024, 1180, 1440, 1920, 844x390 and 390 in both themes.

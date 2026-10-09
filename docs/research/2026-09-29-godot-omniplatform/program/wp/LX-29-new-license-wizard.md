@@ -127,6 +127,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 2. Review, create calls (single and batch), Done panels and CSV.
 3. Entry points, removal of the dialog, motion, e2e and screenshots.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 4 mockup item(s):** `licenses.bulk-keys-done`, `licenses.bulk-keys`, `licenses.detail-holders`, `licenses.list`.
+
 ## Acceptance criteria
 
 - [ ] All three outcomes (assigned with email, single floating, batch) work end to end against the

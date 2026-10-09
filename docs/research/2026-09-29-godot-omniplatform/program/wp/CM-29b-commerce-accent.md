@@ -58,6 +58,12 @@ Done when the Themes row holds. This package draws no screens of its own, so the
 
 - [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 29 mockup item(s):** `commerce.add-to-offer`, `commerce.connect-app-store-error`, `commerce.connect-app-store`, `commerce.create-iap`, `commerce.features-blocked`, `commerce.features-save-failed`, `commerce.features`, `commerce.first-run-connected`, `commerce.first-run`, `commerce.lists-states`, `commerce.offer-new`, `commerce.offer-price-failed`, `commerce.offer-price-invalid`, `commerce.offer-price`, `commerce.offer-stop-selling`, `commerce.offer`, `commerce.offers-empty`, `commerce.offers-import`, `commerce.offers`, `commerce.purchase-renewal`, `commerce.purchase`, `commerce.purchases-empty`, `commerce.purchases-no-results`, `commerce.purchases`, `commerce.restore`, `commerce.sales-wizard`, `commerce.sales`, `commerce.storefronts`, `commerce.turn-off-licensing`.
+
 ## Acceptance criteria
 
 - [ ] The decision is recorded in BRAND.md §5.2 'Owner decisions' with the date, and CM-29b's scope matches it.

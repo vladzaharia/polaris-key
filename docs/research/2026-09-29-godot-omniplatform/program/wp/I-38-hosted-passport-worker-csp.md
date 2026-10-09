@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                        |
 | Size        | 0.4–0.8 engineer-weeks                                                                    |
 | Depends on  | [P0-38](P0-38-authcard-in-ui-auth-ux-40.md), [I-37](I-37-device-code-explicit-confirm.md) |
-| Unblocks    | none                                                                                      |
+| Unblocks    | [I-39](I-39-emails-brand-v2.md)                                                           |
 | Role        | `pkey-implementer`                                                                        |
 | Plan mode   | no (no wire change)                                                                       |
 | Gates       | ui-snapshots, console-csp-parity                                                          |
@@ -78,6 +78,12 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 12 mockup item(s):** `identity.consent`, `identity.device-code-states`, `identity.device-code`, `identity.device-confirm`, `identity.finish`, `identity.key-step`, `identity.refusals`, `identity.sign-in-routes`, `identity.sign-in`, `hosted:app-header-passport`, `hosted:csp-img-src-branded`, `hosted:brand-page-shell`.
 
 ## Acceptance criteria
 

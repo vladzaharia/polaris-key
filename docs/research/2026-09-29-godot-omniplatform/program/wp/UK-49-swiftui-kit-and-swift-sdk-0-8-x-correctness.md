@@ -92,6 +92,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 2 mockup item(s):** `kitboard:ios.html:gate`, `kitboard:ios.html:activate`.
+
 ## Acceptance criteria
 
 - [ ] UI tests drive a licence to expired and to revoked and reach the activation form through "Use a different key" and through Sign in without relaunching.

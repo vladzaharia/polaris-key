@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                           |
 | Size        | 0.2–0.4 engineer-weeks                                                                               |
 | Depends on  | [PX-20](PX-20-quality-bar.md)                                                                        |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                                               |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-63](UK-63-ux-bar-console-portal.md)                      |
 | Role        | `pkey-implementer`                                                                                   |
 | Plan mode   | no                                                                                                   |
 | Gates       | `portal-e2e`, `console-csp-parity`, `ci`; visual baselines re-recorded with the reason in the commit |
@@ -91,6 +91,12 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 
 1. Measure today's pages at 1920 px and 200% zoom; list what stretches or breaks.
 2. Add the max widths and layouts; add the variants; re-record baselines with the reason; hand off for code and UX review.
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- `doc:BRAND#7.7-empty-states-and-illustration`: Acceptance line: every empty state uses the stationary-star motif (BRAND 7.7); EmptyState.tsx exists but nothing verified it.
 
 ## Acceptance criteria
 

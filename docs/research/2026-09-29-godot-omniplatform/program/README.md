@@ -34,6 +34,9 @@ node check.mjs --summary    # effort and status per phase
 node check.mjs --critical   # the longest remaining dependency chain
 node check.mjs --show P3-02 # one work package with its dependants
 node check.mjs --set P0-08 done   # then run prettier on workpackages.json and INDEX.md
+node check.mjs --ux         # UX coverage per area and platform: screens, kits, rules, owner packages, % delivered and reviewed
+node check.mjs --ux licenses   # one group (substring match); add --json for machine output
+node check.mjs --ux-review ST-48 pass "<evidence>"   # record the pkey-ux-reviewer BUILT-mode pass (ux-reviews.json)
 ```
 
 ---
@@ -389,6 +392,8 @@ is the closeout and is marked done last.
 ---
 
 **Brand and transition (2026-10-09).** The brand-guide audit adds 19 packages and re-scopes existing ones; the lead's decisions B1-B17 are in [`BRAND-TRANSITION.md`](BRAND-TRANSITION.md). New: UK-57..UK-62 (UK-60 and UK-61 optional and parked), ST-48..ST-50, PX-27..PX-33 (PX-33 optional and parked), DOC-13, I-37 and I-38. CM-29b is re-scoped to the Distribution green family (B1; `plans/CM-29.md` carries the amendment). Each affected brief has a `## Brand transition (2026-10-09)` section, and the canonical `## Screen acceptance` block sits on every open package with a UI surface.
+
+**UX coverage (2026-10-09).** [`ux-coverage.json`](ux-coverage.json) maps every mockup screen (173), hosted surface, kit board and framework, design-doc section, B-rule, owner rule and brand-transition change (1,447 items) to its owning work packages and to what the code has today; [`ux-coverage.md`](ux-coverage.md) is the readable form and [`ux-waves.md`](ux-waves.md) orders the remaining UX packages into waves (first wave named). `node check.mjs` now fails when a mockup screen has no entry or no live owner, when an item has neither a live owner nor a written exemption, or when a screen has no owner carrying the `pkey-ux-reviewer` gate; `--set <ID> done` refuses a UX-gated package that builds screens until `--ux-review` has recorded a pass. New packages: ST-51, ST-52, LX-45, F-38, I-39, DOC-14, UK-63; 174 briefs gained a `## UX coverage (2026-10-09)` section naming the screens they build and the corrections the research found.
 
 ## 9. Known gaps without a work package
 

@@ -92,6 +92,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 3. Add the tests named in the acceptance criteria.
 4. Run the green gate and the extra gates in the header; set `--set PX-09 in-review`.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `distribution.download-page`.
+
 ## Acceptance criteria
 
 - [ ] Platform-grouping tests.

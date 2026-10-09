@@ -61,6 +61,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 2. Wait for the approved `plans/P2-08.md` (written by `pkey-wire-planner`).
 3. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 7 mockup item(s):** `distribution.channel-app-store`, `distribution.publish-result`, `distribution.publish`, `packages.promote`, `packages.release-tracks-stale`, `packages.release-tracks`, `packages.updates`.
+
 ## Acceptance criteria
 
 - [ ] No corpus change; signed documents byte-identical

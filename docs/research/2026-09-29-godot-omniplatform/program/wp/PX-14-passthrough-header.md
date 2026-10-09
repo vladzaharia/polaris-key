@@ -109,6 +109,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 2. Build the steps in small commits prefixed `PX-14:`.
 3. Add the tests named below; run the green gate and the header's gates; `--set PX-14 in-review`.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 17 mockup item(s):** `identity.consent`, `identity.device-code-states`, `identity.device-code`, `identity.device-confirm`, `identity.key-step`, `identity.refusals`, `identity.sign-in`, `hosted:signin-card`, `hosted:app-header-passport`, `hosted:device-code-entry`, `hosted:device-code-states`, `hosted:device-confirm`, `hosted:consent`, `hosted:license-choice`, `hosted:key-on-ramp`, `hosted:refusals`, `hosted:magic-link-landing`.
+
 ## Acceptance criteria
 
 - [ ] e2e: the header persists through every step, and a spoofed name never renders (reserved-name test).

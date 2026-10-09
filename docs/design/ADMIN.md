@@ -393,74 +393,21 @@ them. Glyphs follow the BRAND service icon set (§1.1).
 
 **Rules.**
 
-- **What accents color.** Context and interaction: nav marker, the canvas rule, the masthead tile,
-  links, selected row, sidebar glyph, charts, and the focus ring, hover and checked states, each in
-  the accent of the service the element references (B17: `fg` for text and edges, `solid` for
-  fills; a Config row in a mixed list is config yellow). The primary button is neutral action ink
-  (B2). **Status colors never change by section and are never drawn in a service accent**: service
-  green is not success, Config yellow is not warning.
-- **Ship builds is one identity** (B5). Every Ship builds page, and every dialog opened from one,
-  shows the Package glyph, Release cyan chrome (rule, tile, nav marker) and the crumb
-  `<Product> › Ship builds › <Page>`. Distribution green stays on Commerce and Sales surfaces;
-  Update tangerine and Packs orange are marketing and docs only and add no `data-service`.
-  Packs live under Releases › Packs. The Star Cut and `CircleArrowUp` never appear as a Ship builds
-  masthead or tile; the Platform K appears only in the Platform context. A layout lint asserts
-  masthead glyph equals nav-group glyph. Areas without a protocol service name an explicit
-  `data-service` mapping, never "undefined". Cloud Sync, one page, is one nav row; its teal links
-  sit beside success-green status, and teal never means healthy.
-- **A channel page** opened from Commerce keeps the Commerce entry active and its accent; opened
-  from Ship builds › Channels it is Release cyan.
-- **Gold appears only for signed things** (`SignedBadge`, key displays, signature verified); the K
-  carries no gold bit on core pages.
-- **The Star Cut** appears on the bytes and registry hosts, lockups, `service-off` states of
-  delivery features and delivery cards; never as live update status.
-- **The section bit** shows only in service groups, 48 px (BRAND §6); the header mark is 48 px in
-  the 64 px top bar (Q1 is closed: no bit below 48 px or on the service cut).
-- **Service icons** are not marks and no Commerce page renders the core violet.
-
-#### Console shell v2 (B4)
-
-Built by ST-48; ST-49 owns the route ledger and its Page moved entries.
-
-- **Inset canvas.** From 1024 px the workspace is a `surface-raised` canvas (radius `xl`, ~18 px,
-  `border-subtle`) inset from the top bar and sidebar, with a 3 px accent rule on its top edge;
-  both bars sit on `surface-page` with no divider. Below 1024 px it is full bleed. No glow,
-  wash, gradient or coloured shadow. The canvas never loosens tables; content keeps its max width
-  inside it. Tablet keeps the 56 px icon rail.
-- **Masthead.** One orientation line: glyph chip plus crumbs (never "Platform" on a product page,
-  no "Workspace" label, no separate eyebrow). The h1 is 36/44 on collections and Home, 32/40 on
-  records, 24/32 on phone, clamped; a long name wraps to two lines then truncates with the full
-  name in a tooltip and the document title. A flat 48 px service tile appears only at ≥ 1024 px
-  on feature landing pages; the product icon on product Core pages; none on dense data pages.
-  Actions sit on the h1 row (one primary, two secondaries, More). Height ≤ 140 px on collections
-  and ≤ 176 px on records at 1440; the T3 sticky header keeps title and primary. Phone order:
-  orientation, h1 + More, description, primary full width, secondaries. Descriptions only for
-  live state, capped at 72ch. Counts sit beside titles.
-- **Section head bands.** A page card has a head band on `surface-overlay` (dark) or
-  `surface-sunken` (light), a hairline under it, 56 px minimum, a title at 18/24, an optional
-  32 px subtle icon tile only when it names the subject, a description at 13/20 up to 72ch.
-  **No numerals**: numbers only for ordered steps.
-- **Route tabs** are an underline tablist (`role="tablist"`, a 3 px accent indicator ≥ 3:1 that
-  MO-04 morphs), distinct from segmented controls, which stay for single-choice filters. The
-  overflow fade shows only while the strip scrolls, and the active tab scrolls into view.
-- **Workbench.** Filters and the table are one bordered band, 12 px padding, solid-outline chips,
-  sentence-case heads, **56 px rows** (compact 40, never 76). At 640–1023 px the table scrolls
-  inside a labelled focusable region (`aria-label` "<Collection> table, scrolls sideways") with a
-  sticky first column; below 640 px, cards. At 1280–1440 the From and Set by cells do not wrap.
-- **Sidebar.** Neutral group labels (sentence case) with a 3 px accent bar; scrolling nav with the
-  context header pinned. Selected item: `subtle` fill, 3 px inline-start marker, 500 weight, 3:1
-  marker contrast; count badges keep their status colour.
-- **Inputs** are recessed on the sunken surface with a 1 px border meeting 3:1.
-- **Overlays.** Dialogs and drawers: a 3 px accent top rule (the origin's accent), a head band,
-  one leading glyph (severity for confirmations, subject mark for records), title ≤ 20/28 (18/24 in
-  sheets), no service tile, rounded bottom corners, blurred backdrop with a flat 60 % scrim under
-  reduced transparency. Destructive and caution dialogs carry no accent rule. A drawer opened from
-  another section keeps the origin's accent.
-- **Dashboard.** At ≥ 1280 px Needs attention (2/3) sits beside Platform ready (1/3); stacked below.
-  Product cover cards show a 72 px banner of hosted art, else the flat stored tint, in the Cards
-  view only; canvas pixels are never read.
-- Light-theme rules and markers use the theme `solid`; a brighter `display` tile fill is UK-58's
-  decision. One tokenised section glow is rejected (B6).
+- **What accents color.** Accents color identity and chrome only: nav marker, primary button,
+  focus ring, links, selected row, sidebar glyph, and hover and checked states (B17: each takes the
+  accent of the service the element references, `fg` for text and edges, `solid` for fills; a Config
+  row in a mixed list is config yellow). The primary button is neutral action ink (B2). **Status
+  colors never change by section and are never drawn in a service accent**: success is always success.
+- **Gold appears only for signed things** (`SignedBadge`, key displays, signature verified) and as
+  the K's bit on core pages.
+- **The Star Cut** appears on Distribution and Update group labels, their `service-off` empty
+  states, their `ServiceBadge`s, and the delivery cards on Home and Overview. It never indicates
+  live update status (kit rule): an "update available" or "rolling out" state is a `StatusPill`.
+- **The section bit in the header** is a deliberate, owner-approved extension of the kit's gold
+  rule. It shows only in service sections; on core pages the K has no bit (BRAND.md §6,
+  2026-10-03). The kit draws the bit only in the display cut (≥ 48 px). The header mark is 28 px.
+  Open question **Q1** asks the brand lead to draw a service-cut bit (recommended) or to accept a
+  48 px brand block.
 
 ### 2.5 URL scheme
 

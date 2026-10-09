@@ -153,6 +153,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 3. Baselines in both themes, the lint, the sample and the docs pages.
 4. Design review against the mockups; record it in the PR.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 25 mockup item(s):** `kitboard:web:gate-1440`, `kitboard:web:gate-390`, `kitboard:web:activate-1440`, `kitboard:web:sign-in-1440`, `kitboard:web:sign-in-390`, `kitboard:web:device-limit-1440`, `kitboard:web:device-limit-390`, `kitboard:web:update-prompt`, `kitboard:web:settings-1440`, `kitboard:web:settings-390`, `kitboard:web:theming-four-themes`, `kitboard:web:states-sheet`, `kitboard:web:components-boot`, `kitboard:web:components-status-screen`, `kitboard:web:components-grace-toasts`, `kitboard:web:components-devices`, `kitboard:web:components-paywall`, `kitboard:web:components-cloudsync`, `kitboard:web:layers-b-styled-parts`, `kitboard:web:layers-c-headless`, `kitboard:web:motion`, `kitboard:web:forced-colors`, `kitboard:web:native-preset`, `kitboard:web:web-components-elements`, `sdk.react-sign-in`.
+
 ## Acceptance criteria
 
 - [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.

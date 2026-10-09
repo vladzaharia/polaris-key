@@ -63,6 +63,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 10 mockup item(s):** `admin.confirm-step-up`, `identity.connection-audience`, `identity.connection-enforce`, `identity.connection-new-failed`, `identity.connection-new-start`, `identity.connection-new`, `identity.connection`, `identity.connections`, `identity.sign-in-routes`, `identity.sign-in`.
+
 ## Acceptance criteria
 
 - [ ] Six OIDC RP code sites become one (grep)

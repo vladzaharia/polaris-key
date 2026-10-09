@@ -159,19 +159,12 @@ violet accent, no `data-service` attribute. Specifically:
   (`kit/02-lockups/key/key-compact-{dark,light}.svg`, via `<PolarisLockup variant="compact">`) at
   64 px height. Phones: 56 px. No "Powered by Polaris Key" badge anywhere (BRAND owner decision
   2026-10-03).
-- **Type:** Rubik 400 (body), 500 (labels, buttons), 600 (headings); 700 only in the wordmark
-  (`font-synthesis: none`). Mono is the platform stack for keys, codes, hashes, versions and token
-  prefixes only. **Page headings** (Library, Discover and Account `h1`, the product `h1`, a focused
-  task's title) use the display step: 48/52 on desktop, 32/36 on phones, 600, tracking -0.02em, no
-  full stop, no label above it. It clamps so it reflows at 200 % zoom and 320 px; a long name takes
-  at most two lines. Card `h2`s and dialogs keep their size.
-- **Colour:** neutral chrome; the primary action is neutral ink (`action-neutral`: near-white on
-  dark, near-black on light, label in the page colour) and danger stays red. The active nav
-  marker, links, selection, hover, checked states, focus and small counts take the accent of the
-  service the element references (B17; `--pk-accent`, core violet, on Library, Discover and
-  Account). Gold (`--pk-signed`) only on _Signed_ chips. Status colours always with an icon and a
-  word, never in a service accent. No other service's accent, and no chartreuse, as a fill, band
-  or panel: the portal is a core surface.
+- **Type:** Rubik 400 and 700 only (`font-synthesis: none`). Mono is the platform stack for keys,
+  codes, hashes, versions and token prefixes only.
+- **Colour:** neutral chrome; the primary button is neutral action ink (B2); the active nav
+  underline, selection, hover, checked states, focus and small counts take the accent of the service
+  the element references (B17; core violet on Library, Discover and Account). Gold (`--pk-signed`) only on _Signed_ chips.
+  Status colours always with an icon and a word.
 - **Illustration:** the stationary star (BRAND §7.7) is the only illustration, on empty, error and
   no-context screens. A sparse static star field sits behind the login card on wide screens. The
   star and the star field never animate; everything else moves only through the shared motion

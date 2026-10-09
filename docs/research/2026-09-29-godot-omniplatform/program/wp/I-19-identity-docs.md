@@ -93,6 +93,12 @@ The shared account changes what developers can promise their users, and recovery
 1. Concepts and the account pages.
 2. Developer guides; platform guides once I-14 lands.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `admin.cli-login`.
+
 ## Acceptance criteria
 
 - [ ] Every page above exists and links resolve (`check:links`).

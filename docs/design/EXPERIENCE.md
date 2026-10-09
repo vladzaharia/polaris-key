@@ -202,9 +202,8 @@ their settings.
 Access, Feeds and Metadata access one access-mode vocabulary ("Entitled: holds `<flag>`").
 
 **What a hop no longer does.** The section accent still marks where you are: the sidebar
-marker, the workspace rule, the masthead tile and links, plus the focus ring, hover, selected
-and checked states of elements that reference the service (BRAND §5.4, B17); the primary button
-is neutral action ink (B2). The avatar no longer takes the section
+marker and links, plus the focus ring, hover, selected and checked states of elements that reference the
+service (BRAND §5.4, B17). The primary button is neutral action ink (B2). The avatar no longer takes the section
 accent (CL 2), and drawers opened from another section keep the **origin's** accent and route, so a
 license's device drawer keeps the License accent over the license (§0.5 O1).
 

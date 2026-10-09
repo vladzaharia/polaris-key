@@ -103,6 +103,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 1. Resolver tests on bound direction.
 2. UI and fan-out preview.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 6 mockup item(s):** `admin.platform-settings`, `config.cloud-sync-paused`, `config.cloud-sync-product-role`, `config.cloud-sync`, `config.pause-writes`, `config.storage-default`.
+
 ## Acceptance criteria
 
 - [ ] A platform change shows the affected product count and needs L2 (e2e).

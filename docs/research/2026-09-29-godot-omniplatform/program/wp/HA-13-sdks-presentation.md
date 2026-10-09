@@ -126,6 +126,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 
 1. Per the plan, in its SDK order.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `sdk.swiftui-sign-in`.
+
 ## Acceptance criteria
 
 - [ ] Every SDK in scope runs `presentation-matrix.json` (`parseCases`, `pickCases`, `verifyCases`) green and replays `discovery-presentation.json`.

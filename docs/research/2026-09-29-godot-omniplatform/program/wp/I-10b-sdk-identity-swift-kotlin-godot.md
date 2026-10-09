@@ -185,6 +185,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 2. Swift and `PolarisKeyUI`; Kotlin and its component.
 3. Replayers, parity rows, screenshots.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `sdk.swiftui-sign-in`.
+
 ## Acceptance criteria
 
 - [ ] Each SDK replays the I-08 and I-09 transcripts (tests).

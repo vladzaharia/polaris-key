@@ -100,6 +100,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 14 mockup item(s):** `kitboard:terminal:sign-in-device-code~py`, `kitboard:terminal:activate-masked-key~py`, `kitboard:terminal:device-limit~py`, `kitboard:terminal:status-update-finished~py`, `kitboard:terminal:blocked-status~py`, `kitboard:terminal:boot-healthy-offline~py`, `kitboard:terminal:grouped-help~py`, `kitboard:terminal:fallbacks~py`, `kitboard:terminal:cols-60~py`, `kitboard:terminal:short-40x12~py`, `kitboard:terminal:narrow-32x24~py`, `kitboard:terminal:ended-result-block~py`, `kitboard:terminal:offline-request-120~py`, `kitboard:terminal:pipe-quadrant`.
+
 ## Acceptance criteria
 
 - [ ] `python mytool.py sign-in` and `status` work unchanged.

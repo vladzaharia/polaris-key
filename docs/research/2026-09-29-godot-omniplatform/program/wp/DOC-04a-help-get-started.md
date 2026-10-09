@@ -46,6 +46,10 @@ portal pages; `identity/portal/{notices,email}.ts`; `docs/legal/help.md` (a draf
 1. Verify this brief against the code and the docs site (the code is the fact) and record any correction here, in the same branch.
 2. Write or build the scope against DOC-03a's contracts; run the docs tests while working and the scoped gate once at hand-off.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+N/A: no screen or state ships in this package (selected by the overview-04 rule on its gate or mention only).
+
 ## Acceptance criteria
 
 - [ ] The common definition of done in the docs plan §6.3 holds.

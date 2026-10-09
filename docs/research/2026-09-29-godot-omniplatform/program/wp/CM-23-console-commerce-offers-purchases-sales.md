@@ -104,6 +104,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 26 mockup item(s):** `entitlements.addon`, `entitlements.addons`, `distribution.channel-app-store`, `commerce.add-to-offer`, `commerce.create-iap`, `commerce.first-run-connected`, `commerce.first-run`, `commerce.lists-states`, `commerce.offer-new`, `commerce.offer-price-failed`, `commerce.offer-price-invalid`, `commerce.offer-price`, `commerce.offer-stop-selling`, `commerce.offer`, `commerce.offers-empty`, `commerce.offers-import`, `commerce.offers`, `commerce.purchase-renewal`, `commerce.purchase`, `commerce.purchases-empty`, `commerce.purchases-no-results`, `commerce.purchases`, `commerce.restore`, `commerce.sales-wizard`, `commerce.sales`, `commerce.storefronts`.
+
 ## Acceptance criteria
 
 - [ ] An offer is defined once and sold on several storefronts

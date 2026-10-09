@@ -57,6 +57,12 @@ Collections come after saves (owner order, [S-17 owner decisions](../../notes/S-
 
 1. Records and CAS. 2. Merge and OR-set. 3. Access classes and transcripts.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `config.cloud-sync`.
+
 ## Acceptance criteria
 
 - [ ] The records transcripts of [S-17 §5.13](../../notes/S-17-user-data-sync.md#513-wire-impact) pass, including OR-set add concurrent with remove and a stale remove.

@@ -61,6 +61,10 @@ Godot is the only SDK with `packs.transport.msix` and `flatpak` rows beside Node
 2. Write the `@pkey-feature` tests first, against the transcript, corpus or vectors named below.
 3. Build until they pass, then flip the rows and regenerate the parity page.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+N/A: no screen or state ships in this package (selected by the overview-04 rule on its gate or mention only).
+
 ## Acceptance criteria
 
 - [ ] `@pkey-feature packs.transport.msix` and `packs.transport.flatpak` tests in `sdks/godot/tests`, and device runs recorded in the PR.

@@ -69,6 +69,12 @@ A web app is a browser device with a bearer token, never a cookie ([S-17 §1](..
 
 1. Web journal and single writer. 2. Desktop bridge v4. 3. Runner and transcripts.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- `B11.4`: Hand-off note: when U-05/U-20 ship, the website owner removes the 'In development' Cloud Sync label.
+
 ## Acceptance criteria
 
 - [ ] Web and desktop pass the scenario corpus; CORS transcripts pass from a listed origin and fail from an unlisted one.

@@ -111,6 +111,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 4. Device code onto the card, with the callback binding and Continue.
 5. Transcripts, parity rows, OpenAPI, THREAT-MODEL.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 11 mockup item(s):** `identity.consent`, `identity.key-step`, `identity.refusals`, `identity.sign-in`, `portal.signin`, `hosted:signin-card`, `hosted:consent`, `hosted:license-choice`, `hosted:key-on-ramp`, `hosted:refusals`, `hosted:oauth-authorize-token`.
+
 ## Acceptance criteria
 
 - [ ] Every error row of I-27 §2.1, including that no redirect happens before `client_id` and `redirect_uri` are valid (tests).

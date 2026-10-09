@@ -5123,6 +5123,28 @@
       "status": "todo"
     },
     {
+      "id": "I-39",
+      "title": "Transactional emails on brand v2: ink action button, neutral callouts, lockup, HTML snapshots for every template",
+      "phase": "I",
+      "stage": "UX coverage (2026-10-09)",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": ["UK-58", "I-38"],
+      "planMode": false,
+      "gates": ["email-snapshots", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "UX coverage 2026-10-09: hosted:email-shell, hosted:email-snapshot-tests had no owner",
+        "docs/design/SIGN-IN.md 3.15",
+        "Brand transition B2, B8"
+      ],
+      "brief": "wp/I-39-emails-brand-v2.md",
+      "status": "todo"
+    },
+    {
       "id": "U-01",
       "title": "Plan Cloud Sync: decision record, glossary, data model, WIRE-CONTRACT-V4 Cloud Sync section with the op table and push rules, browser principal, errors, parity ids, manifest schema, scenario-corpus format, ceilings, threat rows",
       "phase": "U",
@@ -6972,6 +6994,26 @@
         "docs/research/2026-10-07-dx-consolidation/audits/feeds-updates-packs.md"
       ],
       "brief": "wp/F-37-pkey-feeds-setup-write-cli-naming.md",
+      "status": "todo"
+    },
+    {
+      "id": "F-38",
+      "title": "Package feeds console: the cleanup dry-run dialog and the public-registry wizard",
+      "phase": "F",
+      "stage": "UX coverage (2026-10-09)",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.8, 1.2],
+      "deps": ["F-35", "F-36", "ST-48"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "UX coverage 2026-10-09: screens packages.cleanup-dry-run and packages.public-registry are console surfaces whose owners are Worker and CLI packages"
+      ],
+      "brief": "wp/F-38-feeds-console-cleanup-and-registry.md",
       "status": "todo"
     },
     {
@@ -10028,6 +10070,47 @@
         "section change brand-18"
       ],
       "brief": "wp/ST-50-font-weight-sweep.md",
+      "status": "todo"
+    },
+    {
+      "id": "ST-51",
+      "title": "Platform Activity page: Product facet, Timeline and Table, CSV export, Load more, event drawer",
+      "phase": "ST",
+      "stage": "UX coverage (2026-10-09)",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["ST-45", "ST-48"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "UX coverage 2026-10-09 (program/ux-coverage.md): screens admin.platform-activity, admin.platform-activity-event had no builder"
+      ],
+      "brief": "wp/ST-51-platform-activity-page.md",
+      "status": "todo"
+    },
+    {
+      "id": "ST-52",
+      "title": "Command palette search: entity results, pasted-key resolution and GET /manage/api/search",
+      "phase": "ST",
+      "stage": "UX coverage (2026-10-09)",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.5],
+      "deps": ["ST-44", "ST-48"],
+      "planMode": false,
+      "gates": ["rule-10", "console-csp-parity", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "UX coverage 2026-10-09: EXPERIENCE.md J-1 had no builder (ST-10 only adds the settings source)",
+        "docs/design/EXPERIENCE.md J-1"
+      ],
+      "brief": "wp/ST-52-palette-search.md",
       "status": "todo"
     },
     {
@@ -15569,6 +15652,27 @@
       "status": "todo"
     },
     {
+      "id": "DOC-14",
+      "title": "Design-doc amendments: the B15 P0 fixes and the brand v2 text in BRAND, UI-KITS, EXPERIENCE, ADMIN, PORTAL and SIGN-IN",
+      "phase": "DOC",
+      "stage": "UX coverage (2026-10-09)",
+      "lane": "docs",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": [],
+      "planMode": false,
+      "gates": ["docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "Brand transition B15 (program/BRAND-TRANSITION.md)",
+        "UX coverage 2026-10-09: B15.1-B15.6, B2.9, B11.1, B11.5 and doc:BRAND#v2-action-neutral-and-service-icons had no owner"
+      ],
+      "brief": "wp/DOC-14-design-doc-amendments.md",
+      "status": "todo"
+    },
+    {
       "id": "LX-26",
       "title": "Licence holders on the Worker: a derived `holder` (floating or assigned, in an account or waiting) on licence reads and list filters, association at creation when an account verified the email, one `onAccountEmailVerified` Core hook, `license_auto_attach_blocks` so a removed licence stays removed, holder audit",
       "phase": "LX",
@@ -16052,6 +16156,27 @@
         "consolidation alias LX-44"
       ],
       "brief": "wp/LX-44-license-console-v2-tiers-entitlements.md",
+      "status": "todo"
+    },
+    {
+      "id": "LX-45",
+      "title": "Bulk licence actions: extend expiry, change tier, comp, select-all-matching, preview and a server job",
+      "phase": "LX",
+      "stage": "UX coverage (2026-10-09)",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.5],
+      "deps": ["LX-14", "LX-44", "ST-29", "ST-48"],
+      "planMode": false,
+      "gates": ["rule-10", "console-csp-parity", "ui-snapshots"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "UX coverage 2026-10-09: EXPERIENCE.md O8 (bulk licence actions, UX-36) had no builder",
+        "docs/design/EXPERIENCE.md O8"
+      ],
+      "brief": "wp/LX-45-bulk-licence-actions.md",
       "status": "todo"
     },
     {
@@ -16561,6 +16686,28 @@
         "section change site-33"
       ],
       "brief": "wp/UK-62-kit-playground.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-63",
+      "title": "UX bar for the built console and portal: B6, B7 and B17 lint over the rendered DOM, 400% reflow, forced-colors, contrast, 44 px and scroll-region rows, and the reviewer bar",
+      "phase": "UK",
+      "stage": "UX coverage (2026-10-09)",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [1.0, 1.5],
+      "deps": ["ST-48", "PX-26"],
+      "planMode": false,
+      "gates": ["modernity-lint", "portal-e2e", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "UX coverage 2026-10-09: B6.1-B6.3, B7.4, B17.7, OR-service-accent-states, OR-touch-44, OR-responsive-matrix, OR-tablet-table-regions, overview-05",
+        "docs/design/EXPERIENCE.md 7.3",
+        "Brand transition B6, B14, B17"
+      ],
+      "brief": "wp/UK-63-ux-bar-console-portal.md",
       "status": "todo"
     },
     {
