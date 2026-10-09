@@ -3296,14 +3296,19 @@ redelivers with backoff, and the hooks answer 503 on a store outage for exactly 
 voids are also polled daily (Voided Purchases API, 30 days back); Steam pushes nothing, so active
 Steam grants are re-checked weekly and on every claim. Residual: a Steam refund keeps its flag for
 up to a week; an App Store refund whose notifications all fail keeps its flag until a later
-notification or claim re-reads the transaction (no App Store poll exists).
+notification or claim re-reads the transaction, or the weekly App Store re-read (SEC-WP-13) does.
 
 **Abuse.** Claims are rate-limited per licence (`commerceClaim`). Each hook has two limiters,
 both failing closed: a per-client-IP bucket BEFORE verification (`appStoreHookIp`,
 `playRtdnHookIp`), which bounds the signature-checking CPU an unauthenticated sender can spend,
 and a per-product bucket AFTER it (`appStoreHook`, `playRtdnHook`), which counts only deliveries
-the store signed — so junk traffic can never drain the bucket a real refund notification needs
-(a test floods unsigned payloads, then delivers a signed one). Bodies are read through the shared
+the store signed AND that cost work (App Store: this app, an accepted environment, a type that
+needs a Server API call, not a replay; notifications signed more than 24 h ago are refused) — so
+junk or another app's signed traffic can never drain the bucket a real refund notification needs.
+The per-IP bucket keys on the /64 for IPv6. Hook 401s are bare (no rejection reason); an
+`unresolved` notification is not deduplicated, so a redelivery is processed again; Play
+dedupes on the message id plus a hash of its data. The ASC webhook limits per client IP before
+the HMAC and charges the product bucket only after it. Bodies are read through the shared
 streaming reader and cut off at the cap while streaming, chunked or not. Bodies are capped (32 KiB claims, 64 KiB hooks). Purchase keys are
 stored only as SHA-256; `detail_json` keeps the store ids a re-check needs (a Play purchase token,
 an order id, a Steam ID) and is never shown in full on the console.
