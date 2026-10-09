@@ -1072,7 +1072,8 @@ destination-chip links, numbered steps only where order is real, the accent top-
 card, the accent glyph chip for feature identity, honest "Sample data" captions, phone nav focus
 handling and the forced-colors block. Adapted: display tracking only from 40 px; phase, percent
 and meter for real long operations only. The embedded React kit demo on the site is a stale copy;
-the playground (UK-62) is built here and the site embeds it. Marketing names are page titles and
+the playground (UK-62) is built here and the site embeds it, and the site's code examples live
+here, type-checked per SDK (DOC-13). Marketing names are page titles and
 entry points; body copy uses glossary words, and no marketing name becomes a product alias.
 
 ### 14.4 Naming

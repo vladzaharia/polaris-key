@@ -1687,6 +1687,16 @@ gate: `mise exec node@22 -- pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm li
 `typecheck:workerd` and `test:workerd`, and `gen:transcripts -- --check` must stay green unless the
 WP is a wire change.
 
+The brand transition (2026-10-09, [B8 and B12](../research/2026-09-29-godot-omniplatform/program/BRAND-TRANSITION.md)) adds
+[PX-27](../research/2026-09-29-godot-omniplatform/program/wp/PX-27-library-discover-presence.md) (Library and Discover presence),
+[PX-28](../research/2026-09-29-godot-omniplatform/program/wp/PX-28-license-page-v2.md) (license page v2),
+[PX-29](../research/2026-09-29-godot-omniplatform/program/wp/PX-29-focused-task-frame.md) (focused task frame),
+[PX-30](../research/2026-09-29-godot-omniplatform/program/wp/PX-30-art-hero-rendering.md) (art and hero rendering),
+[PX-31](../research/2026-09-29-godot-omniplatform/program/wp/PX-31-account-composition-v3.md) (Account composition v3),
+[PX-32](../research/2026-09-29-godot-omniplatform/program/wp/PX-32-storefront-decision-panel.md) (storefront decision panel) and
+[PX-33](../research/2026-09-29-godot-omniplatform/program/wp/PX-33-signin-product-cover.md) (the optional requesting-product cover beside the sign-in
+card, only if the owner asks). Their briefs hold the scope.
+
 ### 11.1 Phase A: rebuild on today's API (no Worker changes)
 
 | ID        | Work package                                                                                                                                                                                                                                                                                                                                                                                                                | Deps  | Size | Extra gates                                                                          |
