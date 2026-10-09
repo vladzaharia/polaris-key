@@ -46,7 +46,7 @@ import {
   importHmacKey,
   kvKey,
 } from "../../../../core/platform.js";
-import { rateLimitOk } from "../../../../core/rateLimit.js";
+import { clientIp, rateLimitOk } from "../../../../core/rateLimit.js";
 import { openOutletCredential } from "../../../../core/outletCredentials.js";
 import {
   eventSeen,
@@ -127,11 +127,13 @@ export async function handleAscWebhook(
   const body = await readBody(req);
   if (!body)
     return errorResponse(413, "body_too_large", "webhook body too large");
+  // SEC-DST-6: unauthenticated traffic is limited per client IP; the product bucket is charged
+  // only once the HMAC checked out, so junk cannot lock Apple's deliveries out.
   if (
     !(await rateLimitOk(
       env,
       slug,
-      { bucket: "ascWebhook", id: "asc", ...ASC_WEBHOOK_RATE },
+      { bucket: "ascWebhookIp", id: clientIp(req), ...ASC_WEBHOOK_RATE },
       now,
     ))
   )
@@ -150,6 +152,15 @@ export async function handleAscWebhook(
     !(await signatureMatches(secret.value.secret, body, presented))
   )
     return unauthorized();
+  if (
+    !(await rateLimitOk(
+      env,
+      slug,
+      { bucket: "ascWebhook", id: "asc", ...ASC_WEBHOOK_RATE },
+      now,
+    ))
+  )
+    return errorResponse(429, "rate_limited", "too many webhook deliveries");
 
   const raw = new TextDecoder().decode(body);
   let data: Record<string, unknown>;
