@@ -740,7 +740,8 @@ fetches the record the target for this platform pins and verifies it hash first,
   `releaseRecords` (keyed by SHA-256), signed artifacts only, written atomically with the rest
   of the record. On load each feed is re-verified (no freshness, its claim equal to its key)
   and each record re-verified and kept only while a surviving feed pins it; the floors are
-  derived from what survived and never stored. A bundle import keeps both slices.
+  derived from what survived and never stored. A bundle import keeps both slices and the
+  `pinRevocations` evidence (the manifests that revoked a pinned key).
 - **Off the first frame.** Every Ed25519 verify in `decide()` and in the cache load runs on a
   `WorkerThreadPool` task where the build has threads and in frame slices where it has none. A
   feed plus a record is about 10 ms on a desktop release template (the conformance suite logs
