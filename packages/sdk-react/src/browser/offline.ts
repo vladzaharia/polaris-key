@@ -204,6 +204,8 @@ export async function loadOffline(
     expectedAud: opts.product,
     deviceId: record.deviceId,
     now: opts.now,
+    // Reload: no floor (LIC-16, explicit).
+    lastAcceptedIssuedAt: null,
     checkFreshness: false as const,
   };
   let newest = 0;

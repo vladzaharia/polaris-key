@@ -96,6 +96,8 @@ export class TrustManager {
     const result = await verifyTrustManifest(jws, {
       pinned: this.ctx.pinnedTrust,
       expectedAud: this.ctx.product,
+      // CLI-8: the network path runs at the effective clock, not the bare system clock.
+      now: this.ctx.now(),
       // Anti-rollback: derived from the manifest we last verified, never from a disk counter
       // (R4-03 — `lastTrustIssuedAt` used to be an attacker-writable JSON field).
       lastTrustIssuedAt: this.manifest?.issuedAt,

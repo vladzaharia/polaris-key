@@ -57,6 +57,9 @@ export async function verifyLicenseDocument(
     expectedAud: opts.product,
     deviceId: opts.deviceId,
     now,
+    // A backend verifying a presented document keeps no per-device history: no floor
+    // (LIC-16, explicit).
+    lastAcceptedIssuedAt: null,
     // The document is expected to be past its short `expiresAt` while the device is offline;
     // the gate bounds it by `graceUntil`.
     checkFreshness: false,

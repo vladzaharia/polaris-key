@@ -156,6 +156,8 @@ export class CacheManager {
       trust: this.trust.effective,
       expectedAud: this.ctx.product,
       deviceId: this.ctx.deviceId,
+      // Reload: no floor (LIC-16, explicit); the floors are DERIVED from what verifies here.
+      lastAcceptedIssuedAt: null,
       // A cached document is EXPECTED to be past its short `expiresAt`; its signed outer bound
       // is `graceUntil`, which the gate enforces against the monotonic floor (§4.2). Asserting
       // freshness here would delete offline grace outright.
@@ -205,6 +207,18 @@ export class CacheManager {
     delete docs[slice];
     delete etags[slice];
     this.record = { ...this.record, docs, etags };
+  }
+
+  /**
+   * CLI-2 (D3): the server answered for this slice with a hard 401 (or, for the licence, a 403
+   * build block), so the document is no longer a grant. Removes it — payload, artifact and ETag
+   * — from the derived state AND the record, so the `flush()` that persists the display hint
+   * persists the removal in the same write. The token is untouched: the gate still reports
+   * `revoked` or the block. The floor stays (it only rises).
+   */
+  revokeSlice(slice: "license" | "config"): void {
+    this.loaded[slice] = null;
+    this.dropSlice(slice);
   }
 
   /** Record a freshly verified document: artifact + ETag in the record, payload in the derived

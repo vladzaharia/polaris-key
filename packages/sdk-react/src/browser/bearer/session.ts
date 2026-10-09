@@ -459,6 +459,8 @@ export class BearerSession {
       expectedAud: this.opts.product,
       deviceId: this.deviceIdValue,
       now: this.opts.now(),
+      // Reload: no floor (LIC-16, explicit); the floors are derived from what verifies here.
+      lastAcceptedIssuedAt: null,
       checkFreshness: false as const,
     };
     let newest = 0;
@@ -904,7 +906,7 @@ export class BearerSession {
         if (slice === "license") {
           const doc = await verifyLicenseDoc(res.jws, {
             ...opts,
-            lastAcceptedIssuedAt: this.license?.doc.issuedAt,
+            lastAcceptedIssuedAt: this.license?.doc.issuedAt ?? null,
           });
           if (!doc) return { kind: "error" };
           this.license = { jws: res.jws, doc };
@@ -912,7 +914,7 @@ export class BearerSession {
         } else {
           const doc = await verifyConfigDoc(res.jws, {
             ...opts,
-            lastAcceptedIssuedAt: this.config?.doc.issuedAt,
+            lastAcceptedIssuedAt: this.config?.doc.issuedAt ?? null,
           });
           if (!doc) return { kind: "error" };
           this.config = { jws: res.jws, doc };
