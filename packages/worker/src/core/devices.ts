@@ -85,6 +85,7 @@ import {
   computeHwid,
   matchFingerprint,
   parseFingerprint,
+  usableFingerprint,
   type ComponentMap,
   type PresentedFingerprint,
   type StoredFingerprint,
@@ -235,7 +236,9 @@ export function licenseUsable(
 function toStoredFingerprint(row: FingerprintRow): StoredFingerprint {
   let components: ComponentMap = {};
   try {
-    const parsed: unknown = JSON.parse(row.components_json);
+    // SEC-WP-18: drift is always measured against the immutable baseline; a row without one
+    // (unverified, or too thin to ever have been usable) has nothing to compare.
+    const parsed: unknown = JSON.parse(row.baseline_components_json ?? "{}");
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       components = parsed as ComponentMap;
     }
@@ -246,7 +249,7 @@ function toStoredFingerprint(row: FingerprintRow): StoredFingerprint {
   return {
     hwid: row.hwid,
     components,
-    anchorHash: row.anchor_hash,
+    anchorHash: row.baseline_anchor_hash ?? null,
     status: row.status === "unverified" ? "unverified" : "verified",
   };
 }
@@ -300,8 +303,9 @@ async function provesOwnership(
   }
   if (!presented) return false;
   const row = await getFingerprint(db, product, existing.device_id);
-  if (!row || row.status !== "verified" || !row.anchor_hash) return false;
-  if (presented.components[FINGERPRINT_ANCHOR] !== row.anchor_hash)
+  if (!row || row.status !== "verified" || !row.baseline_anchor_hash)
+    return false;
+  if (presented.components[FINGERPRINT_ANCHOR] !== row.baseline_anchor_hash)
     return false;
   // Exact, not tolerated: a drifted fingerprint is a plausible upgrade of the same machine, but
   // also what a caller who knows only the anchor can fake. A real owner re-binds through a
@@ -986,7 +990,7 @@ export async function readDeviceBody(req: Request): Promise<{
     const body = JSON.parse(raw) as Record<string, unknown> | null;
     if (body === null || typeof body !== "object") return none;
     return {
-      fingerprint: parseFingerprint(body.fingerprint),
+      fingerprint: usableFingerprint(parseFingerprint(body.fingerprint)),
       label: normalizeDeviceLabel(body.deviceName),
     };
   } catch {
