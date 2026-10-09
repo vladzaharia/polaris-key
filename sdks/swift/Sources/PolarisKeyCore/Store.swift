@@ -319,7 +319,8 @@ struct SystemKeychain: KeychainAPI {
 /// through it.
 ///
 /// THE KEYCHAIN (P1b-09 plan §5.6). The token goes to the DATA-PROTECTION keychain
-/// (`kSecUseDataProtectionKeychain`) with `kSecAttrAccessibleAfterFirstUnlock`. Without that
+/// (`kSecUseDataProtectionKeychain`) with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (never migrated by a backup or
+/// device transfer). Without that
 /// flag macOS writes the legacy file-based keychain, which ignores the accessibility attribute
 /// (R4-11). A macOS process without the entitlement the data-protection keychain needs (an
 /// unsigned CLI, a test bundle) has its writes refused with `errSecMissingEntitlement` (its
@@ -328,7 +329,7 @@ struct SystemKeychain: KeychainAPI {
 /// first and fall back to the legacy item, migrating it when the data-protection keychain is
 /// available; clears delete from both. iOS always uses the data-protection keychain, so the
 /// legacy branch is `#if os(macOS)`.
-public actor KeychainStore: Store {
+public actor KeychainStore: Store, DeviceIdRebindable {
     /// Largest cache file we will read. The record is the trust manifest and two documents, plus
     /// the v4 update slices (a feed per channel the host asked for, a record per pin), and hints.
     private static let maxCacheBytes = 4 * 1024 * 1024
@@ -405,13 +406,13 @@ public actor KeychainStore: Store {
         let base = itemQuery(dataProtection: dataProtection)
         let update: [String: Any] = [
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
         let status = keychain.update(base, update)
         guard status == errSecItemNotFound else { return status }
         var add = base
         add[kSecValueData as String] = data
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         return keychain.add(add)
     }
 
@@ -556,6 +557,12 @@ public actor KeychainStore: Store {
         // platform without a hardware id — consuming a seat each time (R4-12).
         try writeSecure(Data(id.utf8), to: deviceURL)
         return id
+    }
+
+    /// Replace the stored id (device binding rewrites it with the id derived from the platform
+    /// anchor).
+    public func setDeviceId(_ id: String) async throws {
+        try writeSecure(Data(id.utf8), to: deviceURL)
     }
 
     // ── Offline cache (0600 file) ──

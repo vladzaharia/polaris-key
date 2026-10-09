@@ -104,7 +104,7 @@ public actor LicenseClient {
         let cache = await core.cache()
         return licenseState(
             GateInput(
-                licenseServiceEnabled: await core.enabled(.license),
+                licenseServiceEnabled: await core.licenseGateEnabled(),
                 activation: await activation(),
                 doc: cache.license?.doc,
                 now: await core.now(now),
