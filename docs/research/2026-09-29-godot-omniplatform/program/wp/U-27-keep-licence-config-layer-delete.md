@@ -48,6 +48,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Gated on owner decision 1 ([README §8](../../../2026-10-07-dx-consolidation/README.md#8-owner-decisions)), answered on 2026-10-07 under delegated authority with the recommendation and open to the owner's veto; a veto takes that row's "If the answer is no" column.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- The transition guide's 'Override migration and policy history' study is not adopted: the migration run is cancelled (owner decision 1, P0-47) and U-27 deletes the machinery and the page, so no redesign is drawn. Policy history is ST-07's per-row History and ST-09's Recently changed. The route ledger row for platform-override-migration reads 'deleted (U-27)' (ST-49). (admin-4-16)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

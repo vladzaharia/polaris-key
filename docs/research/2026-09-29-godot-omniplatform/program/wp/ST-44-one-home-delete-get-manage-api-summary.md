@@ -55,6 +55,48 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **OB-08**; DX consolidation C: Products, onboarding and Integration.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the
+      render (text 4.5:1, UI 3:1).
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state; the section accent marks context only, never
+      success, warning or failure; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Home layout (B4): Needs attention (about 62%) and Platform ready (about 38%) side by side from 1280 px, stacked below; readiness never narrower than 280 px. Attention rows are at most two lines (pill, product and message on line one, the fix link right-aligned on line one). No stat tiles repeating the attention count (EXPERIENCE §4). (admin-1-14, overview-13)
+- Product shelf: cover cards use a 72 px ProductArt banner in Cards view only (hosted presentation art, else the flat stored `tintColor`; never a generated gradient and never read canvas pixels). Without art, the icon on the section-neutral subtle surface. Status chips stay on the tile's first visible row. (admin-1-14, overview-13)
+- If covers are adopted, the slim `GET /manage/api/products` projection carries `presentation.header` (image-host URL variants) and `tintColor` beside `presentation.icon`, so Home makes no per-card read. This is a manage-API field addition, not a wire or SDK contract; run the admin API docs drift gate if the route table is generated. (admin-1-14, overview-13)
+- [ ] Home at 360, 390, 834, 1024 (rail), 1440 and 1920 in both themes with no horizontal scroll and no collapsed column; 20 products in Cards view stay scannable (Table view offered, facets unchanged); covers lazy-load and reserve their box (no layout shift); `products.home` re-rendered at 1440 and 1920. (admin-1-14, overview-13)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

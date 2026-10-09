@@ -46,6 +46,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQF-13**; DX consolidation A: Ground truth, decisions and quick wins.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Add to the living ADMIN.md: the checklist for any console screen (accepted source reconciled; pending, empty, stale, refused and partial states fixtured; below-the-fold and return paths exercised; both schemes, large text, localisation; keyboard and screen reader in the real host; reduced motion; secrets and consequences explicit; gates pass) as the acceptance every console screen package cites; and the rules for any page drawn from a supplemental study: map legacy routes into accepted homes, never recreate retired nav items, replace placeholder rows with model fields and permission checks, keep preview, step-up, stale-state detection and per-item results. Studies 372-387 are a coverage checklist only (B16). (admin-4-23)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

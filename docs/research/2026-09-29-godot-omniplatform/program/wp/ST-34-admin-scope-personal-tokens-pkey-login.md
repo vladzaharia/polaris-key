@@ -57,6 +57,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Security review and THREAT-MODEL rows before merge (`sec`).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Personal tokens (`pkeyp_`, admin or packages:read) belong to the account; service tokens (`pkeyci_`) are per product under Settings → Keys & secrets → CI publishing. List the account's admin-scope tokens with scope, last use and expiry where F-33 lists packages tokens. Members → row menu 'Sign out everywhere' also revokes that person's admin-scope tokens and says which automation stops. No Platform 'Tokens' nav item. (admin-4-21)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

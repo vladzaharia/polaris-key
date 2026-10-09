@@ -86,6 +86,12 @@ and, where a source pattern or a runtime walk can see it, in every kit `kit-rule
   change for the rule to see it.
 - A source rule that would flag a generated file skips it, as today (the `GENERATED` banner).
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Add lint rules: `mark-size` (no Polaris mark below the 16 px favicon cut; 16-23 px must be the favicon cut; covers the Powered-by line); `accent-as-status` (a computed colour equal to a `--pk-service-*` solid or fg on an element whose role is status, alert or a StatusPill); `section-index` (a heading preceded by a bare two-digit index in its own text run); `no-button-glow` (no chromatic box-shadow, drop-shadow or SwiftUI `.shadow` on a button part); no accent-tinted border, rim or shadow under preset native or `forced-colors: active`; `code-no-wrap` (CodeDisplay and the key field set `white-space: nowrap`, breaking only at the hyphen at 200%). Seeded violation and a debt ledger per rule; run on the boards, kit CSS and Swift sources, and on console and portal pages with `--html`. (brand-40, overview-27, sdk-a-26)
+
 ## Steps
 
 1. The DOM half of each rule, with its seeded test and the boards passing or excepted.

@@ -75,6 +75,12 @@ Copied from [README §12](../../../2026-10-07-dx-consolidation/README.md#12-vers
 - A gap becomes a proposed package with an id and an owner track, not a note in the recommendation.
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Add a brand pass to the 1.0 review: the correct mark and optical cut by displayed size, service mapping (naming table), both themes, weights 400/500/600, accessible states, factual copy (no invented claims), motion behaviour (reduced motion, hidden tabs) and approved attribution (badge minimums, Powered-by line at 16 px or larger). Record screenshots and contrast results per surface. (brand-34)
+
 ## Steps
 
 1. Confirm every dependency is `done` (`node check.mjs --show P0-51`).

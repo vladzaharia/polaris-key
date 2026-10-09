@@ -27,6 +27,39 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 - **Minimum check:** Every verb's goldens at the terminal rows, offline and update-unconfigured included, in both themes; help at 32, 40 and 80 columns.
 - **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the
+      render (text 4.5:1, UI 3:1).
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state; the section accent marks context only, never
+      success, warning or failure; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
 ## Goal
 
 Python terminal kit as a mountable drop-in, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -51,6 +84,14 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 ## Design notes
 
 - No new copies (tracks.md rule 4): build on the one mechanism this package names, never beside it.
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Align terminal detection in one capability table (env x streams x flags to color, unicode, interactive, animate, links) in the `cli` family of `ui-matrix.json`, run by both kits: CI truthiness over `CI`, `GITHUB_ACTIONS` and `BUILDKITE` (CI=0 or false is not CI); OSC 8 links only on a TTY; the animation rule; no OSC 11 query under NO_COLOR. (sdk-c-09, sdk-c-10, sdk-c-30)
+- `activate` with no key reads piped stdin only when it is a file or FIFO, stops at the first non-empty line and gives up after about 2 s with `cli.activate.noKey` (exit 2). [ ] A test with an open, silent stdin returns within the bound; `echo key | activate` still works. (sdk-c-09, sdk-c-10, sdk-c-30)
+- Update apply: downloading (bar, '38 of 61 MB · 20 s left'), verifying (spinner, `update.verifying`), ready ('2.5.0 is ready · Restart to finish'), installed only after restart; never '100% · Up to date' while a restart is pending. Up to three What's new lines when the release carries notes. (sdk-c-09, sdk-c-10, sdk-c-30)
 
 ## Steps
 

@@ -49,6 +49,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Security review and THREAT-MODEL rows before merge (`sec`).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- [ ] After Publish the dialog stays open titled 'Publishing <v>'; each channel row changes on its own from queued to sending to its result (Done, or Failed with what went wrong, how to fix it and 'Retry <channel>' for that channel only); finished rows never collapse while others run; closing the dialog stops nothing and the footer says so; reduced motion is instant; status words carry the meaning. E2E: one failing store among two succeeding ones. (admin-2-15)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
