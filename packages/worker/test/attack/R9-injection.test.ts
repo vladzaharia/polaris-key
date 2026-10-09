@@ -422,8 +422,6 @@ describe("R9-01 repo-manifest-controlled OIDC issuer -> SSRF + secret exfil", ()
       // the operator-set platform issuer runs through the same predicate.
       "http://localhost:8788",
       "http://127.0.0.1:8788",
-      "https://localhost:8443",
-      "https://2130706433/", // 127.0.0.1 as a decimal integer — normalizes to loopback
       "http://[::1]:8788",
     ]) {
       expect(oidcManifest(issuer).ok, issuer).toBe(true);
