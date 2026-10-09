@@ -287,15 +287,15 @@ Deployment) and `⌘K`. `#/platform` is not a page: it redirects to Settings.
 
 ### 2.2 Global elements
 
-| Element               | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Element               | Behavior                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Brand block**       | `SectionMark` at 48 px + the trimmed lockup (≥ 640 px; generated, never live text). Links to Home. The terminal bit shows the current section's accent: chartreuse in License; yellow in Config; cyan in Release; green in Distribution; tangerine in Update; orchid in Identity; no bit at all on Home, Products, Platform and Core pages (BRAND.md §6, 2026-10-03, superseding gold there). The star never changes. |
-| **Product switcher**  | A combobox (search, recent, service dots, attention count). It keeps the current page when the target product runs that service (SH-11). Its footer links All products, Platform and New product. The trigger shows the name (never squeezed below a few characters) and, from 1024 px, the slug and service dots. Shortcut `g p`.                                                                                                                                       |
-| **Environment badge** | Shown in staging and dev ("Staging" in `status.warning`, "Dev" in `status.info`); hidden in production. The source is `/me.environment` (API addition **A-1**), with no hostname heuristics.                                                                                                                                                                                                                                                                             |
-| **Command palette**   | `⌘K` / `Ctrl+K`. Navigation, products, entities of the current product, and safe actions (`components.md` §1.5).                                                                                                                                                                                                                                                                                                                                                         |
-| **Docs**              | "Docs" link to `docsFor(page)`, a labelled link, not a `title`-only icon (SH-13).                                                                                                                                                                                                                                                                                                                                                                                        |
-| **Theme menu**        | System (default) / Dark / Light. Persisted per viewer. System follows `prefers-color-scheme` live, and dark is the fallback when the OS gives no answer. Under 640 px the top bar has no room for it, and the account menu carries Theme and Motion instead.                                                                                                                                                                                                             |
-| **User menu**         | Name and email; "Session ends 18:40" (from **A-1** `sessionExpiresAt`, else omitted); a **version chip** ("v0.8.6 · prod", from **A-11** `GET /platform/version`; hidden when it cannot be read) linking to Platform → Deployment; Keyboard shortcuts (`?`); Docs home; Sign out.                                                                                                                                                                                        |
+| **Product switcher**  | A combobox (search, recent, service dots, attention count). It keeps the current page when the target product runs that service (SH-11). Its footer links All products, Platform and New product. The trigger shows the name (never squeezed below a few characters) and, from 1024 px, the slug and service dots. Shortcut `g p`.                                                                                    |
+| **Environment badge** | Shown in staging and dev ("Staging" in `status.warning`, "Dev" in `status.info`); hidden in production. The source is `/me.environment` (API addition **A-1**), with no hostname heuristics.                                                                                                                                                                                                                          |
+| **Command palette**   | `⌘K` / `Ctrl+K`. Navigation, products, entities of the current product, and safe actions (`components.md` §1.5).                                                                                                                                                                                                                                                                                                      |
+| **Docs**              | "Docs" link to `docsFor(page)`, a labelled link, not a `title`-only icon (SH-13).                                                                                                                                                                                                                                                                                                                                     |
+| **Theme menu**        | System (default) / Dark / Light. Persisted per viewer. System follows `prefers-color-scheme` live, and dark is the fallback when the OS gives no answer. Under 640 px the top bar has no room for it, and the account menu carries Theme and Motion instead.                                                                                                                                                          |
+| **User menu**         | Name and email; "Session ends 18:40" (from **A-1** `sessionExpiresAt`, else omitted); a **version chip** ("v0.8.6 · prod", from **A-11** `GET /platform/version`; hidden when it cannot be read) linking to Platform → Deployment; Keyboard shortcuts (`?`); Docs home; Sign out.                                                                                                                                     |
 
 ### 2.3 Sections and pages
 
@@ -376,15 +376,15 @@ that is not built yet carries `ready: false` in `nav.ts` and redirects to Deploy
 
 ### 2.4 Accent and mark mapping
 
-| Context                                               | `data-service` | Bit color          | Section glyph                          | Active nav marker and rule |
-| ----------------------------------------------------- | -------------- | ------------------ | -------------------------------------- | -------------------------- |
-| Home, Platform context, every Core page               | `core`         | none (no bit)      | Pinned K (sidebar group: lucide `Box`) | violet                     |
-| Licensing                                             | `license`      | chartreuse `solid` | `KeyRound`                             | chartreuse                 |
-| Managed config                                        | `config`       | yellow             | `SlidersHorizontal`                    | yellow                     |
-| Ship builds (Releases, Release tracks, Rollouts, Channels, Packages, Updates, Health) | `release` | cyan | `Package`                           | cyan                       |
-| Sign-in                                               | `identity`     | orchid             | `UserRound`                            | orchid                     |
-| Cloud Sync                                            | `sync`         | teal               | `Cloud`                                | teal                       |
-| Commerce (Storefronts, Offers, Purchases)             | `commerce`     | Distribution green | `ShoppingBag`; Pinned K parent         | green                      |
+| Context                                                                               | `data-service` | Bit color          | Section glyph                          | Active nav marker and rule |
+| ------------------------------------------------------------------------------------- | -------------- | ------------------ | -------------------------------------- | -------------------------- |
+| Home, Platform context, every Core page                                               | `core`         | none (no bit)      | Pinned K (sidebar group: lucide `Box`) | violet                     |
+| Licensing                                                                             | `license`      | chartreuse `solid` | `KeyRound`                             | chartreuse                 |
+| Managed config                                                                        | `config`       | yellow             | `SlidersHorizontal`                    | yellow                     |
+| Ship builds (Releases, Release tracks, Rollouts, Channels, Packages, Updates, Health) | `release`      | cyan               | `Package`                              | cyan                       |
+| Sign-in                                                                               | `identity`     | orchid             | `UserRound`                            | orchid                     |
+| Cloud Sync                                                                            | `sync`         | teal               | `Cloud`                                | teal                       |
+| Commerce (Storefronts, Offers, Purchases)                                             | `commerce`     | Distribution green | `ShoppingBag`; Pinned K parent         | green                      |
 
 Primary buttons are the neutral ink action in every section (BRAND §4.7); the accent never fills
 them. Glyphs follow the BRAND service icon set (§1.1).
@@ -559,55 +559,55 @@ home. It feeds the Page moved entries (P0-31) and this table. Removals are not a
 old URL opens **Page moved** inside the product's chrome, never a silent redirect; a section key
 alone still redirects to its first page. Every removed id has an entry.
 
-| Page id | 0.9 route | 1.0 home | Old URL shows |
-| ------- | --------- | -------- | ------------- |
-| `home` | `#/` | Home (Platform context) | live |
-| `products` | `#/products` | Home › Products (Cards/Table, ST-44) | Page moved |
-| `product-new` | `#/products/new` | New product wizard (ST-43) | live |
-| `platform-settings` | `#/platform/settings` | Platform › Settings (ST-09) | live |
-| `platform-deployment` | `#/platform/deployment` | Platform › Status (ST-09) | Page moved |
-| `platform-operations` | `#/platform/operations` | Platform › Status (ST-09) | Page moved |
-| `platform-stores` | `#/platform/store-connections` | Platform › Connections (identity.connections, I-31) | Page moved |
-| `platform-feeds` | `#/platform/feeds` | Platform › Packages (F-34) | Page moved |
-| `platform-override-migration` | `#/platform/override-migration` | none: deleted by U-27 | deleted |
-| `overview` | `#/p/:s` | Overview (B+C, ST-41) | live |
-| `services` | `services` | Settings › Features (ST-08) | Page moved |
-| `devices` | `devices[/:id]` | Devices | live |
-| `users` | `users[/:subject/…]` | Users (data tab U-11a) | live |
-| `presentation` | `presentation` | Settings › Presentation (ST-08) | Page moved |
-| `keys` | `keys` | Settings › Keys & secrets (ST-08) | Page moved |
-| `activity` | `activity` | Activity (product facet) | live |
-| `settings` | `settings` | Settings hub, four tabs (ST-08) | live |
-| `licenses` | `license/licenses[/:id/…]` | Licensing › Licenses (LX-30) | live |
-| `tiers` | `license/tiers[/:id]` | Licensing › Tiers | live |
-| `enrollment` | `license/enrollment` | split: registration derived on Features; fingerprint mode in tier limits; probes and device trust ST-12; automatic access Licenses › Access | Page moved |
-| `license-settings` | `license/settings` | Features › Licensing nested settings (LX-06) | Page moved |
-| `license-batches` | `license/batches` | Licenses › bulk keys drawer (LX-30) | Page moved |
-| `catalog` | `config/catalog` | Managed config › Catalog | live |
-| `catalog-edit` | `config/catalog/edit` | Catalog editor (`?entry=`) | live |
-| `profiles` | `config/profiles[/:id]` | Managed config › Profiles | live |
-| `edge-mint` | `config/edge-mint` | Managed config › Edge mint | live |
-| `releases` | `release/releases[/:id]` | Ship builds › Releases | live |
-| `channels` | `release/channels` | Ship builds › Release tracks (P2-08) | Page moved |
-| `deliverables` | `release/deliverables` | Releases › Packs tab | Page moved |
-| `compatibility` | `release/compatibility` | Ship builds › Compatibility | live |
-| `simulator` | `release/compatibility/simulator` | Compatibility › Simulator tab | live |
-| `content-keys` | `release/content-keys` | Settings › Keys & secrets, read-only (CI delegates and revokes) | Page moved |
-| `matrix` | `distribution/matrix` | Rollouts › Matrix view (`?view=matrix`) | Page moved |
-| `rollouts` | `distribution/rollouts` | Ship builds › Rollouts | live |
-| `outlets` | `distribution/outlets` | Ship builds › Channels and the channel page | Page moved |
-| `storefronts` | `distribution/storefronts` | Commerce › Storefronts (CM-23) | Page moved |
-| `listing` | `distribution/listing` | Channel page › Listing tab (A-22) | Page moved |
-| `app-store` | `distribution/app-store` | Channel page (App Store) (A-22) | Page moved |
-| `commerce` | `distribution/commerce` | Commerce › Offers (CM-23) | Page moved |
-| `access` | `distribution/access` | Access (P2-10) | Page moved |
-| `package-feeds` | `distribution/package-feeds` | Ship builds › Packages (F-34) | Page moved |
-| `health` | `distribution/health` | Ship builds › Health | live |
-| `credentials` | `distribution/credentials` | Platform › Connections (store team keys) and the channel page Setup tab | Page moved |
-| `feed` | `update/feed` | Ship builds › Updates (P2-11) | Page moved |
-| `portal` | `identity/portal` | Sign-in › App sign-in (I-29) and the Customer portal switch on Features | Page moved |
-| `sign-in` | `identity/sign-in` | Sign-in › App sign-in (I-29) | live |
-| `sync-data` | `sync/data` | Cloud Sync › Setup and Usage (U-32); per-person data Users › Data (U-11a) | Page moved |
+| Page id                       | 0.9 route                         | 1.0 home                                                                                                                                    | Old URL shows |
+| ----------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `home`                        | `#/`                              | Home (Platform context)                                                                                                                     | live          |
+| `products`                    | `#/products`                      | Home › Products (Cards/Table, ST-44)                                                                                                        | Page moved    |
+| `product-new`                 | `#/products/new`                  | New product wizard (ST-43)                                                                                                                  | live          |
+| `platform-settings`           | `#/platform/settings`             | Platform › Settings (ST-09)                                                                                                                 | live          |
+| `platform-deployment`         | `#/platform/deployment`           | Platform › Status (ST-09)                                                                                                                   | Page moved    |
+| `platform-operations`         | `#/platform/operations`           | Platform › Status (ST-09)                                                                                                                   | Page moved    |
+| `platform-stores`             | `#/platform/store-connections`    | Platform › Connections (identity.connections, I-31)                                                                                         | Page moved    |
+| `platform-feeds`              | `#/platform/feeds`                | Platform › Packages (F-34)                                                                                                                  | Page moved    |
+| `platform-override-migration` | `#/platform/override-migration`   | none: deleted by U-27                                                                                                                       | deleted       |
+| `overview`                    | `#/p/:s`                          | Overview (B+C, ST-41)                                                                                                                       | live          |
+| `services`                    | `services`                        | Settings › Features (ST-08)                                                                                                                 | Page moved    |
+| `devices`                     | `devices[/:id]`                   | Devices                                                                                                                                     | live          |
+| `users`                       | `users[/:subject/…]`              | Users (data tab U-11a)                                                                                                                      | live          |
+| `presentation`                | `presentation`                    | Settings › Presentation (ST-08)                                                                                                             | Page moved    |
+| `keys`                        | `keys`                            | Settings › Keys & secrets (ST-08)                                                                                                           | Page moved    |
+| `activity`                    | `activity`                        | Activity (product facet)                                                                                                                    | live          |
+| `settings`                    | `settings`                        | Settings hub, four tabs (ST-08)                                                                                                             | live          |
+| `licenses`                    | `license/licenses[/:id/…]`        | Licensing › Licenses (LX-30)                                                                                                                | live          |
+| `tiers`                       | `license/tiers[/:id]`             | Licensing › Tiers                                                                                                                           | live          |
+| `enrollment`                  | `license/enrollment`              | split: registration derived on Features; fingerprint mode in tier limits; probes and device trust ST-12; automatic access Licenses › Access | Page moved    |
+| `license-settings`            | `license/settings`                | Features › Licensing nested settings (LX-06)                                                                                                | Page moved    |
+| `license-batches`             | `license/batches`                 | Licenses › bulk keys drawer (LX-30)                                                                                                         | Page moved    |
+| `catalog`                     | `config/catalog`                  | Managed config › Catalog                                                                                                                    | live          |
+| `catalog-edit`                | `config/catalog/edit`             | Catalog editor (`?entry=`)                                                                                                                  | live          |
+| `profiles`                    | `config/profiles[/:id]`           | Managed config › Profiles                                                                                                                   | live          |
+| `edge-mint`                   | `config/edge-mint`                | Managed config › Edge mint                                                                                                                  | live          |
+| `releases`                    | `release/releases[/:id]`          | Ship builds › Releases                                                                                                                      | live          |
+| `channels`                    | `release/channels`                | Ship builds › Release tracks (P2-08)                                                                                                        | Page moved    |
+| `deliverables`                | `release/deliverables`            | Releases › Packs tab                                                                                                                        | Page moved    |
+| `compatibility`               | `release/compatibility`           | Ship builds › Compatibility                                                                                                                 | live          |
+| `simulator`                   | `release/compatibility/simulator` | Compatibility › Simulator tab                                                                                                               | live          |
+| `content-keys`                | `release/content-keys`            | Settings › Keys & secrets, read-only (CI delegates and revokes)                                                                             | Page moved    |
+| `matrix`                      | `distribution/matrix`             | Rollouts › Matrix view (`?view=matrix`)                                                                                                     | Page moved    |
+| `rollouts`                    | `distribution/rollouts`           | Ship builds › Rollouts                                                                                                                      | live          |
+| `outlets`                     | `distribution/outlets`            | Ship builds › Channels and the channel page                                                                                                 | Page moved    |
+| `storefronts`                 | `distribution/storefronts`        | Commerce › Storefronts (CM-23)                                                                                                              | Page moved    |
+| `listing`                     | `distribution/listing`            | Channel page › Listing tab (A-22)                                                                                                           | Page moved    |
+| `app-store`                   | `distribution/app-store`          | Channel page (App Store) (A-22)                                                                                                             | Page moved    |
+| `commerce`                    | `distribution/commerce`           | Commerce › Offers (CM-23)                                                                                                                   | Page moved    |
+| `access`                      | `distribution/access`             | Access (P2-10)                                                                                                                              | Page moved    |
+| `package-feeds`               | `distribution/package-feeds`      | Ship builds › Packages (F-34)                                                                                                               | Page moved    |
+| `health`                      | `distribution/health`             | Ship builds › Health                                                                                                                        | live          |
+| `credentials`                 | `distribution/credentials`        | Platform › Connections (store team keys) and the channel page Setup tab                                                                     | Page moved    |
+| `feed`                        | `update/feed`                     | Ship builds › Updates (P2-11)                                                                                                               | Page moved    |
+| `portal`                      | `identity/portal`                 | Sign-in › App sign-in (I-29) and the Customer portal switch on Features                                                                     | Page moved    |
+| `sign-in`                     | `identity/sign-in`                | Sign-in › App sign-in (I-29)                                                                                                                | live          |
+| `sync-data`                   | `sync/data`                       | Cloud Sync › Setup and Usage (U-32); per-person data Users › Data (U-11a)                                                                   | Page moved    |
 
 **1.0 routes `nav.ts` lacks:** Platform Members (SSO rules, Roles tabs), Connections, Packages,
 Status, Activity and `settings/<area>`; product Integration, Access, `settings/{features,
@@ -1228,21 +1228,21 @@ sign-in card and the UI kits; EXPERIENCE §7.2 maps it onto the journeys). Phase
 MO-02 (the layer: `src/ui/motion/`, `src/motion.css`), MO-04 (navigation), MO-08 (overlays and
 controls), MO-09 (data surfaces), MO-10 (shell), MO-11 (moments and counters).
 
-| Template or element      | Motion                                                                                                                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shell (top bar, sidebar) | never moves during navigation; the phone nav drawer slides from its edge                                                                                                           |
-| Route change             | sibling pages fade through (`route`); T2 → T3 drill-downs slide forward, Back slides back (`forward` / `back`, by route depth); the record key flies into the header               |
-| T3 Record tabs           | the indicator morphs, the panel fades through (`tab`)                                                                                                                              |
-| T2 Collection            | filters, sorts, creates and deletes move rows (`list`, at most 30 named rows, then only rows on screen); new rows are tinted, then fade; chips pop; the bulk bar enters and leaves |
-| T1 Overview, Home        | tiles and the attention list stagger on first load; headline numbers count up; meters fill; §0.7 moments celebrate once per product                                                |
-| Dialogs, drawers, menus  | enter and exit from the tokens; drawers slide from the edge; phone dialogs rise as sheets; popovers come from their side                                                           |
-| Loading                  | `PageSkeleton` / `Skeleton` with a 150 ms grace and a sheen; never a spinner or "Loading…" for content                                                                             |
-| Status                   | pill colours ease and the word pops; the word always carries the meaning                                                                                                           |
-| Controls                 | buttons, chips and tiles press (0.98); hover colours at `micro`; focus rings never animate                                                                                         |
-| Per-store outcomes (change price, stop selling, connect) | each store row settles in place at `base` as its result arrives; successful rows keep their result; a failed row expands its cause inline, no shake |
-| Refunds, chargebacks, revocation, consent | the timeline resolves to the entitlement consequence with no celebratory motion |
-| Hosted sign-in steps | the task body crossfades 200–260 ms while the product and account header stay still |
-| Shell v2 | the canvas stays still; the header stays anchored across tabs; the workspace entrance plays once |
+| Template or element                                      | Motion                                                                                                                                                                             |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell (top bar, sidebar)                                 | never moves during navigation; the phone nav drawer slides from its edge                                                                                                           |
+| Route change                                             | sibling pages fade through (`route`); T2 → T3 drill-downs slide forward, Back slides back (`forward` / `back`, by route depth); the record key flies into the header               |
+| T3 Record tabs                                           | the indicator morphs, the panel fades through (`tab`)                                                                                                                              |
+| T2 Collection                                            | filters, sorts, creates and deletes move rows (`list`, at most 30 named rows, then only rows on screen); new rows are tinted, then fade; chips pop; the bulk bar enters and leaves |
+| T1 Overview, Home                                        | tiles and the attention list stagger on first load; headline numbers count up; meters fill; §0.7 moments celebrate once per product                                                |
+| Dialogs, drawers, menus                                  | enter and exit from the tokens; drawers slide from the edge; phone dialogs rise as sheets; popovers come from their side                                                           |
+| Loading                                                  | `PageSkeleton` / `Skeleton` with a 150 ms grace and a sheen; never a spinner or "Loading…" for content                                                                             |
+| Status                                                   | pill colours ease and the word pops; the word always carries the meaning                                                                                                           |
+| Controls                                                 | buttons, chips and tiles press (0.98); hover colours at `micro`; focus rings never animate                                                                                         |
+| Per-store outcomes (change price, stop selling, connect) | each store row settles in place at `base` as its result arrives; successful rows keep their result; a failed row expands its cause inline, no shake                                |
+| Refunds, chargebacks, revocation, consent                | the timeline resolves to the entitlement consequence with no celebratory motion                                                                                                    |
+| Hosted sign-in steps                                     | the task body crossfades 200–260 ms while the product and account header stay still                                                                                                |
+| Shell v2                                                 | the canvas stays still; the header stays anchored across tabs; the workspace entrance plays once                                                                                   |
 
 **Rules.** Optimistic updates (§5.3) apply the new state first and animate it; a rollback is an
 instant swap plus the inline error, never a shake. Only `transform` and `opacity` animate, except
@@ -1283,146 +1283,48 @@ The wireframes are low fidelity. Glyph legend:
 
 ### 6.1 Console home
 
-**Purpose.** "What needs me across all products?" Fixes DSH-1 to DSH-7 (and relies on chunk 2's SH-1 fix).
+**Purpose.** "What needs me across all products?" Built to the mockup `products.home` (ST-44,
+ST-45); the old wireframe (Products and Platform links in the sidebar, Recent products, summary
+tiles, Recent activity) is retired.
 
-**Data.** `useProducts`, and no read of its own per card. `GET /products` carries every product's
-setup, onboarding, services, signing and logo (`presentation.icon`: the hosted icon as image-host
-URLs). Since the owner polish of 2026-10-07 the cards show no per-service facts, so Home no longer
-reads `GET /summary` (**A-8**: one fact per service for every product, in four grouped queries);
-the route and `useSummary` stay for A-8's fleet facts.
-
-```
-┌───────────────────────────────────────────────────────────────────────────────────────┐
-│ [K◆] Polaris Key        [ Search or jump to…            ⌘K ]          Docs   ◐   (AL) │
-├───────────┬───────────────────────────────────────────────────────────────────────────┤
-│ ⌂ Home    │ Home                                                    [ + New product ] │
-│ ▦ Products│ 4 products · session ends 18:40                                           │
-│ ⊡ Platform│                                                                           │
-│           │ Needs attention                                                     5     │
-│           │ ┌───────────────────────────────────────────────────────────────────────┐ │
-│           │ │ ✕ DJDL     Edge-mint recipe "studio" changed since approval  [Review →]│ │
-│           │ │ ▲ DJDL     2 releases held by readiness on App Store       [Open matrix]│ │
-│           │ │ ▲ Diceroll  Missing secret OIDC_CLIENT_SECRET               [Set secret]│ │
-│           │ │ ▲ Diceroll  Staged signing key ready to activate            [Review →] │ │
-│           │ │ ○ Atlas    No catalog published yet                         [Publish →]│ │
-│           │ └───────────────────────────────────────────────────────────────────────┘ │
-│           │                                                                           │
-│           │ Recent products                                     [ All products → ]    │
-│           │ ┌────────────────────────────────┐ ┌────────────────────────────────┐     │
-│           │ │ [logo] DJDL  ▲ 2 need attention│ │  [D]  Diceroll                 │     │
-│           │ │        djdl                    │ │       diceroll                 │     │
-│           │ │ ────────────────────────────── │ │ ────────────────────────────── │     │
-│           │ │ ◇ ◈ ▣ ★ ⟳ ◉ ☁                  │ │ ◇ ◈ ▣                          │     │
-│           │ └────────────────────────────────┘ └────────────────────────────────┘     │
-│           │                                                                           │
-│           │ Recent activity (all products, A-2b)               [View activity →]     │
-│           │  · 14:02  Ada  published catalog v8            DJDL                       │
-│           │  · 13:40  CI   rollout 2.4.0 → 25 % on App Store DJDL                     │
-└───────────┴───────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Recent products.** Home shows the **six most recently changed** products. **All products**
-  opens the Products table, which keeps search, the facets and the sort (EXPERIENCE C17); Home has
-  no filter or sort of its own.
-- **Product cards** (owner request 2026-10-06; the directions are in
-  [console-product-card](console-product-card/README.md). **Owner polish 2026-10-07:** the
-  ledger of direction B is replaced by this simpler card):
-  - **The name is the card's one link to the product.** Its hit area stretches over the card
-    (`::after`), so a click anywhere opens Overview (DSH-3). Focus on it rings the whole card
-    (`has-[a[data-card-link]:focus-visible]`).
-  - **Header:** the product's logo, its name (up to two lines) and its slug. The logo is the
-    hosted `presentation.icon` copy, else the `listing.icon` copy, as the 64 and 128 px variants.
-    With no copy, or when it fails to load, the logo is a neutral monogram tile, with no spinner.
-    When the product needs something, one pill ends the header: the issue named, or "N need
-    attention" (the Needs attention list above names each). Healthy draws nothing (§5.11).
-  - **Services:** one row of icons, one per service the product runs, in the service table's
-    order, each named (`aria-label` and `title`) and linking to its service's page as a sibling
-    above the name's stretched hit area. No per-service facts, no rows, no footer; the row is
-    pinned to the card's bottom, so the cards in a row share one bottom edge.
-  - **Phones** (below `sm`): the card is one line, the name and one pip per service in that
-    service's accent (`data-service` scoping, the brand tokens), the pips named together as one
-    image ("Runs License, Config and Release"). The logo, slug, pill and icon row step aside.
-
-- **Figures:** Products, Need attention and Linked to a repository. There is no "Setup complete"
-  figure: healthy is silence (EXPERIENCE C2). Below 1280 px an odd last tile spans its row, so none
-  is left alone beside empty space.
-- **Attention items** are typed (`AttentionItem {product, severity, kind, target, action}`). The
-  kinds:
-
-  | Kind                                 | Source                                   |
-  | ------------------------------------ | ---------------------------------------- |
-  | `secret.missing`                     | `setup.secrets`                          |
-  | `catalog.none`                       | catalog 404                              |
-  | `signing.staged`                     | A-4                                      |
-  | `mint.pending`, `mint.changed`       | `config/mint`                            |
-  | `readiness.held`                     | `distribution/readiness`                 |
-  | `rollout.halted`, `sentry.candidate` | `distribution/update-health`             |
-  | `license.expiring`                   | licenses with `expiresAt` within 14 days |
-  | `onboarding.next`                    | `onboarding.nextActions`                 |
-  | `release.health`                     | `release/health` (when not healthy)      |
-
-- **First run (zero products).** The stationary star empty state: "Register your first product.
-  Link a GitHub repository with a `.pkey/` directory, or start manually." Actions: **Link a
-  repository** and **Start manually**, both opening the T6 wizard with the source preselected
-  (DSH-6).
-- **Recent activity across products** needs **A-2b** (a platform-wide feed). Without it, this panel
-  is omitted, not faked.
+- **Sidebar** is the Platform context: a context header, then Home · Members · Connections ·
+  Settings · Packages · Status · Activity. No product sections.
+- **Header:** `Home`, "Updated 1 min ago", Refresh and New product on one line. No subtitle.
+- **Needs attention** (one server read, `GET /manage/api/attention`) lists only broken things, at
+  most two lines each: a tone pill with its word, the product's logo and name, one sentence, one
+  action link on the first line. The count sits beside the title.
+- **Platform ready** shows to platform admins only while incomplete: a meter, open rows first with
+  their one action, done steps folded into one disclosure. From 1280 px it sits beside Needs
+  attention (2/3 and 1/3); stacked below.
+- **Products** are ST-36 cards or a table (a Cards/Table control on the heading line, one 32 px
+  toolbar with Filter products and its facets): logo, name as the one link, slug in mono, an
+  attention pill only when something needs attention, and one row of feature glyphs in canonical
+  order, with the issue dot on the feature that has the problem. Cards in Cards view carry a
+  72 px banner of the product's hosted art, else its flat stored tint. No facts, no healthy pill,
+  no summary tiles.
+- **First run (zero products):** the stationary star, "Register your first product", with Link a
+  repository and Start manually.
 
 ### 6.2 Product overview
 
-**Purpose.** "Is this product healthy, and what is it running?" Fixes OVR-1 to OVR-8.
+**Purpose.** "Is this product healthy, and what is it running?" Built to `products.overview`
+(the B board with the C setup stepper, ST-41); the old wireframe (breadcrumbs `Products / DJDL`,
+service tiles, Setup checklist, Trust & SDK) is retired.
 
-```
-┌ Breadcrumbs: Products / DJDL ─────────────────────────────────────────────────────────┐
-│ H1 DJDL   djdl ⧉   [Linked to vladzaharia/djdl]          [ Create license ] [⋯]       │
-│ Runs 6 services · last resync 2 h ago · created 12 Mar 2026                           │
-├───────────────────────────────────────────────────────────────────────────────────────┤
-│ Needs attention (3)   ✕ Edge-mint "studio" changed since approval        [Review →]   │
-│                       ▲ 2 releases held on App Store                     [Matrix →]   │
-│                       ▲ 3 licenses expire within 14 days                 [View →]     │
-├───────────────────────────────────────────────────────────────────────────────────────┤
-│ ┌ ◇ License ───────────┐┌ ◈ Config ────────────┐┌ ▣ Release ───────────┐             │
-│ │ 1,284 active         ││ Catalog v8 · 42 keys ││ 2.4.0 latest         │             │
-│ │ 3 expiring · 12 dis. ││ 6 profiles           ││ stable → 2.4.0       │             │
-│ │ 2,931 devices ▁▂▃▅▆  ││ [From manifest]      ││ ● health ok          │             │
-│ │ Licenses →           ││ Catalog →            ││ Releases →           │             │
-│ └──────────────────────┘└──────────────────────┘└──────────────────────┘             │
-│ ┌ ★ Distribution ──────┐┌ ★ Update ────────────┐┌ ◉ Identity ──────────┐             │
-│ │ 1 rollout · 25 %     ││ Feed: licensed       ││ Portal on            │             │
-│ │ 2 held · 0 halted    ││ Downloads: entitled  ││ SSO + email link     │             │
-│ │ Matrix →             ││ Feed →               ││ Portal →             │             │
-│ └──────────────────────┘└──────────────────────┘└──────────────────────┘             │
-│ (tiles appear only for enabled services; each tile is its section's accent)           │
-├──────────────────────────────────────────────┬────────────────────────────────────────┤
-│ Setup (shown until complete) 5 of 7          │ Trust & SDK                       ◆    │
-│ ● Signing key active                         │ Signing key  kid pk-2026-03  ◆ Active  │
-│ ● Catalog published                          │ Public key   MCowBQYDK2VwAyEA… ⧉       │
-│ ▲ Set OIDC_CLIENT_SECRET        [Set →]      │ JWKS         key.plrs.im/djdl/.well… ⧉ │
-│ ○ Issue a first license         [Create →]   │ [Keys & secrets →]                     │
-│ (each item: icon + text status, never color)│ SDK quick start  [JS ▾] [Swift] [Godot]│
-│                                              │ ┌ code ───────────────────────── ⧉ ┐   │
-│                                              │ └──────────────────────────────────┘   │
-├──────────────────────────────────────────────┴────────────────────────────────────────┤
-│ Recent activity                                                    [View activity →]  │
-│  ● 14:02 Ada published catalog v8 · ● 13:40 CI set rollout 2.4.0 to 25 % on App Store │
-└───────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-**Rules.**
-
-- **Only enabled services get a tile** (OVR-1). The tile is a `data-service` scope. Its numbers
-  come from that service's list queries, loaded per tile.
-- **The checklist** derives from `setup` + `onboarding.nextActions` + real state:
-  - "Issue a first license" is done when any license exists (OVR-2).
-  - No item links to the page itself.
-  - The list is not truncated: it shows "Show 3 more" instead of `slice(0,7)`.
-  - It hides entirely once complete. A "Setup complete" chip in the header reopens it.
-- **Trust & SDK.**
-  - Signing material uses gold `SignedBadge` and `KeyDisplay` with copy (OVR-6).
-  - The snippet comes from the onboarding data (`configUrl`, `activateUrl`) with tabs per SDK; the
-    version is read from the latest release, not hard-coded.
-- **The header primary action** depends on what is enabled: "Create license" when License is on;
-  else "Publish catalog" when Config is on; else "Enable services".
+- **Hero:** the product's logo, name, slug and identity line with More; then the one next step: a
+  tone pill and subject, the statement at 18/24, and the page's one primary (computed: the first
+  attention item, else the first open console step in canonical order, else the first enabled
+  feature's main action). Beside it, the Integration pane (sunken) with one meter per platform
+  and a quiet Hide offered only after a platform is verified.
+- **Features** board: one card per enabled feature in canonical order, each with its service tile,
+  the name as the card's link, one key number and one foot line. A problem is said once, in the
+  hero; its card keeps only the warning edge and dot.
+- **Integration steps:** one row per enabled feature on a rail, with a platform tile per platform;
+  the first open step shows its one console step as a verb link.
+- **Recent activity** under the board, with an Open Activity link. No Needs attention card and no
+  Trust & SDK panel: signing material is in Settings › Keys & secrets and the snippets are on
+  Integration.
+- The grid is 4 columns from 1488 px of grid width, 3 from 976, 2 from 680, else 1.
 
 ### 6.3 Releases and packs
 
@@ -2931,8 +2833,8 @@ does not apply. Each addition still needs:
 
 ## 8. Open questions for the lead
 
-1. **Q1 · Section bit optical cut.** The kit draws the K's terminal bit only in the display cut
-   (≥ 48 px). The header mark is 28 px.
+1. **Q1 · Section bit optical cut (closed).** The kit draws the K's terminal bit only in the display
+   cut (≥ 48 px), so the header mark is 48 px (BRAND §6); option (b) below was taken.
    - **(a) Recommended:** the brand package draws a service-cut (24-unit grid) terminal bit, used
      only by `SectionMark`.
    - **(b)** The brand block grows to a 48 px display mark in a 64 px top bar.
