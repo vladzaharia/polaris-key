@@ -51,7 +51,7 @@ import {
   type Store,
   type TrustManifestResult,
 } from "@polaris-key/client-core";
-import { reloadBundle } from "../offline.js";
+import { reloadBundle, type CachedBundle } from "../offline.js";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import {
   HEADER_ARCH,
@@ -344,8 +344,8 @@ export class BearerSession {
   /** The tombstoned pins and their evidence (WIRE-CONTRACT-V4 §1, §4.1). */
   private tombstones: string[] = [];
   private evidence: Record<string, string> = {};
-  /** The cached bundle, when it re-verified on the reload profile with its documents cached. */
-  private bundle: { bundleId: string; license: boolean } | null = null;
+  /** The cached bundle, when it re-verified on the reload profile (§7). */
+  private bundle: CachedBundle | null = null;
   private floor = 0;
   private lastVerifiedAt: number | null = null;
   /** The §5 single re-acquire's per-pass budget. */
@@ -397,7 +397,7 @@ export class BearerSession {
     return {
       activation: this.token
         ? "token"
-        : this.bundle?.license && this.license
+        : this.bundle?.activates && this.license
           ? "bundle"
           : null,
       doc: this.license?.doc ?? null,
@@ -527,7 +527,6 @@ export class BearerSession {
       deviceId: this.deviceIdValue,
       now: this.opts.now(),
       license: this.license?.jws,
-      config: this.config?.jws,
     });
   }
 

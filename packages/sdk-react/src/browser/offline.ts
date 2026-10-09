@@ -66,10 +66,10 @@ export interface OfflineState {
   deviceId: string;
   license: LicenseDoc | null;
   config: ConfigDoc | null;
-  /** The cached bundle, when it re-verified on the reload profile and every document it
-   *  carries is the cached one, byte for byte. With a licence document, this is
-   *  `activation: "bundle"` (no session held). */
-  bundle: { bundleId: string; license: boolean } | null;
+  /** The cached bundle, when it re-verified on the reload profile. `activates`: it carried a
+   *  licence document byte-identical to the cached one, which is `activation: "bundle"` (no
+   *  session held). */
+  bundle: CachedBundle | null;
   /** The tombstoned pins, re-derived from `pinRevocations` (§1, §4.1). */
   tombstones: string[];
   /** The evidence that re-verified, kid → revoking manifest. */
@@ -267,18 +267,24 @@ export async function loadOffline(
     deviceId: record.deviceId,
     now: opts.now,
     license: out.license ? rec.docs?.license : undefined,
-    config: out.config ? rec.docs?.config : undefined,
   });
   out.highWaterMark = highWaterMark(dated);
   out.lastVerifiedAt = newest > 0 ? newest * 1000 : null;
   return out;
 }
 
+/** A cached bundle that re-verified: what it carried, and whether it activates. */
+export interface CachedBundle {
+  bundleId: string;
+  docs: ("license" | "config")[];
+  activates: boolean;
+}
+
 /**
  * WIRE-CONTRACT-V4 §4.1, §7: the cached bundle (`rec.bundle`) on the RELOAD profile, against the
- * usable pins. It counts only while each document it carries is the cached one that verified,
- * byte for byte (`license`/`config` are those cached JWSs, or undefined when absent or failed):
- * a stale bundle cannot vouch for a document it never carried.
+ * usable pins. It activates only while the licence document it carries is the cached one that
+ * verified, byte for byte (`license` is that cached JWS, or undefined when absent or failed): a
+ * stale bundle cannot vouch for a licence it never carried.
  */
 export async function reloadBundle(
   rec: CacheRecordV3,
@@ -289,9 +295,8 @@ export async function reloadBundle(
     deviceId: string;
     now: number;
     license: string | undefined;
-    config: string | undefined;
   },
-): Promise<{ bundleId: string; license: boolean } | null> {
+): Promise<CachedBundle | null> {
   if (typeof rec.bundle !== "string") return null;
   const result = await inspectBundle(rec.bundle, {
     pinned: opts.pinned,
@@ -304,9 +309,14 @@ export async function reloadBundle(
   });
   if (!result.ok) return null;
   const { docs } = result.bundle;
-  if (docs.license && docs.license.jws !== opts.license) return null;
-  if (docs.config && docs.config.jws !== opts.config) return null;
-  return { bundleId: result.bundle.bundleId, license: !!docs.license };
+  return {
+    bundleId: result.bundle.bundleId,
+    docs: [
+      ...(docs.license ? (["license"] as const) : []),
+      ...(docs.config ? (["config"] as const) : []),
+    ],
+    activates: docs.license !== undefined && docs.license.jws === opts.license,
+  };
 }
 
 /** Human-readable causes, as `@polaris-key/node` gives them, so a UI can say WHICH thing is
@@ -341,12 +351,8 @@ export async function importOfflineBundle(
     product,
     now: opts.now,
   });
-  if (held.bundle !== null && record.cache?.bundle === jws) {
-    const imported: ImportBundleResult["imported"] = [];
-    if (held.license) imported.push("license");
-    if (held.config) imported.push("config");
-    return { bundleId: held.bundle.bundleId, imported };
-  }
+  if (held.bundle !== null && record.cache?.bundle === jws)
+    return { bundleId: held.bundle.bundleId, imported: [...held.bundle.docs] };
   const result = await inspectBundle(jws, {
     pinned: opts.pinned,
     tombstones: held.tombstones,

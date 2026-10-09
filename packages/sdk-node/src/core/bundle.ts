@@ -69,14 +69,11 @@ export async function importBundle(
   jws: string,
   now: number = nowSec(),
 ): Promise<ImportBundleResult> {
-  // A byte-identical re-import of the bundle this install runs on: success, nothing written.
+  // A byte-identical re-import of the bundle this install holds (and that re-verified):
+  // success, nothing written.
   const held = cache.state.bundle;
-  if (held !== null && cache.bundleJws() === jws) {
-    const imported: ("license" | "config")[] = [];
-    if (cache.state.license) imported.push("license");
-    if (cache.state.config) imported.push("config");
-    return { bundleId: held.bundleId, imported };
-  }
+  if (held !== null && cache.bundleJws() === jws)
+    return { bundleId: held.bundleId, imported: [...held.docs] };
 
   const result = await inspectBundle(jws, {
     pinned: ctx.pinnedTrust,

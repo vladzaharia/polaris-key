@@ -54,11 +54,15 @@ export interface LoadedCache {
   license: CachedDoc<LicenseDoc> | null;
   config: CachedDoc<ConfigDoc> | null;
   /**
-   * The cached offline bundle (§7), when it re-verified on the reload profile AND its licence
-   * document is byte-identical to the cached `docs.license`: the signed fact behind
-   * `activation: "bundle"` (with no token held). Null otherwise.
+   * The cached offline bundle (§7), when it re-verified on the reload profile; null otherwise.
+   * `docs` is what it carried. `activates` is the signed fact behind `activation: "bundle"`
+   * (with no token held): it carried a licence document byte-identical to the cached one.
    */
-  bundle: { bundleId: string } | null;
+  bundle: {
+    bundleId: string;
+    docs: ("license" | "config")[];
+    activates: boolean;
+  } | null;
   lastSyncUnauthorized: boolean;
   blocked: BlockedState | null;
   /** Epoch MILLIseconds of the last verification, derived from the newest document's signed
@@ -232,10 +236,16 @@ export class CacheManager {
       profile: "reload",
     });
     if (!result.ok) return null;
-    const license = result.bundle.docs.license?.jws;
-    if (license === undefined || license !== this.loaded.license?.jws)
-      return null;
-    return { bundleId: result.bundle.bundleId };
+    const { docs } = result.bundle;
+    const license = docs.license?.jws;
+    return {
+      bundleId: result.bundle.bundleId,
+      docs: [
+        ...(docs.license ? (["license"] as const) : []),
+        ...(docs.config ? (["config"] as const) : []),
+      ],
+      activates: license !== undefined && license === this.loaded.license?.jws,
+    };
   }
 
   /** The `pinRevocations` slice in memory follows the custodian's evidence. */

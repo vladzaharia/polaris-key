@@ -467,6 +467,23 @@ describe("the cached bundle — a signed fact, not a marker (§4.1)", () => {
     expect(await store.readCache()).toEqual(before);
   });
 
+  it("a byte-identical re-import of a config-only bundle succeeds without a write", async () => {
+    const store = new FakeStore(DEVICE);
+    const client = clientOver(store);
+    await client.init();
+    const jws = await configOnlyBundle();
+    await client.importBundle(jws, NOW);
+    const writes = vi.spyOn(store, "writeCache");
+    const again = clientOver(store);
+    await again.init();
+    await expect(again.importBundle(jws, NOW)).resolves.toEqual({
+      bundleId: "01JBUNDLECONFIGONLY00000",
+      imported: ["config"],
+    });
+    expect(writes).not.toHaveBeenCalled();
+    expect(again.license.activation()).toBeNull();
+  });
+
   it("the held trust manifest wins when it is newer than the bundle's (§7 step 5)", async () => {
     const store = new FakeStore(DEVICE);
     const newer = await signJws(

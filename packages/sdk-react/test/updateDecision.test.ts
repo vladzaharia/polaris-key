@@ -421,7 +421,7 @@ describe("BrowserAdapter.decideUpdate() — the slices across a reload", () => {
     const a = adapterFor(srv, store);
     (a as unknown as { offlineState: unknown }).offlineState = {
       deviceId: "dev_1",
-      bundle: { bundleId: "b", license: true },
+      bundle: { bundleId: "b", docs: ["license"], activates: true },
       pinRevocations: {},
     };
     await a.signOut().catch(() => undefined);

@@ -98,7 +98,8 @@ export class LicenseClient {
     // A bundle activates ONLY when the cached bundle re-verified on the reload profile and its
     // licence document is the cached one, byte for byte (WIRE-CONTRACT-V4 §4.1, §7) — a
     // config-only bundle imports settings and grants nothing.
-    if (this.cache.state.bundle && this.cache.state.license) return "bundle";
+    if (this.cache.state.bundle?.activates && this.cache.state.license)
+      return "bundle";
     return null;
   }
 

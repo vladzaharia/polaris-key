@@ -734,7 +734,7 @@ export class BrowserAdapter implements PolarisAdapter {
         { license: o?.license ?? null, config: o?.config?.config ?? {} },
         {
           // The cached bundle re-verified with its licence document cached (§7).
-          activation: o?.bundle?.license && o.license ? "bundle" : null,
+          activation: o?.bundle?.activates && o.license ? "bundle" : null,
           now: this.clock(),
           highWaterMark: o?.highWaterMark ?? 0,
           lastSyncUnauthorized: false,
