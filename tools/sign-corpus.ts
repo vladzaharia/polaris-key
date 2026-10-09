@@ -9,7 +9,8 @@
 // section, plus the shared fixtures in `common.ts`, `release-records.ts`, `pack-records.ts` and
 // `content-fixture.ts`), and the generator's independent reference implementations, which
 // recompute every verdict, in `tools/corpus/reference/`. `tools/sync-scenarios.ts`,
-// `tools/presentation-matrix.ts` and `tools/gen-content-corpus.ts` build their files the same way.
+// `tools/presentation-matrix.ts`, `tools/ui-matrix.ts` and `tools/gen-content-corpus.ts` build their
+// files the same way.
 //
 // ONE corpus, from four committed test keys (two product keys, two release keys) and fixed clocks:
 //
@@ -22,7 +23,7 @@
 //                           which reads it from `res://` in the editor and in an exported pack).
 //                           Every file is written into every target in `CORPUS_TARGETS`.
 //
-// Thirteen files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// Fourteen files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
 // pack families included), `gate-matrix.json` (§5, with SP-00's `entitlementRows` family),
 // `fingerprint.json` (the hardware-hash
 // formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,
@@ -38,8 +39,9 @@
 // §4.1, U-18), `device-label.json` (the device label every SDK sends as `deviceName`,
 // WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §4), `presentation-matrix.json` (discovery's unsigned
 // `core.presentation`: the parse rule, the icon size choice and the hash check, WIRE-CONTRACT-V4
-// §5.5, plans/HA-12.md §4; rows and a generator-local reference in tools/presentation-matrix.ts)
-// and `content/` (the content corpus:
+// §5.5, plans/HA-12.md §4; rows and a generator-local reference in tools/presentation-matrix.ts),
+// `ui-matrix.json` (the UI kits' layer-(c) state matrix, plans/UK-02b.md §4; rows, checks and a
+// generator-local i18n formatter in tools/ui-matrix.ts) and `content/` (the content corpus:
 // `cases.json` plus `blobs/`, plans/P4-01.md §4.4, P4-04).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
@@ -68,6 +70,7 @@ import {
 } from "./gen-content-corpus.js";
 import { buildSyncScenarios } from "./sync-scenarios.js";
 import { buildPresentationMatrix } from "./presentation-matrix.js";
+import { buildUiMatrix } from "./ui-matrix.js";
 import { buildV2 } from "./corpus/cases.js";
 import { asciiJson, REPO_ROOT } from "./corpus/common.js";
 import { buildConfigMatrix } from "./corpus/config.js";
@@ -107,6 +110,7 @@ const V2_FEED_URL_MATRIX_OUT = join(V2_DIR, "feed-url-matrix.json");
 const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
 const V2_DEVICE_LABEL_OUT = join(V2_DIR, "device-label.json");
 const V2_PRESENTATION_MATRIX_OUT = join(V2_DIR, "presentation-matrix.json");
+const V2_UI_MATRIX_OUT = join(V2_DIR, "ui-matrix.json");
 
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, GODOT_V2_RESOURCES];
@@ -235,6 +239,11 @@ async function main(): Promise<void> {
     asciiJson(buildPresentationMatrix()),
     { parser: "json" },
   );
+  // plans/UK-02b.md §4: the UI kits' state matrix, authored rows checked by tools/ui-matrix.ts
+  // (which imports nothing it checks; its i18n strings are computed from the kit copy). ASCII only.
+  const v2UiMatrix = await format(asciiJson(buildUiMatrix()), {
+    parser: "json",
+  });
 
   // One map from file name to content, reconciled into the source directory and into every
   // generator-owned mirror, so a file added here reaches each mirror by construction.
@@ -252,6 +261,7 @@ async function main(): Promise<void> {
     [basename(V2_SYNC_SCENARIOS_OUT), syncScenarios],
     [basename(V2_DEVICE_LABEL_OUT), v2DeviceLabel],
     [basename(V2_PRESENTATION_MATRIX_OUT), v2PresentationMatrix],
+    [basename(V2_UI_MATRIX_OUT), v2UiMatrix],
   ]);
   let stale = false;
   // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its
