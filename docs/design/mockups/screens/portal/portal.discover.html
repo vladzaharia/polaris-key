@@ -4,9 +4,10 @@
   [data-screen="portal.discover"] .pill.tier {
     color: var(--pk-text-strong);
   }
-  /* Just added: a green edge; "In your library" sits on the art. */
+  /* Just added: an ink outline (form, not colour); "In your library" sits on the art. */
   [data-screen="portal.discover"] .ptile.added {
-    border-color: var(--pk-success-border);
+    border-color: var(--pk-text-strong);
+    box-shadow: 0 0 0 1px var(--pk-text-strong);
   }
   /* Store links: accent text links with the store's glyph, quieter than Add to library. */
   [data-screen="portal.discover"] .stores .link {

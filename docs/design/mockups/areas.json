@@ -63,6 +63,6 @@
     "key": "portal",
     "title": "Customer portal",
     "accent": "core",
-    "blurb": "The customer's Library, product pages, license cards, devices, sign-in and activation, Discover and storefront links, connected apps and account settings."
+    "blurb": "The customer's Library, product pages, license cards, devices, sign-in and activation, Discover and storefront links, connected apps and account settings. The hosted sign-in, device-code and consent pages are under Identity (identity.*)."
   }
 ]

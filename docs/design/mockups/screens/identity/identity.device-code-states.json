@@ -5,12 +5,13 @@
   "surface": "dialog",
   "packages": ["PX-14", "P0-38"],
   "uxRows": [],
-  "summary": "Two states of the device-code page as frames: a wrong code (the error at the field, Continue kept) and an expired code (a neutral callout that the device shows a new code, with one way on). Neither names a product and neither is a dead end.",
+  "summary": "Three states of the device-code page as frames: a wrong code (the error at the field, Continue kept) an expired code (a neutral callout that the device shows a new code, with one way on) and too many tries (a neutral callout with the time to try again, no dead-end button). Neither names a product and neither is a dead end.",
   "compare": [
     "Wrong code: the field keeps its danger edge and the reason in one sentence under it; the code stays as typed so one character can be fixed.",
     "Expired: a neutral callout (DL6), not an error, with the fix as the one primary; it never says whether a device or product was behind the code.",
     "No product, art or developer on either frame; the footer is the same as the entry page.",
-    "Rate limits read the same way: neutral, how long to wait, no dead end."
+    "Too many tries (frame 3): a neutral callout says when to try again; no button, never a disabled primary.",
+    "The wrong code keeps its danger edge (aria-invalid) as well as the sentence under it (m1)."
   ],
   "status": "mockup",
   "designReview": null

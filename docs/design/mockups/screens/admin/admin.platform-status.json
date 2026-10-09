@@ -12,7 +12,8 @@
     "Health by area uses each feature's glyph in its colour as context only; status is the status word and glyph (OK in success, Webhooks behind in warning), never the accent.",
     "Platform-only: Platform context, the Pinned K chip, 'Platform' crumb; no product page shows this.",
     "Refreshing can pause (icon button with its label); 'Checked 40 s ago' is the one freshness line. States: healthy (no problem rows), degraded with one retry (drawn), a failed check (danger), a stale heartbeat (warning with when it last ran), refreshing paused.",
-    "Logs are redacted, said once at the foot."
+    "Logs are redacted, said once at the foot.",
+    "Round 2 (UX review): The webhook failure is said once (Checks) with Retry 12; Health by area says 'Behind'; the queue row states its fact; no sentence narrates where Purge lives."
   ],
   "status": "mockup",
   "designReview": null

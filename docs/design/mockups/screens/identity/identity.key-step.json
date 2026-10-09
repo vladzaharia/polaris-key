@@ -11,7 +11,8 @@
     "The key field is visible and mono, middle-truncated at rest, with Paste; the error says what's wrong in one sentence at the field.",
     "The key-entry meter is a neutral hint ('2 of 5 key entries left this hour'), never amber (auth-10); at zero it becomes the neutral refusal in identity.refusals with Sign in instead as the primary.",
     "Activate license is the one primary (ink); Sign in instead is a quiet link.",
-    "The receipt says the key stays on this device."
+    "The receipt says the key stays on this device.",
+    "Round 2 (UX review): The wrong key is for another product ('pkey_dice_…'), so the error says that; the entries hint is the catalog's signin.key.entries."
   ],
   "status": "mockup",
   "designReview": null

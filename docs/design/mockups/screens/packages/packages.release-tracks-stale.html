@@ -53,7 +53,6 @@
     <div class="page">
       <header class="page-head">
 <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
-<div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Release tracks</h1><span class="count">4</span></div>
         <div class="page-actions">
           <button class="btn outline"><i class="ic ic-file-code-2"></i>Add a track</button>
@@ -97,7 +96,7 @@
           <div class="card-body">
             <div class="mk-stack-3">
               <div class="mk-stack-1"><span class="type-stat mono">1.7.0-beta.4</span><span class="type-small muted">Published Aug 30</span></div>
-              <!-- Stale (meaning a): older than the track it falls back to. Not an error: what licenses get, said once. -->
+              <!-- Older than the track it falls back to: the one case the console calls out, as a neutral line saying what licenses get. -->
               <p class="icon-line type-small"><i class="ic ic-info"></i><span>Older than stable 1.7.3, so beta licenses get stable until a newer beta publishes.</span></p>
             </div>
           </div>
@@ -133,13 +132,11 @@
             <button class="btn ghost icon sm" aria-label="More for playtest"><i class="ic ic-ellipsis"></i></button>
           </div>
           <div class="card-body">
-            <div class="mk-stack-3">
-              <div class="mk-split">
-                <div class="mk-stack-1"><span class="type-stat mono">1.9.0-dev.3</span><span class="type-small muted">From dev · not moved in 5 weeks</span></div>
-                <div><button class="btn outline sm"><i class="ic ic-arrow-up"></i>Promote 1.9.0-dev.14</button></div>
-              </div>
-              <!-- Stale (meaning b): a custom track nobody has moved; dev is 11 builds ahead. -->
-              <p class="icon-line type-small"><i class="ic ic-info"></i><span>Dev is 11 builds ahead. Or let playtest follow dev in <span class="mono">.pkey/release</span>.</span></p>
+            <!-- Not moved for weeks is not stale (lead answer 1): a quiet fact and a ghost Promote, never
+                 a notice and never in Needs attention. -->
+            <div class="mk-split">
+              <div class="mk-stack-1"><span class="type-stat mono">1.9.0-dev.3</span><span class="type-small muted">From dev · Dev is 11 builds ahead</span></div>
+              <div><button class="btn ghost sm"><i class="ic ic-arrow-up"></i>Promote 1.9.0-dev.14</button></div>
             </div>
           </div>
           <div class="card-rows grow">

@@ -26,7 +26,8 @@
     "Preserved (guide Ed. 04): Inherited values are shown with their source",
     "Preserved (guide Ed. 04): Claim and revert are available",
     "Preserved (guide Ed. 04): Scopes are shown",
-    "Preserved (guide Ed. 04): Audit history is reachable from every setting"
+    "Preserved (guide Ed. 04): Audit history is reachable from every setting",
+    "Round 2 (UX review): An unsaved row is an ink bar and wash with 'not saved yet' in strong text; the save bar is neutral (B2)."
   ],
   "status": "mockup",
   "designReview": {

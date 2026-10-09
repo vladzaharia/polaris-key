@@ -11,7 +11,8 @@
     "SHA-256 is on this page as well as the product page (P2-13), mono, middle-truncated at rest, with a Copy button named for the value.",
     "One primary: Download for macOS on a computer; on a phone 'You're viewing desktop builds' and Email me the download instead (no phone build is offered).",
     "Other platforms fold into one row; download controls never move during transitions (MO-13).",
-    "Breadcrumb 'Library › DJDL' and the identity row (no cropped art band); short-desktop two columns as portal.free-device."
+    "Breadcrumb 'Library › DJDL' and the identity row (no cropped art band); short-desktop two columns as portal.free-device.",
+    "Round 2 (UX review): The title leads; Download comes before the details table; the build line reads 'macOS, Universal' with '.dmg · 84 MB' as its source, no line starting with a separator (M6, copy nit)."
   ],
   "status": "mockup",
   "designReview": null

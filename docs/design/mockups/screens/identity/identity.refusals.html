@@ -2,7 +2,7 @@
   <div class="board-page">
     <header class="board-head rhythm">
       <h1>When the card refuses</h1>
-      <p>A neutral callout says what happened; the fix is the one primary. Never amber, never a disabled primary.</p>
+      <p>Catalog strings only. A neutral callout says what happened; the fix is the one primary, with a quiet way out.</p>
     </header>
     <div class="frame-grid fixed-cards">
       <figure class="board-item">
@@ -17,10 +17,10 @@
           </header>
           <div class="hosted-body">
             <h1>Replace a device</h1>
-            <div class="hosted-callout"><i class="ic ic-monitor-smartphone"></i><div><strong>DJDL Studio is on 3 of 3 devices</strong><span>Replace one to use it here. You can add it back later.</span></div></div>
+            <div class="hosted-callout"><i class="ic ic-monitor-smartphone"></i><div><strong>Your license is on 3 of 3 devices</strong><span>To use it on this computer, replace one. You can add it back later.</span></div></div>
             <div class="hosted-actions">
               <button class="btn primary block">Replace a device</button>
-              <button class="btn ghost block">Use a different license</button>
+              <button class="btn ghost block">Use a license key instead</button>
             </div>
           </div>
         </div>
@@ -36,13 +36,16 @@
             </div>
           </header>
           <div class="hosted-body">
-            <h1>Choose a license</h1>
-            <div class="hosted-list">
-              <div class="hosted-row"><div class="hosted-row-text"><strong>Diceroll Standard</strong><span>3 of 3 devices</span></div><span class="pill sm">Full</span></div>
-              <div class="hosted-row"><div class="hosted-row-text"><strong>Family (gift)</strong><span>5 of 5 devices</span></div><span class="pill sm">Full</span></div>
+            <h1>Choose a license for this device</h1>
+            <div class="hosted-list" role="radiogroup" aria-label="Licenses for Diceroll">
+              <div class="hosted-row choice-row on" role="radio" aria-checked="true"><span class="radio on"><span class="box"></span></span><div class="hosted-row-text"><strong>Diceroll Standard</strong><span>From the App Store · 3 of 3 devices</span></div><span class="pill sm">No free devices</span></div>
+              <div class="hosted-row choice-row" role="radio" aria-checked="false"><span class="radio"><span class="box"></span></span><div class="hosted-row-text"><strong>Diceroll Family</strong><span>Gift · 5 of 5 devices</span></div><span class="pill sm">No free devices</span></div>
             </div>
-            <div class="hosted-callout"><i class="ic ic-monitor-smartphone"></i><div><strong>Both licenses are full</strong><span>Replace a device on Diceroll Standard to sign in here.</span></div></div>
-            <button class="btn primary block">Replace a device</button>
+            <div class="hosted-callout"><i class="ic ic-monitor-smartphone"></i><div><span>Your licenses are on all their devices. Replace a device to use one here.</span></div></div>
+            <div class="hosted-actions">
+              <button class="btn primary block">Replace a device</button>
+              <button class="btn ghost block">Use a license key instead</button>
+            </div>
           </div>
         </div>
       </figure>
@@ -57,11 +60,11 @@
             </div>
           </header>
           <div class="hosted-body">
-            <h1>This license is for another email</h1>
-            <div class="hosted-callout"><i class="ic ic-at-sign"></i><div><strong>Bought by priya@example.edu</strong><span>You’re signed in as priya.raman@example.com.</span></div></div>
+            <h1>This license was sent to another email</h1>
+            <div class="hosted-callout"><i class="ic ic-at-sign"></i><div><span>It was sent to p•••@example.edu. Sign in with that email, or add it to this account and verify it.</span></div></div>
             <div class="hosted-actions">
               <button class="btn primary block">Use another account</button>
-              <button class="btn ghost block">Add priya@example.edu to this account</button>
+              <button class="btn ghost block">Verify that email</button>
             </div>
           </div>
         </div>
@@ -78,8 +81,10 @@
           </header>
           <div class="hosted-body">
             <h1>Enter your license key</h1>
-            <div class="hosted-callout"><i class="ic ic-clock"></i><div><strong>No key entries left until 11:42</strong><span>Signing in finds licenses bought with your email.</span></div></div>
-            <button class="btn primary block">Sign in instead</button>
+            <div class="hosted-callout"><i class="ic ic-clock"></i><div><span>This key has no entries left in DJDL. Add it to your account and DJDL signs you in instead.</span></div></div>
+            <div class="hosted-actions">
+              <button class="btn primary block">Sign in instead</button>
+            </div>
           </div>
         </div>
       </figure>

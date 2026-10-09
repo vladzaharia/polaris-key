@@ -151,8 +151,7 @@
     height: var(--row-h-compact);
     font-size: var(--fs-meta);
     font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    text-transform: none;
     color: var(--pk-text-subtle);
   }
   [data-screen="config.approve-recipe-stale"] .diff tr.sub + tr td {
@@ -235,6 +234,7 @@
     <div class="page capped">
       <header class="page-head is-record">
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="config" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Managed config</a><i class="ic ic-chevron-right"></i><a href="#">Catalog</a></nav>
+        <div class="page-icon mast" data-service="config" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Edit catalog</h1></div>
         <p class="page-sub"><span>v9 came from <code>.pkey/schema</code> in example-org/djdl on Oct 6.</span></p>
         <div class="page-actions">

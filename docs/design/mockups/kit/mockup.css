@@ -16235,7 +16235,7 @@ a.card:focus-visible {
   --mk-warning-tint: var(--pk-warning-subtle);
 }
 [data-theme="light"] {
-  --mk-warning-tint: color-mix(in oklab, var(--pk-signed) 14%, var(--pk-surface-raised));
+  --mk-warning-tint: color-mix(in oklab, var(--pk-warning) 12%, var(--pk-surface-raised));
 }
 
 /* ── New primitives ── */
@@ -23182,6 +23182,9 @@ kbd {
   color: var(--pk-text-strong);
   white-space: nowrap;
 }
+.code-entry[aria-invalid="true"] {
+  border-color: var(--pk-danger);
+}
 .code-entry.focus {
   outline: 2px solid var(--pk-focus);
   outline-offset: 2px;
@@ -23407,7 +23410,7 @@ dd .mono {
     white-space: normal;
   }
   .table.stack-phone :is(td, .cell-title, .cell-sub) {
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
 }
 @container screen (max-width: 639px) {
@@ -23905,3 +23908,71 @@ dd .mono {
   }
 }
 .check-row.next { background: none; }
+/* M9: a product with no hosted art shows its icon large and centred on its stored tint, so a
+   shelf of new products never reads as a wall of empty colour; its name then starts the body. */
+.art.noart {
+  display: grid;
+  place-items: center;
+}
+.art.noart > .logo.xl {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  font-size: 26px;
+  background-color: var(--pk-surface-raised);
+}
+.ptile-head.plain {
+  margin-top: 0;
+  padding-top: var(--sp-4);
+}
+.portal-grid .ptile-head.plain { margin-top: 0; }
+/* A selectable hosted row (a license to choose): radio, text, tag; the chosen row is ink-edged. */
+.hosted-list > .hosted-row.choice-row:is(.choice-row, .choice-row) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.hosted-row.choice-row.on {
+  box-shadow: inset 2px 0 0 var(--pk-text-strong);
+  background: var(--mk-ink-wash);
+}
+/* A row's leading glyph in the hosted card is a subject mark, not context: neutral. */
+.hosted-row > .ic:first-child {
+  color: var(--pk-text-muted);
+}
+/* A toolbar button's word shows from 1600px; below, the button is its icon (its aria-label names
+   it), so a workbench band stays on one line at desktop (m7). */
+@container screen (max-width: 1599px) {
+  .label-wide {
+    display: none;
+  }
+  .toolbar .btn:has(> .label-wide) {
+    width: 32px;
+    padding: 0;
+  }
+}
+.workbench > .toolbar > .search-field {
+  flex: 1 1 160px;
+  max-width: 320px;
+}
+/* Skeleton rows read at a glance in dark (they sat at the card's own tone). */
+:root:not([data-theme="light"]) .skeleton {
+  background: color-mix(in oklab, var(--pk-text-subtle) 22%, var(--pk-surface-raised));
+}
+/* The star field never sits under the lines of text around the card. */
+.hosted-legal,
+.hosted-brand {
+  background: var(--pk-surface-page);
+}
+/* A drawer's title wraps to a second line rather than losing its end (m10). */
+.cm2 .drawer-head h2 {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+/* A task's choices are one column: each card a row with room for its tag and its mark. */
+.task-main > .choices,
+.choices.one-col {
+  grid-template-columns: minmax(0, 1fr);
+}
+.choice > .choice-title > .pill {
+  margin-right: var(--sp-6);
+}

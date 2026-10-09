@@ -12,7 +12,9 @@
     "Allow and Deny are the same size and both block (Deny outlined); Deny leaves nothing signed in and the device shows it was denied.",
     "The account row is first (who is signing in), with Not you?; on a phone the email wraps, never truncated.",
     "Passport in a landscape window ≥960px (Diceroll's art, icon, developer and device on their own lines); header strip in portrait and on a phone (B8).",
-    "No wire change: the device keeps polling 'pending' until the confirm; the design rule is the page."
+    "No wire change: the device keeps polling 'pending' until the confirm; the design rule is the page.",
+    "Round 2 (UX review): Passport as identity.sign-in: the art fills the pane, the identity at its foot (M4).",
+    "Round 2 (UX review): M10 (graph note, not a mockup change): the catalog's signInHandoff.confirm ('Choose Continue to {product} on the sign-in page to finish.') must change with I-37 to name this button ('Sign in on <device>')."
   ],
   "status": "mockup",
   "designReview": null

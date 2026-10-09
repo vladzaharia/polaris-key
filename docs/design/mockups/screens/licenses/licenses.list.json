@@ -24,7 +24,8 @@
     "One workbench (overview-12): the holder states are counted facet chips in the table's head band (no separate segmented tray), then Tier, Duration, Origin and Batch; the first data row starts within 140px of the h1 at 1440; every row stays 56px (no wrapping holder or origin).",
     "Preserved (guide Ed. 04): Holder states (In an account, Waiting, Floating) are shown and filterable",
     "Preserved (guide Ed. 04): Filters, bulk actions and row menus keep their behaviour",
-    "Preserved (guide Ed. 04): Partial outcomes of bulk actions are reported per row"
+    "Preserved (guide Ed. 04): Partial outcomes of bulk actions are reported per row",
+    "Round 2 (UX review): At 1440 the workbench band is one line: the search field flexes and Columns and Export are icon buttons with their names until 1600px; the first row starts 130px under the h1 (m7)."
   ],
   "status": "mockup",
   "designReview": {

@@ -11,7 +11,8 @@
     "The h1 is the display step (48/52, 32/36 on a phone), no full stop, no eyebrow, no slogan (B12).",
     "Package tokens are account-wide (F-33): revoking says it stops installs on every machine using it; product pages only point here.",
     "Risky actions sit in their own sections (Your data); Sign out is outlined in the header; no filled primary on the page.",
-    "Phone: the section strip scrolls with its fade only while it overflows; the bottom bar stays."
+    "Phone: the section strip scrolls with its fade only while it overflows; the bottom bar stays.",
+    "Round 2 (UX review): Every canonical section is drawn in order (Profile, Sign-in methods, Connected apps, Packages, Where you're signed in, Appearance, Your data); row actions sit in their own column and drop under the text on a phone; the 40px picture has its own column (M8)."
   ],
   "status": "mockup",
   "designReview": null

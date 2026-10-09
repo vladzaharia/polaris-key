@@ -16,9 +16,10 @@
     "After confirming, the page becomes packages.release-tracks: stable on 1.7.3, the demote in both logs, and, when a channel fails, the partial-success toast and lane callout with Retry.",
     "Phone: the kit's bottom sheet; each channel row's outcome drops under its text, and the buttons are pinned full width with the primary on top, as on every dialog in the area.",
     "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
-    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page.",
+    "No masthead tile (lead answer 3): this is a list, record or step, not a service's landing page; the orientation chip carries the context.",
     "Ship builds is one identity (B5): Release cyan rule, chip, tile and nav marker, the Package glyph, crumb '<Product> › Ship builds'; no per-page green or tangerine.",
-    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency."
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "Round 2 (UX review): Outcomes are neutral text with glyphs (B2); the table scrolls in a labelled region with its first column pinned at tablet widths (M7)."
   ],
   "status": "mockup",
   "designReview": {
