@@ -139,16 +139,16 @@ is not the developer's console, and it does not sell anything.
 
 ### 0.2 Design principles
 
-| Principle                                 | In practice                                                                                                                                                                                |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Products, not paperwork**               | Licenses, keys, orders, releases and Cloud Sync are details of a product, never top-level navigation. The top level is Library and Discover only.                                          |
+| Principle                                 | In practice                                                                                                                                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Products, not paperwork**               | Licenses, keys, orders, releases and Cloud Sync are details of a product, never top-level navigation. The top level is Library and Discover only.                                                            |
 | **One lead per view**                     | Exactly one solid neutral-ink button per region: the hero, the product header, an "Added just now" tile, the single most urgent attention item, the login card. Tiles, rows and header actions are outlined. |
-| **Developer identity is content**         | Key art, icon, name and "by developer" carry the product's identity, inside a fixed Polaris Key frame. The site is never re-themed per product (S-16 §5.6).                                |
-| **Say why, then what to do**              | Every non-active status carries its reason and the action that fixes it, in visible text. Every Discover offer says why you can add it.                                                    |
-| **The device in hand decides the action** | Desktop: download for the detected OS. Phone: store link, or email the desktop link to yourself.                                                                                           |
-| **Progressive scale**                     | Search, filters, sort, list view and the ⌘K palette appear only when the library is big enough to need them.                                                                               |
-| **Nothing guessed, nothing hidden**       | Universal builds are named as such; checksums are visible; gated builds say "Not included" and why; a product without Cloud Sync shows no sync anything.                                   |
-| **Storefront-easy sign-in**               | Identifier-first, one primary per step, three providers at most, the method you used last offered first, never a password. Modelled on Nintendo, Steam, PlayStation, Xbox, Epic and Apple. |
+| **Developer identity is content**         | Key art, icon, name and "by developer" carry the product's identity, inside a fixed Polaris Key frame. The site is never re-themed per product (S-16 §5.6).                                                  |
+| **Say why, then what to do**              | Every non-active status carries its reason and the action that fixes it, in visible text. Every Discover offer says why you can add it.                                                                      |
+| **The device in hand decides the action** | Desktop: download for the detected OS. Phone: store link, or email the desktop link to yourself.                                                                                                             |
+| **Progressive scale**                     | Search, filters, sort, list view and the ⌘K palette appear only when the library is big enough to need them.                                                                                                 |
+| **Nothing guessed, nothing hidden**       | Universal builds are named as such; checksums are visible; gated builds say "Not included" and why; a product without Cloud Sync shows no sync anything.                                                     |
+| **Storefront-easy sign-in**               | Identifier-first, one primary per step, three providers at most, the method you used last offered first, never a password. Modelled on Nintendo, Steam, PlayStation, Xbox, Epic and Apple.                   |
 
 ### 0.3 The brand contract
 
@@ -304,15 +304,15 @@ sign-in license (D-54).
 
 ### 3.2 Global elements
 
-| Element               | Desktop (≥ 761 px)                                                                                                                                    | Phone (≤ 760 px)                                                                                                                                               |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Element               | Desktop (≥ 761 px)                                                                                                                                     | Phone (≤ 760 px)                                                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Header                | Docked compact lockup · **Library** (count) · **Discover** (count of offers) · spacer · ⌘K trigger (8+ products) · **Activate license** · account menu | Compact lockup · search icon (8+ products) · avatar (account menu)                                                                                             |
-| Primary navigation    | Library and Discover only, with a 2 px violet underline on the current one. Library is the default route.                                             | Bottom bar: **Library** · **Activate** (an outlined pill button in the middle, not a tab) · **Discover** (with a dot when there are offers); safe-area padding |
-| Activate license      | Right-aligned, next to the account menu, separate from the nav: an outlined button with the key glyph in `accent-fg`. Always opens the modal (§4.17). | The middle pill of the bottom bar                                                                                                                              |
-| Account menu          | Avatar, email (truncated), chevron. Menu: Account · Sign-in methods · Approve a new device · Appearance · Help · Sign out                             | Avatar opens the same menu as a sheet                                                                                                                          |
-| Footer                | "Polaris Key · key.plrs.im" · Help · Privacy · Terms                                                                                                  | Same, above the bottom bar                                                                                                                                     |
-| Focused flows (§4.25) | Minimal header: lockup and a back-to-app link; no nav                                                                                                 | Same                                                                                                                                                           |
-| The login card (§4.1) | Centred 456 px card on the star field, lockup above, footer below; no nav                                                                             | Full-width card under a 56 px lockup row                                                                                                                       |
+| Primary navigation    | Library and Discover only, with a 2 px violet underline on the current one. Library is the default route.                                              | Bottom bar: **Library** · **Activate** (an outlined pill button in the middle, not a tab) · **Discover** (with a dot when there are offers); safe-area padding |
+| Activate license      | Right-aligned, next to the account menu, separate from the nav: an outlined button with the key glyph in `accent-fg`. Always opens the modal (§4.17).  | The middle pill of the bottom bar                                                                                                                              |
+| Account menu          | Avatar, email (truncated), chevron. Menu: Account · Sign-in methods · Approve a new device · Appearance · Help · Sign out                              | Avatar opens the same menu as a sheet                                                                                                                          |
+| Footer                | "Polaris Key · key.plrs.im" · Help · Privacy · Terms                                                                                                   | Same, above the bottom bar                                                                                                                                     |
+| Focused flows (§4.25) | Minimal header: lockup and a back-to-app link; no nav                                                                                                  | Same                                                                                                                                                           |
+| The login card (§4.1) | Centred 456 px card on the star field, lockup above, footer below; no nav                                                                              | Full-width card under a 56 px lockup row                                                                                                                       |
 
 Account is not a top-level page: it lives behind the account menu. **Decided (brand transition,
 2026-10-09):** the header stays docked, with no floating bar, and phones keep the bottom bar with
@@ -332,7 +332,7 @@ Hash routing stays for the signed-in SPA (ADMIN.md lead decision Q2). Product id
 | `#/p/:product/:section`                            | Product page scrolled to a section                          | `get`, `sync` (only when the product has Cloud Sync), `new`, `license`, `devices`, `package`, `help`                                                                          |
 | `#/p/:product/free-device`                         | Focused flow: device limit                                  | `?for=<label>&return=<url>`; target of G15 `manageUrl`                                                                                                                        |
 | `#/p/:product/download`                            | Focused flow: one download                                  | `?platform=macos\|windows\|linux…`; for email links and in-app "Download update"                                                                                              |
-| `#/account` / `#/account/:section`                 | Account                                                     | `profile`, `methods`, `apps`, `packages`, `sessions`, `appearance`, `data`                                                                                                            |
+| `#/account` / `#/account/:section`                 | Account                                                     | `profile`, `methods`, `apps`, `packages`, `sessions`, `appearance`, `data`                                                                                                    |
 | `#/account/link`                                   | Link an existing account (login card, §4.11)                | Proof of both identities in one session                                                                                                                                       |
 | `#/account/approve?code=`                          | Approve a new device (dialog over Account, §4.24)           | Target of the QR code; the code is typed when absent                                                                                                                          |
 | `/signin`                                          | The login card                                              | `?product=<slug>` gives product context; `returnTo` kept                                                                                                                      |
@@ -1337,7 +1337,7 @@ New components live in `packages/admin/src/portal/components/` unless the consol
 | `ProductHeader`, `SectionNav`, `GetItPanel`, `FileRow`, `StoreHandoff`, `LicenseCard`, `SeatMeter`, `DeviceRow`, `PackageAccessCard`, `ProductIdentityCard` | As in the converged design. `SectionNav` omits absent sections, including Cloud Sync.                                                                                                                                                                                                              |
 | `CloudSyncCard`                                                                                                                                             | Storage bar, data classes, per-device last sync, export, delete with step-up. Rendered only when the product's `services.cloudSync` is on.                                                                                                                                                         |
 | `SignInMethods`                                                                                                                                             | The Account section: grouped rows, connect flows (provider redirect or code), disconnect with inline step-up, last-method guard, audit footnote.                                                                                                                                                   |
-| `FocusedFlow`                                                                                                                                               | Minimal chrome, breadcrumb label, identity row and return-URL handling for `free-device` and `download` (§4.25).                                                                                                                                                                                                                           |
+| `FocusedFlow`                                                                                                                                               | Minimal chrome, breadcrumb label, identity row and return-URL handling for `free-device` and `download` (§4.25).                                                                                                                                                                                   |
 
 `Button` gains two variants: **quiet** (transparent, `border-strong` outline, `text-strong` label,
 icon in `accent-fg`; the library's quick action) and **action** (`surface-raised`, `border-strong`,
@@ -1348,17 +1348,17 @@ key glyph in `accent-fg`; the header's Activate license).
 One status per product (from its best license), computed server-side once G1/G5 land and
 client-side from existing fields before then. Precedence, first match wins:
 
-| Status                | Pill (icon · word · token)                                  | Reason line / note                                             | Attention shelf action |
-| --------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- | ---------------------- |
-| Suspended             | alert · "Suspended" · danger                                | "Suspended by <developer>."                                    | Contact <developer>    |
-| Expired               | alert · "Expired" · danger                                  | "Updates ended at 1.8" (or "Ended 4 Sep 2026")                 | Renew with <developer> |
+| Status                | Pill (icon · word · token)                                  | Reason line / note                                                        | Attention shelf action                                                                            |
+| --------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Suspended             | alert · "Suspended" · danger                                | "Suspended by <developer>."                                               | Contact <developer>                                                                               |
+| Expired               | alert · "Expired" · danger                                  | "Updates ended at 1.8" (or "Ended 4 Sep 2026")                            | Renew with <developer>                                                                            |
 | Updates ended         | alert · "Updates ended" · warning                           | "Updates ended at 4.1.3" · "Keeps working · renewal stopped Sep 30, 2026" | Download <last covered version> (header primary); Renew with <developer> only in the License card |
-| Device limit reached  | alert · "Device limit reached" · danger                     | "2 of 2 devices"                                               | Free a device          |
-| Key not activated     | key · "Key not activated" · info                            | "Steam key"                                                    | Activate on Steam      |
-| Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning                       | "Studio · ends 13 Oct"                                         | Renew with <developer> |
-| Offline grace ended   | alert · "Needs a check-in" · warning                        | "Open <product> while online"                                  | none                   |
-| From signing in       | user · "From signing in" · neutral (quiet text, not a type) | tier first, e.g. "Standard · From signing in · 1 of 5 devices" | none                   |
-| Active                | check · "Active" · success                                  | tier and devices, e.g. "Lifetime · 2 of 3 devices"             | none                   |
+| Device limit reached  | alert · "Device limit reached" · danger                     | "2 of 2 devices"                                                          | Free a device                                                                                     |
+| Key not activated     | key · "Key not activated" · info                            | "Steam key"                                                               | Activate on Steam                                                                                 |
+| Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning                       | "Studio · ends 13 Oct"                                                    | Renew with <developer>                                                                            |
+| Offline grace ended   | alert · "Needs a check-in" · warning                        | "Open <product> while online"                                             | none                                                                                              |
+| From signing in       | user · "From signing in" · neutral (quiet text, not a type) | tier first, e.g. "Standard · From signing in · 1 of 5 devices"            | none                                                                                              |
+| Active                | check · "Active" · success                                  | tier and devices, e.g. "Lifetime · 2 of 3 devices"                        | none                                                                                              |
 
 A keeps-the-last-version lapse is a warning and is said once (the header pill); the danger
 Expired row is for licenses whose access ends. There is no Not included row for newer builds.
@@ -1367,16 +1367,16 @@ Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 
 ### 5.4 Quick action resolution
 
-| Product state                           | Desktop                                                        | Phone                                                  |
-| --------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
-| Device limit reached                    | Free a device                                                  | Free a device                                          |
-| Steam key held, not activated           | Activate on Steam                                              | Activate on Steam                                      |
-| Sign-in licence (no key)                | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
-| Build for this OS exists and is covered | Download for <OS>                                              | Store link for this OS, else **Email me the download** |
-| Covered builds exist, none for this OS  | See downloads (with "Windows and Linux only" as the meta line) | Email me the download / See downloads                  |
+| Product state                                       | Desktop                                                        | Phone                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
+| Device limit reached                                | Free a device                                                  | Free a device                                          |
+| Steam key held, not activated                       | Activate on Steam                                              | Activate on Steam                                      |
+| Sign-in licence (no key)                            | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
+| Build for this OS exists and is covered             | Download for <OS>                                              | Store link for this OS, else **Email me the download** |
+| Covered builds exist, none for this OS              | See downloads (with "Windows and Linux only" as the meta line) | Email me the download / See downloads                  |
 | Expired or updates ended, an older build is covered | Download <last covered version>                                | Email me the download                                  |
-| Only a package feed                     | Set up package access                                          | Set up package access                                  |
-| Public product (G19)                    | Open download page (dl.plrs.im)                                | Open download page                                     |
+| Only a package feed                                 | Set up package access                                          | Set up package access                                  |
+| Public product (G19)                                | Open download page (dl.plrs.im)                                | Open download page                                     |
 
 ---
 
@@ -1773,15 +1773,15 @@ Every state below is an e2e state in the PX-20 and PX-26 matrix, in both themes,
 owning package. Screen-wide checks (400 % reflow, forced colours, labelled scroll regions) are
 EXPERIENCE §7.3's.
 
-| Area                | States and owners                                                                                                                                                         |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Library             | Built: empty, two products, larger collection, grid and list, search no results, newly added (PX-24). New: unavailable access (PX-27)                                     |
-| Discover            | Built: owned, available offer, external store, no results. Eligible automatic grant (LX-38); unavailable offer (PS-05b)                                                   |
-| Product and license | Built: account-held, tier, devices full. Waiting and floating (LX-26, PX-23); six duration models and retained version (LX-41, PX-28)                                     |
-| Activation          | Built: preview, confirm, invalid, wrong product, other account, already owned. No capacity (PX-23). New, owned by PX-29: replacement race, expired request                 |
-| Account             | Profile and methods (PX-13, PX-22); passkeys (PX-W19)                                                                                                                     |
-| Devices and consent | Current and remote device built; approval and denial (PX-15); optional claims declined (I-34, PX-14); disconnect consequence (PX-13)                                      |
-| Downloads, packages | Built: platform and build, no build. Store-owned path (PX-09); access refused (PX-29); token create, reveal, revoke (F-33); cookie-free download host (A-26)               |
+| Area                | States and owners                                                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Library             | Built: empty, two products, larger collection, grid and list, search no results, newly added (PX-24). New: unavailable access (PX-27)                        |
+| Discover            | Built: owned, available offer, external store, no results. Eligible automatic grant (LX-38); unavailable offer (PS-05b)                                      |
+| Product and license | Built: account-held, tier, devices full. Waiting and floating (LX-26, PX-23); six duration models and retained version (LX-41, PX-28)                        |
+| Activation          | Built: preview, confirm, invalid, wrong product, other account, already owned. No capacity (PX-23). New, owned by PX-29: replacement race, expired request   |
+| Account             | Profile and methods (PX-13, PX-22); passkeys (PX-W19)                                                                                                        |
+| Devices and consent | Current and remote device built; approval and denial (PX-15); optional claims declined (I-34, PX-14); disconnect consequence (PX-13)                         |
+| Downloads, packages | Built: platform and build, no build. Store-owned path (PX-09); access refused (PX-29); token create, reveal, revoke (F-33); cookie-free download host (A-26) |
 
 ## 12. Questions for the owner
 
@@ -1945,11 +1945,11 @@ unchanged.
 The transition guide is a reference edition: our mockups and the decisions here win on structure,
 copy and behaviour. Its portal pages (220 to 246) by verdict:
 
-| Verdict  | Pages                                                                                                                                             |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Adopted  | 223 to 227 (Account → Packages, token flows, Connected apps), 246 (state ledger, §11.5)                                                           |
-| Adapted  | 221, 222, 228, 229, 231 to 234, 236, 237, 239, 242: the idea, not the marketing look                                                              |
-| Kept     | 220, 238, 240, 243, 244: ours already                                                                                                             |
+| Verdict  | Pages                                                                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Adopted  | 223 to 227 (Account → Packages, token flows, Connected apps), 246 (state ledger, §11.5)                                                         |
+| Adapted  | 221, 222, 228, 229, 231 to 234, 236, 237, 239, 242: the idea, not the marketing look                                                            |
+| Kept     | 220, 238, 240, 243, 244: ours already                                                                                                           |
 | Declined | 230 (a second Renew and a Not included row), 232 and 241 (chartreuse bands, slogans), 235 (split-art sign-in), 245 (per-product package tokens) |
 
 Conflicts and the decision, each keeping ours:
