@@ -62,12 +62,12 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pkey-godot/native-${{ env.GODOT_VERSION }}
           key: pkey-godot-native-${{ env.GODOT_VERSION }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
       # godot-cpp with its SCons signatures, and Sparkle: rebuilt only when deps.env changes.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: sdks/godot/native/.deps
           key: pkey-native-deps-${{ runner.os }}-${{ hashFiles('sdks/godot/native/deps.env') }}-r1
@@ -106,13 +106,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pkey-godot/native-${{ env.GODOT_VERSION }}
           key: pkey-godot-native-${{ env.GODOT_VERSION }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
       # godot-cpp with the SCons signature database build.ps1 keeps beside it (uncached 287-503 s
       # on this runner, cached under 30 s), velopack_libc and WinSparkle.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: sdks/godot/native/.deps
           key: pkey-native-deps-${{ runner.os }}-${{ hashFiles('sdks/godot/native/deps.env') }}-r1
@@ -168,7 +168,7 @@ jobs:
     steps:
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/pkey-godot/${{ env.GODOT_VERSION }}
           key: pkey-godot-${{ env.GODOT_VERSION }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('sdks/godot/tools/godot.sha512') }}
@@ -178,7 +178,7 @@ jobs:
         run: |
           sdks/swift/tools/select-xcode-26.sh
           GODOT_BIN="$HOME/.cache/pkey-godot/$GODOT_VERSION/godot" sdks/godot/native/macos/build_apple.sh --install sdks/godot
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         if: runner.os == 'Windows'
         with:
           path: sdks/godot/native/.deps
