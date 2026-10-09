@@ -203,7 +203,7 @@ export class SingleUseDO implements DurableObject {
       case "redeem": {
         const rec = await this.live(op.key, now);
         if (!rec || rec.proof === undefined || typeof op.proof !== "string")
-          return reply({ ok: false });
+          return reply({ ok: false, live: false });
         if (constantTimeEqual(rec.proof, op.proof)) {
           await storage.delete(op.key);
           return reply({ ok: true, value: rec.v });
@@ -212,7 +212,7 @@ export class SingleUseDO implements DurableObject {
         if (rec.max !== undefined && rec.n >= rec.max)
           await storage.delete(op.key);
         else await storage.put(op.key, rec);
-        return reply({ ok: false });
+        return reply({ ok: false, live: true });
       }
       case "update": {
         const rec = await this.live(op.key, now);
@@ -239,6 +239,9 @@ export class SingleUseDO implements DurableObject {
         const hits = (Array.isArray(prior?.hits) ? prior.hits : []).filter(
           (t) => typeof t === "number" && t > now - windowMs,
         );
+        // A locked address takes no more strikes: they would re-arm the lock (SEC-CRY-16).
+        if (typeof prior?.lockedUntil === "number" && prior.lockedUntil > now)
+          return reply({ locked: true });
         hits.push(now);
         // Keep no more history than the threshold needs.
         while (hits.length > threshold) hits.shift();

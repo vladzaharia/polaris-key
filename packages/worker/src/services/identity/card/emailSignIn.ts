@@ -446,6 +446,7 @@ export async function handleSigninEmailVerify(
     recipient: flow.record.email,
     flowId: flow.ref.id,
     code,
+    req,
   });
   if (!result.ok) {
     const attempts = flow.record.attempts + 1;

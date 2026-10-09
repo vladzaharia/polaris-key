@@ -614,6 +614,7 @@ async function gateVerify(
     recipient: gate.pendingEmail,
     flowId: ref.id,
     code,
+    req,
   });
   if (!result.ok) {
     const attempts = gate.attempts + 1;

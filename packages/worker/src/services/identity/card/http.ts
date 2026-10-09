@@ -9,6 +9,7 @@ import {
   escapeHtml,
   type Env,
 } from "../../../core/platform.js";
+import { strictEmail } from "../../../core/strictEmail.js";
 import { renderBrandPage } from "../../../core/brandHtml.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 import { readBodyText } from "../../../core/cappedBody.js";
@@ -149,12 +150,14 @@ export async function readJsonObject(
   }
 }
 
-/** A plausible email address, normalised (trimmed, lower-case), or `null`. */
+/**
+ * A bare ASCII addr-spec, normalised (trimmed, lower-case), or `null`. Display-name wrapping
+ * (`Name<a@b.c>`), quoting, comments, address lists and anything else a mail provider might
+ * parse differently from us are refused, so the string limited and suppressed is the string
+ * mailed (SEC-IDN-15, SEC-PRV-3). Internationalised domains arrive as punycode.
+ */
 export function parseEmail(raw: unknown): string | null {
-  if (typeof raw !== "string") return null;
-  const email = raw.trim().toLowerCase();
-  if (email.length > 254) return null;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
+  return strictEmail(raw);
 }
 
 /**
