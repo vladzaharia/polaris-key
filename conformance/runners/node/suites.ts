@@ -17,10 +17,13 @@
 //   jwsCases         §1–§2 raw compact-JWS verification    → @polaris-key/jws verifyJws
 //   licenseDocCases  §3 claim validation, license          → verifyLicenseDoc
 //   configDocCases   §3 claim validation, config           → verifyConfigDoc
-//   trustCases       §1 trust merge / prune / revocation   → verifyTrustManifest + mergeTrust
+//   trustCases       §1 trust merge / prune / revocation   → loadPinRevocations +
+//                    and V4 §1's key custody (status allow-list,     verifyTrustManifest +
+//                    canonical keys, pinned-key tombstones)          usablePins + mergeTrust
 //   clockFloorCases  §4.2 monotonic floor over 3 artifacts → the reload path + licenseState
 //   gate-matrix      §5 the gate decision table            → licenseState
-//   bundleCases      §7 offline bundle import              → inspectBundle
+//   bundleCases      §7 offline bundle import, floors and  → loadPinRevocations +
+//                    the reload profile (V4 §7)                      inspectBundle
 //
 // and, for wire contract v4 (docs/security/WIRE-CONTRACT-V4.md, plans/P3-01.md §5 order 0):
 //
@@ -183,6 +186,9 @@ import {
   effectiveNow,
   highWaterMark,
   inspectBundle,
+  compareKidBytes,
+  loadPinRevocations,
+  usablePins,
   isDevBuild,
   isUsable,
   licenseState,
@@ -268,10 +274,18 @@ interface TrustCase extends NonWire {
   description: string;
   pinned: TrustSet;
   before: TrustSet;
+  /** V4 §4.1: the evidence held before the manifest (kid → revoking manifest). */
+  pinRevocations?: Record<string, string>;
   manifestJws: string;
   now: number;
   checkFreshness?: boolean;
-  expect: { accepted: boolean; trust: TrustSet; issuedAt?: number };
+  expect: {
+    accepted: boolean;
+    trust: TrustSet;
+    issuedAt?: number;
+    /** Every tombstoned pin after the case; absent means none. */
+    revokedPins?: string[];
+  };
 }
 
 interface ClockFloorCase {
@@ -300,9 +314,15 @@ interface BundleCase extends NonWire {
   description: string;
   bundleJws: string;
   pinned: TrustSet;
+  /** V4 §4.1: the evidence held (kid → revoking manifest); absent means none. */
+  pinRevocations?: Record<string, string>;
   expectedAud: string;
   deviceId: string;
   now: number;
+  /** V4 §7 step 4; absent means both null. */
+  floors?: { license: number | null; config: number | null };
+  /** V4 §7; absent means `import`. */
+  profile?: "import" | "reload";
   maxPayloadBytes: number;
   expect: ImportOutcome;
 }
@@ -687,7 +707,7 @@ const docOpts = (c: DocCase): VerifyOptions => ({
   expectedIss: c.expectedIss,
   deviceId: c.deviceId,
   now: c.now,
-  lastAcceptedIssuedAt: c.lastAcceptedIssuedAt,
+  lastAcceptedIssuedAt: c.lastAcceptedIssuedAt ?? null,
   checkFreshness: c.checkFreshness,
 });
 
@@ -828,11 +848,19 @@ async function reachClaims(jws: string, releaseKeys: TrustSet) {
 }
 
 async function importBundle(c: BundleCase): Promise<ImportOutcome> {
+  // V4 §4.1: the tombstones come from re-verified evidence, never from a list.
+  const { tombstones } = await loadPinRevocations(c.pinRevocations, {
+    pinned: c.pinned,
+    expectedAud: c.expectedAud,
+  });
   const opts = {
     pinned: c.pinned,
+    tombstones,
     product: c.expectedAud,
     deviceId: c.deviceId,
     now: c.now,
+    floors: c.floors ?? { license: null, config: null },
+    profile: c.profile ?? ("import" as const),
   };
   const result = await inspectBundle(c.bundleJws, opts);
   if (!result.ok) return { imports: false, reason: result.reason };
@@ -925,8 +953,15 @@ export function defineCorpusSuites({
   describe(`conformance corpus v${corpus.corpusVersion} — trust set (§1)`, () => {
     for (const c of corpus.trustCases) {
       it(`${c.id} → accepted:${c.expect.accepted}`, async () => {
+        // V4 §4.1: the evidence first (ascending manifest issuedAt), then the manifest against
+        // the pins minus those tombstones.
+        const held = await loadPinRevocations(c.pinRevocations, {
+          pinned: c.pinned,
+          expectedAud: "djdl",
+        });
         const result = await verifyTrustManifest(c.manifestJws, {
           pinned: c.pinned,
+          tombstones: held.tombstones,
           expectedAud: "djdl",
           now: c.now,
           checkFreshness: c.checkFreshness,
@@ -934,9 +969,18 @@ export function defineCorpusSuites({
         expect(result.doc !== null, `${c.id} acceptance`).toBe(
           c.expect.accepted,
         );
+        const tombstones = [
+          ...new Set([...held.tombstones, ...result.revokedPins]),
+        ].sort(compareKidBytes);
+        expect(tombstones, `${c.id} revokedPins`).toEqual(
+          c.expect.revokedPins ?? [],
+        );
         // Accepted ⇒ the discovered set REPLACES what was held; rejected ⇒ it is untouched.
+        // Either way the pins are the USABLE ones: a tombstoned pin is in no set.
         const discovered = result.doc ? result.discovered : c.before;
-        expect(mergeTrust(c.pinned, discovered)).toEqual(c.expect.trust);
+        expect(
+          mergeTrust(usablePins(c.pinned, tombstones), discovered),
+        ).toEqual(c.expect.trust);
         // The accepted manifest's `issuedAt` is what §4.2 folds into the clock floor.
         if (c.expect.issuedAt !== undefined) {
           expect(result.doc?.issuedAt, `${c.id} issuedAt`).toBe(
@@ -976,6 +1020,7 @@ export function defineCorpusSuites({
           expectedAud: c.expectedAud,
           deviceId: c.deviceId,
           now: c.systemClock,
+          lastAcceptedIssuedAt: null,
           checkFreshness: false,
         };
         let license: LicenseDoc | null = null;
@@ -1077,6 +1122,8 @@ export function defineCorpusSuites({
         product: c.expectedAud,
         deviceId: c.deviceId,
         now: c.now,
+        floors: { license: null, config: null },
+        profile: "import",
       });
       expect(bundle).not.toBeNull();
       expect(bundle!.bundleId).toEqual(expect.any(String));

@@ -111,7 +111,7 @@ describe("the platform inventory (ST-02)", () => {
     // `GET /manage/api/platform/settings` reports a `var` in clear and a `secret` as presence
     // only (THREAT-MODEL "The inventory never reveals a secret"), so a mis-tag is a leak.
     const credential =
-      /(_SECRET|_PEPPER|PRIVATE_KEY|_KEY|_KEYS|_KEY_PREVIOUS|_SERVICE_ACCOUNT|_PARTNER_CENTER|_ACCESS_KEY_ID)$|^PLATFORM_KEK$/;
+      /(_SECRET|_PEPPER|PRIVATE_KEY|_KEY|_KEYS|_KEY_PREVIOUS|_SECRET_PREVIOUS|_SERVICE_ACCOUNT|_PARTNER_CENTER|_ACCESS_KEY_ID)$|^PLATFORM_KEK$/;
     // Public by design, though credential-shaped: a Turnstile site key is embedded in the page
     // the widget renders on (I-07; the portal reads it from `/api/capabilities`).
     const publicByDesign = new Set(["TURNSTILE_SITE_KEY"]);

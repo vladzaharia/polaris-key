@@ -77,4 +77,21 @@ final class Base64URLTests: XCTestCase {
         let enc = Base64URL.encode(string: s)
         XCTAssertEqual(Base64URL.decode(enc), Data(s.utf8))
     }
+
+    func testCanonicalRuleRefusesUnusedTrailingBitsAndImpossibleLengths() {
+        // "AB" spells one byte with 4 unused low bits, which must be zero: "AA" is canonical,
+        // "AB" is the same byte spelled with an unused bit set.
+        XCTAssertTrue(Base64URL.isCanonical("AA"))
+        XCTAssertFalse(Base64URL.isCanonical("AB"))
+        XCTAssertEqual(Base64URL.decode("AB"), Base64URL.decode("AA"), "the lenient decoder is blind to it")
+        XCTAssertNil(Base64URL.decodeStrict("AB"))
+        // Three characters leave 2 unused bits.
+        XCTAssertTrue(Base64URL.isCanonical("AAA"))
+        XCTAssertFalse(Base64URL.isCanonical("AAB"))
+        // A length of 1 mod 4 carries no whole byte.
+        XCTAssertFalse(Base64URL.isCanonical("AAAAA"))
+        XCTAssertTrue(Base64URL.isCanonical(""))
+        XCTAssertFalse(Base64URL.isCanonical("AA=="))
+        XCTAssertFalse(Base64URL.isCanonical("+/"))
+    }
 }

@@ -57,6 +57,7 @@ import { hashKey, mintOpaqueToken, randomId } from "../crypto.js";
 import { appendAudit } from "../repo.js";
 import { signJwtHs256 } from "./jwt.js";
 import { readCappedText } from "./readCapped.js";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import {
   CI_SCOPES,
   CI_TOKEN_PREFIX,
@@ -77,6 +78,8 @@ export const OIDC_CLOCK_SKEW_SECONDS = 60;
 export const JWKS_CACHE_SECONDS = 3600;
 /** The fastest an unknown `kid` may force a refetch. */
 export const JWKS_REFETCH_MIN_SECONDS = 60;
+/** The oldest cached JWKS that still verifies when GitHub cannot be reached. */
+export const JWKS_MAX_STALE_SECONDS = 6 * 60 * 60;
 const JWKS_KV_KEY = "gh:oidc:jwks";
 /** A JWKS is a few keys; anything bigger is not GitHub's. */
 const MAX_JWKS_BYTES = 64 * 1024;
@@ -435,6 +438,10 @@ async function jwksFor(
       // Keep whatever we had; an unknown kid below is the answer.
     }
   }
+  // A set whose refetch keeps failing is honoured for a few hours, not the KV's
+  // 24: a key GitHub removed must not outlive a short outage.
+  if (cached !== null && now - cached.fetchedAt > JWKS_MAX_STALE_SECONDS)
+    return null;
   return cached;
 }
 
@@ -450,6 +457,7 @@ export interface GithubOidcClaims extends JWTPayload {
   runner_environment?: string;
   event_name?: string;
   run_id?: string;
+  sha?: string;
 }
 
 export type OidcVerifyResult =
@@ -583,6 +591,44 @@ export function checkPublisherPolicy(
       `the run must be triggered by ${ALLOWED_OIDC_EVENTS.join(", ")}`,
     );
   return { ok: true };
+}
+
+/** Scopes that move what every client resolves: only a protected release tag may hold them. */
+const TAG_ONLY_CI_SCOPES: readonly string[] = [
+  "release:promote",
+  "release:yank",
+];
+const SYSTEM_PUBLISH_REF =
+  /^refs\/(heads\/main|tags\/v\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?)$/;
+
+/**
+ * Bind an OIDC-minted token's scopes to the run's ref. A run from a
+ * branch publishes (the main channel) but cannot promote, pin or yank: those need a `refs/tags/`
+ * run, so a step in any main-ref job or a leaked 30-minute token cannot move stable. Only
+ * branches and tags are refs a token is minted for, and the platform's own product admits its
+ * `main` branch and semver release tags alone.
+ */
+export function bindScopesToRef(
+  product: string,
+  ref: unknown,
+  scopes: readonly string[],
+): { ok: true; scopes: string[] } | { ok: false; message: string } {
+  const r = typeof ref === "string" ? ref : "";
+  if (!r.startsWith("refs/heads/") && !r.startsWith("refs/tags/"))
+    return {
+      ok: false,
+      message: "tokens are minted for branch and tag runs only",
+    };
+  if (product === SYSTEM_PRODUCT_SLUG && !SYSTEM_PUBLISH_REF.test(r))
+    return {
+      ok: false,
+      message: "the platform publishes from main or a semver release tag only",
+    };
+  const tag = r.startsWith("refs/tags/");
+  return {
+    ok: true,
+    scopes: scopes.filter((s) => tag || !TAG_ONLY_CI_SCOPES.includes(s)),
+  };
 }
 
 // ── `pkeyci_` tokens (`ci_tokens`) ──────────────────────────────────────────────────────────
@@ -728,6 +774,18 @@ export async function exchangeOidcToken(
       message: "too many token requests",
     };
 
+  // The ref the run was triggered from bounds what its token may do.
+  const bound = bindScopesToRef(input.product, v.claims.ref, policy.scopes);
+  if (!bound.ok)
+    return {
+      ok: false,
+      status: 403,
+      reason: "policy_mismatch",
+      message: bound.message,
+      claim: "ref",
+    };
+  const scopes = bound.scopes;
+
   const token = mintCiToken();
   const tokenHash = await hashCiCredential(env, token);
   const tokenId = randomId("cit");
@@ -747,7 +805,7 @@ export async function exchangeOidcToken(
     tokenHash,
     tokenId,
     input.product,
-    JSON.stringify(policy.scopes),
+    JSON.stringify(scopes),
     subject,
     jti,
     input.now,
@@ -771,9 +829,9 @@ export async function exchangeOidcToken(
     target_kind: "ci_token",
     target_id: tokenId,
     parent_id: null,
-    summary: `Exchanged a GitHub OIDC token from ${policy.repository} for a CI token (${policy.scopes.join(", ")})`,
+    summary: `Exchanged a GitHub OIDC token from ${policy.repository} for a CI token (${scopes.join(", ")})`,
   });
-  return { ok: true, token, tokenId, expiresAt, scopes: policy.scopes };
+  return { ok: true, token, tokenId, expiresAt, scopes };
 }
 
 /** Issue an operator's static token. Shown once; only its hash is stored. */

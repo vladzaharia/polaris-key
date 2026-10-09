@@ -38,7 +38,7 @@ import {
   type MintPolicyProduct,
 } from "../../core/edgeMintApproval.js";
 import { errorResponse } from "../../core/errors.js";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { signJws, StrictJsonError } from "@polaris-key/jws";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { trustRefusal } from "../../core/deviceTrust.js";
@@ -173,16 +173,6 @@ export async function handleMintToken(
   mintId: string,
   now: number,
 ): Promise<Response> {
-  if (
-    !(await rateLimitOk(
-      env,
-      product.slug,
-      { bucket: "mint", id: clientIp(req), limit: 60, windowSec: 60 },
-      now,
-    ))
-  ) {
-    return errorResponse(429, "rate_limited", "too many mint requests");
-  }
   // Confused-deputy guard: the caller must be a device of THIS product, and — when the product
   // runs License — one whose licence is usable. Asked with Core's pure `licenseUsable` predicate
   // rather than by importing License: a service may not import another service, and the boundary
@@ -198,9 +188,25 @@ export async function handleMintToken(
   const token = bearer(req);
   if (!token) return errorResponse(401, "unauthorized");
   const valid = await validateDeviceToken(env, db, product, token, now);
-  if ("error" in valid) return errorResponse(401, "unauthorized");
-  if (product.services.license.enabled && !licenseUsable(valid.license, now))
+  if (
+    "error" in valid ||
+    (product.services.license.enabled && !licenseUsable(valid.license, now))
+  ) {
+    // The per-network budget is charged on FAILED authentication only, so a shared
+    // egress address full of legitimate devices is not starved by the pre-auth check; the
+    // per-device budget below bounds the authenticated ones.
+    if (
+      !(await rateLimitOk(
+        env,
+        product.slug,
+        { bucket: "mint", id: clientNetwork(req), limit: 60, windowSec: 60 },
+        now,
+      ))
+    ) {
+      return errorResponse(429, "rate_limited", "too many mint requests");
+    }
     return errorResponse(401, "unauthorized");
+  }
 
   // P0-12 — a per-DEVICE budget as well as the per-IP one. Under open registration anyone can
   // hold a device token, and one device behind many IPs would otherwise get a fresh 60/min per
@@ -338,7 +344,8 @@ export async function handleMintAuth(
   product: Product,
   mintId: string,
 ): Promise<Response> {
-  const cfg = await getEdgeMintConfig(db, product.slug, mintId);
+  // An unapproved recipe is indistinguishable from a missing one.
+  const cfg = await getApprovedEdgeMintConfig(db, product, mintId);
   if (!cfg || !cfg.auth_page_template)
     return errorResponse(404, "not_found", "no auth page");
   return new Response(cfg.auth_page_template, {

@@ -11,11 +11,12 @@
     "The sidebar is filtered by permission: Diceroll's context shows only the Ship builds and Commerce groups (open), with no Overview, Licensing, Managed config, Cloud Sync or Settings items. Nothing hidden is drawn disabled.",
     "The title names the product and the area: 'You don't have access to Diceroll → Licensing', with 'Diceroll → Licensing' kept on one line; there is no breadcrumb, and the opened path is one small mono line under the cards.",
     "The lead names the signed-in email and the current role as the same role tag Members uses (Diceroll admin · Ship builds, Commerce), and says what it doesn't include.",
-    "'Who can give you access' lists up to three people who can grant that area in that scope, narrowest first (the product's admins, then Superadmins), each with name, role and a copyable email. Its line ('They'll find you in Diceroll's members') holds because a rule-given role has 'Add areas…' there. There is no Request access button and no request workflow (ST-33 is not built).",
+    "'Who can give you access' lists up to three people who can grant that area in that scope, narrowest first (the product's admins, then Superadmins), each with name, role and a copyable email. The card head is the heading alone. There is no Request access button and no request workflow (ST-33 is not built).",
     "'You can open' offers the person's real destinations as buttons (Diceroll releases, Diceroll storefronts) and 'Open your library' as a link, so the page is never a dead end; 'Use another account' is a quiet link in the signed-in line.",
     "The path that was opened shows as one small mono line; no data from the forbidden page appears, not even counts.",
     "The same component answers a disabled control's reason elsewhere: a write button the member can't use names the same people in its disabledReason.",
-    "Phone: the menu button replaces the sidebar; the helpers stack (avatar and name, then the email chip under the name) and the two destination buttons take the full width."
+    "Phone: the menu button replaces the sidebar; the helpers stack (avatar and name, then the email chip under the name) and the two destination buttons take the full width.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

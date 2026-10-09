@@ -17,7 +17,7 @@ from polaris_key.core.models import (
     AllowedRange,
     BlockedState,
 )
-from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle
+from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord
 from polaris_key.devices.deviceid import derive_device_id
 from polaris_key.devices.store import FileStore, InMemoryStore, KeyringStore
 
@@ -47,35 +47,35 @@ def test_b64url_decode_tolerates_missing_padding() -> None:
 
 # ── JWS edges ───────────────────────────────────────────────────────────────────────
 def test_verify_rejects_two_part_jws() -> None:
-    assert verify_jws("a.b", TRUST, require_typ=True) is None
+    assert verify_jws("a.b", TRUST, typ=TYP_LICENSE) is None
 
 
 def test_verify_rejects_garbage() -> None:
-    assert verify_jws("not-a-jws", {}, require_typ=True) is None
-    assert verify_jws("...", {}, require_typ=True) is None
-    assert verify_jws("", {}, require_typ=True) is None
+    assert verify_jws("not-a-jws", {}, typ=TYP_LICENSE) is None
+    assert verify_jws("...", {}, typ=TYP_LICENSE) is None
+    assert verify_jws("", {}, typ=TYP_LICENSE) is None
 
 
 def test_verify_rejects_a_non_string_input() -> None:
-    assert verify_jws(None, TRUST, require_typ=True) is None  # type: ignore[arg-type]
-    assert verify_jws(b"a.b.c", TRUST, require_typ=True) is None  # type: ignore[arg-type]
+    assert verify_jws(None, TRUST, typ=TYP_LICENSE) is None  # type: ignore[arg-type]
+    assert verify_jws(b"a.b.c", TRUST, typ=TYP_LICENSE) is None  # type: ignore[arg-type]
 
 
 def test_verify_rejects_oversized_payload() -> None:
     """A validly-signed JWS whose decoded payload exceeds the size cap is rejected BEFORE
     ``json.loads``, so an oversized doc never reaches the parser."""
     big = "x" * (MAX_DOC_BYTES + 1)
-    assert verify_jws(sign_jws({"blob": big}, PRIVATE_PEM, KID, TYP_LICENSE), TRUST, require_typ=True) is None
+    assert verify_jws(sign_jws({"blob": big}, PRIVATE_PEM, KID, TYP_LICENSE), TRUST, typ=TYP_LICENSE) is None
     ok = sign_jws({"blob": "x" * 16}, PRIVATE_PEM, KID, TYP_LICENSE)
-    assert verify_jws(ok, TRUST, require_typ=True) is not None
+    assert verify_jws(ok, TRUST, typ=TYP_LICENSE) is not None
 
 
 def test_verify_rejects_an_unknown_kid_and_a_wrong_key() -> None:
     jws = sign_jws({"a": 1}, PRIVATE_PEM, KID, TYP_LICENSE)
-    assert verify_jws(jws, {}, require_typ=True) is None
-    assert verify_jws(jws, {"other": PUBKEY_RAW}, require_typ=True) is None
+    assert verify_jws(jws, {}, typ=TYP_LICENSE) is None
+    assert verify_jws(jws, {"other": PUBKEY_RAW}, typ=TYP_LICENSE) is None
     # Right kid, wrong bytes.
-    assert verify_jws(jws, {KID: "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"}, require_typ=True) is None
+    assert verify_jws(jws, {KID: "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U"}, typ=TYP_LICENSE) is None
 
 
 def test_sign_requires_an_ed25519_key() -> None:
@@ -110,7 +110,8 @@ def test_cache_record_round_trips_every_v3_slice() -> None:
         docs={"license": "l.w.s", "config": "c.w.s"},
         etags={"license": "l1", "config": "c1"},
         trustJws="t.w.s",
-        importedBundle=ImportedBundle(bundleId="B1", importedAt=99),
+        bundle="b.w.s",
+        pinRevocations={KID: "r.e.v"},
         lastSyncUnauthorized=True,
         blocked=BlockedState(
             reason="version-too-old", allowedRange=AllowedRange(min="2.0.0")
@@ -142,11 +143,13 @@ def test_a_foreign_cache_version_is_refused(version) -> None:
         CacheRecord.from_dict({"v": version, "trustedKeys": {KID: "attacker"}})
 
 
-def test_a_malformed_imported_bundle_marker_is_dropped() -> None:
-    rec = CacheRecord.from_dict(
-        {"v": CACHE_FORMAT_VERSION, "importedBundle": {"bundleId": 7, "importedAt": "x"}}
+def test_a_non_string_bundle_slice_is_dropped_and_the_old_marker_is_never_read() -> None:
+    rec = CacheRecord.from_dict({"v": CACHE_FORMAT_VERSION, "bundle": {"bundleId": "B1"}})
+    assert rec.bundle is None
+    old = CacheRecord.from_dict(
+        {"v": CACHE_FORMAT_VERSION, "importedBundle": {"bundleId": "B1", "importedAt": 99}}
     )
-    assert rec.importedBundle is None
+    assert old.bundle is None and "importedBundle" not in old.to_dict()
 
 
 # ── FileStore ───────────────────────────────────────────────────────────────────────

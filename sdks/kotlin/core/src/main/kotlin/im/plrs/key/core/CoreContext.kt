@@ -103,12 +103,23 @@ public data class CachedDoc<T : DocClaims>(val jws: String, val doc: T)
 public data class LoadedCache(
     val license: CachedDoc<LicenseDoc>? = null,
     val config: CachedDoc<ConfigDoc>? = null,
-    val importedBundle: ImportedBundle? = null,
+    /** The cached offline bundle when it re-verified on the reload profile (§7); null otherwise. */
+    val bundle: LoadedBundle? = null,
     val lastSyncUnauthorized: Boolean = false,
     val blocked: BlockInfoRecord? = null,
     /** Epoch MILLIseconds of the last verification. */
     val lastVerifiedAt: Long? = null,
 )
+
+/**
+ * A cached offline bundle that re-verified. [docs] is what it carried; [activates] is the signed
+ * fact behind `activation: "bundle"` (with no token held): it carried a licence document
+ * byte-identical to the cached one.
+ */
+public data class LoadedBundle(val bundleId: String, val docs: List<DocumentSlice>, val activates: Boolean)
+
+/** What [CoreContext.importBundle] reports: the bundle and the documents that landed, in §7 order. */
+public data class ImportBundleResult(val bundleId: String, val imported: List<DocumentSlice>)
 
 /** How the current device token was obtained in this process. */
 public enum class TokenSource(public val wire: String) {
@@ -216,6 +227,12 @@ public class CoreContext(options: CoreOptions) {
     private var discoveryDocumentValue: ProductDiscoveryDocument? = null
     private var manifestKeys: TrustSet = emptyMap()
     private var manifest: TrustManifestDoc? = null
+
+    /** The tombstoned pins, re-derived from [evidence] on every load (§1, §4.1). Never reset by a deactivation. */
+    private var tombstones: List<String> = emptyList()
+
+    /** The `pinRevocations` slice as it should be written: kid → the revoking manifest. */
+    private var evidence: Map<String, String> = emptyMap()
     private val clock = MonotonicClock()
     private var record: CacheRecord? = null
     private var loaded = LoadedCache()
@@ -253,7 +270,25 @@ public class CoreContext(options: CoreOptions) {
     }
 
     private suspend fun load() {
-        val (deviceId, token, cached) = onStore { Triple(store.getDeviceId(), store.getToken(), store.readCache()) }
+        var (deviceId, token, cached) = onStore { Triple(store.getDeviceId(), store.getToken(), store.readCache()) }
+        // A stored id that disagrees with the platform anchor is a copied state directory.
+        val anchored = onStore { store.anchoredDeviceId() }
+        if (anchored != null && anchored != deviceId) {
+            // `deactivate()` without the network call: the token and the grant slices go, the update
+            // slices stay (their floors must not reset).
+            deviceId = anchored
+            token = null
+            cached = cached?.let { CacheRecord(feeds = it.feeds, releaseRecords = it.releaseRecords, pinRevocations = it.pinRevocations, v = it.v) }
+            try {
+                onStore {
+                    store.clearToken()
+                    store.replaceDeviceId(anchored)
+                    if (cached == null) store.clearCache() else store.writeCache(cached!!)
+                }
+            } catch (e: StoreException) {
+                // The in-memory state is already rebound; the next start repeats the repair.
+            }
+        }
         val channelPreference = io { channelSlot.read() }
         lock.withLock {
             deviceIdValue = deviceId
@@ -297,14 +332,14 @@ public class CoreContext(options: CoreOptions) {
             manifestKeys = emptyMap()
             manifest = null
             clock.reset()
-            if (r == null || (r.feeds.isEmpty() && r.releaseRecords.isEmpty())) {
+            if (r == null || (r.feeds.isEmpty() && r.releaseRecords.isEmpty() && evidence.isEmpty())) {
                 feedFloorsValue = emptyMap()
                 null
             } else {
                 // Wire v4: a deactivation removes every credential, never the feeds' `seq` floors (a
                 // floor a deactivation could reset could be rolled back). Re-verified against the
                 // now pinned-only trust set.
-                record = CacheRecord(feeds = r.feeds, releaseRecords = r.releaseRecords)
+                record = CacheRecord(feeds = r.feeds, releaseRecords = r.releaseRecords, pinRevocations = evidence)
                 reloadUpdateSlices()
                 record
             }
@@ -331,7 +366,22 @@ public class CoreContext(options: CoreOptions) {
 
     // ── Trust (§1) ─────────────────────────────────────────────────────────────────────────
     /** The effective set: manifest keys UNION pins, pins last. */
-    public suspend fun trust(): TrustSet = locked { mergeTrust(pinnedTrust, manifestKeys) }
+    public suspend fun trust(): TrustSet = locked { effectiveTrust() }
+
+    /** The pins minus the tombstones: the ONLY keys a manifest or bundle verifies against. */
+    public suspend fun usablePinnedTrust(): TrustSet = locked { usablePins(pinnedTrust, tombstones) }
+
+    /** The tombstoned pinned kids, ascending byte order. */
+    public suspend fun revokedPins(): List<String> = locked { tombstones }
+
+    private fun effectiveTrust(): TrustSet = mergeTrust(usablePins(pinnedTrust, tombstones), manifestKeys)
+
+    /** Record a verified manifest's new tombstones, with the manifest as their evidence (caller holds the lock). */
+    private fun noteRevocations(jws: String, revokedPins: List<String>) {
+        if (revokedPins.isEmpty()) return
+        evidence = evidence + revokedPins.associateWith { jws }
+        tombstones = (tombstones + revokedPins).distinct().sortedWith(KID_BYTE_ORDER)
+    }
 
     public suspend fun trustManifest(): TrustManifestDoc? = locked { manifest }
 
@@ -340,37 +390,62 @@ public class CoreContext(options: CoreOptions) {
         val result = verifyTrustManifest(
             jws,
             VerifyTrustManifestOptions(
-                pinned = pinnedTrust, expectedAud = product, now = systemClock(),
+                pinned = pinnedTrust, tombstones = tombstones, expectedAud = product, now = clock.effectiveNow(systemClock()),
                 lastTrustIssuedAt = manifest?.issuedAt, checkFreshness = checkFreshness,
             ),
         )
         val doc = result.doc ?: return false
+        noteRevocations(jws, result.revokedPins)
         manifestKeys = result.discovered
         manifest = doc
         clock.raise(doc.issuedAt)
         return true
     }
 
-    /** Fetch, verify and install the signed trust manifest, on CORE's cadence. False keeps the old one. */
+    /**
+     * Fetch, verify and install the signed trust manifest, on CORE's cadence. False keeps the old
+     * one. When the default manifest is refused and its signer is not a usable pin (a rotation), the
+     * same manifest is asked for signed by each usable pin (`?signer=<kid>`, §2.3).
+     */
     public suspend fun refreshTrust(): Boolean {
-        val response = try {
-            request(endpoints.trustManifest, headers = mapOf("accept" to "application/jose"))
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            return false
-        }
-        if (!response.isOk || response.body.size > JwsVerifier.MAX_HEADER_B64 + JwsVerifier.MAX_PAYLOAD_B64 + 128) return false
-        val jws = response.text
-        val applied = locked {
-            applyTrustManifest(jws, checkFreshness = true).also { ok ->
-                // The effective trust set may have changed: the committed feeds are re-verified.
-                if (ok) reloadUpdateSlices()
+        val first = fetchTrustManifest(null) ?: return false
+        var jws = first
+        var applied = installTrust(jws)
+        if (!applied) {
+            val usable = lock.withLock { usablePins(pinnedTrust, tombstones) }
+            for (signer in trustSignerOrder(usable, jwsHeaderKid(first))) {
+                val retry = fetchTrustManifest(signer) ?: continue
+                if (installTrust(retry)) {
+                    jws = retry
+                    applied = true
+                    break
+                }
             }
         }
         if (!applied) return false
         patchCache { it.copy(trustJws = jws) }
         return true
+    }
+
+    private suspend fun installTrust(jws: String): Boolean = locked {
+        applyTrustManifest(jws, checkFreshness = true).also { ok ->
+            // The effective trust set may have changed: the committed feeds are re-verified.
+            if (ok) reloadUpdateSlices()
+        }
+    }
+
+    /** One `GET /<p>/.well-known/polaris-trust.jws[?signer=<kid>]`: the body on a 200, else null. */
+    private suspend fun fetchTrustManifest(signer: String?): String? {
+        val url = if (signer == null) endpoints.trustManifest else endpoints.trustManifest + "?signer=" + java.net.URLEncoder.encode(signer, "UTF-8").replace("+", "%20")
+        val response = try {
+            request(url, headers = mapOf("accept" to "application/jose"))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return null
+        }
+        if (!response.isOk || response.body.size > JwsVerifier.MAX_HEADER_B64 + JwsVerifier.MAX_PAYLOAD_B64 + 128) return null
+        return response.text
     }
 
     // ── Capabilities (D-21) ────────────────────────────────────────────────────────────────
@@ -381,6 +456,16 @@ public class CoreContext(options: CoreOptions) {
         discoveredServices ?: expectedServices?.let { servicesFromList(it) } ?: DEFAULT_SERVICES
 
     public suspend fun enabled(slug: ServiceSlug): Boolean = services()[slug] == true
+
+    /**
+     * The licence GATE's input: the build's own declaration (`expectedServices`, default
+     * licence and config) OR what a discovery loaded this session says. Unsigned discovery can
+     * switch the gate on, never off; it still governs sub-client availability ([enabled]).
+     */
+    public suspend fun licenseGateEnabled(): Boolean = lock.withLock {
+        val declared = expectedServices?.let { ServiceSlug.license in it } ?: (DEFAULT_SERVICES[ServiceSlug.license] == true)
+        declared || discoveredServices?.get(ServiceSlug.license) == true
+    }
 
     /** Refuse a sub-client whose service the product does not run (typed `product` N/A). */
     public suspend fun requireService(slug: ServiceSlug, feature: String) {
@@ -487,6 +572,11 @@ public class CoreContext(options: CoreOptions) {
             return
         }
         var next: CacheRecord = stored
+        // §4.1: the tombstones first, so the manifest, the documents and the bundle all verify
+        // against the usable pins. Evidence that no longer verifies is dropped on the next write.
+        val revocations = loadPinRevocations(stored.pinRevocations, pinnedTrust, product)
+        tombstones = revocations.tombstones
+        evidence = revocations.kept
         stored.trustJws?.let { jws ->
             if (!applyTrustManifest(jws, checkFreshness = false)) next = next.copy(trustJws = null)
         }
@@ -516,14 +606,33 @@ public class CoreContext(options: CoreOptions) {
         loaded = LoadedCache(
             license = license,
             config = config,
-            importedBundle = stored.importedBundle,
+            bundle = reloadBundle(stored.bundle, license),
             lastSyncUnauthorized = stored.lastSyncUnauthorized == true,
             blocked = stored.blocked,
             lastVerifiedAt = if (newest > 0 && newest < Long.MAX_VALUE / 1000) newest * 1000 else null,
         )
-        record = next
+        // A cached manifest may have tombstoned a pin whose evidence the record lacked.
+        record = next.copy(pinRevocations = evidence)
         // After the manifest: the feeds verify against the EFFECTIVE trust set.
         reloadUpdateSlices()
+    }
+
+    /**
+     * §7 reload profile: the cached bundle's own signature and claims, without the import window,
+     * against the usable pins; its inner documents against its own manifest's set with no floor. It
+     * activates only when its licence document is the cached one, byte for byte. Caller holds the lock.
+     */
+    private fun reloadBundle(jws: String?, license: CachedDoc<LicenseDoc>?): LoadedBundle? {
+        if (jws == null) return null
+        val inspection = inspectBundle(
+            jws,
+            BundleOptions(
+                pinned = pinnedTrust, product = product, deviceId = deviceIdValue, now = clock.effectiveNow(systemClock()),
+                floors = BundleFloors.NONE, profile = BundleProfile.reload, tombstones = tombstones,
+            ),
+        )
+        val bundle = (inspection as? BundleInspection.Ok)?.bundle ?: return null
+        return LoadedBundle(bundle.bundleId, bundle.importedSlices, bundle.license != null && bundle.license.jws == license?.jws)
     }
 
     // ── Wire v4 update slices (plans/P3-01.md §2.5 "Reload path", §2.6) ──────────────────────
@@ -541,7 +650,7 @@ public class CoreContext(options: CoreOptions) {
             feedFloorsValue = emptyMap()
             return
         }
-        val reloaded = reloadFeeds(r.feeds, mergeTrust(pinnedTrust, manifestKeys), product, null)
+        val reloaded = reloadFeeds(r.feeds, effectiveTrust(), product, null)
         feedFloorsValue = reloaded.floors
         val pinned = reloaded.feeds.values.flatMap { c -> c.feed.app.targets.map { it.release.sha256 } }.toSet()
         record = r.copy(feeds = reloaded.feeds.mapValues { it.value.jws }, releaseRecords = r.releaseRecords.filterKeys { it in pinned })
@@ -560,7 +669,7 @@ public class CoreContext(options: CoreOptions) {
     public suspend fun commitUpdateSlices(feeds: Map<String, String>? = null, releaseRecords: Map<String, String>? = null) {
         patchCache { r -> r.copy(feeds = feeds ?: r.feeds, releaseRecords = releaseRecords ?: r.releaseRecords) }
         lock.withLock {
-            feedFloorsValue = reloadFeeds(record?.feeds ?: emptyMap(), mergeTrust(pinnedTrust, manifestKeys), product, null).floors
+            feedFloorsValue = reloadFeeds(record?.feeds ?: emptyMap(), effectiveTrust(), product, null).floors
         }
     }
 
@@ -577,24 +686,25 @@ public class CoreContext(options: CoreOptions) {
      * far forward one artifact may drag the floor (caller holds the lock).
      */
     private fun <T : DocClaims> verifyCached(jws: String, verify: (String, VerifyOptions) -> T?): T? {
-        val trust = mergeTrust(pinnedTrust, manifestKeys)
+        val trust = effectiveTrust()
         val now = clock.effectiveNow(systemClock())
         // A signature-verified peek learns `issuedAt` (never an unauthenticated parse).
-        val peek = verify(jws, VerifyOptions(trust, product, deviceIdValue, now = Long.MAX_VALUE / 2, checkFreshness = false))
+        val peek = verify(jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = null, now = Long.MAX_VALUE / 2, checkFreshness = false))
             ?: return null
         if (peek.issuedAt > saturatingAdd(now, MAX_GRACE_SECONDS)) return null
-        return verify(jws, VerifyOptions(trust, product, deviceIdValue, now = maxOf(now, peek.issuedAt), checkFreshness = false))
+        return verify(jws, VerifyOptions(trust, product, deviceIdValue, lastAcceptedIssuedAt = null, now = maxOf(now, peek.issuedAt), checkFreshness = false))
     }
 
     /** Read-modify-write the whole record: the ONLY mutation path (§4.1). */
     private suspend fun patchCache(mutate: (CacheRecord) -> CacheRecord) {
         val next = locked {
-            val n = mutate(record ?: CacheRecord()).copy(v = CACHE_RECORD_VERSION)
+            val n = mutate(record ?: CacheRecord()).copy(pinRevocations = evidence, v = CACHE_RECORD_VERSION)
             record = n
             loaded = loaded.copy(
+                license = loaded.license.takeIf { DocumentSlice.license in n.docs },
+                config = loaded.config.takeIf { DocumentSlice.config in n.docs },
                 lastSyncUnauthorized = n.lastSyncUnauthorized == true,
                 blocked = n.blocked,
-                importedBundle = n.importedBundle,
             )
             n
         }
@@ -608,33 +718,49 @@ public class CoreContext(options: CoreOptions) {
     }
 
     // ── Offline bundles (§7) ───────────────────────────────────────────────────────────────
-    /** Verify an offline bundle and, only when every step passed, write it atomically. No token is created. */
-    public suspend fun importBundle(jws: String): VerifiedBundle {
+    /**
+     * Verify an offline bundle and, only when every step passed, write it atomically (§7). No token is
+     * created. A byte-identical re-import of the bundle this install runs on succeeds with no write.
+     */
+    public suspend fun importBundle(jws: String): ImportBundleResult {
         val now = now()
-        val inspection = inspectBundle(jws, BundleOptions(pinnedTrust, product, deviceId(), now))
+        val held = locked { loaded.bundle?.takeIf { record?.bundle == jws } }
+        if (held != null) return ImportBundleResult(held.bundleId, held.docs)
+        val (revoked, floors, deviceId) = locked {
+            Triple(tombstones, BundleFloors(loaded.license?.doc?.issuedAt, loaded.config?.doc?.issuedAt), deviceIdValue)
+        }
+        val inspection = inspectBundle(
+            jws, BundleOptions(pinnedTrust, product, deviceId, now, floors, BundleProfile.import, revoked),
+        )
         val bundle = when (inspection) {
             is BundleInspection.Ok -> inspection.bundle
             is BundleInspection.Refused -> throw PolarisException(inspection.reason.code, "the offline bundle was refused at ${inspection.reason.code}")
         }
         val stored = locked {
+            noteRevocations(bundle.trustJws, bundle.revokedPins)
             val base = record ?: CacheRecord()
             val docs = LinkedHashMap<DocumentSlice, String>()
             bundle.license?.let { docs[DocumentSlice.license] = it.jws }
             bundle.config?.let { docs[DocumentSlice.config] = it.jws }
-            val next = base.copy(
-                trustJws = bundle.trustJws,
+            // §7 step 5: keep the held manifest when it is newer than the bundle's (an old bundle
+            // cannot re-teach a key the device has seen revoked).
+            val heldTrust = manifest
+            val keepHeld = heldTrust != null && heldTrust.issuedAt > bundle.trustIssuedAt && base.trustJws != null
+            // The update slices and the pin evidence are carried: signed, not grants.
+            val next = CacheRecord(
+                trustJws = if (keepHeld) base.trustJws else bundle.trustJws,
                 docs = docs,
-                etags = emptyMap(),
-                importedBundle = bundle.license?.let { ImportedBundle(bundle.bundleId, now) },
-                lastSyncUnauthorized = null,
-                blocked = null,
+                bundle = jws,
+                feeds = base.feeds,
+                releaseRecords = base.releaseRecords,
+                pinRevocations = evidence,
                 v = CACHE_RECORD_VERSION,
             )
             loadCache(next)
-            next
+            record
         }
-        onStore { store.writeCache(stored) }
-        return bundle
+        onStore { store.writeCache(stored ?: CacheRecord()) }
+        return ImportBundleResult(bundle.bundleId, bundle.importedSlices)
     }
 
     // ── Telemetry ──────────────────────────────────────────────────────────────────────────
@@ -706,11 +832,17 @@ public class CoreContext(options: CoreOptions) {
         val healthy = outcomes.values.any { it == DocOutcome.Applied || it == DocOutcome.Unchanged }
         if (!patchSet && healthy) patchSet = true
         val finalPatch = patch
+        // A hard 401 drops the slice it answered for, and a 403 build block drops the licence
+        // document, in the same write that sets the (display-only) hint.
+        val rejected = outcomes.filterValues { it == DocOutcome.Unauthorized }.keys
         patchCache { rec ->
             var r = rec
             if (trustJws != null) r = r.copy(trustJws = trustJws)
             if (unauthorized) r = r.copy(lastSyncUnauthorized = true) else if (healthy) r = r.copy(lastSyncUnauthorized = false)
             if (patchSet) r = r.copy(blocked = finalPatch)
+            val dropped = if (blocked) rejected + DocumentSlice.license else rejected
+            if (dropped.isNotEmpty()) r = r.copy(docs = r.docs - dropped, etags = r.etags - dropped)
+            
             r
         }
         if (applied || !unauthorized) report?.invoke()
@@ -795,7 +927,7 @@ public class CoreContext(options: CoreOptions) {
 
     /** Verify a freshly arrived document and stage it: artifact and ETag in the record, payload in the state. */
     private suspend fun applyDocument(slice: DocumentSlice, jws: String, etag: String?): Boolean = lock.withLock {
-        val trust = mergeTrust(pinnedTrust, manifestKeys)
+        val trust = effectiveTrust()
         val now = clock.effectiveNow(systemClock())
         when (slice) {
             DocumentSlice.license -> {
@@ -834,12 +966,12 @@ public class CoreContext(options: CoreOptions) {
      * and the resolved services). The licence service's own reads are the :license module's.
      */
     public suspend fun licenseStatus(now: Long? = null): LicenseState {
-        val enabled = enabled(ServiceSlug.license)
+        val enabled = licenseGateEnabled()
         val effective = now(now)
         return locked {
             val activation = when {
                 tokenValue != null -> ActivationSource.token
-                loaded.importedBundle != null && loaded.license != null -> ActivationSource.bundle
+                loaded.bundle?.activates == true && loaded.license != null -> ActivationSource.bundle
                 else -> null
             }
             licenseState(

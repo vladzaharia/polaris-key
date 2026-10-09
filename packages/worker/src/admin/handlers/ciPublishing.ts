@@ -42,6 +42,7 @@ import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { getProduct } from "../../repo.js";
 import { audit } from "../audit.js";
 import { isPlatformAdmin } from "../authz.js";
+import { forgetRegistryTokens } from "../../core/registryTokens.js";
 import type { AdminSession } from "../session.js";
 import {
   adminJson,
@@ -272,6 +273,8 @@ export async function handleCiTokens(
     return err(405, ErrorCode.BadRequest, "method not allowed");
   if (!TOKEN_ID_RE.test(id)) return notFound();
   if (!(await revokeCiToken(db, slug, id, now))) return notFound();
+  // The feed-read resolution cache dies with the token, not 30 s later.
+  forgetRegistryTokens();
   await audit(
     db,
     slug,

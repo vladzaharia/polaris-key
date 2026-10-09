@@ -18,6 +18,13 @@ extends RefCounted
 static var _raw_source: Callable
 ## The value `prepare()` read from the current source, or "" when none is prepared.
 static var _prepared := ""
+## A Callable returning the platform anchor String ("" when none), or empty for the default:
+## a replaced raw source when one is set (it is then the device's identity), else
+## `PKeyFingerprint.device_anchor()`. A test seam, like `set_raw_source`.
+static var _anchor_source: Callable
+## The anchor `prepare_anchor()` read, and whether it has read one.
+static var _anchor := ""
+static var _anchor_ready := false
 
 
 static func from_raw(slug: String, raw: String) -> String:
@@ -31,6 +38,8 @@ static func from_raw(slug: String, raw: String) -> String:
 static func set_raw_source(source: Callable) -> void:
 	_raw_source = source
 	_prepared = ""
+	_anchor = ""
+	_anchor_ready = false
 
 
 ## The raw identifier from the installed source (or the prepared read of it), else a random
@@ -63,6 +72,44 @@ static func prepare() -> void:
 	WorkerThreadPool.wait_for_task_completion(id)
 	if not box.is_empty() and box[0] is String:
 		_prepared = box[0]
+
+
+## Replace the anchor source. An empty Callable restores the default. Drops a prepared anchor.
+static func set_anchor_source(source: Callable) -> void:
+	_anchor_source = source
+	_anchor = ""
+	_anchor_ready = false
+
+
+static func _read_anchor() -> String:
+	var v = null
+	if _anchor_source.is_valid():
+		v = _anchor_source.call()
+	elif _raw_source.is_valid():
+		v = _raw_source.call()
+	else:
+		v = PKeyFingerprint.device_anchor()
+	return (v as String).strip_edges() if v is String else ""
+
+
+## The platform anchor alone ("" when none is readable): what a desktop file store's device id is
+## re-derived from at every start. Read once off the main thread, like `prepare()`. A coroutine.
+static func anchor() -> String:
+	if _anchor_ready:
+		return _anchor
+	var tree := Engine.get_main_loop() as SceneTree
+	if not OS.has_feature("threads") or OS.has_feature("web") or tree == null:
+		_anchor = _read_anchor()
+		_anchor_ready = true
+		return _anchor
+	var box: Array = []
+	var id := WorkerThreadPool.add_task(func() -> void: box.append(_read_anchor()), false, "PolarisKey device anchor")
+	while not WorkerThreadPool.is_task_completed(id):
+		await tree.process_frame
+	WorkerThreadPool.wait_for_task_completion(id)
+	_anchor = box[0] if not box.is_empty() and box[0] is String else ""
+	_anchor_ready = true
+	return _anchor
 
 
 ## A fresh id for `slug` from the raw source.

@@ -229,6 +229,17 @@ export type LinkSystemProduct =
  * slug must be the system product's, and `.pkey/release` must exist and name `repo` as its GitHub
  * provider. Checked by the deploy hook before anything is written, and again by the link.
  */
+/**
+ * The system product's trusted publisher is fixed in the Worker, never taken from the
+ * deploy hook's body: the one reusable workflow every platform publish runs through, in its
+ * environment. A body naming anything else is refused, so code in the deploy job cannot repoint
+ * the identity that is later handed `release:publish` tokens.
+ */
+export const SYSTEM_TRUSTED_PUBLISHER = {
+  workflow: ".github/workflows/publish-package.yml",
+  environment: "package-registry",
+} as const;
+
 export function systemManifestProblem(
   manifest: ParsedManifest,
   repo: Pick<SystemRepository, "repository">,
@@ -246,6 +257,13 @@ export function systemManifestProblem(
     rel.ghRepo.toLowerCase() !== name.toLowerCase()
   )
     return `.pkey/release names ${rel.ghOwner}/${rel.ghRepo}, not the platform repository ${repo.repository}`;
+  const tp = rel.trustedPublisher;
+  if (
+    !tp ||
+    tp.workflow !== SYSTEM_TRUSTED_PUBLISHER.workflow ||
+    tp.environment !== SYSTEM_TRUSTED_PUBLISHER.environment
+  )
+    return `.pkey/release must declare the trusted publisher ${SYSTEM_TRUSTED_PUBLISHER.workflow} in ${SYSTEM_TRUSTED_PUBLISHER.environment}`;
   if (!isSafeBinaryName(rel.binaryName || name))
     return `unsafe binary name ${JSON.stringify(rel.binaryName || name)}`;
   return null;

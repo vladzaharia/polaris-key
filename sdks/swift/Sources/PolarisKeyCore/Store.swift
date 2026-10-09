@@ -15,8 +15,8 @@
 //     right price for not carrying poisoned state forward.
 //   * `configJws`/`etag` become per-service SLICES (`docs`/`etags`), because license and config
 //     are now two independently-fetched, independently-ETagged documents.
-//   * `importedBundle` records an offline activation (§7), which is what lets the gate answer
-//     `activation: .bundle` for an install that holds no credential at all.
+//   * `bundle` holds the imported offline bundle (§7) verbatim, which is what lets the gate
+//     answer `activation: .bundle` for an install that holds no credential at all.
 //   * the keychain service tag is `pkey:<product>` (§8).
 
 import Foundation
@@ -36,9 +36,14 @@ public struct CacheRecord: Sendable, Codable, Equatable {
     public var docs: [DocumentSlice: String]
     /// Non-security hints: the per-document conditional-request validators.
     public var etags: [DocumentSlice: String]
-    /// Set by `importBundle` (§7). Present with a verified license doc ⇒ `activation: .bundle`;
-    /// a later online activation supersedes it with `activation: .token`.
-    public var importedBundle: ImportedBundle?
+    /// The imported `pkey-bundle+jws`, verbatim (§7). It is re-verified on the reload profile at
+    /// every load; `activation: .bundle` holds only while its licence document is the cached
+    /// one. A later online activation supersedes it with `activation: .token`.
+    public var bundle: String?
+    /// The evidence for each tombstoned pin (§4.1): pinned kid → the compact JWS of the trust
+    /// manifest that revoked it, re-verified on every load. Not a grant, so it survives
+    /// deactivation and device re-binding.
+    public var pinRevocations: [String: String]
     /// Fail-CLOSED hint: the last document fetch ended in a hard 401 (§4.3).
     public var lastSyncUnauthorized: Bool?
     /// Fail-CLOSED hint: the last `/license/document` returned a 403 version/channel block.
@@ -56,22 +61,24 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         trustJws: String? = nil,
         docs: [DocumentSlice: String] = [:],
         etags: [DocumentSlice: String] = [:],
-        importedBundle: ImportedBundle? = nil,
+        bundle: String? = nil,
         lastSyncUnauthorized: Bool? = nil,
         blocked: BlockInfoRecord? = nil,
         feeds: [String: String] = [:],
         releaseRecords: [String: String] = [:],
+        pinRevocations: [String: String] = [:],
         v: Int = CACHE_RECORD_VERSION
     ) {
         self.v = v
         self.trustJws = trustJws
         self.docs = docs
         self.etags = etags
-        self.importedBundle = importedBundle
+        self.bundle = bundle
         self.lastSyncUnauthorized = lastSyncUnauthorized
         self.blocked = blocked
         self.feeds = feeds
         self.releaseRecords = releaseRecords
+        self.pinRevocations = pinRevocations
     }
 
     /// `docs`/`etags` are keyed by a `DocumentSlice` enum, and Swift's `Codable` would otherwise
@@ -79,8 +86,8 @@ public struct CacheRecord: Sendable, Codable, Equatable {
     /// on-disk shape disagree with `{"docs":{"license":"…"}}` in every other SDK. These coding
     /// keys keep the JSON an object, per §4.1.
     private enum CodingKeys: String, CodingKey {
-        case v, trustJws, docs, etags, importedBundle, lastSyncUnauthorized, blocked, feeds,
-            releaseRecords
+        case v, trustJws, docs, etags, bundle, lastSyncUnauthorized, blocked, feeds,
+            releaseRecords, pinRevocations
     }
 
     public init(from decoder: Decoder) throws {
@@ -91,13 +98,15 @@ public struct CacheRecord: Sendable, Codable, Equatable {
             try c.decodeIfPresent([String: String].self, forKey: .docs))
         etags = CacheRecord.slices(
             try c.decodeIfPresent([String: String].self, forKey: .etags))
-        importedBundle = try c.decodeIfPresent(ImportedBundle.self, forKey: .importedBundle)
+        bundle = try? c.decodeIfPresent(String.self, forKey: .bundle)
         lastSyncUnauthorized = try c.decodeIfPresent(Bool.self, forKey: .lastSyncUnauthorized)
         blocked = try c.decodeIfPresent(BlockInfoRecord.self, forKey: .blocked)
         // A slice that does not decode is no slice: nothing in it could be re-verified anyway.
         feeds = (try? c.decodeIfPresent([String: String].self, forKey: .feeds)) ?? [:]
         releaseRecords =
             (try? c.decodeIfPresent([String: String].self, forKey: .releaseRecords)) ?? [:]
+        pinRevocations =
+            (try? c.decodeIfPresent([String: String].self, forKey: .pinRevocations)) ?? [:]
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -106,12 +115,13 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         try c.encodeIfPresent(trustJws, forKey: .trustJws)
         if !docs.isEmpty { try c.encode(CacheRecord.strings(docs), forKey: .docs) }
         if !etags.isEmpty { try c.encode(CacheRecord.strings(etags), forKey: .etags) }
-        try c.encodeIfPresent(importedBundle, forKey: .importedBundle)
+        try c.encodeIfPresent(bundle, forKey: .bundle)
         try c.encodeIfPresent(lastSyncUnauthorized, forKey: .lastSyncUnauthorized)
         try c.encodeIfPresent(blocked, forKey: .blocked)
         // No empty slices in the record, as in every other SDK.
         if !feeds.isEmpty { try c.encode(feeds, forKey: .feeds) }
         if !releaseRecords.isEmpty { try c.encode(releaseRecords, forKey: .releaseRecords) }
+        if !pinRevocations.isEmpty { try c.encode(pinRevocations, forKey: .pinRevocations) }
     }
 
     /// An unrecognised slice name is DROPPED rather than decoded — a future service's document
@@ -129,18 +139,6 @@ public struct CacheRecord: Sendable, Codable, Equatable {
         var out: [String: String] = [:]
         for (slice, value) in slices { out[slice.rawValue] = value }
         return out
-    }
-}
-
-/// The §7 import marker. `importedAt` is a local timestamp and is NOT security state: the gate
-/// reads the imported license document's own signed claims, never this.
-public struct ImportedBundle: Sendable, Codable, Equatable {
-    public let bundleId: String
-    public let importedAt: Int
-
-    public init(bundleId: String, importedAt: Int) {
-        self.bundleId = bundleId
-        self.importedAt = importedAt
     }
 }
 
@@ -319,7 +317,8 @@ struct SystemKeychain: KeychainAPI {
 /// through it.
 ///
 /// THE KEYCHAIN (P1b-09 plan §5.6). The token goes to the DATA-PROTECTION keychain
-/// (`kSecUseDataProtectionKeychain`) with `kSecAttrAccessibleAfterFirstUnlock`. Without that
+/// (`kSecUseDataProtectionKeychain`) with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (never migrated by a backup or
+/// device transfer). Without that
 /// flag macOS writes the legacy file-based keychain, which ignores the accessibility attribute
 /// (R4-11). A macOS process without the entitlement the data-protection keychain needs (an
 /// unsigned CLI, a test bundle) has its writes refused with `errSecMissingEntitlement` (its
@@ -328,7 +327,7 @@ struct SystemKeychain: KeychainAPI {
 /// first and fall back to the legacy item, migrating it when the data-protection keychain is
 /// available; clears delete from both. iOS always uses the data-protection keychain, so the
 /// legacy branch is `#if os(macOS)`.
-public actor KeychainStore: Store {
+public actor KeychainStore: Store, DeviceIdRebindable {
     /// Largest cache file we will read. The record is the trust manifest and two documents, plus
     /// the v4 update slices (a feed per channel the host asked for, a record per pin), and hints.
     private static let maxCacheBytes = 4 * 1024 * 1024
@@ -405,13 +404,13 @@ public actor KeychainStore: Store {
         let base = itemQuery(dataProtection: dataProtection)
         let update: [String: Any] = [
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
         ]
         let status = keychain.update(base, update)
         guard status == errSecItemNotFound else { return status }
         var add = base
         add[kSecValueData as String] = data
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         return keychain.add(add)
     }
 
@@ -556,6 +555,12 @@ public actor KeychainStore: Store {
         // platform without a hardware id — consuming a seat each time (R4-12).
         try writeSecure(Data(id.utf8), to: deviceURL)
         return id
+    }
+
+    /// Replace the stored id (device binding rewrites it with the id derived from the platform
+    /// anchor).
+    public func setDeviceId(_ id: String) async throws {
+        try writeSecure(Data(id.utf8), to: deviceURL)
     }
 
     // ── Offline cache (0600 file) ──

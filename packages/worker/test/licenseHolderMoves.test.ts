@@ -69,6 +69,7 @@ async function call(
       email: "op@studio.example",
       groups: [PLATFORM_GROUP],
       authTime: opts.authAt ?? now,
+      stepUp: true,
     },
     now,
   );

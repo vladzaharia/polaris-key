@@ -24,7 +24,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -70,7 +70,7 @@
             <div class="progress-stat">
               <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="meta">2 of 5 verified</span></div>
               <div class="progress success" style="--v: 40%"></div>
-              <span class="meta">Swift SDK 2.1.0 on arm64, last seen 4 min ago</span>
+              <span class="meta">Swift SDK 2.1.0 · last seen 4 min ago</span>
             </div>
             <div class="progress-stat">
               <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-windows"></i>Windows</span><span class="meta">Not seen yet</span></div>
@@ -122,7 +122,7 @@
                 <div class="mk-stack-3">
                   <div class="mk-stack-1">
                     <strong>Sparkle signing key</strong>
-                    <span class="type-small muted">macOS updates need one. Run this in the repository, then push.</span>
+                    <span class="type-small muted">Run this in the repository, then push.</span>
                   </div>
                   <div class="cmd"><span>pkey release keys init --sparkle</span><button class="btn ghost icon xs" aria-label="Copy command"><i class="ic ic-copy"></i></button></div>
                 </div>
@@ -131,10 +131,10 @@
                 <p class="eyebrow">Drop-in kit<span class="end"><a class="link quiet" href="#" aria-label="Integrate Ship builds directly with your own UI: Swift SDK docs">Your own UI<i class="ic ic-arrow-up-right"></i></a></span></p>
                 <div class="code">
                   <div class="code-head">
-                    <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span></div>
+                    <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span></div>
                     <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                   </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
 
 <span class="t-t">PolarisSparkle</span>.<span class="t-f">start</span>(client: client)</pre>
                 </div>
@@ -219,7 +219,7 @@
           <div class="card-rows">
             <div class="list-row">
               <span class="avatar">MF</span>
-              <span class="list-row-text"><strong>Mara Fennick</strong> activated a MacBook Pro (macOS 15.1, Standard)</span>
+              <span class="list-row-text"><strong>Mara Fennick</strong> activated a MacBook Pro</span>
               <span class="list-row-meta">Today, 10:42</span>
             </div>
             <div class="list-row">
@@ -229,7 +229,7 @@
             </div>
             <div class="list-row">
               <span class="avatar violet">AL</span>
-              <span class="list-row-text"><strong>Ada Lindqvist</strong> published catalog v4: 2 settings changed, 1 secret added</span>
+              <span class="list-row-text"><strong>Ada Lindqvist</strong> published catalog v4</span>
               <span class="list-row-meta">Oct 6, 11:05</span>
             </div>
             <!-- At wide the aside has room for two more. -->

@@ -82,6 +82,20 @@ export function parseFingerprint(input: unknown): PresentedFingerprint | null {
   return { components };
 }
 
+/** Fewest components, anchor included, a fingerprint needs to bind a machine (server policy,
+ *  not wire). A thinner one proves nothing and is treated as absent. */
+export const FINGERPRINT_MIN_COMPONENTS = 3;
+
+/** The anchor plus enough other components to mean something. Unusable = absent. */
+export function usableFingerprint(
+  presented: PresentedFingerprint | null,
+): PresentedFingerprint | null {
+  if (!presented) return null;
+  const c = presented.components;
+  if (c[FINGERPRINT_ANCHOR] === undefined) return null;
+  return Object.keys(c).length >= FINGERPRINT_MIN_COMPONENTS ? presented : null;
+}
+
 /** The composite dedupe key: the present components, in canonical order, hashed as one. */
 export async function computeHwid(components: ComponentMap): Promise<string> {
   const parts: string[] = [];
@@ -171,7 +185,11 @@ export function matchFingerprint(
   const anchorHeld =
     stored.anchorHash !== null &&
     presented.components[FINGERPRINT_ANCHOR] === stored.anchorHash;
-  const tolerance = base + (base > 0 && anchorHeld ? 1 : 0);
+  const raw = base + (base > 0 && anchorHeld ? 1 : 0);
+  // Never more than half of the baseline may change, anchor bonus included; strict
+  // stays 0 and `off` never enforces.
+  const n = Object.keys(stored.components).length;
+  const tolerance = mode === "off" ? raw : Math.min(raw, Math.floor(n / 2));
 
   return changed.length <= tolerance
     ? { kind: "drift", drift: changed.length, changed }

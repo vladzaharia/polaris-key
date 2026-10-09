@@ -74,6 +74,41 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 - **Minimum check:** `suite_ui_matrix` at §7.1's Godot rows plus 640×360, 1080×2400, 1170×2532 at 3×, 1536×2048 and 3440×1440, in the brand, native, custom, default and accent looks; the focus pass and the stretch setups to PNG; `de` and `ja`. The UX review compares with the fix round's `godot.*` renders.
 - **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
 ## Goal
 
 A game gates itself with `await PolarisKey.boot()` and every screen looks like modern game UI: glass panels, the game's wordmark, a console focus ring, input glyphs, themed engine controls, at console and Steam Deck sizes.
@@ -117,6 +152,17 @@ The Godot kit has solid plumbing but dated pixels: about 4/10 for polish (§0, G
   structurally identical local type, `current()`, `icon(px, scale)` and change notification, and
   replace it with the SDK's type when it lands.
 - **Fake sources.** Tests build fake sources from that type.
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Host-owns-pause (B10): see UK-50; set `process_mode` so kit dialogs survive tree pause and verify in the engine. (sdk-c-03, sdk-c-05, sdk-c-15, sdk-c-16, sdk-c-17, sdk-c-19, sdk-c-32)
+- Art: theme values `product.backdrop` (Texture2D, integrator-set, no wire change) fill the identity pane at two-pane rows and sit dimmed behind the card at one-column rows; `product.wordmark` replaces the name when set; reduced transparency makes the card opaque. Presentation-level art is a discovery change: record it as a known gap for an HA follow-up through plan mode. (sdk-c-03, sdk-c-05, sdk-c-15, sdk-c-16, sdk-c-17, sdk-c-19, sdk-c-32)
+- Update prompt: What's new lines (at most three) and size when the release carries them; verbs follow the outlet (Restart now only for a staged code pack); Later keeps initial focus; download, verify, ready and installed stay distinct. UpdateProgress toast at the host's `toast_anchor` inside 5% title-safe, never over the HUD, never taking gamepad focus; the deferral label is a host string. (sdk-c-03, sdk-c-05, sdk-c-15, sdk-c-16, sdk-c-17, sdk-c-19, sdk-c-32)
+- PKeyAccountTab for a game's tabbed menu: host navigation, no own rail when embedded, email masked and revealed on focus on TV and console, typed settings as rows; labels read positively from the catalog schema. (sdk-c-03, sdk-c-05, sdk-c-15, sdk-c-16, sdk-c-17, sdk-c-19, sdk-c-32)
+- Boot: wordmark over product art; loading is DL7 (nothing for 250-300 ms, then identity, a muted stage label and the 2 px indeterminate shimmer; a determinate bar only for real bytes). No part-filled bar. (sdk-c-03, sdk-c-05, sdk-c-15, sdk-c-16, sdk-c-17, sdk-c-19, sdk-c-32)
+- Activate: live verdict line under the field (prefix immediately, tier and terms only after the server answers), the input-glyph hint bar, and UK-43's Done step; masking per the key-field rule (visible and private). (sdk-c-03, sdk-c-05, sdk-c-15, sdk-c-16, sdk-c-17, sdk-c-19, sdk-c-32)
 
 ## Steps
 

@@ -25,7 +25,7 @@ import {
   type RegistryRouteContext,
   type RegistryRouteMatch,
 } from "../../../core/registryHost.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   authorizeFeedRead,
   extractFeedCredential,
@@ -76,7 +76,7 @@ export function feedReadContext(
     db: ctx.db,
     env: ctx.env,
     services: ctx.product.services,
-    ip: clientIp(req),
+    ip: clientNetwork(req),
     ...(ctx.waitUntil ? { waitUntil: ctx.waitUntil } : {}),
     ...(extra.settings ? { settings: extra.settings } : {}),
     ...(extra.repository !== undefined ? { repository: extra.repository } : {}),

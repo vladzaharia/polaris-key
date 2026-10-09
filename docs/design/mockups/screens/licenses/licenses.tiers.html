@@ -30,7 +30,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -40,6 +40,7 @@
   <main class="main">
     <div class="page cap cap-1180">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a></nav>
         <div class="page-heading"><h1>Tiers</h1></div>
         <div class="page-actions">
           <button class="btn primary"><i class="ic ic-plus"></i>New tier</button>
@@ -51,7 +52,7 @@
         <!-- List order is the rank (LX-08's column): drag a row, or use its menu. -->
         <section class="card mk-editor-list sticky-top" aria-labelledby="order-title">
           <div class="card-head h56 sub">
-            <div class="title"><h2 id="order-title">Order</h2><p>Best first. When several licenses or rules apply, the higher tier wins.</p></div>
+            <div class="title"><h2 id="order-title">Order</h2><p>Best first. Higher tier wins.</p></div>
           </div>
           <div class="card-rows">
             <div class="item-row lead keep-end">
@@ -102,14 +103,14 @@
                 <div class="field">
                   <label class="field-label">Runs for</label>
                   <div class="input short"><span class="grow tnum">365</span><span class="affix">days</span></div>
-                  <span class="hint">From the day the license starts. One starting today ends Oct 7, 2027.</span>
+                  <span class="hint">A license starting today ends Oct 7, 2027</span>
                 </div>
                 <div class="field">
                   <label class="field-label">When it ends</label>
                   <div class="radio-list" role="radiogroup">
                     <div class="radio-option"><span class="radio on"><span class="box"></span>Keeps the last version</span><span class="radio-desc">Newer versions need a new license.</span></div>
                     <div class="radio-option"><span class="radio"><span class="box"></span>Stops working</span><span class="radio-desc">Devices are refused at their next check.</span></div>
-                    <div class="radio-option"><span class="radio"><span class="box"></span>Moves to another tier</span><span class="radio-desc">For a trial: the license carries on as that tier.</span></div>
+                    <div class="radio-option"><span class="radio"><span class="box"></span>Moves to another tier</span><span class="radio-desc">The license carries on as that tier.</span></div>
                   </div>
                 </div>
               </div>
@@ -117,7 +118,7 @@
 
             <!-- Limits (LX-33): blank means the platform default; licenses can override each. -->
             <div class="form-section">
-              <div class="form-section-label"><h3>Limits</h3><p>Blank uses the platform default. A license can override any of these.</p></div>
+              <div class="form-section-label"><h3>Limits</h3><p>Blank uses the platform default.</p></div>
               <div class="form">
                 <div class="mk-cluster-6">
                   <div class="field">
@@ -150,7 +151,8 @@
                 <div class="field">
                   <label class="field-label">Fingerprint mode<span class="pill sm"><i class="ic ic-file-code-2"></i>From .pkey/product</span></label>
                   <div class="mk-cluster"><div class="segmented" role="radiogroup" aria-label="Fingerprint mode"><span>Off</span><span>Lenient</span><span class="on">Normal</span><span>Strict</span></div></div>
-                  <span class="hint">Normal allows up to 2 hardware changes. Changing it here takes it over from the manifest.</span>
+                  <span class="hint">Normal allows up to 2 hardware changes.</span>
+                  <span class="hint">Changing it here stops .pkey/product setting it.</span>
                 </div>
               </div>
             </div>
@@ -165,7 +167,7 @@
                     <span class="switch on" role="switch" aria-checked="true" aria-label="recording"></span>
                   </div>
                   <div class="setting-row">
-                    <div><div class="setting-title"><code>stems</code></div><div class="setting-desc">Stem separation, also sold as an add-on</div></div>
+                    <div><div class="setting-title"><code>stems</code></div><div class="setting-desc">Stem separation</div><div class="setting-desc">Also sold as an add-on</div></div>
                     <span class="switch" role="switch" aria-checked="false" aria-label="stems"></span>
                   </div>
                   <div class="setting-row">
@@ -177,7 +179,7 @@
                     <span class="switch" role="switch" aria-checked="false" aria-label="polarisVpn"></span>
                   </div>
                   <div class="setting-row" data-service="sync">
-                    <div><div class="setting-title"><i class="svc sm"></i>Cloud Sync storage</div><div class="setting-desc">Per account, for synced settings and crates</div></div>
+                    <div><div class="setting-title"><i class="svc sm"></i>Cloud Sync storage</div><div class="setting-desc">Per account</div></div>
                     <div class="input short sm"><span class="grow tnum">50</span><span class="affix">MB</span></div>
                   </div>
                 </div>
@@ -187,7 +189,7 @@
 
             <!-- Profile (Managed config on): at most one; config and secrets only. -->
             <div class="form-section">
-              <div class="form-section-label"><h3>Profile</h3><p>Managed config over the Default profile.</p></div>
+              <div class="form-section-label"><h3>Profile</h3></div>
               <div class="form">
                 <div class="field">
                   <div class="select" data-service="config"><i class="svc sm"></i><span class="grow">Classroom</span><i class="ic ic-chevrons-up-down"></i></div>
@@ -199,7 +201,7 @@
 
           <!-- One record, one save bar (ADMIN.md T4); the built screen pins it to the window while dirty. -->
           <div class="save-bar pinned" role="region" aria-label="Unsaved changes">
-            <p class="save-bar-msg"><i class="ic ic-info"></i><span>1 change. Applies to 54 of 57 licenses; 3 keep their own offline days.</span></p>
+            <p class="save-bar-msg"><i class="ic ic-info"></i><span>1 change. Applies to 54 of 57 licenses.</span></p>
             <button class="btn ghost">Discard</button>
             <button class="btn primary">Save Education</button>
           </div>

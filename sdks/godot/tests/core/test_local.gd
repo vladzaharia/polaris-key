@@ -49,7 +49,7 @@ func run(t: PKeyTestContext) -> void:
 	sdk.state_changed.connect(func(s): states.append(s["status"]))
 	var imported: PKeyResult = await sdk.import_bundle(c["bundleJws"] + "\n")
 	t.check("local: a bundle imports offline", imported.ok and imported.detail["imported"] == ["license", "config"], str(imported))
-	t.check("local: the import is one whole-record write", store.cache_writes == 1 and store.cache["importedBundle"]["bundleId"] == imported.detail["bundle_id"] \
+	t.check("local: the import is one whole-record write", store.cache_writes == 1 and store.cache["bundle"] == c["bundleJws"] and not store.cache.has("importedBundle") \
 			and store.cache.has("trustJws") and store.cache["docs"].size() == 2 and not store.cache.has("etags"), str(store.cache.keys()))
 	t.check("local: the import activates by bundle", sdk.core.activation() == "bundle" and sdk.status()["status"] == "ok", str(sdk.status()))
 	t.check("local: state_changed reports the activation", states == ["ok"], str(states))

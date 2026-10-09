@@ -479,7 +479,8 @@ describe("who may push: the token service and the mint", () => {
       createdBy: "admin:a",
       now: NOW,
     });
-    expect((await ociToken(basic(promoteOnly.token))).status).toBe(403);
+    // Without the publish scope it is no registry credential at all (401, not 403).
+    expect((await ociToken(basic(promoteOnly.token))).status).toBe(401);
   });
 
   it("the mint: publish implies read; licence and Godot URL tokens can only read", async () => {

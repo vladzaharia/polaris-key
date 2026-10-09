@@ -81,16 +81,20 @@ async function browser(
   method: "GET" | "POST",
   path: string,
   form?: Record<string, string>,
+  cookie?: string,
 ): Promise<Response> {
   return dispatchWith(
     new Request(`${BASE_URL}${path}`, {
       method,
-      headers: form
-        ? {
-            "content-type": "application/x-www-form-urlencoded",
-            "sec-fetch-site": "same-origin",
-          }
-        : {},
+      headers: {
+        ...(form
+          ? {
+              "content-type": "application/x-www-form-urlencoded",
+              "sec-fetch-site": "same-origin",
+            }
+          : {}),
+        ...(cookie ? { cookie } : {}),
+      },
       ...(form ? { body: new URLSearchParams(form).toString() } : {}),
     }) as unknown as Request,
     w.env,
@@ -130,6 +134,8 @@ async function playerSignsIn(
   expect(authorize.origin).toBe(IDP_ISSUER);
   const state = authorize.searchParams.get("state")!;
   const nonce = authorize.searchParams.get("nonce")!;
+  // The confirming browser holds the flow's binder; the callback must come back with it.
+  const binder = (confirmed.headers.get("set-cookie") ?? "").split(";")[0]!;
 
   const idToken = await signIdToken(PLAYER, nonce, now);
   const callback = await answerTokenExchange(idToken, () =>
@@ -138,6 +144,8 @@ async function playerSignsIn(
       now,
       "GET",
       `/${PRODUCT}/identity/auth/callback?code=idp-code&state=${state}`,
+      undefined,
+      binder,
     ),
   );
   expect(callback.status).toBe(200);

@@ -232,6 +232,10 @@ export interface FingerprintRow {
   last_seen: number;
   last_drift_at: number | null;
   last_drift_count: number | null;
+  /** The first usable fingerprint bound to this device; never rewritten by drift. */
+  baseline_components_json?: string | null;
+  baseline_anchor_hash?: string | null;
+  baseline_at?: number | null;
 }
 
 // Current software snapshot per device (migrations/0010_fingerprint.sql).
@@ -473,28 +477,6 @@ export async function insertProductKey(
     row.created_at,
     row.rotated_at,
   );
-}
-
-export function stmtRetireProductKeys(
-  product: string,
-  at: number,
-): DbStatement {
-  return {
-    sql: "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND status = 'active'",
-    params: [at, product],
-  };
-}
-
-export function stmtSetProductKeyStatus(
-  product: string,
-  kid: string,
-  status: "active" | "staged" | "retired" | "revoked",
-  at: number,
-): DbStatement {
-  return {
-    sql: "UPDATE product_keys SET status = ?, rotated_at = ? WHERE product = ? AND kid = ?",
-    params: [status, at, product, kid],
-  };
 }
 
 export async function getProductSecret(
@@ -1413,7 +1395,9 @@ export async function releaseDormantSeats(
   now: number,
   licenseId?: string,
 ): Promise<number> {
-  const base = `UPDATE devices SET seat_no = NULL
+  // The credential goes with the seat. A released row keeps `status = 'authorized'`,
+  // so its old token would otherwise keep validating with no seat while another device holds it.
+  const base = `UPDATE devices SET seat_no = NULL, token_hash = NULL
       WHERE product = ? AND status = 'authorized'
         AND seat_no IS NOT NULL AND last_seen <= ?`;
   return licenseId === undefined
@@ -1899,13 +1883,19 @@ export async function upsertFingerprint(
 ): Promise<void> {
   await db.run(
     `INSERT INTO device_fingerprints (product, device_id, hwid, components_json, anchor_hash,
-       status, first_seen, last_seen, last_drift_at, last_drift_count)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       status, first_seen, last_seen, last_drift_at, last_drift_count,
+       baseline_components_json, baseline_anchor_hash, baseline_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product, device_id) DO UPDATE SET
        hwid = excluded.hwid, components_json = excluded.components_json,
        anchor_hash = excluded.anchor_hash, status = excluded.status,
        last_seen = excluded.last_seen, last_drift_at = excluded.last_drift_at,
-       last_drift_count = excluded.last_drift_count`,
+       last_drift_count = excluded.last_drift_count,
+       baseline_components_json = COALESCE(device_fingerprints.baseline_components_json,
+         excluded.baseline_components_json),
+       baseline_anchor_hash = COALESCE(device_fingerprints.baseline_anchor_hash,
+         excluded.baseline_anchor_hash),
+       baseline_at = COALESCE(device_fingerprints.baseline_at, excluded.baseline_at)`,
     row.product,
     row.device_id,
     row.hwid,
@@ -1916,6 +1906,13 @@ export async function upsertFingerprint(
     row.last_seen,
     row.last_drift_at,
     row.last_drift_count,
+    // A verified row seeds its baseline from what it stores; the COALESCE above keeps any
+    // existing one, so drift can never move it.
+    row.baseline_components_json ??
+      (row.status === "verified" ? row.components_json : null),
+    row.baseline_anchor_hash ??
+      (row.status === "verified" ? row.anchor_hash : null),
+    row.baseline_at ?? (row.status === "verified" ? row.last_seen : null),
   );
 }
 
@@ -2130,7 +2127,12 @@ export async function listAudit(
     limit?: number;
   } & AuditFilters = {},
 ): Promise<AuditRow[]> {
-  const limit = Math.min(opts.limit ?? 50, 200);
+  // An integer in 1..200; -1 (SQLite: no limit) and fractions never reach the query.
+  const rawLimit = Math.floor(opts.limit ?? 50);
+  const limit = Math.min(
+    Number.isFinite(rawLimit) ? Math.max(rawLimit, 1) : 50,
+    200,
+  );
   const where: string[] = ["product = ?"];
   const params: DbParam[] = [product];
   if (opts.beforeAt !== undefined && opts.beforeId !== undefined) {

@@ -78,7 +78,6 @@ import {
 import { portalEnabled, portalOriginOf } from "../../../core/manageUrl.js";
 import {
   associateLicenseHolder,
-  describeHolder,
   HOLDER_FILTERS,
   isHolderFilter,
   licenseHolder,
@@ -154,6 +153,7 @@ function licenseWriteChecks(body: Record<string, unknown>): Response | null {
     .semver("maxVersion", body.maxVersion)
     .offlineDays("maxOfflineDays", body.maxOfflineDays)
     .wireInteger("deviceLimit", body.deviceLimit)
+    .expiresAt("expiresAt", body.expiresAt)
     .response();
 }
 
@@ -403,7 +403,6 @@ export async function handleLicenses(
       if (email !== null)
         await associateLicenseHolder(holderContext(ctx), slug, licenseId);
       const row = await getLicense(db, slug, licenseId);
-      const holder = licenseHolder(row ?? { account_id: null, email });
       await audit(
         db,
         slug,
@@ -411,13 +410,20 @@ export async function handleLicenses(
         now,
         "license.create",
         { kind: "license", id: licenseId },
-        `Created license for ${email ?? (typeof body.name === "string" && body.name ? body.name : licenseId)} (holder: ${describeHolder(holder)})`,
+        // The id, never the buyer's email or name (an audit row outlives erasure by up
+        // to 180 days), nor whether an account took the licence.
+        `Created license ${licenseId} (${email !== null ? "assigned" : "floating"})`,
       );
       return adminJson(
         {
           licenseId,
           key,
-          license: row ? await summarize(ctx, row) : null,
+          // The answer is built as if no account had taken the licence, so a create
+          // is not an oracle for "does this address have an account" (no `inAccount`, no
+          // `ownerSubject`, whatever the association found).
+          license: row
+            ? await summarize(ctx, { ...row, account_id: null })
+            : null,
         },
         201,
       );
@@ -629,7 +635,8 @@ export async function handleLicenses(
           now,
           "license.holder.assign",
           { kind: "license", id },
-          `Assigned ${id} to ${nextEmail}`,
+          // The id, never the address.
+          `Assigned ${id} to a new holder`,
         );
       }
       // S-24 D3: a licence that has an email and no account joins the account that verified the

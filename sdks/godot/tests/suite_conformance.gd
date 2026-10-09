@@ -76,12 +76,12 @@ const OUTLET_MATRIX := "res://tests/corpus/v2/outlet-matrix.json"
 const HEADERS_VERSION := 2
 const CORPUS_VERSION := 2
 const FLOORS := {
-	"jwsCases": 36,
+	"jwsCases": 85,
 	"licenseDocCases": 16,
 	"configDocCases": 18,
-	"trustCases": 11,
+	"trustCases": 30,
 	"clockFloorCases": 7,
-	"bundleCases": 9,
+	"bundleCases": 23,
 	"pointerSets": 539,
 	"feedCases": 80,
 	"releaseRecordCases": 49,
@@ -875,8 +875,8 @@ func _doc_cases(t: PKeyTestContext, cases: Array, name: String, typ: String) -> 
 			"device_id": c["deviceId"],
 			"now": c["now"],
 		}
-		if c.has("lastAcceptedIssuedAt"):
-			opts["last_accepted_issued_at"] = c["lastAcceptedIssuedAt"]
+		# The floor is a required option (null: no floor).
+		opts["last_accepted_issued_at"] = c.get("lastAcceptedIssuedAt")
 		if c.has("checkFreshness"):
 			opts["check_freshness"] = c["checkFreshness"]
 		var doc = await PKeyVerify.verify_doc(c["jws"], typ, opts)
@@ -899,16 +899,27 @@ func _trust_cases(t: PKeyTestContext, cases: Array) -> void:
 		if not t.check("trustCases %d well-formed" % i, ok_shape):
 			continue
 		var id: String = c["id"]
-		var opts := {"pinned": c["pinned"], "expected_aud": "djdl", "now": c["now"]}
+		# V4 §4.1: the evidence first (ascending manifest issuedAt), then the manifest against the
+		# pins minus those tombstones.
+		var held := await PKeyTrust.load_pin_revocations(c.get("pinRevocations"), {"pinned": c["pinned"], "expected_aud": "djdl"})
+		var opts := {"pinned": c["pinned"], "tombstones": held["tombstones"], "expected_aud": "djdl", "now": c["now"]}
 		if c.has("checkFreshness"):
 			opts["check_freshness"] = c["checkFreshness"]
 		var r := await PKeyTrust.verify_manifest(c["manifestJws"], opts)
 		evaluated += 1
 		var accepted: bool = r["doc"] != null
 		t.check("%s accepted" % id, accepted == c["expect"]["accepted"], "expect=%s got=%s" % [c["expect"]["accepted"], accepted])
-		# Accepted: the discovered set REPLACES what was held; rejected: it is untouched.
+		var tombstones: Array = held["tombstones"].duplicate()
+		for kid in r["revoked_pins"]:
+			if not tombstones.has(kid):
+				tombstones.append(kid)
+		tombstones = PKeyTrust.sort_kids(tombstones)
+		var want_revoked: Array = c["expect"].get("revokedPins", [])
+		t.check("%s revokedPins" % id, tombstones == want_revoked, "got %s" % JSON.stringify(tombstones))
+		# Accepted: the discovered set REPLACES what was held; rejected: it is untouched. Either way
+		# the pins are the USABLE ones: a tombstoned pin is in no set.
 		var discovered: Dictionary = r["discovered"] if accepted else c["before"]
-		var merged := PKeyTrust.merge(c["pinned"], discovered)
+		var merged := PKeyTrust.merge(PKeyTrust.usable_pins(c["pinned"], tombstones), discovered)
 		t.check("%s trust" % id, merged == c["expect"]["trust"], "got %s" % JSON.stringify(merged))
 		if c["expect"].has("issuedAt"):
 			var got = r["doc"]["issuedAt"] if accepted else null
@@ -945,6 +956,7 @@ func _clock_floor_cases(t: PKeyTestContext, cases: Array) -> void:
 		var reload := {
 			"trust": trust, "expected_aud": c["expectedAud"], "device_id": c["deviceId"], "now": now,
 			"check_freshness": false,
+			"last_accepted_issued_at": null,
 		}
 		var license = null
 		if c.has("licenseJws"):
@@ -989,8 +1001,11 @@ func _bundle_cases(t: PKeyTestContext, cases: Array) -> void:
 		var id: String = c["id"]
 		# The cap is a property of the typ: the fixture must agree with the shipped constant.
 		t.check("%s cap" % id, int(c["maxPayloadBytes"]) == PKeyClaims.MAX_BUNDLE_BYTES)
+		var held := await PKeyTrust.load_pin_revocations(c.get("pinRevocations"), {"pinned": c["pinned"], "expected_aud": c["expectedAud"]})
+		var floors: Dictionary = c.get("floors", {"license": null, "config": null})
 		var r := await PKeyBundle.inspect(c["bundleJws"], {
-			"pinned": c["pinned"], "product": c["expectedAud"], "device_id": c["deviceId"], "now": c["now"],
+			"pinned": c["pinned"], "tombstones": held["tombstones"], "product": c["expectedAud"], "device_id": c["deviceId"],
+			"now": c["now"], "floors": floors, "profile": c.get("profile", "import"),
 		})
 		evaluated += 1
 		var got := {}

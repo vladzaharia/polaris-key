@@ -5,7 +5,7 @@
 | Phase       | X: Optional SDKs                                                                                                                                                                                            |
 | Size        | 10–14 engineer-weeks                                                                                                                                                                                        |
 | Depends on  | [P1b-01](P1b-01-parity-registry.md), [P4-11](P4-11-chunk-sync-sdks.md), [P1b-03](P1b-03-http-transcripts.md), [P1b-04](P1b-04-headers-config-corpora.md)                                                    |
-| Unblocks    | none                                                                                                                                                                                                        |
+| Unblocks    | [UK-60](UK-60-windows-native-kit.md)                                                                                                                                                                        |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                                           |
 | Plan mode   | no (a new SDK verifies the existing contract; it changes no wire format)                                                                                                                                    |
 | Gates       | `pnpm parity:check` with a new manifest; every corpus file and transcript; new emitters in `gen-sdk-constants` and `gen-mirrors` with `--check`; a new CI job; every place that enumerates the language set |

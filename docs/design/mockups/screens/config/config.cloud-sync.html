@@ -46,15 +46,15 @@
   [data-screen="config.cloud-sync"] .icon-line {
     display: grid;
     grid-template-columns: 20px minmax(0, 1fr);
-    gap: 12px;
     align-items: start;
-  }
-  [data-screen="config.cloud-sync"] .icon-line > .ic {
-    margin-top: 2px;
   }
   @container screen (max-width: 639px) {
     [data-screen="config.cloud-sync"] .page > .mk-pair.loose {
       display: contents;
+    }
+    /* Out of the pair, the pair's 480px flex basis would set the card's height. */
+    [data-screen="config.cloud-sync"] .page > .mk-pair.loose > .card {
+      flex: none;
     }
     [data-screen="config.cloud-sync"] .page > .page-head {
       order: -3;
@@ -116,10 +116,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group" data-service="sync">
-      <button class="nav-label" aria-expanded="true">Cloud Sync<i class="ic ic-chevron-down sm"></i></button>
-      <a class="nav-item active" href="#"><i class="ic ic-cloud"></i><span class="nav-text">Cloud Sync</span></a>
-    </div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label active" href="#" aria-current="page">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -130,7 +127,8 @@
   <main class="main">
     <div class="page columns">
       <header class="page-head">
-        <nav class="crumbs"><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i>Cloud Sync</nav>
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="sync" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a></nav>
+<div class="page-icon mast" data-service="sync" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Cloud Sync</h1></div>
         <p class="page-sub"><span class="status"><i class="ic ic-circle-check"></i>Verified on iOS, Android and Steam</span><span class="status muted"><i class="ic ic-circle-dashed"></i>itch.io not seen yet</span></p>
         <div class="page-actions">
@@ -146,47 +144,49 @@
       <!-- The quota is one entitlement: a platform default, and each tier may set its own (U-01b). -->
       <section class="card" aria-labelledby="quota-title">
         <div class="card-head">
-          <div class="title"><h2 id="quota-title">Storage per player</h2><p>Per tier. Entitlement <code>pkey.cloudSync.bytes</code></p></div>
+          <div class="title"><h2 id="quota-title">Storage per player</h2><p>Entitlement <code>pkey.cloudSync.bytes</code></p></div>
           <a class="btn link" href="#">Open Tiers<i class="ic ic-arrow-right"></i></a>
         </div>
-        <table class="table fixed stack-phone" aria-label="Storage per player">
-          <colgroup><col style="width: 42%"><col style="width: 20%"><col style="width: 20%"><col style="width: 18%"></colgroup>
-          <thead><tr><th>Who</th><th>Storage</th><th>Near limit</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-globe"></i></span><div class="grow"><div class="mk-cluster"><span class="cell-title">Default</span><span class="pill sm"><i class="ic ic-polaris"></i>Platform</span></div><div class="cell-sub">For tiers that don’t set their own</div></div><span class="show-narrow"><button class="btn ghost sm">Change…</button></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">256&nbsp;MiB</span></td>
-              <td class="hide-narrow"><span class="dash" aria-label="None"></span></td>
-              <td class="end hide-narrow"><button class="btn ghost sm">Change…</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Free</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Change Free">Change</button></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">64&nbsp;MiB</span></td>
-              <td><span class="cell-label">Over 80%</span><span class="status warning"><i class="ic ic-triangle-alert"></i>41 players</span></td>
-              <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Change Free">Change</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Standard</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Set Standard">Set</button></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><div><div>256&nbsp;MiB</div><div class="cell-sub">Uses the default</div></div></td>
-              <td><span class="cell-label">Over 80%</span><span class="muted">3 players</span></td>
-              <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Set Standard">Set</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Deluxe</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Change Deluxe">Change</button></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">1&nbsp;GiB</span></td>
-              <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
-              <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Change Deluxe">Change</button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-user-round"></i></span><div class="grow"><div class="cell-title">Without a license</div><div class="cell-sub">Signed in, no Diceroll license yet</div></div><span class="show-narrow"><a class="btn ghost sm" href="#">Change in Access</a></span></div></td>
-              <td class="amount-cell"><span class="cell-label">Storage</span><div><div>64&nbsp;MiB</div><div class="cell-sub">Same as Free</div></div></td>
-              <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
-              <td class="end hide-narrow"><a class="btn ghost sm" href="#">Change in Access</a></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="Storage per player, scrolls sideways" tabindex="0">
+          <table class="table fixed stack-phone" aria-label="Storage per player">
+            <colgroup><col style="width: 42%"><col style="width: 20%"><col style="width: 20%"><col style="width: 18%"></colgroup>
+            <thead><tr><th>Who</th><th>Storage</th><th>Near limit</th><th class="end"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-globe"></i></span><div class="grow"><div class="mk-cluster"><span class="cell-title">Default</span><span class="pill sm"><i class="ic ic-polaris"></i>Platform</span></div><div class="cell-sub">For tiers that don’t set their own</div></div><span class="show-narrow"><button class="btn ghost sm">Change…</button></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">256&nbsp;MiB</span></td>
+                <td class="hide-narrow"><span role="img" class="dash" aria-label="None"></span></td>
+                <td class="end hide-narrow"><button class="btn ghost sm">Change…</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Free</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Change Free">Change</button></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">64&nbsp;MiB</span></td>
+                <td><span class="cell-label">Over 80%</span><span class="status warning"><i class="ic ic-triangle-alert"></i>41 players</span></td>
+                <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Change Free">Change</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Standard</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Set Standard">Set</button></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><div><div>256&nbsp;MiB</div><div class="cell-sub">Uses the default</div></div></td>
+                <td><span class="cell-label">Over 80%</span><span class="muted">3 players</span></td>
+                <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Set Standard">Set</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-award"></i></span><div class="grow"><div class="cell-title">Deluxe</div></div><span class="show-narrow"><button class="btn ghost sm" aria-label="Change Deluxe">Change</button></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><span class="cell-title">1&nbsp;GiB</span></td>
+                <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
+                <td class="end hide-narrow"><button class="btn ghost sm" aria-label="Change Deluxe">Change</button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm muted"><i class="ic ic-user-round"></i></span><div class="grow"><div class="cell-title">Without a license</div></div><span class="show-narrow"><a class="btn ghost sm" href="#">Change in Access</a></span></div></td>
+                <td class="amount-cell"><span class="cell-label">Storage</span><div><div>64&nbsp;MiB</div><div class="cell-sub">Same as Free</div></div></td>
+                <td><span class="cell-label">Over 80%</span><span class="muted">None</span></td>
+                <td class="end hide-narrow"><a class="btn ghost sm" href="#">Change in Access</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div class="card-foot start">
-          <span class="type-small muted">Changes reach each player on their next sync. Lowering a limit deletes nothing; new saves wait for room. <a class="nlink" href="#">See Usage</a></span>
+          <div class="mk-stack-1 type-small muted"><span>Lowering a limit deletes nothing.</span><span>New saves wait for room. <a class="nlink" href="#">See Usage</a></span></div>
         </div>
       </section>
 
@@ -202,7 +202,11 @@
             <div class="mk-stack-4">
               <div class="mk-cluster"><code>audio.music</code><code>audio.sfx</code><code>audio.voice</code><code>controls.invertY</code><code>controls.haptics</code><code>language</code><code>ui.textSize</code><span class="type-small muted">and 6 more</span></div>
               <div class="icon-line"><i class="ic ic-monitor-smartphone"></i><span><strong class="strong">2 stay on each device:</strong> <code>graphics.quality</code> and <code>graphics.resolution</code></span></div>
-              <div class="icon-line"><i class="ic ic-plus"></i><span><strong class="strong">Keys the game adds itself</strong> sync too, up to 256 keys and 64&nbsp;KiB per player</span></div>
+              <div class="icon-line"><i class="ic ic-plus"></i><span><strong class="strong">Keys the game adds itself</strong> also sync</span></div>
+              <dl class="dl">
+                <dt>Keys per player</dt><dd>Up to 256</dd>
+                <dt>Size per player</dt><dd>Up to 64&nbsp;KiB</dd>
+              </dl>
             </div>
           </div>
           <div>
@@ -210,16 +214,16 @@
             <div class="mk-stack-5">
               <dl class="dl">
                 <dt>Slots</dt><dd>Up to 16 per player</dd>
-                <dt>Each save</dt><dd>Up to 32&nbsp;MiB, with a thumbnail</dd>
+                <dt>Each save</dt><dd>Up to 32&nbsp;MiB</dd>
                 <dt>Keeps</dt><dd>The last 5 versions of each slot<div class="meta">Older versions count toward the player’s storage</div></dd>
                 <dt>Two devices disagree</dt><dd>Ask the player</dd>
-                <dt>Load screen shows</dt><dd>Playtime, progress and chapter</dd>
+                <dt>Load screen shows</dt><dd>A thumbnail, playtime, progress and chapter</dd>
                 <dt>Who can save</dt><dd>Every signed-in player</dd>
               </dl>
               <div class="card compact sunken">
                 <div class="card-row">
                   <span class="slot-thumb" aria-hidden="true"></span>
-                  <div class="grow"><div class="strong">Slot 1 · Harbor</div><div class="meta">1&nbsp;h 30&nbsp;min played · 42% · Steam Deck, Oct 7, 08:51</div></div>
+                  <div class="grow"><div class="strong">Slot 1 · Harbor</div><div class="meta">1&nbsp;h 30&nbsp;min played · 42%</div><div class="meta">Steam Deck, Oct 7, 08:51</div></div>
                 </div>
               </div>
             </div>
@@ -230,24 +234,22 @@
       <div class="mk-pair loose top">
         <section class="card" aria-labelledby="code-title">
           <div class="card-head">
-            <div class="title"><h2 id="code-title">In your game</h2><p>Settings sync with no extra code. Saves take one call.</p></div>
+            <div class="title"><h2 id="code-title">In your game</h2></div>
           </div>
           <div class="card-body tight">
             <div class="code">
               <div class="code-head">
-                <div class="code-tabs"><span class="active">GDScript<small>Godot</small></span><span>Swift<small>iOS</small></span><span>Kotlin<small>Android</small></span></div>
+                <div class="code-tabs" tabindex="0"><span class="active">GDScript<small>Godot</small></span><span>Swift<small>iOS</small></span><span>Kotlin<small>Android</small></span></div>
                 <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
               </div>
-<pre>PolarisKey.config.<span class="t-f">set_value</span>(<span class="t-s">"audio.music"</span>, <span class="t-n">0.6</span>)
+<pre tabindex="0">PolarisKey.config.<span class="t-f">set_value</span>(<span class="t-s">"audio.music"</span>, <span class="t-n">0.6</span>)
 
-<span class="t-c"># Save slot 1, with what the load screen shows.</span>
 <span class="t-k">var</span> saves := PolarisKey.cloud_sync.saves
 <span class="t-k">await</span> saves.<span class="t-f">write</span>(<span class="t-s">"slot-1"</span>, state.<span class="t-f">to_bytes</span>(), {
   <span class="t-s">"playtime"</span>: <span class="t-n">5400</span>, <span class="t-s">"progress"</span>: <span class="t-n">0.42</span>,
   <span class="t-s">"chapter"</span>: <span class="t-s">"Harbor"</span>,
 })
 
-<span class="t-c"># Two devices disagree: let the player pick.</span>
 saves.conflict.<span class="t-f">connect</span>(_on_save_conflict)</pre>
             </div>
           </div>
@@ -255,13 +257,14 @@ saves.conflict.<span class="t-f">connect</span>(_on_save_conflict)</pre>
         <!-- Operator limits: one ceiling per product, one platform switch (ST-16). At wide, the aside. -->
         <section class="card aside span-3 limits rail-sticky" aria-labelledby="limits-title">
           <div class="card-head">
-            <div class="title"><h2 id="limits-title">Limits</h2><p>For you, not for players</p></div>
+            <div class="title"><h2 id="limits-title">Product limits</h2></div>
           </div>
           <div class="setting-row">
             <div class="mk-stack-3">
               <div>
                 <div class="setting-title">Diceroll’s total storage</div>
-                <div class="setting-desc">18.4&nbsp;GiB of 50&nbsp;GiB, the platform default</div>
+                <div class="setting-desc">18.4&nbsp;GiB of 50&nbsp;GiB</div>
+                <div class="setting-desc">Platform default</div>
               </div>
               <div class="progress" style="--v: 37%" role="img" aria-label="37% used"></div>
             </div>
@@ -270,7 +273,8 @@ saves.conflict.<span class="t-f">connect</span>(_on_save_conflict)</pre>
           <div class="setting-row">
             <div>
               <div class="setting-title">Pause all writes<span class="pill sm"><i class="ic ic-polaris"></i>Platform</span></div>
-              <div class="setting-desc">Stops new settings and saves in every product. Devices send them on resume.</div>
+              <div class="setting-desc">Stops new settings and saves in every product.</div>
+              <div class="setting-desc">Devices send them on resume.</div>
             </div>
             <span class="switch" role="switch" aria-checked="false" aria-label="Pause all Cloud Sync writes"></span>
           </div>

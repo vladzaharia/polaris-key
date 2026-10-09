@@ -7,22 +7,30 @@
   "uxRows": [],
   "summary": "Priya's Library with two products as license tiles, each led by its cover art at its whole 16:9 frame, edge to edge (owner, 2026-10-08: the card image runs all the way), with the icon over its lower edge: the tier and the device count as pills, LX-15's duration line, the source line (Automatic grant, or Bought on the App Store) and the add-ons the license holds. The grid's last tile is the Library's own entry for a key, 'Have a license key?' with Activate license (owner: better styling for the have-a-license entry); under the grid, the two other ways a license joins the account. The phone render shows a phone's actions (Email me the download for DJDL). Same DJDL license as licenses.detail.",
   "compare": [
-    "Header: lockup, Library with its count (2) and the 2 px violet underline, Discover with no count when nothing can be added, the outlined Activate license with the key glyph, the account pill. Phone: lockup and avatar only; bottom bar Library \u00b7 Activate \u00b7 Discover, with Activate as the outlined violet pill (kit .act), never a plain tab.",
+    "Header: lockup, Library with its count (2) and the 2 px violet underline, Discover with no count when nothing can be added, the outlined Activate license with the key glyph, the account pill. Phone: lockup and avatar only; bottom bar Library · Activate · Discover, with Activate as the outlined violet pill (kit .act), never a plain tab.",
     "Two to seven products use the large-tile grid (kit .portal-grid) with no toolbar, inside the portal's 1248 px content width: tiles of at least 380 px, so three columns from 1280 px (desktop and wide: DJDL, Diceroll and the key tile), two at tablet, one on phone. At two columns the key tile has a row to itself and lays out on one line.",
-    "Each tile: the cover art at its whole 16:9 frame from the tile's top edge, edge to edge, at most 280 px tall (225 px at desktop, 276 at wide, 268 at tablet, 201 on phone), never a cropped band; the 56 px icon 20 px over the art's lower edge with the name (20/24) beside it clear of the art; then one row of pills: the tier as a neutral pill with the key glyph ('Education', 'Standard') and the device count as a pill ('3/4 devices'), platform glyphs at the end of the first pill line (kit .pill-row: on a phone tile at its limit the device pill wraps under the tier and the glyphs stay beside it, never on a line of their own); then the fact lines (kit .icon-lines), then the actions. A state pill (Expired, Suspended, Expires in \u2026) sits on the art's lower right.",
+    "Each tile: the cover art at its whole 16:9 frame from the tile's top edge, edge to edge, at most 280 px tall (225 px at desktop, 276 at wide, 268 at tablet, 201 on phone), never a cropped band; the 56 px icon 20 px over the art's lower edge with the name (20/24) beside it clear of the art; then one row of pills: the tier as a neutral pill with the key glyph ('Education', 'Standard') and the device count as a pill ('3/4 devices'), platform glyphs at the end of the first pill line (kit .pill-row: on a phone tile at its limit the device pill wraps under the tier and the glyphs stay beside it, never on a line of their own); then the fact lines (kit .icon-lines), then the actions. A state pill (Expired, Suspended, Expires in …) sits on the art's lower right.",
     "The whole tile, art included, opens the product page: the name's link is stretched over the tile and the buttons sit above it; the link's accessible name is the product name alone; hover lifts the tile 2 px and keyboard focus rings the whole tile.",
     "Platform glyphs show platforms only, never stores: DJDL macOS and Windows; Diceroll iOS (the phone glyph, labelled iOS), Android, Windows and Linux. Steam, itch.io and the app stores appear as sources and store links, not glyphs. The glyph group is one image (role=img) named by its platforms ('macOS and Windows').",
-    "At the device limit the device pill turns warning with the alert glyph ('3/3 devices') and the quick action becomes Free a device. The art carries no second device-limit pill; it keeps status pills for other issues (Expired, Suspended, Expires in \u2026).",
-    "Duration line in LX-15's words: 'Updates until Sep 14, 2027 \u00b7 then keeps the last version' and 'Lifetime' here; elsewhere 'Renews <date> \u00b7 <source>', 'Trial ends <date>', 'Updates ended at <version> \u00b7 keeps working', 'Ended <date>'.",
+    "At the device limit the device pill turns warning with the alert glyph ('3/3 devices') and the quick action becomes Free a device. The art carries no second device-limit pill; it keeps status pills for other issues (Expired, Suspended, Expires in …).",
+    "Duration in LX-15's words, one fact per line: 'Updates until Sep 14, 2027', then 'Then keeps the last version' (package-check glyph), and 'Lifetime' here; elsewhere the same split ('Renews <date>' then the source, 'Trial ends <date>', 'Updates ended at <version>' then 'Keeps working', 'Ended <date>').",
     "Source line: 'Automatic grant' (user-check glyph) for an access-policy license on a Sign-in product (it has no key: LX-38, LX-39; the license page says how a new device signs in), 'Bought on the App Store' (store glyph) for a store license. No 'In your account': every tile in the Library is in the account. 'Automatic grant' in sentence case from the copy catalog (P0-36); never 'Automatic Grant', 'From signing in' or a license type.",
     "Add-ons line names what the license holds by each add-on's own name ('Add-ons: Polaris VPN, Stem separation, Extra devices (2)', 'Add-on: Dice skins'), a name never broken across lines, and is absent when it holds none.",
     "With several licenses for one product the tile describes the one rankLicenses() puts first (LX-10); the product page's switcher shows the rest.",
     "Quick actions are outlined with the overflow menu; solid violet stays reserved for the hero, the attention shelf and the product header.",
-    "Phone renders stand for a phone user agent; quick actions follow PORTAL.md \u00a75.4's phone column, decided by the device, not the width: DJDL (no phone build) 'Email me the download' with the mail glyph, filling the foot (the platform glyphs already say macOS and Windows, so no meta line repeats it); Diceroll at its limit keeps 'Free a device' (otherwise 'Get it on the App Store' or 'Google Play'). A computer gets 'Download for macOS'.",
-    "The key tile (kit .ptile.end-tile.entry-tile), last in the grid and as tall as the tiles beside it, dashed and unfilled, so it reads as a slot and never as a product: a quiet well where the art would be, the key in a 64 px accent tile at its centre; 'Have a license key?' (20/24) and 'Activate it to add its product here.'; Activate license (outlined, key glyph) at the foot, level with the tiles' Download and Free a device. With a row to itself (tablet) it is one line: the 48 px key, the text, the button on the right. Phone: the 40 px key beside the text, the button full width under them. It is the Library's own entry; the header's Activate license and the phone bar's Activate stay the global ones.",
-    "Under the grid, 'Missing a license?' (16/24) and the two other ways in as a kit .media-list, side by side from tablet up and stacked on phone, each a 28 px muted icon tile, a bold question and one line: 'Sent to another email?' / 'Add that email under Sign-in methods.' (the link underlined); 'Bought in a store?' / 'Steam: add Steam under Sign-in methods. App Store, Google Play: sign in to the game once.' It never says that a license is waiting for an unconfirmed email.",
+    "Phone renders stand for a phone user agent; quick actions follow PORTAL.md §5.4's phone column, decided by the device, not the width: DJDL (no phone build) 'Email me the download' with the mail glyph, filling the foot (the platform glyphs already say macOS and Windows, so no meta line repeats it); Diceroll at its limit keeps 'Free a device' (otherwise 'Get it on the App Store' or 'Google Play'). A computer gets 'Download for macOS'.",
+    "A tile's foot holds one quick action and the ⋯ at every width: 'Download for macOS' on a computer, 'Email me the download' on a phone (kit .ua-desk / .ua-phone), never both, so the label never spills (the owner, 2026-10-09).",
+    "The key tile (kit .ptile.end-tile.entry-tile), last in the grid and as tall as the tiles beside it, dashed and unfilled, so it reads as a slot and never as a product: a quiet well where the art would be, the key in a 64 px accent tile at its centre; 'Have a license key?' (20/24); Activate license (outlined, key glyph) at the foot, level with the tiles' Download and Free a device. With a row to itself (tablet) it is one line: the 48 px key, the text, the button on the right. Phone: the 40 px key beside the text, the button full width under them. It is the Library's own entry; the header's Activate license and the phone bar's Activate stay the global ones.",
+    "Under the grid, 'Missing a license?' (16/24) and the other ways in as a kit .media-list, side by side from tablet up and stacked on phone, each a 28 px muted icon tile, a bold question and one line: 'Sent to another email?' / 'Add that email under Sign-in methods.' (the link underlined); 'Bought on Steam?' / 'Add Steam under Sign-in methods.'; 'Bought on the App Store or Google Play?' / 'Sign in to the game once.' It never says that a license is waiting for an unconfirmed email.",
     "The title's line is live state shown nowhere else: the number of emails the library covers ('2 emails'). No product count (the nav's Library count has it) and no closing line under the grid repeating the emails.",
-    "Both themes: the tier pill text is strong, the warning pill legible on light and dark; the account name hides from 640 to 899 px and on phone (the header never scrolls sideways); the footer's link is underlined; the footer sits above the bottom bar when scrolled to the end. Checks: no sideways scroll from 320 to 2560 px; axe 0 violations at 390, 1024, 1440 and 1920 in both themes."
+    "Both themes: the tier pill text is strong, the warning pill legible on light and dark; the account name hides from 640 to 899 px and on phone (the header never scrolls sideways); the footer's link is underlined; the footer sits above the bottom bar when scrolled to the end. Checks: no sideways scroll from 320 to 2560 px; axe 0 violations at 390, 1024, 1440 and 1920 in both themes.",
+    "Portal v2 (B2, B12): the docked header, the one filled primary is ink, tile actions outlined, the page h1 at the display step (48/52, 32/36 on a phone) with no full stop or eyebrow, no glow or wash, no chartreuse; text never painted over art; weights 400/500/600.",
+    "Subtitle 'Signed in as priya@example.edu' (portal-14; the product count is the nav's); the key tile's art is flat (no radial glow); the h1 is the display step with no full stop and no eyebrow (B12).",
+    "Preserved (guide Ed. 04): The populated account (signed-in email, email count) is shown",
+    "Preserved (guide Ed. 04): Duration line (updates until, then keeps the last version) is shown",
+    "Preserved (guide Ed. 04): Holder (in your account, automatic grant, bought on a store) is shown",
+    "Preserved (guide Ed. 04): Add-ons are shown",
+    "Preserved (guide Ed. 04): Real platform and download paths are kept"
   ],
   "status": "mockup",
   "designReview": {
@@ -33,8 +41,8 @@
     "findings": [
       {
         "severity": "major",
-        "issue": "Phone render's DJDL action was 'Download for macOS'; PORTAL.md \u00a75.4 gives a phone 'Email me the download'.",
-        "resolution": "Phone render now draws a phone's actions: DJDL 'Email me the download' (mail glyph) with the meta line 'macOS and Windows only'; Diceroll at its limit keeps 'Free a device'. Compare line added: phone renders stand for a phone user agent and follow \u00a75.4's phone column."
+        "issue": "Phone render's DJDL action was 'Download for macOS'; PORTAL.md §5.4 gives a phone 'Email me the download'.",
+        "resolution": "Phone render now draws a phone's actions: DJDL 'Email me the download' (mail glyph) with the meta line 'macOS and Windows only'; Diceroll at its limit keeps 'Free a device'. Compare line added: phone renders stand for a phone user agent and follow §5.4's phone column."
       },
       {
         "severity": "minor",
@@ -48,8 +56,8 @@
       },
       {
         "severity": "minor",
-        "issue": "Holder line ended in the fragment '\u00b7 new devices sign in'; '+2 devices' read as 'and 2 more'.",
-        "resolution": "Tile line is 'In your account \u00b7 Automatic grant' (the license page's holder box says how a new device signs in). The seat pack is named 'Extra devices (2)', its name on licenses.detail, and never breaks across lines; the suggested '2 extra devices' would differ from the console's name for the same add-on."
+        "issue": "Holder line ended in the fragment '· new devices sign in'; '+2 devices' read as 'and 2 more'.",
+        "resolution": "Tile line is 'In your account · Automatic grant' (the license page's holder box says how a new device signs in). The seat pack is named 'Extra devices (2)', its name on licenses.detail, and never breaks across lines; the suggested '2 extra devices' would differ from the console's name for the same add-on."
       },
       {
         "severity": "minor",
@@ -59,12 +67,12 @@
       {
         "severity": "minor",
         "issue": "At the limit, 'full' was carried only by colour and glyph.",
-        "resolution": "Pill reads '3 of 3 devices \u00b7 full' (warning, kept over danger). PORTAL.md \u00a75.3's Device limit row needs the same words: noted for the lead, since PORTAL.md is outside the mockups directory."
+        "resolution": "Pill reads '3 of 3 devices · full' (warning, kept over danger). PORTAL.md §5.3's Device limit row needs the same words: noted for the lead, since PORTAL.md is outside the mockups directory."
       },
       {
         "severity": "minor",
         "issue": "Full-page phone shots painted the fixed bottom bar (and Discover's toast) at the 844 px line, over the content.",
-        "resolution": "tools/mockups/shoot.mjs now draws .portal-tabbar and .toasts at the end of the page in phone shots, and the kit pads the footer clear of the bar (PORTAL.md \u00a73.2: the footer sits above the bottom bar). Affects every portal-surface screen; noted in the mockups README, the kit README and shoot.mjs."
+        "resolution": "tools/mockups/shoot.mjs now draws .portal-tabbar and .toasts at the end of the page in phone shots, and the kit pads the footer clear of the bar (PORTAL.md §3.2: the footer sits above the bottom bar). Affects every portal-surface screen; noted in the mockups README, the kit README and shoot.mjs."
       },
       {
         "severity": "major",

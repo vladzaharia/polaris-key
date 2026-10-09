@@ -520,6 +520,18 @@ export async function recordPurchase(
       reason: existing ? "bound_elsewhere" : "binding_mismatch",
     };
 
+  // A store reporting `pending` after the purchase was active never regresses it (the
+  // grant is untouched, so the row must not claim otherwise).
+  if (existing?.state === "active" && p.state === "pending")
+    return {
+      ok: true,
+      state: "active",
+      flag: mapping.flag,
+      deliverable: mapping.deliverable_id,
+      licenseId,
+      changed: false,
+      purchaseKeyHash: hash,
+    };
   const detail = {
     ...(existing ? parseDetail(existing.detail_json) : {}),
     ...p.detail,

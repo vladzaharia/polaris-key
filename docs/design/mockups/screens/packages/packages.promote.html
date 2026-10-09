@@ -1,4 +1,4 @@
-<div class="console" data-service="core">
+<div class="console" data-service="release">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -33,7 +33,7 @@
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group closed" data-service="commerce"><button class="nav-label" aria-expanded="false">Commerce<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
@@ -41,9 +41,10 @@
     </div>
   </nav>
 
-  <main class="main" data-service="release">
+  <main class="main">
     <div class="page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
         <div class="page-heading"><h1>Release tracks</h1><span class="count">4</span></div>
         <div class="page-actions">
           <button class="btn outline"><i class="ic ic-file-code-2"></i>Add a track</button>
@@ -75,23 +76,23 @@
             <div class="list-row"><span class="icon-tile"><i class="ic ic-arrow-up"></i></span><span class="list-row-text"><strong>Ana Lima</strong> promoted <span class="mono">1.7.3</span> from beta</span><span class="list-row-meta">Sep 30, 16:40</span></div>
           </div>
           <div class="card-foot start">
-            <span class="icon-line type-small muted"><i class="ic ic-users sm"></i><span>Every license, 18,240 · 2,184 devices checked in this week</span></span>
+            <div class="mk-stack-1"><span class="icon-line type-small muted"><i class="ic ic-users sm"></i><span>All 18,240 licenses</span></span><span class="icon-line type-small muted"><i class="ic ic-monitor-smartphone sm"></i><span>2,184 devices checked in this week</span></span></div>
           </div>
         </section>
 
         <section class="card" aria-labelledby="t-beta">
           <div class="card-head">
-            <div class="title mk-cluster baseline"><h2 id="t-beta"><span class="tag">beta</span></h2><span class="meta">Built in · beta licenses also get stable</span></div>
+            <div class="title mk-cluster baseline"><h2 id="t-beta"><span class="tag">beta</span></h2><span class="meta">Built in</span></div>
             <button class="btn ghost icon sm" aria-label="More for beta"><i class="ic ic-ellipsis"></i></button>
           </div>
           <div class="card-body">
             <div class="mk-split">
-              <div class="mk-stack-1"><span class="type-stat mono">1.8.1</span><span class="type-small muted">Published Oct 7, 09:40 · fixes the Android 15 crash</span></div>
+              <div class="mk-stack-1"><span class="type-stat mono">1.8.1</span><span class="type-small muted">Published Oct 7, 09:40</span><span class="type-small muted">Fixes the Android 15 crash</span></div>
               <div><button class="btn primary sm"><i class="ic ic-arrow-up"></i>Promote 1.8.1 to stable</button></div>
             </div>
           </div>
           <div class="card-rows grow">
-            <div class="list-row"><span class="icon-tile warning"><i class="ic ic-arrow-down"></i></span><span class="list-row-text"><span class="mono">1.8.0</span> left stable and stays here</span><span class="list-row-meta">Oct 7, 11:30</span></div>
+            <div class="list-row"><span class="icon-tile warning"><i class="ic ic-arrow-down"></i></span><span class="list-row-text"><span class="mono">1.8.0</span> came back from stable</span><span class="list-row-meta">Oct 7, 11:30</span></div>
             <div class="list-row"><span class="icon-tile muted"><i class="ic ic-circle-dot"></i></span><span class="list-row-text"><strong>CI</strong> published <span class="mono">1.8.0</span>, tag v1.8.0</span><span class="list-row-meta">Oct 2, 18:15</span></div>
           </div>
           <div class="card-foot between">
@@ -102,7 +103,7 @@
 
         <section class="card" aria-labelledby="t-dev">
           <div class="card-head">
-            <div class="title mk-cluster baseline"><h2 id="t-dev"><span class="tag">dev</span></h2><span class="meta">Built in · dev licenses also get beta</span></div>
+            <div class="title mk-cluster baseline"><h2 id="t-dev"><span class="tag">dev</span></h2><span class="meta">Built in</span></div>
             <button class="btn ghost icon sm" aria-label="More for dev"><i class="ic ic-ellipsis"></i></button>
           </div>
           <div class="card-body">
@@ -110,7 +111,7 @@
           </div>
           <div class="card-rows grow">
             <div class="list-row"><span class="icon-tile muted"><i class="ic ic-circle-dot"></i></span><span class="list-row-text"><strong>CI</strong> published <span class="mono">1.9.0-dev.13</span>, main @ e02b9f4</span><span class="list-row-meta">Oct 6, 17:30</span></div>
-            <div class="list-row"><span class="icon-tile muted"><i class="ic ic-trash-2"></i></span><span class="list-row-text">Cleaned up 11 dev builds (<span class="mono">1.7.3-dev.1</span> to <span class="mono">.11</span>) when 1.7.3 reached stable</span><span class="list-row-meta">Sep 30, 16:40</span></div>
+            <div class="list-row"><span class="icon-tile muted"><i class="ic ic-trash-2"></i></span><span class="list-row-text">Cleaned up 11 dev builds (<span class="mono">1.7.3-dev.1</span> to <span class="mono">.11</span>)</span><span class="list-row-meta">Sep 30, 16:40</span></div>
           </div>
           <div class="card-foot start">
             <span class="icon-line type-small muted"><i class="ic ic-users sm"></i><span>4 licenses with dev added</span></span>
@@ -138,7 +139,7 @@
       <!-- P2-08: default store track maps; a track with no lane sends nothing (C-41). -->
       <section class="section" aria-labelledby="map-title">
         <div class="section-head"><h2 id="map-title">Where each track goes</h2></div>
-        <div class="table-card">
+        <div class="table-card" role="region" aria-label="Release tracks table, scrolls sideways" tabindex="0">
           <table class="table fixed scroll" style="--table-min: 960px" aria-label="Where each track goes">
             <colgroup><col style="width: 11%"><col style="width: 17%"><col style="width: 21%"><col style="width: 18%"><col style="width: 14%"><col style="width: 19%"></colgroup>
             <thead>
@@ -155,7 +156,7 @@
               <tr>
                 <td><span class="tag">stable</span></td>
                 <td>Download page, update checks</td>
-                <td><div>App Store review</div><div class="cell-sub">You submit: one typed click</div></td>
+                <td><div>App Store review</div><div class="cell-sub">You submit</div></td>
                 <td><div>Production</div><div class="cell-sub">Staged rollout</div></td>
                 <td class="muted"><span class="type-mono">default</span></td>
                 <td><div class="type-mono">windows-x64</div><div class="type-mono">linux-x86_64</div></td>
@@ -191,12 +192,12 @@
             <div class="attn-row">
               <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Not connected</span>
               <span class="attn-subject"><i class="ic ic-steam"></i>Steam</span>
-              <span class="attn-text">No Steamworks publisher key yet, so no release reaches Steam’s branches.</span>
+              <span class="attn-text">No release reaches Steam’s branches.</span>
               <a class="link" href="#">Connect Steam<i class="ic ic-arrow-right"></i></a>
             </div>
           </div>
           <div class="table-foot">
-            <span class="icon-line"><i class="ic ic-file-code-2 sm"></i><span>Change a lane in <span class="mono">.pkey/distribution</span> or on the channel’s Releases tab. A custom track reaches a store only once you map it.</span></span>
+            <span class="icon-line"><i class="ic ic-file-code-2 sm"></i><span>Change a lane in <span class="mono">.pkey/distribution</span> or on the channel’s Releases tab</span></span>
           </div>
         </div>
       </section>
@@ -211,7 +212,7 @@
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
       <div class="dialog-body">
-        <p>1.8.1 joins stable and stays on beta. Every license gets it.</p>
+        <p>Every license gets 1.8.1.</p>
         <div class="card flat compact">
           <div class="card-rows">
             <div class="setting-row with-icon top">
@@ -235,7 +236,7 @@
             <div class="setting-row with-icon top">
               <span class="icon-tile sm muted"><i class="ic ic-app-store"></i></span>
               <div class="mk-stack-3">
-                <div><div class="setting-title">App Store</div><div class="setting-desc">Apple reviews it, usually within a day.</div></div>
+                <div><div class="setting-title">App Store</div><div class="setting-desc">Review usually takes a day.</div></div>
                 <span class="check on"><span class="box"></span>Submit 1.8.1 for App Store review</span>
               </div>
               <span class="status muted"><i class="ic ic-clock"></i>After review</span>

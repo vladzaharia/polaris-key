@@ -300,7 +300,7 @@ public enum JWSVerifier {
         //       from the doc). A revoked kid is absent from the set by construction.
         guard let kid = header.kid,
             let rawKeyB64 = trust[kid],
-            let rawKey = Base64URL.decode(rawKeyB64),
+            let rawKey = Base64URL.decodeStrict(rawKeyB64),
             rawKey.count == 32
         else { return nil }
 

@@ -604,7 +604,7 @@ describe("commerce: App Store", () => {
       );
       const f = await hook(cw, forged);
       expect(f.status).toBe(401);
-      expect(await reasonOf(f)).toBe("untrusted_chain");
+      expect(await reasonOf(f)).toBeUndefined(); // a bare 401
       expect((await hook(cw, "not.a.jws")).status).toBe(401);
 
       const other = await cw.fakes.apple.signNotification(
@@ -867,7 +867,7 @@ describe("commerce: Google Play", () => {
     ] as const) {
       const res = await push(cw, "m-5", data, over);
       expect(res.status, reason).toBe(401);
-      expect(await reasonOf(res), reason).toBe(reason);
+      expect(await reasonOf(res), reason).toBeUndefined(); // a bare 401
     }
     // A token signed by another key (an unknown kid after the JWKS refetch) is refused too.
     expect(cw.fakes.google.jwksFetches).toBe(1);

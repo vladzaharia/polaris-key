@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import { strictEmail } from "./strictEmail.js";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { rateLimitOk } from "./rateLimit.js";
@@ -262,6 +263,9 @@ export async function deliverEmail(
       : passthroughSender(env, msg.sender.displayName, msg.sender.product);
   if (!from) return unavailable;
 
+  // Whatever reached here, only a bare addr-spec is accepted (and is mailed trimmed) to the provider.
+  if (strictEmail(msg.to) === null) return unavailable;
+
   if (isApplePrivateRelay(msg.to) && !applePrivateRelayRegistered(env))
     return unavailable;
 
@@ -291,7 +295,7 @@ export async function deliverEmail(
   try {
     await binding.send({
       from,
-      to: msg.to,
+      to: strictEmail(msg.to) ?? msg.to,
       subject: msg.subject,
       text: msg.text,
       ...(msg.html !== undefined ? { html: msg.html } : {}),

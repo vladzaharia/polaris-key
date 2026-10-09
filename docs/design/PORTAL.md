@@ -133,43 +133,57 @@ is not the developer's console, and it does not sell anything.
 8. **Honest everywhere.** No guessed CPU architecture, no fact only in a tooltip, no
    "this tab will update" that doesn't, no dead-end "Needs attention", no sync status for a
    product that doesn't sync.
-9. **Modern and on-brand.** Dark-first with full light parity, Rubik 400/700, neutral violet
-   chrome, colour from the developers' own art. Works at 360 px with no horizontal scroll.
+9. **Modern and on-brand.** Dark-first with full light parity, Rubik 400/500/600 (700 only in the
+   wordmark), neutral chrome with ink primary actions, colour from the developers' own art. Works at 360 px with no horizontal scroll.
    WCAG 2.2 AA.
 
 ### 0.2 Design principles
 
-| Principle                                 | In practice                                                                                                                                                                                |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Products, not paperwork**               | Licenses, keys, orders, releases and Cloud Sync are details of a product, never top-level navigation. The top level is Library and Discover only.                                          |
-| **One lead per view**                     | Exactly one solid violet button per region: the hero, the attention shelf, the product header, the login card. Tiles, rows and header actions are outlined.                                |
-| **Developer identity is content**         | Key art, icon, name and "by developer" carry the product's identity, inside a fixed Polaris Key frame. The site is never re-themed per product (S-16 §5.6).                                |
-| **Say why, then what to do**              | Every non-active status carries its reason and the action that fixes it, in visible text. Every Discover offer says why you can add it.                                                    |
-| **The device in hand decides the action** | Desktop: download for the detected OS. Phone: store link, or email the desktop link to yourself.                                                                                           |
-| **Progressive scale**                     | Search, filters, sort, list view and the ⌘K palette appear only when the library is big enough to need them.                                                                               |
-| **Nothing guessed, nothing hidden**       | Universal builds are named as such; checksums are visible; gated builds say "Not included" and why; a product without Cloud Sync shows no sync anything.                                   |
-| **Storefront-easy sign-in**               | Identifier-first, one primary per step, three providers at most, the method you used last offered first, never a password. Modelled on Nintendo, Steam, PlayStation, Xbox, Epic and Apple. |
+| Principle                                 | In practice                                                                                                                                                                                                  |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Products, not paperwork**               | Licenses, keys, orders, releases and Cloud Sync are details of a product, never top-level navigation. The top level is Library and Discover only.                                                            |
+| **One lead per view**                     | Exactly one solid neutral-ink button per region: the hero, the product header, an "Added just now" tile, the single most urgent attention item, the login card. Tiles, rows and header actions are outlined. |
+| **Developer identity is content**         | Key art, icon, name and "by developer" carry the product's identity, inside a fixed Polaris Key frame. The site is never re-themed per product (S-16 §5.6).                                                  |
+| **Say why, then what to do**              | Every non-active status carries its reason and the action that fixes it, in visible text. Every Discover offer says why you can add it.                                                                      |
+| **The device in hand decides the action** | Desktop: download for the detected OS. Phone: store link, or email the desktop link to yourself.                                                                                                             |
+| **Progressive scale**                     | Search, filters, sort, list view and the ⌘K palette appear only when the library is big enough to need them.                                                                                                 |
+| **Nothing guessed, nothing hidden**       | Universal builds are named as such; checksums are visible; gated builds say "Not included" and why; a product without Cloud Sync shows no sync anything.                                                     |
+| **Storefront-easy sign-in**               | Identifier-first, one primary per step, three providers at most, the method you used last offered first, never a password. Modelled on Nintendo, Steam, PlayStation, Xbox, Epic and Apple.                   |
 
 ### 0.3 The brand contract
 
 The site is a **core** surface (BRAND §6 rule 0): the Pinned K with **no section bit**, the core
 violet accent, no `data-service` attribute. Specifically:
 
-- **Header:** 64 px, `surface-page` with a `border-subtle` bottom edge, the kit's compact lockup
+- **Header:** docked, never a floating inset bar. 64 px, `surface-page` with a `border-subtle` bottom edge, the kit's compact lockup
   (`kit/02-lockups/key/key-compact-{dark,light}.svg`, via `<PolarisLockup variant="compact">`) at
   64 px height. Phones: 56 px. No "Powered by Polaris Key" badge anywhere (BRAND owner decision
   2026-10-03).
-- **Type:** Rubik 400 and 700 only (`font-synthesis: none`). Mono is the platform stack for keys,
-  codes, hashes, versions and token prefixes only.
-- **Colour:** neutral chrome; `--pk-accent` (core violet) only for primary buttons, the active nav
-  underline, selection, focus and small counts. Gold (`--pk-signed`) only on _Signed_ chips.
-  Status colours always with an icon and a word.
+- **Type:** Rubik 400 (body), 500 (labels, buttons), 600 (headings); 700 only in the wordmark
+  (`font-synthesis: none`). Mono is the platform stack for keys, codes, hashes, versions and token
+  prefixes only. **Page headings** (Library, Discover and Account `h1`, the product `h1`, a focused
+  task's title) use the display step: 48/52 on desktop, 32/36 on phones, 600, tracking -0.02em, no
+  full stop, no label above it. It clamps so it reflows at 200 % zoom and 320 px; a long name takes
+  at most two lines. Card `h2`s and dialogs keep their size.
+- **Colour:** neutral chrome; the primary action is neutral ink (`action-neutral`: near-white on
+  dark, near-black on light, label in the page colour) and danger stays red. The active nav
+  marker, links, selection, hover, checked states, focus and small counts take the accent of the
+  service the element references (B17; `--pk-accent`, core violet, on Library, Discover and
+  Account). Gold (`--pk-signed`) only on _Signed_ chips. Status colours always with an icon and a
+  word, never in a service accent. No other service's accent, and no chartreuse, as a fill, band
+  or panel: the portal is a core surface.
 - **Illustration:** the stationary star (BRAND §7.7) is the only illustration, on empty, error and
   no-context screens. A sparse static star field sits behind the login card on wide screens. The
   star and the star field never animate; everything else moves only through the shared motion
   system (§7, [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md)).
 - **No gradients** in chrome or fallback art. Developer key art is the developer's content and is
-  shown as supplied.
+  shown as supplied: the whole 16:9 frame, never upscaled, never tilted or animated, and with no
+  text of ours over it. Where a slot is a different shape the art stays whole over a blurred copy
+  of itself; the product page's 3:1 banner (§4.20) is the one slice, and it is centred.
+- **Marketing expression stays on plrs.im.** No slogans or taglines, no trailing-period headings,
+  no mono caps eyebrow except a factual breadcrumb ("DJDL / Device access"), no wordmark or product
+  name painted on art, no marketing footer. The footer is "Polaris Key · key.plrs.im · Help ·
+  Privacy · Terms".
 - **Theme:** dark first, following the system, with a persisted "Match my device / Dark / Light"
   choice in Account (BRAND §3, §9.6), applied by an inline `<head>` script before first paint.
 
@@ -291,17 +305,19 @@ sign-in license (D-54).
 
 ### 3.2 Global elements
 
-| Element               | Desktop (≥ 761 px)                                                                                                                                    | Phone (≤ 760 px)                                                                                                                                               |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Header                | Compact lockup · **Library** (count) · **Discover** (count of offers) · spacer · ⌘K trigger (8+ products) · **Activate license** · account menu       | Compact lockup · search icon (8+ products) · avatar (account menu)                                                                                             |
-| Primary navigation    | Library and Discover only, with a 2 px violet underline on the current one. Library is the default route.                                             | Bottom bar: **Library** · **Activate** (an outlined pill button in the middle, not a tab) · **Discover** (with a dot when there are offers); safe-area padding |
-| Activate license      | Right-aligned, next to the account menu, separate from the nav: an outlined button with the key glyph in `accent-fg`. Always opens the modal (§4.17). | The middle pill of the bottom bar                                                                                                                              |
-| Account menu          | Avatar, email (truncated), chevron. Menu: Account · Sign-in methods · Approve a new device · Appearance · Help · Sign out                             | Avatar opens the same menu as a sheet                                                                                                                          |
-| Footer                | "Polaris Key · key.plrs.im" · Help · Privacy · Terms                                                                                                  | Same, above the bottom bar                                                                                                                                     |
-| Focused flows (§4.25) | Minimal header: lockup and a back-to-app link; no nav                                                                                                 | Same                                                                                                                                                           |
-| The login card (§4.1) | Centred 456 px card on the star field, lockup above, footer below; no nav                                                                             | Full-width card under a 56 px lockup row                                                                                                                       |
+| Element               | Desktop (≥ 761 px)                                                                                                                                     | Phone (≤ 760 px)                                                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header                | Docked compact lockup · **Library** (count) · **Discover** (count of offers) · spacer · ⌘K trigger (8+ products) · **Activate license** · account menu | Compact lockup · search icon (8+ products) · avatar (account menu)                                                                                             |
+| Primary navigation    | Library and Discover only, with a 2 px violet underline on the current one. Library is the default route.                                              | Bottom bar: **Library** · **Activate** (an outlined pill button in the middle, not a tab) · **Discover** (with a dot when there are offers); safe-area padding |
+| Activate license      | Right-aligned, next to the account menu, separate from the nav: an outlined button with the key glyph in `accent-fg`. Always opens the modal (§4.17).  | The middle pill of the bottom bar                                                                                                                              |
+| Account menu          | Avatar, email (truncated), chevron. Menu: Account · Sign-in methods · Approve a new device · Appearance · Help · Sign out                              | Avatar opens the same menu as a sheet                                                                                                                          |
+| Footer                | "Polaris Key · key.plrs.im" · Help · Privacy · Terms                                                                                                   | Same, above the bottom bar                                                                                                                                     |
+| Focused flows (§4.25) | Minimal header: lockup and a back-to-app link; no nav                                                                                                  | Same                                                                                                                                                           |
+| The login card (§4.1) | Centred 456 px card on the star field, lockup above, footer below; no nav                                                                              | Full-width card under a 56 px lockup row                                                                                                                       |
 
-Account is not a top-level page: it lives behind the account menu.
+Account is not a top-level page: it lives behind the account menu. **Decided (brand transition,
+2026-10-09):** the header stays docked, with no floating bar, and phones keep the bottom bar with
+the Activate pill; the navigation is never a second row of tabs under the header.
 
 ### 3.3 Routes
 
@@ -317,7 +333,7 @@ Hash routing stays for the signed-in SPA (ADMIN.md lead decision Q2). Product id
 | `#/p/:product/:section`                            | Product page scrolled to a section                          | `get`, `sync` (only when the product has Cloud Sync), `new`, `license`, `devices`, `package`, `help`                                                                          |
 | `#/p/:product/free-device`                         | Focused flow: device limit                                  | `?for=<label>&return=<url>`; target of G15 `manageUrl`                                                                                                                        |
 | `#/p/:product/download`                            | Focused flow: one download                                  | `?platform=macos\|windows\|linux…`; for email links and in-app "Download update"                                                                                              |
-| `#/account` / `#/account/:section`                 | Account                                                     | `profile`, `methods`, `products`, `sessions`, `appearance`, `data`                                                                                                            |
+| `#/account` / `#/account/:section`                 | Account                                                     | `profile`, `methods`, `apps`, `packages`, `sessions`, `appearance`, `data`                                                                                                    |
 | `#/account/link`                                   | Link an existing account (login card, §4.11)                | Proof of both identities in one session                                                                                                                                       |
 | `#/account/approve?code=`                          | Approve a new device (dialog over Account, §4.24)           | Target of the QR code; the code is typed when absent                                                                                                                          |
 | `/signin`                                          | The login card                                              | `?product=<slug>` gives product context; `returnTo` kept                                                                                                                      |
@@ -328,7 +344,7 @@ Hash routing stays for the signed-in SPA (ADMIN.md lead decision Q2). Product id
 
 **Redirects (stable links, anti-pattern A10):** `#/licenses` → `#/`; `#/licenses/:p/:id` →
 `#/p/:p/license?license=:id`; `#/downloads` → `#/`; `#/profile` → `#/account`; `#/claim?key=` →
-`#/?activate=<key>`; `#/account/emails|passkeys|linked` → `#/account/methods`.
+`#/?activate=<key>`; `#/account/emails|passkeys|linked` → `#/account/methods`; `#/account/products` → `#/account/apps`.
 
 **Return URLs** (`return=`, `redirect_uri`) are accepted only when they match a scheme or origin the
 product declares (S-16 manifest redirect allowlist); otherwise the flow ends on the product page.
@@ -372,7 +388,8 @@ star field (`surface-page`, no art behind it). The card has three slots:
 
 1. **Card header** (optional, persistent): product context (§4.2) or an app's request (§4.7). It
    stays identical through every step of that flow.
-2. **Body:** one step at a time; exactly one primary button.
+2. **Body:** one step at a time; exactly one primary button, neutral ink (SIGN-IN.md §3.1). Violet
+   stays on focus, selection, links and the brand row's mark.
 3. **Card footer** (passthrough only): "Polaris Key signs you in for <App>. <Developer> never
    sees your codes or passkeys." with a lock glyph.
 
@@ -392,13 +409,18 @@ star field (`surface-page`, no art behind it). The card has three slots:
 - **One row, never a stack.** Every provider button sits in a single row of equal-width buttons, at
   every breakpoint. The row follows the same order everywhere: Apple, Google, Steam.
 - **Logo only.** Each button shows only the provider's mark, 24 px, centred in a 52 px tall
-  `secondary` button. Google's G keeps its four colours; the Apple and Steam marks take
-  `text-strong`, as each provider's guidelines allow. There is no visible text in the button.
+  button. Google's G keeps its four colours; the Apple and Steam marks take `text-strong` on dark,
+  as each provider's guidelines allow. There is no visible text in the button.
+- **Fills come from the provider.** The theme decides light or dark, height and radius; the fill
+  comes from that provider's allowed set for the scheme (Apple: black, white, or white with an
+  outline; Google: white, `#131314` on dark or `#F2F2F2`; Steam: its dark or the neutral
+  `secondary`). The mark is never recoloured, and no host or product accent tints a provider
+  button (the focus ring excepted). Light scheme: white with a hairline, never the lavender tint.
 - **Named for everyone.** Each button has the accessible name **Continue with Apple**, **Continue with
   Google** or **Continue with Steam** (`aria-label`, repeated as the hover tooltip), and the row is a
   `role="group"` labelled "Or continue with". In "add a method" contexts the names read **Connect
   Apple** and **Connect Google** (§4.10).
-- **Focus and hover:** the standard violet 2 px ring with 2 px offset on `:focus-visible` (02 shows it
+- **Focus and hover:** the standard 2 px ring in the referenced service's accent (core violet here, B17) with 2 px offset on `:focus-visible` (02 shows it
   on Google), and `border-strong` on hover. The buttons are 52 px tall, so every target clears 44 px.
 - **1 to 3 buttons.** The row has as many buttons as the product ships providers. Three split the
   row into thirds (01); two split it in half (02, 06, 07, 08); one keeps the width of a half-row
@@ -576,7 +598,10 @@ to sign in", and "<Developer> · <where>":
   of 3"), **Cloud Sync** (only when the product has the service on; what it syncs), and
   **your profile and email** (name, picture, address). "It gets its own id for you, and won't see
   your other products or how you sign in." (the pairwise id, §3.1). **Continue to Tidewater
-  Studio** and **Cancel**. **Decided:** shown on the first sign-in to each app and again whenever
+  Studio** and **Cancel**, the same width and height, with what it gets listed before both; on
+  phones they stack full width with the primary last. A line above them: "Continue only if you
+  started this connection. <Product> never gets your sign-in credentials." The page sends
+  `frame-ancestors 'none'`. **Decided:** shown on the first sign-in to each app and again whenever
   what it gets changes; later sign-ins skip it. **The license line is the license the person chose**
   in SIGN-IN.md §3.6's LicenseChoiceStep, with **Change** to go back to it (SIGN-IN.md §3.8,
   frame 07). Confirm always follows the choice as its own step.
@@ -589,15 +614,22 @@ to sign in", and "<Developer> · <where>":
 
 ![TV signed in](portal/15-app-device-done-desktop-dark.png)
 
-- Reached from `/tv` (type the code) or the TV's QR (`verification_uri_complete`). The header adds a
-  code panel, "Code from your TV · WDJB-MJHT · Check it matches the screen".
+- Reached from `/tv` (type the code) or the TV's QR (`verification_uri_complete`). **Entry:** the
+  code is the whole task, one labelled mono field that fits 320 px, a sample in the valid format,
+  and "Only use a code from your own product, not one somebody sent you." The page **cannot name
+  the product before the code resolves** (the server does not know it); the icon, name and device
+  label appear only after it resolves or when `verification_uri_complete` prefilled it. Invalid and
+  expired codes have their own copy. The Worker page is script-free: a form POST with the origin
+  check, the code escaped on re-render. Once resolved, the header adds a code panel, "Code from
+  your TV · WDJB-MJHT · Check it matches the screen".
 - Body: "Sign in to finish on your TV · Use your phone or computer here. The TV signs in by itself
   when you're done." then the §4.1 methods (Drift Kart ships only on Steam, so its provider row has
   one button: the one-button case), and "Didn't start this on
   a TV? Cancel it. Someone may be trying to use your account."
 - Signed in already: straight to **Choose a license for this device** (§4.8), then Confirm when it
   is due. A full license's **Replace a device** works here too, so the TV never needs a trip to the
-  portal.
+  portal. When neither step runs, the card asks "Sign in on Living room TV?" with **Deny**
+  (SIGN-IN.md §4.2): scanning a code is never approval.
 - Done: "Drift Kart is signed in on Living room TV · Look at your TV: it continues by itself", the
   person row with the method used, and **Sign the TV out** for the wrong account.
 
@@ -655,21 +687,29 @@ claim error "owned by another account" (§4.19).
 - A full-width **hero**: key art (left, 1.45 fr) and a side panel with icon, name, developer,
   status and tier, the **primary download** as a two-line button, an **Also yours on** row, a short
   summary (license, devices, includes, runs on) and a link to the product page. Side by side from
-  1024 px: at 1024–1179 px the art keeps 16:9 at the top of its column (never cropped, §0.3), and
-  from 1180 px it fills the column's height.
+  1024 px: at 1024–1179 px the art is shown whole over a blurred copy of itself that fills the
+  column, so no block is left empty; from 1180 px it fills the column's height without cropping
+  (§0.3). On a landscape phone the two sit side by side from about 560 px.
 - A closing line: "That's everything linked to <email>. There are 4 more you can add in Discover."
 - **At 761–1023 px** the hero stacks: the art at 16:9 across the full width, the panel underneath.
   On a short screen from 761 px the two stay side by side with the art at 16:9, and the page's
-  top spacing and the panel tighten, so the primary download is on the first screen. **Phone:**
+  top spacing and the panel tighten, so the primary download is on the first screen (also stacked at 1023 × 900). **Phone:**
   the primary action becomes the phone action.
 
 ### 4.14 Library: a few products (2–7)
 
 ![Library with three products](portal/20-library-3-desktop-dark.png)
 
-- A 3-column grid of large **library tiles** (§5.2). No toolbar.
-- Every tile's action is the **outlined quick action**; solid violet is reserved for the hero, the
-  attention shelf and the product header.
+- A 3-column grid of large **library tiles** (§5.2), art first: the cover at its whole 16:9 frame
+  from the tile's top edge, edge to edge, capped at 280 px, with no product name drawn over it. No
+  toolbar. The header subtitle names the count and the account: "2 products · signed in as
+  priya@example.edu".
+- **A "Have a license key?" end tile** fills the grid (dashed border, key glyph, "Activate it to
+  add its product here.", an outlined **Activate license**); at two columns it spans the row on one
+  line, on phones it stacks. Under the grid a **"Missing a license?"** strip has two points:
+  "Sent to another email?" (links to Account → Sign-in methods) and "Bought in a store?".
+- Every tile's action is the **outlined quick action**; a solid ink button is reserved for the
+  hero, the product header, the "Added just now" tile and the one most urgent attention item.
 - **Added just now** (EXPERIENCE §0.6 P1 step 7, frame 7; PX-24): for 24 hours after the account
   first got a product, its tile is first, carries a ring and the quiet text "Added just now" at the
   head of its reason line, and leads with its download (solid): the one exception to the outlined
@@ -688,20 +728,22 @@ claim error "owned by another account" (§4.19).
   Needs attention, Games, Apps & tools; a zero-count chip is hidden), sort (Recently added, Name),
   and a Grid/List toggle, all in the URL (§3.3); a non-"All" filter shows "Showing 3 of 12 · Show
   all" (A4).
-- **Needs attention shelf:** only items the person can act on, each with a solid primary action:
-  device limit → **Free a device**; expires within 14 days → **Renew with <developer>** (G16, else
+- **Needs attention shelf:** only items the person can act on. The most urgent item's action is the
+  one solid button; the others are outlined. Actions: device limit → **Free a device**; expires within 14 days → **Renew with <developer>** (G16, else
   "Contact"); Steam key not activated → **Activate on Steam**; expired with a newer version →
   **Renew**. Never news. Hidden when empty. The card's title names the product, so the reason does
   not ("Both devices are in use. Remove one to use it on another device."); an ended license's
   reason names the developer ("Kiln Games can renew it."), since a long name truncates on the
-  action, whose full label shows on hover. A date in a reason never breaks across lines.
+  action, whose full label shows on hover. A date in a reason never breaks across lines. The copy states the
+  action once: the reason does not repeat the button.
 - **All products:** 4-column compact grid (3 at 761–1179 px), or the **list**: icon · Product ·
   Status · Latest · Devices · **Quick action for this Mac** · chevron; 72 px rows; the whole row
   opens the product page. A compact tile's status line takes up to two lines. On a tile whose
   content is under 15rem wide (761–about 920 px, 1180–about 1250 px) "Download for macOS" reads
   **Download** (its accessible name keeps the full label), the status pill moves to the art's
   top-right corner, clear of the icon, and the name takes up to two lines.
-- **⌘K trigger** in the header (§4.27). Products without art use the fallback (§5.2).
+- **⌘K trigger** in the header (§4.27); at its floor width the placeholder reads "Jump to…".
+  Products without art use the fallback (§5.2).
 - **Phone:** search and view toggle share a row, chips scroll; **List by default above 6
   products** (the remembered choice wins, so someone who picked Grid keeps the desktop's compact
   grid in one column); list rows keep a status pill under the name. The 21 and 22 phone renders both
@@ -735,8 +777,11 @@ are entitled to sits unclaimed.
   library by itself."
 - **Add to library** mints the license on the spot through the same path as auto-issue (same tier,
   limits and entitlements). The tile turns green-edged with **In your library** on the art and
-  **Open <product>**; a toast "Mossgarden is in your library · Open"; the Library count goes up and
+  **Open <product>**, which takes focus; a toast "Mossgarden is in your library · Open"; the Library count goes up and
   the Discover count down. Errors are inline on the tile ("Aperture Seven stopped this offer.").
+- **Offer wording:** an open product reads "No license needed"; a trial shows its duration ("Trial ·
+  14 days", once LX-41 ships); a store-only listing shows its store links and never **Add to
+  library**. The page has no hero band, no slogan and no accent fill.
 - **Empty:** the star, "Nothing to add right now", "When a developer offers something to your
   account, like a free game, a beta or an app your team gets, it appears here.", **Back to your
   library**.
@@ -760,7 +805,9 @@ page.
 1. **Enter:** "Activate a license", one line ("Paste a key from a store, a developer or an email.
    The product joins your library and stays there, even if you lose the key."), the `KeyField`
    (below) with "Key for Mossgarden · Little Fern" under it once a key is pasted, and **Continue**,
-   which enables when the format is valid.
+   which enables when the format is valid. Under the lede an **account row** (avatar, display name,
+   primary email) shows which account the license joins, so an other-account or email-mismatch
+   case (§4.19) is visible before **Continue**.
 2. **Confirm:** the product's key art across the top of the modal, the icon overlapping it, "Key
    recognised · Mossgarden · Little Fern", `h2` **Add Mossgarden to your account?**, the tier tag,
    the terms ("Lifetime · up to 5 devices") and platforms, the key echoed with **Change key**, and
@@ -853,7 +900,8 @@ Inline under the field (S-16 claim rules), never a toast:
 | Already yours                | "Mossgarden is already in your library." **Open it**                                                                                                                                                      |
 | Product portal off           | "Little Fern manages this license elsewhere."                                                                                                                                                             |
 
-The masked email shows the first character and the domain only. All lookups share the claim rate
+The Enter step's account row (§4.17) makes the other-account and email-mismatch cases visible
+before **Continue**. The masked email shows the first character and the domain only. All lookups share the claim rate
 bucket (THREAT-MODEL: enumeration).
 
 ### 4.20 Product page
@@ -925,9 +973,11 @@ sources that work on it, and **Email me the desktop links**.
 **What's new**, **License**, **"<Product> knows you as …"** (the identity this product uses, with
 **Manage sign-in methods**; only for products with Identity on, §3.1), **Devices** (seat meter, rows with **Remove**, dormant rows), **Package
 access** and **Help** are unchanged from the converged design: every non-covered build is listed
-with **Not included** and its reason as text; the key is masked as `pkey_tidewater_…KQ2w` (prefix, slug, last 4) with **Get a new key**
+with **Not included** and its reason as text, except after a keeps-the-last-version lapse (§5.3,
+which lists no row for newer builds); the key is masked as `pkey_tidewater_…KQ2w` (prefix, slug, last 4) with **Get a new key**
 (G7); devices show "+1 not using a seat"; package tokens show prefix, last used, expiry and the
-amber "Expires in 6 days" pill.
+amber "Expires in 6 days" pill. Once F-33 ships, Package access on the product page is one pointer
+row to Account → Packages: tokens are account-wide and are never listed per product.
 
 **License card, tier and devices (owner, 2026-10-05):** the tier ("Standard" when the licence has
 none) is a quiet neutral pill, an identity label rather than a status, with the device count beside
@@ -975,6 +1025,11 @@ device counter (on the License card or in Devices); the sign-in licence keeps it
 
 **States:** loading (skeleton header and two skeleton cards); not found (§4.28); load error
 (`ErrorState` with Retry); license expired (a `danger` callout with **Renew with <developer>**);
+updates ended, keeps the last version (a `warning` pill "Updates ended" beside the name; the
+header's only solid button is **Download <last covered version>**; Get it shows one neutral callout
+"<next> isn't in your license" over "Your license covers versions in 4.1.x, the latest of which is
+4.1.3."; **Renew with <developer>** only in the License card's term block; on phones **Email me the
+4.1.3 download**);
 suspended by the developer; a sign-in licence (Get it becomes **Open Quill** plus store links;
 no key; Devices lists the signed-in devices with **Remove**).
 
@@ -1027,6 +1082,22 @@ consequences; **Remove Work laptop**; then "Go back to Orbit Survey and press Tr
 flow only frees the seat. Inside the sign-in card the same situation is **Replace a device**, which
 also binds the waiting device (SIGN-IN.md §3.7).
 
+**The focused task frame** (free a device and the focused download, `FocusedFlow`):
+
+1. A minimal header with back-to-app, then a breadcrumb label, "<Product> / Device access" or
+   "<Product> / Download" (12 px, `text-muted`, factual), and the task title (display step, §0.3).
+2. A product identity row (56 px icon, name, developer) instead of a cover band. Art, if shown, is
+   the whole frame, never a slice.
+3. The desktop composition is centred, never a left-pinned half column. On short desktop screens
+   the device list and the consequences with the action sit in two columns, so **Remove** is on the
+   first screen. Under 761 px the action row is sticky.
+4. The focused download names version, platform, architecture and size before the action, shows
+   the middle-truncated SHA-256 with **Copy** and the channel rows in A-26's order for the chosen
+   platform, an install hint when the build declares one, and an "Other platforms and
+   architectures" disclosure. On phones it says "You're viewing desktop builds." with **Email me the
+   download** as the primary, never a desktop Download.
+5. Focus lands on the heading; a return link goes only through `safeReturnTo`.
+
 ### 4.26 Account
 
 ![Account](portal/36-account-desktop-dark.png)
@@ -1036,7 +1107,9 @@ also binds the waiting device (SIGN-IN.md §3.7).
 ![Last method guard](portal/38-account-last-method-desktop-dark.png)
 
 Reached from the account menu. A sticky section nav (pills on phones) that marks the section on
-screen (Profile at the top), and one card per section:
+screen (Profile at the top), and one card per section, in this order: **Profile · Sign-in methods ·
+Connected apps · Packages · Where you're signed in · Appearance · Your data**. The nav names only
+sections that exist.
 
 **Profile** (§4.30): the avatar with the badge of the provider its picture came from, the display
 name, where each came from ("Name typed by you · picture from Steam (marafox)") and **Edit
@@ -1069,13 +1142,19 @@ Hide My Email"), when it was connected and **last used**, and its action:
 - Footnote: "Removing a method asks you to confirm it's you. Every change is recorded and emailed to
   <primary email>."
 
-**Connected products:** apps the person signs in to through Polaris Key, so only products with
+**Connected apps** (replaces "Connected products"; claims show as icon and word chips, a check with
+the claim when granted and "Not your <claim>" when declined, never colour alone; **Change what
+<App> gets** reopens the consent toggles): apps the person signs in to through Polaris Key, so only products with
 **Identity on** (§3.1): one row per product user with **the identity it uses** and, when the product
 has it, "Cloud Sync on"; **Disconnect** ("signs that app out; its license stays in your library").
 The subtitle names the pairwise id: "Each gets its own id for you, so developers can't match you
 across products." A footnote counts the rest: "The other 7 products in your library don't use
 Polaris Key sign-in. Their licenses are yours here all the same." Always present when the account has a product, so the section nav never points at a
 missing card: Sam's Hide My Email account (38) shows its one row, Saltwind · Apple (Hide My Email).
+
+**Packages:** the account's package tokens, the one place they are created, shown once and revoked
+(§4.21). A token is account-wide, so a revoke affects every product that uses it; the product page
+only points here.
 
 **Where you're signed in:** browsers and apps signed in to the account (never product devices), with
 **Approve a new device** and **Sign out everywhere else**.
@@ -1089,7 +1168,8 @@ unchanged.
 
 From 8 products (⌘K / Ctrl K, the header trigger, the phone search icon), on `cmdk`: **Products**,
 **Actions** scoped to the top match ("Manage devices for …", "Cloud Sync for …" only when the
-product has it, "Activate a license"), **Recent**. Desktop: a 640 px dialog near the top; phone:
+product has it, "Activate a license"), **Recent**. The trigger's placeholder reads "Jump to…" at
+its floor width. Desktop: a 640 px dialog near the top; phone:
 full-screen.
 
 ### 4.28 Not found and errors
@@ -1258,7 +1338,7 @@ New components live in `packages/admin/src/portal/components/` unless the consol
 | `ProductHeader`, `SectionNav`, `GetItPanel`, `FileRow`, `StoreHandoff`, `LicenseCard`, `SeatMeter`, `DeviceRow`, `PackageAccessCard`, `ProductIdentityCard` | As in the converged design. `SectionNav` omits absent sections, including Cloud Sync.                                                                                                                                                                                                              |
 | `CloudSyncCard`                                                                                                                                             | Storage bar, data classes, per-device last sync, export, delete with step-up. Rendered only when the product's `services.cloudSync` is on.                                                                                                                                                         |
 | `SignInMethods`                                                                                                                                             | The Account section: grouped rows, connect flows (provider redirect or code), disconnect with inline step-up, last-method guard, audit footnote.                                                                                                                                                   |
-| `FocusedFlow`                                                                                                                                               | Minimal chrome and return-URL handling for `free-device` and `download`.                                                                                                                                                                                                                           |
+| `FocusedFlow`                                                                                                                                               | Minimal chrome, breadcrumb label, identity row and return-URL handling for `free-device` and `download` (§4.25).                                                                                                                                                                                   |
 
 `Button` gains two variants: **quiet** (transparent, `border-strong` outline, `text-strong` label,
 icon in `accent-fg`; the library's quick action) and **action** (`surface-raised`, `border-strong`,
@@ -1269,32 +1349,35 @@ key glyph in `accent-fg`; the header's Activate license).
 One status per product (from its best license), computed server-side once G1/G5 land and
 client-side from existing fields before then. Precedence, first match wins:
 
-| Status                | Pill (icon · word · token)                                  | Reason line / note                                             | Attention shelf action |
-| --------------------- | ----------------------------------------------------------- | -------------------------------------------------------------- | ---------------------- |
-| Suspended             | alert · "Suspended" · danger                                | "Suspended by <developer>."                                    | Contact <developer>    |
-| Expired               | alert · "Expired" · danger                                  | "Updates ended at 1.8" (or "Ended 4 Sep 2026")                 | Renew with <developer> |
-| Device limit reached  | alert · "Device limit reached" · danger                     | "2 of 2 devices"                                               | Free a device          |
-| Key not activated     | key · "Key not activated" · info                            | "Steam key"                                                    | Activate on Steam      |
-| Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning                       | "Studio · ends 13 Oct"                                         | Renew with <developer> |
-| Offline grace ended   | alert · "Needs a check-in" · warning                        | "Open <product> while online"                                  | none                   |
-| From signing in       | user · "From signing in" · neutral (quiet text, not a type) | tier first, e.g. "Standard · From signing in · 1 of 5 devices" | none                   |
-| Active                | check · "Active" · success                                  | tier and devices, e.g. "Lifetime · 2 of 3 devices"             | none                   |
+| Status                | Pill (icon · word · token)                                  | Reason line / note                                                        | Attention shelf action                                                                            |
+| --------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Suspended             | alert · "Suspended" · danger                                | "Suspended by <developer>."                                               | Contact <developer>                                                                               |
+| Expired               | alert · "Expired" · danger                                  | "Updates ended at 1.8" (or "Ended 4 Sep 2026")                            | Renew with <developer>                                                                            |
+| Updates ended         | alert · "Updates ended" · warning                           | "Updates ended at 4.1.3" · "Keeps working · renewal stopped Sep 30, 2026" | Download <last covered version> (header primary); Renew with <developer> only in the License card |
+| Device limit reached  | alert · "Device limit reached" · danger                     | "2 of 2 devices"                                                          | Free a device                                                                                     |
+| Key not activated     | key · "Key not activated" · info                            | "Steam key"                                                               | Activate on Steam                                                                                 |
+| Expires soon (≤ 14 d) | clock · "Expires in 9 days" · warning                       | "Studio · ends 13 Oct"                                                    | Renew with <developer>                                                                            |
+| Offline grace ended   | alert · "Needs a check-in" · warning                        | "Open <product> while online"                                             | none                                                                                              |
+| From signing in       | user · "From signing in" · neutral (quiet text, not a type) | tier first, e.g. "Standard · From signing in · 1 of 5 devices"            | none                                                                                              |
+| Active                | check · "Active" · success                                  | tier and devices, e.g. "Lifetime · 2 of 3 devices"                        | none                                                                                              |
 
+A keeps-the-last-version lapse is a warning and is said once (the header pill); the danger
+Expired row is for licenses whose access ends. There is no Not included row for newer builds.
 A past date is never shown as "Expires …": it is "Ended <date>" or "Updates ended at <version>".
 Expiry inside 14 days uses relative days; otherwise "until 14 Mar 2027".
 
 ### 5.4 Quick action resolution
 
-| Product state                           | Desktop                                                        | Phone                                                  |
-| --------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
-| Device limit reached                    | Free a device                                                  | Free a device                                          |
-| Steam key held, not activated           | Activate on Steam                                              | Activate on Steam                                      |
-| Sign-in licence (no key)                | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
-| Build for this OS exists and is covered | Download for <OS>                                              | Store link for this OS, else **Email me the download** |
-| Covered builds exist, none for this OS  | See downloads (with "Windows and Linux only" as the meta line) | Email me the download / See downloads                  |
-| Expired, an older build is covered      | Download <last covered version>                                | Email me the download                                  |
-| Only a package feed                     | Set up package access                                          | Set up package access                                  |
-| Public product (G19)                    | Open download page (dl.plrs.im)                                | Open download page                                     |
+| Product state                                       | Desktop                                                        | Phone                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------ |
+| Device limit reached                                | Free a device                                                  | Free a device                                          |
+| Steam key held, not activated                       | Activate on Steam                                              | Activate on Steam                                      |
+| Sign-in licence (no key)                            | Open <product> (website / app scheme)                          | Get it on the App Store / Google Play, else Open       |
+| Build for this OS exists and is covered             | Download for <OS>                                              | Store link for this OS, else **Email me the download** |
+| Covered builds exist, none for this OS              | See downloads (with "Windows and Linux only" as the meta line) | Email me the download / See downloads                  |
+| Expired or updates ended, an older build is covered | Download <last covered version>                                | Email me the download                                  |
+| Only a package feed                                 | Set up package access                                          | Set up package access                                  |
+| Public product (G19)                                | Open download page (dl.plrs.im)                                | Open download page                                     |
 
 ---
 
@@ -1369,7 +1452,10 @@ risk. With no usable `https` origin a text wordmark stands in.
 
 Errors say what happened, in the user's terms, and the next step. Map every flat error code the API
 returns (`W/core/errors.ts`) to a sentence; unknown codes fall back to "Something went wrong. Try
-again." with the reference id. Never render the HTTP status or an internal code as the message.
+again." with the reference id. Never render the HTTP status or an internal code as the message. A network failure on any form
+says "We couldn't reach Polaris Key. Your changes are still here. Try again.", under the action
+that failed with the danger icon, focus moved to it with a visible ring; errors stay inline, never
+a native validation bubble.
 
 ---
 
@@ -1383,8 +1469,15 @@ again." with the reference id. Never render the HTTP status or an internal code 
 - **Status pills on art** sit on a solid `surface-overlay` plate with `elevation-2` so they read on
   any artwork; the art's own text should avoid the bottom-right corner (developer guidance in the
   listing docs).
-- **Type scale:** page `h1` 40/44 (30 on phones); product `h1` 36 (28); card `h2` 18; tile name 18
-  (16 compact); body 15–16; metadata 13; group labels and counts 12 bold.
+- **Type scale:** page `h1`, product `h1` and focused-task titles use the display step, 48/52 (32/36
+  on phones), 600, -0.02em, no full stop, clamped to reflow at 200 % zoom and 320 px, at most two
+  lines; card `h2` 18; tile name 18 (16 compact); body 16; metadata 13; group labels and counts 12
+  semibold. Weights are 400, 500 and 600 only.
+- **Art and names:** the portal never draws text over developer art; status plates use the
+  bottom-left and art text avoids the bottom-right. Names (tiles, hero `h2`, attention titles,
+  palette rows, device names) carry `dir="auto"` so RTL names align to the start. `ProductArt`
+  picks the hosted variant at least as wide as the drawn size times the device pixel ratio and
+  never upscales a tile variant into a banner.
 - **Motion:** the one system of [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) and EXPERIENCE §7.2, built by
   phase MO (MO-05 navigation, MO-06 devices and activation, MO-07 Library and Discover). In the
   portal: the Library tile's art and name fly into the product hero and back; routes fade through
@@ -1425,7 +1518,7 @@ again." with the reference id. Never render the HTTP status or an internal code 
   (the icon beside the name, so the primary action shows on load), on Activate's confirm step
   (the facts and the key start on the first screen) or on a focused flow's card (Free a device,
   Download; the icon no longer overlaps). The empty library's star and the one-product hero follow
-  §4.12 and §4.13.
+  §4.12 and §4.13; a focused flow's device list and action sit in two columns (§4.25).
 - **No horizontal page scroll at 360 px**, ever (the render script checks every screen). Only code
   blocks scroll inside themselves. The quality bar checks every screen with pixels at 1440 and
   390 px (and 768 px for the seven key pages), and without at 320, 360, 768, 820, 1024, 844 × 390
@@ -1453,7 +1546,7 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
    `role="img"` with a list label.
 3. **Status** is always icon plus word; the seat meter is `role="img"` with a text label; the
    "Not included" reason is visible text.
-4. **Focus:** the violet 2 px ring with 2 px offset everywhere; dialogs trap focus and return it to
+4. **Focus:** the 2 px ring with 2 px offset everywhere, in the referenced service's accent (core violet unless the element belongs to another service, B17); dialogs trap focus and return it to
    the opener; the inline device confirm moves focus to its heading; after adding a product, focus lands
    on the new product's `h1`.
 5. **Forms:** visible labels; errors inline with `aria-invalid` and `aria-describedby`; the code
@@ -1595,6 +1688,16 @@ gate: `mise exec node@22 -- pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm li
 `typecheck:workerd` and `test:workerd`, and `gen:transcripts -- --check` must stay green unless the
 WP is a wire change.
 
+The brand transition (2026-10-09, [B8 and B12](../research/2026-09-29-godot-omniplatform/program/BRAND-TRANSITION.md)) adds
+[PX-27](../research/2026-09-29-godot-omniplatform/program/wp/PX-27-library-discover-presence.md) (Library and Discover presence),
+[PX-28](../research/2026-09-29-godot-omniplatform/program/wp/PX-28-license-page-v2.md) (license page v2),
+[PX-29](../research/2026-09-29-godot-omniplatform/program/wp/PX-29-focused-task-frame.md) (focused task frame),
+[PX-30](../research/2026-09-29-godot-omniplatform/program/wp/PX-30-art-hero-rendering.md) (art and hero rendering),
+[PX-31](../research/2026-09-29-godot-omniplatform/program/wp/PX-31-account-composition-v3.md) (Account composition v3),
+[PX-32](../research/2026-09-29-godot-omniplatform/program/wp/PX-32-storefront-decision-panel.md) (storefront decision panel) and
+[PX-33](../research/2026-09-29-godot-omniplatform/program/wp/PX-33-signin-product-cover.md) (the optional requesting-product cover beside the sign-in
+card, only if the owner asks). Their briefs hold the scope.
+
 ### 11.1 Phase A: rebuild on today's API (no Worker changes)
 
 | ID        | Work package                                                                                                                                                                                                                                                                                                                                                                                                                | Deps  | Size | Extra gates                                                                          |
@@ -1674,6 +1777,22 @@ Phase A (PX-01 to PX-07) and PX-W1/PX-W2 can run in parallel lanes. The first sh
 on today's auth. Discover (PX-W10, PX-16) is the next cut and needs no S-16 work. The first
 provider sign-in (Apple, Google, Steam) must not ship without the email gate: PX-12's providers and
 PX-21 go out together.
+
+### 11.5 The state checklist (acceptance)
+
+Every state below is an e2e state in the PX-20 and PX-26 matrix, in both themes, and lands with its
+owning package. Screen-wide checks (400 % reflow, forced colours, labelled scroll regions) are
+EXPERIENCE §7.3's.
+
+| Area                | States and owners                                                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Library             | Built: empty, two products, larger collection, grid and list, search no results, newly added (PX-24). New: unavailable access (PX-27)                        |
+| Discover            | Built: owned, available offer, external store, no results. Eligible automatic grant (LX-38); unavailable offer (PS-05b)                                      |
+| Product and license | Built: account-held, tier, devices full. Waiting and floating (LX-26, PX-23); six duration models and retained version (LX-41, PX-28)                        |
+| Activation          | Built: preview, confirm, invalid, wrong product, other account, already owned. No capacity (PX-23). New, owned by PX-29: replacement race, expired request   |
+| Account             | Profile and methods (PX-13, PX-22); passkeys (PX-W19)                                                                                                        |
+| Devices and consent | Current and remote device built; approval and denial (PX-15); optional claims declined (I-34, PX-14); disconnect consequence (PX-13)                         |
+| Downloads, packages | Built: platform and build, no build. Store-owned path (PX-09); access refused (PX-29); token create, reveal, revoke (F-33); cookie-free download host (A-26) |
 
 ## 12. Questions for the owner
 
@@ -1831,3 +1950,31 @@ Paste), 26 (a pasted key with "Key for Mossgarden"), 27 (the key echoed in full,
 (six states: Not a license key and Incomplete key added; every key real), 30 (prefilled real key),
 and 31 to 34 (masked key on the License card). The device-limit flow (35) shows no key and is
 unchanged.
+
+## Appendix G · Brand transition (2026-10-09)
+
+The transition guide is a reference edition: our mockups and the decisions here win on structure,
+copy and behaviour. Its portal pages (220 to 246) by verdict:
+
+| Verdict  | Pages                                                                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Adopted  | 223 to 227 (Account → Packages, token flows, Connected apps), 246 (state ledger, §11.5)                                                         |
+| Adapted  | 221, 222, 228, 229, 231 to 234, 236, 237, 239, 242: the idea, not the marketing look                                                            |
+| Kept     | 220, 238, 240, 243, 244: ours already                                                                                                           |
+| Declined | 230 (a second Renew and a Not included row), 232 and 241 (chartreuse bands, slogans), 235 (split-art sign-in), 245 (per-product package tokens) |
+
+Conflicts and the decision, each keeping ours:
+
+- **Chartreuse fills:** none; the portal is a core surface (§0.3).
+- **Solid tile buttons:** tile actions are outlined; solid only for the hero, the product header, "Added just now" and the one most urgent attention item; the primary is neutral ink (§0.2).
+- **Phone tabs in a second header row:** the bottom bar stays (§3.2).
+- **Slogan copy:** none (§0.3).
+- **Split-art sign-in with a passkey first:** SIGN-IN.md wins; art only in its passport.
+- **Lapsed page:** one warning pill, no Not included row, Renew only in the License card (§5.3).
+- **Per-product package tokens:** account-wide in Account → Packages (§4.26).
+- **Floating header:** docked (§3.2).
+
+Taken from the studies: the account row in Activate (§4.17), the code-entry trust line (§4.9), equal
+consent actions (§4.8), the breadcrumb label and identity row in focused flows (§4.25), SHA-256 and
+the phone line on the focused download, "No license needed" and no Add on store-only listings
+(§4.16), and the display heading (§0.3).

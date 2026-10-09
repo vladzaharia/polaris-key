@@ -547,7 +547,7 @@ def verify_release_record(
                 return _fail("delegation")
             verified = d.delegation
             key = d.delegation.publicKey
-        v = verify_jws(jws, {kid: key}, typ=TYP_RELEASE, require_typ=True)
+        v = verify_jws(jws, {kid: key}, typ=TYP_RELEASE)
         if v is None:
             return _fail("jws")
 

@@ -126,6 +126,8 @@ func _contract(t: PKeyTestContext) -> void:
 	var p := PKeyHeaders.platform()
 	var desktop: bool = p in ["macos", "windows", "linux"]
 	var saved := OS.get_environment(PKeyKeyringStore.ENV_SWITCH)
+	# The switch is honoured in debug builds only (the template run is a release build).
+	PKeyKeyringStore.debug_build_source = func() -> bool: return true
 	OS.set_environment(PKeyKeyringStore.ENV_SWITCH, "1")
 	var pref := PKeyKeychainStore.preferred(PRODUCT, _root("p"))
 	t.check("preferred: the keyring store on the desktops, the file store elsewhere", (pref is PKeyKeyringStore) if desktop else (pref is PKeyFileStore))
@@ -138,6 +140,7 @@ func _contract(t: PKeyTestContext) -> void:
 				and off.status().get("degraded", {}).get("reason") == "keyring-unavailable")
 		t.info("preferred: this run's backend says %s" % ("available" if (pref as PKeyKeyringStore).keyring_unavailable() == "" else "unavailable: " + (pref as PKeyKeyringStore).keyring_unavailable()))
 	OS.set_environment(PKeyKeyringStore.ENV_SWITCH, saved)
+	PKeyKeyringStore.debug_build_source = Callable()
 	t.check("preferred: off the desktops the base backend is never usable", PKeyKeyringBackend.for_platform("web").unavailable() != "" and PKeyKeyringBackend.for_platform("ios").get_secret("s", "a")["ok"] == false)
 
 

@@ -380,7 +380,7 @@ export interface Env {
    */
   ADMIN_SESSION_SECRET?: string;
   /**
-   * Signs customer portal sessions (falls back to `ADMIN_SESSION_SECRET` when unset).
+   * Signs customer portal sessions (required; no fallback to `ADMIN_SESSION_SECRET`).
    * @inventory secret identity
    */
   PORTAL_SESSION_SECRET?: string;
@@ -512,6 +512,11 @@ export interface Env {
    * @inventory secret delivery
    */
   GITHUB_WEBHOOK_SECRET?: string;
+  /**
+   * The previous webhook secret, still accepted during a rotation.
+   * @inventory secret delivery
+   */
+  GITHUB_WEBHOOK_SECRET_PREVIOUS?: string;
   /**
    * The identity-provider group whose members are platform admins (`admin/authz.ts`).
    * @inventory var identity

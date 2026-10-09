@@ -1,0 +1,17 @@
+{
+  "id": "commerce.lists-states",
+  "title": "Commerce lists: loading and errors",
+  "area": "commerce",
+  "surface": "dialog",
+  "packages": ["CM-23", "ST-38"],
+  "uxRows": [],
+  "summary": "Loading and a failed load for Commerce's three lists, as licenses.list-states draws them: skeleton rows at the real 56px row height under the real column heads in the one workbench, and a failure inside the table that says what failed and keeps the filters, with Retry.",
+  "compare": [
+    "Loading: nothing for 150 ms, then skeleton rows at 56px under the real heads; the search band stays usable; a status message for screen readers (admin-3-22).",
+    "A failed load is in the table body, not a toast: what failed (504) and Retry, with the filter chip still on; the band and the heads stay.",
+    "The same shapes as licenses.list-states, in the Commerce green context; no shimmer that reads as progress.",
+    "Phone: each frame stacks; skeleton rows keep the stacked row shape."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

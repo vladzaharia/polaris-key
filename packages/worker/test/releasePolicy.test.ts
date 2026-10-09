@@ -213,6 +213,28 @@ describe("CI routes: authentication and scope", () => {
 });
 
 describe("CI routes: operations", () => {
+  it("a CI token never moves a channel back to an older release", async () => {
+    const { env, db, gh } = await setup();
+    const fwd = await ci(env, db, gh, "/channels/beta/promote", PROMOTER, {
+      releaseId: "v1.1.0",
+    });
+    expect(fwd.status).toBe(200);
+    for (const op of ["promote", "pin"]) {
+      const back = await ci(env, db, gh, `/channels/beta/${op}`, PROMOTER, {
+        releaseId: "v1.0.0",
+      });
+      expect(back.status).toBe(409);
+      expect(await back.json()).toMatchObject({ reason: "downgrade_refused" });
+    }
+    expect(
+      await getChannelPolicy(db, {
+        product: SLUG,
+        deliverableId: "app",
+        channel: "beta",
+      }),
+    ).toMatchObject({ pointer_release_id: "v1.1.0" });
+  });
+
   it("promote, pin and unpin write the policy as an operator and audit ci:<subject>", async () => {
     const { env, db, gh } = await setup();
     const key = { product: SLUG, deliverableId: "app", channel: "beta" };

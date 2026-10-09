@@ -55,6 +55,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQT-04**; DX consolidation B: Foundations (code quality the feature tracks build on).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- [ ] The built `pkey help` shows a header with the version and a 'Here' line in both states (product from `.pkey/product` and base URL; outside a repository 'no product: no .pkey/product here or above; pass --product · key.plrs.im'); groups and verbs use glossary words (Channels, release tracks), not 'Storefront' or 'outlet'; footer link; wraps at 40 columns without losing a fact. (sdk-c-23)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

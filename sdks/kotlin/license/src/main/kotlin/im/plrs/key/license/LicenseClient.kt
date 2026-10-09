@@ -87,8 +87,9 @@ public class LicenseClient(
     public suspend fun activation(): ActivationSource? {
         if (core.token() != null) return ActivationSource.token
         val cache = core.cache()
-        // A bundle activates ONLY if its licence document verified: a config-only bundle grants nothing.
-        if (cache.importedBundle != null && cache.license != null) return ActivationSource.bundle
+        // A bundle activates ONLY when the cached bundle re-verified on the reload profile and its licence
+        // document is the cached one, byte for byte (V4 §4.1, §7): a config-only bundle grants nothing.
+        if (cache.bundle?.activates == true && cache.license != null) return ActivationSource.bundle
         return null
     }
 
@@ -97,7 +98,7 @@ public class LicenseClient(
         val cache = core.cache()
         return licenseState(
             GateInput(
-                licenseServiceEnabled = core.enabled(ServiceSlug.license),
+                licenseServiceEnabled = core.licenseGateEnabled(),
                 activation = activation(),
                 doc = cache.license?.doc,
                 now = core.now(now),

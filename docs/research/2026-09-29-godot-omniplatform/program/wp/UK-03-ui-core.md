@@ -84,6 +84,12 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 - **Minimum check:** Fixture tests assert, per state, the primary id, the refusal tone, the error slot, the initial-focus id and the link verdict. No screens, so no §7.1 rows.
 - **Acceptance:** the fixture assertions above pass; the UX review happens on the screens UK-04 and UK-05 render from these models.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when the Themes row holds. This package draws no screens of its own, so the other rows do not apply (EXPERIENCE.md §7.3).
+
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+
 ## Goal
 
 Every JS kit renders from one state machine per component: `@polaris-key/ui-core` passes every UI fixture, resolves the theme and product identity, and has no DOM or framework dependency.

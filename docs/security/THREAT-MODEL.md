@@ -23,25 +23,25 @@ and what binary it installs next.
 
 ## 2. Assets, ranked by what their loss costs
 
-| #    | Asset                                                                                                                                        | Where it lives                                                                                        | Loss impact                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1   | **`PLATFORM_KEK`**                                                                                                                           | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Rotatable without downtime through the keyring, even when nobody holds the current key (§3, "The platform KEK keyring").                                                                                                                                                                                                                                                               |
-| A2   | **Per-product Ed25519 signing keys**                                                                                                         | `product_keys.enc_private_json`, sealed under A1                                                      | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                                                                                                                                                                                                                                                                                                                                                        |
-| A3   | **The release channel**                                                                                                                      | GitHub App key, webhook secret, `release_config`                                                      | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                                                                                                                                                                                                                                                                                                                                                               |
-| A4   | **`ADMIN_SESSION_SECRET`**                                                                                                                   | Worker secret                                                                                         | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| A5   | **Product secrets** (OIDC client secrets, edge-mint signing keys)                                                                            | `product_secrets`, sealed under A1                                                                    | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                                                                                                                                                                                                                                                                                                                                                       |
-| A6   | **Customer PII**                                                                                                                             | `licenses`, `portal_accounts` (+ emails, identities), `audit` — plaintext                             | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational.                                                                                                                                                                                                                                                                                                                                                                           |
-| A7   | **Licensing revenue**                                                                                                                        | The whole enforcement path                                                                            | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                                                                                                                                                                                                                                                                                                                                                            |
-| A8   | **Service availability**                                                                                                                     | Worker, D1, KV, DO                                                                                    | A licensing outage can block paying customers from software they already bought.                                                                                                                                                                                                                                                                                                                                                                                                |
-| A9   | **The ability to recover**                                                                                                                   | Rotation and revocation machinery                                                                     | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                                                                                                                                                                                                                                                                                                                                                           |
-| A10  | **The blob store** (release bytes)                                                                                                           | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1                      | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach.                                                                                                                                                                                                                                                                                                                                      |
-| A11  | **Outlet credentials** (store API keys)                                                                                                      | `outlet_credentials`, sealed under A1 (own AAD kind); minted tokens sealed in KV                      | Act as the operator in App Store Connect, Google Play or Partner Center: upload or release builds, change listings and prices. Equal to A3.                                                                                                                                                                                                                                                                                                                                     |
-| A11b | **The platform team App Store Connect key** (A-16's `app-store.api-key`, Admin role)                                                         | `platform_credentials` sealed under A1 (AAD `_platform`), or the `PLATFORM_ASC_API_KEY` Worker secret | Everything A11 lists for **every** app of the team, plus team membership (invite an Admin: a takeover that outlives revoking the key), signing identity (create or revoke certificates), deleting identifiers and changing prices. **Above A3.** Only the write gate (A-17a) stands between the Worker and those powers.                                                                                                                                                        |
-| A11c | **The other platform team store credentials** (A-16: `google-play.service-account`, `microsoft-store.partner-center`, `steam.publisher-key`) | `platform_credentials` sealed under A1 (AAD `_platform`), or their `PLATFORM_*` Worker secrets        | Play service account with "Manage store presence": change prices and products and replace listings for every app it is granted (**A11**). Microsoft Entra app (Manager): rewrite listings, price tiers and rollouts for every product of the seller account (**A11**). Steam publisher key (group-scoped): reads, `SetAppBuildLive` and ownership checks (**below A11**). Each adapter's gate (A-18a) is the backstop where the vendor permissions are wider than S-15 §4 asks. |
-| A15  | **Storefront CI secrets** (A-18h, A-18i)                                                                                                     | GitHub Environment secrets, one environment per store, required reviewers for production channels     | The butler key (unscoped: push builds to every game of the itch.io account), the Snap export-login (scoped, expiring), the BuildPatchTool client secret, PR-plane GitHub tokens, the Steam build account's `config.vdf`. Never in the Worker.                                                                                                                                                                                                                                   |
-| A12  | **CI credentials** (`pkeyci_` tokens, upload tickets)                                                                                        | `ci_tokens`/`ci_upload_tickets` (peppered hashes only); held by CI jobs                               | Publish, promote (and, if granted, yank) releases of one product for up to 30 min (minted) or 90 days (static). A route into A3/A10.                                                                                                                                                                                                                                                                                                                                            |
-| A13  | **The R2 parent token** and the temporary credentials it mints                                                                               | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h                                   | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.                                                                                                                                                                                                                                                                                                                                               |
-| A14  | **Delegated content keys** (P4-19)                                                                                                           | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team                                 | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands.                                                                                                                                                                                                                                                                                                                                     |
+| #    | Asset                                                                                                                                        | Where it lives                                                                                        | Loss impact                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| A1   | **`PLATFORM_KEK`**                                                                                                                           | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Rotatable without downtime through the keyring, even when nobody holds the current key (§3, "The platform KEK keyring").                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| A2   | **Per-product Ed25519 signing keys**                                                                                                         | `product_keys.enc_private_json`, sealed under A1                                                      | Forge any config doc, entitlement, or secret for that product. Revocable for already-provisioned clients only through a trust manifest they verify (§6): an unpinned key by omission or `status: revoked`, a pinned key by a manifest signed by another pin (a permanent tombstone). An app that pinned only the compromised key needs an update. Rotation does not blind a pin-only client: `?signer=<kid>` serves the trust manifest under any live key, and revoked keys stay listed for 400 days. Key states only move forward (staged to active or retired, staged or retired to revoked); revoked is terminal, and activation and revocation are each one atomic write, so at most one key is active and a lost race is a 409. |
+| A3   | **The release channel**                                                                                                                      | GitHub App key, webhook secret, `release_config`                                                      | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| A4   | **`ADMIN_SESSION_SECRET`**                                                                                                                   | Worker secret                                                                                         | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| A5   | **Product secrets** (OIDC client secrets, edge-mint signing keys)                                                                            | `product_secrets`, sealed under A1                                                                    | Impersonate the product to its IdP; mint third-party tokens (e.g. Apple MusicKit) at the operator's cost.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| A6   | **Customer PII**                                                                                                                             | `licenses`, `portal_accounts` (+ emails, identities), `audit` — plaintext                             | Email, name, OIDC subject, device user-agents, hardware-derived digests. Regulatory and reputational. Erasure removes the account and its links, not every copy: console audit rows keep ids (older rows, an address) up to 180 days, signed licence documents carry the buyer's name and email, D1 Time Travel holds deleted rows up to 30 days, and there is no per-person encryption. See PRIVACY, "Residue and limits".                                                                                                                                                                                                                                                                                                          |
+| A7   | **Licensing revenue**                                                                                                                        | The whole enforcement path                                                                            | The thing the system nominally exists to protect. Deliberately ranked _below_ A1–A5.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| A8   | **Service availability**                                                                                                                     | Worker, D1, KV, DO                                                                                    | A licensing outage can block paying customers from software they already bought.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| A9   | **The ability to recover**                                                                                                                   | Rotation and revocation machinery                                                                     | Not an asset in the usual sense, but its absence converts any A1/A2 loss from an incident into a permanent condition.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| A10  | **The blob store** (release bytes)                                                                                                           | R2 bucket `polaris-key-blobs-<env>` (`BLOBS`) + `blob_objects`/`blob_refs` in D1                      | Serve a wrong object under a trusted hash name to every client that downloads it, or lock one in place for 180 days. Equal to A3 in reach.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| A11  | **Outlet credentials** (store API keys)                                                                                                      | `outlet_credentials`, sealed under A1 (own AAD kind); minted tokens sealed in KV                      | Act as the operator in App Store Connect, Google Play or Partner Center: upload or release builds, change listings and prices. Equal to A3.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| A11b | **The platform team App Store Connect key** (A-16's `app-store.api-key`, Admin role)                                                         | `platform_credentials` sealed under A1 (AAD `_platform`), or the `PLATFORM_ASC_API_KEY` Worker secret | Everything A11 lists for **every** app of the team, plus team membership (invite an Admin: a takeover that outlives revoking the key), signing identity (create or revoke certificates), deleting identifiers and changing prices. **Above A3.** Only the write gate (A-17a) stands between the Worker and those powers.                                                                                                                                                                                                                                                                                                                                                                                                             |
+| A11c | **The other platform team store credentials** (A-16: `google-play.service-account`, `microsoft-store.partner-center`, `steam.publisher-key`) | `platform_credentials` sealed under A1 (AAD `_platform`), or their `PLATFORM_*` Worker secrets        | Play service account with "Manage store presence": change prices and products and replace listings for every app it is granted (**A11**). Microsoft Entra app (Manager): rewrite listings, price tiers and rollouts for every product of the seller account (**A11**). Steam publisher key (group-scoped): reads, `SetAppBuildLive` and ownership checks (**below A11**). Each adapter's gate (A-18a) is the backstop where the vendor permissions are wider than S-15 §4 asks.                                                                                                                                                                                                                                                      |
+| A15  | **Storefront CI secrets** (A-18h, A-18i)                                                                                                     | GitHub Environment secrets, one environment per store, required reviewers for production channels     | The butler key (unscoped: push builds to every game of the itch.io account), the Snap export-login (scoped, expiring), the BuildPatchTool client secret, PR-plane GitHub tokens, the Steam build account's `config.vdf`. Never in the Worker.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| A12  | **CI credentials** (`pkeyci_` tokens, upload tickets)                                                                                        | `ci_tokens`/`ci_upload_tickets` (peppered hashes only); held by CI jobs                               | Publish, promote (and, if granted, yank) releases of one product for up to 30 min (minted) or 90 days (static). A route into A3/A10.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| A13  | **The R2 parent token** and the temporary credentials it mints                                                                               | Worker secrets `R2_PARENT_*`; temp credentials held by CI for ≤ 1 h                                   | The parent can write the whole bucket, locked prefixes included (subject to the age lock). A temp credential: one staging prefix.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| A14  | **Delegated content keys** (P4-19)                                                                                                           | CI: a GitHub Environment secret (`PKEY_CONTENT_KEY`) per content team                                 | Publish data-only pack releases in one scope (pack-id prefix and types) until the window closes or a CI revocation of the delegation lands.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 **A5 is scoped by usage.** Every product secret carries a usage — general (stored `NULL`) or
 `edge-mint` — and `openProductSecret` opens a secret only for the usage its caller requires: the
@@ -65,6 +65,15 @@ credential CI holds; revoking the parent kills all of them at once. See "Trusted
 `pkey:v2:<product>:outlet-credential:<id>`, so a blob copied into `product_secrets` (under any
 name, with any usage) fails to open there, and the reverse fails too. See "Outlet credentials
 (P5-01)" in §3.
+
+**Required secrets fail closed.** On prod, staging and dev the Worker answers 500
+`server_misconfigured` (no detail in the body) while `KEY_HASH_PEPPER`, `ADMIN_SESSION_SECRET` or
+`PORTAL_SESSION_SECRET` is missing or shorter than 32 characters, while an optional HMAC secret
+(`DOWNLOAD_TICKET_KEY`, `GITHUB_WEBHOOK_SECRET` and their `_PREVIOUS` slots) is set but shorter,
+or while `BLOB_ORIGIN`, `PKG_ORIGIN` or `IMG_ORIGIN` is not an `https` URL
+(`core/configGuard.ts`); the deploy's config preflight refuses to ship without the required
+secrets. Portal sessions sign with `PORTAL_SESSION_SECRET` only, never the admin secret. A GitHub
+webhook also verifies under `GITHUB_WEBHOOK_SECRET_PREVIOUS` while a rotation is in progress.
 
 ## 3. Trust boundaries
 
@@ -98,6 +107,17 @@ name, with any usage) fails to open there, and the reverse fails too. See "Outle
 Concretely: a bypassed client gate can fake "licensed" locally, but it cannot manufacture
 `payload.secrets` or an edge-mint token, because those only exist if the server chose to emit them.
 Any feature whose security depends on the client _refusing_ to do something is not secured.
+
+**What the server chooses to send.** A managed entry marked `serverOnly` or `edgeMint` is dropped
+from every layer of a payload (licence, account, device) before signing, so neither is ever
+signed into a config document. A key that holds a stored secret cannot be turned into a
+non-secret by a catalog edit or a manifest resync (`declassifies_stored_secret`). The public
+`/config/schema` omits the defaults and examples of secret keys. An edge-mint recipe answers 404
+until it is approved. Overrides with an unknown state are refused when written and skipped when
+merged. A product browser session never carries secret config. Account-layer secrets reach a
+device only when it is signed in as that account (see "The account override layer"), and
+provisioned account secrets are written only while the signing-in subject is linked to the
+licence owner's account.
 
 ### The blob store and the bytes host (P2-01)
 
@@ -1296,8 +1316,9 @@ symbol); review catches the rest.
   against GitHub's JWKS, the fixed issuer, `aud = <origin>/webhooks/deploy`, single-use `jti`
   through `idx_ci_tokens_jti`) and held to a policy only the Worker's configuration sets:
   `PLATFORM_REPOSITORY_ID` and `PLATFORM_REPOSITORY_OWNER_ID` (numeric, against renames), that
-  repository's `.github/workflows/deploy.yml` at the triggering ref, a `refs/tags/v*` ref,
-  `ref_protected`, a GitHub-hosted runner, the `production` environment. Without those vars the
+  repository's `.github/workflows/deploy.yml` at the triggering ref, a `push` event on a
+  semver `refs/tags/vX.Y.Z` ref, the token's `sha` equal to the Worker's own `PKEY_GIT_SHA` (a
+  Worker that does not know its commit refuses every call), `ref_protected`, a GitHub-hosted runner, the `production` environment. Without those vars the
   route does not exist. The body cannot name another repository (the manifest's provider must be
   the configured one, and the publisher's numeric ids come from the configuration, never the
   manifest), cannot touch another product (the slug must be the system product's, checked before
@@ -1313,6 +1334,20 @@ symbol); review catches the rest.
   deploy job's, which already holds `CLOUDFLARE_API_TOKEN`; a token captured from that job could
   be replayed with a different body within its lifetime only if it was never used, and the job
   uses it at once.
+
+- **CI/CD token binding.** An OIDC-minted `pkeyci_` token is minted for branch and tag
+  runs only (the platform's own product: `main` or a semver release tag) and carries
+  `release:promote` and `release:yank` only from a `refs/tags/` run; a CI token never promotes or
+  pins a channel to a release older than its current pointer (`downgrade_refused`). A CI token
+  reads private feeds and mints OCI pull tokens only with `release:publish`, and revoking it drops
+  the feed-read cache at once. A native upload session re-checks its token at publish time
+  (settle and cron), so a token revoked mid-upload publishes nothing. A cached GitHub JWKS is
+  honoured for 6 h at most when GitHub is unreachable. The GitHub webhook claims each delivery
+  once, by its delivery id and by the SHA-256 of its signed body, in the single-use store (a
+  captured body replayed under a fresh delivery id is a duplicate, and two concurrent copies
+  cannot both run); a delivery whose processing fails gives both claims back, so GitHub's
+  redelivery can do the work. It fails closed on a missing installation binding (the system
+  product excepted). An OCI blob upload continues only for the publisher that started it.
 
 **What remains (F-03, F-10).** Strict-router setup snippets keep each feed the only source of
 its names. The owner publishes nothing to public registries and claims the public names at
@@ -3284,14 +3319,19 @@ redelivers with backoff, and the hooks answer 503 on a store outage for exactly 
 voids are also polled daily (Voided Purchases API, 30 days back); Steam pushes nothing, so active
 Steam grants are re-checked weekly and on every claim. Residual: a Steam refund keeps its flag for
 up to a week; an App Store refund whose notifications all fail keeps its flag until a later
-notification or claim re-reads the transaction (no App Store poll exists).
+notification or claim re-reads the transaction, or the weekly App Store re-read does.
 
 **Abuse.** Claims are rate-limited per licence (`commerceClaim`). Each hook has two limiters,
 both failing closed: a per-client-IP bucket BEFORE verification (`appStoreHookIp`,
 `playRtdnHookIp`), which bounds the signature-checking CPU an unauthenticated sender can spend,
 and a per-product bucket AFTER it (`appStoreHook`, `playRtdnHook`), which counts only deliveries
-the store signed — so junk traffic can never drain the bucket a real refund notification needs
-(a test floods unsigned payloads, then delivers a signed one). Bodies are read through the shared
+the store signed AND that cost work (App Store: this app, an accepted environment, a type that
+needs a Server API call, not a replay; notifications signed more than 24 h ago are refused) — so
+junk or another app's signed traffic can never drain the bucket a real refund notification needs.
+The per-IP bucket keys on the /64 for IPv6. Hook 401s are bare (no rejection reason); an
+`unresolved` notification is not deduplicated, so a redelivery is processed again; Play
+dedupes on the message id plus a hash of its data. The ASC webhook limits per client IP before
+the HMAC and charges the product bucket only after it. Bodies are read through the shared
 streaming reader and cut off at the cap while streaming, chunked or not. Bodies are capped (32 KiB claims, 64 KiB hooks). Purchase keys are
 stored only as SHA-256; `detail_json` keeps the store ids a re-check needs (a Play purchase token,
 an order id, a Steam ID) and is never shown in full on the console.
@@ -3389,8 +3429,10 @@ attack (a browser without Fetch Metadata, or a sandboxed or no-referrer attacker
 consonant alphabet). The page allows 30 requests per minute per _client network_, fail-closed:
 an IPv4 address, or an IPv6 **/64** (`clientNetwork` in `core/rateLimit.ts`). The /64 matters
 because one ordinary IPv6 host is routed a whole /64 — 2⁶⁴ source addresses at no cost
-(R10-04b) — so a per-address key, which every other bucket still uses (`clientIp`), would give a
-single host an unlimited supply of fresh budgets. One network therefore gets at most 300 guesses
+(R10-04b) — so a per-address key would give a single host an unlimited supply of fresh budgets.
+Every unauthenticated per-client bucket outside the email limits keys this way, with an
+IPv4-mapped IPv6 address unwrapped to its IPv4 address; `test/rateLimitKeys.test.ts` fails on a
+raw address in a bucket id outside the limiter's own modules. One network therefore gets at most 300 guesses
 in a code's 600-second life: with N codes live at once it hits one with probability about
 300·N / 2.56 × 10¹⁰ — 1.2 × 10⁻⁵ even with 1,000 live flows.
 
@@ -3411,17 +3453,21 @@ callback claims, migrates and disables nothing, so a hit is not a path to the vi
 either. Before that fix, one hit every 7 hours at the ceiling was one captured anonymous license
 every 7 hours. There is
 deliberately no product-wide bucket: one attacker could exhaust it and lock every player of a
-product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets to /64 in
-`clientIp`, and sharding a product's own rate-limit Durable Object (R10-04a is fixed for the
+product out of sign-in. Residual, unowned: sharding a product's own rate-limit Durable Object
+(R10-04a is fixed for the
 platform-global `_portal` and `_admin` limiters only; see the single-use store section below).
 
-**Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** The flow's starter can
-complete the confirmation step without a browser and forward the resulting IdP sign-in to a
-victim. If the victim signs in (or silent SSO signs them in), the callback binds the victim's
-license to the starter's flow, and the starter's own poll then receives a device token on the
-victim's license. The confirmation page is never shown to the victim. The regression test
-`R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own flow…` asserts the gap;
-binding the callback to the confirming browser (below) is the fix.
+**Remote phishing (RFC 8628 §5.4) — closed for device-code flows: R1-07, rooted in R8-03.** The flow's starter can still complete the confirmation step without a browser and
+forward the resulting IdP sign-in to a victim, but the confirmation now sets a `__Host-pk_lcb`
+binder cookie on the confirming browser (the starter's own curl jar) and stores its hash on the
+flow. `handleAuthCallback` requires that cookie before it claims the flow, so the victim's browser,
+which never held it, is refused (400) and the flow is not consumed; the starter's poll stays
+pending. The same binder now covers every product browser flow (`/auth/start` sets it for any
+issuer, not only `provider: platform`) and the admin console's sign-in (`__Host-pkey_admin_flow`).
+Regression tests: `R8-oidc.test.ts` › `FIXED (R1-07 / R8-03): the starter confirms its own flow…`,
+the binder cases in `identityBinders.test.ts`, and `R1-control-plane.test.ts` › `R1-01b`. What stays
+true: a starter who phishes a victim into the _starter's own_ browser (the victim is on the
+starter's machine) is a different attack that no cookie can see.
 
 **What the opt-in attach adds under R1-07 (P1-07).** The attach is decided by the device-code
 holder, and here that is the starter. If the starter's device is on an anonymous enrolled
@@ -3509,11 +3555,10 @@ This is **not** inherent to the device-authorization grant. In RFC 8628 the user
 the same browser session that entered the code; Polaris does not yet bind the IdP callback to
 the browser that confirmed, which is R8-03 (no flow on any surface is bound to the visitor's
 browser; since I-17 the portal's single sign-on is the exception, see "Moving end users off the
-platform IdP"). R1-07 therefore stays **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
+platform IdP"). R1-07 was **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
 GET self-confirm, the framable page and the device code in the URL, not the starter's ability to
-confirm. Fix direction, unowned: bind a `viaDeviceCode` flow's callback to the browser that
-confirmed it — e.g. a `__Host-` `SameSite=Lax` cookie set on the confirmation `303` and required
-by `handleAuthCallback` — which closes R1-07 for device-code flows and makes the `Origin: null`
+confirm. The browser binder (2026-10-08) closed the rest: the confirmation `303` sets a `__Host-`
+`SameSite=Lax` binder cookie that `handleAuthCallback` requires, which makes the `Origin: null`
 question moot.
 
 **The licence chooser's binder (I-26, 2026-10-05).** On a `provider: platform` product, a person
@@ -3594,6 +3639,14 @@ closed: a read that cannot reach the store answers "absent" (an expired link, an
 a locked recipient), a write throws, so no flow is handed out that could not be recorded.
 `test-workerd/singleUse.test.ts` proves the concurrent double-consume on the real object.
 
+The same store holds first-caller-wins claims (`core/atomicClaim.ts`) where a KV get-then-put
+used to guard a replay: a GitHub webhook delivery (by id and by signed body), an App Store Connect
+webhook delivery, and an attestation challenge, which is consumed through it, so two concurrent
+redemptions cannot both pass. A webhook delivery whose processing fails gives its claims back.
+This store's and `RateLimitDO`'s alarm sweeps keep a cursor, so they reach expired records behind
+any number of live ones, and `RateLimitDO` refuses malformed input (a zero window, a non-finite
+limit or time).
+
 **Sharded platform limiters (R10-04a, partly fixed).** `_portal` and `_admin` were literal
 `RateLimitDO` names, so every customer's and every operator's interactive sign-in serialised
 through two objects, reachable with no credentials. Each is now 32 objects; a counter's object is
@@ -3603,13 +3656,23 @@ product's own limiter is still one object per product (tenant-scoped, so a flood
 product), and an attacker can still pick ids that land in one shard; that concentrates load on one
 of 32 objects instead of one of one.
 
+**Per-network limits on the licence routes.** `GET /license/document` allows 300 requests a
+minute per client network (generous: a NAT holds many devices), checked before any D1 work;
+`POST /license/deauthorize` allows 30. `GET /config/document` also has a per-device budget (120 a
+minute, failing open like the read it guards). Every route reads its body through the shared
+capped reader (`core/cappedBody.ts`), which counts bytes while streaming and cancels the body at
+the cap, chunked or not; a lint forbids a bare `req.text()`, `.json()`, `.arrayBuffer()`,
+`.formData()` or `.blob()` in route code.
+
 **Email limits (S-16 §5.4 item 4), primitives only.** `src/core/emailLimits.ts` holds the send
 and verify limits as named constants: per recipient (peppered hash) 5 an hour and 20 a day, per
 client address 10 an hour, per network (IPv4 /24, IPv6 /48) 30 an hour, per device 3 starts an
 hour; codes of 6
 digits, 10 minutes, dead after 5 wrong attempts, replaced (so invalidated) by a new code for the
 same recipient and flow; 10 wrong attempts across codes in an hour lock the recipient out of new
-codes for 15 minutes. Every limit is per product, so one tenant's traffic can neither drain
+codes for 15 minutes. The lockout is keyed on the recipient and the requester's network (IPv4 /24,
+IPv6 /48), so a stranger elsewhere cannot lock a person out; a wrong attempt counts only against a
+live code, and none count while locked. Every limit is per product, so one tenant's traffic can neither drain
 another's budget nor lock a person out of another product. Both primitives answer without a
 reason (`{ send }`, `{ ok }`), so a caller that echoes them leaks nothing. **Open until I-08:** no
 route uses them yet; the enumeration-safe answers (a refused or locked send answered exactly like a
@@ -3629,9 +3692,13 @@ delivery. All mail goes through one choke point, `deliverEmail` (`src/core/email
   and full-width brackets are refused, not flattened; and no reserved name after folding (marks
   stripped, Cyrillic/Greek look-alikes and digit swaps mapped): "polaris" and "plrs" anywhere,
   and the whole names portal, console, admin and the mailbox roles (support, security, noreply,
-  postmaster, abuse, billing, account). A refused name falls back to the slug through the same
+  postmaster, abuse, billing, account), and no name that mixes Latin letters with look-alike
+  letters of another script. A refused name falls back to the slug through the same
   validator, and to no mail at all, never to the platform's own name. Name and address go to the
   binding as a structured `{ name, email }`, never a hand-built header.
+- _Recipient form._ An address is accepted only as a bare ASCII addr-spec (no display name,
+  comment, quoted local part or route), when it is parsed and again in `deliverEmail` before the
+  provider, so the string that is rate-limited and suppression-checked is the string mailed.
 - _Draining the shared quota._ A per-product daily cap on passthrough mail (default 500, the
   `EMAIL_PRODUCT_DAILY_CAP` var, or the product's `email_product_caps` row), charged after
   suppression so it counts only mail that leaves; over it the product answers
@@ -3797,7 +3864,7 @@ the composer and the `seq` ceiling script.
   `pr-<n>` spellings, an unused manual channel, a product with no app release — is signed at the
   starting `seq` (1, or the ceiling) and writes no row, so an unauthenticated caller choosing
   channel names cannot grow D1 (R10). What is left is one Ed25519 signing per request, behind
-  the per-address 60/min `updateFeed` bucket (`clientIp`, no /64 grouping: R10-04b). Access is
+  the per-network 60/min `updateFeed` bucket (an IPv4 address or an IPv6 /64). Access is
   the METADATA mode, checked per request
   before anything is composed or served; under `entitled` the licence must hold the CANONICAL
   channel. The composer is the first reader of `dist_rollouts` and `dist_availability` that
@@ -4132,6 +4199,10 @@ privilege level.
   records row counts only (a test asserts no KEK value appears), and A-13's settings registry
   holds no secret by construction. The per-product `kek.reseal` rows stay, so each product's own
   log still shows the sweep.
+- **Console sign-ins leave rows.** `admin.signin`, `admin.signin.refused` (not in the platform
+  group) and `admin.signin.failed` name the operator by IdP subject only, never an email
+  (`core/securityEvents.ts`: a summary loses addresses and long tokens and is capped at 300
+  characters, and the writer never throws).
 
 ### Platform settings and operations: the runtime settings store (A-13)
 
@@ -4996,11 +5067,12 @@ version answers `unsupported` (`version`) and installs nothing.
     `BridgeState` carries the verified documents and the sync bookkeeping only.
   - Refusals cross as `{code, message}` envelopes built from the copy catalog, never a raw
     server body.
-  - `allowSender` is **optional, and the default accepts every frame**. A host that loads remote
-    content, an iframe, or a second window with the same preload exposes every verb above to
-    that content, including `devices.deauthorize` and `signOut`. Hosts should pass an
-    `allowSender` that pins the app's own origin (the README and tests show
-    `senderFrame.url.startsWith("app://")`), and attach the preload only to windows they trust.
+  - `allowSender` defaults to the **top frame of the app's own origin**: an iframe, a window that
+    navigated to remote content, or an event with no sender frame is refused. Without
+    `appOrigin` the default accepts local origins only (`file:`, a custom scheme, loopback); a
+    host that loads a remote `https:` page sets `appOrigin`. A host that passes its own
+    `allowSender` replaces the default, and should still pin the origin
+    (`senderFrame.url.startsWith("app://")`). Attach the preload only to windows you trust.
     The bridge cannot install code: no verb reaches a driver's `install`.
 - **SafeStorageStore degradation.** The token is encrypted with `safeStorage` (Keychain, DPAPI,
   libsecret or KWallet) into a 0600 `token.enc` file opened with `O_NOFOLLOW`. Every weaker state
@@ -5251,6 +5323,29 @@ group-assignment mistake on that client crossed from customer to operator (notes
 - **Residual.** Both clients live in one Pocket ID directory: a compromise of Pocket ID itself, or
   of its admin account, still reaches both. Moving end users out of Pocket ID is I-17 (below).
 
+### Admin and portal sessions and the step-up table
+
+**What arrived.** The admin cookie is a stateless HMAC token, so sign-out did nothing server-side
+and a stolen cookie lived 8 hours; "stepped up" meant any sign-in in the last 5 minutes; and
+several irreversible or personal-data routes had no step-up at all.
+
+**Control.** `admin/sessionRevocation.ts`: logout writes a per-operator mark (`admin-revoked`,
+single-use store) and `sessionFromRequest` refuses any session minted at or before it, so
+replaying an old cookie is a 401 and sign-out ends every cookie that operator holds. `/docs` and
+`slug-check` re-read the current `PLATFORM_ADMIN_GROUP`. `session.stepUpAt` is set only by a
+`stepUp=1` flow whose ID token carries `auth_time`. `admin/stepUp.ts` lists the gated routes
+(user export, user data delete, licence detach, product delete, break-glass key activation, KEK
+re-seal, relink and holder moves); the portal gates `DELETE /api/me`, licence removal and
+registry-token mint on a sign-in from the last 5 minutes (`portal/stepUpGate.ts`). The console's
+ID-token check has the portal's `maxTokenAge`, `clockTolerance` and `requiredClaims`. The admin,
+portal and product browser sessions compare their CSRF tokens in constant time.
+
+**Residual.** The revocation read fails open if the store is unreachable (the 8 h expiry still
+bounds it). Group membership is re-read from config, not from the IdP, so an operator removed
+only at the IdP keeps access until sign-out or expiry. Portal sessions sign with `PORTAL_SESSION_SECRET` only (no fallback to
+the admin secret; see §2, "Required secrets fail closed") and are already revocable
+(`account_sessions`).
+
 ### Moving end users off the platform IdP (I-17)
 
 End users of `provider: platform` products and the portal's **Continue with single sign-on** move
@@ -5454,7 +5549,7 @@ The Activate license deep link (an app at its entry limit, an email, a printed c
 Library with the modal filled in. Asset: the licence key, a bearer credential (A7; whoever holds it
 activates seats and adds the licence through the claim rules). As first built (PX-01) it carried
 the key as a query, `/activate?key=<license key>`, so the key was in every record of the request
-URL: Workers Logs (`[observability.logs] invocation_logs = true` records each invocation's URL),
+URL: Workers Logs (`[observability.logs] invocation_logs` recorded each invocation's URL until it was turned off in October 2026),
 Cloudflare's edge logs, any proxy or analytics that reads URLs, and the browser's history. That is
 no longer accepted.
 
@@ -5684,6 +5779,8 @@ PORTAL.md G23). Assets: the account (A6) and the shared sender's reputation and 
   make a change the account's other addresses do not hear about. Account deletion does the same,
   reading the recipients before the rows are erased. A failed send is caught per recipient (the
   worker has no console logging; the helper returns how many went out), so mail trouble never fails the removal or deletion it reports.
+  A notice that reached no address writes `security.notice.undelivered` in the account's activity
+  (counts only, no address).
   Residual: the session's own address is also mailed, and after an IdP sign-in that address may
   not be a verified `portal_account_emails` row (a brand-new account may have none yet), so an
   unverified address can receive a security notice, as before this change.
@@ -6105,8 +6202,8 @@ and 12 (cross-tenant correlation) are the deltas.
   support code stays unlisted until it holds a licence, a signed-in device or a sign-in.
 - **Relink (item 9).** The target is named only by a subject of THIS product (`target_not_found`
   otherwise; never an email, never another product's subject). The operator needs an interactive
-  sign-in no older than 5 minutes (`session.authAt`, set from the ID token's `auth_time` when the
-  IdP sends one, else the callback time; `isSteppedUp`); `/manage/login?stepUp=1` sends
+  sign-in no older than 5 minutes (`session.stepUpAt`, set only by a `stepUp=1` flow whose ID token
+  carries `auth_time`, which an ordinary sign-in never sets; `isSteppedUp`); `/manage/login?stepUp=1` sends
   `prompt=login` and `max_age=0`, and the callback refuses a step-up whose `auth_time` is already
   stale. A reason (1 to 500 characters) is mandatory. Both accounts are emailed at their verified
   addresses BEFORE the owner pointer moves; the move is a conditional reassign (a concurrent change
@@ -6233,9 +6330,10 @@ values onto it and drops unowned licences'.
   Cloud Sync principal (`resolveSyncPrincipal`, with all of its checks: an authorized device, a
   live or aliased subject, never a floating licence, never a licence the bound account removed
   from its library) and, failing that, the licence owner's existing subject. The owner line is
-  Config's alone: it lets a licence-key device of an owned licence receive the owner's overrides,
-  which is exactly what the licence override delivered before the migration, and nothing of the
-  account itself (no Cloud Sync data, no personal details). Cloud Sync code may still not call any
+  Config's alone: it lets a licence-key device of an owned licence receive the owner's
+  non-secret overrides, and nothing of the account itself (no Cloud Sync data, no personal
+  details). Account-layer secrets, and config keys the catalog flags `secret`, reach only a
+  device signed in as that account. Cloud Sync code may still not call any
   owner accessor (`test/subjectStores.test.ts`). A floating licence gets no layer, even with a
   binding on the device. The owner line reads the subject without creating one, so a document GET
   writes nothing.
@@ -6617,7 +6715,9 @@ proxy now fetches through the same guard.
   `global_fetch_strictly_public` a fetch to our own custom domain is routed to origin and bypasses
   the front door), never `.local`, `.internal`, `.localhost` or `.home.arpa`. Redirects are
   followed by hand, at most three, and each hop is guarded again **before** it is dialled; an
-  `Authorization` header reaches the first hop only, never a `Location`. One 30 s budget covers
+  `Authorization` header reaches the first hop only, never a `Location`, and `Cookie`,
+  `Proxy-Authorization` and any credential-looking header are dropped on every redirect hop. A
+  host is compared with every trailing dot stripped, and `*.workers.dev` is refused too. One 30 s budget covers
   every hop and the body. Only a release file's pull (HA-08) opts in to more (`releaseFile`): 30 s
   plus a second per 10 MiB of the file, at most 10 minutes per message
   (`SAFE_FETCH_FILE_TIMEOUT_MS`); every other caller stays clamped at 30 s. A queue batch stays
@@ -6631,6 +6731,13 @@ proxy now fetches through the same guard.
   authors and product operators of that product, never an end user's request. Every pull,
   refused or not, writes an `assets.ingest` audit row. `test/safeFetch.test.ts` runs the S-20
   reference puller's guard table case for case and the redirect-to-a-denied-host refusal.
+- **Custom-issuer token requests.** The token POST to a product's own OIDC issuer carries its
+  `client_secret`, so it goes through `core/outboundGuard.ts`: `https` only, no userinfo, no
+  private, loopback or link-local address, redirects followed by hand (at most three, each checked
+  again; a cross-origin redirect drops the body and the headers), 10 s and 256 KiB. On prod an
+  unset `OIDC_ISSUER_ALLOWLIST` refuses every custom issuer. The manifest's issuer check refuses
+  NAT64, 6to4 and Teredo addresses and empty labels, and allows `http` only for exact loopback
+  names. **Residual:** the issuer's JWKS is still fetched by `jose` itself, outside the guard.
 - **Content risk.** The type comes from the magic number, never from the source's
   `Content-Type`: image slots take PNG, JPEG, WebP, GIF or AVIF; video slots MP4; nothing ever
   sniffs as SVG or HTML (`core/sniff.ts` has no branch that could answer either). Per-slot caps
@@ -7192,7 +7299,8 @@ platform admins (F16), the same gate as both create paths. Its inventory and eac
 result are held only in the isolate's memory for 60 s, so a re-render does not re-list GitHub. They
 are never written to KV or D1, never shared across isolates, and gone when the isolate is.
 
-**The slug check is open to any signed-in operator.** It answers only whether a slug is
+**The slug check is open to any operator in the current platform group** (the group is re-read on
+every call, as for `/docs`). It answers only whether a slug is
 `available`, `taken`, `reserved` or `invalid`, with a free suggestion. Whether a product exists is
 already public: `/<slug>/.well-known/polaris.json` answers for every product. Each call is at most
 two indexed prefix reads of the registry and sits behind the session-keyed `adminApi` limiter
@@ -7538,8 +7646,10 @@ attachments in place, with no record and no retry, while the person had been tol
   email's link still belongs to the erasing account and sign-in is refused.
 - **Residual.** Until the retry completes the person's data still exists server-side, but no API
   or session reaches it; the time to completion is bounded by the store recovering plus the
-  back-off. SEC-PRV-6 (buyer email left in `audit.summary` and `license_relinks.holder_json`) is
-  separate (SEC-WP-19) and is not closed here: this erasure leaves those rows as before.
+  back-off. This erasure does not rewrite `audit.summary` or `license_relinks.holder_json`: new
+  audit rows name a licence by id, older ones (which may hold a buyer's address) are deleted after
+  180 days, and a relink's holder snapshot is cleared once its 72-hour undo window ends (PRIVACY,
+  "Residue and limits").
 
 ### Account pictures: profile import, re-encoding and uploads (PX-W16)
 
@@ -7698,9 +7808,48 @@ expiresAt))` (`core/graceClamp.ts`, `core/documents.ts` `clampGraceUntil`): the 
 
 ### Boundaries that are weaker than they look
 
-- **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The
-  JWS is verified once on fetch, then discarded; the decoded doc is reloaded with a bare
-  `JSON.parse`. Worse, the cache can supply `trustedKeys` that _override pinned keys_.
+- **The SDK cache is inside the attacker's trust domain, and the SDK does not trust it.** Every
+  load re-verifies the pin evidence against the pins, the trust manifest against the usable pins
+  and each document against the effective set; the decoded document is never stored, and the
+  cache supplies no key bytes (R2-01). The client-side rules that close what remained:
+  - **The unsigned hints are display state.** A hard 401 deletes the document it answered for,
+    and a 403 build block deletes the licence document, in the same write that sets the hint.
+    Removing `lastSyncUnauthorized` or `blocked` from the plain-JSON record now yields
+    `needs-activation`, not a usable document. Residual: restoring a full pre-revocation snapshot
+    of the state directory and token store works until `graceUntil`. A bundle-activated install
+    has no token to revoke, so `graceUntil` is its only revocation lever.
+  - **Unsigned discovery cannot switch the licence gate off.** The gate is on when the build's
+    `expectedServices` (default licence and config) names `license`, or when a discovery loaded
+    this session says it is enabled. A config-only product names `expectedServices` without
+    `license`.
+  - **A copied state directory does not carry the device.** The desktop file store re-derives the
+    device id from the hardware anchor at every start and discards a stored id that disagrees,
+    with the token and the grant slices of the cache. The probes (`ioreg`, `reg.exe`) run by
+    absolute path, not through `PATH`. Keychain and Keystore stores keep their stored id.
+    Residual: an attacker who can run code as the user can read the anchor too.
+  - **The network path runs on the effective clock** and **every verify call names its
+    anti-replay floor**: "no floor" is an explicit `null`.
+  - **A bundle activation is a signed fact, not a marker.** The cache keeps the imported bundle's
+    own JWS (`bundle`); `activation: "bundle"` needs it to re-verify against the usable pins (no
+    import window) with the cached licence document byte-identical to the bundle's, and no token
+    held. The old unsigned `importedBundle` marker is not read. An import is refused unless each
+    inner document is strictly newer than the cached one of its type, and a held trust manifest
+    newer than the bundle's is kept, so an old bundle cannot roll a device back or re-teach a
+    revoked key.
+  - **A pinned key can be revoked, and the revocation is kept as evidence.** A verified manifest
+    signed by one pin that lists another pin's exact bytes as `revoked` tombstones it; the
+    manifest itself is stored (`pinRevocations`) and re-verified on every load, in issue order.
+    A tombstoned pin verifies nothing again. A manifest revoking its own signer is refused, so an
+    install always keeps a usable pin. Residuals: the evidence lives in the user-writable cache, so
+    a willing user can delete it (it protects honest installs from a third party holding the key,
+    not from the user); and the race is symmetric — whoever holds one pin and reaches a client
+    before the operator acts can tombstone the other, which TLS confines to an attacker who can
+    also answer for the Worker. With no pin compromised the outcome is never worse than before:
+    pins were terminal.
+  - **Key statuses and base64url are strict.** Only `active`, `staged` and `retired` keep a
+    published key (a missing or unknown status skips it); every JWS segment and trust-set key must
+    be canonical base64url, so a lenient decoder's spare spellings of a signature or key are
+    refused everywhere.
 - **A linked GitHub repo is a control-plane input, not just a data source.** `.pkey/` manifests
   rewrite tiers, OIDC issuer, artifact policy, and admin group on resync. Edge-mint recipes are
   the exception that is held back: a recipe from `.pkey/` is **inert until an operator approves
@@ -7879,11 +8028,13 @@ originating outside the trust boundary.
 | `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync, read at ONE commit: the default-branch head GitHub resolves from the DB-configured repo (R6-05: no webhook- or caller-supplied ref picks the content; ST-01a), recorded with that commit in `product_manifest_snapshot`. Since ST-01b a resync skips settings, tiers and profiles the console has claimed, writes one audit row per changed setting, and applies in one batch after every check (§3 "Resync as a write path"). The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                               |
 | `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Its root listing (`dist_listing`) is the portal's product presentation: display data only. Its art is served as Polaris Key's hosted copies from the image host (HA-05 pulls, HA-07 serves); the portal's GitHub-only media proxy, typed by magic number (PX-W1), serves only a slot with no hosted copy and every slot in the kill switch's rollback. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). Likewise the Play `packageName` must equal the pin on the `google-service-account` (P5-03), or the Google Play connector is inert. |
 | `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09). The commerce binding and claim routes are covered (SP-16): both need the device bearer, so a listed page reaches only what its own device token can.                                                                                                                                                                                                                                                                                                                                                                 |
-| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build. An unparseable version is refused whenever a version window applies.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices. Matching is component-wise against an immutable baseline (the first usable fingerprint bound to the device), so stepwise drift accumulates and cannot ratchet; at most half of the baseline components (anchor bonus included) may change; a fingerprint without the anchor or under three components is treated as absent.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Cached `trustJws`               | **Signature verification** (extending the pins)                                   | A user-writable file | The compact JWS is re-verified against the pins on every load; the cache supplies no key bytes and cannot override a pinned key (R2-01).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Cached `pinRevocations`         | **Which pins verify** (removing a pin)                                            | A user-writable file | Each entry is a signed manifest, re-verified against the pins on every load in issue order; an entry that fails, or whose signer is already tombstoned, is dropped. It can only remove a pin, never add one, and only with another pin's signature. Deleting it un-revokes the pin on that install (the user is not the adversary it addresses).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Cached `bundle`                 | `activation: "bundle"`                                                            | A user-writable file | The bundle's own JWS, re-verified against the usable pins on every load (no import window); it activates only with no token held and the cached licence document byte-identical to its own.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | CI distribution reports         | Availability and submission state per release and outlet; key observations        | A CI job (`pkeyci_`) | `distribution:report` (default grant). Validated whole before writing (declared live outlet, known release and build, vocabulary); audited. Can show a wrong state, never ship code, gate bytes or change a key: the operator-owned key inventory only records a CI-observed fingerprint, flagging a mismatch (P2b-03).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
@@ -7972,8 +8123,17 @@ stored fingerprint is protected the same way, so key activation on it returns `4
 deauthorizes itself or the operator frees it; and a refusal still says "an id is held", which only
 someone who already knows the id can use.
 
-**Bounding the damage** is the achievable goal, and it rests on three properties — one of which
-currently holds:
+**Device rows change only from the state that was checked.** A token rotation is a compare-and-set
+on the old token hash (a lost race is a 401, and no new token is issued). The metadata touch on
+every document request updates only the metadata columns, and only while the row is still
+authorized for the same licence and token, so a device deauthorized mid-request stays
+deauthorized; it is skipped when nothing changed and the row was stamped in the last five minutes,
+and every client-supplied metadata header is stored at most 128 characters. Releasing a dormant
+seat clears the token hash too. Rebinding a device to another licence writes a `device.rebind`
+audit row.
+
+**Bounding the damage** is the achievable goal, and it rests on three properties — all of which
+now hold, within the limits stated:
 
 1. ✅ Secrets and minted tokens require a live server decision. **Holds.** For an edge-mint token
    that decision has two operator-held conditions besides the device token (and a usable licence
@@ -7998,14 +8158,22 @@ currently holds:
    approvals not given by an operator are the upgrade backfill's (approved by `migration`), which
    carry the acknowledgement only where the recipe was already a public mint before the upgrade,
    and the License and sign-in state as deployed.
-   Every device is also capped at 30 mints a minute beside the per-IP budget.
-2. ❌ A tampered cache should not be able to change _which keys verify signatures_. **Does not hold**
-   — the cache overrides pinned keys.
-3. ❌ A compromised signing key should be revocable. **Does not hold** — client trust sets only grow
-   and ignore `status`, so revocation has no effect on already-provisioned clients.
+   Every device is also capped at 30 mints a minute; the per-network budget (60 a minute) is
+   charged only when device authentication fails, so devices behind one address do not starve
+   each other.
+2. ✅ A tampered cache cannot change _which keys verify signatures_. **Holds.** The cache stores
+   signed JWSs only and supplies no key bytes; pins are spread last, so no cached manifest can
+   shadow one (R2-01). The one cached input that changes the pin set, `pinRevocations`, can only
+   remove a pin, and only with another pin's signature.
+3. ✅ A compromised signing key is revocable. **Holds, for a product that pins at least two keys.**
+   The discovered set is replaced wholesale, so an unpinned key is revoked by omission or by an
+   explicit `revoked` entry (listed for 400 days); a pinned key is revoked by a manifest another
+   pin signs (a permanent tombstone, kept as signed evidence). An app that pinned only the
+   compromised key cannot be told, and needs an update: stage a backup key before building, and
+   pin both.
 
-Properties 2 and 3 are the difference between "piracy is bounded" and "one compromise is permanent".
-Both are cheaply fixable and are the highest-priority remediation in this audit.
+Properties 2 and 3 are the difference between "piracy is bounded" and "one compromise is
+permanent".
 
 ## 7. Attack trees (abbreviated)
 
@@ -8041,7 +8209,7 @@ security settings are `critical`, at least L1 to widen, and never inherited from
 
 ```
 Poison the release channel
-├── Hold GITHUB_WEBHOOK_SECRET (one global secret, no per-repo binding, no replay protection)
+├── Hold GITHUB_WEBHOOK_SECRET (one global secret, no per-repo binding; each signed body is accepted once)
 │   └── forge a push payload naming ANY linked repo, with an arbitrary `after` ref
 ├── Write access to a linked repo
 │   ├── set `.pkey/release` sparkleEd25519Pub to a key you hold  (the verifying key is repo-sourced: resync rewrites `sparkle_ed25519_pub` on every push-triggered resync, with no operator guard)
@@ -8052,6 +8220,7 @@ Poison the release channel
 │   ├── present another repository's OIDC token  (refused: numeric repository_id/owner_id pinned from GitHub)
 │   ├── call a reusable workflow elsewhere, or the workflow from an unprotected ref  (refused: job_workflow_ref must be this repo's workflow at the triggering ref; ref_protected)
 │   ├── replay a leaked OIDC token  (refused: single-use jti, UNIQUE in D1; 5-10 min exp anyway)
+│   ├── reach the deploy token through a dependency or a test  (refused: install, build, test and lint run in the unprivileged `verify` job; the deploy job installs with --ignore-scripts; first-party actions are pinned by SHA)
 │   ├── edit `.pkey/release` to loosen the policy  (only workflow/environment are fields; an operator-claimed policy ignores the manifest)
 │   ├── steal a minted `pkeyci_` token from a job log  (30 min, one product, scoped; static tokens ≤ 90 days, revocable)
 │   └── copy another product's gated blob into the ticket prefix to earn a ref  (refused: credentials grant PutObject/HeadObject on one prefix only; promote refuses another product's staging key)

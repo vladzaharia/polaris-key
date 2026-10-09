@@ -26,6 +26,8 @@ export type SingleUseKind =
   | "provider-flow"
   /** Console (admin) OIDC sign-in, by `state`. */
   | "admin-flow"
+  /** Console sign-out mark: an operator's sessions minted at or before it are void. */
+  | "admin-revoked"
   /** Product OIDC sign-in, by `state`. */
   | "oidc-flow"
   /** The legacy sign-in's licence chooser (I-26): the browser binder's hash → the flow's `state`. */
@@ -55,7 +57,11 @@ export type SingleUseKind =
   /** Adding an email sign-in method (PX-W12): the code's address, by the account session. */
   | "method-flow"
   /** Link an existing account (PX-W12): the two accounts' proofs, by the browser's flow secret. */
-  | "link-flow";
+  | "link-flow"
+  /** A webhook delivery already processed, by delivery id / body hash. */
+  | "webhook-claim"
+  /** An attestation challenge already redeemed, by product + challenge. */
+  | "attest-claim";
 
 /** The address of one artefact. */
 export interface ArtefactRef {
@@ -207,6 +213,24 @@ export function redeemArtefact(
         ? { ok: true, payload: out.value }
         : { ok: false },
     { ok: false },
+  );
+}
+
+/** `redeemArtefact`, also saying whether a live artefact was there to guess against (`live`). */
+export function redeemArtefactLive(
+  env: Env,
+  ref: ArtefactRef,
+  proof: string,
+): Promise<{ ok: true; payload: string } | { ok: false; live: boolean }> {
+  return read<{ ok: true; payload: string } | { ok: false; live: boolean }>(
+    env,
+    ref,
+    { op: "redeem", proof },
+    (out) =>
+      out.ok === true && typeof out.value === "string"
+        ? { ok: true, payload: out.value }
+        : { ok: false, live: out.live === true },
+    { ok: false, live: false },
   );
 }
 

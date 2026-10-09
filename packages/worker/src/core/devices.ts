@@ -85,6 +85,7 @@ import {
   computeHwid,
   matchFingerprint,
   parseFingerprint,
+  usableFingerprint,
   type ComponentMap,
   type PresentedFingerprint,
   type StoredFingerprint,
@@ -106,6 +107,7 @@ import {
 import type { ServiceHooks } from "./hooks.js";
 import { assertIdentityBindable } from "./identityGate.js";
 import { boundedPackInstalls, recordPackInstalls } from "./deltaDemand.js";
+import { BodyTooLargeError, readBodyJson, readBodyText } from "./cappedBody.js";
 
 /**
  * What a valid device token proves, at CORE's level of authority: this token belongs to this
@@ -234,7 +236,9 @@ export function licenseUsable(
 function toStoredFingerprint(row: FingerprintRow): StoredFingerprint {
   let components: ComponentMap = {};
   try {
-    const parsed: unknown = JSON.parse(row.components_json);
+    // Drift is always measured against the immutable baseline; a row without one
+    // (unverified, or too thin to ever have been usable) has nothing to compare.
+    const parsed: unknown = JSON.parse(row.baseline_components_json ?? "{}");
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       components = parsed as ComponentMap;
     }
@@ -245,7 +249,7 @@ function toStoredFingerprint(row: FingerprintRow): StoredFingerprint {
   return {
     hwid: row.hwid,
     components,
-    anchorHash: row.anchor_hash,
+    anchorHash: row.baseline_anchor_hash ?? null,
     status: row.status === "unverified" ? "unverified" : "verified",
   };
 }
@@ -299,8 +303,9 @@ async function provesOwnership(
   }
   if (!presented) return false;
   const row = await getFingerprint(db, product, existing.device_id);
-  if (!row || row.status !== "verified" || !row.anchor_hash) return false;
-  if (presented.components[FINGERPRINT_ANCHOR] !== row.anchor_hash)
+  if (!row || row.status !== "verified" || !row.baseline_anchor_hash)
+    return false;
+  if (presented.components[FINGERPRINT_ANCHOR] !== row.baseline_anchor_hash)
     return false;
   // Exact, not tolerated: a drifted fingerprint is a plausible upgrade of the same machine, but
   // also what a caller who knows only the anchor can fake. A real owner re-binds through a
@@ -557,6 +562,23 @@ export async function bindDevice(
   };
   if (relicensed) await clearDeviceInheritance(db, product.slug, deviceId);
   await upsertDevice(db, device);
+  // A row changing licence is the trace of a seat moving; record both licence ids
+  // (never a key or token) so a victim's lost seat is explicable.
+  if (relicensed) {
+    await appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: null,
+      actor_name: null,
+      actor_email: null,
+      action: "device.rebind",
+      target_kind: "device",
+      target_id: deviceId,
+      parent_id: license.id,
+      summary: `Device moved from licence ${existing.license_id} to ${license.id} (was ${existing.status})`,
+    });
+  }
   if (opts.subject) {
     await writeDeviceSubject(db, product.slug, deviceId, opts.subject);
     device.subject = opts.subject;
@@ -816,6 +838,13 @@ export async function validateDeviceToken(
   return { tokenHash, license, device };
 }
 
+/** The rotation's compare-and-set found the device changed under it. */
+export class DeviceTokenRotationLost extends Error {
+  constructor() {
+    super("device changed during token rotation");
+  }
+}
+
 export async function rotateDeviceToken(
   env: Env,
   db: Db,
@@ -825,12 +854,22 @@ export async function rotateDeviceToken(
 ): Promise<string> {
   const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+  // A compare-and-set, not a full-row upsert from the snapshot `validateDeviceToken`
+  // read. A deauthorize, a revoke or another rotation that landed in between leaves the row
+  // alone, and the new credential is never minted for a device that is no longer live.
+  const swapped = await db.runChanges(
+    `UPDATE devices SET token_hash = ?, last_seen = ?
+      WHERE product = ? AND device_id = ? AND status = 'authorized'
+        AND license_id = ? AND token_hash = ?`,
+    tokenHash,
+    now,
+    product.slug,
+    valid.device.device_id,
+    valid.device.license_id,
+    valid.tokenHash,
+  );
+  if (swapped === 0) throw new DeviceTokenRotationLost();
   await deleteTokenRecord(env, product.slug, valid.tokenHash);
-  await upsertDevice(db, {
-    ...valid.device,
-    last_seen: now,
-    token_hash: tokenHash,
-  });
   await putTokenRecord(env, product.slug, tokenHash, {
     product: product.slug,
     deviceId: valid.device.device_id,
@@ -858,17 +897,53 @@ export async function touchDeviceMetadata(
   meta: ReturnType<typeof deviceMetadata>,
   now: number,
 ): Promise<void> {
-  await upsertDevice(db, {
-    ...device,
-    last_seen: now,
+  const next = {
     ua: meta.userAgent ?? device.ua,
     platform: meta.platform ?? device.platform ?? null,
     arch: meta.arch ?? device.arch ?? null,
     app_version: meta.appVersion ?? device.app_version ?? null,
     sdk_name: meta.sdkName ?? device.sdk_name ?? null,
     sdk_version: meta.sdkVersion ?? device.sdk_version ?? null,
-  });
+  };
+  // A device row whose metadata is unchanged and was stamped recently is not
+  // rewritten, so a tight poll loop costs no D1 writes.
+  const unchanged =
+    next.ua === device.ua &&
+    next.platform === (device.platform ?? null) &&
+    next.arch === (device.arch ?? null) &&
+    next.app_version === (device.app_version ?? null) &&
+    next.sdk_name === (device.sdk_name ?? null) &&
+    next.sdk_version === (device.sdk_version ?? null);
+  if (unchanged && now - device.last_seen < TOUCH_MIN_INTERVAL_SEC) return;
+  // Narrow UPDATE of the metadata columns only, guarded by the state the
+  // caller authenticated against. A full-row upsert from the stale snapshot resurrected a device
+  // deauthorized (or re-tokened) while the request was in flight.
+  await db.run(
+    `UPDATE devices SET last_seen = ?, ua = ?, platform = ?, arch = ?, app_version = ?,
+            sdk_name = ?, sdk_version = ?
+      WHERE product = ? AND device_id = ? AND status = 'authorized'
+        AND license_id = ? AND token_hash IS ?`,
+    now,
+    next.ua,
+    next.platform,
+    next.arch,
+    next.app_version,
+    next.sdk_name,
+    next.sdk_version,
+    device.product,
+    device.device_id,
+    device.license_id,
+    device.token_hash,
+  );
 }
+
+/** The least gap between `last_seen` stamps for a device whose metadata is unchanged. */
+const TOUCH_MIN_INTERVAL_SEC = 300;
+
+/** Longest stored value for a client-supplied metadata header. */
+const MAX_META_LEN = 128;
+const capMeta = (v: string | null): string | null =>
+  v === null ? null : v.slice(0, MAX_META_LEN);
 
 /** The client metadata headers as stored (WIRE-CONTRACT-V3 §5.2 rule 3): platform, arch and SDK
  *  canonical where the spelling is known (`core/clientMetadata.ts`), and an empty header absent,
@@ -882,12 +957,14 @@ export function deviceMetadata(req: Request): {
   sdkVersion: string | null;
 } {
   return {
-    userAgent: req.headers.get("user-agent"),
-    platform: normalizePlatformHeader(req.headers.get(HEADER_PLATFORM)),
-    arch: normalizeArchHeader(req.headers.get(HEADER_ARCH)),
-    appVersion: req.headers.get(HEADER_VERSION),
-    sdkName: normalizeSdkHeader(req.headers.get(HEADER_SDK_NAME)),
-    sdkVersion: req.headers.get(HEADER_SDK_VERSION),
+    userAgent: capMeta(req.headers.get("user-agent")),
+    platform: capMeta(
+      normalizePlatformHeader(req.headers.get(HEADER_PLATFORM)),
+    ),
+    arch: capMeta(normalizeArchHeader(req.headers.get(HEADER_ARCH))),
+    appVersion: capMeta(req.headers.get(HEADER_VERSION)),
+    sdkName: capMeta(normalizeSdkHeader(req.headers.get(HEADER_SDK_NAME))),
+    sdkVersion: capMeta(req.headers.get(HEADER_SDK_VERSION)),
   };
 }
 
@@ -919,20 +996,18 @@ export async function readDeviceBody(req: Request): Promise<{
   label: string | null;
 }> {
   const none = { fingerprint: null, label: null };
-  const declared = req.headers.get("content-length");
-  if (declared && Number(declared) > MAX_ACTIVATE_BODY) return none;
   let raw: string;
   try {
-    raw = await req.text();
+    raw = await readBodyText(req, MAX_ACTIVATE_BODY);
   } catch {
     return none;
   }
-  if (!raw.trim() || raw.length > MAX_ACTIVATE_BODY) return none;
+  if (!raw.trim()) return none;
   try {
     const body = JSON.parse(raw) as Record<string, unknown> | null;
     if (body === null || typeof body !== "object") return none;
     return {
-      fingerprint: parseFingerprint(body.fingerprint),
+      fingerprint: usableFingerprint(parseFingerprint(body.fingerprint)),
       label: normalizeDeviceLabel(body.deviceName),
     };
   } catch {
@@ -1043,7 +1118,7 @@ export async function handleDevices(
   if (req.method === "PATCH") {
     let body: Record<string, unknown>;
     try {
-      body = (await req.json()) as Record<string, unknown>;
+      body = (await readBodyJson(req)) as Record<string, unknown>;
     } catch {
       return errorResponse(400, ErrorCode.BadRequest, "invalid json");
     }
@@ -1319,12 +1394,14 @@ export async function handleReport(
   const valid = await validateDeviceToken(env, db, product, token, now);
   if ("error" in valid || !coreDeviceAllowed(product, valid, now))
     return errorResponse(401, ErrorCode.Unauthorized);
-  const len = req.headers.get("content-length");
-  if (len && Number(len) > 16 * 1024)
-    return errorResponse(413, "body_too_large", "report body too large");
-  const rawText = await req.text();
-  if (rawText.length > 16 * 1024)
-    return errorResponse(413, "body_too_large", "report body too large");
+  let rawText: string;
+  try {
+    rawText = await readBodyText(req, 16 * 1024);
+  } catch (e) {
+    if (e instanceof BodyTooLargeError)
+      return errorResponse(413, "body_too_large", "report body too large");
+    throw e;
+  }
   let snapshot: unknown;
   try {
     snapshot = rawText.trim() ? (JSON.parse(rawText) as unknown) : {};

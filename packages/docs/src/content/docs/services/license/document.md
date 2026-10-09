@@ -46,17 +46,20 @@ byte-identical, and the surfaces v3 introduced speak the nested shape from their
 ## What the handler does, in order
 
 1. **Method.** Not `GET` is `405`.
-2. **Authenticate.** Validate the `pkeyt_` token and require the license behind it to be usable.
+2. **Rate limit.** Bucket `licenseDoc`, 300 requests per 60 seconds per client network (an IPv4
+   address or an IPv6 /64), before any D1 work. Over budget is `429 rate_limited`. It fails open:
+   a limiter outage does not stop refreshes.
+3. **Authenticate.** Validate the `pkeyt_` token and require the license behind it to be usable.
    Failure is `401` — the same `401` for a bad token and for a dead license, so a stolen token
    cannot be used to probe license state.
-3. **Touch the device.** `last_seen` is stamped and the request's client metadata headers are
+4. **Touch the device.** `last_seen` is stamped and the request's client metadata headers are
    folded into the device row. Both document routes do this, so whichever services a product
    runs, a device that is talking to the server is recorded as seen.
-4. **Resolve entitlements.** Merge every stored layer for this license and device, then stamp
+5. **Resolve entitlements.** Merge every stored layer for this license and device, then stamp
    admin and tier policy on top as enforced entries.
-5. **Run the build gate.** Refuse the request with `403` if this build may not hold a grant. See
+6. **Run the build gate.** Refuse the request with `403` if this build may not hold a grant. See
    below.
-6. **Build the document**, compute its ETag, answer `304` if the caller's `If-None-Match`
+7. **Build the document**, compute its ETag, answer `304` if the caller's `If-None-Match`
    matches, otherwise sign and return.
 
 ## The payload
@@ -221,8 +224,8 @@ Inputs are the `X-PKey-Version` header (defaulting to `0.0.0` when absent), the 
    string the caller types into a header, which is a self-signed exemption.
 2. **Version window.** The product's compatibility range intersected with the grant's own
    `app.minVersion` / `app.maxVersion`; **tighter wins in both directions**. Outside it, the
-   refusal names `version-too-old` or `version-too-new` and returns the range. An unparseable
-   version compares equal to everything, so a malformed version is never blocked on shape alone.
+   refusal names `version-too-old` or `version-too-new` and returns the range. A version that is not semver is refused whenever a window applies (the
+   refusal names `version-too-new`); with no window at all, it passes.
 3. **Channel.** The channel the **build implies** always applies: `0.0.0-dev…` is `dev`,
    `0.0.0-beta…` and the legacy `0.0.0-staging…` are `beta`, `0.0.0-pr-42` (hyphen optional) is
    `pr-42`, everything else (including `2.0.0-beta.1`) is `stable`. A declared `X-PKey-Channel`

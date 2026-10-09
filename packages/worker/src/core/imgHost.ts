@@ -74,7 +74,7 @@ import {
   slotClass,
 } from "./hostedAssets.js";
 import { IMAGE_TYPES } from "./sniff.js";
-import { clientIp, rateLimitOk } from "./rateLimit.js";
+import { clientNetwork, rateLimitOk } from "./rateLimit.js";
 import { IMG_MAX_WIDTH, imgOrigin } from "./imgHostname.js";
 
 export {
@@ -394,7 +394,7 @@ async function serve(
     !(await rateLimitOk(
       env,
       product,
-      { bucket: "imgHost", id: clientIp(req), ...IMG_RATE_LIMIT },
+      { bucket: "imgHost", id: clientNetwork(req), ...IMG_RATE_LIMIT },
       now,
     ))
   )

@@ -1,12 +1,17 @@
 class_name PKeyCache
 extends RefCounted
-## The verified cache (WIRE-CONTRACT-V3 §4.1): sdk-node `core/cache.ts` over the
+## The verified cache (WIRE-CONTRACT-V4 §4.1): sdk-node `core/cache.ts` over the
 ## `CacheRecordV3` shape of `client-core/src/store.ts`, exactly:
 ##
 ##   {v: 3, trustJws?, docs?: {license?, config?}, etags?: {license?, config?},
-##    importedBundle?: {bundleId, importedAt}, lastSyncUnauthorized?, blocked?: {reason,
-##    allowedRange?}, feeds?: {<canonical channel>: pkey-feed+jws},
-##    releaseRecords?: {<sha256>: pkey-release+jws}}
+##    bundle?: <the imported bundle's compact JWS>, pinRevocations?: {<kid>: pkey-trust+jws},
+##    lastSyncUnauthorized?, blocked?: {reason, allowedRange?}, feeds?: {<canonical channel>:
+##    pkey-feed+jws}, releaseRecords?: {<sha256>: pkey-release+jws}}
+##
+## `pinRevocations` is the evidence for each tombstoned pinned key (the revoking manifest,
+## verbatim). It is security state, not a grant: it survives a bundle import, a deactivation and
+## a device-id re-binding. `bundle` is the offline activation, re-verified at every load; there is
+## no unsigned "imported" marker.
 ##
 ## `feeds` and `releaseRecords` are WIRE-CONTRACT-V4 §4's two additive slices (CACHE_VERSION
 ## stays 3): `feeds` is keyed by each feed's own `channel` claim (the canonical channel, never the
@@ -16,14 +21,17 @@ extends RefCounted
 ## gate stricter. The load procedure is the security boundary:
 ##
 ##   1. a record whose `v` is not 3 is DISCARDED, never migrated (3.0 == 3: numbers are floats);
-##   2. `trustJws` is re-verified against the PINS, freshness off -> the effective set;
-##   3. each document is re-verified against THAT set, freshness off, full claims, `aud` and
-##      the local `deviceId`;
-##   4. each committed feed goes through the feed reload path (PKeyFeed.reload_feeds: steps 3–6
+##   2. `pinRevocations` is re-verified against the pins (ascending manifest `issuedAt`) -> the
+##      tombstones, hence the USABLE pins;
+##   3. `trustJws` is re-verified against the usable pins, freshness off -> the effective set;
+##   4. each document is re-verified against THAT set, freshness off, full claims, `aud` and
+##      the local `deviceId`; then `bundle` on the bundle reload profile, which activates only
+##      when its licence document is byte-identical to the cached one;
+##   5. each committed feed goes through the feed reload path (PKeyFeed.reload_feeds: steps 3–6
 ##      against THAT set, no freshness, its claim equal to its key) and each release record
 ##      through steps 12–14 with its key as the pin, kept only while a surviving feed's target
 ##      for this platform pins it (PKeyReleaseRecord.reload_release_records);
-##   5. every derived value (the anti-replay floors, each channel's `seq` floor, the clock
+##   6. every derived value (the anti-replay floors, each channel's `seq` floor, the clock
 ##      floor, `last_verified_at`) is computed from what verified. Nothing derived is ever read
 ##      from the file, and unknown fields are dropped from the in-memory record. Neither a feed
 ##      nor a record raises the clock floor.
@@ -47,8 +55,11 @@ var device_id := ""
 var license = null
 ## {jws, doc} of the verified config document, or null.
 var config = null
-## {bundleId, importedAt} when this install was activated from an offline bundle, or null.
-var imported_bundle = null
+## The cached offline bundle when it re-verified on the reload profile, else null:
+## {bundleId, docs: ["license"?, "config"?], activates: bool}. `activates` is the signed fact behind
+## `activation: "bundle"` (no token held): it carried a licence document byte-identical to the
+## cached one.
+var bundle = null
 var last_sync_unauthorized := false
 ## {reason, allowedRange?} from the last 403 build block, or null.
 var blocked = null
@@ -103,6 +114,11 @@ func load_record() -> void:
 	_record = _normalize(rec)
 	var now := clock.system_now()
 
+	# §4.1: the tombstones first, so the manifest, the documents and the bundle all verify against
+	# the usable pins. Evidence that no longer verifies is dropped on the next write.
+	await trust.load_evidence(_record.get("pinRevocations"), product)
+	_keep_evidence()
+
 	if _record.has("trustJws"):
 		var issued := await trust.load_cached(_record["trustJws"], product, now)
 		if issued < 0:
@@ -113,6 +129,7 @@ func load_record() -> void:
 	var reload := {
 		"trust": trust.effective(), "expected_aud": product, "device_id": device_id, "now": now,
 		"check_freshness": false,
+		"last_accepted_issued_at": null,
 	}
 	var newest := 0.0
 	var docs: Dictionary = _record.get("docs", {})
@@ -133,12 +150,64 @@ func load_record() -> void:
 		else:
 			_drop_slice("config")
 
+	await _reload_bundle()
+	# A cached manifest may have tombstoned a pin whose evidence the record lacked.
+	_keep_evidence()
 	await _load_update_slices()
 
-	imported_bundle = _record.get("importedBundle")
 	last_sync_unauthorized = PKeyClaims.is_true(_record.get("lastSyncUnauthorized"))
 	blocked = _record.get("blocked")
 	last_verified_at = newest if newest > 0 else null
+
+
+## §7 reload profile: the cached bundle's own signature and claims, without the import window,
+## against the usable pins; its inner documents against its own manifest's set with no floor. It
+## activates only when its licence document is the cached one, byte for byte: otherwise a stale
+## bundle could vouch for a licence it never carried.
+func _reload_bundle() -> void:
+	var jws = _record.get("bundle")
+	if not (jws is String):
+		return
+	var r := await PKeyBundle.inspect(jws, {
+		"pinned": trust.pinned(), "tombstones": trust.revoked_pins(), "product": product,
+		"device_id": device_id, "now": clock.system_now(),
+		"floors": {"license": null, "config": null}, "profile": "reload",
+	})
+	if not r["ok"]:
+		return
+	var docs: Dictionary = r["bundle"]["docs"]
+	var carried: Array = []
+	for slice in SLICES:
+		if docs.has(slice):
+			carried.append(slice)
+	bundle = {
+		"bundleId": r["bundle"]["bundle_id"],
+		"docs": carried,
+		"activates": docs.has("license") and license != null and docs["license"]["jws"] == license["jws"],
+	}
+
+
+## The `pinRevocations` slice in the record follows the custodian's evidence.
+func _keep_evidence() -> void:
+	if not (_record is Dictionary):
+		return
+	var evidence := trust.pin_revocations()
+	if evidence.is_empty():
+		_record.erase("pinRevocations")
+	else:
+		_record["pinRevocations"] = evidence
+
+
+## The cached trust manifest JWS as held (verified on load, or dropped), or "".
+func trust_jws() -> String:
+	var t = _record.get("trustJws") if _record is Dictionary else null
+	return t if t is String else ""
+
+
+## The cached bundle JWS as stored (unverified), for the byte-identical re-import check, or "".
+func bundle_jws() -> String:
+	var b = _record.get("bundle") if _record is Dictionary else null
+	return b if b is String else ""
 
 
 ## Steps 4–5 for the update slices: re-verify, derive the floors, drop whatever failed.
@@ -227,8 +296,6 @@ func patch(changes: Dictionary) -> bool:
 		last_sync_unauthorized = PKeyClaims.is_true(changes["lastSyncUnauthorized"])
 	if changes.has("blocked"):
 		blocked = PKeyGate.sanitize_blocked(changes["blocked"])
-	if changes.has("importedBundle"):
-		imported_bundle = changes["importedBundle"]
 	return store.write_cache(_record)
 
 
@@ -237,25 +304,42 @@ func flush(changes: Dictionary = {}) -> bool:
 	return patch(changes)
 
 
-## Replace the record wholesale (only a bundle import does this, §7 step 5).
+## Replace the record wholesale (only a bundle import does this, §7 step 5): a stale slice must
+## not survive an air-gapped re-provisioning. Three things are carried: the update slices (they
+## hold each channel's `seq` floor), and the pin evidence (security state, not a grant; the
+## custodian's evidence includes any the new record's manifest added).
 func replace(rec: Dictionary) -> bool:
-	_record = rec.duplicate(true)
+	var out := rec.duplicate(true)
+	if _record is Dictionary:
+		for slice in UPDATE_SLICES:
+			if _record.has(slice) and not out.has(slice):
+				out[slice] = _record[slice].duplicate(true)
+	out.erase("pinRevocations")
+	var evidence := trust.pin_revocations()
+	if not evidence.is_empty():
+		out["pinRevocations"] = evidence
+	_record = out
 	return store.write_cache(_record)
 
 
-## Wipe everything, in memory and on disk, the floor with it.
+## Wipe everything, in memory and on disk, the floor with it, except the pin evidence: a
+## deactivation removes every credential and grant, not a pinned key's revocation.
 func clear() -> bool:
+	var evidence := trust.pin_revocations()
 	_record = null
 	_reset_loaded()
 	trust.reset()
 	clock.reset()
-	return store.clear_cache()
+	if evidence.is_empty():
+		return store.clear_cache()
+	_record = {"v": VERSION, "pinRevocations": evidence}
+	return store.write_cache(_record)
 
 
 func _reset_loaded() -> void:
 	license = null
 	config = null
-	imported_bundle = null
+	bundle = null
 	last_sync_unauthorized = false
 	blocked = null
 	last_verified_at = null
@@ -281,6 +365,20 @@ func _stage(slice: String, jws: String, p_etag: String) -> void:
 		_record["etags"] = etags
 
 
+## Remove one document slice (document, ETag, derived state) in memory, for the next `flush` to
+## persist: the server said, in so many words, that this device must no longer hold it (a hard
+## 401 for the slice it answered, a 403 build block for the licence). The clock floor is NOT
+## lowered: the dropped document's `issuedAt` stays a signed lower bound on real time.
+func revoke_slice(slice: String) -> void:
+	if not (_record is Dictionary):
+		_record = {"v": VERSION}
+	_drop_slice(slice)
+	if slice == "license":
+		license = null
+	elif slice == "config":
+		config = null
+
+
 func _drop_slice(slice: String) -> void:
 	for k in ["docs", "etags"]:
 		if _record.get(k) is Dictionary:
@@ -302,15 +400,14 @@ static func _normalize(rec: Dictionary) -> Dictionary:
 					m[slice] = rec[k][slice]
 			if not m.is_empty():
 				out[k] = m
-	var ib = rec.get("importedBundle")
-	if ib is Dictionary and ib.get("bundleId") is String and PKeyClaims.is_number(ib.get("importedAt")):
-		out["importedBundle"] = {"bundleId": ib["bundleId"], "importedAt": ib["importedAt"]}
+	if rec.get("bundle") is String:
+		out["bundle"] = rec["bundle"]
 	if PKeyClaims.is_true(rec.get("lastSyncUnauthorized")):
 		out["lastSyncUnauthorized"] = true
 	var b = PKeyGate.sanitize_blocked(rec.get("blocked"))
 	if b != null:
 		out["blocked"] = b
-	for slice in UPDATE_SLICES:
+	for slice in UPDATE_SLICES + ["pinRevocations"]:
 		if rec.get(slice) is Dictionary:
 			var m := {}
 			for k in rec[slice]:

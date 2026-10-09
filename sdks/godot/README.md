@@ -740,7 +740,8 @@ fetches the record the target for this platform pins and verifies it hash first,
   `releaseRecords` (keyed by SHA-256), signed artifacts only, written atomically with the rest
   of the record. On load each feed is re-verified (no freshness, its claim equal to its key)
   and each record re-verified and kept only while a surviving feed pins it; the floors are
-  derived from what survived and never stored. A bundle import keeps both slices.
+  derived from what survived and never stored. A bundle import keeps both slices and the
+  `pinRevocations` evidence (the manifests that revoked a pinned key).
 - **Off the first frame.** Every Ed25519 verify in `decide()` and in the cache load runs on a
   `WorkerThreadPool` task where the build has threads and in frame slices where it has none. A
   feed plus a record is about 10 ms on a desktop release template (the conformance suite logs
@@ -1421,7 +1422,7 @@ use. The device id and the verified cache stay in the 0600 files under `user://p
 | ------- | ------------------ | ---------------------------------------------------------------------- |
 | macOS   | the login keychain | `libpkey_apple.dylib` (`sdks/godot/native/macos/build_apple.sh`)       |
 | Windows | Credential Manager | `pkey_win.dll` (`PKeyWinCredentialNative`, `native/windows/build.ps1`) |
-| Linux   | the Secret Service | `secret-tool` on PATH (`libsecret-tools`) and a D-Bus session          |
+| Linux   | the Secret Service | `/usr/bin/secret-tool` (`libsecret-tools`) and a D-Bus session         |
 
 Every token write is verified by reading it back. A write that cannot be verified keeps the token
 in the 0600 token file. That fallback is surfaced: the store emits `failed`, which reaches you as

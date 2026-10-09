@@ -67,6 +67,41 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 - **Minimum check:** Playwright Electron on the three chromes at the phone, tablet, desktop and wide rows as window sizes, both schemes and both presets, at 100 % and 200 % zoom.
 - **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
 ## Goal
 
 An Electron app wires Polaris Key with two lines (main and preload) and the React kit renders the right platform variant (Fluent on Windows, the Mac sheet on macOS, libadwaita on Linux).
@@ -100,6 +135,12 @@ Node's largest UI gap (GA): every Electron integrator writes the IPC bridge by h
 - Electron releases before 35 are out of scope (`engines >= 22.12`, owner, 2026-10-05).
 - Presentation comes only through the core's `ProductIdentity` seam from the SDK (HA-13, HA-14). This package does not depend on them: it tests the default with a fake source, and the real accessor plugs in without a kit change (UK-41 verifies it).
 - Launch locales are English plus `de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko`, `zh-Hans`; there is no RTL locale, so no RTL baselines, but layouts stay RTL-safe.
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- The renderer kit lives in a host-owned BrowserWindow: it never draws a title bar or caption buttons; `registerPolarisKey` may set `backgroundMaterial: 'mica'` only on windows it creates and only on Windows 11 22H2+; Windows Contrast themes arrive as forced-colors (covered by the elements' forced-colors baseline); Linux renders opaque. (sdk-b-21)
 
 ## Steps
 

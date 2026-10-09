@@ -205,6 +205,18 @@ describe("gitDescribe", () => {
     expect(gitDescribe(d)).toEqual({ latestTag: "v0.8.12", distance: 3 });
   });
 
+  it("ignores a malformed nearer tag and takes the highest strict reachable tag", () => {
+    const d = repo();
+    const git = (...args: string[]) =>
+      execFileSync("git", args, { cwd: d, stdio: "ignore" });
+    git("tag", "v0.8.13-rc.1");
+    writeFileSync(join(d, "f"), "6");
+    git("commit", "-q", "-am", "c6");
+    git("tag", "v0.8.13-weird"); // nearest by describe, not a deployable tag
+    git("tag", "v0.8.99x");
+    expect(gitDescribe(d)).toEqual({ latestTag: "v0.8.13-rc.1", distance: 1 });
+  });
+
   it("counts every commit when there is no release tag", () => {
     const d = temp();
     execFileSync("git", ["init", "-q", "-b", "main"], { cwd: d });

@@ -4,9 +4,10 @@
   [data-screen="portal.discover"] .pill.tier {
     color: var(--pk-text-strong);
   }
-  /* Just added: a green edge; "In your library" sits on the art. */
+  /* Just added: an ink outline (form, not colour); "In your library" sits on the art. */
   [data-screen="portal.discover"] .ptile.added {
-    border-color: var(--pk-success-border);
+    border-color: var(--pk-text-strong);
+    box-shadow: 0 0 0 1px var(--pk-text-strong);
   }
   /* Store links: accent text links with the store's glyph, quieter than Add to library. */
   [data-screen="portal.discover"] .stores .link {
@@ -18,22 +19,7 @@
     color: var(--pk-text-subtle);
   }
   [data-screen="portal.discover"] .toast .btn.link {
-    font-weight: 700;
-  }
-  /* Actions follow the device (PORTAL.md §5.4): .ua-desk on a computer, .ua-phone on a phone. */
-  [data-screen="portal.discover"] .ua-phone {
-    display: none !important;
-  }
-  @container screen (max-width: 639px) {
-    [data-screen="portal.discover"] .ua-desk {
-      display: none !important;
-    }
-    [data-screen="portal.discover"] .btn.ua-phone {
-      display: inline-flex !important;
-    }
-    [data-screen="portal.discover"] span.ua-phone {
-      display: inline !important;
-    }
+    font-weight: 600;
   }
 </style>
 
@@ -53,7 +39,7 @@
   <main class="portal-page">
     <div class="mk-stack-2">
       <h1>Discover</h1>
-      <p class="muted">Free and eligible products</p>
+      
     </div>
 
     <div class="portal-grid">
@@ -78,7 +64,8 @@
               <span class="platforms" role="img" aria-label="macOS and Windows"><i class="ic ic-apple"></i><i class="ic ic-windows"></i></span>
             </div>
             <ul class="icon-lines">
-              <li><i class="ic ic-calendar-clock"></i><span>1 year of updates <span class="muted">· then keeps the last version</span></span></li>
+              <li><i class="ic ic-calendar-clock"></i><span>1 year of updates</span></li>
+              <li><i class="ic ic-package-check"></i><span>Then keeps the last version</span></li>
             </ul>
             <!-- Why you can add it, always shown (owner, 2026-10-04): the fact the access rule matched. -->
             <div class="callout"><i class="ic ic-building-2"></i><span class="callout-text">You have a confirmed example.edu email</span></div>
@@ -127,7 +114,6 @@
       </article>
 
     </div>
-    <p class="page-note">Purchases appear in your library automatically.</p>
   </main>
 
   <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>

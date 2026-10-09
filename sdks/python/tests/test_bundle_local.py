@@ -110,10 +110,11 @@ def test_the_write_persists_only_signed_artifacts(tmp_path) -> None:
     assert raw["v"] == CACHE_FORMAT_VERSION
     assert raw["docs"] == {"license": lic}
     assert raw["trustJws"] == trust_jws
-    assert raw["importedBundle"] == {
-        "bundleId": result.bundleId,
-        "importedAt": NOW,
-    }
+    # The bundle itself, verbatim: `activation="bundle"` is re-derived from it, not from
+    # an unsigned marker.
+    assert raw["bundle"] == bundle
+    assert "importedBundle" not in raw
+    assert result.bundleId
     # No ETags: these documents did not come from a conditional GET, and inventing
     # validators would make the next online sync send an `If-None-Match` the server never
     # issued.

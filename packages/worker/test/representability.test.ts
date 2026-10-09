@@ -13,6 +13,7 @@
  *    own body shape, never as a throw.
  */
 
+import { bindFlow } from "./flowBinderHelper.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportJWK,
@@ -583,6 +584,7 @@ describe("a stored config value that predates the checks is pruned from the conf
     );
     expect(res.status).toBe(200);
     const doc = await verifyConfigDoc(await res.text(), {
+      lastAcceptedIssuedAt: null,
       trust: TRUST,
       expectedAud: SLUG,
       deviceId: "dev-prune",
@@ -651,6 +653,7 @@ describe("every signing route answers a guard refusal as 500 document_not_repres
       new Request(
         `https://key.plrs.im/${SLUG}/.well-known/pkey-trust`,
       ) as unknown as Request,
+      w.env,
       w.db,
       w.product,
       NOW + 0.5,
@@ -776,6 +779,7 @@ describe("OIDC sign-in stores an unsignable name or email as null", () => {
     const res = await handleAuthCallback(
       new Request(
         `https://key.plrs.im/${SLUG}/identity/auth/callback?code=c&state=S`,
+        { headers: { cookie: await bindFlow(w.env, SLUG, "S") } },
       ) as unknown as Request,
       w.env,
       w.db,

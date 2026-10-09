@@ -214,6 +214,89 @@ describe("fingerprinted activation", () => {
   });
 });
 
+describe("fingerprint baseline", () => {
+  let db: SqliteDb;
+  let env: Env;
+  let product: Product;
+
+  beforeEach(async () => {
+    db = makeTestDb();
+    env = makeEnv(new KvMock(), ["djdl"]);
+    await seedProduct(db, "djdl");
+    product = (await loadProduct(env, db, "djdl"))!;
+  });
+
+  const activate = (key: string, components?: Record<string, string>) =>
+    handleActivate(
+      mkReq(
+        "POST",
+        { authorization: `Bearer ${key}`, "x-pkey-device": DEVICE },
+        components ? { fingerprint: { components } } : undefined,
+      ),
+      env,
+      db,
+      product,
+      NOW,
+    );
+
+  it("does not ratchet: stepwise drift accumulates against the first fingerprint", async () => {
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    await activate(key, FULL);
+    const baseline = (await getFingerprint(db, "djdl", DEVICE))!
+      .baseline_components_json;
+    expect(JSON.parse(baseline!)).toEqual(FULL);
+
+    // One component at a time: each step is a single change from the previous fingerprint.
+    const s1 = { ...FULL, ramBucket: hash("ram2") };
+    const s2 = { ...s1, cpuModel: hash("cpu2") };
+    const s3 = { ...s2, primaryMac: hash("mac2") };
+    for (const step of [s1, s2, s3]) {
+      expect((await activate(key, step)).status).toBe(200);
+    }
+    const row = (await getFingerprint(db, "djdl", DEVICE))!;
+    expect(row.baseline_components_json).toBe(baseline);
+    expect(JSON.parse(row.components_json)).toEqual(s3);
+
+    const leap = await activate(key, { ...s3, bootVolumeUuid: hash("boot2") });
+    expect(leap.status).toBe(409);
+    expect(await leap.json()).toMatchObject({
+      error: "hardware_mismatch",
+      drift: 4,
+    });
+  });
+
+  it("treats a thin or anchorless fingerprint as absent", async () => {
+    await seedTier(db, "djdl", "pro", { fingerprint: "strict" });
+    const { key } = await seedLicenseWithKey(db, "djdl", { tierId: "pro" });
+    for (const thin of <Record<string, string>[]>[
+      { machineUuid: FULL.machineUuid },
+      { machineUuid: FULL.machineUuid, cpuModel: FULL.cpuModel },
+      {
+        boardSerial: FULL.boardSerial,
+        cpuModel: FULL.cpuModel,
+        ramBucket: FULL.ramBucket,
+      },
+    ]) {
+      const res = await activate(key, thin);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ error: "fingerprint_required" });
+    }
+  });
+
+  it("does not let a one-component map vouch for an occupied device id", async () => {
+    // rt2b: a stored map that proves nothing must not match everything.
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    await activate(key, FULL);
+    await db.run(
+      "UPDATE device_fingerprints SET baseline_components_json = NULL, baseline_anchor_hash = NULL, baseline_at = NULL, components_json = ?",
+      JSON.stringify({ machineUuid: FULL.machineUuid }),
+    );
+    const other = await seedLicenseWithKey(db, "djdl", { id: "lic_other" });
+    const res = await activate(other.key, { ...FULL });
+    expect(res.status).not.toBe(200);
+  });
+});
+
 describe("device facts reporting", () => {
   let db: SqliteDb;
   let env: Env;

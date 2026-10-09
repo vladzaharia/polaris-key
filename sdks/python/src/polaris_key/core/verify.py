@@ -95,12 +95,16 @@ def verify_doc(
     decode: Callable[[Any], Any],
     expected_aud: str,
     device_id: str,
+    last_accepted_issued_at: Optional[int],
     expected_iss: str = ISSUER,
-    last_accepted_issued_at: Optional[int] = None,
     now: Optional[int] = None,
     check_freshness: bool = True,
 ) -> Any:
     """Verify one signed Polaris Key document of a known type.
+
+    ``last_accepted_issued_at`` is REQUIRED: the per-type anti-replay floor, or an
+    explicit ``None`` for "no floor". An omitted argument is a ``TypeError``, never a silent
+    no-floor.
 
     Returns the decoded payload, or ``None`` on ANY failure — never a raise, so every
     call site fails closed identically.
@@ -111,7 +115,7 @@ def verify_doc(
     or the *other* document type presented here (§2) — and a header with no ``typ`` at
     all is refused outright in v3.
     """
-    verified = verify_jws(jws, trusted_keys, typ=typ, require_typ=True)
+    verified = verify_jws(jws, trusted_keys, typ=typ)
     if verified is None:
         return None
     doc = decode(verified.payload)
@@ -137,8 +141,8 @@ def verify_license_doc(
     *,
     expected_aud: str,
     device_id: str,
+    last_accepted_issued_at: Optional[int],
     expected_iss: str = ISSUER,
-    last_accepted_issued_at: Optional[int] = None,
     now: Optional[int] = None,
     check_freshness: bool = True,
 ) -> Optional[LicenseDoc]:
@@ -163,8 +167,8 @@ def verify_config_doc(
     *,
     expected_aud: str,
     device_id: str,
+    last_accepted_issued_at: Optional[int],
     expected_iss: str = ISSUER,
-    last_accepted_issued_at: Optional[int] = None,
     now: Optional[int] = None,
     check_freshness: bool = True,
 ) -> Optional[ConfigDoc]:

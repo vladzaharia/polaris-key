@@ -37,12 +37,17 @@ public struct VerifiedBundleDoc<T: DocClaims>: Sendable, Equatable {
 /// A bundle that passed all four verification steps. Everything the host needs for §7 step 5's
 /// atomic write, and nothing it would have to re-derive.
 public struct VerifiedBundle: Sendable, Equatable {
-    /// The mint's audit anchor, recorded as `importedBundle.bundleId`.
+    /// The mint's audit anchor.
     public let bundleId: String
-    /// The inner trust manifest's compact JWS — cached as `trustJws`, so the imported install
-    /// reloads with exactly the key set the bundle shipped with.
+    /// The inner trust manifest's compact JWS — cached as `trustJws` unless the install holds
+    /// a verified manifest with a newer `issuedAt` (§7 step 5).
     public let trustJws: String
-    /// `pinned ∪ non-revoked manifest keys`, with the pins terminal — the set step 4 used.
+    /// The inner trust manifest's signed `issuedAt`.
+    public let trustIssuedAt: Int
+    /// Pinned kids the inner manifest newly tombstones (§1); the host files the manifest as
+    /// their evidence in `pinRevocations`, in the same write.
+    public let revokedPins: [String]
+    /// `usable pins ∪ live manifest keys`, with the pins terminal — the set step 4 used.
     public let effectiveTrust: TrustSet
     /// Whichever documents the bundle carried. `license` absent ⇒ NO activation effect: the
     /// gate stays `needs-activation` (or `not-applicable`), never `activation: .bundle` (§7).
@@ -77,11 +82,35 @@ public enum BundleInspection: Sendable, Equatable {
     case refused(BundleRefusalReason)
 }
 
+/// §7 step 4's per-type anti-replay floors: the `issuedAt` of the VERIFIED cached document of
+/// each type, nil when none is held. Each inner document must be strictly newer.
+public struct BundleFloors: Sendable, Equatable {
+    public let license: Int?
+    public let config: Int?
+
+    public init(license: Int? = nil, config: Int? = nil) {
+        self.license = license
+        self.config = config
+    }
+}
+
+/// `import` is the operator's act; `reload` is the cached bundle re-verified at every start:
+/// steps 1-3 without step 2's two import-window comparisons, and no floors.
+public enum BundleProfile: String, Sendable, Equatable {
+    case `import`
+    case reload
+}
+
 public struct BundleOptions: Sendable {
-    /// The ONLY keys a bundle may be verified against (§7.1). The manifest it carries is
-    /// verified against these too — an air-gapped device must not be the one place where a
-    /// planted key set is accepted.
+    /// The ONLY keys a bundle may be verified against (§7.1), less `tombstones`. The manifest
+    /// it carries is verified against these too — an air-gapped device must not be the one
+    /// place where a planted key set is accepted.
     public let pinned: TrustSet
+    /// Pinned kids tombstoned on this install: not usable for the bundle, its manifest or the
+    /// effective set.
+    public let tombstones: [String]
+    public let floors: BundleFloors
+    public let profile: BundleProfile
     /// The expected `aud` — this client's product slug.
     public let product: String
     /// The LOCAL device id. Step 4 binds inner documents to this, not to the bundle's own
@@ -93,10 +122,14 @@ public struct BundleOptions: Sendable {
     public let clockSkewSeconds: Int
 
     public init(
-        pinned: TrustSet, product: String, deviceId: String, now: Int,
+        pinned: TrustSet, tombstones: [String] = [], product: String, deviceId: String, now: Int,
+        floors: BundleFloors = BundleFloors(), profile: BundleProfile = .import,
         clockSkewSeconds: Int = CLOCK_SKEW_SECONDS
     ) {
         self.pinned = pinned
+        self.tombstones = tombstones
+        self.floors = floors
+        self.profile = profile
         self.product = product
         self.deviceId = deviceId
         self.now = now
@@ -115,9 +148,10 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     // with the `typ`, so an untyped 256 KiB blob accepted here could be re-presented at an
     // ordinary document call site. The cap comes from the protocol constant, never from the
     // caller — no host gets to choose how big a bundle may be.
+    let pins = usablePins(options.pinned, options.tombstones)
     guard
         let verified = JWSVerifier.verify(
-            jws, trust: options.pinned, typ: .bundle, requireTyp: true,
+            jws, trust: pins, typ: .bundle, requireTyp: true,
             maxPayloadBytes: MAX_BUNDLE_BYTES)
     else { return .refused(.bundleJwsRejected) }
     // The payload verified; a member that is missing or mistyped, or a present `null` in
@@ -139,12 +173,14 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     guard !bundle.bundleId.isEmpty else { return .refused(.bundleClaimsRejected) }
     guard bundle.aud == options.product else { return .refused(.bundleClaimsRejected) }
     guard bundle.deviceId == options.deviceId else { return .refused(.bundleClaimsRejected) }
-    guard bundle.issuedAt <= saturatingAdd(options.now, skew)
-    else { return .refused(.bundleClaimsRejected) }
-    guard options.now <= saturatingAdd(bundle.expiresAt, skew)
-    else { return .refused(.bundleClaimsRejected) }
+    if options.profile != .reload {
+        guard bundle.issuedAt <= saturatingAdd(options.now, skew)
+        else { return .refused(.bundleClaimsRejected) }
+        guard options.now <= saturatingAdd(bundle.expiresAt, skew)
+        else { return .refused(.bundleClaimsRejected) }
+    }
     // A bundle carrying NEITHER document is vacuous (§7): it can grant nothing and configure
-    // nothing, so importing it would write an `importedBundle` marker with no content behind
+    // nothing, so importing it would write a `bundle` slice with no content behind
     // it — an install that looks provisioned and is not. Refused here, at the claims step, for
     // the same reason the addressing failures are.
     guard bundle.docs.license != nil || bundle.docs.config != nil
@@ -158,43 +194,45 @@ public func inspectBundle(_ jws: String, options: BundleOptions) -> BundleInspec
     let manifest = verifyTrustManifest(
         bundle.trust,
         options: VerifyTrustManifestOptions(
-            pinned: options.pinned, expectedAud: options.product, now: options.now,
-            checkFreshness: false))
-    guard manifest.doc != nil else { return .refused(.bundleTrustRejected) }
-    let effectiveTrust = mergeTrust(options.pinned, manifest.discovered)
+            pinned: options.pinned, tombstones: options.tombstones,
+            expectedAud: options.product, now: options.now, checkFreshness: false))
+    guard let manifestDoc = manifest.doc else { return .refused(.bundleTrustRejected) }
+    let effectiveTrust = mergeTrust(usablePins(pins, manifest.revokedPins), manifest.discovered)
 
     // ── 4. Each inner document against the EFFECTIVE set, reload profile ─────────────────
     // Bound to the LOCAL device id — step 2 has only proved the BUNDLE claims this device, and
-    // a document inside it may claim another. There is no anti-replay floor here: a bundle
-    // import is the act of establishing state on a device that has none, so there is no
-    // previously-accepted document to be newer than. (The host applies its own floor after the
-    // write, on the next network sync.)
-    func reload() -> VerifyOptions {
+    // a document inside it may claim another. Each must be strictly newer than the verified
+    // cached document of its type (`floors`): an old bundle cannot roll a device back to the
+    // grant it held before. The reload profile names no floor: its documents ARE the cached ones.
+    func reload(floor: Int?) -> VerifyOptions {
         VerifyOptions(
             trust: effectiveTrust, expectedAud: options.product, deviceId: options.deviceId,
+            lastAcceptedIssuedAt: options.profile == .reload ? nil : floor,
             now: options.now, clockSkewSeconds: skew, checkFreshness: false)
     }
 
     var license: VerifiedBundleDoc<LicenseDoc>?
     if let licenseJws = bundle.docs.license {
-        guard let doc = verifyLicenseDoc(licenseJws, options: reload())
+        guard let doc = verifyLicenseDoc(licenseJws, options: reload(floor: options.floors.license))
         else { return .refused(.innerDocRejected) }
         license = VerifiedBundleDoc(jws: licenseJws, doc: doc)
     }
     var config: VerifiedBundleDoc<ConfigDoc>?
     if let configJws = bundle.docs.config {
-        guard let doc = verifyConfigDoc(configJws, options: reload())
+        guard let doc = verifyConfigDoc(configJws, options: reload(floor: options.floors.config))
         else { return .refused(.innerDocRejected) }
         config = VerifiedBundleDoc(jws: configJws, doc: doc)
     }
 
     // ── 5. The caller's turn ─────────────────────────────────────────────────────────────
     // Everything above passed, so and only so may the host write the cache atomically:
-    // `trustJws`, `docs`, and `importedBundle: {bundleId, importedAt}`. No token is created — a
+    // `bundle` (this JWS, verbatim), `trustJws` (unless the held one is newer), `docs`, and the
+    // evidence for `revokedPins`. No token is created — a
     // bundle-activated install has no credential and never talks to the server.
     return .ok(
         VerifiedBundle(
-            bundleId: bundle.bundleId, trustJws: bundle.trust, effectiveTrust: effectiveTrust,
+            bundleId: bundle.bundleId, trustJws: bundle.trust, trustIssuedAt: manifestDoc.issuedAt,
+            revokedPins: manifest.revokedPins, effectiveTrust: effectiveTrust,
             license: license, config: config))
 }
 

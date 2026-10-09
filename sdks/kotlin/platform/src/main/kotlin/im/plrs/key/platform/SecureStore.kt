@@ -161,7 +161,7 @@ public class SecureStore(
             throw SecureStoreException("corrupt", "${file.name} is not a version-1 blob")
         }
         val key = try {
-            keys.get(alias)
+            keyOrRetry()
         } catch (e: ProviderException) {
             throw providerFailure("load $alias", e)
         } catch (e: GeneralSecurityException) {
@@ -170,7 +170,7 @@ public class SecureStore(
             throw SecureStoreException("keystore", "cannot load $alias: ${e.message}", e)
         }
         if (key == null) {
-            wipeBlobs()
+            quarantineBlobs()
             return Read(null, RESET_MISSING)
         }
         return try {
@@ -224,10 +224,10 @@ public class SecureStore(
     }
 
     private fun encrypt(account: String, plain: ByteArray, retry: Boolean): ByteArray {
-        var key = keys.get(alias)
+        var key = keyOrRetry()
         if (key == null) {
-            // Blobs from a previous key can never be read again.
-            wipeBlobs()
+            // Blobs from a previous key can never be read again (quarantined, not deleted).
+            quarantineBlobs()
             key = keys.create(alias)
         }
         val cipher = newCipher()
@@ -252,6 +252,14 @@ public class SecureStore(
         } catch (_: IOException) {
         }
         wipeBlobs()
+    }
+
+    /** A transient null from the Keystore must not read as "key gone": ask once more. */
+    private fun keyOrRetry(): SecretKey? = keys.get(alias) ?: keys.get(alias)
+
+    /** Moves the blobs aside instead of deleting them, so a key that comes back can still open them. */
+    private fun quarantineBlobs() {
+        dir.listFiles { f -> f.name.endsWith(SUFFIX) }?.forEach { it.renameTo(File(dir, it.name + QUARANTINE)) }
     }
 
     private fun wipeBlobs() {
@@ -290,6 +298,7 @@ public class SecureStore(
         private const val IV_BYTES = 12
         private const val TAG_BYTES = 16
         private const val SUFFIX = ".kv"
+        private const val QUARANTINE = ".quarantine"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private val NAME = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 

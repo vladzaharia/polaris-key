@@ -82,6 +82,12 @@ export type SingleUseOp =
 const SWEEP_INTERVAL_MS = 15 * 60 * 1000;
 const SWEEP_BATCH = 2000;
 
+/** Where the sweep resumes; stored beside the data and skipped when sweeping. */
+export const SWEEP_CURSOR_KEY = "__sweep_cursor__";
+
+/** The gap between alarms while a sweep is still walking a large key space. */
+const SWEEP_CONTINUE_MS = 60 * 1000;
+
 /** Longest lifetime any artefact may ask for: a day. Bounds a caller bug, not an attacker. */
 export const MAX_TTL_SECONDS = 86_400;
 
@@ -197,7 +203,7 @@ export class SingleUseDO implements DurableObject {
       case "redeem": {
         const rec = await this.live(op.key, now);
         if (!rec || rec.proof === undefined || typeof op.proof !== "string")
-          return reply({ ok: false });
+          return reply({ ok: false, live: false });
         if (constantTimeEqual(rec.proof, op.proof)) {
           await storage.delete(op.key);
           return reply({ ok: true, value: rec.v });
@@ -206,7 +212,7 @@ export class SingleUseDO implements DurableObject {
         if (rec.max !== undefined && rec.n >= rec.max)
           await storage.delete(op.key);
         else await storage.put(op.key, rec);
-        return reply({ ok: false });
+        return reply({ ok: false, live: true });
       }
       case "update": {
         const rec = await this.live(op.key, now);
@@ -233,6 +239,9 @@ export class SingleUseDO implements DurableObject {
         const hits = (Array.isArray(prior?.hits) ? prior.hits : []).filter(
           (t) => typeof t === "number" && t > now - windowMs,
         );
+        // A locked address takes no more strikes: they would re-arm the lock.
+        if (typeof prior?.lockedUntil === "number" && prior.lockedUntil > now)
+          return reply({ locked: true });
         hits.push(now);
         // Keep no more history than the threshold needs.
         while (hits.length > threshold) hits.shift();
@@ -273,17 +282,32 @@ export class SingleUseDO implements DurableObject {
   async alarm(): Promise<void> {
     const storage = this.state.storage;
     const now = Date.now();
-    const entries = await storage.list<SingleUseRecord>({ limit: SWEEP_BATCH });
+    // Resume after the last key the previous alarm examined, so a flood
+    // of live keys at the front of the key space cannot starve the rest of the sweep.
+    const cursor = await storage.get<string>(SWEEP_CURSOR_KEY);
+    const entries = await storage.list<SingleUseRecord>({
+      limit: SWEEP_BATCH,
+      ...(cursor ? { startAfter: cursor } : {}),
+    });
     const stale: string[] = [];
     for (const [key, rec] of entries) {
+      if (key === SWEEP_CURSOR_KEY) continue;
       if (typeof rec?.exp !== "number" || rec.exp <= now) stale.push(key);
     }
     // The storage API deletes at most 128 keys per call.
     for (let i = 0; i < stale.length; i += 128)
       await storage.delete(stale.slice(i, i + 128));
     const remaining = entries.size - stale.length;
-    if (remaining > 0 || entries.size === SWEEP_BATCH) {
-      await storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
+    if (entries.size === SWEEP_BATCH) {
+      const last = [...entries.keys()].pop() as string;
+      await storage.put(SWEEP_CURSOR_KEY, last);
+      await storage.setAlarm(Date.now() + SWEEP_CONTINUE_MS);
+    } else {
+      // End of the key space: the next pass starts over. A pass that began mid-space has not seen
+      // the earlier keys this time, so it re-arms once more rather than conclude "empty".
+      if (cursor) await storage.delete(SWEEP_CURSOR_KEY);
+      if (remaining > 0 || cursor)
+        await storage.setAlarm(Date.now() + SWEEP_INTERVAL_MS);
     }
   }
 }

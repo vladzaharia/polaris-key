@@ -32,7 +32,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -42,6 +42,8 @@
   <main class="main">
     <div class="page columns rail-360">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip product" aria-hidden="true"><span class="logo xs" data-product="djdl"></span></span><a href="#">DJDL</a></nav>
+<div class="page-icon mast" aria-hidden="true"><span class="logo lg" data-product="djdl"></span></div>
         <div class="page-heading"><h1>Access</h1></div>
         <div class="page-actions">
           <button class="btn outline"><i class="ic ic-history"></i>History</button>
@@ -50,11 +52,10 @@
 
       <!-- Automatic licenses: license.access (LX-36), edited here only. -->
       <section class="card full" aria-labelledby="auto-title" data-service="license">
-        <div class="card-head h56 sub">
+        <div class="card-head h56">
           <div class="title">
             <h2 id="auto-title">Automatic licenses</h2>
-            <p>Issued at sign-in or from Discover, tied to the account with no key. They only ever move up a tier.</p>
-          </div>
+                      </div>
         </div>
         <div class="card-body">
           <div class="choices cols-3" role="radiogroup" aria-label="Who gets a license automatically">
@@ -63,59 +64,60 @@
             <div class="choice on"><div class="choice-title"><i class="ic ic-list-filter"></i>Rules</div><div class="choice-desc">Groups, verified email domains or claims decide.</div></div>
           </div>
         </div>
-        <table class="table stack-phone flow">
-          <thead><tr><th>When</th><th>Gets</th><th class="hide-narrow">Label people see</th><th class="num">Accounts</th><th class="row-menu"><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>studio-pro</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
-              <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
-              <td class="hide-narrow">Included with Studio membership</td>
-              <td class="num">38</td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Group studio-pro: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>members</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
-              <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
-              <td class="hide-narrow">Included with membership</td>
-              <td class="num">412</td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Group members: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-at-sign"></i></span><div><div class="cell-title">Verified email domain <code>example.edu</code></div><div class="cell-sub">Any sign-in method</div></div></div></td>
-              <td><span class="pill sm"><i class="ic ic-layers accent"></i>Education</span></td>
-              <td class="hide-narrow">Education license</td>
-              <td class="num">57</td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Verified email domain example.edu: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <tr>
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-id-card"></i></span><div><div class="cell-title">Claim <code>vpnAccess</code> is <code>true</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
-              <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-puzzle accent"></i>Polaris VPN</span><span class="cell-sub">Add-on, on top of the tier</span></div></td>
-              <td class="hide-narrow">Polaris VPN included</td>
-              <td class="num"><span class="icon-text warning"><i class="ic ic-triangle-alert"></i>0</span></td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Claim vpnAccess: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-            <!-- Readiness error (P2-10): a rule that can't match yet says why and how to fix it. -->
-            <tr class="note-row">
-              <td colspan="5" class="indent">
-                <div class="callout warning">
-                  <i class="ic ic-triangle-alert"></i>
-                  <div class="grow"><div class="callout-title">Pocket ID doesn’t send <code>vpnAccess</code>, so this rule can’t match</div><div class="callout-text">Add the claim to Pocket ID’s claim map in Connections.</div></div>
-                  <button class="btn outline sm">Open Connections</button>
-                </div>
-              </td>
-            </tr>
-            <tr class="shaded">
-              <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-user-round"></i></span><div class="cell-title">Everyone else who signs in</div></div></td>
-              <td><span class="pill sm"><i class="ic ic-layers accent"></i>Trial</span></td>
-              <td class="hide-narrow">Try DJDL Standard for 14 days</td>
-              <td class="num">143</td>
-              <td class="row-menu"><button class="btn ghost icon xs" aria-label="Everyone else: more"><i class="ic ic-ellipsis"></i></button></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll" role="region" aria-label="Table, scrolls sideways" tabindex="0">
+          <table class="table stack-phone flow">
+            <thead><tr><th>When</th><th>Gets</th><th class="hide-narrow">Label people see</th><th class="num">Accounts</th><th class="row-menu"><span class="sr-only">Actions</span></th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>studio-pro</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Studio</span></td>
+                <td class="hide-narrow">Included with Studio membership</td>
+                <td class="num">38</td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Group studio-pro: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-users"></i></span><div><div class="cell-title">Group <code>members</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Standard</span></td>
+                <td class="hide-narrow">Included with membership</td>
+                <td class="num">412</td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Group members: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-at-sign"></i></span><div><div class="cell-title">Verified email domain <code>example.edu</code></div><div class="cell-sub">Any sign-in method</div></div></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Education</span></td>
+                <td class="hide-narrow">Education license</td>
+                <td class="num">57</td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Verified email domain example.edu: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <tr>
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-id-card"></i></span><div><div class="cell-title">Claim <code>vpnAccess</code> is <code>true</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
+                <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-puzzle accent"></i>Polaris VPN</span><span class="cell-sub">Add-on</span></div></td>
+                <td class="hide-narrow">Polaris VPN included</td>
+                <td class="num"><span class="icon-text warning"><i class="ic ic-triangle-alert"></i>0</span></td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Claim vpnAccess: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+              <!-- Readiness error (P2-10): a rule that can't match yet says why and how to fix it. -->
+              <tr class="note-row">
+                <td colspan="5" class="indent">
+                  <div class="callout warning">
+                    <i class="ic ic-triangle-alert"></i>
+                    <div class="grow"><div class="callout-title">This rule can’t match</div><div class="callout-text">Pocket ID doesn’t send <code>vpnAccess</code>. Add it to Pocket ID’s claim map.</div></div>
+                    <button class="btn outline sm">Open Connections</button>
+                  </div>
+                </td>
+              </tr>
+              <tr class="shaded">
+                <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-user-round"></i></span><div class="cell-title">Everyone else who signs in</div></div></td>
+                <td><span class="pill sm"><i class="ic ic-layers accent"></i>Trial</span></td>
+                <td class="hide-narrow">Try DJDL Standard for 14 days</td>
+                <td class="num">143</td>
+                <td class="row-menu"><button class="btn ghost icon xs" aria-label="Everyone else: more"><i class="ic ic-ellipsis"></i></button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div class="card-foot start">
           <button class="btn outline sm"><i class="ic ic-plus"></i>Add rule</button>
-          <span class="type-small muted">When several match, the higher tier wins; add-ons add to it.</span>
         </div>
       </section>
 
@@ -127,7 +129,7 @@
         <div class="card-body tight tinted">
           <dl class="mk-grid-4">
             <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-globe"></i>Public</dt><dd class="type-meta muted">Anyone, no sign-in.</dd></div>
-            <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-log-in"></i>Signed in</dt><dd class="type-meta muted">Signed in to DJDL, with or without a license.</dd></div>
+            <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-log-in"></i>Signed in</dt><dd class="type-meta muted">With or without a license.</dd></div>
             <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-key-round"></i>Customers</dt><dd class="type-meta muted">Holds a DJDL license: by account, key or device.</dd></div>
             <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-badge-check"></i>Holds an entitlement</dt><dd class="type-meta muted">A customer whose license includes the one you name.</dd></div>
           </dl>
@@ -141,13 +143,13 @@
           <!-- An unsaved change: marked, with the old value, and named in the save bar. -->
           <div class="item-row marked">
             <span class="icon-tile sm neutral"><i class="ic ic-download"></i></span>
-            <div class="item-text"><div class="item-title">App downloads<span class="was">was Customers</span></div><div class="item-desc">DJDL 4.2.0 for macOS and Windows on key.plrs.im/djdl</div></div>
+            <div class="item-text"><div class="item-title">App downloads<span class="was">was Customers</span></div><div class="item-desc">key.plrs.im/djdl</div></div>
             <div class="item-end"><div class="segmented sm matrix fit" role="radiogroup" aria-label="App downloads"><span class="on">Public</span><span>Signed in</span><span>Customers</span><span>Entitlement</span></div></div>
           </div>
           <p class="eyebrow rows-label">Packs</p>
           <div class="item-row">
             <span class="icon-tile sm neutral"><i class="ic ic-package"></i></span>
-            <div class="item-text"><div class="item-title">Stem separation models</div><div class="item-desc">412 MB, on first use · set in <code>.pkey/release</code>, approved Oct 4</div></div>
+            <div class="item-text"><div class="item-title">Stem separation models</div><div class="item-desc">412 MB · on first use</div></div>
             <div class="item-end"><div class="segmented sm matrix fit" role="radiogroup" aria-label="Stem separation models"><span>Public</span><span>Signed in</span><span>Customers</span><span class="on">Holds <span class="mono">stems</span></span></div></div>
           </div>
           <div class="item-row">
@@ -158,7 +160,7 @@
           <p class="eyebrow rows-label">Packages</p>
           <div class="item-row">
             <span class="icon-tile sm neutral"><i class="ic ic-boxes"></i></span>
-            <div class="item-text"><div class="item-title">npm <code>@djdl</code></div><div class="item-desc">djdl-mapping-kit on pkg.plrs.im. Entitlement limits are set per package.</div></div>
+            <div class="item-text"><div class="item-title">npm <code>@djdl</code></div><div class="item-desc">djdl-mapping-kit on pkg.plrs.im</div></div>
             <div class="item-end"><div class="segmented sm matrix fit" role="radiogroup" aria-label="npm @djdl"><span class="on">Public</span><span class="na" aria-disabled="true" title="Packages can’t use Signed in">—</span><span>Customers</span><span class="na" aria-disabled="true" title="Set an entitlement on the package itself">—</span></div></div>
           </div>
         </div>
@@ -175,7 +177,7 @@
             <div class="field">
               <label class="field-label">They get</label>
               <div class="select"><i class="ic ic-layers accent"></i><span class="grow">Free</span><i class="ic ic-chevrons-up-down"></i></div>
-              <span class="hint">1 device, 2 decks, no recording. Nothing requires sign-in or a key.</span>
+              <span class="hint">1 device · 2 decks · no recording</span>
             </div>
           </div>
         </section>
@@ -188,15 +190,15 @@
           <div class="card-body">
             <div class="radio-list" role="radiogroup" aria-label="Show on Discover">
               <div class="radio-option"><span class="radio"><span class="box"></span>Hidden</span><span class="radio-desc">Only people with a key or a license from you.</span></div>
-              <div class="radio-option"><span class="radio on"><span class="box"></span>People who can get it</span><span class="radio-desc">Anyone a rule covers, under its label. Adding DJDL issues their license.</span></div>
-              <div class="radio-option"><span class="radio"><span class="box"></span>Everyone signed in</span><span class="radio-desc">Every Polaris Key account. You type <code>djdl</code> to confirm.</span></div>
+              <div class="radio-option"><span class="radio on"><span class="box"></span>People who can get it</span><span class="radio-desc">Anyone a rule covers</span><span class="radio-desc">Adding DJDL issues their license</span></div>
+              <div class="radio-option"><span class="radio"><span class="box"></span>Everyone signed in</span><span class="radio-desc">Every Polaris Key account</span></div>
             </div>
           </div>
         </section>
               <!-- Who can see this? The persona preview, from the same accessFor() the sign-in uses. -->
         <section class="card wide" aria-labelledby="check-title">
           <div class="card-head h56 sub">
-            <div class="title"><h2 id="check-title">Check a person</h2><p>Includes unsaved changes. Nothing is saved or sent.</p></div>
+            <div class="title"><h2 id="check-title">Check a person</h2><p>Includes unsaved changes</p></div>
           </div>
           <div class="card-split stack-md">
             <div class="form">
@@ -218,14 +220,14 @@
             <div class="mk-stack-5">
               <div class="callout">
                 <i class="ic ic-user-check"></i>
-                <div class="grow"><div class="callout-title">Dana gets Education, plus Polaris VPN</div><div class="callout-text">From <code>example.edu</code> and claim <code>vpnAccess</code>. Polaris VPN waits for Pocket ID to send that claim.</div></div>
+                <div class="grow"><div class="callout-title">Dana gets Education, plus Polaris VPN</div><div class="callout-text">From <code>example.edu</code> and claim <code>vpnAccess</code></div></div>
               </div>
               <ul class="icon-list">
                 <li class="success"><i class="ic ic-check"></i><span>Discover shows DJDL as “Education license”</span></li>
                 <li class="success"><i class="ic ic-check"></i><span>Update checks</span><span class="type-small muted">Customers</span></li>
                 <li class="success"><i class="ic ic-check"></i><span>App downloads</span><span class="type-small accent">Public</span></li>
                 <li class="success"><i class="ic ic-check"></i><span>Controller mappings</span><span class="type-small muted">Public</span></li>
-                <li class="danger"><i class="ic ic-x"></i><span>Stem separation models</span><span class="type-small muted">Holds <code>stems</code></span><span class="sub">Education doesn’t include <code>stems</code>; the add-on or Studio does.</span></li>
+                <li class="danger"><i class="ic ic-x"></i><span>Stem separation models</span><span class="type-small muted">Holds <code>stems</code></span><span class="sub">Education doesn’t include <code>stems</code></span></li>
                 <li class="success"><i class="ic ic-check"></i><span>npm <code>@djdl</code></span><span class="type-small muted">Public</span></li>
               </ul>
             </div>

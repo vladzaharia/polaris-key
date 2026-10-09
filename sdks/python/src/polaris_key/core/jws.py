@@ -19,7 +19,7 @@ SECURITY — the normative verification order (§1) in all six implementations::
     5. decoded header > MAX_HEADER_BYTES -> FAIL    (R2-04)
     6. parse header, REJECTING duplicate keys       (R2-06)
     7. header.alg == "EdDSA"
-    8. header.typ matches the expected type; MISSING typ fails when require_typ (§2)
+    8. header.typ matches the expected type; a MISSING typ fails (§2)
     9. header.kid is a str
    10. key = trustSet[kid]; absent -> FAIL          (never from the document)
    11. STRICT base64url-decode the signature
@@ -42,9 +42,8 @@ WHAT v4 ADDED (WIRE-CONTRACT-V4 §1.1–§1.2), for every ``typ``
 
 WHAT v3 ADDED
 
-* ``require_typ``: a header carrying NO ``typ`` is REJECTED (§2). Every shipping call
-  site in this SDK sets it; the option exists so the rule is stated once rather than
-  duplicated at each verifier.
+* ``typ``: REQUIRED, with no default. A header carrying NO ``typ``, or a
+  different one, is REJECTED (§2), and a caller cannot opt out by omitting the argument.
 * ``max_payload_bytes``: a RAISE-ONLY cap for ``pkey-bundle+jws`` alone (262 144 bytes,
   §1). It can only ever raise — the effective cap is ``max(MAX_DOC_BYTES, requested)`` —
   so a value below the frozen 64 KiB is inert rather than quietly tightening one call
@@ -295,8 +294,7 @@ def verify_jws(
     jws: str,
     trusted_keys: TrustSet,
     *,
-    typ: Optional[str] = None,
-    require_typ: bool = False,
+    typ: str,
     max_payload_bytes: Optional[int] = None,
 ) -> Optional[VerifiedJws]:
     """Verify a compact JWS against a trust set, in the §1 order.
@@ -338,17 +336,12 @@ def verify_jws(
     if header.get("alg") != "EdDSA":
         return None
 
-    # 8. Domain separation (§2). v3 REQUIRES a typ at every call site that asks for one;
-    #    a header asserting a DIFFERENT type is rejected in either mode.
-    if "typ" not in header:
-        if require_typ:
-            return None
-    else:
-        header_typ = header["typ"]
-        if not isinstance(header_typ, str):
-            return None
-        if typ is not None and header_typ != typ:
-            return None
+    # 8. Domain separation (§2). The expected ``typ`` is a REQUIRED argument: a
+    #    caller cannot opt out of the check by omitting it, and a header with no ``typ``
+    #    or a different one is rejected.
+    header_typ = header.get("typ")
+    if not isinstance(header_typ, str) or header_typ != typ:
+        return None
 
     # 9-10. Select the pubkey by kid from the TRUST SET — never from the doc.
     kid = header.get("kid")

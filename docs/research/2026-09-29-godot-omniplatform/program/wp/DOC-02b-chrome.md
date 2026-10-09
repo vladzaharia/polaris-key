@@ -1,16 +1,16 @@
 # DOC-02b Chrome
 
-| Field       | Value                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| Phase       | DOC: Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/) (site design) |
-| Size        | 0.4–0.6 engineer-weeks                                                                                             |
-| Depends on  | [DOC-01](DOC-01-docs-mockups.md), [DOC-02a](DOC-02a-shared-components.md)                                          |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [AX-06](AX-06-markdown-twins-llms-files-agent-kit-and-schemas.md)          |
-| Role        | `pkey-implementer`                                                                                                 |
-| Plan mode   | no                                                                                                                 |
-| Gates       | `docs-generated`, `docs-links`, `ui-snapshots`                                                                     |
-| Human input | none                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                          |
+| Field       | Value                                                                                                                                                |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | DOC: Documentation: one docs site with Help, Developers and Operate (docs/research/2026-10-08-docs/) (site design)                                   |
+| Size        | 0.4–0.6 engineer-weeks                                                                                                                               |
+| Depends on  | [DOC-01](DOC-01-docs-mockups.md), [DOC-02a](DOC-02a-shared-components.md), [UK-58](UK-58-brand-expression-tokens.md), [UK-57](UK-57-brand-assets.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [AX-06](AX-06-markdown-twins-llms-files-agent-kit-and-schemas.md)                                            |
+| Role        | `pkey-implementer`                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                   |
+| Gates       | `docs-generated`, `docs-links`, `ui-snapshots`                                                                                                       |
+| Human input | none                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                            |
 
 ## Owner decision (2026-10-08): public developer docs
 
@@ -46,6 +46,47 @@ approved DOC-01 mockups; `PortalShell.tsx`; console `Sidebar`; `components/theme
 
 - Builds on the reviewed DOC-01 mockups. Owns the landing layout component (`Landing.astro`); DOC-07a owns its copy.
 - Nothing describes unbuilt behaviour as shipped; P2 lines belong to the consolidation packages that ship them (§10).
+
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- The docs landing and section heroes use `@polaris-key/brand/marketing.css` and the service icon set; article pages and tables never use display tokens. Depends on UK-58 and UK-57 (and DOC-02a). (brand-33)
 
 ## Steps
 

@@ -168,14 +168,22 @@ public struct CachedDoc<T: DocClaims>: Sendable, Equatable {
 public struct LoadedCache: Sendable, Equatable {
     public var license: CachedDoc<LicenseDoc>?
     public var config: CachedDoc<ConfigDoc>?
-    /// Present ⇒ this install was activated from an offline bundle (§7).
-    public var importedBundle: ImportedBundle?
+    /// The cached offline bundle (§7), present whenever it re-verified on the reload profile.
+    public var bundle: LoadedBundle?
     public var lastSyncUnauthorized: Bool = false
     public var blocked: BlockInfoRecord?
     /// Epoch MILLIseconds of the last verification. Offline this is derived from the newest
     /// document's signed `issuedAt` — the server's own statement of when it minted is the only
     /// trustworthy "last checked" signal there is (R4-04).
     public var lastVerifiedAt: Int?
+}
+
+/// A cached bundle that re-verified. `activates` is the signed fact behind `activation:
+/// .bundle` (with no token held): it carried a licence document byte-identical to the cached one.
+public struct LoadedBundle: Sendable, Equatable {
+    public let bundleId: String
+    public let docs: [DocumentSlice]
+    public let activates: Bool
 }
 
 /// What `importBundle` installed.
@@ -331,6 +339,10 @@ public actor CoreContext {
     /// Tier 2 — REPLACED, never merged into, on every successful verification (§1 rule 2).
     private var manifestKeys: TrustSet = [:]
     private var manifest: TrustManifestDoc?
+    /// The tombstoned pins, re-derived from `evidence` on every load (§1, §4.1).
+    private var tombstones: [String] = []
+    /// The `pinRevocations` slice as it should be written: kid → the revoking manifest.
+    private var evidence: [String: String] = [:]
     private var clock = MonotonicClock()
     private var record: CacheRecord?
     private var loaded = LoadedCache()
@@ -383,7 +395,7 @@ public actor CoreContext {
     /// offline-first host must be able to render its gate before it has ever reached the
     /// control plane.
     public func start() async throws {
-        deviceIdValue = try await store.getDeviceId()
+        deviceIdValue = try await bindDeviceId(productSlug: product, store: store)
         tokenValue = try await store.getToken()
         tokenSourceValue = nil
         loadCache(await store.readCache())
@@ -427,6 +439,7 @@ public actor CoreContext {
         // slices are carried over and re-verified against the (now pinned-only) trust set.
         let carriedFeeds = record?.feeds ?? [:]
         let carriedRecords = record?.releaseRecords ?? [:]
+        let carriedEvidence = evidence
         tokenValue = nil
         tokenSourceValue = nil
         record = nil
@@ -438,10 +451,12 @@ public actor CoreContext {
 
         var failure: Error?
         do { try await store.clearToken() } catch { failure = error }
-        if carriedFeeds.isEmpty && carriedRecords.isEmpty {
+        if carriedFeeds.isEmpty && carriedRecords.isEmpty && carriedEvidence.isEmpty {
             do { try await store.clearCache() } catch { failure = failure ?? error }
         } else {
-            record = CacheRecord(feeds: carriedFeeds, releaseRecords: carriedRecords)
+            record = CacheRecord(
+                feeds: carriedFeeds, releaseRecords: carriedRecords,
+                pinRevocations: carriedEvidence)
             reloadUpdateSlices()
             do {
                 try await store.writeCache(record ?? CacheRecord())
@@ -459,12 +474,18 @@ public actor CoreContext {
     }
 
     // ── Trust (§1) ───────────────────────────────────────────────────────────────────────
-    /// The effective set: manifest keys UNION pinned keys, PINS LAST so they are terminal.
-    public var trust: TrustSet { mergeTrust(pinnedTrust, manifestKeys) }
+    /// The pins minus the tombstones: the ONLY keys a manifest or bundle verifies against.
+    public var usable: TrustSet { usablePins(pinnedTrust, tombstones) }
+
+    /// The tombstoned pins (ascending byte order).
+    public var revokedPins: [String] { tombstones }
+
+    /// The effective set: manifest keys UNION the USABLE pins, PINS LAST so they are terminal.
+    public var trust: TrustSet { mergeTrust(usable, manifestKeys) }
 
     public var trustManifest: TrustManifestDoc? { manifest }
 
-    /// Verify a manifest against the PINNED keys and install what it publishes (§1).
+    /// Verify a manifest against the USABLE pins and install what it publishes (§1).
     ///
     /// Returns false — keeping the PREVIOUS trust set intact — when the manifest is refused,
     /// stale, replayed, or attempts to substitute a pinned kid. Verification is against pins
@@ -472,13 +493,25 @@ public actor CoreContext {
     /// sign the manifest that extends its own authority.
     @discardableResult
     func applyTrustManifest(_ jws: String, checkFreshness: Bool) -> Bool {
-        let result = verifyTrustManifest(
+        let result = verifyManifest(jws, checkFreshness: checkFreshness)
+        guard result.doc != nil else { return false }
+        installManifest(jws, result)
+        return true
+    }
+
+    private func verifyManifest(_ jws: String, checkFreshness: Bool) -> TrustManifestResult {
+        verifyTrustManifest(
             jws,
             options: VerifyTrustManifestOptions(
-                pinned: pinnedTrust, expectedAud: product,
-                now: systemClock(),
+                pinned: pinnedTrust, tombstones: tombstones, expectedAud: product,
+                // The effective clock (never below the signed floor), not the raw wall clock.
+                now: now(),
                 lastTrustIssuedAt: manifest?.issuedAt, checkFreshness: checkFreshness))
-        guard let doc = result.doc else { return false }
+    }
+
+    private func installManifest(_ jws: String, _ result: TrustManifestResult) {
+        guard let doc = result.doc else { return }
+        noteRevocations(jws, result.revokedPins)
         // PRUNE (§1 rule 2): the discovered set is REPLACED, so a kid the server stops
         // publishing is dropped. Absence is revocation — that is what restores the server's
         // ability to revoke at all.
@@ -489,7 +522,31 @@ public actor CoreContext {
         // time whether or not it may still publish keys, so raising the floor here does not
         // re-introduce the freshness check the reload path deliberately skips.
         clock.raise(doc.issuedAt)
-        return true
+    }
+
+    /// Record a verified manifest's new tombstones, with the manifest as their evidence.
+    func noteRevocations(_ jws: String, _ revokedPins: [String]) {
+        guard !revokedPins.isEmpty else { return }
+        for kid in revokedPins { evidence[kid] = jws }
+        tombstones = Array(Set(tombstones).union(revokedPins)).sorted(by: kidBytesLess)
+    }
+
+    /// Re-derive the tombstones from the cached `pinRevocations` slice (§4.1).
+    private func loadEvidence(_ slice: [String: String]) {
+        let derived = loadPinRevocations(slice, pinned: pinnedTrust, expectedAud: product)
+        tombstones = derived.tombstones
+        evidence = derived.kept
+    }
+
+    /// One `GET /<p>/.well-known/polaris-trust.jws[?signer=<kid>]`: the body on a 200, else nil.
+    private func fetchManifest(_ url: URL) async -> String? {
+        guard let response = try? await request(url, headers: ["accept": "application/jose"]),
+            response.isOK,
+            // Bound the body before it becomes a String: the manifest is a compact JWS whose
+            // segments are already capped, so anything larger is not a manifest.
+            response.body.count <= JWSVerifier.maxHeaderB64 + JWSVerifier.maxPayloadB64 + 128
+        else { return nil }
+        return String(data: response.body, encoding: .utf8)
     }
 
     /// Fetch, verify and install the signed trust manifest — on CORE's cadence.
@@ -499,29 +556,40 @@ public actor CoreContext {
     /// clock, and the floor built from a document alone is provably inert (R4-04). Here it is
     /// called by `sync()` before and independently of whichever documents this product happens
     /// to fetch (§4.2).
+    ///
+    /// Rotation (§2.3): when the default manifest is refused and its signer is not a usable
+    /// pin, it is requested again with `?signer=<kid>` for each usable pin (ascending kid byte
+    /// order, at most `MAX_TRUST_SIGNER_ATTEMPTS`), keeping the first one accepted.
     @discardableResult
     public func refreshTrust() async -> Bool {
-        let response: PolarisResponse
-        do {
-            response = try await request(
-                endpoints.trustManifest, headers: ["accept": "application/jose"])
-        } catch {
-            // A manifest we could not fetch is a manifest we KEEP, not a reason to fail a sync.
-            return false
+        // A manifest we could not fetch is a manifest we KEEP, not a reason to fail a sync.
+        guard let first = await fetchManifest(endpoints.trustManifest) else { return false }
+        var jws = first
+        var result = verifyManifest(jws, checkFreshness: true)  // network path: freshness enforced
+        if result.doc == nil {
+            for signer in trustSignerOrder(usable: usable, headerKid: jwsHeaderKid(first)) {
+                guard let retry = await fetchManifest(endpoints.trustManifest(signer: signer))
+                else { continue }
+                let r = verifyManifest(retry, checkFreshness: true)
+                if r.doc != nil {
+                    jws = retry
+                    result = r
+                    break
+                }
+            }
         }
-        guard response.isOK,
-            // Bound the body before it becomes a String: the manifest is a compact JWS whose
-            // segments are already capped, so anything larger is not a manifest.
-            response.body.count
-                <= JWSVerifier.maxHeaderB64 + JWSVerifier.maxPayloadB64 + 128,
-            let jws = String(data: response.body, encoding: .utf8),
-            applyTrustManifest(jws, checkFreshness: true)  // network path: freshness enforced
-        else { return false }
+        guard result.doc != nil else { return false }
+        installManifest(jws, result)
         // The effective trust set may have changed: the committed feeds are re-verified against
         // it, so a feed whose key left the set is dropped together with its floor (V4 §4).
         reloadUpdateSlices()
-        // Persist the SIGNED manifest, never the bare keys it carries (§4.1).
-        await patchCache { $0.trustJws = jws }
+        // Persist the SIGNED manifest, never the bare keys it carries (§4.1), with the evidence
+        // for any pin it tombstoned in the same write.
+        let evidenceNow = evidence
+        await patchCache {
+            $0.trustJws = jws
+            $0.pinRevocations = evidenceNow
+        }
         return true
     }
 
@@ -536,6 +604,18 @@ public actor CoreContext {
 
     public func enabled(_ slug: ServiceSlug) -> Bool {
         services()[slug] ?? false
+    }
+
+    /// Whether the licence GATE runs: the build's own declaration (`expectedServices`, default
+    /// licence and config) OR a discovery document loaded this session that enables it. Discovery
+    /// is unsigned, so it may switch the gate ON but never OFF: a forged
+    /// `services.license.enabled: false` cannot turn a licensed product into `notApplicable`.
+    /// Discovery still governs which sub-clients exist (`enabled`, D-21). A config-only product
+    /// says so with an `expectedServices` that lacks `license`.
+    public func licenseGateEnabled() -> Bool {
+        let built = expectedServices.map { $0.contains(.license) } ?? (DEFAULT_SERVICES[.license] ?? false)
+        let discovered = discoveredServices?[.license] ?? false
+        return built || discovered
     }
 
     /// Refuse a sub-client whose service this product does not run (D-21). The refusal carries
@@ -683,10 +763,14 @@ public actor CoreContext {
     ///   1. a record whose `v != CACHE_RECORD_VERSION` is DISCARDED, never migrated — `v` is
     ///      checked before any field is read, so a v1/v2 record's `trustedKeys` and unsigned
     ///      counters are never even looked at;
-    ///   2. `trustJws` against the PINS only, freshness off → the effective set;
-    ///   3. each entry of `docs` against THAT set, freshness off, full §3 claim validation
+    ///   2. `pinRevocations` (the evidence for each tombstoned pin) against the pins, in
+    ///      ascending manifest `issuedAt` → the usable pins;
+    ///   3. `trustJws` against the USABLE pins only, freshness off → the effective set;
+    ///   4. each entry of `docs` against THAT set, freshness off, full §3 claim validation
     ///      including `aud` and `deviceId`;
-    ///   4. every derived counter — the per-type anti-replay floors, `lastVerifiedAt`, the
+    ///   5. `bundle` on the bundle RELOAD profile; it counts as `activation: .bundle` only when
+    ///      its licence document is byte-identical to the cached one;
+    ///   6. every derived counter — the per-type anti-replay floors, `lastVerifiedAt`, the
     ///      clock floor — computed from what verified, never read from the file.
     ///
     /// Any artifact that fails is treated as ABSENT and dropped from the in-memory record, so a
@@ -703,6 +787,11 @@ public actor CoreContext {
             return
         }
         var next = stored
+
+        // The tombstones first, so the manifest, the documents and the bundle all verify
+        // against the usable pins. Evidence that no longer verifies is dropped on the next write.
+        loadEvidence(stored.pinRevocations)
+        next.pinRevocations = evidence
 
         if let trustJws = stored.trustJws {
             // Freshness is not re-checked: a manifest expires in `cacheSeconds` (minutes), so
@@ -736,7 +825,9 @@ public actor CoreContext {
             }
         }
 
-        loaded.importedBundle = stored.importedBundle
+        loaded.bundle = reloadBundle(stored.bundle)
+        // A cached manifest may have tombstoned a pin whose evidence the record lacked.
+        next.pinRevocations = evidence
         loaded.lastSyncUnauthorized = stored.lastSyncUnauthorized == true
         loaded.blocked = stored.blocked
         loaded.lastVerifiedAt =
@@ -744,6 +835,23 @@ public actor CoreContext {
         record = next
         // After the manifest: the feeds verify against the EFFECTIVE trust set.
         reloadUpdateSlices()
+    }
+
+    /// §7 reload profile: the cached bundle's own signature and claims, without the import
+    /// window, against the usable pins; its inner documents against its own manifest's set with
+    /// no floor. It activates only when its licence document is the cached one, byte for byte.
+    private func reloadBundle(_ jws: String?) -> LoadedBundle? {
+        guard let jws else { return nil }
+        guard
+            case .ok(let verified) = inspectBundle(
+                jws,
+                options: BundleOptions(
+                    pinned: pinnedTrust, tombstones: tombstones, product: product,
+                    deviceId: deviceIdValue, now: now(), profile: .reload))
+        else { return nil }
+        return LoadedBundle(
+            bundleId: verified.bundleId, docs: verified.importedSlices,
+            activates: verified.license != nil && verified.license?.jws == loaded.license?.jws)
     }
 
     // ── Wire v4 update slices (plans/P3-01.md §2.5 "Reload path", §2.6) ─────────────────────
@@ -823,6 +931,7 @@ public actor CoreContext {
             jws, spec: spec,
             options: VerifyOptions(
                 trust: trust, expectedAud: product, deviceId: deviceIdValue,
+                lastAcceptedIssuedAt: nil,
                 now: Swift.max(now(), peek.issuedAt), checkFreshness: false))
     }
 
@@ -835,7 +944,6 @@ public actor CoreContext {
         record = next
         loaded.lastSyncUnauthorized = next.lastSyncUnauthorized == true
         loaded.blocked = next.blocked
-        loaded.importedBundle = next.importedBundle
         do {
             try await store.writeCache(next)
         } catch let error as StoreError {
@@ -854,16 +962,29 @@ public actor CoreContext {
         _ jws: String, now importedAt: Int? = nil
     ) async throws -> ImportBundleResult {
         let stamp = importedAt ?? systemClock()
+        // A byte-identical re-import of the bundle this install holds (and that re-verified):
+        // success, nothing written.
+        if let held = loaded.bundle, record?.bundle == jws {
+            return ImportBundleResult(bundleId: held.bundleId, imported: held.docs)
+        }
         let inspection = inspectBundle(
             jws,
             options: BundleOptions(
-                pinned: pinnedTrust, product: product, deviceId: deviceIdValue, now: stamp))
+                pinned: pinnedTrust, tombstones: tombstones, product: product,
+                deviceId: deviceIdValue, now: stamp,
+                // §7 step 4: each inner document strictly newer than the verified cached one
+                // of its type.
+                floors: BundleFloors(
+                    license: loaded.license?.doc.issuedAt, config: loaded.config?.doc.issuedAt),
+                profile: .import))
         guard case .ok(let bundle) = inspection else {
             guard case .refused(let reason) = inspection else {
                 throw PolarisError(code: "bundle", message: "bundle import failed")
             }
             throw PolarisError(code: reason.rawValue, message: bundleMessage(reason))
         }
+        // The inner manifest's tombstones (if any) join the evidence the record is written with.
+        noteRevocations(bundle.trustJws, bundle.revokedPins)
 
         // REPLACE rather than merge: importing a bundle is a re-provisioning, and a stale
         // license slice surviving an air-gapped re-import would be a device running on a licence
@@ -873,12 +994,17 @@ public actor CoreContext {
         var docs: [DocumentSlice: String] = [:]
         if let license = bundle.license { docs[.license] = license.jws }
         if let config = bundle.config { docs[.config] = config.jws }
-        // The v4 update slices are not provisioning: they carry the `seq` floors, which an import
-        // must not reset (a floor that could be reset could be rolled back).
+        // §7 step 5: keep the held manifest when it is newer than the bundle's (an old bundle
+        // cannot re-teach a key the device has seen revoked).
+        let heldTrust: String? =
+            (manifest.map { $0.issuedAt > bundle.trustIssuedAt } ?? false) ? record?.trustJws : nil
+        // The v4 update slices and the pin evidence are not provisioning: the feeds carry the
+        // `seq` floors, which an import must not reset (a floor that could be reset could be
+        // rolled back), and a tombstone is security state.
         let fresh = CacheRecord(
-            trustJws: bundle.trustJws, docs: docs,
-            importedBundle: ImportedBundle(bundleId: bundle.bundleId, importedAt: stamp),
-            feeds: record?.feeds ?? [:], releaseRecords: record?.releaseRecords ?? [:])
+            trustJws: heldTrust ?? bundle.trustJws, docs: docs, bundle: jws,
+            feeds: record?.feeds ?? [:], releaseRecords: record?.releaseRecords ?? [:],
+            pinRevocations: evidence)
         record = fresh
         do {
             try await store.writeCache(fresh)
@@ -1157,13 +1283,37 @@ public actor CoreContext {
             }
         }
         // A successful authenticated exchange — 200 OR 304 — clears both unsigned hints. They
-        // can only ever tighten the gate (§4.1), so clearing them on evidence of a healthy
-        // session is safe; SETTING them requires the server to have said so.
+        // are display-only (§4.1: no verdict depends on them), so clearing them on evidence of a
+        // healthy session is safe; SETTING them requires the server to have said so.
         let healthy = outcomes.values.contains { $0 == .applied || $0 == .unchanged }
         if patch == nil, healthy { patch = .some(nil) }
 
+        // A hard 401 on a slice, or a 403 build block on the licence, REMOVES that slice (document
+        // and ETag) in the SAME write as the hint. The hints are display-only: what makes a
+        // revocation hold offline is that the document is gone, so clearing a hint yields
+        // `needsActivation`, never a usable document. The token is kept (the gate then reports
+        // `revoked` / the block) and the clock floor is not lowered.
+        var revoked: [DocumentSlice] = []
+        for (slice, outcome) in outcomes {
+            switch outcome {
+            case .unauthorized: revoked.append(slice)
+            case .blocked where slice == .license: revoked.append(slice)
+            default: break
+            }
+        }
+        for slice in revoked {
+            switch slice {
+            case .license: loaded.license = nil
+            case .config: loaded.config = nil
+            }
+        }
+
         // ── One write ────────────────────────────────────────────────────────────────────
         await patchCache { rec in
+            for slice in revoked {
+                rec.docs[slice] = nil
+                rec.etags[slice] = nil
+            }
             if let trustJws { rec.trustJws = trustJws }
             if result.unauthorized {
                 rec.lastSyncUnauthorized = true

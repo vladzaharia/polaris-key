@@ -13656,7 +13656,7 @@ var DISPLAY_TEXT_STRIP = [
 // ../shared-protocol/dist/core.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-CFB6JUCV.js
+// ../shared-protocol/dist/chunk-J3YZDZLH.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var PROTOCOL_VERSION = 4;
 var MAX_JSON_DEPTH = 64;
@@ -21900,11 +21900,18 @@ function issuerUrlProblem(value) {
   if (url.search || url.hash) {
     return "must not carry a query string or fragment";
   }
-  const loopback = LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) {
+  const loopback = url.protocol === "http:" && LOOPBACK_HOSTS.has(url.hostname.toLowerCase());
+  if (url.protocol !== "https:" && !loopback) {
     return "must use https (http is accepted only for localhost during development)";
   }
-  if (!loopback && isReservedAddressLiteral(url.hostname)) {
+  if (/(^|\.)\./.test(url.hostname) || /\.\.+$/.test(url.hostname)) {
+    return "must not be a malformed host";
+  }
+  const bareHost = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (!loopback && (bareHost === "localhost" || bareHost.endsWith(".localhost"))) {
+    return "must not be a private, loopback, link-local, or otherwise reserved address";
+  }
+  if (!loopback && isReservedAddressLiteral(url.hostname.replace(/\.$/, ""))) {
     return "must not be a private, loopback, link-local, or otherwise reserved address";
   }
   return null;
@@ -21945,6 +21952,13 @@ function isReservedIpv6(b) {
   if (leadingZeros(12)) {
     return isReservedIpv4([b[12], b[13], b[14], b[15]]);
   }
+  if (b[0] === 0 && b[1] === 100 && b[2] === 255 && b[3] === 155) {
+    if (b.subarray(4, 12).every((x) => x === 0))
+      return isReservedIpv4([b[12], b[13], b[14], b[15]]);
+  }
+  if (b[0] === 32 && b[1] === 2)
+    return isReservedIpv4([b[2], b[3], b[4], b[5]]);
+  if (b[0] === 32 && b[1] === 1 && b[2] === 0 && b[3] === 0) return true;
   if ((b[0] & 254) === 252) return true;
   if (b[0] === 254 && (b[1] & 192) === 128) return true;
   if (b[0] === 255) return true;
@@ -22415,6 +22429,58 @@ async function resolveCiToken(opts) {
   throw new Error(
     `No CI credential. In GitHub Actions, grant the job \`permissions: id-token: write\` and pkey exchanges the job's OIDC token itself; elsewhere, export ${CI_TOKEN_ENV} with a static pkeyci_ token an operator issued in the console.`
   );
+}
+
+// src/logo.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var LOGO_COLS = 22;
+var LOGO_ART = [
+  "       ⣀⡄     ⢀",
+  "   ⣀⠤⠖⠍⠅⡇    ⢠⣿⣆",
+  "   ⡇⠁⠅⠅⠅⡇  ⣤⣶⣿⣿⣿⣷⣦⡄",
+  "   ⡇⠁⠅⠅⠅⡇   ⠉⢻⣿⡿⠋⠁",
+  "   ⡇⠁⠅⠅⠅⡇     ⠻⠁",
+  "   ⡇⠁⠅⠅⠅⡇⡏⠝⢍⠝⢕⢄",
+  "   ⡇⠁⠅⠅⠅⡇⠣⡕⢅⠕⢕⢕⢕⢄",
+  "   ⡇⠁⠅⠅⠅⡇ ⠈⠣⡕⢕⢕⢕⢝⢕⡄",
+  "   ⡇⠁⠅⢅⣅⠇   ⠈⠳⣕⢕⡽⠋",
+  "   ⡧⠕⠋⠁       ⠈⠋"
+];
+var LOGO_STAR = [
+  "0000000000000010000000",
+  "0000000000000111000000",
+  "0000000000011111111000",
+  "0000000000001111110000",
+  "0000000000000011000000",
+  "0000000000000000000000",
+  "0000000000000000000000",
+  "0000000000000000000000",
+  "0000000000000000000000",
+  "0000000000000000000000"
+];
+var LOGO_STAR_GLYPH = "✦";
+var MIN_COLUMNS2 = 50;
+var MIN_ROWS = 24;
+function logoMode(term) {
+  const { caps } = term;
+  if (!caps.tty || !caps.unicode || caps.json || caps.ci || caps.dumb)
+    return null;
+  return caps.columns >= MIN_COLUMNS2 && caps.rows >= MIN_ROWS ? "art" : "star";
+}
+function logoLines(term) {
+  if (logoMode(term) !== "art") return null;
+  return LOGO_ART.map((row2, r) => {
+    const line = [];
+    let i = 0;
+    for (const ch of row2) {
+      const role = ch === " " ? null : LOGO_STAR[r][i] === "1" ? "strong" : "muted";
+      i += 1;
+      const last = line[line.length - 1];
+      if (last && (last.style?.[0] ?? null) === role) last.text += ch;
+      else line.push(role ? { text: ch, style: [role] } : { text: ch });
+    }
+    return line;
+  });
 }
 
 // src/help.ts
@@ -22966,6 +23032,22 @@ function termColumn(term, terms, cap = term.caps.columns < 70 ? 18 : 26) {
     Math.max(0, ...terms.map(cellWidth).filter((w) => w <= cap))
   );
 }
+function logoHeader(term, art2, block) {
+  const gap = 2;
+  const room = Math.max(1, term.caps.columns - LOGO_COLS - gap);
+  const text = block.flatMap((l) => l.length ? wrapSpans(l, room) : [l]);
+  const top = Math.max(0, Math.floor((art2.length - text.length) / 2));
+  const rows = Math.max(art2.length, top + text.length);
+  const out = [];
+  for (let r = 0; r < rows; r++) {
+    const left = art2[r] ?? [];
+    const right = text[r - top] ?? [];
+    const pad2 = LOGO_COLS + gap - cellWidth(left.map((x) => x.text).join(""));
+    const spans = right.length ? [...left, { text: " ".repeat(pad2) }, ...right] : left;
+    out.push(term.painter.line(spans));
+  }
+  return out;
+}
 function renderHelp(term) {
   const { painter, symbols } = term;
   const line = (spans) => painter.line(spans);
@@ -22974,22 +23056,26 @@ function renderHelp(term) {
     ...allRows.map(([t]) => t),
     ...COMMON_OPTIONS.map(([t]) => t)
   ]);
-  const out = [
-    ...wrapSpans(
-      [
-        { text: "pkey", style: ["strong"] },
-        {
-          text: ` ${symbols.separator} Polaris Key platform CLI`,
-          style: ["muted"]
-        }
-      ],
-      term.caps.columns
-    ).map(line),
+  const art2 = logoLines(term);
+  const mode = logoMode(term);
+  const name = [
+    ...mode === "star" ? [{ text: `${LOGO_STAR_GLYPH} `, style: ["strong"] }] : [],
+    { text: "pkey", style: ["strong"] }
+  ];
+  const tagline = [
+    {
+      text: `${mode === "art" ? "" : ` ${symbols.separator} `}Polaris Key platform CLI`,
+      style: ["muted"]
+    }
+  ];
+  const usage = [
+    { text: "Usage", style: ["muted"] },
+    { text: "  pkey <command> [options]" }
+  ];
+  const out = art2 ? logoHeader(term, art2, [name, tagline, [], usage]) : [
+    ...wrapSpans([...name, ...tagline], term.caps.columns).map(line),
     "",
-    line([
-      { text: "Usage", style: ["muted"] },
-      { text: "  pkey <command> [options]" }
-    ])
+    line(usage)
   ];
   for (const [group, heading] of GROUPS) {
     const rows = COMMANDS.filter((c) => c.group === group).flatMap(
@@ -24847,8 +24933,17 @@ function payloadCapFor(requested) {
   return Math.max(MAX_DOC_BYTES, Math.floor(requested));
 }
 var B64URL_RE = /^[A-Za-z0-9_-]*$/;
+var B64URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+function isCanonicalB64url(s) {
+  if (!B64URL_RE.test(s)) return false;
+  const rem = s.length % 4;
+  if (rem === 1) return false;
+  if (rem === 0) return true;
+  const last = B64URL_ALPHABET.indexOf(s[s.length - 1]);
+  return rem === 2 ? (last & 15) === 0 : (last & 3) === 0;
+}
 function base64UrlDecodeStrict(s) {
-  if (!B64URL_RE.test(s)) return null;
+  if (!isCanonicalB64url(s)) return null;
   try {
     return base64UrlDecode(s);
   } catch {
@@ -25245,7 +25340,10 @@ async function importSigningKey(pem) {
   );
 }
 async function importVerifyKey(rawBase64Url) {
-  const raw = base64UrlDecode(rawBase64Url);
+  const raw = base64UrlDecodeStrict(rawBase64Url);
+  if (raw === null) {
+    throw new Error("Ed25519 public key is not canonical base64url");
+  }
   if (raw.length !== 32) {
     throw new Error(`Ed25519 public key must be 32 bytes, got ${raw.length}`);
   }
@@ -25314,7 +25412,8 @@ async function verifyJws(jws, trustedKeys, opts = {}) {
   }
   const sigBytes = base64UrlDecodeStrict(encSig);
   if (!sigBytes) return null;
-  if (!ed25519Prechecks(base64UrlDecode(rawKey2), sigBytes)) return null;
+  const keyBytes = base64UrlDecodeStrict(rawKey2);
+  if (!keyBytes || !ed25519Prechecks(keyBytes, sigBytes)) return null;
   let ok;
   try {
     ok = await crypto.subtle.verify(
@@ -42999,7 +43098,7 @@ async function runCommand(argv2, io) {
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
-        return await cmdSdk(parsed, cwd, stdout, ci.fetchImpl);
+        return await cmdSdk(parsed, cwd, stdout, stderr, ci.fetchImpl);
       case "mirror":
         return await cmdMirror(parsed, cwd, stdout, ci.fetchImpl);
       case "auth":
@@ -43427,7 +43526,7 @@ function cmdTrust(parsed, stdout) {
 `);
   return 0;
 }
-async function cmdSdk(parsed, cwd, stdout, fetchImpl) {
+async function cmdSdk(parsed, cwd, stdout, stderr, fetchImpl) {
   const lang = flagString(parsed, "lang");
   if (lang === void 0) {
     const product2 = flagString(parsed, "product") ?? parsed.positional[0];
@@ -43476,6 +43575,10 @@ ${SDK_CONFIG_USAGE}`
     ...kid !== void 0 && publicKey !== void 0 ? { expectPin: { kid, publicKey } } : {},
     ...fetchImpl ? { fetchImpl } : {}
   });
+  if (Object.keys(facts.pinnedKeys).length === 1)
+    stderr.write(
+      "warning: discovery lists one signing key; stage a second key before you ship, so this one can be revoked.\n"
+    );
   const out = flagString(parsed, "out");
   const pkg = flagString(parsed, "package");
   const content = renderSdkConfig(lang, facts, {

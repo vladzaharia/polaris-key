@@ -101,7 +101,8 @@ A device gets one account's layer, chosen in this order:
 1. the account **signed in on the device** (the same account Cloud Sync uses), unless the device's
    licence is floating or that account removed the licence from its library;
 2. else the **owner of the device's licence**, so a device activated by licence key still gets its
-   owner's values. This line is Config's alone; Cloud Sync has none;
+   owner's non-secret values; `secret` keys, and `config` keys the catalog marks secret, reach only
+   a device signed in as that account. This line is Config's alone; Cloud Sync has none;
 3. else none: a floating (unowned) licence, or a device with no licence and no sign-in.
 
 Edit it on **Users → a user → Overview**, or with `GET`/`PUT

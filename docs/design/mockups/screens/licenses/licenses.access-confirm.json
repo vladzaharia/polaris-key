@@ -8,10 +8,12 @@
   "summary": "What Save access on licenses.access asks before the two changes that alter who gets DJDL (Automatic licenses Rules → Nobody, and Rules → Everyone who signs in, with the typed slug), and the saved state: the save bar gone and a toast that names the change with View in History.",
   "order": 7,
   "compare": [
-    "Rules → Nobody: 'Stop automatic licenses for DJDL?' (caution); the change as Rules struck, Nobody added; 650 automatic licenses stay on their tiers; new sign-ins get nothing; Discover stops offering DJDL to people without a license; the 4 rules are kept. Keep Rules and Stop automatic licenses.",
-    "Rules → Everyone who signs in: 'Give every signed-in account a DJDL license?'; every account that signs in gets Trial (14 days of Standard, then Free); nobody moves down (38 Studio, 412 Standard, 57 Education); rules kept but off; type djdl to confirm. Keep Rules and Give everyone Trial.",
+    "Rules → Nobody: 'Stop automatic licenses for DJDL?' (caution); the change as Rules struck, Nobody added; then one line each: '650 automatic licenses stay on their tiers', 'New sign-ins get nothing', 'Your 4 rules are kept'. Keep Rules and Stop automatic licenses.",
+    "Rules → Everyone who signs in: 'Give every signed-in account a DJDL license?'; one line each: 'Every account that signs in gets Trial' (under it '14 days of Standard, then Free'), 'Nobody moves down', 'Your 4 rules are kept', 'Rules don’t apply while this is on'; type djdl to confirm. Keep Rules and Give everyone Trial.",
     "Saved: a slice of the page with the gates (App downloads now Public, no change marks, no save bar) and a toast 'Saved access' / 'App downloads are now Public.' with View in History, at the slice's bottom right.",
-    "Phone: dialogs full width, buttons stacked with the primary on top."
+    "Phone: dialogs full width, buttons stacked with the primary on top.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "The same dialog head and ink primary as licenses.access-rule (admin-1-25)."
   ],
   "status": "mockup",
   "designReview": {

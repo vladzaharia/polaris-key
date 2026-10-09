@@ -53,9 +53,11 @@ export function safeReturnTo(
     if (parsed.origin !== here.origin) return undefined;
     if (policy.refuseConsole && parsed.pathname.startsWith("/manage"))
       return undefined;
-    return policy.pathOnly
-      ? parsed.pathname + parsed.search + parsed.hash
-      : parsed.toString();
+    if (!policy.pathOnly) return parsed.toString();
+    // A path that starts `//` or `/\` is protocol-relative once it is a Location
+    // (`https://here//evil.com` parses same-origin, its path `//evil.com` does not stay local).
+    const path = parsed.pathname + parsed.search + parsed.hash;
+    return /^\/(?![/\\])/.test(path) ? path : undefined;
   } catch {
     return undefined;
   }

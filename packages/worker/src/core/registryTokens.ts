@@ -771,13 +771,21 @@ export async function lookupRegistrySubject(
   );
 }
 
+/** The CI scope that lets a `pkeyci_` token read the owner's non-public feeds. */
+export const CI_FEED_READ_SCOPE = "release:publish";
+
 /** The principal a resolution is, for an owner and ecosystem the ladder then judges. */
 export function principalOf(
   resolved: ResolvedRegistryToken | null,
 ): FeedPrincipal {
   if (resolved === null) return ANONYMOUS;
-  if (resolved.kind === "ci")
+  if (resolved.kind === "ci") {
+    // A CI token reads private feeds (and mints OCI pull tokens) only with the
+    // publish scope, the one a pipeline that verifies its own feeds holds; a report-only or
+    // promote-only token is no credential here.
+    if (!resolved.scopes.includes(CI_FEED_READ_SCOPE)) return ANONYMOUS;
     return { kind: "ci", product: resolved.product, tokenId: resolved.tokenId };
+  }
   if (resolved.kind === "owner")
     return {
       kind: "owner",

@@ -51,6 +51,12 @@ The storefront is documented for users and operators, the glossary has its terms
 
 - Rule 4: the concepts page wins; "product", "tier", "device".
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- PORTAL §4.16 amendments: Discover uses the Library's large tile in 3 columns from 1280 px, 2 from 640, 1 on phones; no 'What shows up here' panel (one footnote, 'Purchases appear in your library automatically.'); open products read 'No license needed'; trials show their duration; store-only listings never get Add to library; after a claim, focus moves to Open <product>. No chartreuse hero band or slogan (B12). (portal-23)
+
 ## Steps
 
 1. Re-read the S-21 sections above; verify this brief against the code and record any correction here.

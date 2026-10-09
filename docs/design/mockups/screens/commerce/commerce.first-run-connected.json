@@ -5,14 +5,16 @@
   "surface": "console",
   "packages": ["CM-29", "CM-21", "CM-23"],
   "uxRows": ["UX-54"],
-  "summary": "DJDL's Storefronts right after the App Store connected: the setup card reads 1 of 3 done with Connected the App Store ticked (when and with which key), Create an offer is next with Import from App Store beside New offer, and the App Store row reads Ready, waiting for an offer with an App Store SKU.",
+  "summary": "DJDL's Storefronts right after the App Store connected: the setup card reads 1 of 3 done with Connected the App Store ticked (when and with which key), Create an offer is next with Import from App Store beside New offer, and the App Store row reads Ready.",
   "compare": [
     "The meter is Home's continuous bar at a third; the done step keeps its row with a tick, muted, and says when and with which key it was done, and that store notifications were verified.",
     "Create an offer is now the Next step; because DJDL already has in-app purchases on the App Store, Import from App Store sits beside New offer (primary).",
-    "The App Store row reads Ready (info status) at its end, with 'Waiting for an offer with an App Store SKU' under its name; the other storefronts are unchanged.",
-    "No page sub-line: the App Store row says what it waits for ('Waiting for an offer with an App Store SKU'), so the state is said once.",
+    "The App Store row reads Ready (info status) at its end, with nothing under its name (the done step says when); the other storefronts are unchanged.",
+    "No page sub-line: the Create an offer step says what it waits for ('Waiting for an offer with an App Store SKU') and, on its own line, that 3 App Store in-app purchases can be imported, so the state is said once.",
     "No toast: the ticked step is the confirmation (EXPERIENCE.md §7, a toast never duplicates the page). A polite live region announces 'App Store connected'.",
-    "Phone: the step's two buttons wrap under its text, the primary first."
+    "Phone: the step's two buttons wrap under its text, the primary first.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Masthead mark (B4): from 1024px a 48px flat tile on this page (the feature's glyph on a landing page, the product's icon on a product page) replaces the orientation chip; below 1024 the chip carries the context; never on a dense data page, a record or a state page."
   ],
   "status": "mockup",
   "designReview": {

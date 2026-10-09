@@ -33,7 +33,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -44,6 +44,8 @@
     <!-- From 1440 Your app is a sticky rail beside the feature cards; below that it is one summary row above them. -->
     <div class="page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip product" aria-hidden="true"><span class="logo xs" data-product="djdl"></span></span><a href="#">DJDL</a></nav>
+<div class="page-icon mast" aria-hidden="true"><span class="logo lg" data-product="djdl"></span></div>
         <div class="page-heading"><h1>Integration</h1></div>
         <div class="page-actions">
           <button class="btn ghost hide-phone"><i class="ic ic-book-open"></i>Guide</button>
@@ -95,7 +97,7 @@
               <div class="task">
                 <span class="task-mark"></span>
                 <div class="task-title mk-cluster baseline">Test license<span class="meta regular">Optional</span></div>
-                <div class="task-desc">A Standard license to try the gate with. The key shows once.</div>
+                <div class="task-desc">The key shows once.</div>
                 <div class="task-action"><button class="btn outline sm"><i class="ic ic-key-round"></i>Create</button></div>
               </div>
             </div>
@@ -103,18 +105,17 @@
           <div>
             <div class="code">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <span class="code-file">DJDLApp.swift</span>
                   <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                 </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
 
-<span class="t-c">// Activation and the license gate, before DJDL opens.</span>
 <span class="t-t">WindowGroup</span> {
   <span class="t-t">ContentView</span>()
     .<span class="t-f">polarisKey</span>(client)
 }
 
-<span class="t-c">// Shown only with the polarisVpn entitlement.</span>
 <span class="t-t">PolarisEntitled</span>(<span class="t-s">"polarisVpn"</span>) { <span class="t-t">VpnToggle</span>() }</pre>
             </div>
           </div>
@@ -136,7 +137,6 @@
           <span class="icon-tile" data-service="release"><i class="svc"></i></span>
           <div class="title">
             <h2 id="f-ship">Ship builds</h2>
-            <p>Releases from CI to every channel.</p>
           </div>
           <span class="status-pill ok">CI verified Oct 6</span>
           <button class="btn ghost sm int-show" aria-expanded="false" aria-label="Show Ship builds">Show<i class="ic ic-chevron-down"></i></button>
@@ -152,13 +152,13 @@
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">Download page</div>
-                <div class="task-desc">macOS and Windows builds at <a class="link" href="#">key.plrs.im/djdl</a>.</div>
+                <div class="task-desc"><a class="link" href="#">key.plrs.im/djdl</a></div>
               </div>
               <div class="task" id="sparkle-key">
                 <span class="task-mark"></span>
                 <div class="task-title">Sparkle signing key</div>
                 <div class="task-desc mk-stack-2">
-                  <span>macOS updates need one. Run this in the repository, then push.</span>
+                  <span>Run this in the repository, then push.</span>
                   <div class="cmd"><span>pkey release keys init <span class="nowrap">--sparkle</span></span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
                 </div>
               </div>
@@ -167,13 +167,12 @@
           <div>
             <div class="code">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <span class="code-file">UpdaterSetup.swift</span>
                   <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                 </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUpdate</span>
 
-<span class="t-c">// Sparkle's update window, on DJDL's signed feed</span>
-<span class="t-c">// and the license's release track.</span>
 <span class="t-t">PolarisSparkle</span>.<span class="t-f">start</span>(client: client)</pre>
             </div>
           </div>
@@ -195,24 +194,24 @@
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">Connection</div>
-                <div class="task-desc">Pocket ID, with the <span class="mono">members</span> and <span class="mono">admins</span> groups.</div>
+                <div class="task-desc">Pocket ID · <span class="mono">members</span>, <span class="mono">admins</span></div>
               </div>
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">Sign-in surfaces</div>
-                <div class="task-desc">Browser sign-in on macOS and Windows, returning to DJDL.</div>
+                <div class="task-desc">Browser sign-in on macOS and Windows</div>
               </div>
             </div>
           </div>
           <div>
             <div class="code">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <span class="code-file">AccountMenu.swift</span>
                   <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                 </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
 
-<span class="t-c">// Browser sign-in; sign-out is in the account menu.</span>
 <span class="t-t">PolarisAccount</span>()</pre>
             </div>
           </div>
@@ -224,7 +223,6 @@
           <span class="icon-tile" data-service="sync"><i class="svc"></i></span>
           <div class="title">
             <h2 id="f-sync">Cloud Sync</h2>
-            <p>Settings and crates that follow each person across devices.</p>
           </div>
           <span class="status-pill wait">Not verified yet</span>
           <button class="btn ghost sm int-show" aria-expanded="false" aria-label="Show Cloud Sync">Show<i class="ic ic-chevron-down"></i></button>
@@ -235,12 +233,12 @@
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">Synced settings</div>
-                <div class="task-desc">9 editable settings sync by default, including <span class="mono">quality.floor</span> and <span class="mono">ui.theme</span>.</div>
+                <div class="task-desc">9 editable settings</div>
               </div>
               <div class="task" id="sync-storage">
                 <span class="task-mark"></span>
                 <div class="task-title">Storage per account</div>
-                <div class="task-desc">Standard has none yet. 50 MB holds about 2,000 crates.</div>
+                <div class="task-desc mk-stack-1"><span>Standard has none yet.</span><span>50 MB holds about 2,000 crates.</span></div>
                 <div class="task-action"><button class="btn outline sm">Set storage</button></div>
               </div>
             </div>
@@ -248,12 +246,12 @@
           <div>
             <div class="code">
                 <div class="code-head">
-                  <div class="code-tabs"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <div class="code-tabs" tabindex="0"><span class="active">Swift<small>macOS</small></span><span>Kotlin<small>Windows</small></span><span class="more">More<i class="ic ic-chevron-down"></i></span></div>
+                  <span class="code-file">SettingsView.swift</span>
                   <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
                 </div>
-<pre><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
+<pre tabindex="0"><span class="t-k">import</span> <span class="t-t">PolarisKeyUI</span>
 
-<span class="t-c">// DJDL's editable settings, synced, with the sync state.</span>
 <span class="t-t">PolarisSettings</span>()</pre>
             </div>
           </div>
@@ -265,7 +263,6 @@
         <span class="icon-tile sm muted" data-service="commerce"><i class="svc"></i></span>
         <div class="title">
           <h2 id="f-commerce">Commerce is off</h2>
-          <span class="muted small">Sell DJDL’s tiers and add-ons on storefronts.</span>
         </div>
         <a class="link" href="#">Open Features<i class="ic ic-arrow-right"></i></a>
       </section>
@@ -289,19 +286,22 @@
                 <p class="eyebrow">Add the SDK<span class="end"><span class="segmented sm"><span class="on">One command</span><span>By hand</span></span></span></p>
                 <div class="code">
                   <div class="code-head"><span class="code-file">Terminal</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
-<pre><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> \
+<pre tabindex="0"><span class="t-c">$</span> pkey sdk add <span class="t-k">swift</span> \
     --product djdl \
     --expect <span class="t-s">djdl-2026@sha256:3f9a…</span></pre>
                 </div>
-                <p class="hint">Run it in the Xcode project’s folder; for Windows, run it again with <code>kotlin</code>.</p>
-                <p class="hint int-kit-note"><i class="ic ic-info"></i><span>The drop-in UI kit, written for DJDL. Pins come from <span class="mono">polaris-key.json</span>.</span></p>
+                <p class="hint">Run it in the Xcode project’s folder.</p>
+                <p class="hint">For Windows, run it again with <code>kotlin</code>.</p>
+              </section>
+              <section>
+                <button class="btn link disclosure" aria-expanded="false"><i class="ic ic-chevron-right"></i>Preview the drop-in<span class="pill sm"><i class="dot"></i>Sample data</span></button>
               </section>
               <section>
                 <p class="eyebrow">Platforms</p>
                 <div class="progress-stat">
                   <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-apple"></i>macOS</span><span class="meta">2 of 5 features verified</span></div>
                   <div class="progress success" style="--v: 40%"></div>
-                  <span class="meta">Last seen 4 min ago · Swift SDK 2.1.0, arm64</span>
+                  <span class="meta">Last seen 4 min ago · Swift SDK 2.1.0</span>
                 </div>
                 <div class="progress-stat">
                   <div class="progress-stat-head"><span class="platform-name"><i class="ic ic-windows"></i>Windows</span><span class="meta">Not seen yet</span></div>

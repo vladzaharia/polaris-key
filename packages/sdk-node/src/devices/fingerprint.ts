@@ -211,6 +211,19 @@ export function windowsPowerShellPath(
   return WINDOWS_CIM_COMMAND.program;
 }
 
+/** Anchor probes run by ABSOLUTE path, never through PATH: a writable directory
+ *  early in PATH holding a fake `ioreg` or `reg` would otherwise choose the device id. */
+export const DARWIN_IOREG = "/usr/sbin/ioreg";
+
+/** `%SystemRoot%\System32\reg.exe` when `SystemRoot` is an absolute path, else the stock
+ *  `C:\Windows` location. */
+export function windowsRegPath(env: NodeJS.ProcessEnv = process.env): string {
+  const root = env.SystemRoot ?? env.SYSTEMROOT;
+  const base =
+    root && /^(?:[A-Za-z]:[\\/]|\\\\)/.test(root) ? root : "C:\\Windows";
+  return win32.join(base, "System32", "reg.exe");
+}
+
 function readTrimmed(io: FingerprintIo, path: string): string | null {
   const content = io.read(path);
   return content === null ? null : trimAsciiWhitespace(content) || null;
@@ -248,7 +261,7 @@ function primaryMac(): string | null {
 }
 
 function darwinComponents(io: FingerprintIo): RawComponents {
-  const ioreg = io.run("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"]);
+  const ioreg = io.run(DARWIN_IOREG, ["-rd1", "-c", "IOPlatformExpertDevice"]);
   return {
     ...opt(
       "machineUuid",
@@ -276,7 +289,7 @@ function win32Components(
   io: FingerprintIo,
   env: NodeJS.ProcessEnv,
 ): RawComponents {
-  const reg = io.run("reg", [
+  const reg = io.run(windowsRegPath(env), [
     "query",
     "HKLM\\SOFTWARE\\Microsoft\\Cryptography",
     "/v",

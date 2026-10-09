@@ -1,16 +1,16 @@
 # UK-56 Kit mockups refresh: the design language on the boards of the platforms with no built kit (visionOS, tvOS and watchOS in `apple.html`; `desktop.html`, `windows.html`, `linux.html`, `qt.html`) and their kit flows in the mockups artifact, in both presets
 
-| Field       | Value                                                                                                                                                                                                                                                                                |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (design language v2 (2026-10-08))                                                                                                                                                                              |
-| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                 |
-| Depends on  | none                                                                                                                                                                                                                                                                                 |
-| Unblocks    | [UK-06](UK-06-electron-kit.md), [UK-08](UK-08-swiftui-macos.md), [UK-10](UK-10-compose-desktop.md), [UK-12](UK-12-python-qt.md), [UK-21](UK-21-tauri-bridge.md), [UK-24](UK-24-appkit-kit.md), [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                   |
-| Plan mode   | no                                                                                                                                                                                                                                                                                   |
-| Gates       | the boards render (`render.cjs`) in both themes; `pnpm ui:lint` on the boards                                                                                                                                                                                                        |
-| Human input | none                                                                                                                                                                                                                                                                                 |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                            |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (design language v2 (2026-10-08))                                                                                                                                                                                                                                                                                                    |
+| Size        | 1.5–2 engineer-weeks                                                                                                                                                                                                                                                                                                                                                                                       |
+| Depends on  | none                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Unblocks    | [UK-06](UK-06-electron-kit.md), [UK-08](UK-08-swiftui-macos.md), [UK-10](UK-10-compose-desktop.md), [UK-12](UK-12-python-qt.md), [UK-21](UK-21-tauri-bridge.md), [UK-24](UK-24-appkit-kit.md), [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md), [UK-59](UK-59-built-kit-boards-refresh.md), [UK-60](UK-60-windows-native-kit.md), [UK-61](UK-61-gnome-native-kit.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                                                                                                                                                                                         |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Gates       | the boards render (`render.cjs`) in both themes; `pnpm ui:lint` on the boards                                                                                                                                                                                                                                                                                                                              |
+| Human input | none                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## Design language v2 (2026-10-08)
 
@@ -20,6 +20,41 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 - **In this kit:** Draws the rows of UK-06, UK-08, UK-10, UK-12, UK-21, UK-24, UK-26, UK-27 and UK-33 as boards: each platform's DL1 shape variants, both presets for the gate, sign-in and device limit, and, where a row says to evaluate, the starting point drawn with the open question in its caption.
 - **Minimum check:** Every redrawn board rendered by `render.cjs` in both themes at its shape variants; `pnpm ui:lint` on the boards.
 - **Acceptance:** the boards pass `pnpm ui:lint` with no new exception, and a UX review in mockup mode gives each board a quality verdict of good or better.
+
+## Screen acceptance (brand transition, 2026-10-09)
+
+Done when every row holds for each screen and state this package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1–DL18.
+
+- [ ] Keyboard: tab order follows reading order; focus always visible (DL9); no trap outside a modal;
+      Escape or Cancel backs out of every overlay and step; focus returns to the opener (or the heading
+      when it is gone); a route change changes the URL and moves focus to the h1, an inline mutation
+      changes neither.
+- [ ] Screen readers: landmarks and exactly one h1; every icon-only control named; help and errors
+      linked (aria-describedby); one polite announcement per change, none while typing; tables use
+      th with scope; status is a word and an icon, never colour alone.
+- [ ] Sizing: this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px reflow) with
+      no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
+      targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
+- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
+      expired or stale, network and API error with Try again, partial failure, success; input survives a
+      failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
+      Reload.
+- [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
+      without moving content; progress is real (no invented percentage, nothing loops after a failure);
+      no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
+      taglines; no text drawn over customer art.
+- [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
+      D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
+- [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
 ## Goal
 
@@ -82,6 +117,12 @@ boards in the middle of a review.
   settled.
 - `docs/design/mockups/` lives on `program/dx-mockups` until it merges. If it has not merged when
   this starts, the lead decides whether the artifact half waits or lands on that branch.
+
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- Draw the inline step in the Welcome window's end pane as the primary shot for activation and sign-in on desktop, Windows, Linux and Qt boards; keep dialog shots captioned 'presentation: "sheet"' (D-79, B10). No static accent line under title bars; settings provenance groups ('From ' changeable vs 'Managed settings' locked); states grace, revoked and DL7 boot; macOS actions that leave the app carry the external-action glyph; Windows and Linux boards gain sign-in and device-limit frames; all strings from the catalog. Qt activate uses the KDE order only on the KDE form; the key field middle-elides at rest. (sdk-b-12)
 
 ## Steps
 

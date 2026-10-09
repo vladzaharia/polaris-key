@@ -6,7 +6,7 @@ extends RefCounted
 # `func run(t: PKeyTestContext) -> void` (it may await); this suite runs them in order and
 # ends with a coverage check that every group ran.
 
-const GROUPS := ["load", "json", "errors", "semver", "store", "cache", "transport", "sync", "local", "autoload", "offload", "caps", "copy"]
+const GROUPS := ["load", "json", "errors", "semver", "store", "cache", "transport", "sync", "local", "autoload", "offload", "caps", "copy", "local_trust", "pin_custody"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

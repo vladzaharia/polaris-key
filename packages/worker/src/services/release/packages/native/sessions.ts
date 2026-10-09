@@ -341,7 +341,17 @@ export async function finalizeSession(
   }
   const session = await readSession(db, key);
   if (!session) return { ok: false, skipped: true };
-  const result = await publishSession(ctx, session);
+  // The credential that gathered the files must still be live at publish time. A
+  // token revoked after the upload began (a leaked publish credential, found and revoked) can
+  // not land a version through the settle or the sweep.
+  const result = !(await principalStillLive(db, session.principal))
+    ? nativeRefusal(
+        403,
+        "forbidden",
+        "token-revoked",
+        "the token that uploaded these files was revoked before the upload finished",
+      )
+    : await publishSession(ctx, session);
   if (result.ok)
     await db.run(
       `UPDATE release_native_uploads SET state = 'published', release_id = ?, error = NULL,
@@ -380,6 +390,26 @@ export async function finalizeSession(
     });
   }
   return result;
+}
+
+/** Is the session's publishing token (registry or CI) still unrevoked? */
+async function principalStillLive(
+  db: Db,
+  p: PublishPrincipal,
+): Promise<boolean> {
+  const row =
+    p.kind === "registry"
+      ? await db.first<{ revoked_at: number | null }>(
+          "SELECT revoked_at FROM registry_tokens WHERE product = ? AND token_id = ?",
+          p.product,
+          p.tokenId,
+        )
+      : await db.first<{ revoked_at: number | null }>(
+          "SELECT revoked_at FROM ci_tokens WHERE product = ? AND token_id = ?",
+          p.product,
+          p.tokenId,
+        );
+  return row !== null && row.revoked_at === null;
 }
 
 async function publishSession(

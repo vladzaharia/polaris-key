@@ -13,7 +13,8 @@
     "App Store and Google Play rows preview the product id and type Polaris Key will create and carry 'Create on App Store' / 'Create on Google Play', disabled until the offer is saved and priced (the foot says so). Create opens the L1 confirm (commerce.create-iap).",
     "Steam has no create API: a copy card with the name to paste in Steamworks and a picker of Diceroll's DLC read from Steam; never a typed DLC id. itch.io says it sells the game only.",
     "Save draft (primary) and Cancel sit in the save row; nothing sells until a SKU is on sale.",
-    "Phone: the two-column fields stack; SKU actions go under their text; the Steam copy card and picker stack full width."
+    "Phone: the two-column fields stack; SKU actions go under their text; the Steam copy card and picker stack full width.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

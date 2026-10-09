@@ -4,7 +4,7 @@
     color: var(--pk-success);
   }
   [data-screen="commerce.offers"] .id > .ic.review {
-    color: var(--pk-info);
+    color: var(--pk-text-strong);
   }
   [data-screen="commerce.offers"] .cell-title > a {
     color: inherit;
@@ -36,7 +36,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="nav-group" data-service="commerce">
       <button class="nav-label" aria-expanded="true">Commerce<i class="ic ic-chevron-down sm"></i></button>
       <a class="nav-item" href="#"><i class="ic ic-store"></i><span class="nav-text">Storefronts</span><span class="count danger">2</span></a>
@@ -52,6 +52,7 @@
   <main class="main">
     <div class="page">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="commerce" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a><i class="ic ic-chevron-right"></i><a href="#">Commerce</a></nav>
         <div class="page-heading"><h1>Offers</h1><span class="count">5</span></div>
         <div class="page-actions">
           <button class="btn outline hide-phone"><i class="ic ic-download"></i>Import from stores</button>
@@ -85,75 +86,77 @@
       <!-- Offer rows × storefront SKU chips: the parity view. Only storefronts that are set up get a
            column; Microsoft Store isn't, so it has none. Under 1040px each offer is a card row. -->
       <section class="section" aria-label="All offers">
-        <div class="toolbar">
-          <div class="search-field"><i class="ic ic-search"></i><span>Search offers or SKUs</span></div>
-          <span class="filter"><i class="ic ic-plus"></i>State</span>
-          <span class="filter"><i class="ic ic-plus"></i>Billing</span>
-          <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
-        </div>
-        <div class="table-card">
-          <table class="table fixed stack-md" aria-label="Offers by storefront">
-            <colgroup><col style="width: 22%"><col style="width: 16%"><col style="width: 16%"><col style="width: 16%"><col style="width: 15%"><col style="width: 15%"></colgroup>
-            <thead>
-              <tr>
-                <th>Offer</th>
-                <th title="Every App Store SKU starts with Diceroll’s bundle id, com.example.diceroll."><span class="platform-name"><i class="ic ic-app-store"></i>App Store</span></th>
-                <th><span class="platform-name"><i class="ic ic-google-play"></i>Google Play</span></th>
-                <th><span class="platform-name"><i class="ic ic-steam"></i>Steam</span></th>
-                <th><span class="platform-name"><i class="ic ic-itch"></i>itch.io</span></th>
-                <th>State</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><div class="cell-title"><a href="#">Full game</a></div><div class="cell-sub">Tier Standard · one-time</div></td>
-                <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.full"><i class="ic ic-check ok"></i>.full</span></td>
-                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>full_game</span></td>
-                <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>app · base game</span></td>
-                <td><span class="cell-label">itch.io</span><span class="id"><i class="ic ic-circle-dashed"></i>app</span></td>
-                <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Dice skins</a></div><div class="cell-sub">Add-on · one-time</div></td>
-                <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.skins"><i class="ic ic-check ok"></i>.skins</span></td>
-                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>skins</span></td>
-                <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>DLC 2817450</span></td>
-                <td><span class="cell-label">itch.io</span><span class="na" title="Game only: itch.io sells the game, not add-ons">—</span></td>
-                <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Neon dice pack</a></div><div class="cell-sub">Add-on · one-time</div></td>
-                <td><span class="cell-label">App Store</span><a class="pill warning sm" href="#"><i class="ic ic-triangle-alert"></i>Create</a></td>
-                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>neon_dice</span></td>
-                <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>DLC 2817460</span></td>
-                <td><span class="cell-label">itch.io</span><span class="na" title="Game only: itch.io sells the game, not add-ons">—</span></td>
-                <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Diceroll Plus</a></div><div class="cell-sub">Tier Plus · monthly · 7-day trial</div></td>
-                <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.plus.monthly"><i class="ic ic-check ok"></i>.plus.monthly</span></td>
-                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>plus · monthly</span></td>
-                <td><span class="cell-label">Steam</span><span class="na" title="No subscriptions on Steam">—</span></td>
-                <td><span class="cell-label">itch.io</span><span class="na" title="No subscriptions on itch.io">—</span></td>
-                <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
-              </tr>
-              <tr>
-                <td><div class="cell-title"><a href="#">Reroll tokens</a></div><div class="cell-sub">Add-on · 25 per purchase</div></td>
-                <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.rerolls25"><i class="ic ic-hourglass review"></i>.rerolls25</span></td>
-                <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>rerolls_25</span></td>
-                <td><span class="cell-label">Steam</span><span class="na" title="No consumables on Steam">—</span></td>
-                <td><span class="cell-label">itch.io</span><span class="na" title="No consumables on itch.io">—</span></td>
-                <td><span class="cell-label">State</span><span class="status muted"><i class="ic ic-pencil"></i>Draft</span></td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="table-foot">
-            <span class="legend">
-              <span><i class="ic ic-check text-success"></i>On the store</span>
-              <span><i class="ic ic-hourglass text-info"></i>In review</span>
-              <span><i class="ic ic-circle-dashed"></i>Purchases not checked</span>
-            </span>
-            <span class="ml-auto">Microsoft Store isn’t set up · <a class="link" href="#">Set it up<i class="ic ic-arrow-right"></i></a></span>
+        <div class="workbench">
+          <div class="toolbar">
+            <div class="search-field"><i class="ic ic-search"></i><span>Search offers or SKUs</span></div>
+            <span class="filter"><i class="ic ic-plus"></i>State</span>
+            <span class="filter"><i class="ic ic-plus"></i>Billing</span>
+            <span class="filter"><i class="ic ic-plus"></i>Storefront</span>
+          </div>
+          <div class="table-card" role="region" aria-label="Offers table" tabindex="0">
+            <table class="table fixed stack-md" aria-label="Offers by storefront">
+              <colgroup><col style="width: 22%"><col style="width: 16%"><col style="width: 16%"><col style="width: 16%"><col style="width: 15%"><col style="width: 15%"></colgroup>
+              <thead>
+                <tr>
+                  <th>Offer</th>
+                  <th title="Every App Store SKU starts with Diceroll’s bundle id, com.example.diceroll."><span class="platform-name"><i class="ic ic-app-store"></i>App Store</span></th>
+                  <th><span class="platform-name"><i class="ic ic-google-play"></i>Google Play</span></th>
+                  <th><span class="platform-name"><i class="ic ic-steam"></i>Steam</span></th>
+                  <th><span class="platform-name"><i class="ic ic-itch"></i>itch.io</span></th>
+                  <th>State</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Full game</a></div><div class="cell-sub">Tier Standard · one-time</div></td>
+                  <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.full"><i class="ic ic-check ok"></i>.full</span></td>
+                  <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>full_game</span></td>
+                  <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>app · base game</span></td>
+                  <td><span class="cell-label">itch.io</span><span class="id"><i class="ic ic-circle-dashed"></i>app</span></td>
+                  <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Dice skins</a></div><div class="cell-sub">Add-on · one-time</div></td>
+                  <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.skins"><i class="ic ic-check ok"></i>.skins</span></td>
+                  <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>skins</span></td>
+                  <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>DLC 2817450</span></td>
+                  <td><span class="cell-label">itch.io</span><span class="na" title="Game only: itch.io sells the game, not add-ons">—</span></td>
+                  <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Neon dice pack</a></div><div class="cell-sub">Add-on · one-time</div></td>
+                  <td><span class="cell-label">App Store</span><a class="pill warning sm" href="#"><i class="ic ic-triangle-alert"></i>Create</a></td>
+                  <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>neon_dice</span></td>
+                  <td><span class="cell-label">Steam</span><span class="id"><i class="ic ic-check ok"></i>DLC 2817460</span></td>
+                  <td><span class="cell-label">itch.io</span><span class="na" title="Game only: itch.io sells the game, not add-ons">—</span></td>
+                  <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Diceroll Plus</a></div><div class="cell-sub">Tier Plus · monthly</div><div class="cell-sub">7-day free trial</div></td>
+                  <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.plus.monthly"><i class="ic ic-check ok"></i>.plus.monthly</span></td>
+                  <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>plus · monthly</span></td>
+                  <td><span class="cell-label">Steam</span><span class="na" title="No subscriptions on Steam">—</span></td>
+                  <td><span class="cell-label">itch.io</span><span class="na" title="No subscriptions on itch.io">—</span></td>
+                  <td><span class="cell-label">State</span><span class="status"><i class="ic ic-circle-check"></i>On sale</span></td>
+                </tr>
+                <tr>
+                  <td><div class="cell-title"><a href="#">Reroll tokens</a></div><div class="cell-sub">Add-on · 25 per purchase</div></td>
+                  <td><span class="cell-label">App Store</span><span class="id" title="com.example.diceroll.rerolls25"><i class="ic ic-hourglass review"></i>.rerolls25</span></td>
+                  <td><span class="cell-label">Google Play</span><span class="id"><i class="ic ic-check ok"></i>rerolls_25</span></td>
+                  <td><span class="cell-label">Steam</span><span class="na" title="No consumables on Steam">—</span></td>
+                  <td><span class="cell-label">itch.io</span><span class="na" title="No consumables on itch.io">—</span></td>
+                  <td><span class="cell-label">State</span><span class="status muted"><i class="ic ic-pencil"></i>Draft</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="table-foot">
+              <span class="legend">
+                <span><i class="ic ic-check text-success"></i>On the store</span>
+                <span><i class="ic ic-hourglass text-info"></i>In review</span>
+                <span><i class="ic ic-circle-dashed"></i>Purchases not checked</span>
+              </span>
+              <span class="ml-auto">Microsoft Store isn’t set up · <a class="link" href="#">Set it up<i class="ic ic-arrow-right"></i></a></span>
+            </div>
           </div>
         </div>
       </section>

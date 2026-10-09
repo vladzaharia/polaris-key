@@ -145,10 +145,11 @@ CSRF-bearing `POST` for the mutation is the fix (the R8 audit findings, finding
 The origin check and the CSRF token stop a cross-site page from confirming _someone else's_ flow.
 They do not stop a flow's own starter: anyone can start a flow, open this page for their own user
 code, read the token and post it back — no browser needed, since a request with no `Origin` passes
-— and be handed the IdP authorize URL. Sent to a victim who signs in there, that URL binds the
-victim's license to the starter's device, and the victim never sees this page. This is an open
-residual (`R1-07`, rooted in `R8-03`: the IdP callback is not bound to the browser that
-confirmed), written up in the security threat model under "Remote phishing".
+— and be handed the IdP authorize URL. Sent to a victim, that URL used to bind the
+victim's license to the starter's device without the victim ever seeing this page. The IdP callback
+is bound to the browser that confirmed (a `__Host-` cookie set on the confirmation), so the
+victim's sign-in is refused and the starter gets no token; see "Remote phishing" in the
+security threat model.
 :::
 
 ## `POST /identity/auth/device/poll`
@@ -232,9 +233,9 @@ against the `interval` like any other. A user-code holder cannot reach any of th
 surface that completes a device-code flow is this one, and it needs the device code.
 
 The device-code holder is whoever started the flow, so the decision is only as good as the
-binding between the device and the person who signed in. Until the browser that confirms a flow
-is bound to its callback (the open R1-07), a starter who phishes the authorize URL to someone
-else also makes this decision for them; see "Remote phishing" in `docs/security/THREAT-MODEL.md`.
+binding between the device and the person who signed in. The browser that confirms a flow
+is bound to its callback, so a starter who phishes the authorize URL to someone else cannot
+finish the flow for them; see "Remote phishing" in `docs/security/THREAT-MODEL.md`.
 
 ## Lifetime and rate limits
 

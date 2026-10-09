@@ -852,6 +852,8 @@ export const WIRE_LIMIT_EXPORTS = [
   "DATA_ONLY_HEAD_BYTES",
   "DATA_ONLY_TAIL_BYTES",
   "MAX_DELEGATIONS_PER_CHECK",
+  // WIRE-CONTRACT-V4 §2.3: the `?signer=` retry budget every SDK applies.
+  "MAX_TRUST_SIGNER_ATTEMPTS",
 ] as const;
 /** The packs-on-the-wire limits and format strings every SDK applies (plans/P4-01.md §2.13). */
 export const PACK_LIMIT_EXPORTS = [

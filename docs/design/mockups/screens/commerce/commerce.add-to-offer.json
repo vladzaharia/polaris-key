@@ -8,12 +8,15 @@
   "summary": "The picker behind Add to an offer for Google Play's holiday_bundle, which sold 3 times with no offer: a new offer from the SKU (name and the add-on it sells) or an existing offer as its second Google Play SKU, and one change that maps the SKU, re-verifies the 3 purchases and updates those players' licenses.",
   "compare": [
     "Opened from the danger callout on Offers, the attention row on Storefronts, or 'Add the SKU to an offer' in Purchases; all three open this one dialog.",
-    "Two choices: a new offer from the SKU (selected by default, with Name and the add-on it sells, one-time as the store sells it) or an existing offer as a second SKU for the same store.",
-    "The 'In the same change' box names what else happens: the purchases are re-verified with the store and the add-on lands on those players' licenses, named, with the usual purchase email. There is no separate re-verify step anywhere.",
+    "Two choices: a new offer from the SKU (selected by default, with Name and the add-on it sells, the add-on's entitlement as that field's hint, and 'One-time, as Google Play sells it' under both) or an existing offer as a second SKU for the same store.",
+    "The 'Existing purchases' callout names what else happens, one fact per line: the store re-verifies the 3 purchases; the named players get the add-on; each gets the usual purchase email. There is no separate re-verify step anywhere.",
     "The button says the outcome and the count: 'Create offer and update 3 licenses' (or 'Add to Dice skins and update 3 licenses' for the second choice).",
     "On success a toast says '3 players now have Holiday bundle'; the callout, the attention row and the 'Added nothing' tab count all clear.",
     "An undeclared add-on can't be chosen; Licensing is linked for defining one.",
-    "Phone: a bottom sheet; the two fields stack; buttons full width with the primary on top."
+    "Phone: a bottom sheet; the two fields stack; buttons full width with the primary on top.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600.",
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "The effect on existing purchases is stated, not narrated: 'Existing purchases: Google Play re-verifies 3; …' (brand-42)."
   ],
   "status": "mockup",
   "designReview": {

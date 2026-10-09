@@ -25,7 +25,7 @@ import { BRAND, FONT, THEME_TOKENS } from "@polaris-key/brand";
 import { escapeHtml, type Db, type Env } from "../../../core/platform.js";
 import { deliverEmail } from "../../../core/emailDelivery.js";
 import type { NoticeMessage } from "./notices.js";
-import { listVerifiedAccountEmails } from "./repo.js";
+import { listVerifiedAccountEmails, portalAudit } from "./repo.js";
 
 export function portalEmailConfigured(env: Env): boolean {
   return Boolean(env.EMAIL);
@@ -319,7 +319,10 @@ export async function sendSecurityNotice(
   message: NoticeMessage,
   now: number,
 ): Promise<number> {
-  if (!env.EMAIL) return 0;
+  if (!env.EMAIL) {
+    await recordUndelivered(db, accountId, 0, 0, now);
+    return 0;
+  }
   const recipients = await securityNoticeRecipients(db, accountId, alsoTo);
   let sent = 0;
   for (const to of recipients) {
@@ -330,7 +333,30 @@ export async function sendSecurityNotice(
       // console logging (test/attack/R12-secrets.test.ts), so the shortfall is the return value.
     }
   }
+  // An account with no deliverable address (email-less, suppressed, mail down) gets no
+  // out-of-band notice; leave a row so the change is not silent. Counts only, never an address.
+  if (sent === 0)
+    await recordUndelivered(db, accountId, recipients.length, 0, now);
   return sent;
+}
+
+async function recordUndelivered(
+  db: Db,
+  accountId: string,
+  recipients: number,
+  sent: number,
+  now: number,
+): Promise<void> {
+  try {
+    await portalAudit(db, {
+      accountId,
+      action: "security.notice.undelivered",
+      summary: `Security notice reached ${sent} of ${recipients} recipients`,
+      now,
+    });
+  } catch {
+    // Never fails the change the notice reports.
+  }
 }
 
 /** Every verified address on the account, plus `alsoTo`, de-duplicated case-insensitively. */

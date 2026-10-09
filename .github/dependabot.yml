@@ -18,6 +18,15 @@ updates:
     directory: /sdks/python
     schedule:
       interval: weekly
+  # The Swift and Gradle (Kotlin) SDKs were the two ecosystems with no update PRs.
+  - package-ecosystem: swift
+    directory: /sdks/swift
+    schedule:
+      interval: weekly
+  - package-ecosystem: gradle
+    directory: /sdks/kotlin
+    schedule:
+      interval: weekly
   - package-ecosystem: github-actions
     directory: /
     schedule:

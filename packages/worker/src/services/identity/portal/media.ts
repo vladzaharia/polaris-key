@@ -85,7 +85,7 @@ import {
   safeFetch,
   type FetchImpl,
 } from "../../../core/safeFetch.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   PRESENTATION_HEADER_SLOTS,
   PRESENTATION_ICON_SLOTS,
@@ -398,7 +398,7 @@ export async function handlePortalMedia(
       product,
       {
         bucket: "portalMedia",
-        id: `${product}:${clientIp(req)}`,
+        id: `${product}:${clientNetwork(req)}`,
         limit: MEDIA_RATE_LIMIT,
         windowSec: 60,
       },

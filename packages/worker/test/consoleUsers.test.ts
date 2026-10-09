@@ -11,6 +11,7 @@
  *   - per-subject export and data deletion go through Core's subject-store registry;
  *   - the operator step-up: `/manage/login?stepUp=1`, `auth_time`, and the hash `returnTo`.
  */
+import { bindAdminFlow } from "./flowBinderHelper.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -115,6 +116,7 @@ async function world(): Promise<World> {
         email: "ada@studio.example",
         groups: [PLATFORM_GROUP],
         authTime: opts.authAt ?? now,
+        stepUp: true,
       },
       now,
     );
@@ -257,6 +259,33 @@ afterEach(() => {
 });
 
 describe("Users list and row", () => {
+  it("redacts the label of another person's device bound to the licence", async () => {
+    const w = await world();
+    const f = await fixture(w);
+    await w.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject, bound_by, label)
+       VALUES ('alpha', 'dev-bob-on-ada', 'lic-alpha-ada', 'authorized', ?, ?, ?, 'signin', 'Bob laptop')`,
+      NOW,
+      NOW,
+      f.bobAlpha,
+    );
+    await w.db.run(
+      "UPDATE devices SET label = 'Ada phone' WHERE device_id = 'dev-ada-1'",
+    );
+    const detail = await w.json<{
+      user: { devices: Array<{ deviceId: string; label: string | null }> };
+    }>("GET", `/alpha/users/${f.adaAlpha}`);
+    const byId = Object.fromEntries(
+      detail.body.user.devices.map((d) => [d.deviceId, d.label]),
+    );
+    expect(byId["dev-ada-1"]).toBe("Ada phone");
+    expect(byId["dev-bob-on-ada"]).toBeNull();
+    const exported = await (
+      await w.call("GET", `/alpha/users/${f.adaAlpha}/export`)
+    ).text();
+    expect(exported).not.toContain("Bob laptop");
+  });
+
   it("lists only this product's subjects, with this product's licences and devices", async () => {
     const w = await world();
     const f = await fixture(w);
@@ -563,6 +592,28 @@ describe("actions", () => {
     expect(audit.map((a) => a.action)).toEqual(
       expect.arrayContaining(["user.export", "user.data.delete"]),
     );
+  });
+
+  it("export, data delete and detach need a proven step-up, not just a fresh sign-in", async () => {
+    const w = await world();
+    const f = await fixture(w);
+    // Signed in this second, but never through a step-up flow: `authAt` is current, `stepUpAt` absent.
+    const plain = { authAt: NOW - 3600 };
+    for (const [method, path] of [
+      ["GET", `/alpha/users/${f.adaAlpha}/export`],
+      ["POST", `/alpha/users/${f.adaAlpha}/data/delete`],
+      ["POST", `/alpha/users/${f.adaAlpha}/licenses/lic-alpha-ada/detach`],
+    ] as const) {
+      const r = await w.json(method, path, undefined, plain);
+      expect(r.status, path).toBe(403);
+      expect((r.body as { code?: string }).code, path).toBe("step_up_required");
+    }
+    // Nothing changed: the licence is still attached.
+    const row = await w.json<{ user: { licenses: unknown[] } }>(
+      "GET",
+      `/alpha/users/${f.adaAlpha}`,
+    );
+    expect(row.body.user.licenses.length).toBeGreaterThan(0);
   });
 
   it("detach makes the licence floating and keeps the device binding", async () => {
@@ -917,15 +968,23 @@ describe("operator step-up", () => {
     const env = makeEnv(new KvMock(), []);
     env.ADMIN_SESSION_SECRET = "s";
     const base = { sub: "op", groups: ["g"] };
-    const a = await issueSession(env, { ...base, authTime: NOW - 100 }, NOW);
+    const a = await issueSession(
+      env,
+      { ...base, authTime: NOW - 100, stepUp: true },
+      NOW,
+    );
     expect(a.session.authAt).toBe(NOW - 100);
     expect(isSteppedUp(a.session, NOW)).toBe(true);
-    const b = await issueSession(env, { ...base, authTime: NOW + 999 }, NOW);
+    const b = await issueSession(
+      env,
+      { ...base, authTime: NOW + 999, stepUp: true },
+      NOW,
+    );
     expect(b.session.authAt).toBe(NOW);
     expect(isSteppedUp(b.session, NOW + 301)).toBe(false);
     const verified = await verifySession(env, a.token, NOW);
     expect(verified?.authAt).toBe(NOW - 100);
-    expect(isSteppedUp({ ...a.session, authAt: undefined }, NOW)).toBe(false);
+    expect(isSteppedUp({ ...a.session, stepUpAt: undefined }, NOW)).toBe(false);
   });
 
   it("asks the IdP for a fresh sign-in and refuses a stale auth_time", async () => {
@@ -953,9 +1012,9 @@ describe("operator step-up", () => {
     };
     const db = makeTestDb();
     const cb = await handleAdminCallback(
-      new Request(
-        `https://key.plrs.im/manage/callback?code=c&state=${state}`,
-      ) as unknown as Request,
+      new Request(`https://key.plrs.im/manage/callback?code=c&state=${state}`, {
+        headers: { cookie: await bindAdminFlow(env, state) },
+      }) as unknown as Request,
       env,
       db,
       NOW,

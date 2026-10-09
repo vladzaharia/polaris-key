@@ -447,15 +447,17 @@ describe("colour only on a colour terminal", () => {
     expect(flag.out).not.toMatch(
       /\x1b\[(?:3[0-79]|9[0-7]|4[0-79]|10[0-7]|[34]8)/,
     );
-    expect(stripAnsi(flag.out)).toContain("pkey · Polaris Key platform CLI");
+    // A terminal this size draws the logo header (logo.test.ts); the words are the same.
+    expect(stripAnsi(flag.out)).toContain("Polaris Key platform CLI");
   });
 
   it("a colour terminal gets SGR roles: strong headings, muted descriptions, the verdict's role", async () => {
     const help = await run([], { tty: true, env: {} });
     expect(help.out).toContain(`${ESC}[1mManifest${ESC}[22m`);
     expect(help.out).toContain(`${ESC}[2m`);
-    // The same words underneath.
-    expect(stripAnsi(help.out)).toBe((await run([])).out);
+    // The same words underneath, below the logo header (logo.test.ts).
+    const body = (text: string) => text.slice(text.indexOf("Manifest"));
+    expect(body(stripAnsi(help.out))).toBe(body((await run([])).out));
 
     const cwd = await tempDir();
     await productAt(cwd);

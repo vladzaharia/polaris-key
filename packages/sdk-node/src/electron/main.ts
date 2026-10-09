@@ -38,7 +38,7 @@ export interface WebContentsLike {
 /** The part of Electron's `IpcMainInvokeEvent` the bridge uses. */
 export interface IpcMainInvokeEventLike {
   sender: WebContentsLike;
-  senderFrame?: { url: string } | null;
+  senderFrame?: { url: string; parent?: unknown } | null;
 }
 
 /** The part of Electron's `ipcMain` the bridge uses. */
@@ -57,8 +57,14 @@ export interface ExposePolarisBridgeOptions {
   webContents?: WebContentsLike | WebContentsLike[];
   /** The IPC channel prefix. Default `polaris-key`; the preload must use the same. */
   channel?: string;
-  /** Refuse a sender: answer `false` and every call from it resolves `sender-refused`. */
+  /** Refuse a sender: answer `false` and every call from it resolves `sender-refused`.
+   *  Default: the TOP frame of the app's own origin (`appOrigin`; without it, any frame served
+   *  from a local origin: `file:`, a custom scheme or loopback). A host that passes its own
+   *  predicate replaces the default. */
   allowSender?: (event: IpcMainInvokeEventLike) => boolean;
+  /** The origin(s) the app's window loads from, for the default `allowSender`. Set it when the
+   *  app loads a remote `https:` page; the bridge then answers that origin's top frame only. */
+  appOrigin?: string | string[];
   /** `invoke` verbs beyond the default allowlist, as `service.method`, each with its handler. */
   invoke?: {
     extra?: Record<string, (args: unknown) => Promise<unknown> | unknown>;
@@ -67,6 +73,38 @@ export interface ExposePolarisBridgeOptions {
   deviceName?: string;
   /** A sign-in flow is forgotten this long after its code expired. Default 60 seconds. */
   flowGraceSeconds?: number;
+}
+
+/** The default sender rule: the top frame, on the app's origin. A frame the app did
+ *  not load itself (an iframe, a navigated-away window, remote content) cannot drive the
+ *  bridge. */
+function defaultAllowSender(
+  appOrigin: string | string[] | undefined,
+): (event: IpcMainInvokeEventLike) => boolean {
+  const pinned =
+    appOrigin === undefined
+      ? null
+      : (Array.isArray(appOrigin) ? appOrigin : [appOrigin]).map((o) => {
+          try {
+            return new URL(o).origin;
+          } catch {
+            return o;
+          }
+        });
+  return (event) => {
+    const frame = event.senderFrame;
+    if (!frame || frame.parent != null) return false;
+    let url: URL;
+    try {
+      url = new URL(frame.url);
+    } catch {
+      return false;
+    }
+    if (pinned) return pinned.includes(url.origin);
+    if (url.protocol === "http:" || url.protocol === "https:")
+      return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    return true;
+  };
 }
 
 /** What `exposePolarisBridge` returns: tear down every handler and listener. */
@@ -348,13 +386,15 @@ export function exposePolarisBridge(
     },
   };
 
+  const senderAllowed = opts.allowSender ?? defaultAllowSender(opts.appOrigin);
+
   for (const method of BRIDGE_METHODS) {
     const handler = handlers[method];
     opts.ipcMain.handle(
       channelOf(prefix, method),
       async (event, ...args): Promise<BridgeEnvelope> => {
         try {
-          if (opts.allowSender && !opts.allowSender(event))
+          if (!senderAllowed(event))
             throw new BridgeRefusal(
               "sender-refused",
               "This window may not use the Polaris Key bridge.",

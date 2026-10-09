@@ -692,4 +692,15 @@ describe("rate limit", () => {
     );
     expect(opened).toHaveLength(60);
   });
+
+  // Unsigned junk is limited per client IP; it cannot spend the product budget that
+  // Apple's real (HMAC-valid) deliveries draw on.
+  it("junk from one address cannot lock out a signed delivery from another", async () => {
+    const w = await ascWorld();
+    const body = JSON.stringify({ data: { type: "x", id: "rl2" } });
+    for (let i = 0; i < 120; i++)
+      await deliver(w, body, sign(body, "wrong"), "203.0.113.9");
+    const real = await deliver(w, body, sign(body), "17.58.0.1");
+    expect(real.status).not.toBe(429);
+  });
 });

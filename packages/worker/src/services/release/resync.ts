@@ -18,6 +18,10 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
+import {
+  catalogDeliveryIssues,
+  declassifyRefusal,
+} from "../../core/configDelivery.js";
 import type { Db, DbStatement, Env } from "../../core/platform.js";
 import {
   auditValue,
@@ -316,6 +320,17 @@ async function applyRepoManifest(
   const screened = screenCatalog(manifest, catalogChanged);
   if (!screened.ok) return { ok: false, error: screened.error };
   const incomingCatalog = screened.catalog;
+  if (catalogChanged) {
+    // A delivery downgrade of a stored serverOnly secret is not applied silently.
+    const refusal = await declassifyRefusal(
+      db,
+      slug,
+      activeSchema?.catalog_json,
+      incomingCatalog.entries,
+    );
+    if (refusal)
+      return { ok: false, error: `invalid catalog in manifest: ${refusal}` };
+  }
 
   // The catalog the profile carry-forward (R2) asks which keys are managed secrets: the one that
   // stays installed. With `config.catalog` claimed that is the console's catalog, not the
@@ -1390,7 +1405,11 @@ export function screenCatalog(
 ): { ok: true; catalog: Catalog } | { ok: false; error: string } {
   try {
     const catalog = new Catalog(manifest.catalog as never);
-    if (catalogChanged) catalog.compileAll();
+    if (catalogChanged) {
+      catalog.compileAll();
+      const bad = catalogDeliveryIssues(catalog.entries);
+      if (bad.length > 0) throw new Error(bad.join("; "));
+    }
     return { ok: true, catalog };
   } catch (e) {
     return {

@@ -34,6 +34,7 @@ import {
 import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { verifyJws } from "@polaris-key/jws";
 import { FINGERPRINT_COMPONENT_LENGTH } from "@polaris-key/protocol";
+import { bindFlow } from "../flowBinderHelper.js";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
 import {
@@ -205,9 +206,11 @@ function installFetchMock(idToken: string): void {
 const req = (url: string, init?: RequestInit): Request =>
   new Request(url, init) as unknown as Request;
 
-const callback = (ctx: Ctx, state: string, code = "auth-code") =>
+const callback = async (ctx: Ctx, state: string, code = "auth-code") =>
   handleAuthCallback(
-    req(`${ORIGIN}/djdl/identity/auth/callback?code=${code}&state=${state}`),
+    req(`${ORIGIN}/djdl/identity/auth/callback?code=${code}&state=${state}`, {
+      headers: { cookie: await bindFlow(ctx.env, "djdl", state) },
+    }),
     ctx.env,
     ctx.db,
     ctx.product,
@@ -847,11 +850,10 @@ describe("R8-02 device-code flow weaknesses", () => {
     expect(real.token?.startsWith("pkeyt_")).toBe(true);
   });
 
-  // OPEN — R1-07 (Fixed-partial) rooted in R8-03. This PoC asserts the GAP, not a fix: the
-  // user-code page does not stop the flow's STARTER, who can confirm their own flow with no
-  // browser at all and phish the resulting IdP authorize URL. Neither the Fetch Metadata /
-  // Origin check nor the single-use csrf token is a control here — the starter mints the token.
-  it("OPEN (R1-07 / R8-03): the starter confirms its own flow from curl, phishes the authorize URL, and polls a token on the victim's license", async () => {
+  // FIXED. The user-code page cannot stop the flow's STARTER confirming its own flow
+  // with no browser at all, but the confirmation now binds the flow to the confirming browser's
+  // cookie, which the starter cannot put in the victim's browser: the phished callback is refused.
+  it("FIXED (R1-07 / R8-03): the starter confirms its own flow from curl and phishes the authorize URL, but the victim's callback is refused and nothing is issued", async () => {
     const started = await handleAuthDeviceStart(
       req(`${ORIGIN}/djdl/identity/auth/device/start`, {
         method: "POST",
@@ -889,6 +891,7 @@ describe("R8-02 device-code flow weaknesses", () => {
       ctx.product,
     );
     expect(confirmed.status).toBe(303);
+    const starterBinder = confirmed.headers.get("set-cookie")!.split(";")[0]!;
     // 3. The attacker now holds the IdP authorize URL (state, nonce, PKCE challenge).
     const authorize = new URL(confirmed.headers.get("location")!);
     expect(authorize.origin).toBe("https://id.example");
@@ -902,12 +905,18 @@ describe("R8-02 device-code flow weaknesses", () => {
         nonce: authorize.searchParams.get("nonce")!,
       }),
     );
-    expect(
-      (await callback(ctx, authorize.searchParams.get("state")!)).status,
-    ).toBe(200);
-    // 5. GAP: the attacker's device, with its own device code, receives a token on the
-    //    victim's license. Fix direction (unowned): bind a viaDeviceCode flow's callback to the
-    //    browser that confirmed it (a __Host- SameSite=Lax cookie set on the confirmation 303).
+    const phished = await handleAuthCallback(
+      req(
+        `${ORIGIN}/djdl/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")!}`,
+        { headers: { cookie: "victim=1" } },
+      ),
+      ctx.env,
+      ctx.db,
+      ctx.product,
+      NOW,
+    );
+    expect(phished.status).toBe(400);
+    // 5. The attacker's device gets nothing: the flow is unfinished, not stolen.
     const stolen = (await (
       await handleAuthDevicePoll(
         req(`${ORIGIN}/djdl/identity/auth/device/poll`, {
@@ -920,8 +929,10 @@ describe("R8-02 device-code flow weaknesses", () => {
         NOW,
       )
     ).json()) as { status: string; token?: string };
-    expect(stolen.status).toBe("ready");
-    expect(stolen.token?.startsWith("pkeyt_")).toBe(true);
+    expect(stolen.status).not.toBe("ready");
+    expect(stolen.token).toBeUndefined();
+    // Only the confirming browser (the starter's own, signing in as itself) can finish it.
+    expect(starterBinder).toMatch(/^__Host-pk_lcb=/);
   });
 
   // R8-02 — `interval` is enforced server-side and the poll surface is rate limited.
@@ -2107,8 +2118,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     ctx = await makeCtx();
   });
 
-  it("ATTACK: the product flow record carries NO browser binding, so an attacker-completed callback drops an attacker session cookie into any visitor's browser", async () => {
-    // The attacker starts a flow (from their own browser) and reads state+nonce.
+  it("FIXED: the product flow is bound to the browser that started it; another browser's callback is refused and does not burn the flow", async () => {
     const startRes = await handleAuthStart(
       req(
         `${ORIGIN}/djdl/auth/start?return_to=${encodeURIComponent(`${ORIGIN}/djdl/app`)}`,
@@ -2120,19 +2130,13 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     const authorize = new URL(startRes.headers.get("location")!);
     const state = authorize.searchParams.get("state")!;
     const nonce = authorize.searchParams.get("nonce")!;
-
-    // Nothing browser-derived was persisted: no cookie, no IP, no UA, no CSRF nonce.
+    const binderCookie = startRes.headers.get("set-cookie")!;
+    expect(binderCookie).toMatch(/^__Host-pk_lcb=[A-Za-z0-9_-]+; Path=\/;/);
     const flow = JSON.parse(
       (await artefacts(ctx.env).get(await flowKey(ctx.env, "djdl", state)))!,
     ) as Record<string, unknown>;
-    expect(Object.keys(flow).sort()).toEqual([
-      "nonce",
-      "redirectUri",
-      "returnTo",
-      "verifier",
-    ]);
+    expect(typeof flow.binder).toBe("string");
 
-    // The attacker finishes the IdP leg, then feeds the resulting callback URL to a victim.
     installFetchMock(
       await signIdToken(ctx, {
         sub: "attacker-sub",
@@ -2141,21 +2145,32 @@ describe("R8-03 login CSRF / flow-fixation", () => {
         nonce,
       }),
     );
-    const victimBrowser = req(
-      `${ORIGIN}/djdl/identity/auth/callback?code=c&state=${state}`,
-      { headers: { cookie: "unrelated=1", "user-agent": "VictimBrowser/1.0" } },
-    );
-    const res = await handleAuthCallback(
-      victimBrowser,
+    const callbackUrl = `${ORIGIN}/djdl/identity/auth/callback?code=c&state=${state}`;
+    // The attacker hands the callback URL to a victim: no binder, or someone else's.
+    for (const cookie of ["unrelated=1", "__Host-pk_lcb=" + "A".repeat(43)]) {
+      const res = await handleAuthCallback(
+        req(callbackUrl, { headers: { cookie } }),
+        ctx.env,
+        ctx.db,
+        ctx.product,
+        NOW,
+      );
+      expect(res.status).toBe(400);
+      expect(res.headers.get("set-cookie")).toBeNull();
+    }
+    // The flow was not burned by those attempts: the real browser still finishes.
+    const real = await handleAuthCallback(
+      req(callbackUrl, {
+        headers: { cookie: binderCookie.split(";")[0]! },
+      }),
       ctx.env,
       ctx.db,
       ctx.product,
       NOW,
     );
-    expect(res.status).toBe(302);
-    // The victim's browser is now logged in as the ATTACKER's license.
-    expect(res.headers.get("set-cookie")).toContain("pkey_djdl_session=");
-    expect(res.headers.get("location")).toBe(`${ORIGIN}/djdl/app`);
+    expect(real.status).toBe(302);
+    expect(real.headers.get("set-cookie")).toContain("pkey_djdl_session=");
+    expect(real.headers.get("location")).toBe(`${ORIGIN}/djdl/app`);
   });
 
   it("ATTACK: safeReturnTo lets the PRODUCT flow land on /manage paths that the portal twin explicitly forbids", async () => {
@@ -2179,7 +2194,7 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     expect(flow.returnTo).toBe(`${ORIGIN}/manage/products/djdl`);
   });
 
-  it("ATTACK: the ADMIN flow (/manage/callback) is equally unbound — an attacker-supplied state+code hands the victim's browser an admin cookie", async () => {
+  it("FIXED: the ADMIN flow (/manage/callback) is bound to the browser that started it", async () => {
     ctx.env.ADMIN_SESSION_SECRET = "admin-secret";
     ctx.env.PLATFORM_ADMIN_GROUP = "platform-admins";
     ctx.env.PLATFORM_OIDC_ISSUER = ISSUER;
@@ -2192,43 +2207,59 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     const state = new URL(login.headers.get("location")!).searchParams.get(
       "state",
     )!;
-    // FIXED (R12-04): the store key is now `admin-flow:<hashKey(state, pepper)>` (in the
-    // single-use store since I-02), so a listing no longer dumps live OIDC `state` values.
+    // FIXED (R12-04): the store key is the state's hash, so a listing dumps no live `state`.
     expect(await ctx.env.HOT.get(`admin:flow:${state}`)).toBeNull();
     const adminKey = await adminFlowKey(state, ctx.env);
     expect(adminKey.id).toBe(await hashKey(state, ctx.env.KEY_HASH_PEPPER));
     expect(adminKey.id).not.toContain(state);
 
-    // The admin flow record holds only PKCE material — nothing tied to the browser.
+    expect(login.headers.get("set-cookie")).toMatch(
+      /^__Host-pkey_admin_flow=[^;]+; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=600$/,
+    );
     const flow = JSON.parse(
       (await artefacts(ctx.env).get(adminKey))!,
     ) as Record<string, unknown>;
     expect(Object.keys(flow).sort()).toEqual([
+      "bindingHash",
       "nonce",
       "redirectUri",
       "verifier",
     ]);
 
-    // Replaying the attacker's callback from a DIFFERENT browser still issues the cookie.
-    const res = await handleAdminCallback(
-      req(`${ORIGIN}/manage/callback?code=c&state=${state}`, {
+    const verifier = {
+      verify: async () => ({
+        sub: "attacker-admin",
+        email: "attacker@evil.test",
+        name: "Mallory",
+        groups: ["platform-admins"],
+      }),
+    };
+    const callbackUrl = `${ORIGIN}/manage/callback?code=c&state=${state}`;
+    // Replaying the attacker's callback from a DIFFERENT browser issues no cookie...
+    const victim = await handleAdminCallback(
+      req(callbackUrl, {
         headers: { cookie: "unrelated=1", "user-agent": "VictimBrowser/1.0" },
       }),
       ctx.env,
       ctx.db,
       NOW,
-      {
-        verify: async () => ({
-          sub: "attacker-admin",
-          email: "attacker@evil.test",
-          name: "Mallory",
-          groups: ["platform-admins"],
-        }),
-      },
+      verifier,
     );
-    expect(res.status).toBe(302);
-    expect(res.headers.get("set-cookie")).toContain("pkey_admin=");
-    expect(res.headers.get("location")).toBe("/manage/");
+    expect(victim.status).toBe(400);
+    expect(victim.headers.get("set-cookie")).toBeNull();
+    // ...and does not burn the flow: the browser that started it still completes.
+    const own = await handleAdminCallback(
+      req(callbackUrl, {
+        headers: { cookie: login.headers.get("set-cookie")!.split(";")[0]! },
+      }),
+      ctx.env,
+      ctx.db,
+      NOW,
+      verifier,
+    );
+    expect(own.status).toBe(302);
+    expect(own.headers.get("set-cookie")).toContain("pkey_admin=");
+    expect(own.headers.get("location")).toBe("/manage/");
   });
 
   it("FIXED (I-17): the PORTAL flow (/callback) is bound to the browser that started it", async () => {
@@ -2277,6 +2308,10 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     );
     expect(res.status).toBe(401);
     expect(res.headers.get("set-cookie")).toBeNull();
+    // The refused attempt did not burn the flow of the browser that started it.
+    expect(
+      await artefacts(ctx.env).get(await portalFlowKey(ctx.env, state)),
+    ).not.toBeNull();
   });
 });
 
@@ -2789,11 +2824,8 @@ describe("R8-06 unguarded JSON.parse in the sign-in path", () => {
 // R8-07 — redirect_uris_json fails open when the column is NULL
 // ═══════════════════════════════════════════════════════════════════════════════
 describe("R8-07 redirect-URI allowlist fail-open", () => {
-  // NOT FIXED — still asserts the vulnerable behaviour. `redirectUriAllowed` keeps its
-  // `if (!oidc.redirect_uris_json) return true`: no shipped writer produces NULL
-  // (repo.ts:452 always writes at least "[]", which fails closed) and three other lanes'
-  // fixtures depend on the NULL-permissive path. See the Remediation section of the finding.
-  it("ATTACK: with redirect_uris_json NULL, any Host header produces an accepted redirect_uri", async () => {
+  // FIXED: a NULL column fails closed, like an empty or malformed one.
+  it("FIXED: with redirect_uris_json NULL the sign-in start is refused, whatever the Host header", async () => {
     const ctx = await makeCtx();
     await ctx.db.run(
       "UPDATE oidc_config SET redirect_uris_json = NULL WHERE product = 'djdl'",
@@ -2804,23 +2836,20 @@ describe("R8-07 redirect-URI allowlist fail-open", () => {
       ctx.db,
       ctx.product,
     );
-    expect(res.status).toBe(302); // allow-listed origin check silently skipped
-    const authorize = new URL(res.headers.get("location")!);
-    expect(authorize.searchParams.get("redirect_uri")).toBe(
-      "https://evil.attacker.test/djdl/identity/auth/callback",
-    );
-    // Control: with the column populated it fails closed.
+    expect(res.status).toBe(400);
+    expect(res.headers.get("location")).toBeNull();
+    // Control: with the column populated and the right host it starts.
     await ctx.db.run(
       "UPDATE oidc_config SET redirect_uris_json = ? WHERE product = 'djdl'",
       JSON.stringify([REDIRECT]),
     );
-    const closed = await handleAuthStart(
-      req("https://evil.attacker.test/djdl/auth/start"),
+    const ok = await handleAuthStart(
+      req(`${ORIGIN}/djdl/auth/start`),
       ctx.env,
       ctx.db,
       ctx.product,
     );
-    expect(closed.status).toBe(400);
+    expect(ok.status).toBe(302);
   });
 });
 
@@ -2846,6 +2875,7 @@ describe("R8-08 portal magic link", () => {
     const res = await handleMagicStart(
       req("https://key.plrs.im/api/auth/magic", {
         method: "POST",
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({ email: "victim@corp.com" }),
       }),
       env,

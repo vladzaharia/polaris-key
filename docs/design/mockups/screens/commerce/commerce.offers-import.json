@@ -8,11 +8,12 @@
   "summary": "DJDL's Offers after Import from stores: a card lists the 4 App Store in-app purchases with no offer, each matched to a suggested offer (DJDL Pro, DJDL Pro yearly, Stem separation) with Dismiss and Add offer, one it can't match because Licensing has no Cloud crates add-on, and Add all 3; the offers table is still empty.",
   "compare": [
     "Import results land on the Offers page itself, in a card above the table, never on a separate mapping page; the card leaves when every suggestion is added or dismissed.",
-    "The card head says how many products have no offer and when the store was read; Add all 3 adds only the matched suggestions.",
+    "The card head says when the store was read (the counts are the rows and 'Add all 3'); Add all 3 adds only the matched suggestions.",
     "Each row reads left to right: store mark and the store's product type, the product id in mono, an arrow, then the suggested offer (name, what it sells, billing) and its two actions, Dismiss (ghost) and Add offer.",
     "A product with no matching tier or add-on says why in plain words and links to Licensing ('Define it in Licensing') instead of offering Add.",
-    "Added suggestions appear in the table as drafts until their SKU is on sale; the empty table says so. No toast: the card is the result.",
-    "Phone: each suggestion stacks (product, a turned arrow, the offer, then its actions) and nothing scrolls sideways."
+    "Added suggestions appear in the table as drafts until their SKU is on sale. No toast: the card is the result.",
+    "Phone: each suggestion stacks (product, a turned arrow, the offer, then its actions) and nothing scrolls sideways.",
+    "Brand v2 shell (lead B2–B5, 2026-10-09): the work sits on the inset canvas with a 3px rule in the page's context accent (full-bleed below 1024); one orientation line (context chip + crumbs, never 'Platform' on a product page, no eyebrow repeating the path); h1 36/44 on a collection, 32/40 on a record, 24/32 on a phone; the one filled primary is ink and selection is ink, the accent marks context only; the selected nav item is the subtle fill with a 3px marker; card heads are bands with no numerals; route tabs are an underline tablist with a 3px indicator; tables with filters are one workbench band; weights 400/500/600."
   ],
   "status": "mockup",
   "designReview": {

@@ -55,6 +55,15 @@ export async function applyOverrides(
       fields.push("missing key");
       continue;
     }
+    if (
+      u.state !== undefined &&
+      u.state !== "default" &&
+      u.state !== "enforced" &&
+      u.state !== "hidden"
+    ) {
+      fields.push(`invalid state for ${u.key}`);
+      continue;
+    }
     const entry = catalog.entryByKey(u.key);
     if (!entry) {
       fields.push(`unknown config key: ${u.key}`);

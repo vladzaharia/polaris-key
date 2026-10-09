@@ -117,6 +117,10 @@ const LOOKALIKES: Record<string, string> = {
  */
 const FORBIDDEN = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Co}\p{Cs}"<>@\\]/u;
 
+const CONFUSABLE_MIX_LATIN = /\p{Script=Latin}/u;
+const CONFUSABLE_MIX_OTHER =
+  /[\p{Script=Cyrillic}\p{Script=Greek}\p{Script=Armenian}\p{Script=Cherokee}\p{Script=Coptic}\p{Script=Lisu}]/u;
+
 const FOLDED_WHOLE_NAMES = new Set(
   [...RESERVED_WHOLE_NAMES].map(foldForReserve),
 );
@@ -166,6 +170,10 @@ export function checkSenderAppName(raw: unknown): SenderNameCheck {
     FOLDED_FRAGMENTS.some((f) => folded.includes(f))
   )
     return { ok: false, reason: "reserved" };
+  // Latin mixed with a script whose letters imitate Latin ones is a skeleton the fold table
+  // cannot be trusted to cover (UTS #39 mixed-script restriction).
+  if (CONFUSABLE_MIX_LATIN.test(name) && CONFUSABLE_MIX_OTHER.test(name))
+    return { ok: false, reason: "forbidden_character" };
   return { ok: true, name };
 }
 

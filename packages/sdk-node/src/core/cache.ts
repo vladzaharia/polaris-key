@@ -8,10 +8,14 @@
 //   1. a record whose `v !== 3` is DISCARDED, never migrated — one network round trip is the
 //      right price for not carrying poisoned state forward, and an air-gapped install
 //      re-imports its bundle;
-//   2. `trustJws` against the PINS only, freshness off → the effective set;
-//   3. each entry of `docs` against THAT set, freshness off, full §3 claim validation
+//   2. `pinRevocations` (the evidence for each tombstoned pin) against the pins, in ascending
+//      manifest `issuedAt` → the usable pins;
+//   3. `trustJws` against the USABLE pins only, freshness off → the effective set;
+//   4. each entry of `docs` against THAT set, freshness off, full §3 claim validation
 //      including `aud` and `deviceId`;
-//   4. every derived counter — the per-type anti-replay floors, `lastVerifiedAt`, the
+//   5. `bundle` (an offline activation) on the bundle RELOAD profile, and only when its licence
+//      document is byte-identical to the cached one does it count as `activation: "bundle"`;
+//   6. every derived counter — the per-type anti-replay floors, `lastVerifiedAt`, the
 //      monotonic clock floor — computed from what verified, never read from the file.
 //
 // Any artifact that fails is treated as ABSENT and dropped from the in-memory record, so a
@@ -28,6 +32,7 @@
 
 import {
   CACHE_VERSION,
+  inspectBundle,
   verifyConfigDoc,
   verifyLicenseDoc,
   type BlockedState,
@@ -48,8 +53,16 @@ export interface CachedDoc<T> {
 export interface LoadedCache {
   license: CachedDoc<LicenseDoc> | null;
   config: CachedDoc<ConfigDoc> | null;
-  /** Present ⇒ this install was activated from an offline bundle (§7). */
-  importedBundle: CacheRecordV3["importedBundle"];
+  /**
+   * The cached offline bundle (§7), when it re-verified on the reload profile; null otherwise.
+   * `docs` is what it carried. `activates` is the signed fact behind `activation: "bundle"`
+   * (with no token held): it carried a licence document byte-identical to the cached one.
+   */
+  bundle: {
+    bundleId: string;
+    docs: ("license" | "config")[];
+    activates: boolean;
+  } | null;
   lastSyncUnauthorized: boolean;
   blocked: BlockedState | null;
   /** Epoch MILLIseconds of the last verification, derived from the newest document's signed
@@ -71,7 +84,7 @@ function stringEntries(value: unknown): Record<string, string> {
 const EMPTY: LoadedCache = {
   license: null,
   config: null,
-  importedBundle: undefined,
+  bundle: null,
   lastSyncUnauthorized: false,
   blocked: null,
   lastVerifiedAt: null,
@@ -147,6 +160,11 @@ export class CacheManager {
     }
     this.record = rec;
 
+    // §4.1: the tombstones first, so the manifest, the documents and the bundle all verify
+    // against the usable pins. Evidence that no longer verifies is dropped on the next write.
+    await this.trust.loadEvidence(rec.pinRevocations);
+    this.keepEvidence();
+
     if (rec.trustJws) {
       const ok = await this.trust.loadCached(rec.trustJws);
       if (!ok) this.record = { ...this.record, trustJws: undefined };
@@ -156,6 +174,8 @@ export class CacheManager {
       trust: this.trust.effective,
       expectedAud: this.ctx.product,
       deviceId: this.ctx.deviceId,
+      // Reload: no floor (explicit); the floors are DERIVED from what verifies here.
+      lastAcceptedIssuedAt: null,
       // A cached document is EXPECTED to be past its short `expiresAt`; its signed outer bound
       // is `graceUntil`, which the gate enforces against the monotonic floor (§4.2). Asserting
       // freshness here would delete offline grace outright.
@@ -186,13 +206,68 @@ export class CacheManager {
       }
     }
 
-    this.loaded.importedBundle = this.record.importedBundle;
+    this.loaded.bundle = await this.reloadBundle();
+    // A cached manifest may have tombstoned a pin whose evidence the record lacked.
+    this.keepEvidence();
     this.loaded.lastSyncUnauthorized =
       this.record.lastSyncUnauthorized === true;
     this.loaded.blocked = this.record.blocked ?? null;
     this.loaded.lastVerifiedAt =
       newestIssuedAt > 0 ? newestIssuedAt * 1000 : null;
     return this.loaded;
+  }
+
+  /**
+   * §7 reload profile: the cached bundle's own signature and claims, without the import window,
+   * against the usable pins; its inner documents against its own manifest's set with no floor.
+   * It activates only when its licence document is the cached one, byte for byte — otherwise a
+   * stale bundle could vouch for a licence it never carried.
+   */
+  private async reloadBundle(): Promise<LoadedCache["bundle"]> {
+    const jws = this.record?.bundle;
+    if (typeof jws !== "string") return null;
+    const result = await inspectBundle(jws, {
+      pinned: this.ctx.pinnedTrust,
+      tombstones: this.trust.revokedPins,
+      product: this.ctx.product,
+      deviceId: this.ctx.deviceId,
+      now: this.ctx.now(),
+      floors: { license: null, config: null },
+      profile: "reload",
+    });
+    if (!result.ok) return null;
+    const { docs } = result.bundle;
+    const license = docs.license?.jws;
+    return {
+      bundleId: result.bundle.bundleId,
+      docs: [
+        ...(docs.license ? (["license"] as const) : []),
+        ...(docs.config ? (["config"] as const) : []),
+      ],
+      activates: license !== undefined && license === this.loaded.license?.jws,
+    };
+  }
+
+  /** The `pinRevocations` slice in memory follows the custodian's evidence. */
+  private keepEvidence(): void {
+    if (!this.record) return;
+    const evidence = this.trust.pinRevocations;
+    const next: CacheRecordV3 = { ...this.record };
+    delete next.pinRevocations;
+    if (Object.keys(evidence).length > 0) next.pinRevocations = evidence;
+    this.record = next;
+  }
+
+  /** The cached trust manifest JWS as held (verified on load, or dropped). */
+  trustJws(): string | undefined {
+    const t = this.record?.trustJws;
+    return typeof t === "string" ? t : undefined;
+  }
+
+  /** The cached bundle JWS as stored (unverified), for the byte-identical re-import check. */
+  bundleJws(): string | undefined {
+    const b = this.record?.bundle;
+    return typeof b === "string" ? b : undefined;
   }
 
   /** In-memory only: a slice that failed verification is absent for the rest of this session
@@ -205,6 +280,18 @@ export class CacheManager {
     delete docs[slice];
     delete etags[slice];
     this.record = { ...this.record, docs, etags };
+  }
+
+  /**
+   * The server answered for this slice with a hard 401 (or, for the licence, a 403
+   * build block), so the document is no longer a grant. Removes it — payload, artifact and ETag
+   * — from the derived state AND the record, so the `flush()` that persists the display hint
+   * persists the removal in the same write. The token is untouched: the gate still reports
+   * `revoked` or the block. The floor stays (it only rises).
+   */
+  revokeSlice(slice: "license" | "config"): void {
+    this.loaded[slice] = null;
+    this.dropSlice(slice);
   }
 
   /** Record a freshly verified document: artifact + ETag in the record, payload in the derived
@@ -246,8 +333,6 @@ export class CacheManager {
     if (patch.lastSyncUnauthorized !== undefined)
       this.loaded.lastSyncUnauthorized = patch.lastSyncUnauthorized === true;
     if ("blocked" in patch) this.loaded.blocked = patch.blocked ?? null;
-    if ("importedBundle" in patch)
-      this.loaded.importedBundle = patch.importedBundle;
     await this.ctx.store.writeCache(this.record);
   }
 
@@ -261,18 +346,21 @@ export class CacheManager {
    * all-or-nothing write of a verified bundle's contents, and merging it into whatever was
    * there before would let a stale slice survive an air-gapped re-provisioning.
    *
-   * The wire v4 update slices are the one exception (as in React's browser adapter): they are
+   * The wire v4 update slices are one exception (as in React's browser adapter): they are
    * signed public documents, not grants, and they carry each channel's `seq` floor. Dropping
    * them would let a replayed older feed past the floor, so they are carried into the new
-   * record and re-verified, like everything else, before any use.
+   * record and re-verified, like everything else, before any use. The `pinRevocations`
+   * evidence is the other: security state, not a grant (§4.1). The custodian's evidence (which
+   * includes any the new record's manifest added) is what is written.
    */
   async replace(record: CacheRecordV3): Promise<void> {
     this.record = { ...record, ...this.carriedUpdateSlices() };
     await this.ctx.store.writeCache(this.record);
   }
 
-  /** Wipe everything, in memory and on disk — except the update slices (see `replace()`): a
-   *  deactivation removes every credential and grant, not the feeds' `seq` floors. */
+  /** Wipe everything, in memory and on disk — except the update slices and the pin evidence
+   *  (see `replace()`): a deactivation removes every credential and grant, not the feeds' `seq`
+   *  floors and not a pinned key's revocation. */
   async clear(): Promise<void> {
     const carried = this.carriedUpdateSlices();
     this.record = null;
@@ -289,13 +377,18 @@ export class CacheManager {
 
   private carriedUpdateSlices(): Pick<
     CacheRecordV3,
-    "feeds" | "releaseRecords"
+    "feeds" | "releaseRecords" | "pinRevocations"
   > {
-    const out: Pick<CacheRecordV3, "feeds" | "releaseRecords"> = {};
+    const out: Pick<
+      CacheRecordV3,
+      "feeds" | "releaseRecords" | "pinRevocations"
+    > = {};
     const feeds = stringEntries(this.record?.feeds);
     const records = stringEntries(this.record?.releaseRecords);
+    const evidence = this.trust.pinRevocations;
     if (Object.keys(feeds).length > 0) out.feeds = feeds;
     if (Object.keys(records).length > 0) out.releaseRecords = records;
+    if (Object.keys(evidence).length > 0) out.pinRevocations = evidence;
     return out;
   }
 

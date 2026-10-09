@@ -54,8 +54,12 @@ export interface VerifyOptions {
   expectedIss?: string;
   deviceId: string;
   /** Per-TYPE anti-replay floor: reject a document not strictly newer than the one already
-   *  accepted for this document type (§3). License and config carry independent floors. */
-  lastAcceptedIssuedAt?: number;
+   *  accepted for this document type (§3). License and config carry independent floors.
+   *  REQUIRED: "no floor" is an explicit `null` — never an omitted argument, so a
+   *  call site that forgot its floor is a type error rather than a silent replay window. A
+   *  value that is neither a number nor `null` at run time (an omitted argument in untyped
+   *  JS) fails closed: the document is rejected. */
+  lastAcceptedIssuedAt: number | null;
   /** Epoch seconds used for every clock comparison. Defaults to the system clock. */
   now?: number;
   /**
@@ -131,11 +135,13 @@ function validateEnvelope(
   ) {
     return false;
   }
-  if (
-    opts.lastAcceptedIssuedAt !== undefined &&
-    doc.issuedAt <= opts.lastAcceptedIssuedAt
-  ) {
-    return false;
+  if (opts.lastAcceptedIssuedAt !== null) {
+    if (
+      typeof opts.lastAcceptedIssuedAt !== "number" ||
+      doc.issuedAt <= opts.lastAcceptedIssuedAt
+    ) {
+      return false;
+    }
   }
   // A grace window shorter than the expiry, or longer than a year, is not a document this
   // client will honour — whoever authored it. The ceiling applies at VERIFY time, not only in

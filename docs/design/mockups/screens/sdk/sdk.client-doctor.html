@@ -37,7 +37,7 @@
             <div class="window-body">
               <div class="ide-bar"><span>Scene</span><span>Project</span><span class="hide-narrow">Debug</span><span class="hide-narrow">Editor</span><span class="hide-narrow">Help</span><span class="end"><i class="ic ic-circle-dot sm"></i>Running · main.tscn</span></div>
               <div class="ide-tabs"><span class="on">Output</span><span>Debugger <span class="c-warn">(1)</span></span><span class="hide-narrow">Audio</span><span class="hide-narrow">Animation</span><span class="hide-narrow">Polaris Key</span><span class="end hide-narrow"><i class="ic ic-search sm"></i>Filter messages</span></div>
-<pre class="term-body hide-phone"><span class="c-dim">Godot Engine v4.5.stable.official · https://godotengine.org
+<pre tabindex="0" class="term-body hide-phone"><span class="c-dim">Godot Engine v4.5.stable.official · https://godotengine.org
 Metal 3.2 · Forward+ · Using Device: Apple M3 Pro</span>
 
 <span class="c-warn">Polaris Key: packs.ensure("neon") was refused.</span>
@@ -58,7 +58,7 @@ Metal 3.2 · Forward+ · Using Device: Apple M3 Pro</span>
                        aren’t checked in this run
   <span class="c-ok"><span class="g">✓</span></span> Clock              <span class="c-dim">within 1 s of key.plrs.im</span>
 <span class="c-err">2 to do</span><span class="c-dim"> · 1 warning</span></pre>
-<pre class="term-body show-phone"><span class="c-dim">Godot Engine v4.5.stable.official
+<pre tabindex="0" class="term-body show-phone"><span class="c-dim">Godot Engine v4.5.stable.official
 Metal 3.2 · Forward+ · Apple M3 Pro</span>
 
 <span class="c-warn">Polaris Key: packs.ensure("neon") was
@@ -104,11 +104,10 @@ Godot SDK 0.9.2</span>
           <div class="section-head"><h2>The call</h2></div>
           <div class="code wrap-phone" data-service="core">
             <div class="code-head">
-              <div class="code-tabs"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="hide-phone">Swift</span><span class="hide-phone">Kotlin</span><span class="active">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
+              <div class="code-tabs" tabindex="0"><span class="hide-phone">Node</span><span class="hide-phone">React</span><span class="hide-phone">Python</span><span class="hide-phone">Swift</span><span class="hide-phone">Kotlin</span><span class="active">Godot</span><span class="more show-phone">5 more<i class="ic ic-chevron-down"></i></span></div>
               <button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button>
             </div>
-<pre><span class="t-c"># For a support screen, ask for the report yourself:</span>
-<span class="hl"><span class="t-k">var</span> report := <span class="t-k">await</span> PolarisKey.<span class="t-f">doctor</span>()</span>
+<pre tabindex="0"><span class="hl"><span class="t-k">var</span> report := <span class="t-k">await</span> PolarisKey.<span class="t-f">doctor</span>()</span>
 <span class="t-k">for</span> check <span class="t-k">in</span> report.checks:
   <span class="t-k">if not</span> check.ok:
     support_log.<span class="t-f">add</span>(check.title, check.fix, check.console_url)</pre>
@@ -122,7 +121,7 @@ Godot SDK 0.9.2</span>
           <div class="section-head"><h2>When key.plrs.im can’t be reached</h2></div>
           <div class="term">
             <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">Output — no network</span></div>
-<pre class="term-body hide-phone"><span class="c-warn">Polaris Key: boot() couldn’t reach key.plrs.im, and this Mac has no saved
+<pre tabindex="0" class="term-body hide-phone"><span class="c-warn">Polaris Key: boot() couldn’t reach key.plrs.im, and this Mac has no saved
 license yet.</span>
 <span class="c-b">Polaris Key doctor</span> <span class="c-dim">· Diceroll 1.4.0 · macOS 26.0 arm64 · Godot SDK 0.9.2</span>
   <span class="c-err"><span class="g">✗</span></span> <span class="c-b">Server</span>             couldn’t reach key.plrs.im (timed out after 10 s)
@@ -134,7 +133,7 @@ license yet.</span>
   <span class="c-dim"><span class="g">–</span> Features           not checked</span>
   <span class="c-dim"><span class="g">–</span> Clock              not checked</span>
 <span class="c-err">1 to do</span><span class="c-dim"> · 3 not checked</span></pre>
-<pre class="term-body show-phone"><span class="c-warn">Polaris Key: boot() couldn’t reach
+<pre tabindex="0" class="term-body show-phone"><span class="c-warn">Polaris Key: boot() couldn’t reach
 key.plrs.im, and this Mac has no saved
 license yet.</span>
 <span class="c-b">Polaris Key doctor</span>
@@ -168,14 +167,14 @@ Godot SDK 0.9.2</span>
                 <tr><td><span class="cell-title">polaris-key.json</span></td><td>Found, valid, for this product</td></tr>
                 <tr><td><span class="cell-title">Version</span></td><td>App version is a semver</td></tr>
                 <tr><td><span class="cell-title">Signing key</span></td><td>Pins match key.plrs.im’s keys, staged included</td></tr>
-                <tr><td><span class="cell-title">Release key</span></td><td>One is pinned, so updates and packs verify</td></tr>
+                <tr><td><span class="cell-title">Release key</span></td><td>One is pinned</td></tr>
                 <tr><td><span class="cell-title">Features</span></td><td>File’s features match the product’s</td></tr>
                 <tr><td><span class="cell-title">Store</span></td><td>StoreKit, Google Play or Steam, whichever this build runs</td></tr>
                 <tr><td><span class="cell-title">Clock</span></td><td>Device time against Polaris Key’s</td></tr>
                 <tr><td><span class="cell-title">Web origin</span></td><td>React only: page origin is the product’s</td></tr>
               </tbody>
             </table>
-            <div class="table-foot"><i class="ic ic-shield-check sm"></i><span>Release builds print nothing. The report holds no license key or secret.</span></div>
+            <div class="table-foot"><i class="ic ic-shield-check sm"></i><span class="mk-stack-1"><span>Release builds print nothing</span><span>The report holds no license key or secret</span></span></div>
           </section>
         </section>
 

@@ -8,6 +8,7 @@ import {
   computeHwid,
   matchFingerprint,
   parseFingerprint,
+  usableFingerprint,
   resolveFingerprintMode,
   type ComponentMap,
   type StoredFingerprint,
@@ -204,10 +205,44 @@ describe("matchFingerprint", () => {
       bootVolumeUuid: hash("boot2"),
       machineModel: hash("model2"),
     };
-    // 5 changed, anchor intact => tolerance 4 + 1 = 5.
+    // 5 changed, anchor intact => 4 + 1 = 5, capped at floor(7 / 2) = 3 of the baseline.
     expect(
       matchFingerprint(stored(), { components: presented }, "lenient"),
-    ).toMatchObject({ kind: "drift", drift: 5 });
+    ).toMatchObject({ kind: "mismatch", drift: 5 });
+  });
+
+  it("caps tolerated change at half the baseline, anchor bonus included", () => {
+    const three = {
+      ...FULL,
+      ramBucket: hash("ram2"),
+      cpuModel: hash("cpu2"),
+      primaryMac: hash("mac2"),
+    };
+    expect(
+      matchFingerprint(stored(), { components: three }, "lenient"),
+    ).toMatchObject({ kind: "drift", drift: 3 });
+    // A 3-component baseline tolerates one change, not the 3 that normal + anchor would allow.
+    const small: ComponentMap = {
+      machineUuid: hash("uuid"),
+      cpuModel: hash("cpu"),
+      ramBucket: hash("ram"),
+    };
+    expect(
+      matchFingerprint(
+        stored(small),
+        { components: { ...small, cpuModel: hash("c2") } },
+        "normal",
+      ),
+    ).toMatchObject({ kind: "drift", drift: 1 });
+    expect(
+      matchFingerprint(
+        stored(small),
+        {
+          components: { ...small, cpuModel: hash("c2"), ramBucket: hash("r2") },
+        },
+        "normal",
+      ),
+    ).toMatchObject({ kind: "mismatch", drift: 2 });
   });
 
   it("never rejects at off, even with everything changed", () => {
@@ -255,5 +290,22 @@ describe("resolveFingerprintMode", () => {
   it("defaults to normal when neither is set or either is nonsense", () => {
     expect(resolveFingerprintMode(null, null)).toBe("normal");
     expect(resolveFingerprintMode("bogus", undefined)).toBe("normal");
+  });
+});
+
+describe("usableFingerprint", () => {
+  it("needs the anchor and at least two other components", () => {
+    const u = (c: ComponentMap) => usableFingerprint({ components: c });
+    expect(u(FULL)).not.toBeNull();
+    expect(
+      u({ machineUuid: hash("u"), cpuModel: hash("c"), ramBucket: hash("r") }),
+    ).not.toBeNull();
+    expect(u({ machineUuid: hash("u"), cpuModel: hash("c") })).toBeNull();
+    expect(u({ machineUuid: hash("u") })).toBeNull();
+    // Three components, but no anchor.
+    expect(
+      u({ boardSerial: hash("b"), cpuModel: hash("c"), ramBucket: hash("r") }),
+    ).toBeNull();
+    expect(usableFingerprint(null)).toBeNull();
   });
 });

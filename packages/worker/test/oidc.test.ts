@@ -597,6 +597,15 @@ describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8
       ada.account.id,
       r.licenseId,
     );
+    // The owner's identity is linked to the account, and the device is signed in as
+    // the owner (a key-only device on the licence no longer receives the owner's secrets).
+    await db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email, email_verified, display_name, amr_json, created_at, last_used_at)
+       VALUES ('lnk-oidc', ?, 'iss', '', 'user-123', 'oidc', NULL, 0, NULL, '[]', ?, ?)`,
+      ada.account.id,
+      NOW,
+      NOW,
+    );
     const token = await authorizeAndMint(
       env,
       db,
@@ -604,6 +613,10 @@ describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8
       r.licenseId,
       "dev-oidc",
       NOW,
+    );
+    await db.run(
+      "UPDATE devices SET subject = ? WHERE product = 'djdl' AND device_id = 'dev-oidc'",
+      await subjectFor(db, ada.account.id, "djdl", NOW),
     );
     const secretOf = async (now: number) => {
       const res = await handleConfigDocument(

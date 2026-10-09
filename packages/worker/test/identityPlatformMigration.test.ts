@@ -1599,7 +1599,11 @@ describe("the portal's single sign-on", () => {
         "SELECT COUNT(*) AS n FROM account_links WHERE kind = 'oidc'",
       ),
     ).toBe(0);
-    // The flow is spent: the starting browser cannot reuse it either.
+    // The refused attempt did not spend the flow, so the starting browser finishes
+    // it, and only once.
+    expect((await finishPortalLogin(starter, flow, { sub: SUB })).status).toBe(
+      302,
+    );
     expect((await finishPortalLogin(starter, flow, { sub: SUB })).status).toBe(
       400,
     );

@@ -246,6 +246,8 @@ export interface RecorderOptions {
   world: World;
   pinned: Pinned;
   initial: Transcript["initial"];
+  /** The keys the client pins (`trust`); the corpus signing key when omitted. */
+  trust?: Record<string, string>;
 }
 
 export interface StepSpec {
@@ -305,7 +307,7 @@ export class TranscriptRecorder {
       product,
       baseUrl: BASE_URL,
       now,
-      trust: { [TEST_KID]: TEST_PUB },
+      trust: this.opts.trust ?? { [TEST_KID]: TEST_PUB },
       initial,
       steps: this.steps,
     };

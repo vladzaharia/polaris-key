@@ -1,6 +1,6 @@
 ---
 title: "Trust and signing"
-description: "Per-product Ed25519 keys, JWKS, the signed trust manifest, pinned-key verification, replace-not-merge revocation, and why Core owns refresh scheduling."
+description: "Per-product Ed25519 keys, JWKS, the signed trust manifest, pinned-key verification and revocation, replace-not-merge revocation, and why Core owns refresh scheduling."
 sidebar:
   order: 4
 ---
@@ -14,7 +14,7 @@ is published two ways, and only one of them is a trust root.
 A verifier holds exactly two tiers of keys, in strictly decreasing authority, and nothing else:
 
 1. **Pinned keys** — a `kid → base64url(raw Ed25519 public key)` map compiled into the host
-   application. Terminal.
+   application. Terminal, unless another pin revokes one (below).
 2. **Manifest keys** — learned only from a verified trust manifest (`pkey-trust+jws`).
 
 They merge with the pins spread **last**:
@@ -41,6 +41,12 @@ convenience, not an authority: clients still pin a trust set by default, and not
 verification path treats a JWKS response as a key source.
 
 ## `GET /<p>/.well-known/polaris-trust.jws`
+
+`?signer=<kid>` serves the same manifest signed by another active, staged or retired key, so a
+client that pinned only an older key can still verify it after a rotation. A revoked or unknown
+`kid` is ignored and the active key signs. A client asks for it only when the default manifest's
+signer is not one of its usable pins: for each usable pin, in ascending kid byte order, at most
+four times, stopping at the first manifest it accepts.
 
 The signed trust manifest — `typ: "pkey-trust+jws"`, `content-type: application/jose`, served
 with `cache-control: public, max-age=300`. Its payload:
@@ -87,18 +93,17 @@ The manifest is built from the product's verification keys — `active`, `staged
 in that priority order. `retired` and `staged` keys are trusted for **verification**; only the
 active key signs.
 
-:::caution
-Revoked keys are filtered out of the query entirely, so this worker's manifest never carries a
-`status: "revoked"` entry. Revocation reaches clients as **absence** (see below), not as an
-explicit prune signal. The wire contract (§2.3) describes servers emitting revoked keys
-explicitly for at least `2 × cacheSeconds`; the client honours such entries if it sees them, but
-this server does not produce them.
+:::note
+A revoked key stays in the manifest with `status: "revoked"` for 400 days
+(`REVOKED_KEY_LISTING_SECONDS`), so a lagging client reads a positive removal. After that,
+absence takes over.
 :::
 
 ## How a manifest is verified
 
-Always against **pinned keys only** — never against the effective (merged) set — on both the
-network path and the cache-reload path, so online and offline verification are identical.
+Always against **usable pinned keys only** (the pins minus any tombstoned, below) — never against
+the effective (merged) set — on both the network path and the cache-reload path, so online and
+offline verification are identical.
 Verifying against the effective set was the amplifier in an earlier design: a single planted key
 could sign a manifest minting further keys, and the poisoning became self-sustaining.
 
@@ -117,9 +122,13 @@ The checks, in order:
    strand every offline client that has rotated keys.
 7. Per key: a **pinned kid presented with different key bytes rejects the whole manifest** and
    keeps the previous trust set — that is a substitution attempt, not a partial error.
-8. Entries with `status: "revoked"` are **dropped**. Entries that are not
-   `alg: "EdDSA"` / `kty: "OKP"` / `crv: "Ed25519"` are **skipped, not fatal** — a future-algorithm
-   key in the manifest must not brick current verifiers.
+8. A key is kept only for `status` exactly `active`, `staged` or `retired`. `revoked` **drops**
+   it; any other value, a missing one or a case variant **skips** it. Entries that are not
+   `alg: "EdDSA"` / `kty: "OKP"` / `crv: "Ed25519"`, or whose `publicKey` is not canonical
+   base64url, are **skipped, not fatal** — a future-algorithm key in the manifest must not brick
+   current verifiers.
+9. A pinned kid listed `revoked` with its exact bytes by **another** pin is tombstoned. A
+   manifest that lists its own signer as `revoked` is refused.
 
 ## Replace, never merge
 
@@ -127,8 +136,19 @@ The discovered set is **replaced wholesale** on every successful verification. I
 into, not unioned with, and not diffed against the previous set.
 
 That single rule is what makes revocation work: **absence is revocation**. A kid that simply
-stops appearing in a newer manifest is gone from the discovered set on the next refresh. Pins are
-unaffected — they are compiled in, terminal, and can only be withdrawn by shipping a new build.
+stops appearing in a newer manifest is gone from the discovered set on the next refresh.
+
+## Revoking a pinned key
+
+Pins are compiled in, so absence cannot remove one. A manifest signed by one pin that lists
+another pin's exact bytes as `revoked` does: the client tombstones that pin, permanently, and
+keeps the manifest as signed evidence in its cache (`pinRevocations`), re-verified on every load.
+A tombstoned pin verifies no manifest, bundle or document again, and no later manifest restores
+it. This needs a second pin: **pin at least two keys**, staging a backup before you build. To
+recover from a compromise, activate the backup key and revoke the compromised one; the manifest
+the Worker then serves (signed by the backup, listing the old key as `revoked` for 400 days)
+reaches every client that pins both. An app that pinned only the compromised key cannot be told,
+and needs an update.
 
 The same rule governs cache reload. Trust is reset at the top of every load, so a reload can
 never inherit keys the file no longer justifies, and a manifest that fails to re-verify is

@@ -55,7 +55,7 @@
           "note": "On desktop the host process's store holds the token."
         }
       ],
-      "note": "SP-R02: bearer mode's indexedDbStore (src/browser/bearer/store.ts) implements client-core's Store: the token in its own object store, the random device id and the cache in the offline record; status() reports backend indexeddb, degraded not-persistent unless navigator.storage.persisted(). The cookie session holds no credential, so a cookie page's supports() answers it runtime-unsupported."
+      "note": "SP-R02: bearer mode's indexedDbStore (src/browser/bearer/store.ts) implements client-core's Store: the token in its own object store, the random device id and the cache in the offline record; status() reports backend indexeddb, degraded not-persistent unless navigator.storage.persisted(). The cookie session holds no credential, so a cookie page's supports() answers it runtime-unsupported. Device binding to a hardware anchor is a typed N/A in a browser: the device id is a random value in IndexedDB and there is no platform anchor to re-derive it from; on desktop the host's Node SDK binds it."
     },
     "core.copy": {
       "status": "implemented",

@@ -314,7 +314,7 @@ async function dispatchProductRoute(
     case "jwks":
       return handleJwks(db, product);
     case "trustManifest":
-      return handleTrustManifest(req, db, product, now);
+      return handleTrustManifest(req, env, db, product, now);
     default:
       return notFound();
   }

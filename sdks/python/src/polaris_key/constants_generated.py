@@ -99,6 +99,7 @@ __all__ = [
     "DATA_ONLY_HEAD_BYTES",
     "DATA_ONLY_TAIL_BYTES",
     "MAX_DELEGATIONS_PER_CHECK",
+    "MAX_TRUST_SIGNER_ATTEMPTS",
     "MAX_PACK_VARIANTS",
     "MAX_VARIANT_DELTAS",
     "MAX_CONTENT_PINS",
@@ -1523,6 +1524,10 @@ DATA_ONLY_TAIL_BYTES: Final[int] = 65557
 
 #: Wire contract v4 limit `MAX_DELEGATIONS_PER_CHECK` (`@polaris-key/protocol/core`).
 MAX_DELEGATIONS_PER_CHECK: Final[int] = 16
+
+
+#: Wire contract v4 limit `MAX_TRUST_SIGNER_ATTEMPTS` (`@polaris-key/protocol/core`).
+MAX_TRUST_SIGNER_ATTEMPTS: Final[int] = 4
 
 
 #: Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`).

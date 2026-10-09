@@ -45,7 +45,7 @@
     <div class="nav-group closed" data-service="config"><button class="nav-label" aria-expanded="false">Managed config<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="release"><button class="nav-label" aria-expanded="false">Ship builds<i class="ic ic-chevron-right sm"></i></button></div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
@@ -54,8 +54,8 @@
 
   <main class="main">
     <div class="page">
-      <header class="page-head">
-        <nav class="crumbs" aria-label="Breadcrumb"><a href="#">Licenses</a><i class="ic ic-chevron-right" aria-hidden="true"></i>Northside DJ School</nav>
+      <header class="page-head is-record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a><i class="ic ic-chevron-right"></i><a href="#">Licenses</a></nav>
         <div class="page-heading"><h1>Northside DJ School</h1><span class="pill warning"><i class="ic ic-clock"></i>Past due</span></div>
         <div class="page-sub mk-cluster-3">
           <span class="pill sm"><i class="ic ic-user-round"></i>In an account</span>
@@ -84,7 +84,8 @@
         <i class="ic ic-clock"></i>
         <div class="grow">
           <div class="callout-title">Grace ends Oct 14</div>
-          <div class="callout-text">Then it keeps DJDL 4.2.0. Renew once Northside’s invoice is paid.</div>
+          <div class="callout-text">Then it keeps DJDL 4.2.0.</div>
+          <div class="callout-text">Renew once Northside’s invoice is paid.</div>
         </div>
         <button class="btn outline sm"><i class="ic ic-repeat"></i>Renew…</button>
       </div>
@@ -101,7 +102,7 @@
             <div class="card-split stack-md">
               <dl class="dl cols sub-facts">
                 <div class="full"><dt>Current period</dt><dd class="tnum nowrap">Oct 7, 2025 – Oct 7, 2026</dd></div>
-                <div><dt>Source</dt><dd>Manual<div class="type-small muted">Renewed here or by API</div></dd></div>
+                <div><dt>Source</dt><dd>Manual</dd></div>
                 <div><dt>Period</dt><dd>Yearly</dd></div>
                 <div><dt>Grace</dt><dd>7 days<div class="type-small muted">Set in Settings</div></dd></div>
               </dl>
@@ -158,7 +159,7 @@
                 <tr>
                   <td><span class="icon-text strong"><i class="ic ic-fingerprint"></i>Fingerprint mode</span></td>
                   <td><span class="cell-label">Value</span><strong>Normal</strong></td>
-                  <td><span class="cell-label">From</span>Pro, set on the tier only</td>
+                  <td><span class="cell-label">From</span>Pro</td>
                   <td class="end"><a class="link" href="#">Open tier<i class="ic ic-arrow-right"></i></a></td>
                 </tr>
               </tbody>
@@ -175,7 +176,7 @@
             <div class="card-rows">
               <div class="item-row stale">
                 <span class="icon-tile sm neutral"><i class="ic ic-monitor"></i></span>
-                <div class="item-text"><div class="item-title">Studio iMac 3</div><div class="item-desc"><span class="icon-text inline warning nowrap"><i class="ic ic-clock"></i>Not seen for 23 days</span>&nbsp;· <span class="nowrap">macOS 15</span>&nbsp;· <span class="nowrap">DJDL 4.2.0</span></div></div>
+                <div class="item-text"><div class="item-title">Studio iMac 3</div><div class="item-desc"><span class="icon-text inline warning nowrap"><i class="ic ic-clock"></i>Not seen for 23 days</span></div><div class="item-desc"><span class="nowrap">macOS 15</span>&nbsp;· <span class="nowrap">DJDL 4.2.0</span></div></div>
                 <div class="item-end"><button class="btn outline sm">Deauthorize…</button></div>
               </div>
               <div class="item-row">
@@ -237,7 +238,6 @@
           <div class="field">
             <label class="field-label" for="renew-end">New period end</label>
             <div class="input focus" id="renew-end"><i class="ic ic-calendar"></i><span class="grow">Oct 7, 2027</span></div>
-            <span class="hint">A year after Oct 7, 2026</span>
           </div>
           <div class="field">
             <label class="field-label" for="renew-note">Note <span class="optional">Optional</span></label>

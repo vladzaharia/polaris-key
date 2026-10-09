@@ -204,7 +204,13 @@ describe("a host-side re-register on 401 (P1b-06)", () => {
       return reregistered();
     });
     bridge.refresh = hostSync;
-    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    // A config-only build says so; a reported-off licence service never ungates a
+    // build that expects it.
+    const adapter = desktopAdapter({
+      bridge,
+      expectServices: services("config"),
+      now: () => NOW_SEC,
+    });
     await ready(adapter);
     expect(adapter.snapshot().config["theme.mode"]).toBe("dark");
     expect(adapter.snapshot().status).toBe("not-applicable");

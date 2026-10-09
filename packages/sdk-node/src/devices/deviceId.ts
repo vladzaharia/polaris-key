@@ -16,8 +16,10 @@
 
 import { createHash, randomUUID } from "node:crypto";
 import {
+  DARWIN_IOREG,
   defaultFingerprintIo,
   readLinuxAnchor,
+  windowsRegPath,
   type FingerprintIo,
 } from "./fingerprint.js";
 
@@ -35,11 +37,11 @@ export function rawDeviceId(
   io: FingerprintIo = defaultFingerprintIo,
 ): string | null {
   if (platform === "darwin") {
-    const out = io.run("ioreg", ["-rd1", "-c", "IOPlatformExpertDevice"]);
+    const out = io.run(DARWIN_IOREG, ["-rd1", "-c", "IOPlatformExpertDevice"]);
     return out?.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/)?.[1] ?? null;
   }
   if (platform === "win32") {
-    const out = io.run("reg", [
+    const out = io.run(windowsRegPath(), [
       "query",
       "HKLM\\SOFTWARE\\Microsoft\\Cryptography",
       "/v",

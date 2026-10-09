@@ -1,5 +1,5 @@
 // @pkey-feature core.bundle
-// Offline activation bundles — wire contract v3 §7.
+// Offline activation bundles — WIRE-CONTRACT-V4 §7.
 //
 // `conformance/corpus/v2`'s `bundleCases` are the normative pins for this module and run in
 // the Node conformance runner; this suite covers what a signed fixture cannot express and
@@ -67,7 +67,15 @@ const IMPORT_WINDOW = 30 * 86_400;
 const GRACE = 90 * 86_400;
 
 function opts(over: Partial<BundleOptions> = {}): BundleOptions {
-  return { pinned, product: PRODUCT, deviceId: DEVICE, now: NOW, ...over };
+  return {
+    pinned,
+    product: PRODUCT,
+    deviceId: DEVICE,
+    now: NOW,
+    floors: { license: null, config: null },
+    profile: "import",
+    ...over,
+  };
 }
 
 function manifest(): TrustManifestDoc {
@@ -152,8 +160,8 @@ async function innerDocs(
 describe("verifyBundle — the vacuous bundle (§7)", () => {
   it("refuses a bundle carrying NO documents at all, at the claims step", async () => {
     // Perfectly signed, addressed to this device, inside its import window — and it grants
-    // nothing and configures nothing. Importing it would write an `importedBundle` marker
-    // with no content behind it: an install that reads as provisioned and is not.
+    // nothing and configures nothing. Importing it would write a `bundle` slice with no
+    // content behind it: an install that reads as provisioned and is not.
     const jws = await mint({});
     expect(await inspectBundle(jws, opts())).toEqual({
       ok: false,
@@ -228,6 +236,8 @@ describe("verifyBundle — the cap is the verifier's, not the caller's", () => {
       "product",
       "deviceId",
       "now",
+      "floors",
+      "profile",
     ]);
   });
 
@@ -307,6 +317,70 @@ describe("verifyBundle — step attribution", () => {
       "pkey-license+jws",
     );
     expect(await inspectBundle(jws, opts())).toEqual({
+      ok: false,
+      reason: "bundle-jws-rejected",
+    });
+  });
+});
+
+describe("verifyBundle — per-type floors (WIRE-CONTRACT-V4 §7 step 4)", () => {
+  it("refuses an inner document that is not strictly newer than the cached one", async () => {
+    const jws = await mint(await innerDocs("both"));
+    for (const floors of [
+      { license: MINTED, config: null },
+      { license: null, config: MINTED },
+      { license: MINTED + 1, config: null },
+    ])
+      expect(await inspectBundle(jws, opts({ floors }))).toEqual({
+        ok: false,
+        reason: "inner-doc-rejected",
+      });
+    expect(
+      await verifyBundle(
+        jws,
+        opts({ floors: { license: MINTED - 1, config: MINTED - 1 } }),
+      ),
+    ).not.toBeNull();
+  });
+
+  it("fails closed when a caller names no floors at all", async () => {
+    const jws = await mint(await innerDocs("license"));
+    const { floors: _omitted, ...rest } = opts();
+    expect(await inspectBundle(jws, rest as unknown as BundleOptions)).toEqual({
+      ok: false,
+      reason: "inner-doc-rejected",
+    });
+  });
+});
+
+describe("verifyBundle — the reload profile (WIRE-CONTRACT-V4 §7)", () => {
+  it("skips only the import window", async () => {
+    const jws = await mint(await innerDocs("license"));
+    const late = MINTED + 300 * 86_400;
+    expect((await inspectBundle(jws, opts({ now: late }))).ok).toBe(false);
+    expect(
+      await verifyBundle(jws, opts({ now: late, profile: "reload" })),
+    ).not.toBeNull();
+    // A bundle stamped in the future imports nowhere, and reloads (there is no window).
+    const future = await mint(await innerDocs("license"), {
+      issuedAt: NOW + 3600,
+      expiresAt: NOW + 3600 + IMPORT_WINDOW,
+    });
+    expect((await inspectBundle(future, opts())).ok).toBe(false);
+    expect((await inspectBundle(future, opts({ profile: "reload" }))).ok).toBe(
+      true,
+    );
+    // Everything else in step 2 still binds.
+    expect(
+      await inspectBundle(jws, opts({ profile: "reload", deviceId: "other" })),
+    ).toEqual({ ok: false, reason: "bundle-claims-rejected" });
+  });
+});
+
+describe("verifyBundle — tombstoned pins (WIRE-CONTRACT-V4 §1)", () => {
+  it("refuses a bundle signed by a tombstoned pin", async () => {
+    const jws = await mint(await innerDocs("license"));
+    expect(await inspectBundle(jws, opts({ tombstones: [KID] }))).toEqual({
       ok: false,
       reason: "bundle-jws-rejected",
     });

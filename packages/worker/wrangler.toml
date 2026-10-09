@@ -12,7 +12,8 @@ head_sampling_rate = 1
 enabled = true
 head_sampling_rate = 1
 persist = true
-invocation_logs = true
+# Invocation logs record request URLs, which carry single-use tokens and codes.
+invocation_logs = false
 
 [observability.traces]
 enabled = false
@@ -497,8 +498,9 @@ PKEY_ENVIRONMENT = "test"
 #   PLATFORM_KEK_KEYS, PLATFORM_KEK_ACTIVE. PLATFORM_KEK_ID stays unset (src/env.ts says why).
 #   A PLATFORM_KEK left beside them is the legacy key, open-only, until the re-seal sweep has
 #   moved every value off it; then delete it (RUNBOOK "Rotating when the old KEK is unknown").
-# Optional portal-specific secret:
-#   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
+# Portal session secret (required, at least 32 characters, distinct from ADMIN_SESSION_SECRET):
+#   PORTAL_SESSION_SECRET (no fallback).
+# Webhook rotation (optional): GITHUB_WEBHOOK_SECRET_PREVIOUS is accepted beside GITHUB_WEBHOOK_SECRET.
 # Portal licensed downloads (PX-W3; optional, without it licensed R2-only files stay not_hosted):
 #   DOWNLOAD_TICKET_KEY (32 random bytes, base64), DOWNLOAD_TICKET_KEY_PREVIOUS during a rotation.
 # Login card (I-07): TURNSTILE_SECRET_KEY, with the TURNSTILE_SITE_KEY var above. Account

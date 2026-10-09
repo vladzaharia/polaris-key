@@ -33,7 +33,7 @@
  * its subject and re-runs the ladder, so revocation and a tightened feed take effect within 30 s.
  */
 
-import { clientIp, rateLimitOk } from "../../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../../core/rateLimit.js";
 import {
   registryHostname,
   type OwnerlessRegistryRoute,
@@ -123,7 +123,7 @@ export const OCI_TOKEN_ROUTE: OwnerlessRegistryRoute = {
   async handle(req, ctx) {
     const head = req.method === "HEAD";
     const host = registryHostname(ctx.env) ?? "pkg.plrs.im";
-    const ip = clientIp(req);
+    const ip = clientNetwork(req);
     const unauthorized = () =>
       ociRefusal(401, "UNAUTHORIZED", "authentication required", {
         "www-authenticate": `Basic realm="${host}"`,

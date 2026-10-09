@@ -32,7 +32,9 @@ export async function handleActivity(
   const url = new URL(req.url);
   const beforeAt = url.searchParams.get("beforeAt");
   const beforeId = url.searchParams.get("beforeId");
-  const limit = Number(url.searchParams.get("limit")) || 50;
+  const limitRaw = Math.floor(Number(url.searchParams.get("limit")));
+  const limit =
+    Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.min(limitRaw, 200) : 50;
 
   const filters: AuditFilters = {};
   const bad: string[] = [];

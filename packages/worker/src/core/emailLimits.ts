@@ -6,7 +6,7 @@ import {
   artefactLocked,
   artefactRef,
   putArtefact,
-  redeemArtefact,
+  redeemArtefactLive,
   strikeArtefact,
   type ArtefactRef,
 } from "./singleUse.js";
@@ -80,14 +80,19 @@ export function recipientHash(env: Env, email: string): Promise<string> {
   return hashKey(`email:${normalizeEmail(email)}`, env.KEY_HASH_PEPPER);
 }
 
+/** Strikes are kept per (recipient, requester network), so a stranger's wrong guesses lock only
+ *  their own network out of that recipient's mail, never the recipient. */
 async function strikesRef(
   env: Env,
   product: string,
   email: string,
+  req: Request,
 ): Promise<ArtefactRef> {
+  const recipient = await recipientHash(env, email);
+  const network = wideNetworkOf(clientIp(req));
   return artefactRef(
     "email-strikes",
-    `${product}:${await recipientHash(env, email)}`,
+    `${product}:${await hashKey(`${recipient}\n${network}`, env.KEY_HASH_PEPPER)}`,
   );
 }
 
@@ -130,7 +135,12 @@ export async function checkEmailSend(
   r: EmailSendRequest,
   now: number,
 ): Promise<{ send: boolean }> {
-  if (await artefactLocked(env, await strikesRef(env, r.product, r.recipient)))
+  if (
+    await artefactLocked(
+      env,
+      await strikesRef(env, r.product, r.recipient, r.req),
+    )
+  )
     return { send: false };
   const ip = clientIp(r.req);
   const recipient = await recipientHash(env, r.recipient);
@@ -230,26 +240,29 @@ export async function issueEmailCode(
  */
 export async function verifyEmailCode(
   env: Env,
-  addr: EmailCodeAddress & { code: string },
+  addr: EmailCodeAddress & { code: string; req: Request },
 ): Promise<{ ok: true; payload: string } | { ok: false }> {
   const ref = await codeRef(env, addr.product, addr.recipient, addr.flowId);
   const code = normalizeEmailCode(addr.code);
   // A malformed code still spends an attempt: it is a guess like any other.
-  const result = await redeemArtefact(
+  const result = await redeemArtefactLive(
     env,
     ref,
     await codeProof(env, ref, code ?? addr.code),
   );
   if (result.ok) return result;
-  await strikeArtefact(
-    env,
-    await strikesRef(env, addr.product, addr.recipient),
-    {
-      windowSec: EMAIL_LOCKOUT_WINDOW_SECONDS,
-      threshold: EMAIL_LOCKOUT_THRESHOLD,
-      lockSec: EMAIL_LOCKOUT_SECONDS,
-    },
-  );
+  // Only a guess against a live code is a strike: with no code outstanding there is nothing to
+  // guess, and counting it would let anyone hold a victim's lock.
+  if (result.live)
+    await strikeArtefact(
+      env,
+      await strikesRef(env, addr.product, addr.recipient, addr.req),
+      {
+        windowSec: EMAIL_LOCKOUT_WINDOW_SECONDS,
+        threshold: EMAIL_LOCKOUT_THRESHOLD,
+        lockSec: EMAIL_LOCKOUT_SECONDS,
+      },
+    );
   return { ok: false };
 }
 
@@ -259,6 +272,7 @@ export async function emailRecipientLocked(
   env: Env,
   product: string,
   recipient: string,
+  req: Request,
 ): Promise<boolean> {
-  return artefactLocked(env, await strikesRef(env, product, recipient));
+  return artefactLocked(env, await strikesRef(env, product, recipient, req));
 }

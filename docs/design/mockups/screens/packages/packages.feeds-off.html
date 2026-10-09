@@ -1,4 +1,4 @@
-<div class="console" data-service="core">
+<div class="console" data-service="release">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -29,21 +29,23 @@
       <a class="nav-item" href="#"><i class="ic ic-git-branch"></i><span class="nav-text">Release tracks</span></a>
       <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
       <a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a>
-      <a class="nav-item active" href="#" data-service="distribution"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
     </div>
   </nav>
 
-  <main class="main" data-service="distribution">
+  <main class="main">
     <div class="page contained">
       <header class="page-head">
+<nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a></nav>
+<div class="page-icon mast" data-service="release" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
         <div class="page-heading"><h1>Packages</h1></div>
         <div class="page-actions">
           <button class="btn outline"><i class="ic ic-key-round"></i>Service tokens</button>
@@ -56,7 +58,7 @@
           <span class="empty-icon muted"><i class="ic ic-circle-pause"></i></span>
           <h3 id="off-h">Package feeds are off</h3>
           <p>Installs and publishes are refused</p>
-          <span class="meta">Turned off by Ana Lima on Oct 7, 14:05. Nothing was deleted.</span>
+          <span class="meta">Turned off by Ana Lima on Oct 7, 14:05</span>
           <div class="btn-row"><button class="btn primary">Turn on package feeds</button></div>
         </div>
         <div class="card-rows">

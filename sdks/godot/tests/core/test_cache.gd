@@ -78,7 +78,7 @@ func run(t: PKeyTestContext) -> void:
 	var store := PKeyMemoryStore.new(c["deviceId"])
 	var cache := PKeyCache.new(store, PKeyTrust.new(c["pinned"]), PKeyClock.new(func(): return c["now"]), c["expectedAud"], c["deviceId"])
 	await cache.load_record()
-	var lic_doc = await PKeyVerify.verify_license_doc(lic, {"trust": c["pinned"], "expected_aud": "djdl", "device_id": c["deviceId"], "check_freshness": false})
+	var lic_doc = await PKeyVerify.verify_license_doc(lic, {"trust": c["pinned"], "expected_aud": "djdl", "device_id": c["deviceId"], "check_freshness": false, "last_accepted_issued_at": null})
 	cache.apply_license(lic, lic_doc, "\"x\"")
 	t.check("cache: staging does not write", store.cache_writes == 0)
 	cache.flush({"lastSyncUnauthorized": true, "blocked": {"reason": "version-too-new"}})

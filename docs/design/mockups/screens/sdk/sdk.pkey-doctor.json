@@ -6,7 +6,7 @@
   "order": 3,
   "packages": ["P0-45", "ST-40", "SP-33a"],
   "uxRows": [],
-  "summary": "pkey doctor run in DJDL's repository: the product from .pkey/product, then Manifest, Keys, Integration (Verified per feature on macOS and Windows, CI under Ship builds) and Left to do, each problem with the command or console page that fixes it; it re-wraps to 44 columns on a narrow terminal.",
+  "summary": "pkey doctor run in DJDL's repository: the product from .pkey/product, then Manifest, Keys, Integration (Verified per feature on macOS and Windows, CI under Ship builds) and Left to do, each problem with the command or console page that fixes it; it re-wraps to 40 columns on a narrow terminal.",
   "compare": [
     "No --product or --base-url typed: the header shows the product and the base URL (PKEY_BASE_URL or key.plrs.im).",
     "The Integration block matches products.integration exactly: Licensing and Managed config Verified on macOS, Ship builds Waiting for the update check with CI Verified (first release 4.2.0, Oct 6), Sign-in '● Waiting', Cloud Sync Not seen yet, and Commerce off. Windows, where every feature is Not seen yet, is one line ('Windows ○ Not seen yet'), as Integration and Overview show it once. The summary reads the same facts as Integration.",
@@ -15,9 +15,11 @@
     "The staged signing key djdl-2026b is a warning with its date and one fix line per app folder (swift for macos/, kotlin for windows/), not a problem. Keys also lists the release key djdl-rk-2026 as pinned.",
     "Signed in uses pkey login (a personal token), never PKEY_ADMIN_COOKIE.",
     "The summary chip counts to-do items and warnings, then the run time: '2 to do · 1 warning · 1.2 s' in both runs, the same counts Integration shows. It is red while anything is to do, amber for warnings alone and green when clear. The exit code is 1 while anything is left to do, and the prompt turns red.",
-    "Layout is UK-14's terminal kit: 80 columns, bold section headings, two-column terms and dim details; Integration, CI and Commerce are their own groups. At 44 columns (phone only) the same facts re-wrap, every detail and fix line kept and long links wrapped. One terminal is drawn per size, with Symbols and How it behaves beside it (one card on phone).",
+    "Layout is UK-14's terminal kit: 80 columns, bold section headings, two-column terms and dim details; Integration, CI and Commerce are their own groups. At 40 columns (phone only) the same facts re-wrap, every detail and fix line kept and long links wrapped. One terminal is drawn per size, with Symbols and How it behaves beside it (one card on phone).",
     "No 'outlet', 'grant', 'capability' or programme id appears in the output.",
-    "Commerce prints 'off' on its own line; 'needs Licensing' shows only while Licensing is off (here it is Verified). Console links appear only on the two to-do rows."
+    "Commerce prints 'off' on its own line; 'needs Licensing' shows only while Licensing is off (here it is Verified). Console links appear only on the two to-do rows.",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13).",
+    "The narrow run is the terminal matrix's 40-column row and the warning glyph is ▲ ('!' only as the ASCII fallback) (sdk-c-22)."
   ],
   "status": "mockup",
   "designReview": {

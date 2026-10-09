@@ -8,7 +8,6 @@
 <div class="board cols-2 start floor" data-service="license">
   <div class="board-title">
     <h1>Licenses list states</h1>
-    <p>The other four states of licenses.list.</p>
   </div>
 
   <!-- First run (ADMIN.md T2: Empty is first-run, why and create). -->
@@ -32,7 +31,7 @@
         </div>
       </div>
     </div>
-    <figcaption><strong>First run</strong>No holder filter, search or table head. New license moves into the empty state, so there is one primary.</figcaption>
+    <figcaption><strong>First run</strong></figcaption>
   </figure>
 
   <!-- No match (ADMIN.md T2: filtered empty is no-results with Clear filters). -->
@@ -46,35 +45,30 @@
         </div>
       </header>
       <div class="mk-stack-4">
-        <div class="toolbar hide-phone">
-          <div class="segmented" role="tablist" aria-label="Holder">
-            <span>All<span class="count">1,284</span></span>
-            <span><i class="ic ic-user-round sm"></i>In an account<span class="count">1,071</span></span>
-            <span class="on"><i class="ic ic-key-round sm"></i>Floating<span class="count">206</span></span>
+        <div class="workbench">
+          <div class="toolbar">
+            <div class="search-field typed"><i class="ic ic-search"></i><span>Q2KD-88</span></div>
+            <span class="filter on"><i class="ic ic-check"></i>Floating<span class="count">206</span></span>
+            <span class="filter on"><i class="ic ic-check"></i>Tier: Studio</span>
+            <span class="filter"><i class="ic ic-plus"></i>Batch</span>
           </div>
-        </div>
-        <div class="toolbar">
-          <div class="search-field typed"><i class="ic ic-search"></i><span>Q2KD-88</span></div>
-          <span class="filter on show-phone"><i class="ic ic-check"></i>Holder: Floating</span>
-          <span class="filter on"><i class="ic ic-check"></i>Tier: Studio</span>
-          <span class="filter"><i class="ic ic-plus"></i>Batch</span>
-        </div>
-        <div class="table-card">
-          <table class="table stack-phone">
-            <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
-            <tbody><tr><td colspan="4">
-              <div class="empty">
-                <span class="empty-icon muted"><i class="ic ic-search"></i></span>
-                <h3>No licenses match</h3>
-                <p>No floating Studio license has a key or id containing “Q2KD-88”.</p>
-                <div class="btn-row"><button class="btn outline"><i class="ic ic-x"></i>Clear filters</button></div>
-              </div>
-            </td></tr></tbody>
-          </table>
+          <div class="table-card" role="region" aria-label="Licenses list states table" tabindex="0">
+            <table class="table stack-phone">
+              <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
+              <tbody><tr><td colspan="4">
+                <div class="empty">
+                  <span class="empty-icon muted"><i class="ic ic-search"></i></span>
+                  <h3>No licenses match</h3>
+                  <p>No floating Studio license has a key or id containing “Q2KD-88”.</p>
+                  <div class="btn-row"><button class="btn outline"><i class="ic ic-x"></i>Clear filters</button></div>
+                </div>
+              </td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
-    <figcaption><strong>No match</strong>Search, holder and tier stay set. Clear filters resets all three.</figcaption>
+    <figcaption><strong>No match</strong>Clear filters resets all three.</figcaption>
   </figure>
 
   <!-- Loading (ADMIN.md T2: skeleton rows that match the columns; no spinner, no “Loading…”). -->
@@ -88,28 +82,29 @@
         </div>
       </header>
       <div class="mk-stack-4">
-        <div class="toolbar hide-phone">
-          <div class="segmented" role="tablist" aria-label="Holder">
-            <span class="on">All<span class="skeleton inline"></span></span>
-            <span><i class="ic ic-user-round sm"></i>In an account<span class="skeleton inline"></span></span>
-            <span><i class="ic ic-mail sm"></i>Waiting<span class="skeleton inline"></span></span>
+        <div class="workbench">
+          <div class="toolbar">
+            <div class="search-field"><i class="ic ic-search"></i><span>Search licenses</span></div>
+            <span class="filter"><i class="ic ic-user-round"></i>In an account<span class="skeleton inline"></span></span>
+            <span class="filter"><i class="ic ic-mail"></i>Waiting<span class="skeleton inline"></span></span>
+            <span class="filter"><i class="ic ic-key-round"></i>Floating<span class="skeleton inline"></span></span>
           </div>
-        </div>
-        <div class="table-card">
-          <table class="table stack-phone flow">
-            <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
-            <tbody>
-              <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 70%"></span><span class="skeleton" style="width: 90%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
-              <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 55%"></span><span class="skeleton" style="width: 80%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 84px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
-              <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 80%"></span><span class="skeleton" style="width: 60%"></span></div></div></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
-              <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 62%"></span><span class="skeleton" style="width: 84%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 64px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
-            </tbody>
-          </table>
-          <span class="sr-only" role="status">Loading licenses</span>
+          <div class="table-card" role="region" aria-label="Licenses list states table" tabindex="0">
+            <table class="table stack-phone flow">
+              <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
+              <tbody>
+                <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 70%"></span><span class="skeleton" style="width: 90%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
+                <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 55%"></span><span class="skeleton" style="width: 80%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 84px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
+                <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 80%"></span><span class="skeleton" style="width: 60%"></span></div></div></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton capsule" style="width: 72px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
+                <tr><td><div class="cell-with-logo"><span class="skeleton media"></span><div class="grow mk-stack-2"><span class="skeleton" style="width: 62%"></span><span class="skeleton" style="width: 84%"></span></div></div></td><td><span class="skeleton capsule" style="width: 96px"></span></td><td><span class="skeleton capsule" style="width: 64px"></span></td><td><span class="skeleton" style="width: 44px"></span></td></tr>
+              </tbody>
+            </table>
+            <span class="sr-only" role="status">Loading licenses</span>
+          </div>
         </div>
       </div>
     </div>
-    <figcaption><strong>Loading</strong>Skeleton rows at the real row height under the real column heads, and skeleton holder counts. Screen readers hear “Loading licenses” after 150 ms.</figcaption>
+    <figcaption><strong>Loading</strong>Screen readers hear “Loading licenses” after 150 ms.</figcaption>
   </figure>
 
   <!-- Error (ADMIN.md T2: inline in the table body with Retry; filters stay). -->
@@ -123,26 +118,28 @@
         </div>
       </header>
       <div class="mk-stack-4">
-        <div class="toolbar">
-          <div class="search-field"><i class="ic ic-search"></i><span>Search name, email, key or id</span></div>
-          <span class="filter on"><i class="ic ic-check"></i>Tier: Education</span>
-          <span class="filter on"><i class="ic ic-check"></i>Duration: Ends within 30 days</span>
-        </div>
-        <div class="table-card">
-          <table class="table stack-phone">
-            <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
-            <tbody><tr><td colspan="4">
-              <div class="empty" role="alert">
-                <span class="empty-icon danger"><i class="ic ic-circle-x"></i></span>
-                <h3>Licenses didn’t load</h3>
-                <p>Polaris Key took too long to answer (504). Retry loads the same list with your filters.</p>
-                <div class="btn-row"><button class="btn outline"><i class="ic ic-refresh-cw"></i>Retry</button></div>
-              </div>
-            </td></tr></tbody>
-          </table>
+        <div class="workbench">
+          <div class="toolbar">
+            <div class="search-field"><i class="ic ic-search"></i><span>Search licenses</span></div>
+            <span class="filter on"><i class="ic ic-check"></i>Tier: Education</span>
+            <span class="filter on"><i class="ic ic-check"></i>Duration: Ends within 30 days</span>
+          </div>
+          <div class="table-card" role="region" aria-label="Licenses list states table" tabindex="0">
+            <table class="table stack-phone">
+              <thead><tr><th>License</th><th>Holder</th><th>Tier</th><th>Devices</th></tr></thead>
+              <tbody><tr><td colspan="4">
+                <div class="empty" role="alert">
+                  <span class="empty-icon danger"><i class="ic ic-circle-x"></i></span>
+                  <h3>Licenses didn’t load</h3>
+                  <p>Polaris Key took too long to answer (504).</p>
+                  <div class="btn-row"><button class="btn outline"><i class="ic ic-refresh-cw"></i>Retry</button></div>
+                </div>
+              </td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
-    <figcaption><strong>Error</strong>Inline in the table body, not a toast; the filters stay set.</figcaption>
+    <figcaption><strong>Error</strong></figcaption>
   </figure>
 </div>

@@ -16,8 +16,9 @@ import { KvMock } from "./kvMock.js";
 import { makeEnv, mkReq, NOW, seedProduct } from "./seed.js";
 import { loadProduct } from "../src/core/products.js";
 import { handleJwks, handleTrustManifest } from "../src/core/trust.js";
+import { REVOKED_KEY_LISTING_SECONDS } from "@polaris-key/protocol/trust";
 
-const TRUST_WINDOW = 2 * 300; // 2 × cacheSeconds
+const TRUST_WINDOW = 2 * 300; // 2 × cacheSeconds (a revocation this old is still listed)
 
 async function seedRevokedKey(
   db: ReturnType<typeof makeTestDb>,
@@ -47,12 +48,22 @@ describe("trust manifest — explicit revoked-key emission (§2.3)", () => {
     const env = makeEnv(new KvMock(), ["djdl"]);
     await seedProduct(db, "djdl");
     await seedRevokedKey(db, "pkey-fresh-revoked", NOW - TRUST_WINDOW + 60);
-    await seedRevokedKey(db, "pkey-stale-revoked", NOW - TRUST_WINDOW - 60);
+    await seedRevokedKey(
+      db,
+      "pkey-stale-revoked",
+      NOW - REVOKED_KEY_LISTING_SECONDS - 60,
+    );
     // A key revoked before the column existed: no timestamp, long past any cache window.
     await seedRevokedKey(db, "pkey-legacy-revoked", null);
     const product = (await loadProduct(env, db, "djdl"))!;
 
-    const res = await handleTrustManifest(mkReq("GET", {}), db, product, NOW);
+    const res = await handleTrustManifest(
+      mkReq("GET", {}),
+      env,
+      db,
+      product,
+      NOW,
+    );
     expect(res.status).toBe(200);
     const doc = manifestPayload(await res.text());
     const byKid = Object.fromEntries(doc.keys.map((k) => [k.kid, k.status]));

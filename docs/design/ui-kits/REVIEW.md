@@ -42,6 +42,10 @@ catches what a machine can see. This list is for what it cannot.
 - [ ] Spacing sits on the 4 px grid. Card padding and control heights match the platform row of
       §1.5 rule 5: no mobile sizes on desktop, and no cramped Godot panels at 720p.
 - [ ] Weights are 400, 500 and 600, with no all-caps buttons, no 4 px cards and no coloured glow.
+- [ ] No accent-tinted card stroke, sheet rim or glow, under `native` and forced colours included; no static accent rule under a title bar.
+- [ ] A QR appears only on TV, console and pad-only screens and for an offline request; never on desktop, tablet or phone.
+- [ ] Each component's Must not (UI-KITS §4.1) has a negative case, and every matrix cell has runtime evidence or a documented N/A.
+- [ ] A refusal is neutral with its fix as the one primary (a terminal prints ▲, never ✗); an action that leaves the app carries the new-window glyph, not an ellipsis.
       There is one switch design.
 - [ ] Every state is visible only when it applies: hover, pressed, disabled at 42 %, busy with its
       label kept, and selected. A locked setting shows its value as text with a lock.

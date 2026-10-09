@@ -66,7 +66,11 @@ async function sessionCookie(
   env: Env,
   identity: SessionIdentity,
 ): Promise<{ cookie: string; csrf: string }> {
-  const { token, session } = await issueSession(env, identity, NOW);
+  const { token, session } = await issueSession(
+    env,
+    { authTime: NOW, stepUp: true, ...identity },
+    NOW,
+  );
   return { cookie: `${ADMIN_COOKIE}=${token}`, csrf: session.csrf };
 }
 

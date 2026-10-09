@@ -101,6 +101,9 @@ export interface ProjectFlags {
   error?: ServiceErrorMap;
   localOverrides?: Record<string, JSONValue>;
   capabilities: ServicesMap;
+  /** The licence GATE's input: the build's expectation OR a loaded discovery that says
+   *  on, never switched off by discovery. Omitted: `capabilities.license.enabled`. */
+  licenseGate?: boolean;
 }
 
 /**
@@ -115,7 +118,8 @@ export function projectState(
 ): PolarisState {
   const gate = licenseState({
     ...gateInput,
-    licenseServiceEnabled: flags.capabilities.license.enabled,
+    licenseServiceEnabled:
+      flags.licenseGate ?? flags.capabilities.license.enabled,
     doc: docs.license,
   });
   const configEntries = docs.config;

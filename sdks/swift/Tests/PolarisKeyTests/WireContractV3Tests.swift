@@ -196,7 +196,8 @@ final class WireContractV3Tests: XCTestCase {
         let license = signer.sign(Fixtures.license(issuedAt: issued))
         let config = signer.sign(Fixtures.config(issuedAt: issued))
         let opts = VerifyOptions(
-            trust: signer.trust, expectedAud: "djdl", deviceId: "dev", now: issued)
+            trust: signer.trust, expectedAud: "djdl", deviceId: "dev", lastAcceptedIssuedAt: nil,
+            now: issued)
         XCTAssertNotNil(verifyLicenseDoc(license, options: opts))
         XCTAssertNotNil(verifyConfigDoc(config, options: opts))
         XCTAssertNil(verifyConfigDoc(license, options: opts), "a licence is not a config doc")

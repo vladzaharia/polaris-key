@@ -16,10 +16,12 @@
     "Replace a device: heading 'Your license is on 5 of 5 devices' and lede 'To use it on this iPhone, replace one.' The devices show OS (and store) and last use, with 'Last used' once above the list and the least recent preselected. The primary is 'Replace…', and the confirmationDialog 'Replace Leo's iPad?' reads 'It stops using Diceroll Family now. You can add it back when a device is free.', with a destructive 'Replace and continue' and 'Cancel'. The capsule under the sheet is hidden.",
     "After keeping an existing license there is no Done step: the gate opens the game (no free-tier line) and the toast reads 'Signed in as Mara Fennick' over 'Standard license', hugging its content.",
     "Dates and units are US style ('Until Oct 31, 2027', '1 of 3 devices').",
-    "A visible 'Kit preview · fixture product' callout says Diceroll is drawn as an iPhone SwiftUI app with Sign-in on only to show the kit (it ships the Godot kit, Sign-in off). The code panel is a generic iOS app's ContentView, not Diceroll's.",
+    "A visible 'Kit preview' callout reads 'SwiftUI kit with Diceroll's facts (Sign-in on)'; Diceroll is drawn as an iPhone SwiftUI app with Sign-in on only to show the kit (it ships the Godot kit, Sign-in off). The code panel is a generic iOS app's ContentView, not Diceroll's.",
     "Four sizes: at wide the four portraits in story order (1, 2, 2b, 3), then the landscape sign-in (two cells) beside the code (two cells); at desktop the landscape phone and the code share one cell beside the portrait sign-in, three frames a row; tablet backfills the row beside the first phone; phone shows the portrait frames one by one (the landscape hides).",
     "Glass secondaries keep a visible hairline edge on the light page.",
-    "Board copy: the lede is '.polarisKeyGate(pk) on iPhone.'; each caption is the state name plus one sentence ('1 · Sign in, landscape' has none); the code note reads 'No theme set: the Polaris look in Diceroll's accent. The native preset switches to the system look.' The glossary word is 'a free device', never 'seat'."
+    "Board copy: the lede is '.polarisKeyGate(pk) on iPhone.'; each caption is the state name plus at most one sentence the frame can't show ('1 · Sign in, landscape' has none); the code panel's caption is 'What the app writes.' and its note reads 'No theme set: Polaris look in Diceroll's accent.' The glossary word is 'a free device', never 'seat'.",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13).",
+    "A full license is neutral (DL6, sdk-c-25): 'No free devices' in strong text and text-strong seat segments, never amber; Replace a device is the row's action."
   ],
   "status": "mockup",
   "designReview": {

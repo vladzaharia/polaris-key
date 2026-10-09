@@ -1,4 +1,4 @@
-<div class="console" data-service="core">
+<div class="console" data-service="release">
   <header class="topbar">
     <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
     <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
@@ -29,25 +29,24 @@
       <a class="nav-item" href="#"><i class="ic ic-git-branch"></i><span class="nav-text">Release tracks</span></a>
       <a class="nav-item" href="#"><i class="ic ic-trending-up"></i><span class="nav-text">Rollouts</span></a>
       <a class="nav-item" href="#"><i class="ic ic-star-cut"></i><span class="nav-text">Channels</span></a>
-      <a class="nav-item active" href="#" data-service="distribution"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span><span class="count">2</span></a>
+      <a class="nav-item active" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span><span class="count">2</span></a>
       <a class="nav-item" href="#"><i class="ic ic-circle-arrow-up"></i><span class="nav-text">Updates</span></a>
       <a class="nav-item" href="#"><i class="ic ic-heart-pulse"></i><span class="nav-text">Health</span></a>
     </div>
     <div class="nav-group closed" data-service="identity"><button class="nav-label" aria-expanded="false">Sign-in<i class="ic ic-chevron-right sm"></i></button></div>
-    <div class="nav-group closed" data-service="sync"><button class="nav-label" aria-expanded="false">Cloud Sync<i class="ic ic-chevron-right sm"></i></button></div>
+    <div class="nav-group closed single" data-service="sync"><a class="nav-label" href="#">Cloud Sync</a></div>
     <div class="sidebar-foot">
       <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
       <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
     </div>
   </nav>
 
-  <main class="main" data-service="distribution">
+  <main class="main">
     <!-- A focused flow: one column at the page's narrow measure, so no line stretches at wide. -->
     <div class="page form centered">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">Packages</a><i class="ic ic-chevron-right"></i><a href="#">PyPI</a><i class="ic ic-chevron-right"></i><span class="mono">djdl-crates</span></nav>
+      <header class="page-head is-record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Packages</a><i class="ic ic-chevron-right"></i><a href="#">PyPI</a></nav>
         <div class="page-heading"><h1>Publish djdl-crates to PyPI.org</h1></div>
-        <p class="page-sub"><span>From DJDL’s own CI, through PyPI’s trusted publishing.</span></p>
       </header>
 
       <!-- F-35: the registry wizard (claim, trusted-publisher deep link, verify) and the per-package L2 approval. -->
@@ -60,7 +59,8 @@
           <div class="task done">
             <span class="task-mark"></span>
             <div class="task-title">Claim the name on PyPI.org</div>
-            <div class="task-desc"><span class="mono">djdl-crates</span> was free; a pending publisher reserves it for <span class="mono">example-org/djdl</span>.</div>
+            <div class="task-desc"><span class="mono">djdl-crates</span> was free.</div>
+            <div class="task-desc">A pending publisher reserves it for <span class="mono">example-org/djdl</span>.</div>
           </div>
           <div class="task done">
             <span class="task-mark"></span>
@@ -79,7 +79,8 @@
           <div class="task done">
             <span class="task-mark"></span>
             <div class="task-title">Verify</div>
-            <div class="task-desc">Oct 2, 10:16: PyPI.org trusts <span class="mono">release.yml</span> in <span class="mono">example-org/djdl</span>, and the workflow has its step.</div>
+            <div class="task-desc split-line"><span>PyPI.org trusts <span class="mono">release.yml</span> in <span class="mono">example-org/djdl</span></span><span class="meta">Oct 2, 10:16</span></div>
+            <div class="task-desc">The workflow has its step</div>
             <div class="task-body">
               <div class="code fade-x wrap-phone">
                 <div class="code-head"><span class="code-file">.github/workflows/release.yml</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
@@ -94,7 +95,8 @@
           <div class="task current">
             <span class="task-mark"></span>
             <div class="task-title">Approve</div>
-            <div class="task-desc">From the next run of <span class="mono">release.yml</span>, each new version of <span class="mono">djdl-crates</span> on these tracks also goes to PyPI.org.</div>
+            <div class="task-desc">Each new version of <span class="mono">djdl-crates</span> on these tracks also goes to PyPI.org.</div>
+            <div class="task-desc">Starts with the next run of <span class="mono">release.yml</span>.</div>
             <div class="task-body">
               <div class="mk-cluster">
                 <span class="chip on">stable</span>
@@ -123,3 +125,120 @@
     </div>
   </main>
 </div>
+
+<!-- F-35's other registries, one frame per feed type in the PyPI flow's pattern, at its Approve step:
+     npm to npmjs (OIDC trusted publishing, provenance) and a container image to GHCR (the repository's
+     own GITHUB_TOKEN). Maven Central and crates.io follow the same pattern. Docker Hub has no trusted
+     publishing, so it would need a stored secret, which F-35 rules out. -->
+<section class="board below" aria-label="Other public registries">
+  <div class="board-title"><h1>Other public registries</h1></div>
+
+  <figure class="board-item">
+    <section class="card" aria-labelledby="npm-steps">
+      <div class="card-head">
+        <div class="title"><h2 id="npm-steps">Publish @djdl/crate-schema to npmjs</h2></div>
+        <div class="progress-inline"><span>3 of 4 done</span><div class="progress success" style="--v: 75%"></div></div>
+      </div>
+      <div class="tasks padded">
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Claim the name on npmjs</div>
+          <div class="task-desc">The <span class="mono">@djdl</span> scope belongs to the <span class="mono">djdl</span> organization.</div>
+        </div>
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Add the trusted publisher on npmjs</div>
+          <div class="task-desc split-line"><span>Ana Lima</span><span class="meta">Oct 2, 10:31</span></div>
+        </div>
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Verify</div>
+          <div class="task-desc">npmjs trusts <span class="mono">release.yml</span> in <span class="mono">example-org/djdl</span></div>
+          <div class="task-desc">Each version carries provenance</div>
+        </div>
+        <div class="task current">
+          <span class="task-mark"></span>
+          <div class="task-title">Approve</div>
+          <div class="task-desc">New versions on these tracks also go to npmjs.</div>
+          <div class="task-body">
+            <div class="mk-cluster">
+              <span class="chip on">stable, as latest</span>
+              <span class="chip on">beta, as next</span>
+              <span class="chip off"><i class="ic ic-minus"></i>dev never goes</span>
+            </div>
+            <div class="callout warning">
+              <i class="ic ic-triangle-alert"></i>
+              <div class="grow">
+                <div class="callout-title">This can’t be undone</div>
+                <div class="callout-text measure-70">npmjs never takes the same version number twice.</div>
+              </div>
+            </div>
+            <div class="field fit">
+              <label class="field-label">Type <span class="confirm-word">@djdl/crate-schema</span> to approve</label>
+              <div class="input mono"><span class="grow">@djdl/crate-schema</span></div>
+            </div>
+            <div class="mk-cluster actions-under">
+              <button class="btn outline text-phone">Cancel</button>
+              <button class="btn primary"><i class="ic ic-arrow-up-right"></i>Approve publishing to npmjs</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <figcaption><strong>npm to npmjs</strong></figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <section class="card" aria-labelledby="ghcr-steps">
+      <div class="card-head">
+        <div class="title"><h2 id="ghcr-steps">Publish diceroll/table-server to GHCR</h2></div>
+        <div class="progress-inline"><span>3 of 4 done</span><div class="progress success" style="--v: 75%"></div></div>
+      </div>
+      <div class="tasks padded">
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Claim the name on GHCR</div>
+          <div class="task-desc"><span class="mono">ghcr.io/example-org/table-server</span> was free.</div>
+        </div>
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Let the repository push it</div>
+          <div class="task-desc split-line"><span><span class="mono">example-org/diceroll</span> uses its own <span class="mono">GITHUB_TOKEN</span></span><span class="meta">Oct 2, 11:05</span></div>
+        </div>
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Verify</div>
+          <div class="task-desc">The workflow has <span class="mono">packages: write</span></div>
+        </div>
+        <div class="task current">
+          <span class="task-mark"></span>
+          <div class="task-title">Approve</div>
+          <div class="task-desc">New images on these tracks also go to GHCR.</div>
+          <div class="task-body">
+            <div class="mk-cluster">
+              <span class="chip on">stable, as latest</span>
+              <span class="chip on">beta, as beta</span>
+              <span class="chip off"><i class="ic ic-minus"></i>dev never goes</span>
+            </div>
+            <div class="callout warning">
+              <i class="ic ic-triangle-alert"></i>
+              <div class="grow">
+                <div class="callout-title">This can’t be undone</div>
+                <div class="callout-text measure-70">A public image on GHCR can’t be made private again.</div>
+              </div>
+            </div>
+            <div class="field fit">
+              <label class="field-label">Type <span class="confirm-word">table-server</span> to approve</label>
+              <div class="input mono"><span class="grow">table-server</span></div>
+            </div>
+            <div class="mk-cluster actions-under">
+              <button class="btn outline text-phone">Cancel</button>
+              <button class="btn primary"><i class="ic ic-arrow-up-right"></i>Approve publishing to GHCR</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <figcaption><strong>Container image to GHCR</strong></figcaption>
+  </figure>
+</section>

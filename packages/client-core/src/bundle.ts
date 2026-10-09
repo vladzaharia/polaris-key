@@ -1,4 +1,4 @@
-// Offline activation bundles — wire contract v3 §7.
+// Offline activation bundles — WIRE-CONTRACT-V4 §7.
 //
 // A bundle (`pkey-bundle+jws`) is the air-gapped activation path (D-12): an operator mints
 // one against a device's request code, carries it across on a USB stick, and the client
@@ -25,6 +25,15 @@
 //
 // `verifyBundle` — the plain `VerifiedBundle | null` shape — is the ergonomic call for hosts
 // that only need yes/no. `inspectBundle` is the same walk with the step attributed.
+//
+// ── TWO PROFILES ────────────────────────────────────────────────────────────────────────
+//
+// `import` is the operator's act: every step as numbered, with the bundle's 30-day import
+// window and the per-type anti-replay floors (each inner document strictly newer than the
+// verified cached document of its type). `reload` is the same bundle re-verified from the cache
+// at every start, which is what makes `activation: "bundle"` a signed fact rather than an
+// unsigned marker: steps 1–3 without step 2's two import-window comparisons (a bundle imported
+// on day 29 must still activate on day 300), and no floors (the documents ARE the cached ones).
 
 import { verifyJws, type TrustSet } from "@polaris-key/jws";
 import { MAX_BUNDLE_BYTES, type BundleDoc } from "@polaris-key/protocol/core";
@@ -32,7 +41,7 @@ import type { LicenseDoc } from "@polaris-key/protocol/license";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import { CLOCK_SKEW_SECONDS, isWireInteger } from "./claims.js";
 import { verifyConfigDoc, verifyLicenseDoc } from "./verify.js";
-import { mergeTrust, verifyTrustManifest } from "./trust.js";
+import { mergeTrust, usablePins, verifyTrustManifest } from "./trust.js";
 
 export { MAX_BUNDLE_BYTES };
 
@@ -48,12 +57,17 @@ export interface VerifiedBundleDoc<T> {
 /** The result of a bundle that passed all four verification steps. Everything the host needs
  *  for §7 step 5's atomic write, and nothing it would have to re-derive. */
 export interface VerifiedBundle {
-  /** The mint's audit anchor, recorded as `importedBundle.bundleId`. */
+  /** The mint's audit anchor. */
   bundleId: string;
-  /** The inner trust manifest's compact JWS — cached as `trustJws`, so the imported install
-   *  reloads with exactly the key set the bundle shipped with. */
+  /** The inner trust manifest's compact JWS — cached as `trustJws` unless the install holds a
+   *  verified manifest with a newer `issuedAt` (§7 step 5). */
   trustJws: string;
-  /** `pinned ∪ non-revoked manifest keys`, with the pins terminal — the set step 4 used. */
+  /** The inner trust manifest's signed `issuedAt`. */
+  trustIssuedAt: number;
+  /** Pinned kids the inner manifest newly tombstones (§1); the host files the manifest as their
+   *  evidence in `pinRevocations`, in the same write. */
+  revokedPins: string[];
+  /** `usable pins ∪ live manifest keys`, with the pins terminal — the set step 4 used. */
   effectiveTrust: TrustSet;
   /** Whichever documents the bundle carried. `license` absent ⇒ NO activation effect: the
    *  gate stays `needs-activation` (or `not-applicable`), never `activation: "bundle"` (§7). */
@@ -84,10 +98,13 @@ export type BundleInspection =
   | { ok: false; reason: BundleRefusalReason };
 
 export interface BundleOptions {
-  /** The ONLY keys a bundle may be verified against (§7.1). The manifest it carries is
-   *  verified against these too — an air-gapped device must not be the one place where a
-   *  planted key set is accepted. */
+  /** The ONLY keys a bundle may be verified against (§7.1), less `tombstones`. The manifest it
+   *  carries is verified against these too — an air-gapped device must not be the one place
+   *  where a planted key set is accepted. */
   pinned: TrustSet;
+  /** Pinned kids tombstoned on this install (`loadPinRevocations`): not usable for the bundle,
+   *  its manifest or the effective set. */
+  tombstones?: readonly string[];
   /** The expected `aud` — this client's product slug. */
   product: string;
   /** The LOCAL device id. Step 4 binds inner documents to this, not to the bundle's own
@@ -96,6 +113,15 @@ export interface BundleOptions {
   /** Epoch seconds. Required — a bundle import is a deliberate, timestamped operation, and
    *  defaulting the clock here would hide which clock the decision was made against. */
   now: number;
+  /** §7 step 4's per-type anti-replay floors: the `issuedAt` of the VERIFIED cached document of
+   *  each type, or `null` when none is held. Each inner document must be strictly newer, or the
+   *  import is `inner-doc-rejected`. Required, like `VerifyOptions.lastAcceptedIssuedAt`: a
+   *  floor that is not a number or `null` refuses the document. The reload profile passes
+   *  `null` for both (the inner documents are the cached ones). */
+  floors: { license: number | null; config: number | null };
+  /** `import` (the operator's act) or `reload` (the cached bundle at every start: no import
+   *  window). Anything else is treated as `import`, the stricter of the two. */
+  profile: "import" | "reload";
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -123,7 +149,8 @@ export async function inspectBundle(
   // with the `typ`, so an untyped 256 KiB blob accepted here could be re-presented at an
   // ordinary document call site. The cap is taken from the protocol constant rather than
   // from the caller — no host gets to choose how big a bundle may be.
-  const verified = await verifyJws<BundleDoc>(jws, opts.pinned, {
+  const pins = usablePins(opts.pinned, opts.tombstones ?? []);
+  const verified = await verifyJws<BundleDoc>(jws, pins, {
     typ: "pkey-bundle+jws",
     maxPayloadBytes: MAX_BUNDLE_BYTES,
   });
@@ -131,10 +158,11 @@ export async function inspectBundle(
   const bundle = verified.payload;
   if (!isPlainObject(bundle)) return refuse("bundle-jws-rejected");
 
-  // ── 2. The bundle's OWN claims, on NETWORK-path freshness ─────────────────────────────
+  // ── 2. The bundle's OWN claims, on NETWORK-path freshness (import profile) ────────────
   // §7.2: a stale bundle is refused even though the documents it carries are validated with
   // the reload profile. The two windows mean different things — `expiresAt` here is the
-  // operator's import deadline, while the inner documents' long bound is `graceUntil`.
+  // operator's import deadline, while the inner documents' long bound is `graceUntil`. The
+  // reload profile keeps every check here except the two window comparisons.
   if (typeof bundle.bundleId !== "string" || bundle.bundleId === "")
     return refuse("bundle-claims-rejected");
   if (typeof bundle.trust !== "string") return refuse("bundle-claims-rejected");
@@ -148,10 +176,12 @@ export async function inspectBundle(
   ) {
     return refuse("bundle-claims-rejected");
   }
-  if (bundle.issuedAt > opts.now + CLOCK_SKEW_SECONDS)
-    return refuse("bundle-claims-rejected");
-  if (opts.now > bundle.expiresAt + CLOCK_SKEW_SECONDS)
-    return refuse("bundle-claims-rejected");
+  if (opts.profile !== "reload") {
+    if (bundle.issuedAt > opts.now + CLOCK_SKEW_SECONDS)
+      return refuse("bundle-claims-rejected");
+    if (opts.now > bundle.expiresAt + CLOCK_SKEW_SECONDS)
+      return refuse("bundle-claims-rejected");
+  }
 
   if (!isPlainObject(bundle.docs)) return refuse("bundle-claims-rejected");
   const licenseJws = bundle.docs.license;
@@ -161,8 +191,8 @@ export async function inspectBundle(
   if (configJws !== undefined && typeof configJws !== "string")
     return refuse("bundle-claims-rejected");
   // A bundle carrying NEITHER document is vacuous (§7): it can grant nothing and configure
-  // nothing, so importing it would write an `importedBundle` marker with no content behind
-  // it — an install that looks provisioned and is not. Refused here, at the claims step,
+  // nothing, so importing it would write a `bundle` slice with no content behind it — an
+  // install that looks provisioned and is not. Refused here, at the claims step,
   // for the same reason the other addressing failures are: nothing about the trust manifest
   // or the (absent) documents is relevant to a bundle that was never going to do anything.
   if (licenseJws === undefined && configJws === undefined)
@@ -175,19 +205,23 @@ export async function inspectBundle(
   // the pinned-substitution rule, which is what stops a bundle from shipping its own roots.
   const manifest = await verifyTrustManifest(bundle.trust, {
     pinned: opts.pinned,
+    tombstones: opts.tombstones,
     expectedAud: opts.product,
     now: opts.now,
     checkFreshness: false,
   });
   if (!manifest.doc) return refuse("bundle-trust-rejected");
-  const effectiveTrust = mergeTrust(opts.pinned, manifest.discovered);
+  const effectiveTrust = mergeTrust(
+    usablePins(pins, manifest.revokedPins),
+    manifest.discovered,
+  );
 
   // ── 4. Each inner document against the EFFECTIVE set, reload profile ──────────────────
   // Bound to the LOCAL device id — step 2 has only proved the BUNDLE claims this device, and
-  // a document inside it may claim another. There is no anti-replay floor here: a bundle
-  // import is the act of establishing state on a device that has none, so there is no
-  // previously-accepted document to be newer than. (The host applies its own floor after the
-  // write, on the next network sync.)
+  // a document inside it may claim another. Each must be strictly newer than the verified
+  // cached document of its type (`floors`): an old bundle cannot roll a device back to the
+  // grant it held before, and the reload profile names no floor because its documents ARE the
+  // cached ones.
   const reload = {
     trust: effectiveTrust,
     expectedAud: opts.product,
@@ -195,27 +229,37 @@ export async function inspectBundle(
     now: opts.now,
     checkFreshness: false,
   };
+  const floors = (opts.floors ?? {}) as Partial<BundleOptions["floors"]>;
   const docs: VerifiedBundle["docs"] = {};
   if (licenseJws !== undefined) {
-    const doc = await verifyLicenseDoc(licenseJws, reload);
+    const doc = await verifyLicenseDoc(licenseJws, {
+      ...reload,
+      lastAcceptedIssuedAt: floors.license as number | null,
+    });
     if (!doc) return refuse("inner-doc-rejected");
     docs.license = { jws: licenseJws, doc };
   }
   if (configJws !== undefined) {
-    const doc = await verifyConfigDoc(configJws, reload);
+    const doc = await verifyConfigDoc(configJws, {
+      ...reload,
+      lastAcceptedIssuedAt: floors.config as number | null,
+    });
     if (!doc) return refuse("inner-doc-rejected");
     docs.config = { jws: configJws, doc };
   }
 
   // ── 5. The caller's turn ──────────────────────────────────────────────────────────────
   // Everything above passed, so and only so may the host write the cache atomically:
-  // `trustJws`, `docs`, and `importedBundle: {bundleId, importedAt}`. No token is created —
-  // a bundle-activated install has no credential and never talks to the server.
+  // `bundle` (this JWS, verbatim), `trustJws` (unless the held one is newer), `docs`, and the
+  // evidence for `revokedPins`. No token is created — a bundle-activated install has no
+  // credential and never talks to the server.
   return {
     ok: true,
     bundle: {
       bundleId: bundle.bundleId,
       trustJws: bundle.trust,
+      trustIssuedAt: manifest.doc.issuedAt,
+      revokedPins: manifest.revokedPins,
       effectiveTrust,
       docs,
     },

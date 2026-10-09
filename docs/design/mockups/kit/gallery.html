@@ -117,7 +117,7 @@
       <div class="mk-stack-3">
         <p class="eyebrow">Type</p>
         <div class="mk-stack-2">
-          <span class="type-page">Page title 28/36</span>
+          <span class="type-page">Page title 36/44</span>
           <span class="type-section">Block title 18/24</span>
           <span class="type-card">Card title 16/24</span>
           <span class="type-body">Body 14/20: the text most of a screen is set in.</span>
@@ -193,7 +193,28 @@
   </section>
 
   <section class="g-sec">
-    <h2>Buttons <code>.btn .primary .outline .ghost .action .danger .danger-outline .link · .sm .xs .lg .icon .block .busy .disabled</code></h2>
+    <h2>Brand v2 masthead and shell <code>.crumbs .crumb-chip (.product .platform) · .page-head.is-record · .page-icon.mast .mast-tile · .nav-group.single</code></h2>
+    <div class="mk-stack-6">
+      <header class="page-head">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="license" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Licensing</a></nav>
+        <div class="page-heading"><h1>Licenses</h1></div>
+        <div class="page-actions"><button class="btn outline"><i class="ic ic-key-square"></i>Create keys in bulk</button><button class="btn primary"><i class="ic ic-plus"></i>New license</button></div>
+      </header>
+      <header class="page-head" data-service="sync">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" aria-hidden="true"><i class="svc"></i></span><a href="#">Diceroll</a></nav>
+        <div class="page-icon mast" aria-hidden="true"><span class="mast-tile"><i class="svc"></i></span></div>
+        <div class="page-heading"><h1>Cloud Sync</h1></div>
+        <div class="page-actions"><button class="btn ghost"><i class="ic ic-book-open"></i>Guide</button></div>
+      </header>
+      <header class="page-head is-record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a><i class="ic ic-chevron-right"></i><a href="#">Connections</a></nav>
+        <div class="page-heading"><h1>Lakeside University</h1></div>
+      </header>
+    </div>
+  </section>
+
+  <section class="g-sec">
+    <h2>Buttons (the primary is ink, B2) <code>.btn .primary .outline .ghost .action .danger .danger-outline .link · .sm .xs .lg .icon .block .busy .disabled</code></h2>
     <div class="g-row">
       <button class="btn primary"><i class="ic ic-plus"></i>New product</button>
       <button class="btn">Cancel</button>
@@ -437,23 +458,25 @@
   </section>
 
   <section class="g-sec">
-    <h2>Table <code>.toolbar .search-field .filter · .table-card .table · .cell-title .cell-sub .cell-with-logo · .table-foot</code></h2>
+    <h2>Table <code>.workbench &gt; .toolbar + .table-card[role=region] · .search-field .filter · .table · .cell-title .cell-sub .cell-with-logo · .table-foot</code></h2>
+    <div class="workbench">
     <div class="toolbar">
       <div class="search-field"><i class="ic ic-search"></i><span>Search licenses</span></div>
       <span class="filter on"><i class="ic ic-check"></i>Tier: Standard</span>
       <span class="filter"><i class="ic ic-plus"></i>Holder</span>
       <div class="end"><button class="btn outline sm"><i class="ic ic-download"></i>Export</button></div>
     </div>
-    <div class="table-card">
+    <div class="table-card" role="region" aria-label="Licenses table" tabindex="0">
       <table class="table">
         <thead><tr><th class="check-col"><span class="check"><span class="box"></span></span></th><th>Holder</th><th>Tier</th><th class="num">Devices</th><th>Ends</th><th class="end"></th></tr></thead>
         <tbody>
           <tr><td class="check-col"><span class="check"><span class="box"></span></span></td><td><div class="cell-with-logo"><span class="avatar sm">MF</span><div><div class="cell-title">Mara Fennick</div><div class="cell-sub">mara@example.com · In an account</div></div></div></td><td>Standard</td><td class="num">2 of 5</td><td>Never</td><td class="end"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td></tr>
-          <tr class="selected"><td class="check-col"><span class="check on"><span class="box"></span></span></td><td><div class="cell-with-logo"><span class="avatar sm">TO</span><div><div class="cell-title">Tomás Okafor</div><div class="cell-sub">tomas@example.com · Waiting</div></div></div></td><td>Standard</td><td class="num">0 of 5</td><td>Never</td><td class="end"><span class="pill sm warning"><i class="ic ic-mail"></i>Email not verified</span></td></tr>
+          <tr class="selected"><td class="check-col"><span class="check on"><span class="box"></span></span></td><td><div class="cell-with-logo"><span class="avatar sm">TO</span><div><div class="cell-title">Tomás Okafor</div><div class="cell-sub">tomas@example.com · Waiting</div></div></div></td><td>Standard</td><td class="num">0 of 5</td><td>Never</td><td class="end"><span class="pill sm info"><i class="ic ic-mail"></i>Waiting</span></td></tr>
           <tr><td class="check-col"><span class="check"><span class="box"></span></span></td><td><div class="cell-with-logo"><span class="avatar sm">—</span><div><div class="cell-title">Floating</div><div class="cell-sub mono">pkey_7HJM…Q2KD</div></div></div></td><td>Studio</td><td class="num">1 of 10</td><td>Oct 31, 2026</td><td class="end"><button class="btn ghost icon xs" aria-label="More"><i class="ic ic-ellipsis"></i></button></td></tr>
         </tbody>
       </table>
       <div class="table-foot">1 selected · 240 licenses<span class="ml-auto">1–50</span></div>
+    </div>
     </div>
   </section>
 

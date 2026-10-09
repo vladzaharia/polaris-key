@@ -116,9 +116,16 @@ async function call(
   body?: unknown,
   groups: string[] = [PLATFORM_GROUP],
 ): Promise<{ status: number; body: Record<string, unknown>; raw: string }> {
+  // A proven step-up: product delete and the KEK sweep are in the step-up table.
   const { token, session } = await issueSession(
     env,
-    { sub: "admin-1", email: "admin@example.com", groups },
+    {
+      sub: "admin-1",
+      email: "admin@example.com",
+      groups,
+      authTime: NOW,
+      stepUp: true,
+    },
     NOW,
   );
   const headers: Record<string, string> = {

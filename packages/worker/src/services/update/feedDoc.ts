@@ -61,7 +61,7 @@ import {
   type Db,
 } from "../../core/platform.js";
 import { errorResponse, wireError } from "../../core/errors.js";
-import { clientIp, rateLimitOk } from "../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../core/rateLimit.js";
 import { signDoc } from "../../core/signing.js";
 import { appendAudit } from "../../core/data.js";
 import {
@@ -568,7 +568,7 @@ export async function handleFeedRoute(
     !(await rateLimitOk(
       env,
       product.slug,
-      { bucket: "updateFeed", id: clientIp(req), ...FEED_RATE_LIMIT },
+      { bucket: "updateFeed", id: clientNetwork(req), ...FEED_RATE_LIMIT },
       now,
     ))
   )

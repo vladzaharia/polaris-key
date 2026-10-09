@@ -59,7 +59,7 @@ import im.plrs.key.core.StoreStatus
 import im.plrs.key.core.Support
 import im.plrs.key.core.SyncResult
 import im.plrs.key.core.TokenSource
-import im.plrs.key.core.VerifiedBundle
+import im.plrs.key.core.ImportBundleResult
 import im.plrs.key.core.chooseReacquireRoute
 import im.plrs.key.core.deauthorizeDevice
 import im.plrs.key.core.listDevices
@@ -669,7 +669,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     // ── Offline bundles (§7) ─────────────────────────────────────────────────────────────────
     /** Verify and install an offline activation bundle. All-or-nothing; no token is created. */
-    public suspend fun importBundle(jws: String): VerifiedBundle {
+    public suspend fun importBundle(jws: String): ImportBundleResult {
         val bundle = core.importBundle(jws)
         config.publish()
         publishLicense(force = true)
@@ -805,7 +805,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         )
 
         /** A local-only client provisioned from an offline activation bundle in one step. */
-        public suspend fun createFromBundle(options: PolarisKeyClientOptions, bundle: String): Pair<PolarisKeyClient, VerifiedBundle> {
+        public suspend fun createFromBundle(options: PolarisKeyClientOptions, bundle: String): Pair<PolarisKeyClient, ImportBundleResult> {
             val client = createLocal(options)
             return client to client.importBundle(bundle)
         }

@@ -681,3 +681,43 @@ describe("POST /api/licenses/:p/:id/keys (G7)", () => {
     ).toBe(403);
   });
 });
+
+describe("irreversible self-service needs a recent sign-in", () => {
+  async function stale() {
+    const db = makeTestDb();
+    const env = portalEnv(new KvMock());
+    withMailbox(env);
+    await seedProduct(db, "djdl");
+    const { licenseId } = await seedLicenseWithKey(db, "djdl");
+    // Signed in an hour before the request: a live cookie, but not a recent sign-in.
+    const old = await portalSession(env, db, OWNER_EMAIL, NOW - 3600);
+    return { db, env, licenseId, old };
+  }
+
+  it("DELETE /api/me, licence removal and registry-token mint answer 401 step_up_required", async () => {
+    const { db, env, licenseId, old } = await stale();
+    for (const [method, path] of [
+      ["DELETE", "/api/me"],
+      ["DELETE", `/api/licenses/djdl/${licenseId}`],
+      ["POST", `/api/licenses/djdl/${licenseId}/registry-tokens`],
+    ] as const) {
+      const res = await call(env, db, method, path, old, undefined, NOW);
+      expect(res.status, path).toBe(401);
+      expect(((await res.json()) as { error: string }).error).toBe(
+        "step_up_required",
+      );
+    }
+    // The account survived all three.
+    expect(
+      (await call(env, db, "GET", "/api/me", old, undefined, NOW)).status,
+    ).toBe(200);
+  });
+
+  it("a fresh sign-in erases the account", async () => {
+    const { db, env } = await stale();
+    const fresh = await portalSession(env, db, "fresh@example.com");
+    expect(
+      (await call(env, db, "DELETE", "/api/me", fresh, undefined, NOW)).status,
+    ).toBe(200);
+  });
+});

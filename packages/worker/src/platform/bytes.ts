@@ -125,13 +125,16 @@ export function b64urlDecodeUtf8(s: string): string {
 }
 
 /**
- * base64url to bytes, strictly: only `[A-Za-z0-9_-]`, no padding, no whitespace, and never a
- * length that leaves one dangling character. `null` instead of throwing.
+ * base64url to bytes, strictly: only `[A-Za-z0-9_-]`, no padding, no whitespace, never a
+ * length that leaves one dangling character, and CANONICAL: the unused low bits of the last
+ * character are zero, so re-encoding the bytes gives back exactly `s` (without
+ * this a MAC or signature has up to 16 accepted spellings). `null` instead of throwing.
  */
 export function b64urlDecodeStrict(s: string): Uint8Array | null {
   if (!/^[A-Za-z0-9_-]*$/.test(s) || s.length % 4 === 1) return null;
   try {
-    return b64urlDecode(s);
+    const bytes = b64urlDecode(s);
+    return b64urlEncode(bytes) === s ? bytes : null;
   } catch {
     return null;
   }

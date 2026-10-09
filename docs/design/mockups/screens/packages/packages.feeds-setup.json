@@ -14,9 +14,10 @@
     "'You can install from' lists products and feeds the account can read, by ecosystem and namespace, across DJDL and Diceroll. A customer never sees Polaris Key's SDK feeds.",
     "Every file written is in the home folder, with the heading saying so: ~/.npmrc, ~/.yarnrc.yml, ~/.bunfig.toml, ~/.netrc for uv and pip, Docker through the OS keychain. This list is the reference the console card and the portal copy follow.",
     "Where a client can't be scoped safely at user level (pip's index), the run does not write it and says why and the command that prints it per project. Ecosystems with nothing to install (Swift, Gradle) are skipped in one dim line.",
-    "The CI terminal shows '--print' with '--token-env': the product it printed for, the service token named by its pkeyci_ hint and label, and 'Nothing signed in, no token made'; the caption adds only that the token comes from the repository's secrets.",
-    "The rerun shows the failure and recovery paths: an expired code says so and the command to get a new one; a rerun on the same machine replaces only the token it made there and says other tokens are untouched; a scope already sent to another registry in ~/.npmrc is kept with a ▲ and the '--force' flag that replaces it; the run ends 'Done, with 1 warning.'",
-    "Desktop and wide: the laptop run beside the CI run and the rerun (at wide each column as wide as its 80-column terminal); tablet and phone: one column. Phone: the terminals keep 80 columns and scroll sideways inside themselves; the captions wrap under them. Captions name the scene and add one fact the run doesn't print."
+    "The CI terminal shows '--print' with '--token-env': the product it printed for, and the service token named by its pkeyci_ hint and label; the caption adds only that the token comes from the repository's secrets.",
+    "The rerun shows the failure and recovery paths: an expired code says so and the command to get a new one; a rerun on the same machine replaces only the token it made there and says the old one stopped working; a scope already sent to another registry in ~/.npmrc is kept with a ▲ and the '--force' flag that replaces it; the run ends 'Done, with 1 warning.'",
+    "Desktop and wide: the laptop run beside the CI run and the rerun (at wide each column as wide as its 80-column terminal); tablet and phone: one column. Phone: the terminals keep 80 columns and scroll sideways inside themselves; the captions wrap under them. Captions name the scene and add one fact the run doesn't print.",
+    "Mockup kit v2 (B6, B7): weights 400/500/600, neutral annotation pins (gold means signing only), no glow; in-app kit frames keep the host or product accent as their primary (DL13)."
   ],
   "status": "mockup",
   "designReview": {

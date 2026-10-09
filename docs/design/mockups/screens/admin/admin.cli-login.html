@@ -1,11 +1,10 @@
 <style>
   /* admin.cli-login: no spacing of its own. Two rows of two equal frames in the order things happen; the
-     related commands and the notes follow full width; Other states are equal columns. */
+     related commands follow full width; Other states are equal columns. */
   [data-screen="admin.cli-login"] .states-grid3 {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
-    gap: var(--sp-6);
   }
   [data-screen="admin.cli-login"] .states-grid3 > .board-item > :first-child {
     flex: 1 1 auto;
@@ -50,7 +49,7 @@ Check that the browser shows this code:  <span class="c-chip">QXKM-TPRW</span>
 <span class="c-accent">⠹</span> Waiting for you to approve in the browser
   <span class="c-dim">Enter open again · c copy the code · Esc cancel</span></pre>
         </div>
-        <figcaption><strong>1 · Waiting.</strong>The code ties this terminal to the browser.</figcaption>
+        <figcaption><strong>1 · Waiting.</strong></figcaption>
       </figure>
 
       <figure class="board-item">
@@ -94,11 +93,11 @@ Check that the browser shows this code:  <span class="c-chip">QXKM-TPRW</span>
   <span class="c-dim">Token   </span>  pkeyp_…h7Q2 · admin
   <span class="c-dim">Saved in</span>  macOS Keychain, “Polaris Key CLI (key.plrs.im)”
 
-  It follows your roles. Run <span class="c-b">pkey logout</span> to end it.
+  Run <span class="c-b">pkey logout</span> to end it.
 
 <span class="c-prompt">❯</span> <span class="cursor"></span></pre>
         </div>
-        <figcaption><strong>3 · Signed in.</strong>The terminal after Approve.</figcaption>
+        <figcaption><strong>3 · Signed in.</strong></figcaption>
       </figure>
 
       <figure class="board-item">
@@ -115,7 +114,7 @@ Check that the browser shows this code:  <span class="c-chip">QXKM-TPRW</span>
             </main>
           </div>
         </div>
-        <figcaption><strong>4 · Approved.</strong>The browser after Approve.</figcaption>
+        <figcaption><strong>4 · Approved.</strong></figcaption>
       </figure>
     </div>
 
@@ -139,19 +138,18 @@ Check that the browser shows this code:  <span class="c-chip">QXKM-TPRW</span>
 Priya Raman (priya@example.com) <span class="c-dim">on key.plrs.im</span>
 Platform admin, DJDL admin <span class="c-dim">· pkeyp_…h7Q2</span></pre>
         </div>
-        <figcaption><strong>Bundle, a refusal and whoami.</strong>DJDL work runs; Diceroll is refused with the people to ask.</figcaption>
+        <figcaption><strong>Bundle, a refusal and whoami.</strong></figcaption>
         </figure>
         <figure class="board-item">
         <div class="term">
           <div class="term-bar"><span class="term-dots"><i></i><i></i><i></i></span><span class="term-title">zsh — djdl — 80×24</span></div>
 <pre class="term-body scroll-x" tabindex="0" role="region" aria-label="Terminal output, old cookie, package managers, sign out"><span class="c-prompt">❯</span> PKEY_ADMIN_COOKIE=… pkey bundle --product djdl --device dev_4F2K9QX
 <span class="c-err">✗</span> PKEY_ADMIN_COOKIE isn’t used any more.
-  Run <span class="c-b">pkey login</span> once; commands then use your keychain.
+  Run <span class="c-b">pkey login</span> once.
 
 <span class="c-prompt">❯</span> pkey feeds setup --write
 <span class="c-ok">✓</span> Made a packages-only token <span class="c-dim">(pkeyp_…9LcD, packages:read)</span>
 <span class="c-ok">✓</span> Wrote ~/.npmrc and ~/.config/pip/pip.conf
-  <span class="c-dim">Your admin token is never written to a file.</span>
 
 <span class="c-prompt">❯</span> pkey logout
 <span class="c-ok">✓</span> Signed out. Ended pkeyp_…h7Q2 and removed it from the keychain.</pre>
@@ -160,13 +158,6 @@ Platform admin, DJDL admin <span class="c-dim">· pkeyp_…h7Q2</span></pre>
         <figcaption><strong>Old cookie, package managers, sign out.</strong></figcaption>
         </figure>
       </div>
-    </section>
-
-    <section class="strip-3" aria-labelledby="behaves-title">
-      <h2 id="behaves-title" class="sr-only">How it behaves</h2>
-      <p class="board-note"><i class="ic ic-key-round"></i><span>A token is admin or packages-only, never both: each API refuses the other kind.</span></p>
-      <p class="board-note"><i class="ic ic-server"></i><span>No browser (SSH): the terminal shows only the code, to enter at key.plrs.im/manage/device on another device. CI uses a service token.</span></p>
-      <p class="board-note"><i class="ic ic-code-xml"></i><span><code>--json</code> prints one object per state (<code>pending</code>, then <code>signedIn</code> or <code>cancelled</code>) and never prompts.</span></p>
     </section>
 
     <section class="section gap-6" aria-labelledby="states-title">
@@ -209,7 +200,7 @@ Platform admin, DJDL admin <span class="c-dim">· pkeyp_…h7Q2</span></pre>
 
 <span class="c-prompt">❯</span> <span class="cursor"></span></pre>
           </div>
-          <figcaption><strong>Expired.</strong>The code ran out.</figcaption>
+          <figcaption><strong>Expired.</strong></figcaption>
         </figure>
 
         <figure class="board-item">
@@ -232,7 +223,7 @@ Platform admin, DJDL admin <span class="c-dim">· pkeyp_…h7Q2</span></pre>
               </main>
             </div>
           </div>
-          <figcaption><strong>Email code only.</strong>No Approve until the passkey check.</figcaption>
+          <figcaption><strong>Email code only.</strong></figcaption>
         </figure>
       </div>
     </section>

@@ -1,0 +1,104 @@
+<div class="portal" data-service="core">
+  <header class="portal-top">
+    <a class="portal-brand" href="#"><i class="pk-mark sm"></i>Polaris Key</a>
+    <nav class="portal-nav" aria-label="Portal">
+      <a class="active" href="#">Library <span class="count">3</span></a>
+      <a href="#">Discover</a>
+    </nav>
+    <div class="portal-actions">
+      <button class="btn outline sm"><i class="ic ic-key-round accent"></i>Activate license</button>
+      <span class="account"><span class="avatar sm">MF</span><span>Mara Fennick</span><i class="ic ic-chevron-down"></i></span>
+    </div>
+  </header>
+
+  <main class="portal-page">
+    <div class="mk-split cap-880">
+      <h1>Account</h1>
+      <div><button class="btn outline sm row-act"><i class="ic ic-log-out"></i>Sign out</button></div>
+    </div>
+
+    <!-- PX-31: the canonical sections (B12): Profile · Sign-in methods · Connected apps · Packages ·
+         Where you're signed in · Appearance · Your data. Risky actions live in their own sections. -->
+    <div class="with-toc cap-880">
+      <nav class="jump-nav fade-end" aria-label="Account sections">
+        <a class="on" aria-current="true" href="#">Profile</a>
+        <a href="#">Sign-in methods</a>
+        <a href="#">Connected apps</a>
+        <a href="#">Packages</a>
+        <a href="#">Where you’re signed in</a>
+        <a href="#">Appearance</a>
+        <a href="#">Your data</a>
+      </nav>
+      <nav class="toc-nav" aria-label="Account sections">
+        <a class="on" aria-current="true" href="#">Profile</a>
+        <a href="#">Sign-in methods</a>
+        <a href="#">Connected apps</a>
+        <a href="#">Packages</a>
+        <a href="#">Where you’re signed in</a>
+        <a href="#">Appearance</a>
+        <a href="#">Your data</a>
+      </nav>
+
+      <div class="toc-body">
+        <section class="card" aria-labelledby="h-profile">
+          <div class="card-head"><div class="title"><h2 id="h-profile">Profile</h2></div></div>
+          <div class="card-rows">
+            <div class="item-row profile">
+              <span class="photo lg" role="img" aria-label="Mara’s picture"></span>
+              <div class="item-text"><div class="item-title">Mara Fennick</div><div class="item-desc">mara.fennick@example.com</div></div>
+              <div class="item-end"><button class="btn outline sm">Edit</button></div>
+            </div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="h-methods">
+          <div class="card-head"><div class="title"><h2 id="h-methods">Sign-in methods</h2></div><button class="btn outline sm"><i class="ic ic-plus"></i>Add</button></div>
+          <div class="card-rows">
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-fingerprint"></i></span><div class="item-text"><div class="item-title">Passkey <small>Pixel 8</small></div><div class="item-desc">Last used today</div></div></div>
+            <div class="item-row"><span class="icon-tile muted"><i class="gmark"></i></span><div class="item-text"><div class="item-title">Google</div><div class="item-desc">mara.fennick@example.com</div></div></div>
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-mail"></i></span><div class="item-text"><div class="item-title">Email code</div><div class="item-desc">mara@studio.example.com</div><div class="item-desc">Finds licenses sent there</div></div></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="h-apps">
+          <div class="card-head"><div class="title"><h2 id="h-apps">Connected apps</h2></div></div>
+          <div class="card-rows">
+            <div class="item-row"><span class="logo sm" data-product="diceroll"></span><div class="item-text"><div class="item-title">Diceroll <small>Example Games</small></div><div class="item-desc">Gets your screen name and Cloud Sync</div><div class="item-desc">Last used today</div></div><div class="item-end"><button class="btn outline sm">Change</button></div></div>
+            <div class="item-row"><span class="logo sm" data-product="djdl"></span><div class="item-text"><div class="item-title">DJDL <small>Example Audio</small></div><div class="item-desc">Gets your screen name and email</div><div class="item-desc">Last used 2 h ago</div></div><div class="item-end"><button class="btn outline sm">Change</button></div></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="h-pkg">
+          <div class="card-head"><div class="title"><h2 id="h-pkg">Packages</h2></div><button class="btn outline sm">New token</button></div>
+          <div class="card-rows">
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-key-round"></i></span><div class="item-text"><div class="item-title mono">pkey_pat_…4QXL</div><div class="item-desc">npm and PyPI · used 2 days ago</div></div><div class="item-end"><button class="btn danger-outline sm">Revoke</button></div></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="h-where">
+          <div class="card-head"><div class="title"><h2 id="h-where">Where you’re signed in</h2></div><button class="btn outline sm">Sign out everywhere else</button></div>
+          <div class="card-rows">
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-smartphone"></i></span><div class="item-text"><div class="item-title">Pixel 8 <small>This device</small></div><div class="item-desc">Chrome · now</div></div></div>
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-laptop"></i></span><div class="item-text"><div class="item-title">MacBook Air</div><div class="item-desc">Safari · yesterday</div></div><div class="item-end"><button class="btn outline sm">Sign out</button></div></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="h-look">
+          <div class="card-head"><div class="title"><h2 id="h-look">Appearance</h2></div></div>
+          <div class="card-rows">
+            <div class="setting-row"><div><div class="setting-title">Theme</div></div><div class="segmented sm" role="radiogroup" aria-label="Theme"><span class="on" role="radio" aria-checked="true">Match device</span><span role="radio" aria-checked="false">Dark</span><span role="radio" aria-checked="false">Light</span></div></div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="h-data">
+          <div class="card-head"><div class="title"><h2 id="h-data">Your data</h2></div></div>
+          <div class="card-rows">
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-download"></i></span><div class="item-text"><div class="item-title">Download your data</div><div class="item-desc">A file with your account, licenses and devices</div></div><div class="item-end"><button class="btn outline sm">Download</button></div></div>
+            <div class="item-row"><span class="icon-tile muted"><i class="ic ic-trash-2"></i></span><div class="item-text"><div class="item-title">Delete your account</div></div><div class="item-end"><button class="btn danger-outline sm">Delete account…</button></div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="portal-foot">Polaris Key · <a href="#">key.plrs.im</a> · Help · Privacy · Terms</footer>
+  <nav class="portal-tabbar" aria-label="Portal">
+    <a class="active" href="#"><i class="ic ic-layout-grid"></i>Library</a>
+    <a class="act" href="#"><i class="ic ic-key-round"></i>Activate</a>
+    <a href="#"><i class="ic ic-sparkles"></i>Discover</a>
+  </nav>
+</div>

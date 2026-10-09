@@ -52,7 +52,7 @@ import {
   type Db,
   type Env,
 } from "../../../core/platform.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
@@ -96,6 +96,7 @@ import {
   wrongCodeMessage,
 } from "./http.js";
 import { verifyTurnstile } from "./turnstile.js";
+import { readBodyText } from "../../../core/cappedBody.js";
 
 /** The rate-limit and email-limit scope of platform (account) sign-in. */
 export const PORTAL_EMAIL_SCOPE = "_portal";
@@ -193,7 +194,7 @@ export async function handleSigninEmailStart(
     PORTAL_EMAIL_SCOPE,
     {
       bucket: "portalMagic",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: EMAIL_START_PER_IP_MINUTE,
       windowSec: 60,
     },
@@ -351,7 +352,7 @@ export async function handleSigninEmailResend(
     PORTAL_EMAIL_SCOPE,
     {
       bucket: "portalMagic",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: EMAIL_START_PER_IP_MINUTE,
       windowSec: 60,
     },
@@ -429,7 +430,7 @@ export async function handleSigninEmailVerify(
     PORTAL_EMAIL_SCOPE,
     {
       bucket: "portalCodeVerify",
-      id: clientIp(req),
+      id: clientNetwork(req),
       limit: CODE_VERIFY_PER_IP_MINUTE,
       windowSec: 60,
     },
@@ -445,6 +446,7 @@ export async function handleSigninEmailVerify(
     recipient: flow.record.email,
     flowId: flow.ref.id,
     code,
+    req,
   });
   if (!result.ok) {
     const attempts = flow.record.attempts + 1;
@@ -630,7 +632,7 @@ export async function handleMagicConfirm(
   }
   let token: string | null = null;
   try {
-    const form = new URLSearchParams(await req.text());
+    const form = new URLSearchParams(await readBodyText(req));
     token = form.get("token");
   } catch {
     token = null;

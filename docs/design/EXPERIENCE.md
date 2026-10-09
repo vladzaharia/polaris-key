@@ -53,6 +53,12 @@ marks and type. [ADMIN.md](ADMIN.md) and [PORTAL.md](PORTAL.md) stay canonical f
 detail this document does not touch. Where they disagree, **this document wins**. §14 lists the
 sections it supersedes; each of those docs now points here.
 
+**Source precedence.** Owner decisions and the platform contract govern behaviour; then these
+design docs; then accepted mockups; then the Brand Guide's studies and anatomy proposals (a
+reference edition: [ADMIN §0.5](ADMIN.md#05-source-precedence)); then the old console. A guide study
+enters the program only as a mockup id with status `proposal` until the owner accepts it. No API,
+entitlement or permission is derived from a mockup.
+
 **The owner-approved programs win over this document.** The settings architecture
 ([S-18](../research/2026-09-29-godot-omniplatform/notes/S-18-settings-architecture.md), `ST-*`
 packages) and the licensing model
@@ -110,7 +116,7 @@ AS 2.2 or PJ B4.
 - [5. Navigation chrome](#5-navigation-chrome)
 - [6. Tables, lists, forms and settings rows](#6-tables-lists-forms-and-settings-rows)
 - [7. Confirmations, status, pills and toasts](#7-confirmations-status-pills-and-toasts) (and
-  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys), [7.2 Motion](#72-motion))
+  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys), [7.2 Motion](#72-motion), [7.3 Screen acceptance](#73-screen-acceptance))
 - [8. The shared sign-in](#8-the-shared-sign-in)
 - [9. Empty, loading and error states](#9-empty-loading-and-error-states)
 - [10. Consolidation list](#10-consolidation-list)
@@ -161,42 +167,46 @@ and **settings leave the service pages for the S-18 settings hub** (ST-08), whic
 the consolidation the audits asked for. Operational pages keep their sections; their headers link
 to their hub area.
 
-**Inside a product** (Platform hidden; only the active section open; every item has an icon):
+**Two contexts** (ST-45; the route ledger is [ADMIN §2.8](ADMIN.md#28-route-ledger-09--10)):
 
-| Section      | Items (icon)                                                                                         | What changed, and who owns the change                                                                                                                                                                                                                                                                                    |
-| ------------ | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Core         | Overview (home) · Devices (laptop) · Keys & secrets (key) · Activity (history) · Settings (settings) | **Settings is the S-18 hub** (`#/p/<slug>/settings/<area>`, ST-08) with its areas: General, Services & registration, Keys & CI, License, Config, Release & Update, Distribution, Identity, Customer portal, Cloud Sync, Platform policies, All settings, History. Core → Services retires into "Services & registration" |
-| License      | Licenses (id card) · Tiers (layers) · Licensing report (chart, when LX-14 lands)                     | Enrollment retires: registration goes to the hub's Services & registration area; fingerprint policy, probes, key entry and the **auto-issue editor** go to its License area (ST-08, ST-12). The Licensing report is LX-14's                                                                                              |
-| Config       | Catalog (book) · Profiles (user) · Edge mint (code)                                                  | "Edit catalog" is a mode of Catalog, not a nav item. LX-14 adds `combine` and `entitlementKind` to the entry form                                                                                                                                                                                                        |
-| Release      | Releases (package) · Channels (arrows) · Deliverables (disc) · Compatibility (grid)                  | The update simulator becomes a Compatibility tab; Content keys moves to Keys & secrets                                                                                                                                                                                                                                   |
-| Distribution | Rollouts (play) · Health (activity) · Storefronts (store) · Outlets (globe) · Packages (package)     | Matrix and Rollouts merge (views: List · Matrix · Readiness). **Storefronts is A-18j's page and flow**; App Store and Commerce open from its tiles; Listing moves into the hub's Distribution area with ST-13; Outlet credentials joins Keys & secrets. Access and auto-halt thresholds are hub settings                 |
-| Update       | Update feed (refresh)                                                                                | "Feed" renamed; endpoints and what devices see. Its policies (compatibility window, metadata access) are the hub's Release & Update area                                                                                                                                                                                 |
-| Identity     | Users (users, when I-04's Users page exists)                                                         | Sign-in and Portal leave as pages: provider and group mapping go to the hub's Identity area; portal settings to its **Customer portal** area, which shows even with Identity off (ST-14). **View portal** sits in that area's header. The section is hidden while it has no page                                         |
+- **Platform context** (off a product): Home · Members · Connections · Settings · Packages ·
+  Status · Activity. No product sections.
+- **Product context** (Platform hidden; only the active group open; every item has an icon):
+  Overview · Integration · Access · Devices · Users · Activity, then the feature groups
+  **Licensing**, **Managed config**, **Ship builds** (releases, release tracks, rollouts,
+  channels, packages, updates, health: one Package glyph), **Sign-in**, **Cloud Sync** and
+  **Commerce**, each shown only while its features are on. A feature group with one page shows
+  one nav row.
+- **Settings is the ST-08 hub** (`#/p/<slug>/settings/<tab>`) with four tabs: **Features**,
+  **Presentation**, **Keys & secrets** and **Members**. Services & registration is derived on
+  Features; fingerprint mode lives in tier limits; probes and device trust are ST-12; automatic
+  access is Licenses → Access. Outlet credentials live in Platform → Connections and the channel
+  page's Setup tab, not the hub. Removed pages open **Page moved**, never a redirect.
 
-**Outside a product:** Home (home) · Products (grid) · Activity (history, new: every product and the
-platform, with a Product facet, AO J6.2) and the **Platform** group: Status (activity) · Settings
-(settings) · Store connections (store) · Package feeds (package).
+Settings leave the feature pages for the hub, which takes most of the consolidation the audits
+asked for. Operational pages keep their groups; their headers link to the hub tab that owns
+their settings.
 
 - **Platform → Settings is the ST-09 area**, not an "editable only" cut of today's page: General,
   Access and identity, Email, Background jobs, Product defaults and policies, the Product policies
-  matrix, Package feeds policy (moved here from the platform's own feed tab), Store connections
-  editors, Keyring and secrets, Limits (generated from code), Alert destinations (ST-27) and
-  History. Live inheritance with its fan-out preview is ST-16's.
+  matrix, Package feeds policy, Connections editors, Keyring and secrets, Limits (generated from
+  code), Alert destinations (ST-27) and History. Live inheritance with its fan-out preview is
+  ST-16's.
 - **Platform → Status** merges Deployment and Operations (AO J5.1, CL 1.5): one headline, the
-  exceptions, deploy history, database and bindings once. S-18 leaves those two pages out of its
-  scope, so the merge is this document's (UX-30) and touches no settings area.
-- **Platform → Package feeds** keeps the platform's own feeds; their policy is a Settings section.
-- Settings' History area and the global Activity page read the same audit (S-18 §4.6); History is
-  Activity filtered to settings, rendered by the same component.
+  exceptions, deploy history, database and bindings once (UX-30, ST-09).
+- Settings' History and the global Activity read the same audit (S-18 §4.6); History is Activity
+  filtered to settings, rendered by the same component.
 
 **Names that stop colliding** (CL 1.1): "Outlets & feeds" → **Outlets**; product "Package feeds" →
 **Packages**; Update "Feed" → **Update feed**; Platform keeps **Package feeds**. S-18 D16 gives
 Access, Feeds and Metadata access one access-mode vocabulary ("Entitled: holds `<flag>`").
 
-**What a hop no longer does.** The section accent still marks where you are, but only in the sidebar
-marker, the page's primary button and links (BRAND §5.4). The avatar no longer takes the section
+**What a hop no longer does.** The section accent still marks where you are: the sidebar
+marker, the workspace rule, the masthead tile and links, plus the focus ring, hover, selected
+and checked states of elements that reference the service (BRAND §5.4, B17); the primary button
+is neutral action ink (B2). The avatar no longer takes the section
 accent (CL 2), and drawers opened from another section keep the **origin's** accent and route, so a
-license's device drawer stays License-green over the license (§0.5 O1).
+license's device drawer keeps the License accent over the license (§0.5 O1).
 
 ### 0.3 The joins: palette, attention, launch path, cross-links
 
@@ -251,6 +261,9 @@ The data each kind reads is in §0.9.
   7-day daily median and at least 10. A license that is full but refuses nothing is not an issue.
 - Rows are grouped by product on Home (CL 5). A row carries a pill only when its title does not
   already name the problem: "2.4.0 rollout halted on Direct" has no "Halted" pill.
+- **A failed background task keeps a durable home.** Every failed resync, release upload, store
+  submission, bulk license action and import writes an attention item with its fix, shown on
+  Home or Overview and on its record until resolved; the toast is not the only trace.
 - **Empty is one muted line**, "Nothing needs attention", with no panel and no header.
 - Setup steps that block something (a missing secret) appear here **and** in the launch path; steps
   that block nothing appear only in the launch path.
@@ -747,6 +760,11 @@ check draws at `--pk-duration-moderate` and six plain sparks burst in the sectio
 `--pk-duration-deliberate`, never gold and **never the Polaris mark** (BRAND §7.5: the star never
 moves; S-23 D5). Under reduced motion it is a static check. None of them is a pill.
 
+**Never celebrate** a refund, revocation, removal, deletion, sign-out or consent (a freed device
+is a check only). No layout jump: an error appears in a reserved slot or with the expand pattern.
+Progress is real stages and values, never an invented percentage, and every indicator stops on
+failure.
+
 | Moment                      | App     | What happens                                                                               |
 | --------------------------- | ------- | ------------------------------------------------------------------------------------------ |
 | Product created             | Console | Welcome header with the new signing key and the launch path                                |
@@ -833,7 +851,7 @@ UX-07, UX-08, UX-12 and UX-29 are sized in §13 with this work included.
 8. **Celebrate firsts, once** (§0.7).
 9. **One kit, two voices.** Both apps use the same components (§3); the console is dense and
    precise, the portal warm and spacious. Density changes spacing and control height, never the
-   component.
+   component. Expression per surface: [BRAND §14](BRAND.md#14-brand-expression-and-marketing).
 
 ## 2. Copy rules
 
@@ -874,6 +892,14 @@ first-run explainer may add a single definition sentence; nothing more.
 | Console operator voice | Precise, short, technical words allowed when they are the UI's words  | Marketing, exclamation marks                    |
 | Portal customer voice  | Warm, plain, second person; no jargon (magic link, seat, token)       | "Missing magic-link token."                     |
 
+**Glyphs.** A trailing ↗ only on links and buttons that open another site, app or window; → for
+"next" within the same flow; ↓ for an in-page jump. Glyphs are `aria-hidden`; the label carries
+the meaning.
+
+**Capitals.** Table heads, sidebar groups and buttons are sentence case. Never `text-transform`
+an identifier, code or user content (`com.example.diceroll.*` stays as written). If a fixed UI
+word is uppercased, the source string stays sentence case and CSS does it with `lang` set.
+
 **Keep / remove / rewrite examples** (the full table is §11):
 
 | Text                                                                                  | Verdict | Becomes                               |
@@ -913,7 +939,7 @@ legacy `src/components/ui/*` kit is deleted (SH 0.4, §2). "Density" is a prop o
 | `EmptyState` (`kind="first-run" \| "filtered" \| "not-found" \| "service-off"`, `hero`) | `ui/EmptyState`; console `StatePages` re-based on it; legacy `EmptyState` deleted                      | Both apps                                                                             | §9                                                                                                                                                                |
 | `ErrorState` with a `copy` resolver                                                     | `ui/ErrorState` + `lib/errorCopy` (one interface, a portal voice table)                                | Both apps; portal `ErrorPanel` deleted                                                | "Try again", reference id, Copy details                                                                                                                           |
 | `KeyField`, `KeyMask`, `KeyDisplay`, `OneTimeSecretPanel`                               | portal `KeyField`/`KeyMask` → `ui/`, beside existing `KeyDisplay`/`OneTimeSecretPanel`                 | Portal activation, passthrough; console create-license and offline-activation dialogs | `OneTimeSecretPanel` owns the "Shown once" line                                                                                                                   |
-| `Input`, `Select`, `Button` (`size="sm" \| "md" \| "lg"`)                               | `ui/` (existing)                                                                                       | Both apps                                                                             | `lg` = 48 px bold for the auth card and focused flows; className height overrides removed                                                                         |
+| `Input`, `Select`, `Button` (`size="sm" \| "md" \| "lg"`)                               | `ui/` (existing)                                                                                       | Both apps                                                                             | `lg` = 48 px, weight 600, for the auth card and focused flows; className height overrides removed                                                                 |
 | `SegmentedControl`, `Switch`, `Checkbox`, `RadioCards`                                  | `ui/` (existing; legacy copies deleted)                                                                | Both apps                                                                             | Swatches use tokens, not hex                                                                                                                                      |
 | `SettingsRow` v2                                                                        | **ST-07's** component (supersedes `templates/Settings.tsx` `SettingsRow` for registry settings)        | Settings hub, Platform settings, portal Account rows                                  | Control, SourceBadge, inherited, locked, drift with Revert, history clock, deep link (S-18 §4.9)                                                                  |
 | `SourceBadge`                                                                           | `ui/SourceBadge`, with S-18's one vocabulary (ST-07)                                                   | Settings rows, manifest-owned records, Platform provenance                            | _Default_, _Deploy_, _Platform_, _Manifest_, _Console · who · when_, _Derived_; icon + short text; detail in a popover                                            |
@@ -923,14 +949,19 @@ legacy `src/components/ui/*` kit is deleted (SH 0.4, §2). "Density" is a prop o
 | `Celebration`                                                                           | `ui/motion` (MO-02: check + sparks, one-shot key)                                                      | §0.7 moments                                                                          | Reduced motion renders a static check                                                                                                                             |
 
 Type scale, defined once in `ui` tokens (SH 1.14): `display` 40/30 px (portal Library and Product
-titles only), `title` 24 px (every other h1, both apps), `section` 16–18 px (panel headers), `row` 14
-px bold. Arbitrary sizes (`text-[1.875rem]`, `text-[0.9375rem]`) are removed.
+titles only), console h1 36/44 on collections and 32/40 on records (24/32 on phones; ADMIN §2.4), `title`
+24 px (portal h1s), `section` 16–18 px (panel headers, 18/24 in the console), `row` 14 px at weight 600. Weights are 400/500/600 everywhere (BRAND §1.6). Arbitrary sizes (`text-[1.875rem]`, `text-[0.9375rem]`) are removed.
+
+**Theme completeness.** Every theme token change re-renders, in light and dark and with a custom
+accent: root surfaces, text, fields, focus, buttons, provider rows, dialogs, skeletons, progress,
+toasts and empty states (the PX-20 and console visual suites). No shared component hardcodes a
+customer product name or artwork.
 
 ## 4. Page anatomy
 
 Every page in both apps is built from the same four parts, in order.
 
-1. **Header** (`PageHeader`): one h1; at most one primary action and two secondaries, the rest in an
+1. **Header** (`PageHeader`, the masthead of [ADMIN §2.4](ADMIN.md#24-accent-and-mark-mapping)): one orientation line, then one h1; at most one primary action and two secondaries, the rest in an
    overflow menu (the license record's "Mint offline bundle…" moves into ⋯, CL 2). No subtitle unless
    §2 allows one; live state (freshness, sync) sits as muted meta text beside the title. Records add a
    back link above the title and an identity line (holder, tier, masked key, cross-links).
@@ -943,6 +974,11 @@ Every page in both apps is built from the same four parts, in order.
 
 **Rules.**
 
+- **One context line.** The line above the h1 is a glyph chip plus the crumbs, and names the
+  context once. A separate eyebrow never repeats the path ("DJDL / LICENSING" over "Licenses ›
+  …"), and is never a tagline ("Your next session"). Where an eyebrow is used it replaces the first
+  crumb: mono, 12 px minimum, uppercase, 0.08em, accent `fg`, 16–24 px above the h1, a component
+  not a styled `p`. Product and tier names are never uppercased.
 - **No dashboard tile repeats a list.** If the attention list says "1 halted", no tile says
   "Halted 1" (CL 5).
 - **A header's Settings link goes to that page's hub area** (S-18 §4.9: Releases → Release &
@@ -964,12 +1000,13 @@ Mockups: [Overview](experience/05-console-overview-desktop-dark.png) · [list](e
 
 ### 5.1 Console
 
-- **Top bar** (56 px, `surface-raised`): the Pinned K mark and "Polaris Key", breadcrumbs (Product ›
-  Section page › Record), the **search field that opens the palette** ("Search or jump to…", ⌘K),
-  and the account menu. The Docs button and the theme button leave the top bar; both are in the
-  account menu and the palette (SH 1.11).
+- **Top bar** (64 px, `surface-page`, no divider): the 48 px Pinned K (with the section bit in
+  service groups) and its trimmed lockup, the **search field that opens the palette** ("Search or
+  jump to…", ⌘K) and the account menu. Breadcrumbs live in the masthead's orientation line, not
+  the top bar. The Docs button and the theme button are in the account menu and the palette
+  (SH 1.11). From 1024 px the page is an inset raised canvas beside the sidebar.
 - **Sidebar** (248 px): the product switcher at the top (name, slug or "Launch · 5 of 9"), then
-  section headers (text, no icon) with only the active section open; closed sections show a red dot
+  neutral group labels (sentence case, a 3 px accent bar, no icon, no "Workspace" label) with only the active group open; closed sections show a red dot
   when they hold an attention item. Off a product: Home, Products, Activity and the Platform group.
 - **Phone:** a menu button opens the sidebar as a drawer that **includes the product switcher and
   the Platform entry** (CL 7); the search field fills the top bar.
@@ -989,20 +1026,25 @@ Mockups: [Overview](experience/05-console-overview-desktop-dark.png) · [list](e
 
 ## 6. Tables, lists, forms and settings rows
 
-- **Rows are equal height** within a list (52 px compact, 64 px comfortable), with the subject (name +
+- **Rows are equal height** within a list (56 px comfortable, the console default; 40 px compact; BRAND §7.6 holds the one spec, never 76 px), with the subject (name +
   secondary id or email) left, values middle, and **pills and row actions right-aligned** in the last
   column. Numbers use tabular figures.
 - **Whole rows open their record** (licenses, devices, releases, rollouts alike; AO cross-cutting).
   A link inside a cell (repo source) never hijacks the row click.
 - **Search** sits first in the filter bar and accepts every identifier people paste (license
   search takes the key).
+- **One workbench.** The filter bar and the table are one bordered band, not three stacked trays;
+  facet chips have a solid 1 px outline. Table heads are real `th` with `scope="col"`, sentence
+  case.
+- **A table wider than its column scrolls inside** a `role="region"` with an accessible name and
+  `tabindex="0"`, with a sticky first column; the page never scrolls sideways.
 - **Facets are counted chips** in the filter bar, not separate stat tiles (CL 2, CL 7).
 - **Phone:** tables become card rows (title, one line of facts, right-aligned issue pill or chevron);
   the filter bar keeps search plus one chip row that scrolls.
 - **Forms:** labels above inputs; help text below, hidden while an error shows; errors say how to
   fix and offer a corrected value ("Try tonebox-pro", AS 1.9). Required fields carry no asterisk;
   optional ones say "Optional" in the label.
-- **Settings rows** are ST-07's `SettingsRow` v2: label (bold) and at most one help line left; the
+- **Settings rows** are ST-07's `SettingsRow` v2: label (weight 500) and at most one help line left; the
   `SourceBadge`, any drift note and the control right-aligned; equal row height; dependencies as a
   small note beside the control ("Needs Release"). **A claimable, manifest-owned row keeps its
   control**: editing claims it, Revert returns it to the manifest (model C, §0.4 S4). Only
@@ -1023,7 +1065,10 @@ Mockups: [Overview](experience/05-console-overview-desktop-dark.png) · [list](e
 | L1/L2 | Row-scoped (remove a device, revoke a token) | `ConfirmPanel` inline on phones and in the portal; `ConfirmDialog` in the console |
 | L3    | Page or account scope, irreversible          | `ConfirmDialog` with typed confirmation                                           |
 
-A confirm has a neutral title for routine actions and a danger icon only for destructive ones;
+A dialog or drawer has a head band and a 3 px accent top rule (the origin's accent), one leading
+glyph (the severity for a confirmation, the subject's mark for a record), a title of at most 20/28
+(18/24 in sheets) and no service tile; destructive and caution dialogs carry no accent rule. The
+backdrop blurs with a flat 60 % scrim under reduced transparency. A confirm has a neutral title for routine actions and a danger icon only for destructive ones;
 **consequences as a 2–3 line list**; the button repeats the verb and object; focus starts on
 Cancel; errors show inline in the dialog. Mechanics ("A halt reaches devices on their next feed
 check") move **into** the confirm and out of page subtitles.
@@ -1096,6 +1141,42 @@ most `slow` plus `micro`, because the page takes no input during a View Transiti
 swap**: no slide, no burst, no shimmer. The CSP stays as it is: motion is stylesheet keyframes and
 `::view-transition-*` rules plus CSSOM properties set by the layer, never `style=""`.
 
+### 7.3 Screen acceptance
+
+Done when every row holds for each screen and state a package ships, checked in the real runtime
+(not mockups; native kits on device or simulator), with evidence paths in the PR. A row that cannot
+apply says why in one line. This is the one home; kits also follow DL1–DL18, and UI-KITS §7.4 and
+PORTAL §9 link here.
+
+- [ ] **Keyboard:** tab order follows reading order; focus always visible (DL9); no trap outside a
+      modal; Escape or Cancel backs out of every overlay and step; focus returns to the opener (or
+      the heading when it is gone); a route change changes the URL and moves focus to the h1, an
+      inline mutation changes neither.
+- [ ] **Screen readers:** landmarks and exactly one h1; every icon-only control named; help and
+      errors linked (`aria-describedby`); one polite announcement per change, none while typing;
+      tables use `th` with `scope`; status is a word and an icon, never colour alone.
+- [ ] **Sizing:** this surface's UI-KITS §7.1 rows plus 200 % text and 400 % zoom (320 CSS px
+      reflow) with no page-level sideways scroll; a dense table scrolls only inside a labelled,
+      focusable region; targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in
+      the console.
+- [ ] **Themes:** dark and light; a custom product accent on a light and a dark ground (kits,
+      hosted sign-in); forced-colors; `prefers-contrast: more`; reduced transparency; contrast
+      measured on the render (text 4.5:1, UI 3:1).
+- [ ] **States:** loading (skeleton after the grace), first-run empty, filtered empty, permission
+      refused, expired or stale, network and API error with Try again, partial failure, success;
+      input survives a failed save; where the API sends `expectedVersion`, a changed-since-open
+      conflict is named with Reload.
+- [ ] **Motion:** tokens only; reduced motion is an instant swap and the outcome still reads;
+      errors appear without moving content; progress is real (no invented percentage, nothing
+      loops after a failure); no celebration on refunds, revocation, removal, deletion or consent.
+- [ ] **Hierarchy and copy:** one filled primary per state; the section accent marks context only,
+      never success, warning or failure; copy from the catalog, each fact once; no decorative
+      numbers or taglines; no text drawn over customer art.
+- [ ] **Native (kits):** Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack,
+      gamepad and D-pad focus, TV and title-safe insets, terminal keys with `NO_COLOR`, ascii and
+      `--json` paths.
+- [ ] `pkey-ux-reviewer` passes the built screens (BUILT mode).
+
 ## 8. The shared sign-in
 
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05)**, the single source of truth for
@@ -1157,7 +1238,7 @@ console never offers Apple, Google or Steam, and "Have a license key?" does not 
 - **Not configured:** "Admin sign-in isn't set up" with the docs link (CL 6).
 
 **Worker pages render the same card markup without JS.** `brandHtml.ts` gains `renderAuthCard()`:
-the same classes and measures as `AuthCard` (28.5 rem, radius 22 px, 24 px h1, 48 px bold buttons,
+the same classes and measures as `AuthCard` (28.5 rem, radius 22 px, 24 px h1, 48 px semibold buttons,
 the compact lockup with **no bit**, top-aligned, Help · Privacy · Terms). The `surface` eyebrows
 ("ACCOUNT", "DEVICE") go; the console variant uses the "│ Console" brand row. A unit test compares
 `BRAND_PAGE_CSS` measures with the `AuthCard` tokens. Pages covered: expired or used code or link

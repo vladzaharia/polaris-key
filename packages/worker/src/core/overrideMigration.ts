@@ -834,6 +834,7 @@ function keyList(keys: { config: string[]; secrets: string[] }): string {
 }
 
 function auditFor(
+  runId: string,
   actor: MigrationActor,
   row: OverrideReportRow,
   subject: string | null,
@@ -844,23 +845,26 @@ function auditFor(
     row.outcome === "dropped"
       ? `Dropped this license's config and secret overrides at the migration (no account): ${keyList(row.keys)}`
       : `Moved this license's config and secret overrides to ${subject}'s account overrides${row.outcome === "collapsed" ? `; ${row.values.collapsed?.length ?? 0} value(s) lost to another license` : ""}`;
+  // A deterministic id per (run, licence) and OR IGNORE, so a stale lease holder that
+  // re-applies a unit adds no second audit row.
+  const stmt = auditStatement({
+    product: row.product,
+    id: `aud_om_${runId}_${row.licenseId}`,
+    at: now,
+    actor_sub: actor.sub,
+    actor_name: actor.name,
+    actor_email: actor.email,
+    action:
+      row.outcome === "dropped"
+        ? "license.overrides.dropped"
+        : "license.overrides.migrated",
+    target_kind: "license",
+    target_id: row.licenseId,
+    parent_id: null,
+    summary,
+  });
   return guarded(
-    auditStatement({
-      product: row.product,
-      id: randomId("aud"),
-      at: now,
-      actor_sub: actor.sub,
-      actor_name: actor.name,
-      actor_email: actor.email,
-      action:
-        row.outcome === "dropped"
-          ? "license.overrides.dropped"
-          : "license.overrides.migrated",
-      target_kind: "license",
-      target_id: row.licenseId,
-      parent_id: null,
-      summary,
-    }),
+    { ...stmt, sql: stmt.sql.replace("INSERT INTO", "INSERT OR IGNORE INTO") },
     guard,
   );
 }
@@ -1055,7 +1059,7 @@ async function applyProduct(
           accountWrite(product, subject, existingJson, json, now),
           ...todo.flatMap((r) => [
             reportStatement(runId, r, subject, now, guard),
-            auditFor(actor, r, subject, now, guard),
+            auditFor(runId, actor, r, subject, now, guard),
           ]),
         ],
         rows: todo,
@@ -1067,7 +1071,7 @@ async function applyProduct(
       units.push({
         stmts: [
           reportStatement(runId, r, null, now),
-          auditFor(actor, r, null, now),
+          auditFor(runId, actor, r, null, now),
         ],
         rows: [r],
       });

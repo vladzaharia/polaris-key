@@ -500,7 +500,7 @@ describe("PolarisKeyClient — sync / persistence", () => {
     expect(client.isLicensed()).toBe(false);
   });
 
-  it("304 keeps the cached documents and clears a prior block", async () => {
+  it("304 keeps the cached documents; a 200 after a block restores the licence", async () => {
     const m = mockFetch();
     const client = await PolarisKeyClient.create({
       ...base,
@@ -519,20 +519,24 @@ describe("PolarisKeyClient — sync / persistence", () => {
     await client.sync({ force: true });
     expect(client.status().status).toBe("version-too-old");
 
-    // …and then a healthy conditional exchange re-opens it. A 200 OR a 304 is evidence of a
-    // live authenticated session, and the unsigned hints can only ever TIGHTEN the gate (§4.1),
-    // so clearing them on that evidence is safe.
+    // The block deleted the licence document in the same write (D3), so the hint is display
+    // state and a 304 has nothing to renew: the licence needs a 200 to come back. The config
+    // slice was not blocked and survives.
+    expect(client.getSyncState().doc).toBeNull();
     m.opts.licenseBlocked = false;
     m.opts.notModified = true;
     const res = await client.sync();
-    expect(res.applied).toBe(false);
-    expect(res.documents.license?.kind).toBe("unchanged");
     expect(res.documents.config?.kind).toBe("unchanged");
-    // The cached documents survive the 304 untouched.
     expect(client.getConfig("quality.floor", "x")).toBe("flac");
+    expect(client.getSyncState().blocked).toBeNull();
+    expect(client.status().status).toBe("needs-activation");
+
+    // A live 200 re-opens it.
+    m.opts.notModified = false;
+    const res2 = await client.sync({ force: true });
+    expect(res2.documents.license?.kind).toBe("applied");
     expect(client.license.isEntitled("polarisVpn")).toBe(true);
     expect(client.status().status).toBe("ok");
-    expect(client.getSyncState().blocked).toBeNull();
   });
 });
 

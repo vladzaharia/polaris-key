@@ -3,6 +3,7 @@
 // admin trio is unset. The portal and `provider: platform` products read `PLATFORM_OIDC_*` only,
 // so a customer sign-in can never go through the operators' client.
 
+import { bindAdminFlow } from "./flowBinderHelper.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -152,9 +153,9 @@ async function adminTokenExchange(
   // A real login writes the flow; its state comes back in the authorize redirect.
   const state = (await adminLogin(env)).searchParams.get("state")!;
   const res = await handleAdminCallback(
-    new Request(
-      `https://key.plrs.im/manage/callback?code=c&state=${state}`,
-    ) as unknown as Request,
+    new Request(`https://key.plrs.im/manage/callback?code=c&state=${state}`, {
+      headers: { cookie: await bindAdminFlow(env, state) },
+    }) as unknown as Request,
     env,
     makeTestDb(),
     NOW,
@@ -216,5 +217,53 @@ describe("console and portal sign-in use their own clients", () => {
     );
     const text = await res.text();
     expect(text).not.toContain("SENTINEL");
+  });
+});
+
+describe("admin sign-in leaves detection rows", () => {
+  async function callback(
+    env: Env,
+    db: ReturnType<typeof makeTestDb>,
+    identity: { sub: string; groups: string[] } | null,
+  ) {
+    const state = (await adminLogin(env)).searchParams.get("state")!;
+    return handleAdminCallback(
+      // The browser that started the sign-in (the flow binder), as every callback needs.
+      new Request(`https://key.plrs.im/manage/callback?code=c&state=${state}`, {
+        headers: { cookie: await bindAdminFlow(env, state) },
+      }) as unknown as Request,
+      env,
+      db,
+      NOW,
+      {
+        verify: async () =>
+          identity
+            ? ({ ...identity, name: "A", email: "a@example.com" } as never)
+            : null,
+      },
+    );
+  }
+
+  it("records success, refusal and failure without the email", async () => {
+    const env = envWith({ ...ADMIN, PLATFORM_ADMIN_GROUP: "pk-admins" });
+    const db = makeTestDb();
+    expect((await callback(env, db, null)).status).toBe(401);
+    expect((await callback(env, db, { sub: "u1", groups: [] })).status).toBe(
+      403,
+    );
+    expect(
+      (await callback(env, db, { sub: "u2", groups: ["pk-admins"] })).status,
+    ).toBe(302);
+    const rows = await db.all<{ action: string; actor_sub: string | null }>(
+      "SELECT action, actor_sub FROM platform_audit ORDER BY at, id",
+    );
+    expect(rows.map((r) => r.action).sort()).toEqual([
+      "admin.signin",
+      "admin.signin.failed",
+      "admin.signin.refused",
+    ]);
+    expect(
+      JSON.stringify(await db.all("SELECT * FROM platform_audit")),
+    ).not.toContain("@");
   });
 });

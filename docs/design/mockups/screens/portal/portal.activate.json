@@ -1,0 +1,18 @@
+{
+  "id": "portal.activate",
+  "title": "Activate a license",
+  "area": "portal",
+  "surface": "dialog",
+  "packages": ["PX-29", "LX-38", "PX-W19"],
+  "uxRows": [],
+  "summary": "The Activate a license dialog over Priya's Library at its Enter step: the account the key will join first (avatar, name, email, Not you?), the key field (visible, mono, Paste), and under it the product the key is for before anything activates; Continue leads to the confirm step.",
+  "compare": [
+    "The account row comes first (portal-26, B12): who the key joins, with Not you?",
+    "The key is visible and mono (never masked), middle-truncated at rest, with Paste; once it parses, 'Key for DJDL · Studio' previews under it with the product's icon (PORTAL §4.17).",
+    "Inline errors at the field (§4.19): not a key, a key for another product, already in this library, used up; each says what to do.",
+    "Continue (ink) goes to portal.activate-confirm; Cancel is a ghost; the dialog head has the core violet rule and no glyph.",
+    "Phone: a bottom sheet with Continue pinned; the bottom bar's Activate opens it."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

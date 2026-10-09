@@ -8,7 +8,7 @@
     overflow-wrap: anywhere;
   }
   [data-screen="identity.connection-new"] .dot.accent {
-    color: var(--pk-accent);
+    color: var(--pk-text-strong);
   }
   [data-screen="identity.connection-new"] tr.unread td {
     color: var(--pk-text-muted);
@@ -49,8 +49,8 @@
 
   <main class="main">
     <div class="page wizard-col">
-      <header class="page-head">
-        <nav class="crumbs"><a href="#">Connections</a><i class="ic ic-chevron-right"></i>Add SSO connection</nav>
+      <header class="page-head is-record">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a><i class="ic ic-chevron-right"></i><a href="#">Connections</a></nav>
         <div class="page-heading"><h1>Add SSO connection</h1></div>
       </header>
 
@@ -70,14 +70,13 @@
         <div class="wizard-body">
           <div class="mk-stack-1">
             <h2 id="wz-title">Test sign-in</h2>
-            <p class="muted">Sign in once with a Kestrel Labs account to see what it sends. Nothing goes live until the last step.</p>
+            <p class="muted">Sign in once with a Kestrel Labs account to see what it sends.</p>
           </div>
 
           <div class="callout success">
             <i class="ic ic-circle-check"></i>
             <div class="grow">
               <div class="callout-title">Signed in as Ines Kowalski, just now</div>
-              <div class="callout-text">Client, secret and redirect URI work; the ID token is signed by Kestrel Labs’ published key.</div>
             </div>
             <button class="btn outline sm"><i class="ic ic-refresh-cw"></i>Sign in again</button>
           </div>
@@ -90,11 +89,11 @@
               <table class="table fixed claims" aria-labelledby="sent-title">
                 <colgroup><col style="width: 200px"><col></colgroup>
                 <tbody>
-                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">sub</span></span></td><td><div class="mono wrap-any">8c1f3a2e-5b7d-4e0a-9f61-2d3c41d7a9b0</div><div class="cell-sub">Links the account; always read</div></td></tr>
-                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">email</span></span></td><td><div class="mono wrap-any">ines.kowalski@kestrel.example.com</div><div class="cell-sub">Trusted only at verified domains</div></td></tr>
-                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">name</span></span></td><td><div class="mono">Ines Kowalski</div></td></tr>
-                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">picture</span></span></td><td><div class="mono wrap-any">https://sso.kestrel.example.com/avatars/ikowalski.png</div></td></tr>
-                  <tr><td><span class="mk-cluster no-wrap"><i class="dot accent" aria-label="Read"></i><span class="mono">groups</span></span></td><td><div class="mono">["djdl-studio", "engineering"]</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i role="img" class="dot accent" aria-label="Read"></i><span class="mono">sub</span></span></td><td><div class="mono wrap-any">8c1f3a2e-5b7d-4e0a-9f61-2d3c41d7a9b0</div><div class="cell-sub">Links the account</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i role="img" class="dot accent" aria-label="Read"></i><span class="mono">email</span></span></td><td><div class="mono wrap-any">ines.kowalski@kestrel.example.com</div><div class="cell-sub">Trusted only at verified domains</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i role="img" class="dot accent" aria-label="Read"></i><span class="mono">name</span></span></td><td><div class="mono">Ines Kowalski</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i role="img" class="dot accent" aria-label="Read"></i><span class="mono">picture</span></span></td><td><div class="mono wrap-any">https://sso.kestrel.example.com/avatars/ikowalski.png</div></td></tr>
+                  <tr><td><span class="mk-cluster no-wrap"><i role="img" class="dot accent" aria-label="Read"></i><span class="mono">groups</span></span></td><td><div class="mono">["djdl-studio", "engineering"]</div></td></tr>
                   <tr class="unread"><td><span class="mk-cluster no-wrap"><i class="dot" aria-hidden="true"></i><span class="mono">preferred_username</span></span></td><td><div class="mono">ikowalski</div></td></tr>
                   <tr class="unread"><td><span class="mk-cluster no-wrap"><i class="dot" aria-hidden="true"></i><span class="mono">locale</span></span></td><td><div class="mono">de-DE</div></td></tr>
                 </tbody>
@@ -103,7 +102,7 @@
 
             <section class="card" aria-labelledby="map-title">
               <div class="card-head">
-                <div class="title"><h3 id="map-title">Read into Polaris Key</h3><p>Only the claims picked here are ever read.</p></div>
+                <div class="title"><h3 id="map-title">Read into Polaris Key</h3></div>
               </div>
               <div class="card-body">
                 <div class="form">
@@ -122,7 +121,7 @@
                   <div class="field">
                     <label class="field-label">Birth date</label>
                     <div class="select"><span class="grow ph">Not mapped</span><i class="ic ic-chevrons-up-down"></i></div>
-                    <span class="hint">Not sent. Apps never receive it.</span>
+                    <span class="hint">Not sent</span>
                   </div>
                 </div>
               </div>
@@ -133,7 +132,7 @@
             <i class="ic ic-info"></i>
             <div class="grow">
               <div class="callout-title">Groups give nothing on their own</div>
-              <div class="callout-text">After you finish, use <span class="mono">djdl-studio</span> in a rule on DJDL’s Access page for licenses, or in Members → SSO rules for console roles.</div>
+              <div class="callout-text">Use <span class="mono">djdl-studio</span> in an Access rule or an SSO rule.</div>
             </div>
           </div>
         </div>

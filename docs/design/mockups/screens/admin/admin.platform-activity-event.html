@@ -1,0 +1,141 @@
+<style>
+  /* admin.platform-activity: When stays one line; What takes the room. */
+  [data-screen="admin.platform-activity-event"] .act .c-when {
+    width: 140px;
+  }
+  [data-screen="admin.platform-activity-event"] .act .c-who {
+    width: 22%;
+  }
+  [data-screen="admin.platform-activity-event"] .act .c-prod {
+    width: 15%;
+  }
+</style>
+
+<div class="console modal-open" data-service="core">
+  <header class="topbar">
+    <button class="btn ghost icon menu-btn" aria-label="Menu"><i class="ic ic-menu lg"></i></button>
+    <a class="brand" href="#"><i class="pk-mark"></i><span>Polaris Key</span></a>
+    <div class="topbar-search"><i class="ic ic-search"></i><span>Search or jump to…</span><kbd>⌘K</kbd></div>
+    <a class="topbar-link" href="#"><i class="ic ic-book-open"></i>Docs</a>
+    <button class="btn ghost icon theme-btn" aria-label="Theme"><i class="ic ic-moon"></i></button>
+    <span class="avatar violet">AL</span>
+  </header>
+
+  <nav class="sidebar" aria-label="Platform">
+    <div class="ctx">
+      <span class="ctx-mark"><i class="ic ic-polaris"></i></span>
+      <span class="ctx-text"><span class="ctx-name">Platform</span><span class="ctx-sub">3 products</span></span>
+      <i class="ic ic-chevrons-up-down"></i>
+    </div>
+    <a class="nav-item" href="#"><i class="ic ic-house"></i><span class="nav-text">Home</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-users"></i><span class="nav-text">Members</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-link"></i><span class="nav-text">Connections</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-settings"></i><span class="nav-text">Settings</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-boxes"></i><span class="nav-text">Packages</span></a>
+    <a class="nav-item" href="#"><i class="ic ic-server"></i><span class="nav-text">Status</span></a>
+    <a class="nav-item active" href="#" aria-current="page"><i class="ic ic-history"></i><span class="nav-text">Activity</span></a>
+    <div class="sidebar-foot">
+      <a class="nav-item" href="#"><i class="ic ic-panel-left-close"></i><span class="nav-text">Collapse</span></a>
+    </div>
+  </nav>
+
+    <main class="main">
+    <div class="page">
+      <header class="page-head">
+        <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip platform" aria-hidden="true"><i class="ic ic-polaris"></i></span><a href="#">Platform</a></nav>
+        <div class="page-heading"><h1>Activity</h1></div>
+        <div class="page-actions">
+          <button class="btn outline"><i class="ic ic-download"></i>Export CSV</button>
+        </div>
+      </header>
+
+      <!-- ST-45: the product Activity reused in the Platform context, plus the Product facet and platform
+           events. A Product admin sees only their products' events. Pages come from the server. -->
+      <div class="workbench">
+        <div class="toolbar">
+          <span class="filter"><i class="ic ic-plus"></i>Anyone</span>
+          <span class="filter"><i class="ic ic-plus"></i>Any action</span>
+          <span class="filter"><i class="ic ic-plus"></i>Any target</span>
+          <span class="filter on"><i class="ic ic-check"></i>Last 7 days</span>
+          <span class="filter"><i class="ic ic-plus"></i>Product</span>
+          <div class="end">
+            <div class="segmented sm" role="radiogroup" aria-label="View"><span role="radio" aria-checked="false">Timeline</span><span class="on" role="radio" aria-checked="true">Table</span></div>
+          </div>
+        </div>
+        <div class="table-card" role="region" aria-label="Activity table" tabindex="0">
+          <table class="table fixed stack-phone act">
+            <colgroup><col class="c-when"><col class="c-who"><col><col class="c-prod"></colgroup>
+            <thead><tr><th>When</th><th>Who</th><th>What</th><th>Product</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="nowrap">Oct 8, 14:02</td>
+                <td><span class="cell-label">Who</span>GitHub Actions</td>
+                <td><span class="cell-label">What</span>Deployed v0.9.2</td>
+                <td><span class="cell-label">Product</span><span class="subtle">Platform</span></td>
+              </tr>
+              <tr class="selected">
+                <td class="nowrap">Oct 8, 11:30</td>
+                <td><span class="cell-label">Who</span>Ana Lima</td>
+                <td><span class="cell-label">What</span>Changed <strong>Session length</strong> from 30 days to 14 days</td>
+                <td><span class="cell-label">Product</span><span class="subtle">Platform</span></td>
+              </tr>
+              <tr>
+                <td class="nowrap">Oct 8, 09:12</td>
+                <td><span class="cell-label">Who</span>Ana Lima</td>
+                <td><span class="cell-label">What</span>Gave Jun Park <strong>Release manager</strong> on Diceroll</td>
+                <td><span class="cell-label">Product</span><span class="mk-cluster-1"><span class="logo xs" data-product="diceroll"></span>Diceroll</span></td>
+              </tr>
+              <tr>
+                <td class="nowrap">Oct 7, 17:40</td>
+                <td><span class="cell-label">Who</span>Jun Park</td>
+                <td><span class="cell-label">What</span>Turned on <strong>Commerce</strong></td>
+                <td><span class="cell-label">Product</span><span class="mk-cluster-1"><span class="logo xs" data-product="diceroll"></span>Diceroll</span></td>
+              </tr>
+              <tr>
+                <td class="nowrap">Oct 7, 11:30</td>
+                <td><span class="cell-label">Who</span>Ana Lima</td>
+                <td><span class="cell-label">What</span>Demoted <span class="mono">1.8.0</span> from stable</td>
+                <td><span class="cell-label">Product</span><span class="mk-cluster-1"><span class="logo xs" data-product="diceroll"></span>Diceroll</span></td>
+              </tr>
+              <tr>
+                <td class="nowrap">Oct 7, 09:05</td>
+                <td><span class="cell-label">Who</span>Ada Lovelace</td>
+                <td><span class="cell-label">What</span>Invited <strong>sam.ito@example.com</strong> as Support</td>
+                <td><span class="cell-label">Product</span><span class="subtle">Platform</span></td>
+              </tr>
+              <tr>
+                <td class="nowrap">Oct 6, 18:15</td>
+                <td><span class="cell-label">Who</span>GitHub Actions</td>
+                <td><span class="cell-label">What</span>Published <span class="mono">4.2.0</span> from tag v4.2.0</td>
+                <td><span class="cell-label">Product</span><span class="mk-cluster-1"><span class="logo xs" data-product="djdl"></span>DJDL</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="table-foot"><span class="tnum">7 of 64 events</span><span class="ml-auto"><button class="btn outline sm">Load more</button></span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <!-- The detail drawer: before and after for the selected event. -->
+  <div class="overlay end sheet">
+    <aside class="drawer" aria-labelledby="ev-title">
+      <div class="drawer-head">
+        <h2 id="ev-title">Session length changed</h2>
+        <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
+      </div>
+      <div class="drawer-body">
+        <dl class="kv-rows">
+          <div><dt>Before</dt><dd>30 days</dd></div>
+          <div><dt>After</dt><dd><strong>14 days</strong></dd></div>
+          <div><dt>Who</dt><dd>Ana Lima · ana@example.com</dd></div>
+          <div><dt>When</dt><dd>Oct 8, 11:30:12 PDT</dd></div>
+          <div><dt>Where</dt><dd>Platform → Settings → Sign-in</dd></div>
+          <div><dt>Applies</dt><dd>At each person’s next sign-in</dd></div>
+        </dl>
+      </div>
+      <div class="drawer-foot">
+        <a class="btn outline" href="#">Open the setting<i class="ic ic-arrow-right"></i></a>
+      </div>
+    </aside>
+  </div>
+</div>

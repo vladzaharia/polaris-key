@@ -100,6 +100,22 @@ export class WriteChecks {
     return this;
   }
 
+  /** An absent or `null` expiry is fine; a present one must be a whole, in-range number of
+   *  seconds: a fraction or string would 500 the document or read as perpetual. */
+  expiresAt(field: string, value: unknown): this {
+    if (value === undefined || value === null) return this;
+    if (
+      !(
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        value >= 0 &&
+        value <= MAX_WIRE_INTEGER
+      )
+    )
+      this.bad.push(field);
+    return this;
+  }
+
   /** Free text a signed document carries: refused when `representabilityIssue` flags it. */
   text(field: string, value: unknown): this {
     if (typeof value === "string" && representabilityIssue(value) !== null)

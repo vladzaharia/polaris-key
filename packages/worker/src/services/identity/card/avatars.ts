@@ -78,7 +78,7 @@ import {
   type FetchImpl,
   type SafeFetchReason,
 } from "../../../core/safeFetch.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { sniffContentType, SNIFF_BYTES } from "../../../core/sniff.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 
@@ -775,7 +775,7 @@ export async function serveProviderPreview(
       "_portal",
       {
         bucket: "portalGatePicture",
-        id: clientIp(req),
+        id: clientNetwork(req),
         limit: PREVIEW_PER_IP_PER_MINUTE,
         windowSec: 60,
       },

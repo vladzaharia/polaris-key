@@ -200,6 +200,7 @@ async function world(
         email: "ops@studio.example",
         groups: [PLATFORM_GROUP],
         authTime: o.authAt ?? now,
+        stepUp: true,
       },
       now,
     );
@@ -417,8 +418,9 @@ describe("U-03 §5.12: the account override layer and the migration", () => {
         ?.value,
     ).toBe(sealedToken);
     const after = await configDoc(w, token, RUN_AT);
-    expect(after.content).toBe(before.content);
-    expect(after.etag).toBe(before.etag);
+    // The owner's secrets no longer reach a key-only device; config is unchanged.
+    expect(after.doc.config).toEqual(before.doc.config);
+    expect(after.doc.secrets).toEqual({});
     // And the device's licence no longer delivers config or secrets itself (step 5).
     const lic = (await getLicense(w.db, SLUG, "lic-ada"))!;
     expect(
@@ -1558,12 +1560,23 @@ describe("U-03: GET and PUT users/<subject>/overrides", () => {
     expect(audit).toHaveLength(1);
     expect(audit[0]!.summary).toContain("theme, api.token, cfg.password");
     expect(audit[0]!.summary).not.toContain("dark");
-    // The key-entry device of Ada's licence receives the secret, opened.
+    // The key-entry device of Ada's licence does NOT receive her secrets.
     const key = await licence(w, "lic-2", { owner: ada.id });
     const token = await activate(w, key, "dev-1");
     const { doc } = await configDoc(w, token);
-    expect(doc.secrets["api.token"]?.value).toBe("tok-EDITOR");
-    expect(doc.config["cfg.password"]?.value).toBe("pw-EDITOR");
+    expect(doc.secrets["api.token"]).toBeUndefined();
+    expect(doc.config["cfg.password"]).toBeUndefined();
+    // A device signed in as Ada gets them, opened.
+    const key2 = await licence(w, "lic-3", { owner: ada.id });
+    const token2 = await activate(w, key2, "dev-2");
+    await w.db.run(
+      "UPDATE devices SET subject = ? WHERE product = ? AND device_id = 'dev-2'",
+      ada.subject,
+      SLUG,
+    );
+    const signed = (await configDoc(w, token2)).doc;
+    expect(signed.secrets["api.token"]?.value).toBe("tok-EDITOR");
+    expect(signed.config["cfg.password"]?.value).toBe("pw-EDITOR");
     // Clearing every key removes the row.
     await w.call("PUT", path, {
       updates: [
@@ -1633,6 +1646,32 @@ describe("U-03: provisioned secrets and the nightly step", () => {
       (await getAccountOverrides(w.db, SLUG, ada.subject))!.payload_json,
     );
     expect(Object.keys(row.secrets)).toEqual(["api.token"]);
+  });
+
+  it("provisioning writes only while the signing-in identity is linked to the owner account", async () => {
+    const w = await world();
+    const ada = await account(w.db, "ada@example.com");
+    const args = [
+      w.env,
+      w.db,
+      SLUG,
+      ada.id,
+      { "proxy.url": entry("https://proxy.example/prev", NOW, "hidden") },
+      new Set(["proxy.url"]),
+      NOW,
+    ] as const;
+    // The previous owner's OIDC sub is not linked to the current owner: nothing is written.
+    await applyProvisionedAccountSecrets(...args, "oidc-sub-previous-owner");
+    expect(await getAccountOverrides(w.db, SLUG, ada.subject)).toBeNull();
+    await w.db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind, email, email_verified, display_name, amr_json, created_at, last_used_at)
+       VALUES ('lnk-oidc', ?, 'iss', '', 'oidc-sub-ada', 'oidc', NULL, 0, NULL, '[]', ?, ?)`,
+      ada.id,
+      NOW,
+      NOW,
+    );
+    await applyProvisionedAccountSecrets(...args, "oidc-sub-ada");
+    expect(await getAccountOverrides(w.db, SLUG, ada.subject)).not.toBeNull();
   });
 
   it("refreshes the inventory daily until the run, purges the report after 90 days, then empties the columns", async () => {

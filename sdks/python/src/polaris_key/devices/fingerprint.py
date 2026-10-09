@@ -338,8 +338,18 @@ def _primary_mac() -> Optional[str]:
     return ":".join(raw[i : i + 2] for i in range(0, 12, 2))
 
 
+#: Anchor probes run by absolute path, never through ``PATH``: a planted ``ioreg`` or
+#: ``reg`` earlier on ``PATH`` would otherwise choose the device's identity.
+IOREG_PATH = "/usr/sbin/ioreg"
+
+
+def reg_exe_path() -> str:
+    root = os.environ.get("SystemRoot") or os.environ.get("windir") or r"C:\Windows"
+    return root.rstrip("\\/") + r"\System32\reg.exe"
+
+
 def _darwin_components(io: FingerprintIO) -> Dict[str, str]:
-    ioreg = io.run(["ioreg", "-rd1", "-c", "IOPlatformExpertDevice"], 2.0)
+    ioreg = io.run([IOREG_PATH, "-rd1", "-c", "IOPlatformExpertDevice"], 2.0)
     return _present(
         machineUuid=_match(ioreg, _IOREG_UUID_RE),
         boardSerial=_match(ioreg, _IOREG_SERIAL_RE),
@@ -358,7 +368,7 @@ def _registry_machine_guid(io: FingerprintIO) -> Optional[str]:
             return str(winreg.QueryValueEx(k, "MachineGuid")[0]) or None
     except Exception:
         return _match(
-            io.run(["reg", "query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"], 2.0),
+            io.run([reg_exe_path(), "query", r"HKLM\SOFTWARE\Microsoft\Cryptography", "/v", "MachineGuid"], 2.0),
             _REG_GUID_RE,
         )
 

@@ -48,6 +48,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 - Working id **CQW-15**; DX consolidation B: Foundations (code quality the feature tracks build on).
 - No new copies (tracks.md rule 4): build on the one mechanism this plan names, never beside it.
 
+## Brand transition (2026-10-09)
+
+Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
+
+- (Moved here because LX-30 is done.) The Licenses list uses the single workbench band (holder segments, search, facets, Columns and Export), keeps 56 px rows, and on tablet (640-1023) scrolls sideways inside the labelled region with the License column sticky. The phone keeps the current mockup (title, description, New license full width, Create keys in bulk and More on one row, compact cards of about 140 px), not the guide's. (admin-1-22)
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

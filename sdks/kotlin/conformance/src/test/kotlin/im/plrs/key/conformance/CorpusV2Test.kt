@@ -18,7 +18,9 @@
 package im.plrs.key.conformance
 
 import im.plrs.key.core.BundleInspection
+import im.plrs.key.core.BundleFloors
 import im.plrs.key.core.BundleOptions
+import im.plrs.key.core.BundleProfile
 import im.plrs.key.core.GateInput
 import im.plrs.key.core.JwsTyp
 import im.plrs.key.core.JwsVerifier
@@ -32,6 +34,8 @@ import im.plrs.key.core.boolValue
 import im.plrs.key.core.effectiveNow
 import im.plrs.key.core.highWaterMark
 import im.plrs.key.core.inspectBundle
+import im.plrs.key.core.loadPinRevocations
+import im.plrs.key.core.usablePins
 import im.plrs.key.core.jsonEquals
 import im.plrs.key.core.licenseState
 import im.plrs.key.core.longValue
@@ -104,7 +108,7 @@ class CorpusV2Test : ConformanceSuite() {
                 f.check(result == null) { "$id must fail verification" }
             }
         }
-        f.done(80)
+        f.done(85)
     }
 
     @Test
@@ -133,21 +137,25 @@ class CorpusV2Test : ConformanceSuite() {
         for (c in cases("trustCases")) {
             val id = c["id"].stringValue!!
             val pinned = trust(c["pinned"])
+            // V4 §4.1: the evidence held before the manifest re-derives the tombstones first.
+            val held = loadPinRevocations(trust(c["pinRevocations"]), pinned, "djdl")
             val result = verifyTrustManifest(
                 c["manifestJws"].stringValue!!,
                 VerifyTrustManifestOptions(
-                    pinned = pinned, expectedAud = "djdl", now = c["now"].longValue!!,
+                    pinned = pinned, tombstones = held.tombstones, expectedAud = "djdl", now = c["now"].longValue!!,
                     checkFreshness = c["checkFreshness"].boolValue ?: true,
                 ),
             )
             val expect = c["expect"]!!.obj
             f.equal(expect["accepted"].boolValue, result.doc != null) { "$id acceptance" }
+            val tombstones = (held.tombstones + result.revokedPins).distinct().sortedWith(compareBy { it.toByteArray(Charsets.UTF_8).joinToString("") { b -> "%02x".format(b) } })
             // Accepted ⇒ the discovered set REPLACES what was held; rejected ⇒ untouched.
             val discovered = if (result.doc != null) result.discovered else trust(c["before"])
-            f.equal(trust(expect["trust"]), mergeTrust(pinned, discovered)) { "$id trust" }
+            f.equal(trust(expect["trust"]), mergeTrust(usablePins(pinned, tombstones), discovered)) { "$id trust" }
+            f.equal(expect["revokedPins"]?.arrayValue?.map { it.stringValue!! } ?: emptyList<String>(), tombstones) { "$id revokedPins" }
             expect["issuedAt"].longValue?.let { f.equal(it, result.doc?.issuedAt) { "$id issuedAt" } }
         }
-        f.done(20)
+        f.done(30)
     }
 
     /** §4.2: the cache-RELOAD path as pure data, then the gate at max(systemClock, floor). */
@@ -163,13 +171,13 @@ class CorpusV2Test : ConformanceSuite() {
             var trust = pinned
             val verified = ArrayList<Long>()
             c["trustJws"].stringValue?.let { jws ->
-                val m = verifyTrustManifest(jws, VerifyTrustManifestOptions(pinned, aud, now = system, checkFreshness = false))
+                val m = verifyTrustManifest(jws, VerifyTrustManifestOptions(pinned, expectedAud = aud, now = system, checkFreshness = false))
                 if (m.doc != null) {
                     trust = mergeTrust(pinned, m.discovered)
                     verified += m.doc!!.issuedAt
                 }
             }
-            val reload = VerifyOptions(trust, aud, deviceId, now = system, checkFreshness = false)
+            val reload = VerifyOptions(trust, aud, deviceId, lastAcceptedIssuedAt = null, now = system, checkFreshness = false)
             val license = c["licenseJws"].stringValue?.let { verifyLicenseDoc(it, reload) }
             license?.let { verified += it.issuedAt }
             c["configJws"].stringValue?.let { verifyConfigDoc(it, reload) }?.let { verified += it.issuedAt }
@@ -192,9 +200,15 @@ class CorpusV2Test : ConformanceSuite() {
             val id = c["id"].stringValue!!
             // The cap is the implementation's own constant, never the caller's.
             f.equal(MAX_BUNDLE_BYTES.toLong(), c["maxPayloadBytes"].longValue) { "$id cap" }
+            val pinned = trust(c["pinned"])
+            val held = loadPinRevocations(trust(c["pinRevocations"]), pinned, c["expectedAud"].stringValue!!)
+            val floors = c["floors"].objectValue
             val options = BundleOptions(
-                pinned = trust(c["pinned"]), product = c["expectedAud"].stringValue!!,
+                pinned = pinned, product = c["expectedAud"].stringValue!!,
                 deviceId = c["deviceId"].stringValue!!, now = c["now"].longValue!!,
+                floors = BundleFloors(floors?.get("license").longValue, floors?.get("config").longValue),
+                profile = if (c["profile"].stringValue == "reload") BundleProfile.reload else BundleProfile.import,
+                tombstones = held.tombstones,
             )
             val expect = c["expect"]!!.obj
             when (val outcome = inspectBundle(c["bundleJws"].stringValue!!, options)) {
@@ -211,7 +225,7 @@ class CorpusV2Test : ConformanceSuite() {
                 }
             }
         }
-        f.done(16)
+        f.done(23)
     }
 
     @Test
@@ -220,7 +234,7 @@ class CorpusV2Test : ConformanceSuite() {
         val pinned = trust(c["pinned"])
         val bundle = verifyBundle(
             c["bundleJws"].stringValue!!,
-            BundleOptions(pinned, c["expectedAud"].stringValue!!, c["deviceId"].stringValue!!, c["now"].longValue!!),
+            BundleOptions(pinned, c["expectedAud"].stringValue!!, c["deviceId"].stringValue!!, c["now"].longValue!!, BundleFloors.NONE, BundleProfile.import),
         )
         assertNotNull(bundle)
         bundle!!

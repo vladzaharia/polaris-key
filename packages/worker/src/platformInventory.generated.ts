@@ -483,6 +483,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "GITHUB_WEBHOOK_SECRET_PREVIOUS",
+    kind: "secret",
+    area: "delivery",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "PLATFORM_ADMIN_GROUP",
     kind: "var",
     area: "identity",

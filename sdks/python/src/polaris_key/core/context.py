@@ -289,7 +289,9 @@ class CoreContext:
 
     # ── Lifecycle ───────────────────────────────────────────────────────────────────
     def init(self) -> None:
-        self._device_id = self.store.get_device_id()
+        from .device_binding import bind_device_id
+
+        self._device_id = bind_device_id(self.product, self.store)
 
     def close(self) -> None:
         if self._owns_client and self._client is not None:
@@ -343,6 +345,25 @@ class CoreContext:
         if self._expected_services is not None:
             return services_from_list(self._expected_services)
         return copy_services(DEFAULT_SERVICES)
+
+    def license_gate_enabled(self) -> bool:
+        """Whether the licence GATE runs: the build's own declaration OR discovery's.
+
+        The build declares it through ``expected_services`` (default: licence and config), which
+        is compiled into the host. Discovery is unsigned, so it may switch the gate ON but never
+        OFF: a forged ``services.license.enabled: false`` cannot turn a licensed product into
+        ``not-applicable``. A config-only product says so with ``expected_services`` lacking
+        ``license``. Discovery still governs which sub-clients exist (:meth:`enabled`, D-21)."""
+        built = (
+            "license" in self._expected_services
+            if self._expected_services is not None
+            else bool(DEFAULT_SERVICES.get("license", {}).get("enabled", False))
+        )
+        discovered = (
+            self._discovered is not None
+            and bool(self._discovered.get("license", {}).get("enabled", False))
+        )
+        return built or discovered
 
     def set_services(self, services: ServicesMap) -> None:
         """Install a discovery-derived capability map. Once set it wins over every

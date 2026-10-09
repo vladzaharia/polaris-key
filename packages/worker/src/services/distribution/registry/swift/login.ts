@@ -18,7 +18,7 @@
  */
 
 import { licenseUsable } from "../../../../core/devices.js";
-import { clientIp, rateLimitOk } from "../../../../core/rateLimit.js";
+import { clientNetwork, rateLimitOk } from "../../../../core/rateLimit.js";
 import type { RegistryRoute } from "../../../../core/registryHost.js";
 import {
   feedAnswering,
@@ -48,7 +48,7 @@ export const SWIFT_LOGIN_ROUTE: RegistryRoute = feedAuthRoute({
       !(await rateLimitOk(
         ctx.env,
         owner,
-        { bucket: "registryLogin", id: clientIp(req), ...LOGIN_LIMIT },
+        { bucket: "registryLogin", id: clientNetwork(req), ...LOGIN_LIMIT },
         ctx.now,
       ))
     )
