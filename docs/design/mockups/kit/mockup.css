@@ -24166,3 +24166,9 @@ dd .mono {
   border-left-color: color-mix(in oklab, var(--pk-accent) 45%, transparent);
   color: var(--pk-text-strong);
 }
+/* The selectable parts the mockups draw as spans (the console renders them as buttons and inputs)
+   ring like every control when they take keyboard focus. */
+:is(.filter, .chip, .choice, .pick-tile, .role-tile, .tab, .segmented > *, .menu-item, .list-nav-item, .nav-label):focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
