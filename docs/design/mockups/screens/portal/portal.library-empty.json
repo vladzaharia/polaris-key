@@ -1,0 +1,17 @@
+{
+  "id": "portal.library-empty",
+  "title": "Library, empty",
+  "area": "portal",
+  "surface": "portal",
+  "packages": ["PX-27", "LX-38"],
+  "uxRows": [],
+  "summary": "Dana's Library before she owns anything: the display h1, who she is signed in as, one empty state with the star, one sentence, Activate a license as the primary and See 2 in Discover, and the Missing a license? strip kept.",
+  "compare": [
+    "One empty state: the Polaris star, one line of what will show here, Activate a license (the one primary) and 'See 2 in Discover' (outlined, with the count of products she can add) (portal-17).",
+    "The Missing a license? strip stays under it, the same as the populated Library (B12).",
+    "The subtitle says who is signed in, once; no count of zero products.",
+    "The display h1 (48/52, 32/36 on a phone); the bottom bar's Library is selected on a phone."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

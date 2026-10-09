@@ -1,0 +1,19 @@
+{
+  "id": "products.settings-keys",
+  "title": "Settings: Keys & secrets",
+  "area": "products",
+  "surface": "console",
+  "packages": ["ST-08", "ST-34", "ST-28"],
+  "uxRows": [],
+  "summary": "DJDL's Settings → Keys & secrets, ordered by exposure: the public key set, signing keys with the rotation stepper (djdl-2026b in its trust window until Nov 3), sealed secrets by name only, CI publishing (the trusted publisher and a pkeyci_ token with scope, last use, expiry and the workflow its revoke stops), and read-only content keys. Every write asks the person to confirm it's them.",
+  "compare": [
+    "Sections run from public to sealed to one-time (admin-4-12, study 375): Verification, Signing keys, Secrets, CI publishing, Content keys; no Platform 'Tokens' page (ST-34).",
+    "Every row says its last use, and every destructive action says what it stops ('revoking stops plugins.yml'); revoke is a danger-outline button, never the primary.",
+    "Signing is gold only through the signed badge (key glyph and name); the rotation stepper is Prepared → Trust window → Activate → Old key retires, with Activate disabled until the window ends and why in words.",
+    "Secrets list names only; a missing required secret says what it breaks.",
+    "One line under the tabs says every change asks the person to confirm it's them (step-up, admin.confirm-step-up).",
+    "The hub keeps four underline tabs and DJDL's icon as the masthead mark; spelling is 'Keys & secrets' everywhere (admin-4-22)."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

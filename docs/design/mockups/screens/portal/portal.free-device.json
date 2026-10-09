@@ -1,0 +1,18 @@
+{
+  "id": "portal.free-device",
+  "title": "Free a device",
+  "area": "portal",
+  "surface": "portal",
+  "packages": ["PX-29", "LX-15", "P0-36"],
+  "uxRows": [],
+  "summary": "Kenji's focused task to free a device on his DJDL Studio license, opened from the app's device-limit hand-off: breadcrumb back to the Library and DJDL, the identity row instead of a cropped art band, the two devices as radio cards with the least recent preselected, one Remove, and Go back to DJDL. On a short desktop the identity and consequences sit beside the task.",
+  "compare": [
+    "Breadcrumb 'Library › DJDL' (the task's label is the h1), the identity row (icon, name and tier, developer, what it keeps) instead of a cropped art band (PX-29, portal-06).",
+    "Radio cards with the least recent device preselected and tagged 'Least recent'; selection is ink (B2), the tag neutral.",
+    "One primary that names the device ('Remove Booth PC'); the consequence is said once (in the aside); Go back to DJDL returns to the app's hand-off.",
+    "Short desktop (≥1024 wide, ≤820 tall, the 1024×768 render): two columns, so Remove is in the first viewport; otherwise one 640px column.",
+    "Phone: one column, the buttons full width; the bottom bar stays (B12)."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

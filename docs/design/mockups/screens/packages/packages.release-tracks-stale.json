@@ -1,0 +1,18 @@
+{
+  "id": "packages.release-tracks-stale",
+  "title": "Release tracks: a track that hasn’t moved",
+  "area": "packages",
+  "surface": "console",
+  "packages": ["P2-09", "P2-08", "A-24"],
+  "uxRows": [],
+  "summary": "Diceroll's Release tracks with two stale tracks, one per meaning of 'stale': beta's newest build (1.7.0-beta.4, Aug 30) is older than stable 1.7.3, so beta licenses get stable for now; the custom playtest track hasn't moved in 5 weeks, so its 25 licenses still get 1.9.0-dev.3, with one action (promote the newest dev build) and the alternative (follow dev) in words.",
+  "compare": [
+    "Stale is information, not an error: an info line in the lane, never a warning pill or amber (admin-2-25, guide state 'stale releases').",
+    "Beta older than stable: the lane says what beta licenses get now ('stable until a newer beta publishes') and its foot says it once more only as the count ('312 licenses, on stable 1.7.3 for now'); no Promote button on an older build.",
+    "Playtest not moved for 5 weeks: who still gets the old build (25 licenses still get 1.9.0-dev.3), one action (Promote 1.9.0-dev.14, outlined: the page has no filled primary here), and the alternative in words (follow dev in .pkey/release).",
+    "OPEN (owner): which meaning the console flags as stale, older-than-fallback, not-moved-for-N-weeks, or both; and N.",
+    "Ship builds is one identity: Release cyan, Package glyph; crumb 'Diceroll › Ship builds' (B5)."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

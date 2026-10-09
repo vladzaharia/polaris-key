@@ -1,0 +1,18 @@
+{
+  "id": "commerce.restore",
+  "title": "Purchase: restored on a new device",
+  "area": "commerce",
+  "surface": "dialog",
+  "packages": ["CM-23", "UK-25"],
+  "uxRows": [],
+  "summary": "A restore in the purchase ledger: Mara pressed Restore purchases on her new iPad; the App Store confirmed the active Diceroll Plus subscription; the license already had Plus, so nothing new was added and the iPad joined the license as device 3 of 5. State 'Restored', neutral.",
+  "compare": [
+    "A restore is its own ledger state ('Restored', neutral pill with the refresh glyph), never a second purchase (admin-3-21, guide p324).",
+    "The drawer says what the restore added in words: here nothing new on the license, the device joined it; when a restore does add something, it names it.",
+    "Restoring purchases in the Sales tab's Advanced section explains when the store restores and links here (the explainer copy is CM-23's).",
+    "One leading glyph (the store's mark), the Commerce green rule; Re-verify is the one action, outlined.",
+    "No celebration motion on a restore (MO)."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

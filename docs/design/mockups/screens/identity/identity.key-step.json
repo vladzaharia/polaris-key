@@ -1,0 +1,18 @@
+{
+  "id": "identity.key-step",
+  "title": "Key on-ramp",
+  "area": "identity",
+  "surface": "portal",
+  "packages": ["PX-14", "I-08", "P0-38"],
+  "uxRows": [],
+  "summary": "The hosted card's key step after one wrong key: the header names DJDL and Example Audio with no 'wants you to sign in' (a key works without an account), the key field shows the error at the field, the key-entry meter is a neutral hint, and Sign in instead is the quiet way out.",
+  "compare": [
+    "Header '<Product> · <Developer>' (DJDL, Example Audio), no request verb (auth-11, B8); passport in landscape ≥960, strip below.",
+    "The key field is visible and mono, middle-truncated at rest, with Paste; the error says what's wrong in one sentence at the field.",
+    "The key-entry meter is a neutral hint ('2 of 5 key entries left this hour'), never amber (auth-10); at zero it becomes the neutral refusal in identity.refusals with Sign in instead as the primary.",
+    "Activate license is the one primary (ink); Sign in instead is a quiet link.",
+    "The receipt says the key stays on this device."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

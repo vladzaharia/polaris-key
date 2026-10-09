@@ -1,0 +1,18 @@
+{
+  "id": "portal.discover-detail",
+  "title": "Discover: a product",
+  "area": "portal",
+  "surface": "portal",
+  "packages": ["PX-32", "PS-05b", "PS-12"],
+  "uxRows": [],
+  "summary": "Diceroll's storefront page from Discover for Dana: the cover, the name and developer, a short story, and one decision panel beside it with where it runs, what she'd get, why she qualifies (her example.edu email) and every way to get it, with Add to my library as the one primary. The panel moves under the story on narrow screens.",
+  "compare": [
+    "One decision panel (PX-32, portal-19): developer, platforms, tier, duration, eligibility and every claim path together; it never invents an offer (prominence follows eligibility).",
+    "The cover is the product's art, nothing painted over it; the name sits beside the icon once.",
+    "'No license needed' replaces the tier line for an open product; a store-only listing has no Add, only its store links (B12).",
+    "Add to my library is the one primary; after it the page says 'In your library' with Open (focus moves there).",
+    "Narrow: the panel moves under the story; the bottom bar's Discover is selected."
+  ],
+  "status": "mockup",
+  "designReview": null
+}

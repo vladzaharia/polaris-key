@@ -1,0 +1,18 @@
+{
+  "id": "admin.platform-activity",
+  "title": "Platform: Activity",
+  "area": "admin",
+  "surface": "console",
+  "packages": ["ST-45", "ST-09"],
+  "uxRows": [],
+  "summary": "The Platform → Activity page: the product Activity's filters (Anyone, Any action, Any target, Last 7 days) plus a Product facet in one workbench band, Timeline or Table, Export CSV, platform events (a deploy, a setting change, a role given, an invite) beside product events, 'Load more' from the server (one row selected); the detail drawer is admin.platform-activity-event.",
+  "compare": [
+    "One workbench: the facets and the view switch are the table's head band; the Product facet is new beside the four existing ones (admin-4-14).",
+    "Never imply a full history from one page: the foot counts what is shown of the range and offers Load more (server pagination).",
+    "Permission filtering: a Product admin sees only their products' events and no Platform rows; the Product facet lists only those products.",
+    "Platform context, the Pinned K chip, 'Platform' crumb; Export CSV is outlined (no filled primary on a read page).",
+    "A row opens the detail drawer (admin.platform-activity-event): before and after, who, when, where."
+  ],
+  "status": "mockup",
+  "designReview": null
+}
