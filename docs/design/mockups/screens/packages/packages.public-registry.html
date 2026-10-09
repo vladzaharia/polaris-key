@@ -125,3 +125,120 @@
     </div>
   </main>
 </div>
+
+<!-- F-35's other registries, one frame per feed type in the PyPI flow's pattern, at its Approve step:
+     npm to npmjs (OIDC trusted publishing, provenance) and a container image to GHCR (the repository's
+     own GITHUB_TOKEN). Maven Central and crates.io follow the same pattern. Docker Hub has no trusted
+     publishing, so it would need a stored secret, which F-35 rules out. -->
+<section class="board below" aria-label="Other public registries">
+  <div class="board-title"><h1>Other public registries</h1></div>
+
+  <figure class="board-item">
+    <section class="card" aria-labelledby="npm-steps">
+      <div class="card-head">
+        <div class="title"><h2 id="npm-steps">Publish @djdl/crate-schema to npmjs</h2></div>
+        <div class="progress-inline"><span>3 of 4 done</span><div class="progress success" style="--v: 75%"></div></div>
+      </div>
+      <div class="tasks padded">
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Claim the name on npmjs</div>
+          <div class="task-desc">The <span class="mono">@djdl</span> scope belongs to the <span class="mono">djdl</span> organization.</div>
+        </div>
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Add the trusted publisher on npmjs</div>
+          <div class="task-desc split-line"><span>Ana Lima</span><span class="meta">Oct 2, 10:31</span></div>
+        </div>
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Verify</div>
+          <div class="task-desc">npmjs trusts <span class="mono">release.yml</span> in <span class="mono">example-org/djdl</span></div>
+          <div class="task-desc">Each version carries provenance</div>
+        </div>
+        <div class="task current">
+          <span class="task-mark"></span>
+          <div class="task-title">Approve</div>
+          <div class="task-desc">New versions on these tracks also go to npmjs.</div>
+          <div class="task-body">
+            <div class="mk-cluster">
+              <span class="chip on">stable, as latest</span>
+              <span class="chip on">beta, as next</span>
+              <span class="chip off"><i class="ic ic-minus"></i>dev never goes</span>
+            </div>
+            <div class="callout warning">
+              <i class="ic ic-triangle-alert"></i>
+              <div class="grow">
+                <div class="callout-title">This can’t be undone</div>
+                <div class="callout-text measure-70">npmjs never takes the same version number twice.</div>
+              </div>
+            </div>
+            <div class="field fit">
+              <label class="field-label">Type <span class="confirm-word">@djdl/crate-schema</span> to approve</label>
+              <div class="input mono"><span class="grow">@djdl/crate-schema</span></div>
+            </div>
+            <div class="mk-cluster actions-under">
+              <button class="btn outline text-phone">Cancel</button>
+              <button class="btn primary"><i class="ic ic-arrow-up-right"></i>Approve publishing to npmjs</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <figcaption><strong>npm to npmjs</strong></figcaption>
+  </figure>
+
+  <figure class="board-item">
+    <section class="card" aria-labelledby="ghcr-steps">
+      <div class="card-head">
+        <div class="title"><h2 id="ghcr-steps">Publish diceroll/table-server to GHCR</h2></div>
+        <div class="progress-inline"><span>3 of 4 done</span><div class="progress success" style="--v: 75%"></div></div>
+      </div>
+      <div class="tasks padded">
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Claim the name on GHCR</div>
+          <div class="task-desc"><span class="mono">ghcr.io/example-org/table-server</span> was free.</div>
+        </div>
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Let the repository push it</div>
+          <div class="task-desc split-line"><span><span class="mono">example-org/diceroll</span> uses its own <span class="mono">GITHUB_TOKEN</span></span><span class="meta">Oct 2, 11:05</span></div>
+        </div>
+        <div class="task done">
+          <span class="task-mark"></span>
+          <div class="task-title">Verify</div>
+          <div class="task-desc">The workflow has <span class="mono">packages: write</span></div>
+        </div>
+        <div class="task current">
+          <span class="task-mark"></span>
+          <div class="task-title">Approve</div>
+          <div class="task-desc">New images on these tracks also go to GHCR.</div>
+          <div class="task-body">
+            <div class="mk-cluster">
+              <span class="chip on">stable, as latest</span>
+              <span class="chip on">beta, as beta</span>
+              <span class="chip off"><i class="ic ic-minus"></i>dev never goes</span>
+            </div>
+            <div class="callout warning">
+              <i class="ic ic-triangle-alert"></i>
+              <div class="grow">
+                <div class="callout-title">This can’t be undone</div>
+                <div class="callout-text measure-70">A public image on GHCR can’t be made private again.</div>
+              </div>
+            </div>
+            <div class="field fit">
+              <label class="field-label">Type <span class="confirm-word">table-server</span> to approve</label>
+              <div class="input mono"><span class="grow">table-server</span></div>
+            </div>
+            <div class="mk-cluster actions-under">
+              <button class="btn outline text-phone">Cancel</button>
+              <button class="btn primary"><i class="ic ic-arrow-up-right"></i>Approve publishing to GHCR</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <figcaption><strong>Container image to GHCR</strong></figcaption>
+  </figure>
+</section>
