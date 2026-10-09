@@ -29,7 +29,7 @@ the sections have been edited to match.
 | Games dark (Q9, lead)                       | **Agreed:** the Godot kit and TV default to dark; light is opt-in.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Service cues (Q10, lead)                    | **Agreed:** off on product screens, opt-in only; the console keeps them.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Copy source (lead)                          | `conformance/parity/copy.en.json` (SP-00, `core.copy`) stays the one source for error and gate copy. `packages/brand/kit-copy/en.json` holds kit-only strings and references `core.copy` keys by name, never a duplicate. UK-02 plans both generators together.                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Hosting (lead)                              | No new domain. The elements CDN module is served by the Worker at `key.plrs.im/elements/<major>/pk.js` (immutable, with published SRI) and the shadcn registry at `key.plrs.im/r/<name>.json`; both are routes with the rule-10 gate. (The docs site sits behind the admin session gate, so it cannot host them.)                                                                                                                                                                                                                                                                                                                                                           |
+| Hosting (lead)                              | No new domain. The elements CDN module is served by the Worker at `key.plrs.im/elements/<major>/pk.js` (immutable, with published SRI) (the shadcn registry route went with UK-22, dropped); the elements route has the rule-10 gate. (The docs site sits behind the admin session gate, so it cannot host them.)                                                                                                                                                                                                                                                                                                                                                           |
 | Translations (lead)                         | The eight non-English packs are produced in UK-02a against a glossary and marked `reviewed: false`; a native-speaker review is a release follow-up, not a merge blocker.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | One sign-in form (owner, 2026-10-05)        | "Let's make 'Finish in your browser' not a popup and instead just replace the login part … Just have a very consolidated system." Every kit has **one sign-in form** whose body morphs in place through Sign in → Finish in your browser (or the code) → Choose a license (→ Replace a device) → Done (SIGN-IN.md O-13, §3.17). No sheet or dialog stacks on it. This replaces §1.4's desktop dialog model for sign-in.                                                                                                                                                                                                                                                     |
 | Native and configurable (owner, 2026-10-05) | "I do like the native elements still, so you know, make it reasonable and configurable." One option in every kit, `presentation: "inline" \| "sheet" \| "browser"` (default inline), and `replace: "inline" \| "browser"`. Native controls stay native inside the form, including the system confirmation for a destructive Replace where the platform expects one (SIGN-IN.md O-14, D-79, D-80).                                                                                                                                                                                                                                                                           |
@@ -63,7 +63,7 @@ the build plan (§10) and the answered questions (§11).
 **Relationship to the other specs.** [BRAND.md](BRAND.md) stays canonical for tokens, accents, marks
 and type. `EXPERIENCE.md` (on the `brand/experience-spec`
 branch when this was written, landing beside this file) and [PORTAL.md](PORTAL.md) stay canonical for the
-web portal and console. This document borrows their flows (the one login card, the device-limit
+web portal and console. Source precedence: owner decisions and the platform contract, then these design docs, then accepted mockups, then guide studies. A study enters only as a mockup with status `proposal` until the owner accepts it, and no API, entitlement or permission is derived from a mockup (§7.4). This document borrows their flows (the one login card, the device-limit
 flow, the confirmation levels, the copy rules) so a person moving between an app, the portal and
 the console meets one system. Where this document and BRAND §12.1 disagree, **this document wins**
 (§9).
@@ -106,8 +106,14 @@ accepted for them. A measure without a unit is in logical pixels (dp on Android,
 kit root's measured size, never of the device class, the OS, the input or the keyboard.
 
 - **Landscape:** two panes for screens with a control group (Welcome and activation, the sign-in
-  code view, device limit, revoked). The start pane holds identity, title and lede; the end pane
-  holds the act. The panes are top-aligned to each other, the row is centred and capped at about
+  code view, device limit, revoked). The start pane is the identity panel (the passport): the
+  product art when set, otherwise the icon on the accent `subtle` ground (light) or the icon
+  ambient (dark), and under `native` a `surface-sunken` panel with the icon only. It holds art or
+  icon and nothing that repeats the end pane. The end pane holds the title, lede and act,
+  top-aligned with the panel's content, never centred in empty space; the product name appears
+  once (DL5). A key field that middle-ellipsizes in the end pane is at least 28rem wide. When the
+  layout goes to one column the panel collapses to a one-line header strip. The panes are
+  top-aligned to each other, the row is centred and capped at about
   1040, with a 48 gutter. A message screen (a sentence and its actions) never splits: it is one
   block at most 560 wide, with its actions in a trailing row.
 - **Short landscape** (under 30rem tall): two columns as well, with no inner scroll. If it still
@@ -140,6 +146,9 @@ _Evidence:_ `compose.sign-in`, `react.license-gate.login`, `swiftui.gate`, `godo
   dismisses it, and focus returns to the opener.
 - A blocking gate (boot, sign-in before first use, a mandatory update) owns the window on an opaque
   ground with the product ambient.
+- Sign-in and activation are inline by default (D-79): their steps morph in the form. A sheet is
+  the labelled alternative, `presentation: "sheet"`; boards draw the inline step as the primary
+  shot and caption the dialog shots with the option.
 - An embedded pane (devices, settings, sign-out) starts at the host's start edge, is at most 40rem
   wide, never centres itself, and offers `bare` to drop its own frame. Its controls have opaque
   fills, so their contrast never depends on the host's ground.
@@ -179,7 +188,8 @@ button, and Welcome showed two primaries. _Evidence:_ `swiftui.gate`,
 **DL5. The product is the identity.** Every gate, sign-in, update, settings and status screen is
 headed by the product's icon, or its monogram (the initial at weight 600 on `surface-sunken`, in the
 platform's icon shape), and its name in `text-strong`, at one size per context (§1.2). The name
-appears once per screen: a split's identity pane shows the icon only. At short heights the header
+appears once per screen, in the title when the title names the product and otherwise once
+under the icon; a split's identity panel holds art or icon only (DL1). At short heights the header
 collapses to one line; it is never removed. The Polaris mark appears only in the opt-in Powered-by
 line or badge (§1.6). _Test:_ UK-55 `polaris-mark`; the header present at every §7.1 row. _Why:_ the
 Pinned K stood in for the product, and phone screens had no identity at all. _Evidence:_
@@ -192,10 +202,12 @@ covers device limit, revoked, expired, version too old or too new, and channel n
   colour, no `aria-invalid` on a valid key, no error glyph. A full license is a limit, not an
   error (§1.5 rule 9). This replaces the danger-subtle callout of the SwiftUI fix round.
 - The fixing action is the screen's only primary and takes focus. A fix that leaves the app carries
-  the new-window glyph, and on return the kit retries once.
+  the new-window glyph (never an ellipsis, §1.5 rule 11), and on return the kit retries once.
 - Every blocking state has an action that can change its outcome: revoked shows the sign-in
   methods, expired offers another license. A fix the kit cannot reach is named in words, and Try
   again stays.
+- In a terminal a refusal is ▲ with its fix, never ✗. A refused gate in a host CLI exits 4 and
+  `status` exits 1 (UK-51).
 
 _Test:_ UK-55 `refusal-styling` on the refusal fixtures. _Why:_ the device limit looked like an
 error with its fix as the weakest button, and revoked was a dead end. _Evidence:_
@@ -211,7 +223,8 @@ error with its fix as the weakest button, and revoked was a dead end. _Evidence:
 - A failed load is an error state with Try again, never an empty state. An unknown code shows the
   catalog's fallback sentence.
 - Loading shows nothing for the first 250–300 ms, then the identity, a muted label and the 2 px
-  shimmer (§1.5 rule 4).
+  shimmer (§1.5 rule 4). A determinate bar appears only for counted bytes; Boot never draws a
+  part-filled bar for a stage.
 - Cancelling is not an error: the flow closes with no "cancelled" screen. Expired, denied and
   failed keep a result with the action that starts again.
 
@@ -257,7 +270,8 @@ browser. _Evidence:_ `compose.focus`, `godot.gate`, `react.license-gate.login`,
 **DL10. Targets and type have platform floors.** Targets, controls and the Godot and TV type floor
 are §1.5 rule 5 and §2.1 (`controlHeight`); the web floor is §7.3's 12 px. A compact control still
 reaches 2.75rem on a coarse pointer. On phones body text is at least 16 dp and controls at least
-48 dp (44 pt), computed from the screen's real density in engines that see only pixels. A user code
+48 dp (44 pt), computed from the screen's real density in engines that see only pixels. The 16 px floor is for phones, tablets and the web; desktop kits use the platform body size, which
+the OS text-size setting scales (DL11). A user code
 is never smaller than the title beside it. _Test:_ matrix assertions on every control and text run.
 _Why:_ a Godot game on a phone drew 12 dp body text and 37 dp buttons. _Evidence:_ `godot.sign_in`,
 `swiftui.signin`.
@@ -288,6 +302,9 @@ at body weight. _Evidence:_ `compose.sign-in`, `godot.gate`.
   extras, Fluent, libadwaita, Material dynamic colour). The resolver still runs against the host's
   surfaces, so text keeps 4.5:1 and fills 3:1. Status colours stay the brand's. A host theme with
   an empty or transparent panel still gets a ground.
+- **Provider buttons** take the theme's radius, height and density and keep each provider's own
+  fill and logo (§3.6). Polaris chrome's ink action never applies inside the kits: a kit primary is
+  the product accent's solid, or ink when the product has no accent.
 - **Both presets** keep the platform idiom: title case and the default-button order on macOS,
   Return and Escape bound to the primary and Cancel, a lone Android Cancel as a centred text
   button, B on consoles.
@@ -301,8 +318,10 @@ hosts and light game themes. _Evidence:_ `compose.accent`, `react.system-on-ligh
 
 - **Where:** a QR appears only where the device cannot browse: TV, console and pad-only screens,
   and an offline-activation request. Never on a phone, and never on a desktop surface (SIGN-IN.md
-  D-67), which retires §4.3's web QR beside the code. A phone leads with Open browser, then the code
-  with Copy.
+  D-67), which retires the old web QR beside the code. Not on a tablet either: the Godot kit's desktop
+  and tablet QR is removed, and Godot shows one only pad-only. A phone leads with Open browser,
+  then the code with Copy. Terminals draw no QR for sign-in or the device limit; the offline
+  request gets a half-block QR where the whole screen fits.
 - **Size:** at least 160 physical px and at most 42 % of the short side, one size per kit, on a
   92 % white tile with an 8 px quiet zone (and a hairline in light), its modules scaled by a whole
   factor, always beside the URL and the code in text.
