@@ -1572,12 +1572,45 @@ landscape layouts where the window is landscape).
 | TV                 | 1920 × 1080 at TV scale, focus navigation                                | tvOS, Android TV and Godot                                                                                                              |
 | Godot game sizes   | 1280 × 720, 1280 × 800 (Steam Deck), 2560 × 1440, 3840 × 2160 at scale 2 | Godot                                                                                                                                   |
 | 200 % text or zoom | Phone portrait, phone landscape and desktop, again                       | every GUI kit: browser zoom 200 % (web), AX3 Dynamic Type (Apple), font scale 2.0 (Compose), font scale 2 (Qt), content scale 2 (Godot) |
+| 400 % zoom         | 1280 × 1024 at 400 % (320 × 256 CSS px, WCAG 1.4.10)                     | web kits and hosted pages: no page-level horizontal scroll; a table that scrolls sideways sits in a labelled, focusable region                |
+
+The web boards draw the rows 844 × 390, 640 × 360, 820 × 1180, 1180 × 820 and 1920 × 1080 beside
+390 × 844 and 1440 × 900. Forced-colors runs in both schemes (not dark only), and a
+`prefers-contrast: more` render is added.
+
+**Four rendering classes.** A fixture state is rendered by the class its kit belongs to:
+
+- **Full visual host:** web, Apple, Compose, Qt, Godot. Pixel baselines in both schemes.
+- **Focus-constrained host:** TV, console, pad-only and a screen reader's order. Baselines plus a
+  focus pass: first focus on appear, after each async result, and Back or B out.
+- **Terminal:** golden ANSI text and the VHS render at the terminal rows below.
+- **Headless:** the view models (ui-core, the Swift and Kotlin cores, the Godot controllers). The
+  fixture runner asserts the component, state, copy keys, primary action, refusal tone, error slot
+  and initial-focus target, with no pixels.
+
+**Fixtures strategy.** The shared fixtures cover each semantic state with these variants: a long
+product name, a localised pack (`de`, `ja`), a custom light accent (`#ff6a3d`), a delayed response
+past the DL7 threshold, cancellation and a recoverable failure. Variants render only at the
+phone-portrait and desktop rows, not across the whole matrix. The reduced-motion render must reach
+the same state as the animated one.
+
+**Constrained hosts.** Rules the kits meet and the matrix checks:
+
+- Android: predictive back (a mid-gesture shot at progress 0.5); API floors 24–35, with an API 30
+  `native` render; no Google Play services (a no-GMS sign-in render); no browser.
+- Windows 10, Remote Desktop and Transparency effects off render opaque, without Mica.
+- Linux without a compositor, or under reduced transparency, renders opaque.
+- OS contrast modes on desktop: Windows Contrast themes, macOS Increase Contrast, GNOME high
+  contrast. A `contrast` render for Compose Desktop, Qt, Electron and SwiftUI macOS.
+- Qt button order follows `QDialogButtonBox` per platform; the KDE Plasma form is Qt only.
+- Flatpak and Snap open links through the OpenURI portal; Linux screen readers are checked through
+  AT-SPI (Compose Desktop has none on Linux, which its page records).
 
 **Terminal kits** (columns × rows):
 
 | Row            | Size                                                             |
 | -------------- | ---------------------------------------------------------------- |
-| Tiny           | 24 × 24, 28 × 24, 32 × 24                                        |
+| Tiny           | 24 × 24, 28 × 24, 32 × 24 (32 columns is the frame floor)        |
 | Narrow         | 40 × 24                                                          |
 | Small          | 60 × 24                                                          |
 | Standard       | 80 × 24                                                          |
@@ -1628,7 +1661,9 @@ both ledgers only shrink. The per-kit runtime helpers are `sdks/godot/tests/supp
 
 - no border wider than 1 px, and none of 1.5 px or more on a selected or resting control;
 - no `box-shadow` spread ring on focus, and no focus ring outside `:focus-visible`;
-- no coloured `box-shadow` under buttons.
+- no coloured `box-shadow` under buttons (`no-button-glow`);
+- no accent-tinted border, rim or shadow under `native` or forced colours;
+- no static accent rule under a title bar or header (`static-top-accent-rule`).
 
 **Type:**
 
@@ -1663,6 +1698,12 @@ both ledgers only shrink. The per-kit runtime helpers are `sdks/godot/tests/supp
 - every interactive element has hover, active, disabled and focus-visible styles;
 - no colour literal outside the generated tokens;
 - one primary per region; no X beside a Cancel;
+- `accent-as-status`: a service-accent colour on a status, alert or StatusPill element (accent
+  identifies context, never success or failure);
+- `section-index`: a heading preceded by a bare two-digit index;
+- `code-no-wrap`: CodeDisplay and the key field never wrap and break only at the hyphen at 200 %;
+- raw escape: a terminal kit writes no escape sequence outside its painter;
+- drifted board copy: board strings are diffed against the catalog (the string lint below);
 - every visible string is a catalog key (the **string lint** also diffs the visible strings of the
   same state across kits and mockup boards, allowing only the documented platform variants).
 
@@ -1678,7 +1719,7 @@ both ledgers only shrink. The per-kit runtime helpers are `sdks/godot/tests/supp
 Each must kit's first full baseline set is reviewed against this document's mockups by a designer
 (or the lead with the role agents) before release; the review notes go in the PR. The mockups are
 the reference, so they must agree with this text. A disagreement between the two is a bug in one of
-them, and it is fixed before review. The review follows the checklist in
+them, and it is fixed before review. Source precedence is stated in the opening section. The review follows the checklist in
 [ui-kits/REVIEW.md](ui-kits/REVIEW.md); `pnpm ui:report` lays the kit's baselines beside the
 mockups for it.
 
@@ -1750,8 +1791,8 @@ At 390 × 844:
 
 #### iOS 26 (SwiftUI, Liquid Glass)
 
-The iOS board has the gate, the activate sheet with the iOS 26 keyboard, the sign-in method sheet over
-the real gate, device limit, the non-blocking update banner, a mandatory update sheet, and account
+The iOS board has the gate, the activate sheet with the iOS 26 keyboard, the inline one-form sign-in with
+the logo-only provider row, device limit, the non-blocking update banner, a mandatory update sheet, and account
 settings.
 
 | Gate                                  | Activate                                  | Sign in                                  | Device limit                                  | Update                                  | Update required                                  | Settings                                  |
@@ -1760,7 +1801,7 @@ settings.
 | ![](ui-kits/shots/ios-gate-light.png) | ![](ui-kits/shots/ios-activate-light.png) | ![](ui-kits/shots/ios-sign-in-light.png) | ![](ui-kits/shots/ios-device-limit-light.png) | ![](ui-kits/shots/ios-update-light.png) | ![](ui-kits/shots/ios-update-required-light.png) | ![](ui-kits/shots/ios-settings-light.png) |
 
 The iOS 18 fallback (the same layout on system materials), AX3 Dynamic Type, the StoreKit paywall,
-the Live Activity, and boot, status and error:
+the Live Activity (a content-pack download, not an app update), and boot, status and error:
 
 | iOS 18                                 | AX3                                  | Paywall                                  | Live Activity                                  | Boot, status, error                     |
 | -------------------------------------- | ------------------------------------ | ---------------------------------------- | ---------------------------------------------- | --------------------------------------- |
@@ -1781,7 +1822,7 @@ and the watchOS glance.
 #### Android (Compose, Material 3 Expressive)
 
 The Android board shows the product icon in the adaptive mask, filled fields with the IME up,
-Credential Manager first, the inline `LoadingIndicator`, connected lists, and a bottom sheet with
+the logo-only provider row, the inline `LoadingIndicator`, connected lists, and a bottom sheet with
 wavy progress and equal-width buttons.
 
 | Gate                                      | Activate                                      | Sign in                                      | Hand-off                                             | Device limit                                      | Update                                      | Settings                                      |
@@ -1833,7 +1874,7 @@ and an `AdwDialog`.
 #### Qt (Qt Quick and QWidget, Python)
 
 Drawn as Qt draws them, from the generated `Theme.qml` and QSS: the Qt Quick gate on Windows, the
-activate dialog on Linux in the KDE Breeze frame, the QWidget parts by object name, and boot, status
+activate dialog on Linux in the KDE Breeze frame with KDE's affirmative-first button order, the QWidget parts by object name, and boot, status
 and error.
 
 | Dark                                          | Light                                          |
@@ -1845,7 +1886,7 @@ and error.
 
 #### Godot (Control nodes)
 
-The Godot board (1280 × 720, plus 1280 × 800 for Steam Deck) uses dark by default: glass panels on a
+The Godot board (1280 × 720, plus 1280 × 800 for Steam Deck; the kit is held to the DL15 matrix) uses dark by default: glass panels on a
 scrim, the game's wordmark, a console focus ring with glow, monochrome input glyphs, a device-code
 screen for TV, an in-race toast with the modal held for the results screen, and an Account tab in
 the game's menu.
@@ -1870,7 +1911,7 @@ The terminal board is drawn in a real cell grid at line-height 1.2, 80 columns. 
 device-code sign-in without a QR (SIGN-IN.md D-67, D-68), masked key entry that never echoes the
 key, the device limit's browser hand-off (SIGN-IN.md §4.15: the terminal opens `manageUrl` to
 replace a device), status and update progress, a blocked status with its fix as a command, grouped
-help, the four colour and symbol fallbacks, a 60-column render and a Textual app. The sign-in,
+help, the four colour and symbol fallbacks plus a fifth, the pipe (no escapes, no spinner, each line printed once), 60-, 40- and 32-column renders and a Textual app. Refusals are ▲ with exit codes per UK-51. The sign-in,
 activate, device-limit, help, fallback and 60-column shots follow the Node kit's goldens
 (`packages/sdk-node/test/cli/golden/`). Textual buttons share one shape (a one-row block with one cell of padding): the
 primary in the accent, the secondary as a tonal block, never bracketed `[ text ]` buttons beside
