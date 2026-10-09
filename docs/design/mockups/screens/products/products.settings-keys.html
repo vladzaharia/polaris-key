@@ -59,11 +59,10 @@
 
       <!-- admin-4-12: ordered by exposure (public first, then sealed, then one-time), each with its last
            use and what a rotation or revoke stops. Every write asks you to confirm it's you. -->
-      <p class="icon-line type-small muted"><i class="ic ic-fingerprint"></i><span>Every change here asks you to confirm it’s you.</span></p>
 
       <section class="card" aria-labelledby="k-verify">
         <div class="card-head">
-          <div class="title"><h2 id="k-verify">Verification</h2><p>Public: devices use these to check what DJDL is sent</p></div>
+          <div class="title"><h2 id="k-verify">Verification</h2></div>
         </div>
         <div class="card-rows">
           <div class="setting-row">
@@ -75,7 +74,7 @@
 
       <section class="card" aria-labelledby="k-sign">
         <div class="card-head">
-          <div class="title"><h2 id="k-sign">Signing keys</h2><p>Sign licenses and releases; a rotation trusts the new key before it signs</p></div>
+          <div class="title"><h2 id="k-sign">Signing keys</h2></div>
         </div>
         <div class="card-rows">
           <div class="setting-row">
@@ -94,7 +93,8 @@
                 <li class="step"><span class="step-mark"></span><span class="step-label">Activate</span></li>
                 <li class="step"><span class="step-mark"></span><span class="step-label">Old key retires</span></li>
               </ol>
-              <div class="setting-desc">Devices that haven’t pinned it by Nov 3 refuse licenses signed by it: 2 app folders still need <span class="mono">pkey sdk add</span>.</div>
+              <div class="setting-desc">Devices that haven’t pinned it by Nov 3 refuse licenses it signs.</div>
+              <div class="setting-desc">2 app folders still need <span class="mono">pkey sdk add</span>.</div>
             </div>
             <button class="btn outline sm" disabled aria-disabled="true">Activate on Nov 3</button>
           </div>
@@ -103,27 +103,27 @@
 
       <section class="card" aria-labelledby="k-secrets">
         <div class="card-head">
-          <div class="title"><h2 id="k-secrets">Secrets</h2><p>Sealed: names only, values never shown again</p></div>
+          <div class="title"><h2 id="k-secrets">Secrets</h2><p>Values are never shown again</p></div>
           <button class="btn outline sm"><i class="ic ic-plus"></i>Set secret</button>
         </div>
         <div class="card-rows">
-          <div class="setting-row"><div><div class="setting-title mono">identity.acoustidKey</div><div class="setting-desc">No value in the Default profile · Managed config can’t serve it</div></div><button class="btn outline sm">Set value</button></div>
-          <div class="setting-row"><div><div class="setting-title mono">proxy.subscriptionUrl</div><div class="setting-desc">Set Sep 12 by Ana Lima · read by 3,104 devices this week</div></div><button class="btn ghost sm">Replace</button></div>
+          <div class="setting-row"><div><div class="setting-title mono">identity.acoustidKey</div><div class="setting-desc">No value in the Default profile</div><div class="setting-desc">Managed config can’t serve it</div></div><button class="btn outline sm">Set value</button></div>
+          <div class="setting-row"><div><div class="setting-title mono">proxy.subscriptionUrl</div><div class="setting-desc">Set Sep 12 by Ana Lima</div><div class="setting-desc">Read by 3,104 devices this week</div></div><button class="btn ghost sm">Replace</button></div>
         </div>
       </section>
 
       <section class="card" aria-labelledby="k-ci">
         <div class="card-head">
-          <div class="title"><h2 id="k-ci">CI publishing</h2><p>One-time credentials: shown once when made</p></div>
+          <div class="title"><h2 id="k-ci">CI publishing</h2><p>Tokens are shown once</p></div>
           <button class="btn outline sm"><i class="ic ic-plus"></i>New token</button>
         </div>
         <div class="card-rows">
           <div class="setting-row">
-            <div><div class="setting-title"><i class="ic ic-github"></i>Trusted publisher</div><div class="setting-desc"><span class="mono">example-org/djdl</span>, workflow <span class="mono">release.yml</span> · used Oct 6</div></div>
+            <div><div class="setting-title"><i class="ic ic-github"></i>Trusted publisher</div><div class="setting-desc"><span class="mono">example-org/djdl</span> · <span class="mono">release.yml</span></div><div class="setting-desc">Used Oct 6</div></div>
             <button class="btn ghost sm">Change</button>
           </div>
           <div class="setting-row">
-            <div><div class="setting-title"><span class="mono">pkeyci_…R8VQ</span><span class="pill sm">Publish packages</span></div><div class="setting-desc">Plugin CI · used 14 min ago · expires Jan 4, 2027 · revoking stops <span class="mono">plugins.yml</span></div></div>
+            <div><div class="setting-title"><span class="mono">pkeyci_…R8VQ</span><span class="pill sm">Publish packages</span></div><div class="setting-desc">Plugin CI · used 14 min ago</div><div class="setting-desc">Expires Jan 4, 2027</div></div>
             <button class="btn danger-outline sm">Revoke</button>
           </div>
         </div>
@@ -131,10 +131,10 @@
 
       <section class="card" aria-labelledby="k-content">
         <div class="card-head">
-          <div class="title"><h2 id="k-content">Content keys</h2><p>Decrypt packs on licensed devices; set by the release pipeline</p></div>
+          <div class="title"><h2 id="k-content">Content keys</h2><p>Set by the release pipeline</p></div>
         </div>
         <div class="card-rows">
-          <div class="setting-row"><div><div class="setting-title mono">djdl-content-2026</div><div class="setting-desc">Stem separation models · read-only here</div></div><span class="subtle">Read-only</span></div>
+          <div class="setting-row"><div><div class="setting-title mono">djdl-content-2026</div><div class="setting-desc">Stem separation models</div></div><span class="subtle">Read-only</span></div>
         </div>
       </section>
     </div>
