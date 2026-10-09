@@ -3703,6 +3703,14 @@ kbd,
 .toolbar .search-field {
   height: 32px;
 }
+/* The placeholder never spills out of the field: one line, cut with an ellipsis. */
+.search-field > span:not(.ic) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .filter {
   display: inline-flex;
   align-items: center;
@@ -22181,6 +22189,16 @@ span.dash::before {
 }
 .choice.on::before {
   background: var(--mk-action-on);
+}
+/* A feature choice (data-service on the .choice) is edged in its feature's accent, the owner's
+   2026-10-09 note: the colour names the feature (context); the ink check, the 2px edge and the
+   fill say it is chosen (state), so the accent never carries the state alone. */
+.choice[data-service] {
+  border-color: color-mix(in oklab, var(--pk-accent) 50%, var(--mk-line));
+}
+.choice[data-service].on {
+  border-color: var(--pk-accent);
+  box-shadow: inset 0 0 0 1px var(--pk-accent);
 }
 .chip.on,
 .filter.on {
