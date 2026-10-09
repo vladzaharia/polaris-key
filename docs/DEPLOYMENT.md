@@ -285,7 +285,7 @@ publisher (`.pkey/release` `publishing.trustedPublisher`) and runs in the GitHub
    Also add a **ruleset requiring code-owner review on `.github/**`, `actions/publish/**`,
 `.pkey/**`and`tools/**`** (`.github/CODEOWNERS` names the owner), and verify the `production`
    environment has the same deployment-ref limits: `sync-worker-secrets.yml` also refuses to run
-   off `main` itself, but the environment is the authority. `deploy.yml` runs install, build,
+   off a `v*` release tag itself (the environment's only allowed ref), and the environment is the authority. `deploy.yml` runs install, build,
    typecheck, test and lint in an unprivileged `verify` job (no environment, no secrets, no
    `id-token`); the privileged `deploy-worker` job installs with `--ignore-scripts`.
 4. Nothing to register by hand. `deploy.yml`'s "Register the platform packages" step calls the
