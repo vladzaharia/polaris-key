@@ -234,10 +234,7 @@ export class SingleUseDO implements DurableObject {
           (t) => typeof t === "number" && t > now - windowMs,
         );
         // A locked address takes no more strikes: they would re-arm the lock (SEC-CRY-16).
-        if (
-          typeof prior?.lockedUntil === "number" &&
-          prior.lockedUntil > now
-        )
+        if (typeof prior?.lockedUntil === "number" && prior.lockedUntil > now)
           return reply({ locked: true });
         hits.push(now);
         // Keep no more history than the threshold needs.
