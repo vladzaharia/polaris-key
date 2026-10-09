@@ -115,7 +115,7 @@ fixes:**
 
 - **Surfaces:** `surface.page | raised | overlay | sunken`.
 - **Text:** `text.strong | default | muted | subtle | onAccent`.
-- **Borders:** `border.subtle | strong`, plus `focus`.
+- **Borders:** `border.subtle | strong`, plus `focus` (the ring in the referenced service's accent, B17).
 - **Accent families** (`solid`, `fg`, `on`, `subtle`), per section:
 
   | Section      | Family                  |
@@ -367,8 +367,10 @@ that is not built yet carries `ready: false` in `nav.ts` and redirects to Deploy
 **Rules.**
 
 - **What accents color.** Accents color identity and chrome only: nav marker, primary button,
-  focus ring, links, selected row, sidebar glyph. **Status colors never change by section**:
-  success is always success.
+  focus ring, links, selected row, sidebar glyph, and hover and checked states (B17: each takes the
+  accent of the service the element references, `fg` for text and edges, `solid` for fills; a Config
+  row in a mixed list is config yellow). The primary button is neutral action ink (B2). **Status
+  colors never change by section and are never drawn in a service accent**: success is always success.
 - **Gold appears only for signed things** (`SignedBadge`, key displays, signature verified) and as
   the K's bit on core pages.
 - **The Star Cut** appears on Distribution and Update group labels, their `service-off` empty

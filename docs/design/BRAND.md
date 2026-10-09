@@ -217,11 +217,11 @@ The dark default text is the kit's muted `#dbe4ff`; the light muted text is the 
 
 ### 4.3 Borders and focus
 
-| Token                             | Dark      | Light     | Rule                                                                 |
-| --------------------------------- | --------- | --------- | -------------------------------------------------------------------- |
-| `border-subtle` (`border-border`) | `#212633` | `#dadee9` | decorative dividers and card edges; no contrast requirement          |
-| `border-strong`                   | `#61697b` | `#7e8699` | anything that bounds a control (inputs, checkboxes): ≥ 3:1 (3.3/3.2) |
-| `focus` (`ring-focus`)            | `#9a5cff` | `#7a2fff` | the focus ring, always violet: ≥ 3:1 (4.6/4.9)                       |
+| Token                             | Dark      | Light     | Rule                                                                             |
+| --------------------------------- | --------- | --------- | -------------------------------------------------------------------------------- |
+| `border-subtle` (`border-border`) | `#212633` | `#dadee9` | decorative dividers and card edges; no contrast requirement                      |
+| `border-strong`                   | `#61697b` | `#7e8699` | anything that bounds a control (inputs, checkboxes): ≥ 3:1 (3.3/3.2)             |
+| `focus` (`ring-focus`)            | `#9a5cff` | `#7a2fff` | the core focus ring (violet) ≥ 3:1 (4.6/4.9); elsewhere the service's `fg` (B17) |
 
 ### 4.4 Status
 
@@ -406,7 +406,14 @@ the warning status (amber), and the danger status keeps the red end of the warm 
   charts that belong to the section.
 - Never as a status. Never as a large background (use `subtle`). Never in the marks, except the
   [section bit](#6-the-section-bit).
-- The focus ring stays violet in every section: one learnable focus signal.
+- States follow the service the element references (`data-service`; core violet on core and platform
+  screens; B17): the focus ring, active and selected nav item, hover, checked controls (checkbox,
+  radio, switch, segmented, tab, chip) and borders that mark context. Text and edges use `fg`, fills
+  use `solid`, at 3:1 for UI and 4.5:1 for text in both themes, and a non-colour cue (check, dot, bar
+  and label) always stays. An element inside Licensing is lime; a Config row in a mixed list is
+  config yellow. Status colours are never drawn in a service accent. The filled primary button is the
+  exception: it stays the neutral action ink (B2). Kits keep their platform look with the product
+  accent.
 
 ---
 
@@ -689,7 +696,7 @@ is nothing to browse. It never lists owners, packages or versions.
 - Use the compact lockup when the full one would shrink the mark below 48 px.
 - Reserve gold for signing keys, signed records and verified signatures.
 - Use the Star Cut for the delivery family and the bytes host; the Pinned K for everything else.
-- Keep the focus ring violet and visible.
+- Keep the focus ring visible, in the accent of the service the element references (core violet on core screens).
 - Use the tokens; add a token (in `source.ts`, with tests) rather than a one-off hex.
 
 **Don't**

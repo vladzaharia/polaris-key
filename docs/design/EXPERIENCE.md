@@ -193,8 +193,9 @@ platform, with a Product facet, AO J6.2) and the **Platform** group: Status (act
 **Packages**; Update "Feed" → **Update feed**; Platform keeps **Package feeds**. S-18 D16 gives
 Access, Feeds and Metadata access one access-mode vocabulary ("Entitled: holds `<flag>`").
 
-**What a hop no longer does.** The section accent still marks where you are, but only in the sidebar
-marker, the page's primary button and links (BRAND §5.4). The avatar no longer takes the section
+**What a hop no longer does.** The section accent still marks where you are: the sidebar
+marker and links, plus the focus ring, hover, selected and checked states of elements that reference the
+service (BRAND §5.4, B17). The primary button is neutral action ink (B2). The avatar no longer takes the section
 accent (CL 2), and drawers opened from another section keep the **origin's** accent and route, so a
 license's device drawer stays License-green over the license (§0.5 O1).
 

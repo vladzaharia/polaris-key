@@ -90,7 +90,7 @@ and, where a source pattern or a runtime walk can see it, in every kit `kit-rule
 
 Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
 
-- Add lint rules: `mark-size` (no Polaris mark below the 16 px favicon cut; 16-23 px must be the favicon cut; covers the Powered-by line); `accent-as-status` (a computed colour equal to a `--pk-service-*` solid or fg on an element whose role is status, alert or a StatusPill); `section-index` (a heading preceded by a bare two-digit index in its own text run); `no-button-glow` (no chromatic box-shadow, drop-shadow or SwiftUI `.shadow` on a button part); no accent-tinted border, rim or shadow under preset native or `forced-colors: active`; `code-no-wrap` (CodeDisplay and the key field set `white-space: nowrap`, breaking only at the hyphen at 200%). Seeded violation and a debt ledger per rule; run on the boards, kit CSS and Swift sources, and on console and portal pages with `--html`. (brand-40, overview-27, sdk-a-26)
+- Add lint rules: `mark-size` (no Polaris mark below the 16 px favicon cut; 16-23 px must be the favicon cut; covers the Powered-by line); `accent-as-status` (B17: status, alert, StatusPill, SignedBadge or severity icon must never compute to any `--pk-service-*` solid, fg or subtle value, and a service accent must never carry a status word); `state-accent` (B17: the computed colour of a focus ring, selected or active item, hover tint, checked control or context border must equal the nearest `[data-service]` ancestor's accent family, `-fg` for text and edges and base for fills, and must not be neutral ink, a fixed violet outside core, or a different service's accent; the filled primary is exempt and must be `action-neutral`; kits are exempt and are checked against the resolved product accent instead; status elements are covered by `accent-as-status`); `section-index` (a heading preceded by a bare two-digit index in its own text run); `no-button-glow` (no chromatic box-shadow, drop-shadow or SwiftUI `.shadow` on a button part); no accent-tinted border, rim or shadow under preset native or `forced-colors: active`; `code-no-wrap` (CodeDisplay and the key field set `white-space: nowrap`, breaking only at the hyphen at 200%). Seeded violation and a debt ledger per rule; run on the boards, kit CSS and Swift sources, and on console and portal pages with `--html`. (brand-40, overview-27, sdk-a-26)
 
 ## Steps
 
@@ -108,6 +108,7 @@ Applied from the brand and transition integration ([Brand transition decisions](
       recorded debt; a new hit fails, and a count above today's fails until re-recorded.
 - [ ] The ledger names the owning package for each kit's debt.
 - [ ] UI-KITS.md §7.3 lists the eight rules.
+- [ ] `state-accent` and `accent-as-status` each fail on a seeded violation (an ink checked box inside Licensing; a green Healthy pill that equals the Distribution accent) and pass on a Config row in a mixed list rendering config yellow.
 - [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 

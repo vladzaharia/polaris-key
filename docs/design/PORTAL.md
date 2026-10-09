@@ -161,8 +161,9 @@ violet accent, no `data-service` attribute. Specifically:
   2026-10-03).
 - **Type:** Rubik 400 and 700 only (`font-synthesis: none`). Mono is the platform stack for keys,
   codes, hashes, versions and token prefixes only.
-- **Colour:** neutral chrome; `--pk-accent` (core violet) only for primary buttons, the active nav
-  underline, selection, focus and small counts. Gold (`--pk-signed`) only on _Signed_ chips.
+- **Colour:** neutral chrome; the primary button is neutral action ink (B2); the active nav
+  underline, selection, hover, checked states, focus and small counts take the accent of the service
+  the element references (B17; core violet on Library, Discover and Account). Gold (`--pk-signed`) only on _Signed_ chips.
   Status colours always with an icon and a word.
 - **Illustration:** the stationary star (BRAND §7.7) is the only illustration, on empty, error and
   no-context screens. A sparse static star field sits behind the login card on wide screens. The
@@ -398,7 +399,7 @@ star field (`surface-page`, no art behind it). The card has three slots:
   Google** or **Continue with Steam** (`aria-label`, repeated as the hover tooltip), and the row is a
   `role="group"` labelled "Or continue with". In "add a method" contexts the names read **Connect
   Apple** and **Connect Google** (§4.10).
-- **Focus and hover:** the standard violet 2 px ring with 2 px offset on `:focus-visible` (02 shows it
+- **Focus and hover:** the standard 2 px ring in the referenced service's accent (core violet here, B17) with 2 px offset on `:focus-visible` (02 shows it
   on Google), and `border-strong` on hover. The buttons are 52 px tall, so every target clears 44 px.
 - **1 to 3 buttons.** The row has as many buttons as the product ships providers. Three split the
   row into thirds (01); two split it in half (02, 06, 07, 08); one keeps the width of a half-row
@@ -1453,7 +1454,7 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
    `role="img"` with a list label.
 3. **Status** is always icon plus word; the seat meter is `role="img"` with a text label; the
    "Not included" reason is visible text.
-4. **Focus:** the violet 2 px ring with 2 px offset everywhere; dialogs trap focus and return it to
+4. **Focus:** the 2 px ring with 2 px offset everywhere, in the referenced service's accent (core violet unless the element belongs to another service, B17); dialogs trap focus and return it to
    the opener; the inline device confirm moves focus to its heading; after adding a product, focus lands
    on the new product's `h1`.
 5. **Forms:** visible labels; errors inline with `aria-invalid` and `aria-describedby`; the code

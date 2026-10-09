@@ -73,8 +73,7 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
       targets โฅ 44 px on customer and touch surfaces, โฅ 24 px with separation in the console.
 - [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
-      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the
-      render (text 4.5:1, UI 3:1).
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
 - [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
       expired or stale, network and API error with Try again, partial failure, success; input survives a
       failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
@@ -82,8 +81,11 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 - [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
       without moving content; progress is real (no invented percentage, nothing loops after a failure);
       no celebration on refunds, revocation, removal, deletion or consent.
-- [ ] Hierarchy and copy: one filled primary per state; the section accent marks context only, never
-      success, warning or failure; copy from the catalog, each fact once; no decorative numbers or
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
       taglines; no text drawn over customer art.
 - [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
@@ -93,7 +95,7 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 
 Applied from the brand and transition integration ([Brand transition decisions](../BRAND-TRANSITION.md)). This section wins over the text below where they differ.
 
-- Sidebar (B3, B4): no 'WORKSPACE' label; the context switcher is a 72 px bordered card; group labels are neutral text with a 3 px accent bar and no icon; items 40 px. Selected item = subtle accent fill plus a 3 px solid inset marker, never a solid accent pill; count badges keep their status colour; the marker is tested at 3:1 and is never the only cue. (admin-1-15, brand-06, site-17, admin-3-18, admin-2-31)
+- Sidebar (B3, B4): no 'WORKSPACE' label; the context switcher is a 72 px bordered card; group labels are neutral text with a 3 px accent bar and no icon; items 40 px. Selected item = subtle accent fill plus a 3 px solid inset marker, never a solid accent pill; count badges keep their status colour; the marker is tested at 3:1 and is never the only cue. Marker, fill, hover and focus ring use the accent of the service the item references (B17), not ink or a fixed violet. (admin-1-15, brand-06, site-17, admin-3-18, admin-2-31)
 - The nav list scrolls between a pinned context header and a pinned foot (Settings, Collapse); test at 1440x900 and 1280x720 with Licensing open and five feature groups. The header uses the generated trimmed lockup (UK-57). No duplicate service emblem. (admin-1-15, brand-06, site-17, admin-3-18, admin-2-31)
 - A feature with exactly one page (Cloud Sync) is one nav row: the group label is the link, chevron hidden, accent bar kept (B5). (admin-1-15, brand-06, site-17, admin-3-18, admin-2-31)
 - Phone nav drawer: opening moves focus to the first item; main and footer are inert while open; Tab wraps inside; Escape closes and focuses the toggle; the toggle's name switches Open/Close navigation with `aria-expanded`; resizing past the desktop breakpoint closes it. (admin-1-15, brand-06, site-17, admin-3-18, admin-2-31)

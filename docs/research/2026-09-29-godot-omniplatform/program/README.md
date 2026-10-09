@@ -388,7 +388,7 @@ is the closeout and is marked done last.
 
 ---
 
-**Brand and transition (2026-10-09).** The brand-guide audit adds 19 packages and re-scopes existing ones; the lead's decisions B1-B16 are in [`BRAND-TRANSITION.md`](BRAND-TRANSITION.md). New: UK-57..UK-62 (UK-60 and UK-61 optional and parked), ST-48..ST-50, PX-27..PX-33 (PX-33 optional and parked), DOC-13, I-37 and I-38. CM-29b is re-scoped to the Distribution green family (B1; `plans/CM-29.md` carries the amendment). Each affected brief has a `## Brand transition (2026-10-09)` section, and the canonical `## Screen acceptance` block sits on every open package with a UI surface.
+**Brand and transition (2026-10-09).** The brand-guide audit adds 19 packages and re-scopes existing ones; the lead's decisions B1-B17 are in [`BRAND-TRANSITION.md`](BRAND-TRANSITION.md). New: UK-57..UK-62 (UK-60 and UK-61 optional and parked), ST-48..ST-50, PX-27..PX-33 (PX-33 optional and parked), DOC-13, I-37 and I-38. CM-29b is re-scoped to the Distribution green family (B1; `plans/CM-29.md` carries the amendment). Each affected brief has a `## Brand transition (2026-10-09)` section, and the canonical `## Screen acceptance` block sits on every open package with a UI surface.
 
 ## 9. Known gaps without a work package
 

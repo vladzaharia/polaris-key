@@ -803,7 +803,9 @@ cache it per icon hash. It needs no network and no wire change.
   the same in both schemes. Only light accents (yellows, oranges, light teals) flip to an ink label,
   again in both schemes, and keep their hue rather than darkening to mud.
 
-The focus ring takes the resolved accent (one learnable focus signal within the product). Status
+The focus ring takes the resolved accent (one learnable focus signal within the product). Console,
+portal and hosted pages follow B17 instead (state colour is the referenced service's accent); kits
+are unchanged and use the product accent. Status
 colours never change with the accent; the danger `solid` behind white labels follows the same
 white-first rule.
 

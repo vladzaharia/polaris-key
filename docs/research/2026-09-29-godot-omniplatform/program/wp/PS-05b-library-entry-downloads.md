@@ -128,8 +128,7 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
       no page-level sideways scroll; a dense table scrolls only inside a labelled, focusable region;
       targets ≥ 44 px on customer and touch surfaces, ≥ 24 px with separation in the console.
 - [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted
-      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the
-      render (text 4.5:1, UI 3:1).
+      sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
 - [ ] States: loading (skeleton after the grace), first-run empty, filtered empty, permission refused,
       expired or stale, network and API error with Try again, partial failure, success; input survives a
       failed save; where the API sends expectedVersion, a changed-since-open conflict is named with
@@ -137,8 +136,11 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] Motion: tokens only; reduced motion is an instant swap and the outcome still reads; errors appear
       without moving content; progress is real (no invented percentage, nothing loops after a failure);
       no celebration on refunds, revocation, removal, deletion or consent.
-- [ ] Hierarchy and copy: one filled primary per state; the section accent marks context only, never
-      success, warning or failure; copy from the catalog, each fact once; no decorative numbers or
+- [ ] Hierarchy and copy: one filled primary per state (neutral action ink in console, portal and hosted
+      sign-in; the product accent in kits); focus, selected, hover, checked and context
+      borders take the accent of the service the element references (data-service; -fg for
+      text and edges, base for fills; a non-colour cue stays); status colours (success,
+      warning, danger, info, signed) never become a service accent; copy from the catalog, each fact once; no decorative numbers or
       taglines; no text drawn over customer art.
 - [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
