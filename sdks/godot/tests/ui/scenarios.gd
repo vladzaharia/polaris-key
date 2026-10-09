@@ -10,6 +10,7 @@ const CONFIG := preload("res://tests/config/support.gd")
 ## A settings catalog with every row kind the panel must handle.
 const SETTINGS_CATALOG := [
 	{"key": "audio.volume", "kind": "config", "category": "Audio", "label": "Volume", "description": "Master volume.", "schema": {"type": "integer", "minimum": 0, "maximum": 100}, "default": 80, "ui": {"widget": "stepper", "order": 1, "unit": "%"}, "accessor": "audio.volume"},
+	{"key": "audio.pitch", "kind": "config", "category": "Audio", "label": "Pitch", "description": "Any number.", "schema": {"type": "number"}, "default": 1.5, "ui": {"order": 3, "unit": "x"}},
 	{"key": "audio.muted", "kind": "config", "category": "Audio", "label": "Mute", "description": "", "schema": {"type": "boolean"}, "default": false, "ui": {"order": 2}},
 	{"key": "ui.theme", "kind": "config", "category": "Interface", "label": "Theme", "description": "Colour theme.", "schema": {"type": "string", "enum": ["dark", "light"]}, "default": "dark", "ui": {"widget": "select", "order": 3, "optionLabels": {"dark": "Dark", "light": "Light"}}},
 	{"key": "ui.reducedMotion", "kind": "config", "category": "Interface", "label": "Reduce motion", "description": "Only with the dark theme.", "schema": {"type": "boolean"}, "default": false, "ui": {"order": 4}, "dependsOn": {"key": "ui.theme", "equals": "dark"}},
@@ -25,6 +26,7 @@ const SETTINGS_CATALOG := [
 ## The verified document's states for that catalog.
 const SETTINGS_DOC := {
 	"audio.volume": {"state": "default", "value": 60, "updatedAt": NOW},
+	"audio.pitch": {"state": "default", "value": 1.5, "updatedAt": NOW},
 	"audio.muted": {"state": "default", "value": false, "updatedAt": NOW},
 	"ui.theme": {"state": "default", "value": "dark", "updatedAt": NOW},
 	"game.killSwitch": {"state": "enforced", "value": true, "updatedAt": NOW},

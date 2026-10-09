@@ -93,7 +93,26 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 static func _focus(v: PKeyUiView) -> PackedStringArray:
 	var out := PackedStringArray()
 	var screen := v.get_viewport_rect()
-	for ctl in v.focus_order():
+	var chain := v.focus_order()
+	# Every focus neighbour path resolves (the engine logs "Next focus node path is invalid" and the
+	# player is stuck otherwise), and Tab from the first control walks the whole chain.
+	for ctl in chain:
+		for path in [ctl.focus_next, ctl.focus_previous, ctl.focus_neighbor_top, ctl.focus_neighbor_bottom]:
+			if not path.is_empty() and ctl.get_node_or_null(path) == null:
+				out.append("focus path %s of %s does not resolve" % [path, v.get_path_to(ctl)])
+				return out
+	if chain.size() > 1:
+		var seen := {}
+		var at: Control = chain[0]
+		for i in chain.size():
+			seen[at] = true
+			var nxt := at.get_node_or_null(at.focus_next) as Control
+			if nxt == null:
+				break
+			at = nxt
+		if seen.size() != chain.size():
+			out.append("Tab from %s reaches %d of %d controls" % [chain[0].name, seen.size(), chain.size()])
+	for ctl in chain:
 		# A control in a scrolling list is reached by scrolling to it (follow_focus).
 		if MATRIX._in_scroll(ctl, v):
 			continue
@@ -103,6 +122,23 @@ static func _focus(v: PKeyUiView) -> PackedStringArray:
 
 
 ## An action pressed on the view's viewport, as a gamepad or keyboard sends it.
+static func _joy(vp: SubViewport, button: int) -> void:
+	for pressed in [true, false]:
+		var e := InputEventJoypadButton.new()
+		e.button_index = button
+		e.pressed = pressed
+		vp.push_input(e)
+
+
+## A stick pushed to `value` on the left X axis and let go, as the hardware sends it.
+static func _stick(vp: SubViewport, value: float) -> void:
+	for v in [value, 0.0]:
+		var e := InputEventJoypadMotion.new()
+		e.axis = JOY_AXIS_LEFT_X
+		e.axis_value = v
+		vp.push_input(e)
+
+
 static func _press(vp: SubViewport, action: String) -> void:
 	for pressed in [true, false]:
 		var e := InputEventAction.new()
@@ -167,19 +203,28 @@ func _pad_flows(t: PKeyTestContext, tree: SceneTree, mx) -> void:
 			var target: Control = (r as SpinBox).get_line_edit() if r is SpinBox else r
 			target.grab_focus()
 			var before: float = (r as Range).value
-			_press(vp2, "ui_right")
+			# Real joypad events: the D-pad, then the stick (what a pad sends; an InputEventAction
+			# never reaches a control's own handler the same way).
+			_joy(vp2, JOY_BUTTON_DPAD_RIGHT)
 			await tree.process_frame
 			var up: float = (r as Range).value
 			var focus_ok := vp2.gui_get_focus_owner() == target
-			_press(vp2, "ui_left")
+			_joy(vp2, JOY_BUTTON_DPAD_LEFT)
 			await tree.process_frame
-			if up > before and (r as Range).value < up:
+			var back: float = (r as Range).value
+			_stick(vp2, 1.0)
+			await tree.process_frame
+			var by_stick: float = (r as Range).value
+			_stick(vp2, -1.0)
+			await tree.process_frame
+			if up > before and back < up and by_stick > back and (r as Range).value < by_stick:
 				moved += 1
 			if focus_ok and vp2.gui_get_focus_owner() == target:
 				kept += 1
 	var ranges: Array = []
 	ranges.resize(total)
-	t.check("pad: every number setting changes with left and right and keeps the focus", not ranges.is_empty() and moved == ranges.size() and kept == ranges.size(), "%d numbers, %d moved, %d kept focus" % [ranges.size(), moved, kept])
+	var unbounded := panel.find_children("Input", "SpinBox", true, false).size()
+	t.check("pad: every number setting (a slider and an unbounded spin box) changes with the D-pad and the stick and keeps the focus", unbounded >= 1 and total >= 2 and moved == total and kept == total, "%d numbers (%d unbounded), %d moved, %d kept focus" % [total, unbounded, moved, kept])
 	vp2.free()
 
 

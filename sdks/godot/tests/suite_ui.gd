@@ -286,6 +286,7 @@ func _copy(t: PKeyTestContext, all: Array) -> void:
 func _behaviour(t: PKeyTestContext) -> void:
 	await _settings(t)
 	await _update_prompt(t)
+	await _dialogs_take_focus(t)
 	await _never_covering(t)
 	_activation_copy(t)
 	_sign_in_copy(t)
@@ -335,6 +336,79 @@ func _settings(t: PKeyTestContext) -> void:
 	t.check("settings: dependsOn hides a row when its condition fails", not p._controls.has("ui.reducedMotion") and sdk.config.get_value("ui.theme") == "light")
 	_free(p)
 	sdk.queue_free()
+
+
+static func _joy_button(button: int) -> void:
+	for pressed in [true, false]:
+		var e := InputEventJoypadButton.new()
+		e.button_index = button
+		e.pressed = pressed
+		_tree().root.push_input(e)
+
+
+## A dialog opened over a focused game control takes the focus (a pad's A answers the dialog, never
+## the game's button), a pad's B closes it, and the game's control has its focus back (the pad's
+## real button events, and the engine's default input map without a joypad binding).
+func _dialogs_take_focus(t: PKeyTestContext) -> void:
+	PKeyUiView.pointer_last = false
+	PKeyUiView._pointer_known = true
+	PKeyUiView.mobile_override = false
+	PKeyUiView.pad_only_override = false
+	# The pad bindings: a joypad A and B on ui_accept and ui_cancel, once, the game's own kept.
+	PKeyUiView.ensure_pad_bindings()
+	for pair in [["ui_accept", JOY_BUTTON_A], ["ui_cancel", JOY_BUTTON_B]]:
+		var pads := InputMap.action_get_events(pair[0]).filter(func(e): return e is InputEventJoypadButton and (e as InputEventJoypadButton).button_index == pair[1])
+		t.check("dialog focus: %s has the pad's joypad binding exactly once" % pair[0], pads.size() == 1, str(pads.size()))
+	var cases := {
+		"update modal": func() -> Control:
+			var p := PKeyUpdatePrompt.new()
+			p.outlet = "direct"
+			p.modal = true
+			p.show_when_current = true
+			p.auto_sdk = false
+			_tree().root.add_child(p)
+			p.show_result(_sc.update_check({"action": "binary", "method": "download", "release": {"version": "1.5.0", "seq": 15, "sha256": "ab"}, "build": "macos-dmg", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}))
+			return p,
+		"standalone sign-in": func() -> Control:
+			var d := PKeySignInDialog.new()
+			d.now_source = func(): return SCENARIOS.NOW
+			d.auto_sdk = false
+			_tree().root.add_child(d)
+			d.show_prompt(_sc.prompt_fixture())
+			d.closed.connect(func() -> void: d.visible = false)
+			return d,
+		"standalone offline": func() -> Control:
+			var d := PKeyOfflineDialog.new()
+			d.web_override = 0
+			d.product = "djdl"
+			d.device_id = "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+			d.auto_sdk = false
+			_tree().root.add_child(d)
+			d.refresh_view()
+			d.closed.connect(func() -> void: d.visible = false)
+			return d,
+	}
+	for name in cases:
+		var game := Button.new()
+		game.text = "Game menu"
+		var pressed := [0]
+		game.pressed.connect(func() -> void: pressed[0] += 1)
+		_tree().root.add_child(game)
+		game.grab_focus()
+		await _tree().process_frame
+		var dialog: Control = cases[name].call()
+		await _tree().create_timer(0.35).timeout
+		var owner := _tree().root.gui_get_focus_owner()
+		t.check("dialog focus: %s takes the focus from the game's control" % name, owner != null and dialog.is_ancestor_of(owner), str(owner))
+		_joy_button(JOY_BUTTON_A)
+		await _tree().process_frame
+		t.check("dialog focus: %s, a pad's A never presses the game's button" % name, pressed[0] == 0, str(pressed[0]))
+		_joy_button(JOY_BUTTON_B)
+		await _tree().process_frame
+		await _tree().process_frame
+		t.check("dialog focus: %s, a pad's B closes it and the game's control has the focus again" % name, not dialog.is_visible_in_tree() and _tree().root.gui_get_focus_owner() == game, "%s visible %s focus %s" % [name, dialog.is_visible_in_tree(), _tree().root.gui_get_focus_owner()])
+		_free(dialog)
+		_free(game)
 
 
 func _update_prompt(t: PKeyTestContext) -> void:

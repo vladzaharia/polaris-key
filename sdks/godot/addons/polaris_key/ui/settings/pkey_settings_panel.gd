@@ -159,7 +159,7 @@ func _apply_width(width: float) -> void:
 
 
 func _arrange(m: Dictionary) -> void:
-	var rail := is_landscape() and _groups.size() > 1 and not phone_bleed()
+	var rail := bool(m.get("wide", false)) and _groups.size() > 1 and not phone_bleed()
 	_rail_panel.visible = rail and not _groups.is_empty()
 	set_columns(_body, rail)
 	for i in _groups.size():
@@ -253,7 +253,7 @@ func _render() -> void:
 	_advanced.set_pressed_no_signal(show_advanced)
 	var shown := rows.filter(func(r): return r["visible"] and (show_advanced or not r["advanced"]))
 	show_text(_empty, t.text("settings_empty") if shown.is_empty() else "")
-	var sig := JSON.stringify(shown.map(func(r): return [r["key"], r["widget"], r["editable"], r["reset"], r["category"], r["options"].size(), r["min"] > -1e8 and r["max"] < 1e8]))
+	var sig := JSON.stringify(shown.map(func(r): return [r["key"], r["widget"], r["editable"], r["category"], r["options"].size(), r["min"] > -1e8 and r["max"] < 1e8]))
 	if sig != _signature:
 		_rebuild(shown)
 		_signature = sig
@@ -268,9 +268,15 @@ func _on_config_changed(_keys: PackedStringArray) -> void:
 func _rebuild(shown: Array) -> void:
 	var focused := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
 	var focused_key := ""
+	var focused_part := "input"
 	for k in _controls:
-		if _controls[k].values().has(focused):
+		var n: Dictionary = _controls[k]
+		var input = n["input"]
+		if focused != null and (focused == input or (input is SpinBox and focused == (input as SpinBox).get_line_edit())):
 			focused_key = k
+		elif focused != null and focused == n["reset"]:
+			focused_key = k
+			focused_part = "reset"
 	for child in _list.get_children():
 		_list.remove_child(child)
 		child.queue_free()
@@ -314,7 +320,9 @@ func _rebuild(shown: Array) -> void:
 		_rail.add_child(b)
 		_rail_buttons.append(b)
 	if focused_key != "" and _controls.has(focused_key):
-		var input = _controls[focused_key].get("input")
+		var input = _controls[focused_key].get(focused_part)
+		if input is SpinBox:
+			input = (input as SpinBox).get_line_edit()
 		if input is Control:
 			(input as Control).grab_focus.call_deferred()
 
@@ -396,6 +404,12 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 				sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 				sl.value_changed.connect(func(v: float): _write(key, int(v) if r["integer"] else v))
+				# The engine's slider answers a keyboard's arrows but not a pad's D-pad or stick.
+				sl.gui_input.connect(func(e: InputEvent) -> void:
+					var dir := _side_step(sl, e)
+					if dir != 0:
+						sl.value += step * dir
+						sl.accept_event())
 				ctl = sl
 			else:
 				var sp := SpinBox.new()
@@ -406,11 +420,17 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 				sp.suffix = r["unit"]
 				sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				sp.value_changed.connect(func(v: float): _write(key, int(v) if r["integer"] else v))
-				# Left and right are minus and plus a step on a pad; up and down still move focus.
-				sp.get_line_edit().gui_input.connect(func(e: InputEvent) -> void:
-					if e.is_action_pressed("ui_left") or e.is_action_pressed("ui_right"):
-						sp.value += step * (1.0 if e.is_action_pressed("ui_right") else -1.0)
-						sp.get_line_edit().accept_event())
+				# The visible minus and plus are the steppers: the engine's own arrows go.
+				sp.add_theme_icon_override("updown", ImageTexture.create_from_image(Image.create(1, 1, false, Image.FORMAT_RGBA8)))
+				sp.add_theme_constant_override("buttons_width", 0)
+				# Left and right are minus and plus a step on a pad (and on a keyboard when the
+				# caret cannot move that way); up and down still move focus.
+				var le := sp.get_line_edit()
+				le.gui_input.connect(func(e: InputEvent) -> void:
+					var dir := _side_step(le, e)
+					if dir != 0:
+						sp.value += step * dir
+						le.accept_event())
 				ctl = sp
 			ctl.name = "Input"
 			ctl.set_meta(DATA_META, true)
@@ -468,6 +488,39 @@ func _make_input(parent: Node, r: Dictionary) -> Control:
 	parent.add_child(ctl)
 	ctl.focus_entered.connect(func() -> void: _ensure_visible(ctl))
 	return ctl
+
+
+## -1, 0 or 1: the step an input event asks of a number control. A pad's D-pad is a step at once, its
+## stick one step each time it crosses the dead zone (not one per frame it is held), a keyboard's
+## arrow a step only on a line edit whose caret cannot move that way (a slider has its own).
+func _side_step(ctl: Control, e: InputEvent) -> int:
+	if e is InputEventJoypadButton and (e as InputEventJoypadButton).pressed:
+		match (e as InputEventJoypadButton).button_index:
+			JOY_BUTTON_DPAD_LEFT:
+				return -1
+			JOY_BUTTON_DPAD_RIGHT:
+				return 1
+		return 0
+	if e is InputEventJoypadMotion and (e as InputEventJoypadMotion).axis == JOY_AXIS_LEFT_X:
+		var v := (e as InputEventJoypadMotion).axis_value
+		var held: int = int(ctl.get_meta(&"pkey_stick", 0))
+		var now := 0
+		if v <= -STICK_DEADZONE:
+			now = -1
+		elif v >= STICK_DEADZONE:
+			now = 1
+		ctl.set_meta(&"pkey_stick", now)
+		return now if now != held else 0
+	if e is InputEventKey and (e as InputEventKey).pressed and ctl is LineEdit:
+		var le := ctl as LineEdit
+		if e.is_action("ui_left") and le.caret_column == 0 and le.get_selected_text() == "":
+			return -1
+		if e.is_action("ui_right") and le.caret_column >= le.text.length() and le.get_selected_text() == "":
+			return 1
+	return 0
+
+
+const STICK_DEADZONE := 0.6
 
 
 ## Left and right change the value; the focus stays on the control.
