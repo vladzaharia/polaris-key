@@ -45,8 +45,17 @@ def bind_device_id(
     # credential and grant it carried; re-activation seats this machine once.
     store.clear_token()
     rec = store.read_cache()
-    if rec is not None and (rec.feeds or rec.releaseRecords):
-        store.write_cache(CacheRecord(feeds=dict(rec.feeds), releaseRecords=dict(rec.releaseRecords)))
+    # The non-grant slices stay: the signed feeds and release records (each channel's `seq`
+    # floor) and a pinned key's revocation evidence. The grant keys (`trustJws`, `docs`,
+    # `etags`, `bundle`, `lastSyncUnauthorized`, `blocked`) are dropped with the token.
+    if rec is not None and (rec.feeds or rec.releaseRecords or rec.pinRevocations):
+        store.write_cache(
+            CacheRecord(
+                feeds=dict(rec.feeds),
+                releaseRecords=dict(rec.releaseRecords),
+                pinRevocations=dict(rec.pinRevocations),
+            )
+        )
     else:
         store.clear_cache()
     set_device_id(derived)

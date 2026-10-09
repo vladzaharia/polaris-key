@@ -17,7 +17,7 @@ from polaris_key.core.models import (
     AllowedRange,
     BlockedState,
 )
-from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord, ImportedBundle
+from polaris_key.core.store import CACHE_FORMAT_VERSION, CacheRecord
 from polaris_key.devices.deviceid import derive_device_id
 from polaris_key.devices.store import FileStore, InMemoryStore, KeyringStore
 
@@ -110,7 +110,8 @@ def test_cache_record_round_trips_every_v3_slice() -> None:
         docs={"license": "l.w.s", "config": "c.w.s"},
         etags={"license": "l1", "config": "c1"},
         trustJws="t.w.s",
-        importedBundle=ImportedBundle(bundleId="B1", importedAt=99),
+        bundle="b.w.s",
+        pinRevocations={KID: "r.e.v"},
         lastSyncUnauthorized=True,
         blocked=BlockedState(
             reason="version-too-old", allowedRange=AllowedRange(min="2.0.0")
@@ -142,11 +143,13 @@ def test_a_foreign_cache_version_is_refused(version) -> None:
         CacheRecord.from_dict({"v": version, "trustedKeys": {KID: "attacker"}})
 
 
-def test_a_malformed_imported_bundle_marker_is_dropped() -> None:
-    rec = CacheRecord.from_dict(
-        {"v": CACHE_FORMAT_VERSION, "importedBundle": {"bundleId": 7, "importedAt": "x"}}
+def test_a_non_string_bundle_slice_is_dropped_and_the_old_marker_is_never_read() -> None:
+    rec = CacheRecord.from_dict({"v": CACHE_FORMAT_VERSION, "bundle": {"bundleId": "B1"}})
+    assert rec.bundle is None
+    old = CacheRecord.from_dict(
+        {"v": CACHE_FORMAT_VERSION, "importedBundle": {"bundleId": "B1", "importedAt": 99}}
     )
-    assert rec.importedBundle is None
+    assert old.bundle is None and "importedBundle" not in old.to_dict()
 
 
 # ── FileStore ───────────────────────────────────────────────────────────────────────
