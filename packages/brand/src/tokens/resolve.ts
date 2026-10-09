@@ -6,6 +6,7 @@ import { mixOver, normalizeHex, oklchToHex } from "../color.js";
 import {
   ACCENTS,
   ACTION,
+  ACTION_STEPS,
   HOVER_ALPHA,
   SERVICE_FAMILY,
   SERVICE_IDS,
@@ -60,6 +61,10 @@ export interface ResolvedState {
 export interface ResolvedAction {
   fill: string;
   on: string;
+  hover: string;
+  pressed: string;
+  disabledFill: string;
+  disabledOn: string;
 }
 
 export interface ResolvedStatus {
@@ -169,10 +174,18 @@ function resolveTheme(theme: Theme): ResolvedTheme {
       strong: resolveColor(n.border.strong),
     },
     focus: resolveColor(n.focus),
-    action: {
-      fill: resolveColor(ACTION[theme].fill),
-      on: resolveColor(ACTION[theme].on),
-    },
+    action: (() => {
+      const fill = resolveColor(ACTION[theme].fill);
+      const steps = ACTION_STEPS[theme];
+      return {
+        fill,
+        on: resolveColor(ACTION[theme].on),
+        hover: mixOver(fill, steps.hover, page),
+        pressed: mixOver(fill, steps.pressed, page),
+        disabledFill: mixOver(fill, steps.disabled, page),
+        disabledOn: resolveColor(n.text.subtle),
+      };
+    })(),
     accent,
     state,
     status,

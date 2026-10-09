@@ -205,6 +205,10 @@ function themeVars(theme: Theme): [string, string][] {
   v.push(["focus", t.focus]);
   v.push(["action", t.action.fill]);
   v.push(["action-on", t.action.on]);
+  v.push(["action-hover", t.action.hover]);
+  v.push(["action-pressed", t.action.pressed]);
+  v.push(["action-disabled", t.action.disabledFill]);
+  v.push(["action-disabled-on", t.action.disabledOn]);
   for (const [k, id, hex] of stateEntries(theme))
     v.push([`state-${id}-${kebab(k)}`, hex]);
   v.push(["brand-violet", BRAND.violet[theme]]);
@@ -512,7 +516,8 @@ function themeCss(): string {
   colors.push(["border-strong", "border-strong"]);
   colors.push(["focus", "focus"]);
   colors.push(["action", "action"]);
-  colors.push(["action-on", "action-on"]);
+  for (const k of ["-on", "-hover", "-pressed", "-disabled", "-disabled-on"])
+    colors.push([`action${k}`, `action${k}`]);
   for (const k of STATE_KINDS)
     colors.push([`state-${kebab(k)}`, `state-${kebab(k)}`]);
   for (const k of ["", "-fg", "-on", "-subtle"])
@@ -747,6 +752,10 @@ function gdTheme(theme: Theme): string {
   c("FOCUS", t.focus);
   c("ACTION", t.action.fill);
   c("ACTION_ON", t.action.on);
+  c("ACTION_HOVER", t.action.hover);
+  c("ACTION_PRESSED", t.action.pressed);
+  c("ACTION_DISABLED", t.action.disabledFill);
+  c("ACTION_DISABLED_ON", t.action.disabledOn);
   for (const [k, id, hex] of stateEntries(theme))
     c(`STATE_${upper(id)}_${upper(k)}`, hex);
   for (const s of STATUS_IDS) {
@@ -916,6 +925,10 @@ function swiftTheme(theme: Theme): string {
   c("focus", t.focus);
   c("action", t.action.fill);
   c("actionOn", t.action.on);
+  c("actionHover", t.action.hover);
+  c("actionPressed", t.action.pressed);
+  c("actionDisabled", t.action.disabledFill);
+  c("actionDisabledOn", t.action.disabledOn);
   for (const [k, id, hex] of stateEntries(theme))
     c(`state${cap(id)}${cap(k)}`, hex);
   for (const s of STATUS_IDS) {
@@ -1073,6 +1086,10 @@ function ktTheme(theme: Theme): string {
   c("focus", t.focus);
   c("action", t.action.fill);
   c("actionOn", t.action.on);
+  c("actionHover", t.action.hover);
+  c("actionPressed", t.action.pressed);
+  c("actionDisabled", t.action.disabledFill);
+  c("actionDisabledOn", t.action.disabledOn);
   for (const [k, id, hex] of stateEntries(theme))
     c(`state${cap(id)}${cap(k)}`, hex);
   for (const s of STATUS_IDS) {

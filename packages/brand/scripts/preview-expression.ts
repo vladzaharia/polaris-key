@@ -34,7 +34,7 @@ ${sizes}
 
 function actionRow(theme: Theme): string {
   const a = THEME_TOKENS[theme].action;
-  return `<div class="spec"><button type="button" class="action">Save changes</button> <code>${theme}: action ${a.fill} · label ${a.on} · ${ratio(a.on, a.fill)}:1</code></div>`;
+  return `<div class="spec"><div class="action-states"><button type="button" class="action">Rest</button><button type="button" class="action hov">Hover</button><button type="button" class="action prs">Pressed</button><button type="button" class="action" disabled>Disabled</button></div><code>${theme}: ${a.fill} · hover ${a.hover} · pressed ${a.pressed} · disabled ${a.disabledFill} · label ${ratio(a.on, a.fill)}:1, disabled label ${ratio(a.disabledOn, a.disabledFill)}:1</code></div>`;
 }
 
 function stateRow(theme: Theme, id: (typeof SERVICE_IDS)[number]): string {
@@ -75,6 +75,10 @@ export function expressionPage(): string {
   .spec code, .ground code { font-family: var(--pk-font-mono); font-size: var(--pk-font-size-xs); color: var(--pk-text-muted); }
   .product-display { font-size: 2.5rem; line-height: 1.1; font-weight: var(--pk-font-weight-semibold); letter-spacing: var(--pk-tracking-product-display); }
   .action { font: inherit; font-weight: var(--pk-font-weight-medium); background: var(--pk-action); color: var(--pk-action-on); border: 0; border-radius: var(--pk-radius-md); padding: var(--pk-space-2) var(--pk-space-4); }
+  .action-states { display: flex; flex-wrap: wrap; gap: var(--pk-space-2); margin-bottom: var(--pk-space-2); }
+  .action:hover, .action.hov { background: var(--pk-action-hover); }
+  .action:active, .action.prs { background: var(--pk-action-pressed); }
+  .action:disabled { background: var(--pk-action-disabled); color: var(--pk-action-disabled-on); }
   .state-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pk-space-2); margin: 0 0 var(--pk-space-2); font-size: var(--pk-font-size-sm); }
   .state-row strong { flex: 0 0 6.5rem; color: var(--pk-text-strong); font-weight: var(--pk-font-weight-medium); }
   .state-row > span { padding: var(--pk-space-1) var(--pk-space-3); border-radius: var(--pk-radius-md); border: 1px solid transparent; }

@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { contrastRatio, deltaEOK } from "../src/color.js";
+import { contrastRatio, deltaEOK, hslSaturation } from "../src/color.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
 import { BRAND } from "../src/tokens/primitives.js";
 import {
@@ -131,8 +131,27 @@ function pairs(): Pair[] {
     add(theme, "signed.border", sg.border, "signed.subtle", sg.subtle, 3);
     // The action-neutral role (B2).
     add(theme, "action.on", t.action.on, "action.fill", t.action.fill, 4.5);
-    for (const [sn, sv] of surfaces)
-      add(theme, "action.fill", t.action.fill, `surface.${sn}`, sv, 3);
+    for (const k of ["fill", "hover", "pressed"] as const) {
+      if (k !== "fill")
+        add(
+          theme,
+          `action.on (${k})`,
+          t.action.on,
+          `action.${k}`,
+          t.action[k],
+          4.5,
+        );
+      for (const [sn, sv] of surfaces)
+        add(theme, `action.${k}`, t.action[k], `surface.${sn}`, sv, 3);
+    }
+    add(
+      theme,
+      "action.disabledOn",
+      t.action.disabledOn,
+      "action.disabledFill",
+      t.action.disabledFill,
+      3,
+    );
     // The per-service state tokens (B17).
     for (const id of SERVICE_IDS) {
       const st = t.state[id];
@@ -194,6 +213,22 @@ function pairs(): Pair[] {
   return out;
 }
 
+describe("action states", () => {
+  it("hover and pressed are steps in lightness, not colour: rest, hover, pressed, disabled are all distinct and ordered", () => {
+    for (const theme of THEMES) {
+      const a = THEME_TOKENS[theme].action;
+      const page = THEME_TOKENS[theme].surface.page;
+      const d = (x: string) => deltaEOK(x, a.fill);
+      expect(d(a.hover)).toBeGreaterThan(0.02);
+      expect(d(a.pressed)).toBeGreaterThan(d(a.hover) + 0.02);
+      expect(d(a.disabledFill)).toBeGreaterThan(d(a.pressed));
+      expect(deltaEOK(a.disabledFill, page)).toBeGreaterThan(0.02);
+      for (const x of [a.hover, a.pressed, a.disabledFill])
+        expect(hslSaturation(x)).toBeLessThan(0.35);
+    }
+  });
+});
+
 describe("state tokens (B17)", () => {
   it("hover is a lighter step than selected: closer to the ground, per service and theme", () => {
     for (const theme of THEMES)
@@ -215,6 +250,7 @@ describe("state tokens (B17)", () => {
           if (s === "info" && id === "core") continue;
           expect(THEME_TOKENS[theme].status[s].fg).not.toBe(a.fg);
           expect(THEME_TOKENS[theme].status[s].fg).not.toBe(a.solid);
+          expect(THEME_TOKENS[theme].status[s].subtle).not.toBe(a.subtle);
         }
   });
 

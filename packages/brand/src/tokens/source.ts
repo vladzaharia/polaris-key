@@ -143,6 +143,21 @@ export interface ActionSpec {
   on: ColorSpec;
 }
 
+/**
+ * The action role's states. Neutral ink changes by a step in lightness, never by colour:
+ * `hover` and `pressed` are the fill at these alphas over the page ground (a slight step, then a
+ * larger one, both toward the ground); `disabledFill` is the fill at `disabled` alpha over the
+ * ground and `disabledOn` is the theme's `text.subtle`. The label stays `on` for rest, hover and
+ * pressed (4.5:1); the disabled label is at least 3:1 on the disabled fill in both themes.
+ */
+export const ACTION_STEPS: Record<
+  Theme,
+  { hover: number; pressed: number; disabled: number }
+> = {
+  dark: { hover: 0.9, pressed: 0.78, disabled: 0.16 },
+  light: { hover: 0.88, pressed: 0.74, disabled: 0.14 },
+};
+
 export const ACTION: Record<Theme, ActionSpec> = {
   dark: { fill: BRAND.page.light, on: BRAND.page.dark },
   light: { fill: BRAND.page.dark, on: BRAND.mono.white },

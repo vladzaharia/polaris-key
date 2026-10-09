@@ -58,6 +58,10 @@ class Dark:
 	const FOCUS := Color(0.603922, 0.360784, 1.0, 1.0) # #9a5cff
 	const ACTION := Color(0.964706, 0.972549, 1.0, 1.0) # #f6f8ff
 	const ACTION_ON := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
+	const ACTION_HOVER := Color(0.870588, 0.878431, 0.905882, 1.0) # #dee0e7
+	const ACTION_PRESSED := Color(0.756863, 0.764706, 0.796078, 1.0) # #c1c3cb
+	const ACTION_DISABLED := Color(0.172549, 0.184314, 0.219608, 1.0) # #2c2f38
+	const ACTION_DISABLED_ON := Color(0.588235, 0.619608, 0.698039, 1.0) # #969eb2
 	const STATE_CORE_RING := Color(0.603922, 0.360784, 1.0, 1.0) # #9a5cff
 	const STATE_CORE_SELECTED_FILL := Color(0.094118, 0.07451, 0.180392, 1.0) # #18132e
 	const STATE_CORE_HOVER_TINT := Color(0.062745, 0.058824, 0.137255, 1.0) # #100f23
@@ -195,6 +199,10 @@ class Light:
 	const FOCUS := Color(0.478431, 0.184314, 1.0, 1.0) # #7a2fff
 	const ACTION := Color(0.023529, 0.035294, 0.070588, 1.0) # #060912
 	const ACTION_ON := Color(1.0, 1.0, 1.0, 1.0) # #ffffff
+	const ACTION_HOVER := Color(0.137255, 0.14902, 0.180392, 1.0) # #23262e
+	const ACTION_PRESSED := Color(0.266667, 0.278431, 0.313725, 1.0) # #444750
+	const ACTION_DISABLED := Color(0.831373, 0.843137, 0.870588, 1.0) # #d4d7de
+	const ACTION_DISABLED_ON := Color(0.364706, 0.4, 0.482353, 1.0) # #5d667b
 	const STATE_CORE_RING := Color(0.478431, 0.184314, 1.0, 1.0) # #7a2fff
 	const STATE_CORE_SELECTED_FILL := Color(0.917647, 0.894118, 1.0, 1.0) # #eae4ff
 	const STATE_CORE_HOVER_TINT := Color(0.937255, 0.92549, 1.0, 1.0) # #efecff

@@ -35,6 +35,10 @@
   --color-focus: var(--pk-focus);
   --color-action: var(--pk-action);
   --color-action-on: var(--pk-action-on);
+  --color-action-hover: var(--pk-action-hover);
+  --color-action-pressed: var(--pk-action-pressed);
+  --color-action-disabled: var(--pk-action-disabled);
+  --color-action-disabled-on: var(--pk-action-disabled-on);
   --color-state-ring: var(--pk-state-ring);
   --color-state-selected-fill: var(--pk-state-selected-fill);
   --color-state-hover-tint: var(--pk-state-hover-tint);

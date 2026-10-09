@@ -26,7 +26,14 @@ export const THEME_TOKENS = {
     },
     border: { subtle: "#212633", strong: "#61697b" },
     focus: "#9a5cff",
-    action: { fill: "#f6f8ff", on: "#060912" },
+    action: {
+      fill: "#f6f8ff",
+      on: "#060912",
+      hover: "#dee0e7",
+      pressed: "#c1c3cb",
+      disabledFill: "#2c2f38",
+      disabledOn: "#969eb2",
+    },
     accent: {
       violet: {
         solid: "#9a5cff",
@@ -201,7 +208,14 @@ export const THEME_TOKENS = {
     },
     border: { subtle: "#dadee9", strong: "#7e8699" },
     focus: "#7a2fff",
-    action: { fill: "#060912", on: "#ffffff" },
+    action: {
+      fill: "#060912",
+      on: "#ffffff",
+      hover: "#23262e",
+      pressed: "#444750",
+      disabledFill: "#d4d7de",
+      disabledOn: "#5d667b",
+    },
     accent: {
       violet: {
         solid: "#7a2fff",
