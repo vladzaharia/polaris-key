@@ -13,7 +13,8 @@
     "No match: the holder segment (Floating), the search text and the Tier: Studio facet stay set and visible; the table head stays; the body says 'No licenses match' and names what was searched, with one Clear filters button that resets search, holder and facets together.",
     "Loading: skeleton rows at the real row height under the real column heads (a 28px media disc, two lines, the holder and tier as capsules, the device count), the holder counts as skeletons, no spinner and no 'Loading…' on screen; a live region announces loading after a 150 ms grace.",
     "Error: inline in the table body (ADMIN.md T2), not a toast: 'Licenses didn't load', 'Polaris Key took too long to answer (504).' and Retry, which refetches with the same URL state.",
-    "Phone: each frame keeps the list's phone header (Create keys in bulk and New license full width), the holder control folds into a 'Holder: …' chip, the empty-state buttons stack, and the loading rows take the list's phone layout."
+    "Phone: each frame keeps the list's phone header (Create keys in bulk and New license full width), the holder control folds into a 'Holder: …' chip, the empty-state buttons stack, and the loading rows take the list's phone layout.",
+    "B17: Open Access is core; the rest is license."
   ],
   "status": "mockup",
   "designReview": {

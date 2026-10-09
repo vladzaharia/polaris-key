@@ -13,7 +13,8 @@
     "Saved: a slice of the page with the gates (App downloads now Public, no change marks, no save bar) and a toast 'Saved access' / 'App downloads are now Public.' with View in History, at the slice's bottom right.",
     "Phone: dialogs full width, buttons stacked with the primary on top.",
     "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
-    "The same dialog head and ink primary as licenses.access-rule (admin-1-25)."
+    "The same dialog head and ink primary as licenses.access-rule (admin-1-25).",
+    "B17: the board is core (Access); both confirmations are license; the gates slice is release."
   ],
   "status": "mockup",
   "designReview": {

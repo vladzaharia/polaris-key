@@ -126,7 +126,7 @@
                 </div>
                 <div class="field">
                   <span class="field-label">Grace after a missed renewal</span>
-                  <div class="mk-cluster baseline"><span class="strong">7 days</span><a class="link small tap" href="#">Change in Settings<i class="ic ic-arrow-right"></i></a></div>
+                  <div class="mk-cluster baseline"><span class="strong">7 days</span><a class="link small tap" href="#" data-service="core">Change in Settings<i class="ic ic-arrow-right"></i></a></div>
                 </div>
                 </div>
               </div>
@@ -174,7 +174,7 @@
                     <div class="input short changed" id="lim-offline"><span class="grow tnum">60</span></div>
                   </div>
                 </div>
-                <div class="field">
+                <div class="field" data-service="release">
                   <span class="field-label" id="tracks-label">Release tracks</span>
                   <div class="mk-cluster" role="group" aria-labelledby="tracks-label">
                     <span class="chip on locked" aria-disabled="true" title="Always included">stable</span><span class="chip on" role="checkbox" aria-checked="true">beta</span><span class="chip" role="checkbox" aria-checked="false">dev</span>
@@ -202,7 +202,7 @@
             </div>
 
             <!-- Profile (Managed config on): at most one; config and secrets only. -->
-            <div class="form-section stacked">
+            <div class="form-section stacked" data-service="config">
               <div class="form-section-label"><h3>Profile</h3></div>
               <div class="form">
                 <div class="field">

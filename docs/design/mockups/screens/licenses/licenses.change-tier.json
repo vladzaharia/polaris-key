@@ -14,7 +14,8 @@
     "Moving up then lists, one line each: 'Unchanged: offline days 14, fingerprint Normal, the 3 add-ons', 'No sign-in moves it back', 'Devices get the new limits at their next check'. Cancel and Move to Studio.",
     "Moving down: Devices 4 → 3 ('She has 3, so none is signed out'), Duration → Lifetime, Includes → 2 decks, no recording; a warning 'Her next sign-in moves it back to Education' / 'Verified email domain example.edu gives Education. To keep her on Free, change that rule first.'; Open Access, Cancel and Move to Free.",
     "Phone: the rows' values wrap under their chips; buttons stack with the primary on top.",
-    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency."
+    "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
+    "B17: the Release tracks row is release; Open Access is core; the rest is license."
   ],
   "status": "mockup",
   "designReview": {
