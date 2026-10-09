@@ -3,6 +3,7 @@
 // admin trio is unset. The portal and `provider: platform` products read `PLATFORM_OIDC_*` only,
 // so a customer sign-in can never go through the operators' client.
 
+import { bindAdminFlow } from "./flowBinderHelper.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -152,9 +153,9 @@ async function adminTokenExchange(
   // A real login writes the flow; its state comes back in the authorize redirect.
   const state = (await adminLogin(env)).searchParams.get("state")!;
   const res = await handleAdminCallback(
-    new Request(
-      `https://key.plrs.im/manage/callback?code=c&state=${state}`,
-    ) as unknown as Request,
+    new Request(`https://key.plrs.im/manage/callback?code=c&state=${state}`, {
+      headers: { cookie: await bindAdminFlow(env, state) },
+    }) as unknown as Request,
     env,
     makeTestDb(),
     NOW,

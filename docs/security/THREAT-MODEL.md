@@ -3415,13 +3415,18 @@ product out of sign-in. Residuals, unowned: aggregating the other per-IP buckets
 `clientIp`, and sharding a product's own rate-limit Durable Object (R10-04a is fixed for the
 platform-global `_portal` and `_admin` limiters only; see the single-use store section below).
 
-**Remote phishing (RFC 8628 §5.4) — open: R1-07, rooted in R8-03.** The flow's starter can
-complete the confirmation step without a browser and forward the resulting IdP sign-in to a
-victim. If the victim signs in (or silent SSO signs them in), the callback binds the victim's
-license to the starter's flow, and the starter's own poll then receives a device token on the
-victim's license. The confirmation page is never shown to the victim. The regression test
-`R8-oidc.test.ts` › `OPEN (R1-07 / R8-03): the starter confirms its own flow…` asserts the gap;
-binding the callback to the confirming browser (below) is the fix.
+**Remote phishing (RFC 8628 §5.4) — closed for device-code flows: R1-07, rooted in R8-03 (SEC-IDN-3 /
+SEC-IDN-4).** The flow's starter can still complete the confirmation step without a browser and
+forward the resulting IdP sign-in to a victim, but the confirmation now sets a `__Host-pk_lcb`
+binder cookie on the confirming browser (the starter's own curl jar) and stores its hash on the
+flow. `handleAuthCallback` requires that cookie before it claims the flow, so the victim's browser,
+which never held it, is refused (400) and the flow is not consumed; the starter's poll stays
+pending. The same binder now covers every product browser flow (`/auth/start` sets it for any
+issuer, not only `provider: platform`) and the admin console's sign-in (`__Host-pkey_admin_flow`).
+Regression tests: `R8-oidc.test.ts` › `FIXED (R1-07 / R8-03): the starter confirms its own flow…`,
+`FIXED (SEC-IDN-3)`, `FIXED (SEC-ADM-6)`, and `R1-control-plane.test.ts` › `R1-01b`. What stays
+true: a starter who phishes a victim into the _starter's own_ browser (the victim is on the
+starter's machine) is a different attack that no cookie can see.
 
 **What the opt-in attach adds under R1-07 (P1-07).** The attach is decided by the device-code
 holder, and here that is the starter. If the starter's device is on an anonymous enrolled
@@ -3509,11 +3514,10 @@ This is **not** inherent to the device-authorization grant. In RFC 8628 the user
 the same browser session that entered the code; Polaris does not yet bind the IdP callback to
 the browser that confirmed, which is R8-03 (no flow on any surface is bound to the visitor's
 browser; since I-17 the portal's single sign-on is the exception, see "Moving end users off the
-platform IdP"). R1-07 therefore stays **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
+platform IdP"). R1-07 was **Fixed-partial** (2026-08-26 audit): R8-02 and P1-06 closed the
 GET self-confirm, the framable page and the device code in the URL, not the starter's ability to
-confirm. Fix direction, unowned: bind a `viaDeviceCode` flow's callback to the browser that
-confirmed it — e.g. a `__Host-` `SameSite=Lax` cookie set on the confirmation `303` and required
-by `handleAuthCallback` — which closes R1-07 for device-code flows and makes the `Origin: null`
+confirm. SEC-IDN-4 (2026-10-08) closed the rest: the confirmation `303` sets a `__Host-`
+`SameSite=Lax` binder cookie that `handleAuthCallback` requires, which makes the `Origin: null`
 question moot.
 
 **The licence chooser's binder (I-26, 2026-10-05).** On a `provider: platform` product, a person
