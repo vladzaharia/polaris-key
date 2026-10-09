@@ -418,6 +418,8 @@ them. Glyphs follow the BRAND service icon set (§1.1).
 
 #### Console shell v2 (B4)
 
+Built by ST-48; ST-49 owns the route ledger and its Page moved entries.
+
 - **Inset canvas.** From 1024 px the workspace is a `surface-raised` canvas (radius `xl`, ~18 px,
   `border-subtle`) inset from the top bar and sidebar, with a 3 px accent rule on its top edge;
   both bars sit on `surface-page` with no divider. Below 1024 px it is full bleed. No glow,

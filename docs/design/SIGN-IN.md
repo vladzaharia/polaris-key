@@ -247,7 +247,7 @@ Product context (developer link, `identity_disabled`) shows the icon, "<Product>
 "Your license, downloads and devices". The **trust receipt** ("Polaris Key signs you in for
 <App>...") spans the full width of the form pane. The pane carries `view-transition-name: pk-head`
 and never moves between steps (§3.18). The brand row stays the 18 px muted lockup; Help · Privacy ·
-Terms stay under the card. On the Worker's no-JS pages the art is a same-origin `<img>` (or the
+Terms stay under the card. On the Worker's no-JS pages (I-38) the art is a same-origin `<img>` (or the
 image origin the Worker CSP allows through `cspImageOrigin()`, exactly as the app policy does),
 with no inline style or script: the layout is classes and container queries in the hashed
 stylesheet and the pane uses neutral tokens only.
@@ -1045,7 +1045,7 @@ to the existing `portal/` renders, which stand where this document does not redr
 4. **LicenseChoiceStep** (frames 05, 06, 08, 09, 19–22), then Consent when due (07). Device code
    always needs this explicit primary (I-08, D22); the TV's poll stays `pending` meanwhile. When
    neither LicenseChoiceStep nor ConsentStep runs (Identity on, License service off, consent not
-   due), the card shows **DeviceConfirm**: the code panel ("Code on the screen · WDJB-MJHT · Check
+   due), the card shows **DeviceConfirm** (I-37): the code panel ("Code on the screen · WDJB-MJHT · Check
    it matches the screen"), the person row with **Not you?**, h1 "Sign in on Living room TV?", the
    primary "Sign in on Living room TV" and the secondary **Deny**, which denies the code. Focus
    lands on the primary; nothing advances by itself. Scanning a code is never approval. No wire
