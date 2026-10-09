@@ -332,7 +332,7 @@ func _code_floor() -> int:
 ## The width the code needs at its smallest size (the title's), whatever size it is drawn at now.
 func _code_min_width(placeholder := true) -> float:
 	var text := _code.text if _code.text != "" else ("WDJB-MJHT" if placeholder else "")
-	return _code.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, _code_floor()).x
+	return _code.get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, _code_floor()).x
 
 
 func _fit_code() -> void:
@@ -346,7 +346,7 @@ func _fit_code() -> void:
 	var floor_size := _code_floor()
 	var font := _code.get_theme_font("font")
 	var sz := base
-	while sz > floor_size and font.get_string_size(_code.text, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x > avail - 1.0:
+	while sz > floor_size and font.get_string_size(_code.text, HORIZONTAL_ALIGNMENT_CENTER, -1, sz).x > avail - 1.0:
 		sz -= 1
 	var has := _code.has_theme_font_size_override("font_size")
 	if (sz == base and not has) or (sz != base and has and _code.get_theme_font_size("font_size") == sz):

@@ -9,6 +9,19 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Second review round.** The gate-hosted device limit takes the focus (a view nested in another
+  asks the outermost view for it); the sign-in user code fits its width on one line (never under the
+  title's size; at most a break at its hyphen); a full-screen view's offsets are the kit's (a
+  game's `set_anchors_and_offsets_preset()` no longer leaves it wider or shorter than the screen);
+  the update modal and the settings fit a phone's safe area and width laid out fresh at the size
+  (the settings rail gives way to one column when it does not fit); scroll areas follow the focus
+  once the layout settles; the settings slider draws a focus ring in every look; the settings
+  column ends on one right edge, the rail's other sections have lighter borders and its heading is
+  not said twice; settings freed by the game gives the focus back; the offline request QR shows on
+  a pad-only device that is flagged mobile. The `ui_matrix` suite lays every screen out fresh at
+  every size as well as resized, and checks tight cases by focusing the primary and requiring it
+  inside the visible scroll area.
+
 - **Review round on the drop-in screens.** A pad's A and B work under Godot's default input map
   (the kit adds `JOY_BUTTON_A` and `JOY_BUTTON_B` to `ui_accept` and `ui_cancel` when they have no
   joypad binding); a dialog opened over a focused game control takes the focus and gives it back;
