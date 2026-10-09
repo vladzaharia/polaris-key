@@ -78,7 +78,7 @@ static func inspect(jws: String, opts: Dictionary) -> Dictionary:
 	# anti-replay floor: an import establishes state on a device that has none.
 	var reload := {
 		"trust": effective, "expected_aud": product, "device_id": device_id, "now": now,
-		"check_freshness": false,
+		"check_freshness": false, "last_accepted_issued_at": null,
 	}
 	var docs := {}
 	if docs_in.has("license"):

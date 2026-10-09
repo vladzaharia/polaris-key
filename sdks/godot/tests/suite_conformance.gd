@@ -875,8 +875,8 @@ func _doc_cases(t: PKeyTestContext, cases: Array, name: String, typ: String) -> 
 			"device_id": c["deviceId"],
 			"now": c["now"],
 		}
-		if c.has("lastAcceptedIssuedAt"):
-			opts["last_accepted_issued_at"] = c["lastAcceptedIssuedAt"]
+		# The floor is a required option (null: no floor).
+		opts["last_accepted_issued_at"] = c.get("lastAcceptedIssuedAt")
 		if c.has("checkFreshness"):
 			opts["check_freshness"] = c["checkFreshness"]
 		var doc = await PKeyVerify.verify_doc(c["jws"], typ, opts)
@@ -945,6 +945,7 @@ func _clock_floor_cases(t: PKeyTestContext, cases: Array) -> void:
 		var reload := {
 			"trust": trust, "expected_aud": c["expectedAud"], "device_id": c["deviceId"], "now": now,
 			"check_freshness": false,
+			"last_accepted_issued_at": null,
 		}
 		var license = null
 		if c.has("licenseJws"):

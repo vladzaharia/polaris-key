@@ -36,7 +36,7 @@ func _session(t: PKeyTestContext) -> void:
 			var m := await PKeyTrust.verify_manifest(f["trust_jws"], trust_opts)
 			times["trust"].append((Time.get_ticks_usec() - t0) / 1000.0)
 			effective = PKeyTrust.merge(f["trust"], m["discovered"])
-			var opts := {"trust": effective, "expected_aud": f["product"], "device_id": f["device_id"], "now": f["now"]}
+			var opts := {"trust": effective, "expected_aud": f["product"], "device_id": f["device_id"], "now": f["now"], "last_accepted_issued_at": null}
 			for slice in docs:
 				t0 = Time.get_ticks_usec()
 				var d = await PKeyVerify.verify_doc(f[slice], docs[slice], opts)
