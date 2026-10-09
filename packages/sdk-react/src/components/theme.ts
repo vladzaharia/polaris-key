@@ -111,6 +111,36 @@ export interface PolarisThemeCopy {
   deviceLimitHeading: string;
   /** The device-limit callout's second line (deviceLimit.browser). */
   deviceLimitBrowser: string;
+  /** The sign-in card when the product offers neither a sign-in nor a key (signin.off.any). */
+  noMethodsLabel: string;
+  /** The key button on the revoked and expired screens, where the old key is not the one to
+   *  type (signin.key.differentKey). */
+  differentKeyLabel: string;
+  // ── The browser hand-off of a device-code sign-in (signin.handoff.*) ──────
+  /** The hand-off's title (signin.handoff.title). */
+  handoffTitle: string;
+  /** The line asking the person to compare codes (signin.handoff.check). */
+  handoffCheck: string;
+  /** The code's name for a screen reader and the group's label (part.code.label). */
+  handoffCodeLabel: string;
+  /** The page to type the code into, `{url}` (signin.handoff.url). */
+  handoffUrl: string;
+  /** The countdown, `{time}` as m:ss (signin.handoff.expires). */
+  handoffExpires: string;
+  /** Opens the sign-in page (signin.handoff.openBrowser). */
+  handoffOpenLabel: string;
+  /** Copies the code (common.copy). */
+  handoffCopyLabel: string;
+  /** Said after the copy worked (common.copied). */
+  handoffCopiedLabel: string;
+  /** Stops the sign-in (common.cancel). */
+  handoffCancelLabel: string;
+  /** The title once the code has run out (signin.expired.title). */
+  handoffExpiredTitle: string;
+  /** The line under it (signin.expired.body). */
+  handoffExpiredBody: string;
+  /** Starts a new code (signin.again). */
+  handoffAgainLabel: string;
   /** The error screen's title when no catalog title fits the failure (gate.error.title). */
   errorTitle: string;
   graceTitle: string;
@@ -244,15 +274,26 @@ export interface PolarisTheme {
 
 type BrandTheme = (typeof THEME_TOKENS)["dark" | "light"];
 
+/** The kit's primary when the product has no accent: ink, the strongest neutral of the scheme
+ *  with the contrasting neutral on top. The brand's violet is Polaris Key's own, never a
+ *  product's (B2, DL13); a product's accent is set through `theme.tokens.accent`. */
+const INK = {
+  dark: { fill: "#f4f4f5", on: "#18181b" },
+  light: { fill: "#18181b", on: "#ffffff" },
+} as const;
+
 /** The SDK's tokens for one brand scheme, read from the generated brand tokens. */
-function brandTokens(t: BrandTheme): PolarisThemeTokens {
-  const violet = t.accent.violet;
+function brandTokens(
+  t: BrandTheme,
+  scheme: keyof typeof INK,
+): PolarisThemeTokens {
+  const ink = INK[scheme];
   return {
-    accent: violet.solid,
+    accent: ink.fill,
     // The brand defines no hover colour; a fill keeps its accent and the focus ring carries
     // the interaction state.
-    accentHover: violet.solid,
-    accentText: violet.on,
+    accentHover: ink.fill,
+    accentText: ink.on,
     ring: t.focus,
     background: t.surface.page,
     surface: t.surface.raised,
@@ -276,11 +317,13 @@ function brandTokens(t: BrandTheme): PolarisThemeTokens {
 /** The Polaris Key brand's dark tokens (BRAND.md §3 is dark first). */
 export const polarisKeyDarkTokens: PolarisThemeTokens = brandTokens(
   THEME_TOKENS.dark,
+  "dark",
 );
 
 /** The Polaris Key brand's light tokens (full light parity, BRAND.md §3). */
 export const polarisKeyLightTokens: PolarisThemeTokens = brandTokens(
   THEME_TOKENS.light,
+  "light",
 );
 
 /** The neutral dark tokens: greyscale, the host's font. Contrast is pinned by
@@ -363,6 +406,20 @@ export const defaultTheme: PolarisTheme = {
       "Your license is on {used} of {limit, plural, one {# device} other {# devices}}",
     deviceLimitBrowser:
       "Replace a device in your browser. {product} continues when you're done.",
+    noMethodsLabel: "Sign-in is unavailable. Try again later.",
+    differentKeyLabel: "Use a different key",
+    handoffTitle: "Finish in your browser",
+    handoffCheck: "Check the code there matches this one.",
+    handoffCodeLabel: "Sign-in code",
+    handoffUrl: "Or go to {url}",
+    handoffExpires: "Code expires in {time}",
+    handoffOpenLabel: "Open browser",
+    handoffCopyLabel: "Copy",
+    handoffCopiedLabel: "Copied",
+    handoffCancelLabel: "Cancel",
+    handoffExpiredTitle: "That code or link has expired",
+    handoffExpiredBody: "Codes and links work once, for 10 minutes.",
+    handoffAgainLabel: "Sign in again",
     errorTitle: "{product} couldn't start",
     graceTitle: "Offline grace",
     graceBody:
@@ -470,8 +527,10 @@ export interface PartialTheme {
 
 /** The copy that names Polaris Key, used only under the Polaris Key branding. */
 const POLARIS_KEY_COPY: Partial<PolarisThemeCopy> = {
+  // The name is a placeholder no screen prints as the product's (`knownProductName`), and the
+  // sign-in button stays "Sign in" (welcome.signIn): Polaris Key is named only in the opt-in
+  // Powered-by line and the hand-off's address.
   productName: "Polaris Key",
-  oidcButtonLabel: "Continue with Polaris Key",
 };
 
 /** The product's name when the integrator gave one (`copy.productName`), or `null` while it is

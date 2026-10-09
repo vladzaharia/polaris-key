@@ -125,7 +125,8 @@ describe("PolarisKeyProvider — mode resolution", () => {
       </PolarisKeyProvider>,
     );
     unmount();
-    expect(disposed).toBe(true);
+    // Disposal waits one task, so a StrictMode re-run of the effect can cancel it.
+    await waitFor(() => expect(disposed).toBe(true));
   });
 });
 

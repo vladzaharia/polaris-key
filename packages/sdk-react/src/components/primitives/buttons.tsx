@@ -104,7 +104,7 @@ const styles: Record<ButtonVariant, CSSProperties> = {
 
 /** The busy ring: 1rem, drawn in the label's colour, turning unless motion is reduced. Web
  *  Animations rather than a keyframes rule, which an inline style cannot carry. */
-function BusyRing(): JSX.Element {
+function BusyRing(): React.JSX.Element {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const el = ref.current;

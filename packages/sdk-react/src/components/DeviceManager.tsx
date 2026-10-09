@@ -224,7 +224,7 @@ function cssEscape(id: string): string {
     : id.replace(/["\\]/g, "\\$&");
 }
 
-export function DeviceManager(props: DeviceManagerProps): JSX.Element {
+export function DeviceManager(props: DeviceManagerProps): React.JSX.Element {
   const theme = usePolarisTheme();
   // The ADAPTER, not `usePolarisKey()`: that hook rebuilds its bound callbacks on every
   // snapshot, so an effect depending on it would re-fetch the roster on every state change.
@@ -472,7 +472,7 @@ function UnsupportedLine(props: {
   theme: PolarisTheme;
   manageUrl?: string;
   marker: "unsupported" | "partial";
-}): JSX.Element {
+}): React.JSX.Element {
   const { theme, manageUrl } = props;
   return (
     <div
@@ -512,7 +512,7 @@ function DeviceRow(props: {
   onClose: (refocus: string) => void;
   onRename: (label: string | null) => Promise<void>;
   onRemove: () => Promise<void>;
-}): JSX.Element {
+}): React.JSX.Element {
   const { device, theme } = props;
   const title = titleOf(device, theme);
   const meta = metaOf(device, theme);
@@ -757,7 +757,7 @@ function CancelButton(props: {
   label: string;
   disabled?: boolean;
   onClick: () => void;
-}): JSX.Element {
+}): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     ref.current?.focus();

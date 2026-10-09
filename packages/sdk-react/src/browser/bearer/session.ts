@@ -361,6 +361,8 @@ export class BearerSession {
   private syncFailures = 0;
   /** Epoch seconds before which `sync()` does not touch the network. */
   private syncNotBefore = 0;
+  /** Consecutive passes the server answered 401 to (a revoked or unknown token). */
+  private unauthorizedPasses = 0;
   /** The current pass's retryable failure, if any: the largest `Retry-After` seen. */
   private passFailure: { retryAfter?: number } | null = null;
   readonly channel: string;
@@ -597,6 +599,7 @@ export class BearerSession {
     // A token just arrived from the server, so it is reachable: drop any sync backoff.
     this.syncFailures = 0;
     this.syncNotBefore = 0;
+    this.unauthorizedPasses = 0;
     this.token = token;
     this.tokenSource = source;
     try {
@@ -1075,8 +1078,21 @@ export class BearerSession {
           failure.retryAfter,
           this.opts.random,
         );
-    } else if (healthy || unauthorized || blocked) {
+    } else if (unauthorized && !healthy) {
+      // A revoked token answers 401 every time. Revocation is reversible, so polling goes on,
+      // but at a growing distance rather than on every automatic pass (the same curve as a 5xx).
+      this.unauthorizedPasses += 1;
       this.syncFailures = 0;
+      this.syncNotBefore =
+        this.opts.now() +
+        syncBackoffSeconds(
+          this.unauthorizedPasses,
+          undefined,
+          this.opts.random,
+        );
+    } else if (healthy || blocked) {
+      this.syncFailures = 0;
+      this.unauthorizedPasses = 0;
       this.syncNotBefore = 0;
     }
     const patch: Partial<CacheRecordV3> = {};

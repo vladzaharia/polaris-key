@@ -22,6 +22,8 @@ import {
   readConfig,
   readEntitled,
   readEntitledChannels,
+  refreshFailure,
+  standingRefusals,
   withOverrides,
 } from "../core/adapter.js";
 import {
@@ -338,16 +340,15 @@ export class DesktopAdapter implements PolarisAdapter {
     try {
       this.apply(await this.bridge.refresh(), {
         busy: noBusy(),
-        error: noErrors(),
+        error: standingRefusals(this.store.get().error),
       });
     } catch (e) {
+      const err = new PolarisError("refresh-failed", (e as Error).message);
       this.patch((prev) => ({
         busy: withBusy(withBusy(prev.busy, "license", false), "config", false),
+        error: refreshFailure(prev.error, err),
       }));
-      throw this.fail(
-        "license",
-        new PolarisError("refresh-failed", (e as Error).message),
-      );
+      throw err;
     }
   }
 
@@ -365,10 +366,22 @@ export class DesktopAdapter implements PolarisAdapter {
     try {
       const begin = await this.bridge.beginSignIn();
       // Poll in the background; flip out of busy + apply the fresh state on completion.
-      void this.pollUntilSettled(begin.flowId);
+      const stop = { stopped: false };
+      void this.pollUntilSettled(begin.flowId, stop);
       return {
         verificationUrl: begin.verificationUrl,
         userCode: begin.userCode,
+        ...(begin.verificationUri
+          ? { verificationUri: begin.verificationUri }
+          : {}),
+        ...(begin.expiresAt !== undefined
+          ? { expiresAt: begin.expiresAt }
+          : {}),
+        // The host owns the flow; cancelling ends this renderer's polling of it.
+        cancel: () => {
+          stop.stopped = true;
+          this.setBusy("identity", false);
+        },
       };
     } catch (e) {
       throw this.fail(
@@ -378,11 +391,16 @@ export class DesktopAdapter implements PolarisAdapter {
     }
   }
 
-  private async pollUntilSettled(flowId: string): Promise<void> {
+  private async pollUntilSettled(
+    flowId: string,
+    stop: { stopped: boolean } = { stopped: false },
+  ): Promise<void> {
     try {
       // The bridge owns the real backoff; the renderer just re-asks until terminal.
       for (;;) {
+        if (stop.stopped) return;
         const r = await this.bridge.pollSignIn(flowId);
+        if (stop.stopped) return;
         if (r.kind === "pending") {
           await delay(1500);
           continue;

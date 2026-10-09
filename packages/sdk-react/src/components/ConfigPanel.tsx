@@ -110,7 +110,7 @@ const keyLine: CSSProperties = {
   minWidth: 0,
 };
 
-export function ConfigPanel(props: ConfigPanelProps): JSX.Element {
+export function ConfigPanel(props: ConfigPanelProps): React.JSX.Element {
   const theme = usePolarisTheme();
   const cfg = useManagedConfig();
   const titleId = useId();
@@ -217,7 +217,7 @@ function ConfigEntryRow(props: {
   canSet: boolean;
   set: (key: string, value: JSONValue) => Promise<void>;
   clear: (key: string) => Promise<void>;
-}): JSX.Element {
+}): React.JSX.Element {
   const { row, theme, oneLine } = props;
   const inputId = useId();
   const errorId = useId();

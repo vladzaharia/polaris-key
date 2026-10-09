@@ -87,6 +87,8 @@ import {
   readConfig,
   readEntitled,
   readEntitledChannels,
+  refreshFailure,
+  standingRefusals,
   withOverrides,
 } from "../core/adapter.js";
 import {
@@ -101,6 +103,7 @@ import type {
   UpdateEventInput,
 } from "../core/updateEvents.js";
 import { createStore, type Store } from "../core/store.js";
+import { developerError } from "../core/devNotice.js";
 import {
   PolarisError,
   UnsupportedError,
@@ -457,6 +460,8 @@ export class BrowserAdapter implements PolarisAdapter {
   /** The verified discovery document, once it answered. */
   private discovery_: DiscoveryDocument | null = null;
   private discovered: Promise<void> = Promise.resolve();
+  /** The discovery fetch on the wire now, if any. */
+  private discovering: Promise<void> | null = null;
   /** The update slices when there is no offline store to keep them in. */
   private memorySlices: UpdateSlices = {};
   /** Decisions run one at a time: each is a read-modify-write of the slices. */
@@ -557,6 +562,11 @@ export class BrowserAdapter implements PolarisAdapter {
       );
       if (opts.auth === "bearer") throw err;
       this.configError = err;
+      // The developer's mistake, said once in development; the page's users see a neutral screen.
+      developerError(
+        "missing-pins",
+        `${this.product}: this page is cross-origin to ${this.base} (or inside Tauri), so it signs in with a device token and verifies every document in the page. Pass trust={{ pinnedKeys }} to <PolarisKeyProvider>: the pins are in your generated polaris config (\`pkey sdk --lang react\`). Until then the kit shows its error screen.`,
+      );
     } else if (this.authMode === "bearer" && this.pinned) {
       this.bearerStore =
         opts.store ??
@@ -798,7 +808,10 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   private loadCapabilities(): Promise<void> {
-    this.discovered = (async () => {
+    // One fetch at a time per adapter: a boot, a release call and the first load that ask while
+    // discovery is on the wire all get that fetch's answer.
+    if (this.discovering) return this.discovering;
+    this.discovered = this.discovering = (async () => {
       const result = await discoverProduct({
         baseUrl: this.base,
         product: this.product,
@@ -807,8 +820,27 @@ export class BrowserAdapter implements PolarisAdapter {
       if (result.kind === "ok") {
         this.capabilities = result.services;
         this.discovery_ = result.document;
+      } else if (
+        result.kind === "error" &&
+        result.status === 0 &&
+        this.bearer
+      ) {
+        // No status at all: the browser refused the cross-origin read (CORS) or the network is
+        // down. For a bearer page the usual cause is an origin the product does not list.
+        developerError(
+          "origin-not-allowed",
+          `${this.product}: discovery at ${this.base} could not be read from this page${
+            typeof window !== "undefined" && window.location?.origin
+              ? ` (${window.location.origin})`
+              : ""
+          }. If you are online, add this origin to the product's web.origins in .pkey/product, then publish it.`,
+        );
       }
-    })().catch(() => undefined);
+    })()
+      .catch(() => undefined)
+      .finally(() => {
+        this.discovering = null;
+      });
     return this.discovered;
   }
 
@@ -975,9 +1007,9 @@ export class BrowserAdapter implements PolarisAdapter {
     return true;
   }
 
-  async refresh(): Promise<void> {
+  async refresh(opts: { force?: boolean } = {}): Promise<void> {
     if (this.configError) throw this.fail("license", this.configError);
-    if (this.bearer) return this.refreshBearer();
+    if (this.bearer) return this.refreshBearer(opts.force === true);
     this.setBusy("license", true);
     this.setBusy("config", true);
     try {
@@ -995,6 +1027,7 @@ export class BrowserAdapter implements PolarisAdapter {
               lastSyncUnauthorized: true,
             },
             {
+              error: standingRefusals(prev.error),
               localOverrides: this.localOverrides,
               capabilities: this.capabilities,
               licenseGate: this.licenseGate(),
@@ -1003,7 +1036,10 @@ export class BrowserAdapter implements PolarisAdapter {
         );
         return;
       }
-      this.apply(s, { busy: noBusy(), error: noErrors() });
+      this.apply(s, {
+        busy: noBusy(),
+        error: standingRefusals(this.store.get().error),
+      });
     } catch (e) {
       const err =
         e instanceof PolarisError
@@ -1011,18 +1047,21 @@ export class BrowserAdapter implements PolarisAdapter {
           : new PolarisError("refresh-failed", (e as Error).message);
       this.patch((prev) => ({
         busy: withBusy(withBusy(prev.busy, "license", false), "config", false),
-        error: withError(prev.error, "license", err),
+        error: refreshFailure(prev.error, err),
       }));
       throw err;
     }
   }
 
-  private async refreshBearer(): Promise<void> {
+  private async refreshBearer(force: boolean): Promise<void> {
     this.setBusy("license", true);
     this.setBusy("config", true);
     try {
-      await this.bearer!.sync();
-      this.applyBearer({ busy: noBusy(), error: noErrors() });
+      await this.bearer!.sync({ force });
+      this.applyBearer({
+        busy: noBusy(),
+        error: standingRefusals(this.store.get().error),
+      });
     } catch (e) {
       const err =
         e instanceof PolarisError
@@ -1030,7 +1069,7 @@ export class BrowserAdapter implements PolarisAdapter {
           : new PolarisError("refresh-failed", (e as Error).message);
       this.patch((prev) => ({
         busy: withBusy(withBusy(prev.busy, "license", false), "config", false),
-        error: withError(prev.error, "license", err),
+        error: refreshFailure(prev.error, err),
       }));
       throw err;
     }
@@ -1042,10 +1081,18 @@ export class BrowserAdapter implements PolarisAdapter {
     if (this.configError) throw this.fail("identity", this.configError);
     if (this.bearer) {
       const flow = await this.beginSignIn();
-      void flow.wait().catch(() => undefined);
+      const stop = new AbortController();
+      void flow.wait({ signal: stop.signal }).catch(() => undefined);
       return {
         verificationUrl: flow.verificationUriComplete,
+        verificationUri: flow.verificationUri,
         userCode: flow.userCode,
+        expiresAt: flow.expiresAt,
+        // Cancelling is not a failure: the wait ends and the identity slice goes idle.
+        cancel: () => {
+          stop.abort();
+          this.setBusy("identity", false);
+        },
       };
     }
     if (!this.capabilities.identity.enabled) {
@@ -1277,28 +1324,44 @@ export class BrowserAdapter implements PolarisAdapter {
     try {
       const url = new URL(this.url("/update/version"));
       if (opts.channel) url.searchParams.set("channel", opts.channel);
-      const res = await this.fetchImpl(url.toString(), {
-        method: "GET",
-        // `update/version` is bearer-only and CORS-covered: no ambient credential. (The
-        // identity session routes keep `include`: they are first-party, cookie-bearing and never
-        // CORS-covered.)
-        credentials: "omit",
-        headers: { accept: "application/json", ...this.metadataHeaders() },
-      });
-      if (!res.ok) {
-        throw new PolarisError("network", `update/version ${res.status}`);
+      let res: Response;
+      try {
+        res = await this.fetchImpl(url.toString(), {
+          method: "GET",
+          // `update/version` is bearer-only and CORS-covered: no ambient credential. (The
+          // identity session routes keep `include`: they are first-party, cookie-bearing and
+          // never CORS-covered.)
+          credentials: "omit",
+          headers: { accept: "application/json", ...this.metadataHeaders() },
+        });
+      } catch (e) {
+        throw new PolarisError(ErrorCode.networkError, (e as Error).message);
       }
-      const body = (await res.json()) as {
-        version: string;
-        tag: string;
-        url: string;
-      };
+      if (!res.ok) throw updateRefusal(res.status);
+      const body = (await res.json().catch(() => null)) as {
+        version?: unknown;
+        tag?: unknown;
+        url?: unknown;
+      } | null;
+      // A 200 that is not a release is a broken answer, never "no update".
+      if (
+        !body ||
+        typeof body.version !== "string" ||
+        typeof body.tag !== "string" ||
+        typeof body.url !== "string"
+      )
+        throw new PolarisError(
+          ErrorCode.serverError,
+          "update/version answered no release.",
+        );
       this.patch((prev) => ({
         busy: withBusy(prev.busy, "update", false),
         error: withError(prev.error, "update", null),
       }));
       return {
-        ...body,
+        version: body.version,
+        tag: body.tag,
+        url: body.url,
         updateAvailable:
           compareSemver(this.version ?? "0.0.0", body.version) < 0,
       };
@@ -2071,6 +2134,28 @@ export function resolveAuthMode(
   } catch {
     return "cookie";
   }
+}
+
+/** The typed refusal for a non-2xx `update/version`: the SDK-wide codes, so a host and the kit
+ *  tell "no such release feed" (404) from "the server is down" (5xx) and "slow down" (429). */
+function updateRefusal(status: number): PolarisError {
+  const code =
+    status === 404
+      ? ErrorCode.notFound
+      : status === 429
+        ? ErrorCode.rateLimited
+        : status >= 500
+          ? ErrorCode.serverError
+          : ErrorCode.httpError;
+  return new PolarisError(
+    code,
+    `update/version ${status}`,
+    undefined,
+    undefined,
+    {
+      status,
+    },
+  );
 }
 
 function deviceInfo(d: AccountDevice): DeviceInfo {

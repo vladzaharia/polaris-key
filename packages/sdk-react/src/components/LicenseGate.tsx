@@ -113,7 +113,7 @@ function useRetry(retry: () => Promise<void>): [boolean, () => void] {
  * identity, "Checking your license…" in muted text and a 2 px indeterminate bar along the top
  * edge (still, under reduced motion).
  */
-function LoadingScreen(props: { theme: PolarisTheme }): JSX.Element {
+function LoadingScreen(props: { theme: PolarisTheme }): React.JSX.Element {
   const [shown, setShown] = useState(false);
   useEffect(() => {
     const id = setTimeout(() => setShown(true), 300);
@@ -126,7 +126,7 @@ function LoadingScreen(props: { theme: PolarisTheme }): JSX.Element {
   );
 }
 
-function LoadingCard(props: { theme: PolarisTheme }): JSX.Element {
+function LoadingCard(props: { theme: PolarisTheme }): React.JSX.Element {
   const bar = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const el = bar.current;
@@ -186,7 +186,7 @@ function LoadingCard(props: { theme: PolarisTheme }): JSX.Element {
 function GraceBanner(props: {
   theme: PolarisTheme;
   graceUntil: number | undefined;
-}): JSX.Element {
+}): React.JSX.Element {
   const { theme, graceUntil } = props;
   const c = theme.copy;
   let text = `${c.graceTitle} — ${c.graceBody}`;
@@ -235,7 +235,7 @@ function GraceBanner(props: {
 
 /** A version block. Too old, with the Update service on: "Get the update" first (the update
  *  prompt's action) and Try again second; otherwise Try again alone. */
-function VersionBlock(props: { ctx: UseLicenseGate }): JSX.Element {
+function VersionBlock(props: { ctx: UseLicenseGate }): React.JSX.Element {
   const { ctx } = props;
   const { theme } = ctx;
   const { title, body } = blockTitleBody(theme, ctx.status);
@@ -286,7 +286,7 @@ function VersionBlock(props: { ctx: UseLicenseGate }): JSX.Element {
 function ErrorScreen(props: {
   ctx: UseLicenseGate;
   returnUrl?: string;
-}): JSX.Element {
+}): React.JSX.Element {
   const { ctx } = props;
   const { theme } = ctx;
   const [busy, retry] = useRetry(ctx.retry);
@@ -353,7 +353,41 @@ function ErrorScreen(props: {
   );
 }
 
-export function LicenseGate(props: LicenseGateProps): JSX.Element {
+/**
+ * Revoked and expired: one title, then every way out. The sign-in methods are the action (Sign in
+ * first and filled, then "Use a different key"), docked at the bottom on a phone exactly as on
+ * the sign-in screen, and Try again re-reads the state for a licence that was restored since.
+ */
+function StatusScreen(props: {
+  ctx: UseLicenseGate;
+  revoked: boolean;
+  returnUrl?: string;
+}): React.JSX.Element {
+  const { ctx, revoked } = props;
+  const { theme } = ctx;
+  const [busy, retry] = useRetry(ctx.retry);
+  return (
+    <MessageScreen
+      title={revoked ? theme.copy.revokedTitle : theme.copy.expiredTitle}
+      body={revoked ? theme.copy.revokedBody : theme.copy.expiredBody}
+      logo={screenLogo(theme)}
+      extra={
+        <PolarisLogin
+          heading={false}
+          bare
+          differentKey
+          {...(props.returnUrl ? { returnUrl: props.returnUrl } : {})}
+        />
+      }
+      onRetry={retry}
+      retryBusy={busy}
+      retryLabel={theme.copy.retryLabel}
+      retryVariant="quiet"
+    />
+  );
+}
+
+export function LicenseGate(props: LicenseGateProps): React.JSX.Element {
   const ctx = useLicenseGate();
   const { theme } = ctx;
   const slots = props.slots ?? {};
@@ -408,19 +442,12 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       break;
     case "revoked":
     case "expired": {
-      // One title, then the sign-in methods, which are the action: they dock at the bottom on a
-      // phone exactly as on the sign-in screen, and take focus.
       const revoked = screen === "revoked";
       const slot = revoked ? slots.revoked : slots.expired;
       content = slot ? (
         slot(ctx)
       ) : (
-        <MessageScreen
-          title={revoked ? theme.copy.revokedTitle : theme.copy.expiredTitle}
-          body={revoked ? theme.copy.revokedBody : theme.copy.expiredBody}
-          logo={screenLogo(theme)}
-          extra={<PolarisLogin heading={false} bare {...returnUrl} />}
-        />
+        <StatusScreen ctx={ctx} revoked={revoked} {...returnUrl} />
       );
       break;
     }

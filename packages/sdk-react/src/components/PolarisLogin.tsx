@@ -36,7 +36,7 @@ import {
   usePolarisAuth,
   usePolarisTheme,
 } from "../react/hooks.js";
-import type { PolarisError } from "../core/index.js";
+import type { OidcSignInHandle, PolarisError } from "../core/index.js";
 import { Button } from "./primitives/buttons.js";
 import {
   Panel,
@@ -50,6 +50,9 @@ import {
   twoColumnCard,
 } from "./primitives/card.js";
 import { TextField } from "./primitives/input.js";
+import { ExternalGlyph } from "./primitives/glyphs.js";
+import { SignInHandoff } from "./SignInHandoff.js";
+import { safeLink } from "./links.js";
 import { useWindowLayout } from "./primitives/layout.js";
 import { COARSE_POINTER, useMediaQuery } from "./primitives/media.js";
 import { screenLogo, themePoweredBy } from "./brand.js";
@@ -86,6 +89,11 @@ export interface PolarisLoginProps {
    * title and lede and renders the sign-in methods only, under the screen's own title.
    */
   heading?: boolean;
+  /**
+   * @internal The gate's expired and revoked screens set `true`: the old key is not the one to
+   * type, so the key button reads "Use a different key".
+   */
+  differentKey?: boolean;
 }
 
 /**
@@ -129,26 +137,6 @@ const callout: CSSProperties = {
   lineHeight: mutedText.lineHeight,
 };
 
-/** The new-tab cue on "Replace a device": an arrow out of a box, in the label's colour. */
-function ExternalGlyph(): JSX.Element {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      width="1em"
-      height="1em"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 3h4v4M13 3 7.5 8.5M11.5 9.5V13H3V4.5h3.5" />
-    </svg>
-  );
-}
-
 /** The refusal a license error carries for this card, if it is one (`isSignInRefusal`). */
 function keyRefusal(err: PolarisError | null | undefined): PolarisError | null {
   return err && isSignInRefusal(err) ? err : null;
@@ -183,6 +171,11 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
       () => state.error.identity,
     );
 
+    // The device-code hand-off of a sign-in in progress (bearer mode, and a desktop host that
+    // reports a code), and whether its code has run out.
+    const [handle, setHandle] = useState<OidcSignInHandle | null>(null);
+    const [handoffExpired, setHandoffExpired] = useState(false);
+
     // A refusal the adapter reports (this card's attempt, or another's) lands in its slot; a
     // slot this card cleared stays clear until the adapter reports a new one.
     const licenseError = state.error.license;
@@ -192,8 +185,11 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
       if (refusal) setKeyErr(refusal);
     }, [licenseError]);
     useEffect(() => {
-      if (identityError) setSignInErr(identityError);
-    }, [identityError]);
+      if (!identityError) return;
+      setSignInErr(identityError);
+      // A sign-in that failed ends the hand-off, except one already showing its own expiry.
+      if (!handoffExpired) setHandle(null);
+    }, [identityError, handoffExpired]);
 
     const titleId = useId();
     const keyInputId = useId();
@@ -282,10 +278,44 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
       void submitKey();
     }
 
+    // Where focus goes back to when the hand-off closes: the button that opened it.
+    const oidcRef = useRef<HTMLButtonElement>(null);
+    const [restoreFocus, setRestoreFocus] = useState(false);
+    useEffect(() => {
+      if (!restoreFocus || handle) return;
+      setRestoreFocus(false);
+      oidcRef.current?.focus();
+    }, [restoreFocus, handle]);
+
     function signIn(): void {
       setKeyErr(null);
       setSignInErr(null);
-      void Promise.resolve(auth.signInWithOidc()).catch(() => undefined);
+      setHandoffExpired(false);
+      void Promise.resolve(auth.signInWithOidc())
+        .then((started) => {
+          // The cookie page navigates away and never gets here; a bearer page or a host that
+          // reports a code hands back what to show.
+          if (
+            started &&
+            (started.userCode || safeLink(started.verificationUrl))
+          )
+            setHandle(started);
+        })
+        .catch(() => undefined);
+    }
+
+    function cancelHandoff(): void {
+      handle?.cancel?.();
+      setHandle(null);
+      setHandoffExpired(false);
+      setRestoreFocus(true);
+    }
+
+    function signInAgain(): void {
+      handle?.cancel?.();
+      setHandle(null);
+      setHandoffExpired(false);
+      signIn();
     }
 
     function replace(): void {
@@ -357,9 +387,11 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
                 style={inWindow ? screenTitle : titleText}
                 dir="auto"
               >
-                {signInTitle(theme)}
+                {handle && !handoffExpired
+                  ? theme.copy.handoffTitle
+                  : signInTitle(theme)}
               </h2>
-              {subtitle ? (
+              {subtitle && !handle ? (
                 <p
                   style={{ ...mutedText, ...prettyText, marginTop: SPACE["2"] }}
                 >
@@ -373,124 +405,141 @@ export const PolarisLogin = forwardRef<HTMLElement, PolarisLoginProps>(
           <div aria-hidden="true" style={{ flexGrow: 2, minHeight: 0 }} />
         ) : null}
 
-        <div
-          style={{ ...actionPanel, gap: SPACE["3"] }}
-          data-polaris-methods=""
-        >
-          {showOidc ? (
-            <Button
-              variant={limit ? "secondary" : "primary"}
-              busy={auth.busy}
-              label={theme.copy.oidcButtonLabel}
-              autoFocus={autoFocus}
-              describedBy={signInErr ? signInErrorId : undefined}
-              onClick={signIn}
-              data-polaris-oidc=""
-            >
-              {theme.copy.oidcButtonLabel}
-            </Button>
-          ) : null}
-          {signInErr ? (
-            <p
-              id={signInErrorId}
-              role="alert"
-              style={dangerText}
-              data-polaris-signin-error=""
-            >
-              {errorSentence(signInErr)}
-            </p>
-          ) : null}
-
-          {showKey && !keyFormOpen ? (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setKeyOpened(true);
-                setFocusField(true);
-              }}
-              data-polaris-use-key=""
-            >
-              {theme.copy.useKeyLabel}
-            </Button>
-          ) : null}
-
-          {showKey && keyFormOpen ? (
-            <form
-              onSubmit={onSubmit}
-              noValidate
-              style={actionPanel}
-              data-polaris-key-form=""
-            >
-              <TextField
-                ref={fieldRef}
-                id={keyInputId}
-                label={theme.copy.keyEntryLabel}
-                value={key}
-                placeholder={theme.copy.keyEntryPlaceholder}
-                onChange={(value) => {
-                  setKey(value);
-                  setKeyErr(null);
-                }}
-                autoFocus={keyOnly && autoFocus}
-                invalid={keyIsWrong(keyErr)}
-                errorId={keyErr && !limit ? keyErrorId : undefined}
-                data-polaris-key-input=""
-              />
-              {keyErr && !limit ? (
-                <p
-                  id={keyErrorId}
-                  ref={keyErrorRef}
-                  role="alert"
-                  style={dangerText}
-                  data-polaris-key-error=""
-                >
-                  {errorSentence(keyErr)}
-                </p>
-              ) : null}
-              {limit ? (
-                <div style={callout} role="status" data-polaris-device-limit="">
-                  {counts ? (
-                    <span style={{ fontWeight: 500 }}>
-                      {formatCopy(theme.copy.deviceLimitHeading, counts)}
-                    </span>
-                  ) : null}
-                  <span id={browserLineId}>
-                    {formatCopy(theme.copy.deviceLimitBrowser, { product })}
-                  </span>
-                </div>
-              ) : null}
-              {limit ? (
-                <Button
-                  ref={replaceRef}
-                  variant="primary"
-                  label={theme.copy.freeDeviceLabel}
-                  describedBy={browserLineId}
-                  onClick={replace}
-                  data-polaris-free-device=""
-                >
-                  {theme.copy.freeDeviceLabel}
-                  <ExternalGlyph />
-                </Button>
-              ) : null}
+        {handle ? (
+          <SignInHandoff
+            theme={theme}
+            handle={handle}
+            onCancel={cancelHandoff}
+            onAgain={signInAgain}
+            onExpired={setHandoffExpired}
+          />
+        ) : (
+          <div
+            style={{ ...actionPanel, gap: SPACE["3"] }}
+            data-polaris-methods=""
+          >
+            {showOidc ? (
               <Button
-                variant={keyOnly && !limit ? "primary" : "secondary"}
-                type="submit"
-                disabled={trimmed.length === 0}
-                busy={auth.keyEntryBusy}
-                data-polaris-key-submit=""
+                ref={oidcRef}
+                variant={limit ? "secondary" : "primary"}
+                busy={auth.busy}
+                label={theme.copy.oidcButtonLabel}
+                autoFocus={autoFocus}
+                describedBy={signInErr ? signInErrorId : undefined}
+                onClick={signIn}
+                data-polaris-oidc=""
               >
-                {theme.copy.keySubmitLabel}
+                {theme.copy.oidcButtonLabel}
               </Button>
-            </form>
-          ) : null}
+            ) : null}
+            {signInErr ? (
+              <p
+                id={signInErrorId}
+                role="alert"
+                style={dangerText}
+                data-polaris-signin-error=""
+              >
+                {errorSentence(signInErr)}
+              </p>
+            ) : null}
 
-          {showNoMethods ? (
-            <p style={mutedText} role="status">
-              No sign-in methods are available.
-            </p>
-          ) : null}
-          {themePoweredBy(theme)}
-        </div>
+            {showKey && !keyFormOpen ? (
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setKeyOpened(true);
+                  setFocusField(true);
+                }}
+                data-polaris-use-key=""
+              >
+                {props.differentKey
+                  ? theme.copy.differentKeyLabel
+                  : theme.copy.useKeyLabel}
+              </Button>
+            ) : null}
+
+            {showKey && keyFormOpen ? (
+              <form
+                onSubmit={onSubmit}
+                noValidate
+                style={actionPanel}
+                data-polaris-key-form=""
+              >
+                <TextField
+                  ref={fieldRef}
+                  id={keyInputId}
+                  label={theme.copy.keyEntryLabel}
+                  value={key}
+                  placeholder={theme.copy.keyEntryPlaceholder}
+                  onChange={(value) => {
+                    setKey(value);
+                    setKeyErr(null);
+                  }}
+                  autoFocus={keyOnly && autoFocus}
+                  invalid={keyIsWrong(keyErr)}
+                  errorId={keyErr && !limit ? keyErrorId : undefined}
+                  data-polaris-key-input=""
+                />
+                {keyErr && !limit ? (
+                  <p
+                    id={keyErrorId}
+                    ref={keyErrorRef}
+                    role="alert"
+                    style={dangerText}
+                    data-polaris-key-error=""
+                  >
+                    {errorSentence(keyErr)}
+                  </p>
+                ) : null}
+                {limit ? (
+                  <div
+                    style={callout}
+                    role="status"
+                    data-polaris-device-limit=""
+                  >
+                    {counts ? (
+                      <span style={{ fontWeight: 500 }}>
+                        {formatCopy(theme.copy.deviceLimitHeading, counts)}
+                      </span>
+                    ) : null}
+                    <span id={browserLineId}>
+                      {formatCopy(theme.copy.deviceLimitBrowser, { product })}
+                    </span>
+                  </div>
+                ) : null}
+                {limit ? (
+                  <Button
+                    ref={replaceRef}
+                    variant="primary"
+                    label={theme.copy.freeDeviceLabel}
+                    describedBy={browserLineId}
+                    onClick={replace}
+                    data-polaris-free-device=""
+                  >
+                    {theme.copy.freeDeviceLabel}
+                    <ExternalGlyph />
+                  </Button>
+                ) : null}
+                <Button
+                  variant={keyOnly && !limit ? "primary" : "secondary"}
+                  type="submit"
+                  disabled={trimmed.length === 0}
+                  busy={auth.keyEntryBusy}
+                  data-polaris-key-submit=""
+                >
+                  {theme.copy.keySubmitLabel}
+                </Button>
+              </form>
+            ) : null}
+
+            {showNoMethods ? (
+              <p style={mutedText} role="status">
+                {theme.copy.noMethodsLabel}
+              </p>
+            ) : null}
+            {themePoweredBy(theme)}
+          </div>
+        )}
       </Panel>
     );
   },

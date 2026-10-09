@@ -30,6 +30,7 @@
 // not exist makes some screen readers announce nothing at all.
 
 import {
+  useContext,
   useEffect,
   useId,
   useRef,
@@ -49,6 +50,8 @@ import {
   twoColumnCard,
 } from "./card.js";
 import { useWindowLayout, type WindowLayout } from "./layout.js";
+import { PolarisContext } from "../../react/context.js";
+import { defaultTheme } from "../theme.js";
 
 /** The actions: one column, full width, the primary first. Docked on a full-bleed window, where
  *  they stay in view while the text above scrolls. */
@@ -110,7 +113,7 @@ export interface MessageScreenProps {
   [dataAttr: `data-${string}`]: unknown;
 }
 
-export function MessageScreen(props: MessageScreenProps): JSX.Element {
+export function MessageScreen(props: MessageScreenProps): React.JSX.Element {
   const {
     title,
     body,
@@ -153,7 +156,10 @@ export function MessageScreen(props: MessageScreenProps): JSX.Element {
   );
 }
 
-function MessageCard(props: MessageScreenProps): JSX.Element {
+function MessageCard(props: MessageScreenProps): React.JSX.Element {
+  const fallbackRetry =
+    useContext(PolarisContext)?.theme.copy.retryLabel ??
+    defaultTheme.copy.retryLabel;
   const {
     title,
     body = "",
@@ -162,7 +168,7 @@ function MessageCard(props: MessageScreenProps): JSX.Element {
     secondaryAction,
     retryVariant = "primary",
     onRetry,
-    retryLabel = "Try again",
+    retryLabel = fallbackRetry,
     retryBusy,
     transient,
   } = props;

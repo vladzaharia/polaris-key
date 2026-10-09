@@ -51,6 +51,7 @@ import { bannerStyle, mutedText } from "./primitives/card.js";
 import { screenLogo } from "./brand.js";
 import { knownProductName, type PolarisTheme } from "./theme.js";
 import { formatCopy } from "./format.js";
+import { errorSentence, type ErrorLike } from "./errors.js";
 
 /** "{product} {version}" once the product's name and the version are known (update.title),
  *  else "An update is available" (update.availableTitle). */
@@ -76,7 +77,7 @@ function UpdateBanner(props: {
   dismissLabel: string;
   onDismiss: () => void;
   marker: string;
-}): JSX.Element {
+}): React.JSX.Element {
   const { locked } = props;
   return (
     <div
@@ -166,7 +167,9 @@ export interface UpdatePromptProps
   showWhenCurrent?: boolean;
 }
 
-export function UpdatePrompt(props: UpdatePromptProps): JSX.Element | null {
+export function UpdatePrompt(
+  props: UpdatePromptProps,
+): React.JSX.Element | null {
   const { source = "version", ...rest } = props;
   return source === "decision" ? (
     <DecisionPrompt {...rest} />
@@ -177,7 +180,7 @@ export function UpdatePrompt(props: UpdatePromptProps): JSX.Element | null {
 
 function VersionPrompt(
   props: Omit<UpdatePromptProps, "source">,
-): JSX.Element | null {
+): React.JSX.Element | null {
   const theme = usePolarisTheme();
   const {
     variant = "banner",
@@ -206,6 +209,32 @@ function VersionPrompt(
   if (slots?.prompt) return <>{slots.prompt({ ...check, dismiss })}</>;
 
   if (!check.updateAvailable) {
+    // "Up to date" is an answer, not an absence: a check that failed, or has not answered yet,
+    // never says it.
+    if (check.error)
+      return (
+        <div
+          className={className}
+          role="status"
+          aria-live="polite"
+          style={{ ...currentLine, display: "flex", gap: SPACE["3"] }}
+          data-polaris-update="failed"
+        >
+          <span style={{ flex: "1 1 auto", minWidth: 0 }}>
+            {errorSentence(check.error as ErrorLike)}
+          </span>
+          <Button
+            variant="secondary"
+            size="compact"
+            busy={check.busy}
+            onClick={() => void check.check()}
+            data-polaris-update-retry=""
+          >
+            {theme.copy.retryLabel}
+          </Button>
+        </div>
+      );
+    if (!check.latest) return null;
     return (
       <div
         className={className}
@@ -275,7 +304,7 @@ function VersionPrompt(
 
 function DecisionPrompt(
   props: Omit<UpdatePromptProps, "source">,
-): JSX.Element | null {
+): React.JSX.Element | null {
   const theme = usePolarisTheme();
   const { adapter } = useCtx();
   const {
