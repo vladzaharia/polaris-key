@@ -848,8 +848,8 @@ map it follows.
 | `--pk-sidebar-foreground`                                      | `--pk-text-muted`                                                  |                                                          |
 | `--pk-sidebar-border`                                          | `--pk-border-subtle`                                               |                                                          |
 | `--pk-sidebar-accent`                                          | `--pk-accent-subtle` (active item) / `--pk-surface-raised` (hover) |                                                          |
-| `--pk-primary`                                                 | `--pk-accent` (section-aware solid)                                | indigo `#5b7cfa` is gone (blue band)                     |
-| `--pk-primary-foreground`                                      | `--pk-accent-on`                                                   |                                                          |
+| `--pk-primary`                                                 | the `action-neutral` fill (§4.7, UK-58)                            | neutral ink, never the accent (B2); indigo is gone       |
+| `--pk-primary-foreground`                                      | the `action-neutral` label (§4.7)                                  |                                                          |
 | `--pk-accent` (hover fill)                                     | `--pk-surface-raised` / `--pk-surface-overlay`                     | **name reused**: new `--pk-accent` is the section colour |
 | `--pk-accent-foreground`                                       | `--pk-text-strong`                                                 |                                                          |
 | `--pk-secondary`, `-foreground`                                | `--pk-surface-overlay`, `--pk-text-strong`                         |                                                          |
