@@ -6,7 +6,8 @@ import { errorResponse, json } from "./core/errors.js";
 import { pk } from "./kv.js";
 import { hexDecode } from "./platform/bytes.js";
 import { constantTimeEqualBytes } from "./platform/compare.js";
-import { hmacSha256, importHmacKey } from "./platform/hash.js";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import { hmacSha256, importHmacKey, sha256Hex } from "./platform/hash.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
 import { manifestIngestFor } from "./core/registry.js";
 import { systemResyncRefusal } from "./core/settingsClaims.js";
@@ -127,7 +128,10 @@ async function installationMatches(
 ): Promise<boolean> {
   const cfg = await getReleaseConfig(db, product);
   const expected = cfg?.gh_installation_id ?? null;
-  return expected === null || installationId === expected;
+  // SEC-WEB-5: a missing binding fails closed. Only the system product has none (it is linked by
+  // the deploy hook, not through an installation).
+  if (expected === null) return product === SYSTEM_PRODUCT_SLUG;
+  return installationId === expected;
 }
 
 /**
@@ -249,162 +253,170 @@ export async function handleGithubWebhook(
   if (!deliveryId) {
     return errorResponse(400, "bad_request", "missing X-GitHub-Delivery");
   }
-  const deliveryKey = pk(PLATFORM_SCOPE, "gh-delivery", deliveryId);
+  // SEC-WEB-4: the dedupe key is the SIGNED body (a captured body replayed under a fresh,
+  // unsigned delivery id is still a duplicate), and it is recorded only after the delivery was
+  // processed, so a transient failure leaves GitHub's redelivery free to do the work.
+  const deliveryKey = pk(PLATFORM_SCOPE, "gh-delivery", await sha256Hex(raw));
   if (await env.HOT.get(deliveryKey)) {
     return json({ ok: true, ignored: "duplicate-delivery", deliveryId });
   }
-  await env.HOT.put(deliveryKey, String(now), {
-    expirationTtl: DELIVERY_TTL_SECONDS,
-  });
-
-  const event = req.headers.get("x-github-event") ?? "";
-  if (event === "release") {
-    return handleReleaseEvent(raw, env, db, now, fetchImpl);
-  }
-  if (event !== "push") {
-    return json({ ok: true, ignored: event || "unknown-event" });
-  }
-
-  let payload: PushPayload;
-  try {
-    payload = JSON.parse(new TextDecoder().decode(raw)) as PushPayload;
-  } catch {
-    return errorResponse(400, "bad_request", "invalid JSON payload");
-  }
-
-  // A structural gate only: tags and other non-branch refs are not `.pkey/` sources. The
-  // old check compared `payload.ref` against `payload.repository.default_branch` — both
-  // attacker-supplied, i.e. self-attestation. The branch that actually gets applied is now
-  // resolved by GitHub from the DB-configured repo (`resyncRepo` takes no ref), so nothing
-  // in this body can steer which content lands. R6-05.
-  if (!payload.ref?.startsWith("refs/heads/")) {
-    return json({
-      ok: true,
-      ignored: "non-branch-ref",
-      ref: payload.ref ?? null,
+  const processed = await processDelivery();
+  if (processed.status < 500)
+    await env.HOT.put(deliveryKey, String(now), {
+      expirationTtl: DELIVERY_TTL_SECONDS,
     });
-  }
+  return processed;
 
-  const paths = changedPaths(payload);
-  // `manifestFiles.ts` owns the shape: `.pkey/` itself, or anything under it. GitHub reports a
-  // whole-directory rename as the bare path, so the bare-path case is deliberate.
-  if (!paths.some(isManifestPath)) {
-    return json({
-      ok: true,
-      ignored: "no-manifest-changes",
-      changedPaths: paths,
-    });
-  }
-
-  const coords = repoCoordinates(payload);
-  if (!coords) return errorResponse(400, "bad_request", "repository missing");
-
-  const products = await listProductsByGithubRepo(
-    db,
-    coords.owner,
-    coords.repo,
-  );
-  const results: Array<{
-    product: string;
-    ok: boolean;
-    updated?: string[];
-    error?: string;
-    errors?: string[];
-    reason?: string;
-  }> = [];
-
-  const installationId = payload.installation?.id;
-  for (const product of products) {
-    // ST-20 (S-18 §4.5 item 8): the system product is linked to the platform monorepo, so a push
-    // there names it, but its one writer is the deploy hook (the root `.pkey/` at the deployed
-    // commit). Refused, without a sync-state row: nothing failed to sync.
-    const systemRefusal = systemResyncRefusal(product);
-    if (systemRefusal) {
-      results.push({
-        product: product.slug,
-        ok: false,
-        error: systemRefusal,
-        reason: "system_product",
-      });
-      continue;
+  async function processDelivery(): Promise<Response> {
+    const event = req.headers.get("x-github-event") ?? "";
+    if (event === "release") {
+      return handleReleaseEvent(raw, env, db, now, fetchImpl);
     }
-    // Bind the delivery to the installation that owns this product's repo (R6-05).
-    if (!(await installationMatches(db, product.slug, installationId))) {
-      results.push({
-        product: product.slug,
-        ok: false,
-        error: INSTALLATION_MISMATCH,
-      });
-      continue;
+    if (event !== "push") {
+      return json({ ok: true, ignored: event || "unknown-event" });
     }
-    const result = await resyncRepo(
-      env,
-      db,
-      product.slug,
-      now,
-      fetchImpl,
-      manifestIngestFor(SERVICES),
-    );
-    if (result.ok) {
-      await upsertProductSyncState(db, {
-        product: product.slug,
-        source: "webhook",
-        status: "ok",
-        last_checked_at: now,
-        last_synced_at: now,
-        commit_sha: payload.after ?? null,
-        changed_paths_json: JSON.stringify(paths),
-        updated_json: JSON.stringify(result.updated),
-        // P3-03: parts the sync refused while applying the rest (`release_key_is_product_key`);
-        // ST-01b: the console-row conflicts it kept.
-        ...resyncNotes(result),
-      });
-      results.push({
-        product: product.slug,
+
+    let payload: PushPayload;
+    try {
+      payload = JSON.parse(new TextDecoder().decode(raw)) as PushPayload;
+    } catch {
+      return errorResponse(400, "bad_request", "invalid JSON payload");
+    }
+
+    // A structural gate only: tags and other non-branch refs are not `.pkey/` sources. The
+    // old check compared `payload.ref` against `payload.repository.default_branch` — both
+    // attacker-supplied, i.e. self-attestation. The branch that actually gets applied is now
+    // resolved by GitHub from the DB-configured repo (`resyncRepo` takes no ref), so nothing
+    // in this body can steer which content lands. R6-05.
+    if (!payload.ref?.startsWith("refs/heads/")) {
+      return json({
         ok: true,
-        updated: result.updated,
-        ...(result.packSets ? { packSets: result.packSets } : {}),
-        // ST-20: every resync summary lists the live break-glass claims.
-        ...(result.breakGlass
-          ? {
-              breakGlass: result.breakGlass.map((b) => ({
-                key: b.key,
-                expiresAt: b.expiresAt,
-              })),
-            }
-          : {}),
-      });
-    } else {
-      await upsertProductSyncState(db, {
-        product: product.slug,
-        source: "webhook",
-        status: "error",
-        last_checked_at: now,
-        last_synced_at: null,
-        commit_sha: payload.after ?? null,
-        changed_paths_json: JSON.stringify(paths),
-        updated_json: null,
-        errors_json: result.errors ? JSON.stringify(result.errors) : null,
-        message: result.error,
-      });
-      results.push({
-        product: product.slug,
-        ok: false,
-        error: result.error,
-        errors: result.errors,
+        ignored: "non-branch-ref",
+        ref: payload.ref ?? null,
       });
     }
-  }
 
-  return json({
-    // ST-20: the system product's refusal is expected (the deploy hook is its writer), not a
-    // failed sync, so it is listed without turning the delivery's answer into a failure.
-    ok: results.every(
-      (result) => result.ok || result.reason === "system_product",
-    ),
-    repository: `${coords.owner}/${coords.repo}`,
-    commitSha: payload.after ?? null,
-    changedPaths: paths,
-    products: results,
-  });
+    const paths = changedPaths(payload);
+    // `manifestFiles.ts` owns the shape: `.pkey/` itself, or anything under it. GitHub reports a
+    // whole-directory rename as the bare path, so the bare-path case is deliberate.
+    if (!paths.some(isManifestPath)) {
+      return json({
+        ok: true,
+        ignored: "no-manifest-changes",
+        changedPaths: paths,
+      });
+    }
+
+    const coords = repoCoordinates(payload);
+    if (!coords) return errorResponse(400, "bad_request", "repository missing");
+
+    const products = await listProductsByGithubRepo(
+      db,
+      coords.owner,
+      coords.repo,
+    );
+    const results: Array<{
+      product: string;
+      ok: boolean;
+      updated?: string[];
+      error?: string;
+      errors?: string[];
+      reason?: string;
+    }> = [];
+
+    const installationId = payload.installation?.id;
+    for (const product of products) {
+      // ST-20 (S-18 §4.5 item 8): the system product is linked to the platform monorepo, so a push
+      // there names it, but its one writer is the deploy hook (the root `.pkey/` at the deployed
+      // commit). Refused, without a sync-state row: nothing failed to sync.
+      const systemRefusal = systemResyncRefusal(product);
+      if (systemRefusal) {
+        results.push({
+          product: product.slug,
+          ok: false,
+          error: systemRefusal,
+          reason: "system_product",
+        });
+        continue;
+      }
+      // Bind the delivery to the installation that owns this product's repo (R6-05).
+      if (!(await installationMatches(db, product.slug, installationId))) {
+        results.push({
+          product: product.slug,
+          ok: false,
+          error: INSTALLATION_MISMATCH,
+        });
+        continue;
+      }
+      const result = await resyncRepo(
+        env,
+        db,
+        product.slug,
+        now,
+        fetchImpl,
+        manifestIngestFor(SERVICES),
+      );
+      if (result.ok) {
+        await upsertProductSyncState(db, {
+          product: product.slug,
+          source: "webhook",
+          status: "ok",
+          last_checked_at: now,
+          last_synced_at: now,
+          commit_sha: payload.after ?? null,
+          changed_paths_json: JSON.stringify(paths),
+          updated_json: JSON.stringify(result.updated),
+          // P3-03: parts the sync refused while applying the rest (`release_key_is_product_key`);
+          // ST-01b: the console-row conflicts it kept.
+          ...resyncNotes(result),
+        });
+        results.push({
+          product: product.slug,
+          ok: true,
+          updated: result.updated,
+          ...(result.packSets ? { packSets: result.packSets } : {}),
+          // ST-20: every resync summary lists the live break-glass claims.
+          ...(result.breakGlass
+            ? {
+                breakGlass: result.breakGlass.map((b) => ({
+                  key: b.key,
+                  expiresAt: b.expiresAt,
+                })),
+              }
+            : {}),
+        });
+      } else {
+        await upsertProductSyncState(db, {
+          product: product.slug,
+          source: "webhook",
+          status: "error",
+          last_checked_at: now,
+          last_synced_at: null,
+          commit_sha: payload.after ?? null,
+          changed_paths_json: JSON.stringify(paths),
+          updated_json: null,
+          errors_json: result.errors ? JSON.stringify(result.errors) : null,
+          message: result.error,
+        });
+        results.push({
+          product: product.slug,
+          ok: false,
+          error: result.error,
+          errors: result.errors,
+        });
+      }
+    }
+
+    return json({
+      // ST-20: the system product's refusal is expected (the deploy hook is its writer), not a
+      // failed sync, so it is listed without turning the delivery's answer into a failure.
+      ok: results.every(
+        (result) => result.ok || result.reason === "system_product",
+      ),
+      repository: `${coords.owner}/${coords.repo}`,
+      commitSha: payload.after ?? null,
+      changedPaths: paths,
+      products: results,
+    });
+  }
 }

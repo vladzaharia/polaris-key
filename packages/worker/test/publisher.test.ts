@@ -23,6 +23,7 @@ import {
   type JWK,
   type KeyLike,
 } from "jose";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
@@ -36,6 +37,8 @@ import {
   findUploadTicket,
   getPublisherPolicy,
   GITHUB_OIDC_ISSUER,
+  JWKS_MAX_STALE_SECONDS,
+  bindScopesToRef,
   issueStaticCiToken,
   issueUploadTicket,
   listCiTokens,
@@ -260,6 +263,22 @@ describe("GitHub OIDC verification", () => {
     expect(f.calls).toBe(2);
   });
 
+  it("does not honour a cached key set older than the stale cap when GitHub is down (SEC-SUP-17)", async () => {
+    const up = fetcher(() => [jwk]);
+    expect(await verify(await ghToken(), up)).toMatchObject({ ok: true });
+    const down: JwksFetcher = async () => {
+      throw new Error("outage");
+    };
+    const later = NOW + JWKS_MAX_STALE_SECONDS - 100;
+    expect(
+      await verify(await ghToken({ iat: later - 10 }), down, later),
+    ).toMatchObject({ ok: true });
+    const tooLate = NOW + JWKS_MAX_STALE_SECONDS + 100;
+    expect(
+      await verify(await ghToken({ iat: tooLate - 10 }), down, tooLate),
+    ).toMatchObject({ ok: false, reason: "invalid_oidc_token" });
+  });
+
   it("refetches on an unknown kid (key rotation), at most once a minute", async () => {
     let keys = [jwk];
     const f = fetcher(() => keys);
@@ -422,6 +441,40 @@ describe("exchangeOidcToken", () => {
       SLUG,
     );
     expect(audit.map((a) => a.action)).toContain("ci.token.exchange");
+  });
+
+  it("a branch run's token cannot promote or yank; a tag run's can (SEC-SUP-3)", async () => {
+    await seedPolicy();
+    const branch = await exchange(
+      await ghToken({
+        claims: {
+          ref: "refs/heads/main",
+          job_workflow_ref:
+            "vladzaharia/diceroll/.github/workflows/release.yml@refs/heads/main",
+        },
+      }),
+    );
+    expect(branch).toMatchObject({
+      ok: true,
+      scopes: ["distribution:report", "release:publish"],
+    });
+    const tag = await exchange(await ghToken());
+    expect(tag).toMatchObject({ ok: true });
+    if (tag.ok) expect(tag.scopes).toContain("release:promote");
+  });
+
+  it("mints for branches and tags only, and the platform's own product for main or a semver tag (SEC-SUP-2)", async () => {
+    expect(bindScopesToRef("diceroll", "refs/pull/1/merge", ["x"]).ok).toBe(
+      false,
+    );
+    for (const ref of [
+      "refs/heads/feature",
+      "refs/tags/vanything",
+      "refs/heads/main2",
+    ])
+      expect(bindScopesToRef(SYSTEM_PRODUCT_SLUG, ref, ["x"]).ok).toBe(false);
+    for (const ref of ["refs/heads/main", "refs/tags/v1.2.3-rc.1"])
+      expect(bindScopesToRef(SYSTEM_PRODUCT_SLUG, ref, ["x"]).ok).toBe(true);
   });
 
   it("is single-use: a replayed jti fails in D1, however the requests race", async () => {

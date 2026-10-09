@@ -373,6 +373,42 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
     expect(await snapshot(db)).toEqual(before);
   });
 
+  it("a product with no installation binding refuses the delivery (SEC-WEB-5)", async () => {
+    const { db, env, state, gh } = await linkedWithV1();
+    state.releases = [release("v1.1.0"), release("v1.0.0")];
+    await db.run(
+      "UPDATE release_config SET gh_installation_id = NULL WHERE product = ?",
+      SLUG,
+    );
+    const { body } = await post(
+      env,
+      db,
+      gh.fetchImpl,
+      await delivery(releasePayload("published")),
+    );
+    expect(body.results).toEqual([
+      {
+        product: SLUG,
+        ok: false,
+        statements: 0,
+        error: "installation id does not match the linked repo",
+      },
+    ]);
+    expect(gh.calls).toEqual([]);
+  });
+
+  it("a captured body replayed under a fresh delivery id is a duplicate (SEC-WEB-4)", async () => {
+    const { db, env, state, gh } = await linkedWithV1();
+    state.releases = [release("v1.1.0"), release("v1.0.0")];
+    const first = await delivery(releasePayload("published"));
+    expect(
+      (await post(env, db, gh.fetchImpl, first)).body.ignored,
+    ).toBeUndefined();
+    const replay = { ...first, deliveryId: crypto.randomUUID() };
+    const { body } = await post(env, db, gh.fetchImpl, replay);
+    expect(body.ignored).toBe("duplicate-delivery");
+  });
+
   it("a delivery whose installation id is not the product's writes nothing for it and reports ok:false", async () => {
     const { db, env, state, gh } = await linkedWithV1();
     state.releases = [release("v1.1.0"), release("v1.0.0")];
@@ -449,7 +485,9 @@ describe("GitHub release webhook refreshes the truth store (P0-03)", () => {
       env,
       db,
       gh.fetchImpl,
-      await delivery(releasePayload("published")),
+      // A real delivery differs from the first in its timestamps; a byte-identical body is a replay
+      // (SEC-WEB-4).
+      await delivery({ ...releasePayload("published"), sentAt: NOW + 180 }),
       NOW + 180,
     );
     expect(
