@@ -9,9 +9,8 @@
   "compare": [
     "Opened by turning the 'SSO required' switch on for a verified domain; the switch doesn't move until the dialog is confirmed. Turning it off needs no dialog.",
     "Title asks the question with the domain in it; the body's first line says what changes and where (every product's card and Polaris Key itself).",
-    "Three bullets, each a concrete effect with a bold lead: email codes and passkeys stop for these addresses (sessions and signed-in devices keep working); the account count with how many have never used the connection (they're sent there next time and keep their licenses); no other way in while the connection is down.",
+    "Four bullets, one fact each with a bold lead: email codes and passkeys stop for these addresses (sessions and signed-in devices keep working); the account count; how many of them have never used the connection (they go there at their next sign-in and keep their licenses); no other way in while the connection is down.",
     "The counts come from the server at open time (accounts with an address at the domain; how many have a link to this connection).",
-    "The footnote says it can be undone at once and is recorded in Activity.",
     "Buttons: Cancel (neutral, focused when the dialog opens, visible in both themes) and a primary 'Require SSO for students.example.edu' (an L1 caution confirm, not a danger button); the dialog stays open and shows the error inline if the write fails.",
     "This is the control that replaces a product's old 'Email magic links' switch: a product that wanted SSO-only keeps it through a required domain (I-29's acceptance test).",
     "With the dialog open the page can't scroll: on desktop the dialog is centred in the first viewport; on phone it is the console's bottom sheet (grab handle, the long primary full width above Cancel), and the page behind stays dimmed.",

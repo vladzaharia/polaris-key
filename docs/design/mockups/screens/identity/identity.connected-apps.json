@@ -9,8 +9,7 @@
   "compare": [
     "Account keeps its sticky section nav, now Profile, Sign-in methods, Connected apps, Access tokens, Where you're signed in, Appearance, Your data; the current section is marked. It replaces today's 'Connected products' card.",
     "The page header's 'Sign out' ends where the content column ends (the section nav plus the cards), not at the page edge.",
-    "Card subtitle states the pairwise id: 'Each gets its own id for you, so developers can't match you across products.'",
-    "Each app row: the product icon, name and developer (from Presentation), the sign-in method it uses with its mark, last use and device(s), then a 'Gets' line of chips.",
+    "Each app row: the product icon, name and developer (from Presentation), the sign-in method it uses on one line, last use and device on the next, then a 'Gets' line of chips.",
     "Granted items are filled success chips with a tick; declined optional items are dashed, muted, unfilled chips with an eye-off icon worded 'Not your picture', 'Not your email'. Cloud Sync appears only for products that have it; a declined Cloud Sync reads 'Not Cloud Sync'.",
     "'Change what <App> gets' (outline) re-runs the consent step for that app in the card, showing the current choices (identity.consent). 'Disconnect' (ghost) opens identity.disconnect.",
     "Only products with Sign-in on appear. What Disconnect does is said once, in its confirmation (identity.disconnect), not in a footnote here. With no apps the card shows an empty state: 'No apps yet. Apps you sign in to with Polaris Key appear here.'",

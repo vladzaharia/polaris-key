@@ -77,22 +77,22 @@
             <div class="card-head"><div class="title"><h2 id="h-methods">Sign-in methods</h2></div></div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-mail"></i></span>
-              <div><div class="setting-title">Email code and passkeys</div><div class="setting-desc">Off only for addresses whose organization requires its own sign-in.</div></div>
+              <div><div class="setting-title">Email code and passkeys</div></div>
               <span class="status muted"><i class="ic ic-lock"></i>Always on</span>
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-apple"></i></span>
-              <div><div class="setting-title">Apple</div><div class="setting-desc">Diceroll ships on the App Store</div></div>
+              <div><div class="setting-title">Apple</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Apple on Diceroll's card"></span>
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="gmark"></i></span>
-              <div><div class="setting-title">Google</div><div class="setting-desc">Diceroll ships on Google Play</div></div>
+              <div><div class="setting-title">Google</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Google on Diceroll's card"></span>
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
-              <div><div class="setting-title">Steam</div><div class="setting-desc">Diceroll sells on Steam. A web sign-in: the Steam app isn’t needed.</div></div>
+              <div><div class="setting-title">Steam</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Steam on Diceroll's card"></span>
             </div>
             <div class="setting-row with-icon">
@@ -114,14 +114,14 @@
             </div>
             <div class="setting-row with-icon">
               <span class="icon-tile muted"><i class="ic ic-steam"></i></span>
-              <div><div class="setting-title">Steam<small>Steam builds</small></div><div class="setting-desc">Players on Steam use the browser sign-in until Steamworks has a publisher key.</div></div>
+              <div><div class="setting-title">Steam<small>Steam builds</small></div><div class="setting-desc">Until then, players use the browser sign-in</div></div>
               <span class="mk-cluster"><span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Needs Steamworks</span><a class="link" href="#">Connect Steam<i class="ic ic-arrow-right"></i></a></span>
             </div>
           </section>
 
           <!-- Product connection (I-32): Diceroll's own account system, token exchange only. Edited in its own dialog. -->
           <section class="card" id="s-pc" aria-labelledby="h-pc">
-            <div class="card-head"><div class="title"><h2 id="h-pc">Product connection</h2><p>Trades a Firebase token for a sign-in</p></div></div>
+            <div class="card-head"><div class="title"><h2 id="h-pc">Product connection</h2></div></div>
             <div class="setting-row with-icon">
               <span class="logo sm" data-product="diceroll"></span>
               <div><div class="setting-title">Diceroll accounts</div><div class="setting-desc">Firebase</div></div>
@@ -131,8 +131,8 @@
               <dl class="dl rows-40 stack-narrow">
                 <dt>Issuer</dt><dd><div class="mk-stack-1"><span class="mono">https://securetoken.google.com/diceroll-prod</span><span class="meta">Keys from Google’s published set</span></div></dd>
                 <dt>Token exchange</dt><dd><div class="mk-cluster"><span class="status"><i class="ic ic-circle-check"></i>On</span><span class="mono">POST /diceroll/identity/token</span></div></dd>
-                <dt>Sign-in button</dt><dd>None: Firebase has no sign-in page</dd>
-                <dt>Emails</dt><dd>Never taken as confirmed; a player confirms theirs with a code once</dd>
+                <dt>Sign-in button</dt><dd>None</dd>
+                <dt>Emails</dt><dd><div class="mk-stack-1"><span>Not taken as confirmed</span><span class="meta">A player confirms theirs with a code, once</span></div></dd>
                 <dt>Linked players</dt><dd>1,920 · last exchange 2 min ago</dd>
               </dl>
             </div>
@@ -144,9 +144,9 @@
             <div class="card-head">
               <div class="title"><div class="mk-cluster baseline"><h2 id="h-gets">What Diceroll gets</h2><span class="pill sm"><i class="ic ic-file-code-2"></i>.pkey/product</span></div></div>
             </div>
-            <div class="card-body tight"><p class="icon-line type-small muted"><i class="ic ic-info"></i><span>Changing one here takes it over from the manifest: resyncs leave it alone until you revert it.</span></p></div>
+            <div class="card-body tight"><p class="icon-line type-small muted"><i class="ic ic-info"></i><span>A change here overrides the manifest until you revert it.</span></p></div>
             <div class="setting-row">
-              <div><div class="setting-title">License for this device</div><div class="setting-desc">The one the player picks, or the one the access policy gives</div></div>
+              <div><div class="setting-title">License for this device</div></div>
               <span class="status muted"><i class="ic ic-lock"></i>Always</span>
             </div>
             <div class="setting-row stack-narrow">
@@ -175,7 +175,7 @@
               <span class="status muted"><i class="ic ic-lock"></i>Always</span>
             </div>
             <div class="setting-row">
-              <div><div class="setting-title">Diceroll’s terms<small>2026-10</small></div><div class="setting-desc">Links from Diceroll’s listing. Players accept again when the version changes.</div></div>
+              <div><div class="setting-title">Diceroll’s terms<small>2026-10</small></div><div class="setting-desc">Players accept again when the version changes.</div></div>
               <a class="link" href="#">Edit listing<i class="ic ic-arrow-right"></i></a>
             </div>
           </section>
@@ -183,11 +183,11 @@
           <!-- Key entry (I-09's setting, I-35's manifest block): taken over from the manifest. -->
           <section class="card" id="s-keys" aria-labelledby="h-keys">
             <div class="card-head">
-              <div class="title"><div class="mk-cluster baseline"><h2 id="h-keys">License keys</h2><span class="pill sm"><i class="ic ic-pencil"></i>Changed here · <code>.pkey/product</code> says 5</span></div><p>For players who type a key instead of signing in.</p></div>
+              <div class="title"><div class="mk-cluster baseline"><h2 id="h-keys">License keys</h2><span class="pill sm"><i class="ic ic-pencil"></i>Changed here · <code>.pkey/product</code> says 5</span></div></div>
               <button class="btn ghost sm">Revert to manifest…</button>
             </div>
             <div class="setting-row stack-narrow">
-              <div><div class="setting-title">Key entries before an account is needed</div><div class="setting-desc">Counted across the portal and the game. Activated devices keep working.</div></div>
+              <div><div class="setting-title">Key entries before an account is needed</div><div class="setting-desc">Counted across the portal and the game</div><div class="setting-desc">Activated devices keep working</div></div>
               <div class="segmented sm fixed-224"><span>5</span><span class="on">10</span><span>25</span><span>No limit</span></div>
             </div>
             <div class="setting-row">
@@ -213,7 +213,7 @@
           <section class="card" id="s-portal" aria-labelledby="h-portal">
             <div class="card-head"><div class="title"><h2 id="h-portal">Customer portal</h2></div></div>
             <div class="setting-row">
-              <div><div class="setting-title">Show Diceroll in players’ libraries</div><div class="setting-desc">With its licenses and devices</div></div>
+              <div><div class="setting-title">Show Diceroll in players’ libraries</div></div>
               <span class="switch on" role="switch" aria-checked="true" aria-label="Show Diceroll in players’ libraries"></span>
             </div>
             <div class="setting-row">
