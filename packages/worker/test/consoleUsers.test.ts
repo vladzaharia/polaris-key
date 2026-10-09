@@ -257,6 +257,33 @@ afterEach(() => {
 });
 
 describe("Users list and row", () => {
+  it("redacts the label of another person's device bound to the licence (SEC-PRV-12)", async () => {
+    const w = await world();
+    const f = await fixture(w);
+    await w.db.run(
+      `INSERT INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject, bound_by, label)
+       VALUES ('alpha', 'dev-bob-on-ada', 'lic-alpha-ada', 'authorized', ?, ?, ?, 'signin', 'Bob laptop')`,
+      NOW,
+      NOW,
+      f.bobAlpha,
+    );
+    await w.db.run(
+      "UPDATE devices SET label = 'Ada phone' WHERE device_id = 'dev-ada-1'",
+    );
+    const detail = await w.json<{
+      user: { devices: Array<{ deviceId: string; label: string | null }> };
+    }>("GET", `/alpha/users/${f.adaAlpha}`);
+    const byId = Object.fromEntries(
+      detail.body.user.devices.map((d) => [d.deviceId, d.label]),
+    );
+    expect(byId["dev-ada-1"]).toBe("Ada phone");
+    expect(byId["dev-bob-on-ada"]).toBeNull();
+    const exported = await (
+      await w.call("GET", `/alpha/users/${f.adaAlpha}/export`)
+    ).text();
+    expect(exported).not.toContain("Bob laptop");
+  });
+
   it("lists only this product's subjects, with this product's licences and devices", async () => {
     const w = await world();
     const f = await fixture(w);
