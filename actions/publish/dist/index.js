@@ -12158,14 +12158,37 @@ var LiveRegion = class {
   hidden = false;
   listening = false;
   unguard = () => void 0;
+  /** Rows of the flow that went into the terminal's scrollback and have not come back. */
+  gone = 0;
+  /** Rows the window has grown by since the last cursor-position report was taken. */
+  growth = 0;
+  /** The window's height at the last resize. */
+  rowsNow = Infinity;
+  /** A cursor-position report is on its way: draws wait for it. */
+  probing = false;
+  again = false;
+  deferred = false;
+  epoch = 0;
   constructor(out, host) {
     this.out = out;
     this.host = host;
   }
-  erase() {
-    const s = eraseRows(physicalRows(this.drawn, this.out.columns));
+  erase(extra = 0) {
+    const s = eraseRows(physicalRows(this.drawn, this.out.columns) + extra);
     this.drawn = [];
     return s;
+  }
+  /**
+   * The flow ends while a cursor-position report is still on its way: take the rows that came back
+   * above the region from the growth of the window, and draw the header again.
+   */
+  pendingRestore() {
+    if (!this.probing || this.gone === 0)
+      return 0;
+    const above = Math.min(this.gone, this.growth);
+    if (above > 0)
+      this.headerGone = false;
+    return above;
   }
   /** The screen's rows, without the header once it has scrolled into the scrollback. */
   rows(screen) {
@@ -12182,9 +12205,10 @@ var LiveRegion = class {
     if (on === this.listening)
       return;
     this.listening = on;
-    if (on)
+    if (on) {
+      this.rowsNow = this.out.rows ?? Infinity;
       this.out.on?.("resize", this.onResize);
-    else {
+    } else {
       const off = this.out.off ?? this.out.removeListener;
       off?.call(this.out, "resize", this.onResize);
     }
@@ -12198,11 +12222,76 @@ var LiveRegion = class {
     const gone = Math.max(0, reflowed - rows);
     if (gone > 0 && this.head > 0)
       this.headerGone = true;
+    this.gone += gone;
+    const growth = rows - this.rowsNow;
+    this.rowsNow = rows;
     const s = eraseRows(reflowed - gone);
     this.drawn = [];
     this.host.refreshSize();
     this.out.write(s + this.paint(this.screen));
+    if (this.gone > 0 && growth > 0) {
+      this.growth += growth;
+      void this.probe();
+    }
   };
+  /**
+   * A window that grew after it shrank: most terminals pull the rows that scrolled away back onto
+   * the screen, above the region, where they now sit as a stale copy of the top of the flow. Ask
+   * where the cursor is (the region ends at it), and the rows above the region's real top are the
+   * ones that came back.
+   */
+  async probe() {
+    if (this.probing) {
+      this.again = true;
+      return;
+    }
+    this.probing = true;
+    const epoch = this.epoch;
+    try {
+      do {
+        this.again = false;
+        const row2 = await this.host.cursorRow?.() ?? null;
+        if (epoch !== this.epoch || this.screen === null)
+          return;
+        if (this.again)
+          continue;
+        this.restore(row2);
+      } while (this.again);
+    } finally {
+      if (epoch === this.epoch) {
+        this.probing = false;
+        if (this.deferred && this.screen !== null)
+          this.repaint(0);
+      }
+    }
+  }
+  repaint(extra) {
+    this.deferred = false;
+    if (this.screen === null)
+      return;
+    const s = this.erase(extra);
+    this.out.write(s + this.paint(this.screen));
+  }
+  /** The rows that came back above the region are erased with it and the whole flow is drawn again. */
+  restore(row2) {
+    const rows = this.out.rows ?? Infinity;
+    const mine = Math.min(physicalRows(this.drawn, this.out.columns), rows);
+    const room = row2 === null ? this.growth : Math.max(0, row2 - mine);
+    const above = Math.min(this.gone, room);
+    this.growth = 0;
+    this.gone -= above;
+    if (above > 0)
+      this.headerGone = false;
+    else if (this.headerGone && this.screen !== null) {
+      const full = this.host.fit(rowsOf(this.screen));
+      if (full.head > 0)
+        this.headerGone = false;
+      else if (!this.deferred)
+        return;
+    } else if (!this.deferred)
+      return;
+    this.repaint(above);
+  }
   /** Show `screen` in place of the previous one. */
   draw(screen) {
     if (!this.host.caps.animate) {
@@ -12214,6 +12303,10 @@ var LiveRegion = class {
       return;
     }
     this.screen = screen;
+    if (this.probing) {
+      this.deferred = true;
+      return;
+    }
     let s = this.erase();
     if (!this.hidden) {
       s = HIDE_CURSOR + s;
@@ -12232,6 +12325,11 @@ var LiveRegion = class {
     this.screen = null;
     this.headerGone = false;
     this.head = 0;
+    this.gone = 0;
+    this.growth = 0;
+    this.epoch++;
+    this.probing = false;
+    this.deferred = false;
     return show3;
   }
   /**
@@ -12240,17 +12338,19 @@ var LiveRegion = class {
    */
   commit(screen = [], plain) {
     const animate2 = this.host.caps.animate;
+    const extra = this.pendingRestore();
     const rows = animate2 || plain === void 0 ? this.rows(screen) : rowsOf(plain);
-    const s = animate2 ? this.erase() : "";
+    const s = animate2 ? this.erase(extra) : "";
     const show3 = this.stop();
-    const lines3 = animate2 ? this.host.fit(rows).lines : this.host.render(rows);
+    const lines3 = this.host.render(rows);
     this.out.write(`${s}${lines3.length ? `${lines3.join("\n")}
 ` : ""}${show3}`);
     this.printedOnce = false;
   }
   /** Clear the region without printing (Ctrl-C, an error path). */
   close() {
-    const s = this.host.caps.animate ? this.erase() : "";
+    const extra = this.pendingRestore();
+    const s = this.host.caps.animate ? this.erase(extra) : "";
     const show3 = this.stop();
     if (s || show3)
       this.out.write(s + show3);

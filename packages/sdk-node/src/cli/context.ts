@@ -15,7 +15,7 @@ import {
   type TerminalInput,
   type TerminalOutput,
 } from "./term/caps.js";
-import { KeyReader } from "./term/keys.js";
+import { CURSOR_POSITION_REQUEST, KeyReader } from "./term/keys.js";
 import {
   railLines,
   symbolsFor,
@@ -242,7 +242,7 @@ function buildContext(
     },
     cursorRow: () =>
       keys
-        ? keys.cursorRow(() => stdout.write("\x1b[6n"), 100)
+        ? keys.cursorRow(() => stdout.write(CURSOR_POSITION_REQUEST), 100)
         : Promise.resolve(null),
     live: () => new LiveRegion(stdout, ctx),
     close: () => {

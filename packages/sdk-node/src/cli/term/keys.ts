@@ -5,6 +5,9 @@
 import { emitKeypressEvents } from "node:readline";
 import type { TerminalInput } from "./caps.js";
 
+/** The cursor-position request (ESC [ 6 n); the answer is read back by `KeyReader.cursorRow`. */
+export const CURSOR_POSITION_REQUEST = "\x1b[6n";
+
 export interface Key {
   /** `return`, `escape`, `backspace`, `up`, `down`, a letter… */
   name: string;
