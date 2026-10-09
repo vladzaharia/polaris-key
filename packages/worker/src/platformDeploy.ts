@@ -284,7 +284,8 @@ export async function handleDeployHook(
       { claim: "ref" },
     );
   const builtSha = (env.PKEY_GIT_SHA ?? "").trim().toLowerCase();
-  const claimSha = typeof claims.sha === "string" ? claims.sha.toLowerCase() : "";
+  const claimSha =
+    typeof claims.sha === "string" ? claims.sha.toLowerCase() : "";
   if (!/^[0-9a-f]{40}$/.test(builtSha) || claimSha !== builtSha)
     return refuse(
       403,
