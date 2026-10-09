@@ -1073,7 +1073,7 @@ to the existing `portal/` renders, which stand where this document does not redr
 
 - **System browser sheet** (I-15 claimed HTTPS, loopback or a registered scheme): the card with "on
   <device label>" → steps as §4.3 → ReturnStep (frame 11). Until I-15, native kits use device code
-  (§4.2) and the QR. On desktop the system browser is the default browser and the tab ends on the
+  (§4.2), with the QR only on TV, console and pad-only screens (D-67). On desktop the system browser is the default browser and the tab ends on the
   desktop ReturnStep (§4.15).
 - **Native token** (I-13: Sign in with Apple or Google in-app, Game Center; I-14: Steam ticket):
   - A first link, or no Continue grant, answers `interstitial_required`. The kit opens the card for
