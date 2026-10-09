@@ -1,7 +1,8 @@
 /// <reference types="@cloudflare/workers-types" />
-// sync-etag-304 and sync-errors: Core's sync pass (wire contract v3 §4.2, §5) — the trust
-// refresh, both signed documents with per-document ETags, the report — and the status ladder a
-// document fetch can end on.
+// sync-etag-304, sync-errors and trust-signer-retry: Core's sync pass (wire contract v3 §4.2,
+// §5) — the trust refresh (and its `?signer=` retry, WIRE-CONTRACT-V4 §2.3), both signed
+// documents with per-document ETags, the report — and the status ladder a document fetch can
+// end on.
 
 import { expect } from "vitest";
 import { TranscriptRecorder } from "../recorder.js";
@@ -24,6 +25,16 @@ import {
   seedLicense,
   type Scenario,
 } from "../world.js";
+import { insertProductKey } from "../../../src/repo.js";
+import { seal } from "../../../src/keyvault.js";
+import { TEST_KID, TEST_PUB } from "../../seed.js";
+
+/** The corpus's second committed TEST key (`tools/corpus/common.ts`), the app's only pin in
+ *  `trust-signer-retry`. Fixed bytes keep the recorded signatures deterministic. */
+const OLD_KID = "djdl-test-2026";
+const OLD_PUB = "H3usSYUdIQXrrJNU0N-HhR7XSSXr4n0cl4JfF_X5g8U";
+const OLD_PEM =
+  "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIIXpeKmxx2+0A+lz89t+5fp5PPjd2vFGhXqwTpWYeL5O\n-----END PRIVATE KEY-----";
 
 const VALUES = {
   config: { "ui.theme": "dark" },
@@ -379,6 +390,74 @@ export const syncConfigLicenseUnusable: Scenario = {
           blocked: false,
           documents: { license: "unauthorized", config: "unauthorized" },
           licenseStatus: "revoked",
+          tokenHeld: true,
+        },
+      );
+      return r.transcript();
+    }),
+};
+
+export const trustSignerRetry: Scenario = {
+  id: "trust-signer-retry",
+  record: () =>
+    pinned("trust-signer-retry", async (pin) => {
+      const world = await productWorld(LICENSED);
+      // The product rotated: the key the app pins is retired, and a newer key is active.
+      await insertProductKey(world.db, {
+        product: PRODUCT,
+        kid: OLD_KID,
+        alg: "Ed25519",
+        public_b64url: OLD_PUB,
+        enc_private_json: await seal(world.env, OLD_PEM, {
+          product: PRODUCT,
+          kind: "signing-key",
+          id: OLD_KID,
+        }),
+        status: "retired",
+        created_at: T0 - 86_400,
+        rotated_at: T0 - 3_600,
+        revoked_at: null,
+      });
+      const { key } = await seedLicense(world);
+      const token = await activated(world, key);
+      const r = new TranscriptRecorder({
+        id: "trust-signer-retry",
+        description:
+          "Rotation does not blind a pin-only app (WIRE-CONTRACT-V4 §2.3). The app pins only the product's retired key. The served trust manifest is signed by the active key, which it cannot verify, so it asks for the same manifest signed by its pin (`?signer=<kid>`), learns the active key from it, and the documents the active key signed verify.",
+        features: ["core.sync"],
+        requires: ["core.store"],
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: { deviceId: DEVICE, token, version: VERSION },
+        trust: { [OLD_KID]: OLD_PUB },
+      });
+      expect(TEST_PUB).not.toBe(OLD_PUB);
+      await r.step(
+        {
+          action: "sync",
+          args: { force: false },
+          note: "The default manifest's signer is not pinned: one ?signer= retry with the pin, then both documents.",
+        },
+        async (s) => {
+          await trust(s, PRODUCT);
+          await trust(s, PRODUCT, OLD_KID);
+          const lic = await document(s, PRODUCT, "license");
+          expect(lic.status).toBe(200);
+          const header = (await lic.clone().text()).split(".")[0]!;
+          expect(
+            JSON.parse(Buffer.from(header, "base64url").toString("utf8")).kid,
+          ).toBe(TEST_KID);
+          expect((await document(s, PRODUCT, "config")).status).toBe(200);
+          expect((await syncReport(s, PRODUCT, VALUES)).status).toBe(200);
+        },
+        {
+          applied: true,
+          unauthorized: false,
+          blocked: false,
+          documents: { license: "applied", config: "applied" },
+          licenseStatus: "ok",
           tokenHeld: true,
         },
       );
