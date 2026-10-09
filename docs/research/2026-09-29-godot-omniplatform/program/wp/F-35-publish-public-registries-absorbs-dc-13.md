@@ -1,16 +1,16 @@
 # F-35 Publish to public registries (absorbs DC-13)
 
-| Field       | Value                                                                            |
-| ----------- | -------------------------------------------------------------------------------- |
-| Phase       | F: Package feeds (pkg.plrs.im) (DX consolidation I: Packages, updates and packs) |
-| Size        | 1.2–1.6 engineer-weeks                                                           |
-| Depends on  | [F-34](F-34-feeds-that-provision-themselves.md)                                  |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                           |
-| Role        | `pkey-implementer`                                                               |
-| Plan mode   | no                                                                               |
-| Gates       | `threat-model`, `rule-9`                                                         |
-| Human input | owner decision 3 (answered 2026-10-07, open to veto)                             |
-| Repo        | `vladzaharia/polaris-key`                                                        |
+| Field       | Value                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| Phase       | F: Package feeds (pkg.plrs.im) (DX consolidation I: Packages, updates and packs)           |
+| Size        | 1.2–1.6 engineer-weeks                                                                     |
+| Depends on  | [F-34](F-34-feeds-that-provision-themselves.md)                                            |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [F-38](F-38-feeds-console-cleanup-and-registry.md) |
+| Role        | `pkey-implementer`                                                                         |
+| Plan mode   | no                                                                                         |
+| Gates       | `threat-model`, `rule-9`                                                                   |
+| Human input | owner decision 3 (answered 2026-10-07, open to veto)                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                  |
 
 ## Consolidation 2026-10-07
 
@@ -53,6 +53,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `packages.feeds`, `packages.portal-packages`, `packages.public-registry`.
 
 ## Acceptance criteria
 

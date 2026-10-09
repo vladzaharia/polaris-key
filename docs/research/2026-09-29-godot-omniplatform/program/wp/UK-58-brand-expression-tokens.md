@@ -1,16 +1,16 @@
 # UK-58 Brand expression tokens: action-neutral role, display scale, weights 400/500/600
 
-| Field       | Value                                                                                                     |
-| ----------- | --------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md)                                     |
-| Size        | 0.4–1 engineer-weeks                                                                                      |
-| Depends on  | none                                                                                                      |
-| Unblocks    | [ST-48](ST-48-console-shell-v2.md), [DOC-02a](DOC-02a-shared-components.md), [DOC-02b](DOC-02b-chrome.md) |
-| Role        | `pkey-implementer`                                                                                        |
-| Plan mode   | no (no wire change)                                                                                       |
-| Gates       | drift-gate, golden-images                                                                                 |
-| Human input | none                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                 |
+| Field       | Value                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md)                                                                      |
+| Size        | 0.4–1 engineer-weeks                                                                                                                       |
+| Depends on  | none                                                                                                                                       |
+| Unblocks    | [I-39](I-39-emails-brand-v2.md), [ST-48](ST-48-console-shell-v2.md), [DOC-02a](DOC-02a-shared-components.md), [DOC-02b](DOC-02b-chrome.md) |
+| Role        | `pkey-implementer`                                                                                                                         |
+| Plan mode   | no (no wire change)                                                                                                                        |
+| Gates       | drift-gate, golden-images                                                                                                                  |
+| Human input | none                                                                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                  |
 
 ## Goal
 
@@ -50,6 +50,16 @@ New package from the brand and transition integration. Sources: Brand transition
 Done when the Themes row holds. This package draws no screens of its own, so the other rows do not apply (EXPERIENCE.md §7.3).
 
 - [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Cross-cutting brand v2 package:** every one of its 112 screens/boards passes through it; screen packages that restyle the console or portal are scheduled after it (`ux-waves.md`).
+- `brand-30`: One line in packages/brand/scripts/gen.ts: the tokens.css header comment adds sync and commerce ids.
+- `B1.5`: Add a test for the accent-distance floor 17.5 over the nine families to the acceptance.
+- `B2.5`: Flip the shared ui/Button for the console AND the portal; PX-26..PX-32 must not reintroduce an accent primary.
+- Console and portal pages must not be rebuilt before this lands: the ink primary and display tokens change every screen's baseline (program/ux-waves.md).
 
 ## Acceptance criteria
 

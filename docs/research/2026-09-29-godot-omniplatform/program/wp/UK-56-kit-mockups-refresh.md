@@ -132,6 +132,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 3. The artifact's kit-flow screens.
 4. Render, lint, and a UX review in mockup mode; fix, then record the review.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 11 mockup item(s):** `kitboard:ios.html:gate`, `kitboard:apple.html:ipad`, `kitboard:apple.html:visionos`, `kitboard:apple.html:tvos`, `kitboard:apple.html:watchos`, `kitboard:desktop.html:gate`, `kitboard:windows.html:gate`, `kitboard:windows.html:activate`, `kitboard:windows.html:update`, `kitboard:windows.html:settings`, `kitboard:windows.html:states`.
+
 ## Acceptance criteria
 
 - [ ] Every board listed draws its DL1 shape variants and both presets for the gate, sign-in and

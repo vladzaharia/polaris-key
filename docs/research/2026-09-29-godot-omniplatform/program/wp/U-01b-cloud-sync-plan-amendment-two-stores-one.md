@@ -60,6 +60,12 @@ The consolidation replaced U-01's licence layer, save routes and per-store vocab
 2. Run the §7 precondition and record the result in the PR.
 3. Implement §7 item 1 in one corpus-lane hold; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `config.cloud-sync`, `config.entry-setting`, `config.storage-default`.
+
 ## Acceptance criteria
 
 - [ ] Every command in `plans/U-01b.md` §10 passes.

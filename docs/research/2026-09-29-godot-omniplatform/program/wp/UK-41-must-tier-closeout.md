@@ -115,6 +115,12 @@ Kits were built against the presentation seam before HA-13 and HA-14 landed; thi
 1. Build the scope in the order listed.
 2. Run the gates in the header.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- `B14.7`: UK-41 requires an evidence ledger: a matrix cell is complete only with runtime evidence or a documented N/A.
+
 ## Acceptance criteria
 
 - [ ] Every must kit has the end-to-end presentation test and it passes.

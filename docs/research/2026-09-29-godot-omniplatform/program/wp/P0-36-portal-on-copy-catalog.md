@@ -94,6 +94,14 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 6 mockup item(s):** `portal.library`, `portal.library-12`, `portal.discover`, `portal.free-device`, `portal.license`, `portal.license-lapsed`.
+- `B13.1`, `OR-terse-copy`: Not mechanisable: enforced by the acceptance block's copy row plus the recorded pkey-ux-reviewer pass (ux-reviews.json).
+- `doc:PORTAL#6.1`, `doc:PORTAL#6.2`: P0-36 moves the portal to the copy catalog: it must delete the 'until UK-02a' inline copy in SignInPage.tsx and CodeCells.tsx and adopt the 6.1/6.2 rules.
+
 ## Acceptance criteria
 
 - [ ] No verbatim customer-facing string in the portal (lint)

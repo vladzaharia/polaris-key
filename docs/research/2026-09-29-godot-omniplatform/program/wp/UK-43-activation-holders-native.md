@@ -117,6 +117,12 @@ as the hero and keeps native controls. The states are defined once in UK-42's fi
 1. One kit at a time from the fixtures: SwiftUI, Compose, Godot, Qt, terminals.
 2. Snapshots in both themes; the modernity lint.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `sdk.swiftui-activate`.
+
 ## Acceptance criteria
 
 - [ ] Every UK-42 fixture state renders in each kit in both themes (snapshots).

@@ -144,6 +144,12 @@ nameHint, purpose: "attach", licenseChoice: "app"})`, then `choice.complete({kin
 2. Elements and React components; copy keys; snapshots in both themes.
 3. The React reference app path used by LX-31's e2e.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `sdk.react-activate`.
+
 ## Acceptance criteria
 
 - [ ] Every state above renders from its fixture in both themes at the kit's sizes; the modernity

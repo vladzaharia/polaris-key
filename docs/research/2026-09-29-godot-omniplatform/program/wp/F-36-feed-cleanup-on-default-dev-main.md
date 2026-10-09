@@ -1,16 +1,16 @@
 # F-36 Feed cleanup on by default (dev and main prereleases)
 
-| Field       | Value                                                                            |
-| ----------- | -------------------------------------------------------------------------------- |
-| Phase       | F: Package feeds (pkg.plrs.im) (DX consolidation I: Packages, updates and packs) |
-| Size        | 0.3–0.5 engineer-weeks                                                           |
-| Depends on  | [P2-08](P2-08-built-in-dev-release-track-default-store.md)                       |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md)                                           |
-| Role        | `pkey-implementer`                                                               |
-| Plan mode   | no                                                                               |
-| Gates       | `threat-model`                                                                   |
-| Human input | none                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                        |
+| Field       | Value                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| Phase       | F: Package feeds (pkg.plrs.im) (DX consolidation I: Packages, updates and packs)           |
+| Size        | 0.3–0.5 engineer-weeks                                                                     |
+| Depends on  | [P2-08](P2-08-built-in-dev-release-track-default-store.md)                                 |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [F-38](F-38-feeds-console-cleanup-and-registry.md) |
+| Role        | `pkey-implementer`                                                                         |
+| Plan mode   | no                                                                                         |
+| Gates       | `threat-model`                                                                             |
+| Human input | none                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                  |
 
 ## Consolidation 2026-10-07
 
@@ -51,6 +51,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `packages.cleanup-dry-run`, `packages.feeds`, `packages.release-tracks`.
 
 ## Acceptance criteria
 

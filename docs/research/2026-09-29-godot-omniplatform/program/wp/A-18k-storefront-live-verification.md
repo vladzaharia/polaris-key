@@ -58,6 +58,12 @@ package ([S-15 §12, §13](../../notes/S-15-storefront-provisioning.md#12-limits
 - Any delete, user, payment or signing-key operation, in any account, even to clean up. Cleanup is
   by hand in the vendor's UI.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 2 mockup item(s):** `distribution.channel-setup`, `commerce.sales-wizard`.
+
 ## Acceptance criteria
 
 - [ ] A dated addendum in notes/S-15 records each item with evidence.

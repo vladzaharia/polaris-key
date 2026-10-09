@@ -52,6 +52,10 @@ Claude Code loads `AGENTS.md` only when it opens it, since `CLAUDE.md` says to r
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+N/A: no screen or state ships in this package (selected by the overview-04 rule on its gate or mention only).
+
 ## Acceptance criteria
 
 - [ ] `agents-md.test.ts` finds every moved rule at its destination.

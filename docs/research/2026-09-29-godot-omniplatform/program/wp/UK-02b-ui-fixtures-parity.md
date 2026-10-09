@@ -118,6 +118,14 @@ Applied from the brand and transition integration ([Brand transition decisions](
 2. Hold the corpus lane only from regeneration to merge (D11, Q3).
 3. Run the gates in the header.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `kitboard:terminal:parity-json`, `sdk.swiftui-sign-in`, `sdk.swiftui-activate`.
+- `B14.6`: Write the per-component 'must not' invariants (UI-KITS 4.1) as fixtures/lint rules.
+- `OR-kits-polaris-default`: A 'polaris-key | native' preset test per framework is a ui-matrix row in UK-02b; UK-22 is dropped, UK-31 recipes cover host design systems.
+
 ## Acceptance criteria
 
 - [ ] `pnpm parity:check -- --check` passes with every new id `planned` in every SDK.

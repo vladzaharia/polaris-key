@@ -109,6 +109,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 8 mockup item(s):** `products.features`, `products.turn-off-licensing`, `identity.sign-in-off`, `commerce.features-blocked`, `commerce.features-save-failed`, `commerce.features`, `commerce.lists-states`, `commerce.turn-off-licensing`.
+
 ## Acceptance criteria
 
 - [ ] Discovery, coherence codes and SDK constants byte-identical

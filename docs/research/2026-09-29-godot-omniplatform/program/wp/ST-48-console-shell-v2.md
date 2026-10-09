@@ -1,16 +1,16 @@
 # ST-48 Console shell v2: inset canvas, condensed masthead, section bands, route tabs, workbench
 
-| Field       | Value                                                                                                                                          |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | ST: Settings, access control and console shell (Brand transition (2026-10-09))                                                                 |
-| Size        | 1.2–2 engineer-weeks                                                                                                                           |
-| Depends on  | [ST-45](ST-45-platform-product-sidebar-contexts.md), [ST-29](ST-29-admin-route-table-can-usecan.md), [UK-58](UK-58-brand-expression-tokens.md) |
-| Unblocks    | none                                                                                                                                           |
-| Role        | `pkey-implementer`                                                                                                                             |
-| Plan mode   | no (no wire change)                                                                                                                            |
-| Gates       | console-csp-parity, ui-snapshots                                                                                                               |
-| Human input | none                                                                                                                                           |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                      |
+| Field       | Value                                                                                                                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings, access control and console shell (Brand transition (2026-10-09))                                                                                                                                  |
+| Size        | 1.2–2 engineer-weeks                                                                                                                                                                                            |
+| Depends on  | [ST-45](ST-45-platform-product-sidebar-contexts.md), [ST-29](ST-29-admin-route-table-can-usecan.md), [UK-58](UK-58-brand-expression-tokens.md)                                                                  |
+| Unblocks    | [F-38](F-38-feeds-console-cleanup-and-registry.md), [ST-51](ST-51-platform-activity-page.md), [ST-52](ST-52-palette-search.md), [LX-45](LX-45-bulk-licence-actions.md), [UK-63](UK-63-ux-bar-console-portal.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                              |
+| Plan mode   | no (no wire change)                                                                                                                                                                                             |
+| Gates       | console-csp-parity, ui-snapshots                                                                                                                                                                                |
+| Human input | none                                                                                                                                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                       |
 
 ## Goal
 
@@ -83,6 +83,21 @@ apply says why in one line. One home: EXPERIENCE.md §7.3; kits also follow DL1�
 - [ ] Native (kits): Dynamic Type or font scale at the 200 % row, VoiceOver or TalkBack, gamepad and
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Cross-cutting brand v2 package:** every one of its 138 screens/boards passes through it; screen packages that restyle the console or portal are scheduled after it (`ux-waves.md`).
+- `brand-38`: ServiceGlyph (packages/admin/src/ui/ServiceBadge.tsx) renders @polaris-key/brand's service icons; UK-57 hands the swap to ST-48.
+- `site-13`: The long-operation readout (phase in words, percent in mono) lives in the shell feedback component; the first package with a long operation consumes it.
+- `B3.3`: Assert that a selected nav item with a count badge keeps the badge's own status colour; the label drops font-bold (B7).
+- `B4.6`: Add a masthead height probe (<=140/176 px) to layout.e2e (layoutProbe.ts).
+- `B4.17`: Assert that destructive and caution dialogs carry no accent top rule.
+- `B5.5`: Add a nav test: every page id has an explicit data-service; none renders 'undefined'.
+- `B13.1`, `OR-terse-copy`: Not mechanisable: enforced by the acceptance block's copy row plus the recorded pkey-ux-reviewer pass (ux-reviews.json).
+- `doc:BRAND#7.7-empty-states-and-illustration`: Acceptance line: every empty state uses the stationary-star motif (BRAND 7.7); EmptyState.tsx exists but nothing verified it.
+- Screen packages that restyle the console (every console screen owner) must be built on this shell: schedule them after ST-48 and UK-58 (program/ux-waves.md).
 
 ## Acceptance criteria
 

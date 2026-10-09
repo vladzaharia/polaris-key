@@ -5,7 +5,7 @@
 | Phase       | ST: Settings, access control and console shell (DX consolidation C: Products, onboarding and Integration)             |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                |
 | Depends on  | [ST-36](ST-36-owner-polish-portal-fixes-simple-product.md), [ST-38](ST-38-service-table-five-features-one-service.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-47](ST-47-legacy-setup-retirement.md)                                     |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-47](ST-47-legacy-setup-retirement.md), [ST-52](ST-52-palette-search.md)   |
 | Role        | `pkey-implementer`                                                                                                    |
 | Plan mode   | no                                                                                                                    |
 | Gates       | `console-csp-parity`                                                                                                  |
@@ -103,6 +103,13 @@ Applied from the brand and transition integration ([Brand transition decisions](
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 5 mockup item(s):** `products.home`, `products.overview-a`, `products.overview-b`, `products.overview-c`, `products.overview`.
+- `overview-21`: Failed long-running tasks keep a durable home: an attention item on Home plus a record (EXPERIENCE 0.3 J-2).
 
 ## Acceptance criteria
 

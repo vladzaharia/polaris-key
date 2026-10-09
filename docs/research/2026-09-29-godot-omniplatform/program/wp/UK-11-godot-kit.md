@@ -171,6 +171,15 @@ Applied from the brand and transition integration ([Brand transition decisions](
 3. Baselines in both themes, the lint, the sample and the docs pages.
 4. Design review against the mockups; record it in the PR.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 11 mockup item(s):** `kitboard:godot.html:gate`, `kitboard:godot.html:activate`, `kitboard:godot.html:sign-in`, `kitboard:godot.html:device-limit`, `kitboard:godot.html:update-toast`, `kitboard:godot.html:update-results`, `kitboard:godot.html:settings`, `kitboard:godot.html:deck`, `kitboard:godot.html:boot`, `kitboard:godot.html:status`, `kitboard:godot.html:error`.
+- `sdk-c-14`: Replace the invented Godot status/error copy ('keep racing online...') with catalog copy and clear the strings.debt.json entries.
+- `B10.3`, `kitboard:godot.html:update-toast`: B10: the toast keeps title-safe placement and the host-owns-pause rule (set process_mode so kit dialogs survive tree pause; verify in the engine); tell the Godot builder the desktop/tablet QR is dropped; QR-allowed contexts become a ui-matrix row (UK-02b).
+- `kitboard:godot.html:sign-in`: B10: the Godot QR is for pad-only/console input only; drop it on desktop, tablet and phone; show the vanity URL.
+
 ## Acceptance criteria
 
 - [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.

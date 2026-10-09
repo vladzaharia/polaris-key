@@ -93,6 +93,14 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `kitboard:godot.html:gate`, `kitboard:godot.html:sign-in`, `kitboard:godot.html:update-toast`.
+- `B10.3`, `kitboard:godot.html:update-toast`: B10: the toast keeps title-safe placement and the host-owns-pause rule (set process_mode so kit dialogs survive tree pause; verify in the engine); tell the Godot builder the desktop/tablet QR is dropped; QR-allowed contexts become a ui-matrix row (UK-02b).
+- `kitboard:godot.html:sign-in`: B10: the Godot QR is for pad-only/console input only; drop it on desktop, tablet and phone; show the vanity URL.
+
 ## Acceptance criteria
 
 - [ ] OFFLINE → Try again → READY resolves the awaited `boot()` and changes the scene.

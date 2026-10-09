@@ -81,6 +81,15 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `kitboard:terminal:pipe-quadrant`.
+- `sdk-a-09`: Remove welcome.lede and part.qr.scanInstead from kit-copy/en.json and the 8 locale packs, then regenerate kitCopy (UK-02a is done).
+- `B14.7`: UK-41 requires an evidence ledger: a matrix cell is complete only with runtime evidence or a documented N/A.
+- `kitboard:terminal:pipe-quadrant`: Draw a pipe/non-TTY quadrant on terminal.html (UK-59) and cover it in UK-51's contract rows.
+
 ## Acceptance criteria
 
 - [ ] `render.cjs` renders every board in both themes; `pnpm ui:lint` passes with no new exception.

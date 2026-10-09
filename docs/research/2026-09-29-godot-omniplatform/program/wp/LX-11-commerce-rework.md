@@ -71,6 +71,12 @@ Store purchases follow the holder, not the first licence: holder bindings, per-s
 2. Server rework.
 3. Godot client; transcripts.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `commerce.offer-new`, `commerce.offer`, `commerce.offers`.
+
 ## Acceptance criteria
 
 - [ ] A second device of the same Steam user gets the purchase when it runs on the same licence. On another licence of the same account, it gets the purchase once the first licence is unusable. On another holder's licence, it gets it by a transfer under `transfer`, which moves the purchase rather than sharing it, and never under `block` (test).

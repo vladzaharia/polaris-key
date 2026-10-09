@@ -92,6 +92,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 23 mockup item(s):** `kitboard:web:gate-1440`, `kitboard:web:gate-390`, `kitboard:web:activate-1440`, `kitboard:web:sign-in-1440`, `kitboard:web:sign-in-390`, `kitboard:web:device-limit-1440`, `kitboard:web:device-limit-390`, `kitboard:web:update-prompt`, `kitboard:web:settings-1440`, `kitboard:web:settings-390`, `kitboard:web:theming-four-themes`, `kitboard:web:states-sheet`, `kitboard:web:components-boot`, `kitboard:web:components-status-screen`, `kitboard:web:components-grace-toasts`, `kitboard:web:components-devices`, `kitboard:web:components-paywall`, `kitboard:web:components-cloudsync`, `kitboard:web:layers-b-styled-parts`, `kitboard:web:layers-c-headless`, `kitboard:web:motion`, `kitboard:web:forced-colors`, `kitboard:web:native-preset`.
+
 ## Acceptance criteria
 
 - [ ] Jsdom tests over transcripts: bearer sign-in shows the code and URL and Cancel stops polling.

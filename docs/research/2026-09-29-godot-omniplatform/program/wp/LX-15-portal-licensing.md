@@ -109,6 +109,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 2. Downloads.
 3. PORTAL.md.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 8 mockup item(s):** `licenses.detail`, `licenses.list`, `portal.library`, `portal.library-12`, `portal.download`, `portal.free-device`, `portal.license`, `portal.license-lapsed`.
+
 ## Acceptance criteria
 
 - [ ] Library shows source badges (portal e2e).

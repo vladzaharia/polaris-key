@@ -155,6 +155,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 3. Baselines in both themes, the lint, the sample and the docs pages.
 4. Design review against the mockups; record it in the PR.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 8 mockup item(s):** `kitboard:desktop.html:gate`, `kitboard:desktop.html:activate`, `kitboard:desktop.html:sign-in`, `kitboard:desktop.html:device-limit`, `kitboard:desktop.html:update`, `kitboard:desktop.html:settings`, `kitboard:desktop.html:macos15`, `kitboard:desktop.html:states`.
+
 ## Acceptance criteria
 
 - [ ] Every §4.1 component in scope ships in all three layers of §1.3: (a) the drop-in flow, (b) styled parts with the kit's restyle hooks (§3.2), and (c) the headless model.

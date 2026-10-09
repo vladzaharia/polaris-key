@@ -68,6 +68,12 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 2. PR 1: `plans/P2-12.md` §7 row 1. The lead and the owner then run step 2 in production.
 3. PR 2: §7 row 3, once the switch rule holds; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 2 mockup item(s):** `packages.updates-failing`, `packages.updates`.
+
 ## Acceptance criteria
 
 - [ ] Transcripts byte-identical (golden tests)

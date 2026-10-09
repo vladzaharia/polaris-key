@@ -78,6 +78,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `hosted:app-header-passport`.
+
 ## Acceptance criteria
 
 - [ ] CSP unchanged (`img-src 'self'`); e2e at 1440, 1180 and 1024; UX review in BUILT mode.

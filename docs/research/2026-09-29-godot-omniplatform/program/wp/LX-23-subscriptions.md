@@ -72,6 +72,12 @@ Decision 22 defers subscriptions until a product needs them; the model is ready 
 1. Plan and approval.
 2. Implementation with fixtures.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `entitlements.new-major`, `commerce.purchase-renewal`, `commerce.purchases`.
+
 ## Acceptance criteria
 
 - [ ] Commerce tests and transcripts cover each source.

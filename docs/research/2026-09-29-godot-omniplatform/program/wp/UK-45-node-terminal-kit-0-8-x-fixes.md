@@ -94,6 +94,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 13 mockup item(s):** `kitboard:terminal:sign-in-device-code`, `kitboard:terminal:activate-masked-key`, `kitboard:terminal:device-limit`, `kitboard:terminal:status-update-finished`, `kitboard:terminal:blocked-status`, `kitboard:terminal:boot-healthy-offline`, `kitboard:terminal:grouped-help`, `kitboard:terminal:fallbacks`, `kitboard:terminal:cols-60`, `kitboard:terminal:short-40x12`, `kitboard:terminal:narrow-32x24`, `kitboard:terminal:ended-result-block`, `kitboard:terminal:offline-request-120`.
+
 ## Acceptance criteria
 
 - [ ] Goldens with a real client's status (ms `lastVerifiedAt`) and an empty-email profile.

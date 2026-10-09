@@ -92,6 +92,12 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 14 mockup item(s):** `kitboard:terminal:sign-in-device-code`, `kitboard:terminal:activate-masked-key`, `kitboard:terminal:device-limit`, `kitboard:terminal:status-update-finished`, `kitboard:terminal:blocked-status`, `kitboard:terminal:boot-healthy-offline`, `kitboard:terminal:grouped-help`, `kitboard:terminal:fallbacks`, `kitboard:terminal:cols-60`, `kitboard:terminal:short-40x12`, `kitboard:terminal:narrow-32x24`, `kitboard:terminal:ended-result-block`, `kitboard:terminal:offline-request-120`, `kitboard:terminal:pipe-quadrant`.
+
 ## Acceptance criteria
 
 - [ ] A host CLI with its own `config`, `update` and `status` registers without throwing.

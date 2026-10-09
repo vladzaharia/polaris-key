@@ -64,6 +64,12 @@ ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.
 2. Readers switched.
 3. RUNBOOK.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `admin.platform-settings`.
+
 ## Acceptance criteria
 
 - [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 3 lower, and `settings-coverage.test.ts` passes.

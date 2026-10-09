@@ -79,6 +79,13 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 5 mockup item(s):** `distribution.download-page`, `portal.activate`, `portal.activate-confirm`, `portal.download`, `portal.free-device`.
+- `distribution.download-page`: The hosted dl.plrs.im download page uses its own renderer (worker page/render.ts), not the portal frame: restyle it to the focused task frame with the portal v2 hero.
+
 ## Acceptance criteria
 
 - [ ] e2e at 1440, 1024, 844x390, 390 and 360 in both themes; axe clean; focus lands on h1.

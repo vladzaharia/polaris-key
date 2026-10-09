@@ -51,6 +51,13 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 8 mockup item(s):** `config.catalog-invalid`, `config.catalog-review-states`, `config.catalog-review`, `config.effective`, `config.entry-draft-stale`, `config.entry-setting-remove-value`, `config.entry-setting`, `config.profile`.
+- `config.catalog-invalid`, `config.catalog-review`: C-24 in the mockup json is the console catalog page (not a work package): the review step, Copy the diff, the invalid state and per-entry changed-since-open merge belong to U-29 and U-31.
+
 ## Acceptance criteria
 
 - [ ] The console never re-merges (resolveInherited deleted)

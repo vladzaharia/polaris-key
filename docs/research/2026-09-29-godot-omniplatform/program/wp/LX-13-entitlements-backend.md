@@ -75,6 +75,12 @@ A developer selling on their own site has no route to ask what a subject holds a
 2. Event.
 3. Merge and deletion.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `licenses.list`.
+
 ## Acceptance criteria
 
 - [ ] Merge re-keys grants and bindings (test).

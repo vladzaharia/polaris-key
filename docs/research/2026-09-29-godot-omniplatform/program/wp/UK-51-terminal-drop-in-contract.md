@@ -58,6 +58,13 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 28 mockup item(s):** `kitboard:terminal:sign-in-device-code`, `kitboard:terminal:sign-in-device-code~py`, `kitboard:terminal:activate-masked-key`, `kitboard:terminal:activate-masked-key~py`, `kitboard:terminal:device-limit`, `kitboard:terminal:device-limit~py`, `kitboard:terminal:status-update-finished`, `kitboard:terminal:status-update-finished~py`, `kitboard:terminal:blocked-status`, `kitboard:terminal:blocked-status~py`, `kitboard:terminal:boot-healthy-offline`, `kitboard:terminal:boot-healthy-offline~py`, `kitboard:terminal:grouped-help`, `kitboard:terminal:grouped-help~py`, `kitboard:terminal:fallbacks`, `kitboard:terminal:fallbacks~py`, `kitboard:terminal:cols-60`, `kitboard:terminal:cols-60~py`, `kitboard:terminal:short-40x12`, `kitboard:terminal:short-40x12~py`, `kitboard:terminal:narrow-32x24`, `kitboard:terminal:narrow-32x24~py`, `kitboard:terminal:ended-result-block`, `kitboard:terminal:ended-result-block~py`, `kitboard:terminal:offline-request-120`, `kitboard:terminal:offline-request-120~py`, `kitboard:terminal:parity-json`, `kitboard:terminal:pipe-quadrant`.
+- `kitboard:terminal:pipe-quadrant`: Draw a pipe/non-TTY quadrant on terminal.html (UK-59) and cover it in UK-51's contract rows.
+
 ## Acceptance criteria
 
 - [ ] The `cli` family pins the verb sets, the collision and help rules, the gate outcomes and exit 4.

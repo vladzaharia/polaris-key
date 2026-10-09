@@ -63,6 +63,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 
 - In `tools/services.json` the commerce console icon is `ShoppingBag` and its accent is the Distribution green family (B1; CM-29b). The slug and routes stay; the platform contract wins over the guide's 'no new service slug'. No wire change. (brand-36)
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 13 mockup item(s):** `products.features`, `products.turn-off-licensing`, `commerce.connect-app-store-error`, `commerce.connect-app-store`, `commerce.features-blocked`, `commerce.features-save-failed`, `commerce.features`, `commerce.first-run-connected`, `commerce.first-run`, `commerce.offers-empty`, `commerce.purchases-empty`, `commerce.storefronts`, `commerce.turn-off-licensing`.
+
 ## Verify
 
 The plan's §Verify, then the lead gate.

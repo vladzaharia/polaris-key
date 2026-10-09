@@ -105,6 +105,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Area and pages.
 2. e2e and CSP parity.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 4 mockup item(s):** `admin.platform-activity-event`, `admin.platform-activity`, `admin.platform-settings`, `admin.platform-status`.
+
 ## Acceptance criteria
 
 - [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 5 lower, and `settings-coverage.test.ts` passes.

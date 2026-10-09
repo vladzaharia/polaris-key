@@ -1,16 +1,16 @@
 # ST-45 Platform and Product sidebar contexts
 
-| Field       | Value                                                                                                              |
-| ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| Phase       | ST: Settings, access control and console shell (DX consolidation C: Products, onboarding and Integration)          |
-| Size        | 0.6–0.9 engineer-weeks                                                                                             |
-| Depends on  | [ST-08](ST-08-product-settings-hub.md), [ST-29](ST-29-admin-route-table-can-usecan.md)                             |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-48](ST-48-console-shell-v2.md), [ST-49](ST-49-console-route-ledger.md) |
-| Role        | `pkey-implementer`                                                                                                 |
-| Plan mode   | no                                                                                                                 |
-| Gates       | `console-csp-parity`                                                                                               |
-| Human input | none                                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                          |
+| Field       | Value                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | ST: Settings, access control and console shell (DX consolidation C: Products, onboarding and Integration)                                                    |
+| Size        | 0.6–0.9 engineer-weeks                                                                                                                                       |
+| Depends on  | [ST-08](ST-08-product-settings-hub.md), [ST-29](ST-29-admin-route-table-can-usecan.md)                                                                       |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-48](ST-48-console-shell-v2.md), [ST-49](ST-49-console-route-ledger.md), [ST-51](ST-51-platform-activity-page.md) |
+| Role        | `pkey-implementer`                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                           |
+| Gates       | `console-csp-parity`                                                                                                                                         |
+| Human input | none                                                                                                                                                         |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                    |
 
 ## Consolidation 2026-10-07
 
@@ -106,6 +106,13 @@ Applied from the brand and transition integration ([Brand transition decisions](
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
+
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 18 mockup item(s):** `admin.members`, `admin.no-access`, `admin.platform-activity-event`, `admin.platform-activity`, `admin.platform-status`, `admin.product-members`, `products.home`, `products.integration`, `products.sidebar-contexts`, `identity.app-sign-in`, `identity.connections`, `config.catalog-empty`, `config.cloud-sync`, `config.effective`, `config.entry-minted-token`, `config.entry-setting-remove-value`, `config.entry-setting`, `config.profile`.
+- `admin-4-22`: Settle the spelling: mockups say 'Keys and secrets', nav.ts says 'Keys & secrets'; use 'and' (terse-copy rule).
 
 ## Acceptance criteria
 

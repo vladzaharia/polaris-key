@@ -64,6 +64,12 @@ Saves are the Godot path's goal ([S-17 §6](../../notes/S-17-user-data-sync.md#6
 
 1. Routes and DO tables. 2. R2 and GC. 3. Limits, transcripts.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `config.cloud-sync`.
+
 ## Acceptance criteria
 
 - [ ] Begin, upload and finalize, including a hash mismatch, are recorded as transcripts and pass.

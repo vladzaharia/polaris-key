@@ -92,6 +92,12 @@ Applied from the brand and transition integration ([Brand transition decisions](
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 4 mockup item(s):** `distribution.download-page`, `portal.download`, `portal.license`, `hosted:email-download-link`.
+
 ## Acceptance criteria
 
 - [ ] A beta-entitled customer can pick beta; others see stable only

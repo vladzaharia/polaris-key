@@ -84,6 +84,12 @@ The core of OC ([S-19 owner decisions](../../notes/S-19-licensing-model.md) item
 3. Caller switch.
 4. Measure cost.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 2 mockup item(s):** `entitlements.catalog`, `entitlements.consumables`.
+
 ## Acceptance criteria
 
 - [ ] `legacy` output is byte-identical to today on a live-shaped snapshot (property test).

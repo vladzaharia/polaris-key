@@ -104,6 +104,13 @@ These are could rows of §5.1: recipes, not kits. The spec is [`docs/design/UI-K
 1. Build the scope in the order listed.
 2. Run the gates in the header.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `kitboard:web:vue-kit`, `kitboard:web:svelte-kit`, `kitboard:web:angular-kit`.
+- `kit:UK-22`: UK-22 (host design systems) is dropped; UK-31's recipes cover 'your own design system'. Strike the UK-22 row in UI-KITS 10 (DOC-14).
+
 ## Acceptance criteria
 
 - [ ] Each example renders the gate in both themes and passes `pnpm ui:lint`.

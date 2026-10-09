@@ -96,6 +96,12 @@ Decision 3 accepted `rank-first` ([S-19 §10.3](../../notes/S-19-licensing-model
 2. Replace I-09's inline code.
 3. Supersede and re-homing.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 2 mockup item(s):** `portal.library`, `hosted:email-notices-license`.
+
 ## Acceptance criteria
 
 - [ ] The anchor order matches §7.5 for each policy (tests).

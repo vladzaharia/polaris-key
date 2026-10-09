@@ -87,6 +87,12 @@ Platform sign-in is the game program's differentiator ([S-16 §2](../../notes/S-
 2. Game Center, Play Games, EOS verifiers with fixtures.
 3. SDK shims and helpers; transcripts per kind.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `identity.app-sign-in`.
+
 ## Acceptance criteria
 
 - [ ] Each kind verifies against fixtures and refuses tampered or wrong-audience input (tests).

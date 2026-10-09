@@ -77,6 +77,13 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 11 mockup item(s):** `identity.consent`, `identity.device-code-states`, `identity.device-code`, `identity.device-confirm`, `identity.finish`, `identity.key-step`, `identity.refusals`, `identity.sign-in-routes`, `identity.sign-in`, `hosted:device-code-entry`, `hosted:device-confirm`.
+- `B9.3`: Negative test: the device-code page cannot name the product before the code resolves.
+
 ## Acceptance criteria
 
 - [ ] A test: a scan with a signed-in session leaves the code pending; Confirm completes it; Deny denies it.

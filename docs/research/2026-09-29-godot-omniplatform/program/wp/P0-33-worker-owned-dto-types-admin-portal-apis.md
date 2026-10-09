@@ -51,6 +51,10 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.
 2. Implement the scope; run the green gate; hand off.
 
+## Screen acceptance (brand transition, 2026-10-09)
+
+N/A: no screen or state ships in this package (selected by the overview-04 rule on its gate or mention only).
+
 ## Acceptance criteria
 
 - [ ] Admin types import Worker DTOs; no hand mirrors left

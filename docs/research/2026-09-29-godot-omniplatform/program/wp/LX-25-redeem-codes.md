@@ -68,6 +68,12 @@ Decisions 11 and 20: add-on keys and customer gifting via codes ([S-19 §10.3](.
 2. Route.
 3. SDKs.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 1 mockup item(s):** `entitlements.addon`.
+
 ## Acceptance criteria
 
 - [ ] Redeeming creates a grant on the redeemer's holder (test).

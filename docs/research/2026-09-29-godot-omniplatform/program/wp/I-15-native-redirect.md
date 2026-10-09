@@ -103,6 +103,12 @@ Device code is a poor fit on a phone, and four native SDK rows are planned and u
 2. Redirect URI rules and the `/auth/poll` retirement.
 3. Six SDKs and transcripts.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `identity.refusals`, `hosted:refusals`, `hosted:oauth-authorize-token`.
+
 ## Acceptance criteria
 
 - [ ] Each URI class is accepted only as registered; unregistered schemes and hosts are refused (tests).

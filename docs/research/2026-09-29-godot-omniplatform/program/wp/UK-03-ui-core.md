@@ -138,6 +138,12 @@ Layer (c) for the JS kits; elements, React, Vue, Svelte, Angular and React Nativ
 1. Build the scope in the order listed.
 2. Run the gates in the header.
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Builds or backs 3 mockup item(s):** `kitboard:web:web-components-elements`, `sdk.react-sign-in`, `sdk.react-activate`.
+
 ## Acceptance criteria
 
 - [ ] Every UK-02b fixture passes.

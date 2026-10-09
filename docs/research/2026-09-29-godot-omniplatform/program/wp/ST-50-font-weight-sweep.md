@@ -76,6 +76,12 @@ apply says why in one line. One home: EXPERIENCE.md ยง7.3; kits also follow DL1โ
       D-pad focus, TV and title-safe insets, terminal keys with NO_COLOR, ascii and --json paths.
 - [ ] pkey-ux-reviewer passes the built screens (BUILT mode).
 
+## UX coverage (2026-10-09)
+
+Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do not edit this section by hand; change the coverage file.
+
+- **Cross-cutting brand v2 package:** every one of its 110 screens/boards passes through it; screen packages that restyle the console or portal are scheduled after it (`ux-waves.md`).
+
 ## Acceptance criteria
 
 - [ ] No `font-bold` in `packages/admin/src` other than the allowlist.
