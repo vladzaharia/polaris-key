@@ -210,11 +210,11 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 | Storefront daily counters per product, day and path kind (impressions, adds, first activations); nothing about a person                                                                                                                                                                                                                                                                                                          | `storefront_daily`                                                              | Kept until the product is deleted                                                                                                                                                                                                                                |
 | An account join's undo snapshot (`snapshot_json`): the absorbed account's row (primary email, display name, locale, profile sources, passkey user handle), its consents (claims shared with each app), terms acceptances, auto-attach blocks and library entries, and the ids of what moved (sign-in methods, passkeys, licences, sessions, pictures, registry tokens, relinks, pairwise subjects and the devices bound to them) | `account_merges`                                                                | Up to 72 hours: cleared by an undo, deleted by the nightly job once the window ends, and deleted with either account                                                                                                                                             |
 
-### Residue and limits (SEC-WP-19)
+### Residue and limits
 
 What the sections above do not promise, stated plainly:
 
-- **Console audit rows** (`audit`) name the licence by id; since SEC-WP-19 they no longer copy the
+- **Console audit rows** (`audit`) name the licence by id; since October 2026 they no longer copy the
   buyer's email or name. Rows written before that may still hold an address and are deleted by the
   nightly job after 180 days. Account erasure does not rewrite them.
 - **Merge tombstones** (`account_tombstones` with a merge target, which carry an email hash) are
@@ -225,9 +225,14 @@ What the sections above do not promise, stated plainly:
   Purchase records keep a hashed purchase key, but the re-check ids (a Play purchase token, a
   Steam ID with the DLC app id) are stored in clear in `dist_purchases.detail_json` for as long as
   the licence exists.
-- **Rate limiting** keys its counters by the client IP in a Durable Object, for the length of the
-  limit window (minutes to a day); the object's sweep deletes expired counters. They are not part
-  of any export or erasure.
+- **Rate limiting** keys its counters by the client network (an IPv4 address or an IPv6 /64) in a
+  Durable Object, for the length of the limit window (minutes to a day); the email-code lockout is
+  keyed by the recipient's peppered hash with the requester's IPv4 /24 or IPv6 /48. The object's
+  sweep deletes expired counters. They are not part of any export or erasure.
+- **Sign-in and notice records.** A console sign-in (accepted, refused or failed) is recorded in
+  the platform activity log by the operator's IdP subject, never an email; a security notice that
+  reached no address is recorded in the account's activity as counts only. Both follow their
+  log's retention, and the account's activity is deleted with the account.
 - **Worker invocation logs** are off: request URLs carry single-use tokens and codes.
 - **Signed licence documents and offline bundles** include the licence's name and email. Once
   issued they cannot be recalled or erased; they expire with the document.

@@ -43,8 +43,8 @@ On a product with Identity on, the answer carries a fifth member, `keyEntries` â
 
 1. **Method.** Anything but `POST` is `405`. The method check lives in the handler, so a
    `GET /license/activate` is a `405` rather than falling through to the router's `404`.
-2. **Rate limit.** Bucket `activate`, 30 attempts per 60 seconds, keyed by client IP and
-   product. Over the limit is `429 rate_limited`. This bucket **fails closed**: if the limiter
+2. **Rate limit.** Bucket `activate`, 30 attempts per 60 seconds, keyed by client network (an
+   IPv4 address or an IPv6 /64) and product. Over the limit is `429 rate_limited`. This bucket **fails closed**: if the limiter
    itself is unavailable the request is refused, because an unlimited credential endpoint is a
    brute-force oracle against license keys.
 3. **Bearer key.** Absent is `401 unauthorized`.
@@ -288,7 +288,9 @@ Two asymmetries with `/token` are worth knowing:
 
 - No `X-PKey-Device` header is required. The token identifies the device on its own; the header
   on `/token` exists to make rotation refuse a mismatched pairing.
-- There is no rate limit bucket on this route. It destroys a credential rather than minting one.
+- Its rate limit is a cost budget, not a guard on a credential: bucket `deauthorize`, 30 requests
+  per 60 seconds per client network, failing open. It destroys a credential rather than minting
+  one.
 
 A device token authenticates **one** device, not the license. Deauthorizing a _sibling_ device is
 refused on Core's `/devices/<id>` surface with `403`, because any device could otherwise evict

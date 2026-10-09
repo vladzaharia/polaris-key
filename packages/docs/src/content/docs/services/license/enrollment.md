@@ -56,7 +56,7 @@ JSON is likewise read as off. (The fingerprint policy takes the opposite fallbac
 1. **Method.** Not `POST` is `405`.
 2. **Policy gate.** `404 enroll_disabled` unless the policy is enabled, its mode includes
    `anonymous`, and it names a tier.
-3. **Rate limit.** Bucket `enroll`, `rateLimitPerHour` per hour keyed by client IP, skipped
+3. **Rate limit.** Bucket `enroll`, `rateLimitPerHour` per hour keyed by client network, skipped
    entirely when the ceiling is `0`. Over the limit is `429 rate_limited`. Fail-closed.
 4. **Device header.** Absent is `400 bad_request`.
 5. **Tier existence.** The tier the policy names is loaded. If it is gone, `404 enroll_disabled`

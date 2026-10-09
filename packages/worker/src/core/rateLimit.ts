@@ -216,6 +216,11 @@ const FAIL_MODE: Record<string, FailMode> = {
   imgHost: "open",
   // SEC-CFG-11: per-device cap on config-document fetches; a cost budget, nothing secret behind it.
   configDocument: "open",
+  // SEC-LIC-13: per-network budgets in front of the licence document and self-deauthorize. Both
+  // need a live device token, so the limit protects D1 cost, not a secret; an outage must not stop
+  // every licensed install from refreshing its document (as for `configDocument` above).
+  licenseDoc: "open",
+  deauthorize: "open",
 };
 
 function failModeFor(bucket: string): FailMode {
