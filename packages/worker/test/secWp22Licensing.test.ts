@@ -9,6 +9,24 @@ describe("SEC-WP-22 licensing hardening", () => {
     expect(versionInWindow("1.0.0", { max: "1.0.0" })).toBe(true);
     expect(versionInWindow("garbage", {})).toBe(true);
   });
+  it("SEC-LIC-6: the default window (min 0.0.0, no max) is open and admits non-semver clients", () => {
+    for (const v of ["1.0", "1.2.3.4", "2024.10", "garbage", ""])
+      expect(versionInWindow(v, { min: "0.0.0" })).toBe(true);
+    expect(versionInWindow("1.0.0", { min: "0.0.0" })).toBe(true);
+  });
+  it("SEC-LIC-6: a truly bounded window refuses non-semver and garbage, orders semver as before", () => {
+    for (const r of [
+      { min: "2.0.0" },
+      { max: "3.0.0" },
+      { min: "0.0.0", max: "3.0.0" },
+    ])
+      for (const v of ["1.0", "1.2.3.4", "2024.10", "garbage", ""])
+        expect(versionInWindow(v, r)).toBe(false);
+    expect(versionInWindow("2.0.0", { min: "2.0.0" })).toBe(true);
+    expect(versionInWindow("1.9.9", { min: "2.0.0" })).toBe(false);
+    expect(versionInWindow("3.0.0", { max: "3.0.0" })).toBe(true);
+    expect(versionInWindow("3.0.1", { max: "3.0.0" })).toBe(false);
+  });
   it("SEC-LIC-8: expiresAt must be a whole in-range number, or absent/null", () => {
     const bad = (v: unknown) =>
       new WriteChecks().expiresAt("expiresAt", v).response() !== null;
