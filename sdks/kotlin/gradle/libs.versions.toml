@@ -47,7 +47,7 @@ zstdJniAndroid = "1.5.7-12"
 # no emulator).
 composeBom = "2025.05.01"
 zxing = "3.5.3"
-roborazzi = "1.43.0"
+roborazzi = "1.76.0"
 androidxTestExtJunit = "1.2.1"
 activityCompose = "1.10.1"
 # The version Compose 1.8 already brings in transitively; :ui now names it for the sign-in ViewModel.
