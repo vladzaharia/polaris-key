@@ -1296,8 +1296,9 @@ symbol); review catches the rest.
   against GitHub's JWKS, the fixed issuer, `aud = <origin>/webhooks/deploy`, single-use `jti`
   through `idx_ci_tokens_jti`) and held to a policy only the Worker's configuration sets:
   `PLATFORM_REPOSITORY_ID` and `PLATFORM_REPOSITORY_OWNER_ID` (numeric, against renames), that
-  repository's `.github/workflows/deploy.yml` at the triggering ref, a `refs/tags/v*` ref,
-  `ref_protected`, a GitHub-hosted runner, the `production` environment. Without those vars the
+  repository's `.github/workflows/deploy.yml` at the triggering ref, a `push` event on a
+  semver `refs/tags/vX.Y.Z` ref, the token's `sha` equal to the Worker's own `PKEY_GIT_SHA` (a
+  Worker that does not know its commit refuses every call; SEC-WP-12), `ref_protected`, a GitHub-hosted runner, the `production` environment. Without those vars the
   route does not exist. The body cannot name another repository (the manifest's provider must be
   the configured one, and the publisher's numeric ids come from the configuration, never the
   manifest), cannot touch another product (the slug must be the system product's, checked before
@@ -1313,6 +1314,17 @@ symbol); review catches the rest.
   deploy job's, which already holds `CLOUDFLARE_API_TOKEN`; a token captured from that job could
   be replayed with a different body within its lifetime only if it was never used, and the job
   uses it at once.
+
+- **CI/CD token binding (SEC-WP-12).** An OIDC-minted `pkeyci_` token is minted for branch and tag
+  runs only (the platform's own product: `main` or a semver release tag) and carries
+  `release:promote` and `release:yank` only from a `refs/tags/` run; a CI token never promotes or
+  pins a channel to a release older than its current pointer (`downgrade_refused`). A CI token
+  reads private feeds and mints OCI pull tokens only with `release:publish`, and revoking it drops
+  the feed-read cache at once. A native upload session re-checks its token at publish time
+  (settle and cron), so a token revoked mid-upload publishes nothing. A cached GitHub JWKS is
+  honoured for 6 h at most when GitHub is unreachable. The GitHub webhook dedupes on the signed
+  body, records it after processing, and fails closed on a missing installation binding (the
+  system product excepted). An OCI blob upload continues only for the publisher that started it.
 
 **What remains (F-03, F-10).** Strict-router setup snippets keep each feed the only source of
 its names. The owner publishes nothing to public registries and claims the public names at
