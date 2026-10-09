@@ -10,8 +10,10 @@
 //              braille), PKEY_ASCII=1 or --ascii.
 //   animation  a spinner or a redrawn progress line only on a terminal, never under CI, TERM=dumb
 //              or reduced motion: anything else prints each line once.
-//   layout     80 columns, degrading to the terminal's width below that (60 is the floor the
-//              layouts are designed for, UI-KITS §1.5 rule 13).
+//   layout     80 columns, degrading to the terminal's width. Below 32 the rail and its gutter go
+//              and everything lays out at the real width. Prose wraps; a URL or a code wraps at
+//              its own break points and is never cut.
+//   rows       the terminal's height: a live screen taller than it compacts by fit (screen.ts).
 //   scheme     PKEY_THEME=dark|light, else COLORFGBG, else dark (OSC 11, queryBackground, is
 //              asked only when truecolor is on and the flow can wait for an answer).
 //   headless   no local browser (SIGN-IN.md D-68): SSH_CONNECTION or SSH_TTY, CI, or Linux with
@@ -28,6 +30,11 @@ export interface TerminalOutput {
   columns?: number;
   rows?: number;
   write(chunk: string): unknown;
+  // A terminal's `resize` event (SIGWINCH) lays a live region out again. Listener parameters are
+  // `any`: Node's streams declare them that way.
+  on?(event: string, listener: (...args: any[]) => void): unknown;
+  off?(event: string, listener: (...args: any[]) => void): unknown;
+  removeListener?(event: string, listener: (...args: any[]) => void): unknown;
 }
 
 /** The part of stdin the prompts read. */
@@ -40,6 +47,8 @@ export interface TerminalInput {
   removeListener?(event: string, listener: (...args: any[]) => void): unknown;
   resume?(): unknown;
   pause?(): unknown;
+  /** Put bytes back at the front of the stream, for the key reader that comes next. */
+  unshift?(chunk: Buffer | string): unknown;
 }
 
 /** Flags every verb accepts (UI-KITS §1.4 "Interaction" and "Fallbacks"). */
@@ -69,8 +78,9 @@ export interface TerminalCaps {
   animate: boolean;
   /** OSC 8 links and OSC 52 copy. */
   links: boolean;
-  /** The layout width: 80, or the terminal's width when it is narrower. */
+  /** The layout width: 80, or the terminal's width when it is narrower (never below 32). */
   columns: number;
+  /** The terminal's height in rows (24 off a terminal). */
   rows: number;
   scheme: ColorScheme;
   ci: boolean;
@@ -95,6 +105,26 @@ export interface DetectOptions {
     colorScheme?: "system" | "dark" | "light";
     motion?: "system" | "reduced" | "none";
   };
+}
+
+/** Below this many columns the rail and its gutter are dropped (see `railLines`). */
+export const MIN_LAYOUT_COLUMNS = 32;
+
+/** The narrowest width anything is laid out at, in cells. */
+export const MIN_COLUMNS = 10;
+
+/** A terminal this many rows high or fewer is short; a live screen compacts by fit, not by this. */
+export const SHORT_ROWS = 16;
+
+/**
+ * The layout width for a terminal `columns` cells wide: 80, or the terminal's own width. Below 32
+ * the layout is drawn at the real width, without the rail, rather than for 32 and cropped.
+ */
+export function layoutColumns(columns: number): number {
+  return Math.max(
+    MIN_COLUMNS,
+    Math.min(TERMINAL_LAYOUT.columns, Math.floor(columns)),
+  );
 }
 
 const truthy = (v: string | undefined): boolean =>
@@ -206,7 +236,7 @@ export function detectTerminal(opts: DetectOptions = {}): TerminalCaps {
     dumb,
     animate: tty && !ci && !dumb && !json && !reduced,
     links: tty && !dumb && !ci && !json,
-    columns: Math.max(20, Math.min(TERMINAL_LAYOUT.columns, termCols)),
+    columns: layoutColumns(termCols),
     rows: tty && out?.rows ? out.rows : 24,
     scheme: explicit ?? schemeFromColorFgBg(env.COLORFGBG) ?? "dark",
     ci,
@@ -262,11 +292,15 @@ export function queryBackground(
       off?.call(stdin, "data", onData);
       stdin.setRawMode?.(false);
       stdin.pause?.();
+      // Whatever is not the answer was typed by the person (Esc, say) while the question was out:
+      // it goes back to the front of the stream for the key reader.
+      const rest = buf.replace(REPLY, "");
+      if (rest) stdin.unshift?.(Buffer.from(rest));
       resolve(v);
     };
     const onData = (chunk: Buffer | string) => {
       buf += chunk.toString();
-      if (/\x07|\x1b\\/.test(buf)) done(schemeFromOsc11(buf));
+      if (REPLY.test(buf)) done(schemeFromOsc11(buf));
     };
     const timer = setTimeout(() => done(null), timeoutMs);
     stdin.setRawMode!(true);
@@ -275,3 +309,6 @@ export function queryBackground(
     stdout.write("\x1b]11;?\x07");
   });
 }
+
+/** The terminal's answer to the OSC 11 question, to its terminator. */
+const REPLY = /\x1b\]11;[^\x07\x1b]*(?:\x07|\x1b\\)/;

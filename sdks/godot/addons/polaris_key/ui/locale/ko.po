@@ -3307,10 +3307,10 @@ msgstr "라이선스"
 msgid "cli.status.offline"
 msgstr "오프라인"
 
-#. Works offline until {date}
-#. Terminal status: the license keeps working without the internet until {date} (a short date).
+#. until {date}
+#. Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition.
 msgid "cli.status.offlineUntil"
-msgstr "{date}까지 오프라인으로 사용 가능"
+msgstr "{date}까지"
 
 #. Version
 #. Terminal status: the row label for the app's version and release channel.
@@ -3362,10 +3362,10 @@ msgstr "{device}의 이름을 지웠어요."
 msgid "cli.devices.removed"
 msgstr "{device}을(를) 제거했어요. 자리가 비었어요."
 
-#. Update cancelled. Nothing was installed.
-#. Terminal: the person stopped an update download.
+#. Update cancelled.
+#. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
 msgid "cli.update.cancelled"
-msgstr "업데이트를 취소했어요. 설치된 항목이 없어요."
+msgstr "업데이트를 취소했어요."
 
 #. No content is installed.
 #. Terminal: there are no downloadable content packs on this device.
@@ -3446,6 +3446,106 @@ msgstr "설치 출처"
 #. Terminal diagnostics: the heading over features this device cannot use, each with its reason.
 msgid "cli.doctor.unsupported"
 msgstr "여기에서 지원되지 않음"
+
+#. c copy the code · o open in browser · Esc cancel
+#. Terminal key hints while waiting for a code sign-in on a computer that has a browser: c copies the code, o opens the sign-in page with the code filled in. Keep each key first and the ' · ' separators.
+msgid "cli.keys.codeBrowser"
+msgstr "c 코드 복사 · o 브라우저에서 열기 · Esc 취소"
+
+#. This key is for another product ({app}). Use your {product} key.
+#. Terminal key prompt: the key belongs to a different product. {app} is that product's slug, {product} the product this command is for.
+msgid "cli.activate.otherProduct"
+msgstr "이 키는 다른 제품({app})용이에요. {product} 키를 사용하세요."
+
+#. {size} of {total}
+#. Terminal update progress: how much of the download is done. {size} is a bare number and {total} carries the unit, so 'of' joins '38' and '61 MB'.
+msgid "cli.update.figures"
+msgstr "{total} 중 {size}"
+
+#. {size}/{total}
+#. Terminal update progress on a narrow line: the short form of the sizes. {size} is a bare number and {total} carries the unit.
+msgid "cli.update.figuresShort"
+msgstr "{size}/{total}"
+
+#. {time} left
+#. Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'.
+msgid "cli.update.timeLeft"
+msgstr "{time} 남음"
+
+#. {version} is ready · {size}
+#. Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.ready"
+msgstr "{version} 준비 완료 · {size}"
+
+#. {version} is ready
+#. Terminal: the update is ready and its size is not known. {version} is the new version.
+msgid "cli.update.readyNoSize"
+msgstr "{version} 준비 완료"
+
+#. Restart to finish updating.
+#. Terminal: after an update downloaded, what the person does next.
+msgid "cli.update.restart"
+msgstr "업데이트를 완료하려면 재시작하세요."
+
+#. Nothing was installed.
+#. Terminal: an update download failed; nothing was changed on this device.
+msgid "cli.update.nothingInstalled"
+msgstr "설치된 항목이 없어요."
+
+#. Replace a device in your browser, then try again here.
+#. Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here.
+msgid "cli.deviceLimit.body"
+msgstr "브라우저에서 기기를 교체한 다음 여기서 다시 시도하세요."
+
+#. Devices
+#. Terminal status: the row label for how many devices use the license.
+msgid "cli.status.devices"
+msgstr "기기"
+
+#. {used} of {limit}
+#. Terminal status: devices in use out of the license's limit, like '2 of 3'.
+msgid "cli.status.seatsOf"
+msgstr "{limit}대 중 {used}대"
+
+#. {version} is available · {size}
+#. Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.available"
+msgstr "{version} 사용 가능 · {size}"
+
+#. {version} is available
+#. Terminal update check: a newer version exists and its size is not known. {version} is the version.
+msgid "cli.update.availableNoSize"
+msgstr "{version} 사용 가능"
+
+#. You have {version}
+#. Terminal update check: the version installed now. {version} is that version.
+msgid "cli.update.have"
+msgstr "현재 {version}을(를) 사용 중이에요"
+
+#. Install
+#. Terminal update check: what the 'update apply' command does, beside the command.
+msgid "cli.update.install"
+msgstr "설치"
+
+#. Check your connection and run {command} again.
+#. Terminal changelog: what to do after the release notes failed to load. {command} is a command line.
+msgid "cli.changelog.fix"
+msgstr "연결을 확인한 다음 {command}을(를) 다시 실행하세요."
+
+#. Ask whoever sent it for a new file.
+#. Terminal offline activation: what to do after an activation file was refused.
+msgid "cli.import.fix"
+msgstr "보낸 사람에게 새 파일을 요청하세요."
+
+#. {product} doesn't use Polaris Key sign-in.
+#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+msgid "cli.identityOff.notice"
+msgstr "{product}은(는) Polaris Key 로그인을 사용하지 않아요."
+
+#. Run {command} with your license key.
+#. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
+msgid "cli.identityOff.fix"
+msgstr "라이선스 키로 {command}을(를) 실행하세요."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

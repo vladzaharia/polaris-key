@@ -1,74 +1,64 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update check[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  It installs through the store or platform you got Tidewater Studio from.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update check[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mTidewater Studio 2.5.0[22m
+[2m└[22m  It installs through the store or platform you got Tidewater Studio from.
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update check[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  It installs through the store or platform you got Tidewater Studio from.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update check[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mTidewater Studio 2.5.0[22m
+[2m└[22m  It installs through the store or platform you got Tidewater Studio from.
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · update check[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · update check[22m
+[2m│[22m
 [36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  It installs through the store or platform you got Tidewater Studio from.
-[90m└[39m
+[2m└[22m  It installs through the store or platform you got Tidewater Studio from.
 
 #### no-color-80
-┌   Tidewater Studio  · update check
+┌  [7m Tidewater Studio [27m · update check
 │
-◆  Tidewater Studio 2.5.0
-│  It installs through the store or platform you got Tidewater Studio from.
-└
+◆  [1mTidewater Studio 2.5.0[22m
+└  It installs through the store or platform you got Tidewater Studio from.
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - update check[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - update check[22m
+[2m|[22m
 [36m*[39m  [1mTidewater Studio 2.5.0[22m
-[90m|[39m  It installs through the store or platform you got Tidewater Studio from.
-[90m`[39m
+[2m`[22m  It installs through the store or platform you got Tidewater Studio from.
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update check[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  It installs through the store or platform you got
-[90m│[39m  Tidewater Studio from.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update check[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mTidewater Studio 2.5.0[22m
+[2m│[22m  It installs through the store or platform you got
+[2m└[22m  Tidewater Studio from.
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update check[39m
-[90m│[39m
-[36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  It installs through the store or platform you got
-[90m│[39m  Tidewater Studio from.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update check[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mTidewater Studio 2.5.0[22m
+[2m│[22m  It installs through the store or platform you got
+[2m└[22m  Tidewater Studio from.
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · update check[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · update check[22m
+[2m│[22m
 [36m◆[39m  [1mTidewater Studio 2.5.0[22m
-[90m│[39m  It installs through the store or platform you got
-[90m│[39m  Tidewater Studio from.
-[90m└[39m
+[2m│[22m  It installs through the store or platform you got
+[2m└[22m  Tidewater Studio from.
 
 #### no-color-60
-┌   Tidewater Studio  · update check
+┌  [7m Tidewater Studio [27m · update check
 │
-◆  Tidewater Studio 2.5.0
+◆  [1mTidewater Studio 2.5.0[22m
 │  It installs through the store or platform you got
-│  Tidewater Studio from.
-└
+└  Tidewater Studio from.
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - update check[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - update check[22m
+[2m|[22m
 [36m*[39m  [1mTidewater Studio 2.5.0[22m
-[90m|[39m  It installs through the store or platform you got
-[90m|[39m  Tidewater Studio from.
-[90m`[39m
+[2m|[22m  It installs through the store or platform you got
+[2m`[22m  Tidewater Studio from.

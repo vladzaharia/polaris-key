@@ -1,69 +1,59 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mChannel not included[22m
-[90m│[39m  Your license doesn't include this release channel.
-[90m└[39m
+[2m└[22m  Your license doesn't include this release channel.
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mChannel not included[22m
-[90m│[39m  Your license doesn't include this release channel.
-[90m└[39m
+[2m└[22m  Your license doesn't include this release channel.
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mChannel not included[22m
-[90m│[39m  Your license doesn't include this release channel.
-[90m└[39m
+[2m└[22m  Your license doesn't include this release channel.
 
 #### no-color-80
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [27m · status
 │
-✗  Channel not included
-│  Your license doesn't include this release channel.
-└
+✗  [1mChannel not included[22m
+└  Your license doesn't include this release channel.
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
+[2m|[22m
 [31mx[39m  [1mChannel not included[22m
-[90m|[39m  Your license doesn't include this release channel.
-[90m`[39m
+[2m`[22m  Your license doesn't include this release channel.
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mChannel not included[22m
-[90m│[39m  Your license doesn't include this release channel.
-[90m└[39m
+[2m└[22m  Your license doesn't include this release channel.
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mChannel not included[22m
-[90m│[39m  Your license doesn't include this release channel.
-[90m└[39m
+[2m└[22m  Your license doesn't include this release channel.
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
+[2m│[22m
 [31m✗[39m  [1mChannel not included[22m
-[90m│[39m  Your license doesn't include this release channel.
-[90m└[39m
+[2m└[22m  Your license doesn't include this release channel.
 
 #### no-color-60
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [27m · status
 │
-✗  Channel not included
-│  Your license doesn't include this release channel.
-└
+✗  [1mChannel not included[22m
+└  Your license doesn't include this release channel.
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
+[2m|[22m
 [31mx[39m  [1mChannel not included[22m
-[90m|[39m  Your license doesn't include this release channel.
-[90m`[39m
+[2m`[22m  Your license doesn't include this release channel.

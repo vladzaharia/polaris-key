@@ -1,70 +1,44 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
-[38;2;114;202;190m◆[0m  [1mAccount and license[0m
-[90m│[0m  Active[90m · [0mPro license[90m · Lifetime[0m
-[90m│[0m  [90mActivated with a license key[0m
-[90m│[0m  Version 2.4.1[90m · stable[0m
-[90m└[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[32m✓[0m  License   [1mPro[0m[2m · Lifetime · Activated with a license key[0m
+[32m✓[0m  Version   [1m2.4.1[0m[2m · stable[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
-[36m◆[0m  [1mAccount and license[0m
-[90m│[0m  Active[90m · [0mPro license[90m · Lifetime[0m
-[90m│[0m  [90mActivated with a license key[0m
-[90m│[0m  Version 2.4.1[90m · stable[0m
-[90m└[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[32m✓[0m  License   [1mPro[0m[2m · Lifetime · Activated with a license key[0m
+[32m✓[0m  Version   [1m2.4.1[0m[2m · stable[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [0m · status
 │
-◆  Account and license
-│  Active · Pro license · Lifetime
-│  Activated with a license key
-│  Version 2.4.1 · stable
-└
+✓  License   [1mPro[0m · Lifetime · Activated with a license key
+✓  Version   [1m2.4.1[0m · stable
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
-[90m|[0m
-[36m*[0m  [1mAccount and license[0m
-[90m|[0m  Active[90m - [0mPro license[90m - Lifetime[0m
-[90m|[0m  [90mActivated with a license key[0m
-[90m|[0m  Version 2.4.1[90m - stable[0m
-[90m`[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
+[32m+[0m  License   [1mPro[0m[2m - Lifetime - Activated with a license key[0m
+[32m+[0m  Version   [1m2.4.1[0m[2m - stable[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
-[38;2;114;202;190m◆[0m  [1mAccount and license[0m
-[90m│[0m  Active[90m · [0mPro license[90m · Lifetime[0m
-[90m│[0m  [90mActivated with a license key[0m
-[90m│[0m  Version 2.4.1[90m · stable[0m
-[90m└[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[32m✓[0m  License   [1mPro[0m[2m · Lifetime · Activated with a license key[0m
+[32m✓[0m  Version   [1m2.4.1[0m[2m · stable[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
-[36m◆[0m  [1mAccount and license[0m
-[90m│[0m  Active[90m · [0mPro license[90m · Lifetime[0m
-[90m│[0m  [90mActivated with a license key[0m
-[90m│[0m  Version 2.4.1[90m · stable[0m
-[90m└[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
+[32m✓[0m  License   [1mPro[0m[2m · Lifetime · Activated with a license key[0m
+[32m✓[0m  Version   [1m2.4.1[0m[2m · stable[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [0m · status
 │
-◆  Account and license
-│  Active · Pro license · Lifetime
-│  Activated with a license key
-│  Version 2.4.1 · stable
-└
+✓  License   [1mPro[0m · Lifetime · Activated with a license key
+✓  Version   [1m2.4.1[0m · stable
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
-[90m|[0m
-[36m*[0m  [1mAccount and license[0m
-[90m|[0m  Active[90m - [0mPro license[90m - Lifetime[0m
-[90m|[0m  [90mActivated with a license key[0m
-[90m|[0m  Version 2.4.1[90m - stable[0m
-[90m`[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
+[32m+[0m  License   [1mPro[0m[2m - Lifetime - Activated with a license key[0m
+[32m+[0m  Version   [1m2.4.1[0m[2m - stable[0m
 ── pipe · 80 ──
 Tidewater Studio · status
-Account and license
-Active · Pro license · Lifetime
-Activated with a license key
-Version 2.4.1 · stable
+License   Pro · Lifetime · Activated with a license key
+Version   2.4.1 · stable

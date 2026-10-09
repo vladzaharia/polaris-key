@@ -15,8 +15,13 @@ export const TERMINAL_SGR = {
   warning: "33",
   danger: "31",
   info: "35",
-  /** Secondary text: bright black, which every modern theme draws as a readable grey. */
-  muted: "90",
+  /**
+   * Secondary text (rails, hint labels, meta): faint over the default foreground, so it follows
+   * any palette. Bright black (90) disappears on Solarized Dark, taking the rails and hints with
+   * it; SGR 2 does not. Windows conhost shows faint as normal weight, which is acceptable. Bright
+   * black is still reachable through `theme.colors`.
+   */
+  muted: "2",
   strong: "1",
   link: "4",
   /** A chip (the product name in a flow header): inverse video. */
@@ -40,7 +45,7 @@ export const TERMINAL_SYMBOLS = {
     railStart: "┌",
     railEnd: "└",
     barFull: "━",
-    barEmpty: "━",
+    barEmpty: "─",
     separator: "·",
     ellipsis: "…",
     arrows: "↑↓",

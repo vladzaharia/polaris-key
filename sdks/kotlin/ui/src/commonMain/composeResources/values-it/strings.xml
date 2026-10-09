@@ -1246,8 +1246,8 @@
     <string name="cli_status_license">Licenza</string>
     <!-- Terminal status: the row label for how long the app works without the internet. -->
     <string name="cli_status_offline">Offline</string>
-    <!-- Terminal status: the license keeps working without the internet until {date} (a short date). Arguments: 1=date. -->
-    <string name="cli_status_offlineUntil">Funziona offline fino al %1$s</string>
+    <!-- Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition. Arguments: 1=date. -->
+    <string name="cli_status_offlineUntil">fino al %1$s</string>
     <!-- Terminal status: the row label for the app's version and release channel. -->
     <string name="cli_status_version">Versione</string>
     <!-- Terminal status: the heading over the commands that fix a blocked license. Arguments: 1=product. -->
@@ -1268,8 +1268,8 @@
     <string name="cli_devices_nameCleared">%1$s ora non ha un nome.</string>
     <!-- Terminal: a device was removed from the license. Arguments: 1=device. -->
     <string name="cli_devices_removed">%1$s è stato rimosso. Il posto è libero.</string>
-    <!-- Terminal: the person stopped an update download. -->
-    <string name="cli_update_cancelled">Aggiornamento annullato. Non è stato installato nulla.</string>
+    <!-- Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it. -->
+    <string name="cli_update_cancelled">Aggiornamento annullato.</string>
     <!-- Terminal: there are no downloadable content packs on this device. -->
     <string name="cli_packs_none">Nessun contenuto installato.</string>
     <!-- Terminal: a content pack is installed and takes effect after the app restarts. Shown after the pack's version. -->
@@ -1302,6 +1302,46 @@
     <string name="cli_doctor_installedFrom">Installato da</string>
     <!-- Terminal diagnostics: the heading over features this device cannot use, each with its reason. -->
     <string name="cli_doctor_unsupported">Non supportato qui</string>
+    <!-- Terminal key hints while waiting for a code sign-in on a computer that has a browser: c copies the code, o opens the sign-in page with the code filled in. Keep each key first and the ' · ' separators. -->
+    <string name="cli_keys_codeBrowser">c copia il codice · o apri nel browser · Esc annulla</string>
+    <!-- Terminal key prompt: the key belongs to a different product. {app} is that product's slug, {product} the product this command is for. Arguments: 1=app, 2=product. -->
+    <string name="cli_activate_otherProduct">Questa chiave è di un altro prodotto (%1$s). Usa la tua chiave di %2$s.</string>
+    <!-- Terminal update progress: how much of the download is done. {size} is a bare number and {total} carries the unit, so 'of' joins '38' and '61 MB'. Arguments: 1=size, 2=total. -->
+    <string name="cli_update_figures">%1$s di %2$s</string>
+    <!-- Terminal update progress on a narrow line: the short form of the sizes. {size} is a bare number and {total} carries the unit. Arguments: 1=size, 2=total. -->
+    <string name="cli_update_figuresShort">%1$s/%2$s</string>
+    <!-- Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'. Arguments: 1=time. -->
+    <string name="cli_update_timeLeft">%1$s rimanenti</string>
+    <!-- Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product. Arguments: 1=version, 2=size. -->
+    <string name="cli_update_ready">%1$s è pronta · %2$s</string>
+    <!-- Terminal: the update is ready and its size is not known. {version} is the new version. Arguments: 1=version. -->
+    <string name="cli_update_readyNoSize">%1$s è pronta</string>
+    <!-- Terminal: after an update downloaded, what the person does next. -->
+    <string name="cli_update_restart">Riavvia per completare l’aggiornamento.</string>
+    <!-- Terminal: an update download failed; nothing was changed on this device. -->
+    <string name="cli_update_nothingInstalled">Non è stato installato nulla.</string>
+    <!-- Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here. -->
+    <string name="cli_deviceLimit_body">Sostituisci un dispositivo nel browser, poi riprova qui.</string>
+    <!-- Terminal status: the row label for how many devices use the license. -->
+    <string name="cli_status_devices">Dispositivi</string>
+    <!-- Terminal status: devices in use out of the license's limit, like '2 of 3'. Arguments: 1=used, 2=limit. -->
+    <string name="cli_status_seatsOf">%1$s di %2$s</string>
+    <!-- Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product. Arguments: 1=version, 2=size. -->
+    <string name="cli_update_available">%1$s è disponibile · %2$s</string>
+    <!-- Terminal update check: a newer version exists and its size is not known. {version} is the version. Arguments: 1=version. -->
+    <string name="cli_update_availableNoSize">%1$s è disponibile</string>
+    <!-- Terminal update check: the version installed now. {version} is that version. Arguments: 1=version. -->
+    <string name="cli_update_have">Hai %1$s</string>
+    <!-- Terminal update check: what the 'update apply' command does, beside the command. -->
+    <string name="cli_update_install">Installa</string>
+    <!-- Terminal changelog: what to do after the release notes failed to load. {command} is a command line. Arguments: 1=command. -->
+    <string name="cli_changelog_fix">Controlla la connessione ed esegui di nuovo %1$s.</string>
+    <!-- Terminal offline activation: what to do after an activation file was refused. -->
+    <string name="cli_import_fix">Chiedi un nuovo file a chi te l’ha inviato.</string>
+    <!-- Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product. Arguments: 1=product. -->
+    <string name="cli_identityOff_notice">%1$s non usa l’accesso con Polaris Key.</string>
+    <!-- Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'. Arguments: 1=command. -->
+    <string name="cli_identityOff_fix">Esegui %1$s con la tua chiave di licenza.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Si è verificato un problema</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

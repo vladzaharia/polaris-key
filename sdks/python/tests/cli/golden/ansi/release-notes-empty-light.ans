@@ -1,51 +1,43 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · changelog[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · changelog[0m
+[2m│[0m
 [38;2;20;121;111m◆[0m  [1mWhat's new in Tidewater Studio[0m
-[90m│[0m  [90mNo release notes yet.[0m
-[90m└[0m
+[2m└[0m  [2mNo release notes yet.[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · changelog[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · changelog[0m
+[2m│[0m
 [36m◆[0m  [1mWhat's new in Tidewater Studio[0m
-[90m│[0m  [90mNo release notes yet.[0m
-[90m└[0m
+[2m└[0m  [2mNo release notes yet.[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · changelog
+┌  [7m Tidewater Studio [0m · changelog
 │
-◆  What's new in Tidewater Studio
-│  No release notes yet.
-└
+◆  [1mWhat's new in Tidewater Studio[0m
+└  No release notes yet.
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - changelog[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - changelog[0m
+[2m|[0m
 [36m*[0m  [1mWhat's new in Tidewater Studio[0m
-[90m|[0m  [90mNo release notes yet.[0m
-[90m`[0m
+[2m`[0m  [2mNo release notes yet.[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · changelog[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · changelog[0m
+[2m│[0m
 [38;2;20;121;111m◆[0m  [1mWhat's new in Tidewater Studio[0m
-[90m│[0m  [90mNo release notes yet.[0m
-[90m└[0m
+[2m└[0m  [2mNo release notes yet.[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · changelog[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · changelog[0m
+[2m│[0m
 [36m◆[0m  [1mWhat's new in Tidewater Studio[0m
-[90m│[0m  [90mNo release notes yet.[0m
-[90m└[0m
+[2m└[0m  [2mNo release notes yet.[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · changelog
+┌  [7m Tidewater Studio [0m · changelog
 │
-◆  What's new in Tidewater Studio
-│  No release notes yet.
-└
+◆  [1mWhat's new in Tidewater Studio[0m
+└  No release notes yet.
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - changelog[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - changelog[0m
+[2m|[0m
 [36m*[0m  [1mWhat's new in Tidewater Studio[0m
-[90m|[0m  [90mNo release notes yet.[0m
-[90m`[0m
+[2m`[0m  [2mNo release notes yet.[0m
 ── pipe · 80 ──
 Tidewater Studio · changelog
 What's new in Tidewater Studio

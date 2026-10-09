@@ -1,79 +1,99 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update check[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update check[22m
+[2m│[22m
 [33m▲[39m  [1mUpdate to keep using Tidewater Studio[22m
-[90m│[39m  This version is below the minimum supported version. Update to keep using
-[90m│[39m  Tidewater Studio.
-[90m└[39m  [90mRun tidewater update apply to install it.[39m
+[2m│[22m  This version is below the minimum supported version. Update to keep using
+[2m│[22m  Tidewater Studio.
+[2m│[22m
+[2m│[22m  [1mtidewater update apply[22m   [2mInstall[22m
+[2m└[22m  [1mtidewater changelog[22m      [2mWhat's new[22m
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update check[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update check[22m
+[2m│[22m
 [33m▲[39m  [1mUpdate to keep using Tidewater Studio[22m
-[90m│[39m  This version is below the minimum supported version. Update to keep using
-[90m│[39m  Tidewater Studio.
-[90m└[39m  [90mRun tidewater update apply to install it.[39m
+[2m│[22m  This version is below the minimum supported version. Update to keep using
+[2m│[22m  Tidewater Studio.
+[2m│[22m
+[2m│[22m  [1mtidewater update apply[22m   [2mInstall[22m
+[2m└[22m  [1mtidewater changelog[22m      [2mWhat's new[22m
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · update check[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · update check[22m
+[2m│[22m
 [33m▲[39m  [1mUpdate to keep using Tidewater Studio[22m
-[90m│[39m  This version is below the minimum supported version. Update to keep using
-[90m│[39m  Tidewater Studio.
-[90m└[39m  [90mRun tidewater update apply to install it.[39m
+[2m│[22m  This version is below the minimum supported version. Update to keep using
+[2m│[22m  Tidewater Studio.
+[2m│[22m
+[2m│[22m  [1mtidewater update apply[22m   [2mInstall[22m
+[2m└[22m  [1mtidewater changelog[22m      [2mWhat's new[22m
 
 #### no-color-80
-┌   Tidewater Studio  · update check
+┌  [7m Tidewater Studio [27m · update check
 │
-▲  Update to keep using Tidewater Studio
+▲  [1mUpdate to keep using Tidewater Studio[22m
 │  This version is below the minimum supported version. Update to keep using
 │  Tidewater Studio.
-└  Run tidewater update apply to install it.
+│
+│  [1mtidewater update apply[22m   Install
+└  [1mtidewater changelog[22m      What's new
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - update check[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - update check[22m
+[2m|[22m
 [33m![39m  [1mUpdate to keep using Tidewater Studio[22m
-[90m|[39m  This version is below the minimum supported version. Update to keep using
-[90m|[39m  Tidewater Studio.
-[90m`[39m  [90mRun tidewater update apply to install it.[39m
+[2m|[22m  This version is below the minimum supported version. Update to keep using
+[2m|[22m  Tidewater Studio.
+[2m|[22m
+[2m|[22m  [1mtidewater update apply[22m   [2mInstall[22m
+[2m`[22m  [1mtidewater changelog[22m      [2mWhat's new[22m
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update check[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update check[22m
+[2m│[22m
 [33m▲[39m  [1mUpdate to keep using Tidewater Studio[22m
-[90m│[39m  This version is below the minimum supported version.
-[90m│[39m  Update to keep using Tidewater Studio.
-[90m└[39m  [90mRun tidewater update apply to install it.[39m
+[2m│[22m  This version is below the minimum supported version.
+[2m│[22m  Update to keep using Tidewater Studio.
+[2m│[22m
+[2m│[22m  [1mtidewater update apply[22m   [2mInstall[22m
+[2m└[22m  [1mtidewater changelog[22m      [2mWhat's new[22m
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · update check[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · update check[22m
+[2m│[22m
 [33m▲[39m  [1mUpdate to keep using Tidewater Studio[22m
-[90m│[39m  This version is below the minimum supported version.
-[90m│[39m  Update to keep using Tidewater Studio.
-[90m└[39m  [90mRun tidewater update apply to install it.[39m
+[2m│[22m  This version is below the minimum supported version.
+[2m│[22m  Update to keep using Tidewater Studio.
+[2m│[22m
+[2m│[22m  [1mtidewater update apply[22m   [2mInstall[22m
+[2m└[22m  [1mtidewater changelog[22m      [2mWhat's new[22m
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · update check[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · update check[22m
+[2m│[22m
 [33m▲[39m  [1mUpdate to keep using Tidewater Studio[22m
-[90m│[39m  This version is below the minimum supported version.
-[90m│[39m  Update to keep using Tidewater Studio.
-[90m└[39m  [90mRun tidewater update apply to install it.[39m
+[2m│[22m  This version is below the minimum supported version.
+[2m│[22m  Update to keep using Tidewater Studio.
+[2m│[22m
+[2m│[22m  [1mtidewater update apply[22m   [2mInstall[22m
+[2m└[22m  [1mtidewater changelog[22m      [2mWhat's new[22m
 
 #### no-color-60
-┌   Tidewater Studio  · update check
+┌  [7m Tidewater Studio [27m · update check
 │
-▲  Update to keep using Tidewater Studio
+▲  [1mUpdate to keep using Tidewater Studio[22m
 │  This version is below the minimum supported version.
 │  Update to keep using Tidewater Studio.
-└  Run tidewater update apply to install it.
+│
+│  [1mtidewater update apply[22m   Install
+└  [1mtidewater changelog[22m      What's new
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - update check[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - update check[22m
+[2m|[22m
 [33m![39m  [1mUpdate to keep using Tidewater Studio[22m
-[90m|[39m  This version is below the minimum supported version.
-[90m|[39m  Update to keep using Tidewater Studio.
-[90m`[39m  [90mRun tidewater update apply to install it.[39m
+[2m|[22m  This version is below the minimum supported version.
+[2m|[22m  Update to keep using Tidewater Studio.
+[2m|[22m
+[2m|[22m  [1mtidewater update apply[22m   [2mInstall[22m
+[2m`[22m  [1mtidewater changelog[22m      [2mWhat's new[22m

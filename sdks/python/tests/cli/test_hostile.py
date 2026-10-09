@@ -95,7 +95,9 @@ def test_no_variant_draws_a_server_escape(label: str, env: Any) -> None:
         text = "\n".join(to_ansi(ln, pal) for ln in lines)
         _assert_clean(text, label)
         if env.color == "none":
-            assert "\x1b" not in text, label
+            # NO_COLOR drops colour, not weight: only bold, reverse, their reset and links remain.
+            leftover = re.sub(r"\x1b\[(?:0|1|7|1;7)m|\x1b\]8;;[^\x1b]*\x1b\\", "", text)
+            assert "\x1b" not in leftover, label
         for m in re.finditer(r"\x1b\]8;;([^\x1b]+)\x1b\\", text):
             assert safe_link(m.group(1)) == m.group(1), m.group(1)
         # Lines are lines: a newline in data never starts a new terminal row.
@@ -255,3 +257,51 @@ def test_dumb_terminal_in_a_pty_prints_the_code_and_no_escape(tmp_path: Path, us
     text = _pty([sys.executable, "-c", "import sys; " + code], env)
     assert "WDJB-MJHT" in text, text
     assert "\x1b" not in text, repr(text)
+
+
+# ── Text that reads differently from what it is ──────────────────────────────────────────────
+# Bidi overrides and isolates, bidi marks and zero-width characters draw nothing, but a device name
+# with U+202E in it reads backwards. ``clean`` strips them; U+200C and U+200D join letters and
+# emoji (ja, ar, fa) and stay inside a string, going only at its edges.
+
+SPOOF = "\u202e\u2066\u200b\u200e\u200f\ufeff\u2060\u2069\u202a\u061c"
+_HIDDEN = re.compile("[\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]")
+
+
+class Spoof:
+    def current(self) -> dict:
+        return {"name": f"Tide{SPOOF}water Studio", "developerName": f"Harbor{SPOOF}", "accent": "#369186"}
+
+
+def test_clean_strips_bidi_and_zero_width_and_keeps_joiners_inside_a_word() -> None:
+    from polaris_key.ui.terminal.text import clean
+
+    assert clean(f"Work{SPOOF} laptop") == "Work laptop"
+    assert clean("\u200dabc\u200c") == "abc"
+    assert clean("می\u200cخواهم") == "می\u200cخواهم"  # Persian: ZWNJ inside a word
+    assert clean("👩\u200d💻") == "👩\u200d💻"  # an emoji sequence
+    assert clean("ライセンス · Mara’s iPad") == "ライセンス · Mara’s iPad"
+
+
+def test_a_url_that_hides_a_character_is_not_linked() -> None:
+    assert safe_link("https://key.plrs.im/\u202eportal") is None
+    assert safe_link("https://key.plrs.im/\u200bportal") is None
+
+
+@pytest.mark.parametrize("locale", ["en", "ja"])
+@pytest.mark.parametrize("label,env", variants("dark"), ids=[v[0] for v in variants("dark")])
+def test_nothing_hidden_reaches_the_screen(label: str, env: Any, locale: str) -> None:
+    from polaris_key.ui.core import Theme
+
+    k = Kit.create(env, theme=Theme(copy={"locale": locale}), product="tidewater", source=Spoof(), prog="tidewater")
+    pal = k.palette()
+    rows = (DeviceRow("dev_1", f"Work{SPOOF} laptop", "macOS", True, "today"),)
+    screens_ = [
+        screens.devices(k, DevicesView("Devices", "list", rows)),
+        screens.gate(k, gate_view("ok", now=0, holder=f"Mara{SPOOF}", email=f"m{SPOOF}@x.test", signed_in=True, tier="Pro", term="Lifetime", version="2.4.1")),
+        screens.device_limit(k, ActivateView("DeviceLimit", "browser-mode", "device-limit", "device_limit", "pkey_x_abcdefghijklmnop", 3, 3, f"https://key.plrs.im/\u202eportal/devices")),
+    ]
+    for lines in screens_:
+        text = "\n".join(to_ansi(ln, pal) for ln in lines)
+        assert not _HIDDEN.search(text), (label, locale, [hex(ord(c)) for c in _HIDDEN.findall(text)])
+        assert "Tidewater Studio" in text

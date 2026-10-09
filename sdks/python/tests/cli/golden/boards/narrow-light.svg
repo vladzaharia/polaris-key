@@ -1,139 +1,405 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="537.6" height="834.4" viewBox="0 0 537.6 834.4" role="img" aria-label="60 columns, light theme">
-<rect width="537.6" height="834.4" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="537.6" height="918.4" viewBox="0 0 537.6 918.4" role="img" aria-label="60 columns, light theme">
+<rect width="537.6" height="918.4" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
 <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
 <rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="22.4" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="21.9" width="4.7" height="1" fill="#6e7781"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#24292f"/>
 <text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="26.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· login</text>
-<rect x="20.5" y="30.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="201.6" y="26.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">· login</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#24292f"/>
 <text x="21" y="60.2" text-anchor="middle" fill="#1a7f37">◇</text>
 <text x="42" y="60.2" textLength="403.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">No browser on this computer. Use a code instead:</text>
-<rect x="20.5" y="64.4" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#24292f"/>
 <text x="42" y="77" textLength="260.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">On any phone or computer, go to</text>
 <text x="310.8" y="77" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" text-decoration="underline">key.plrs.im/device</text>
 <text x="470.4" y="77" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">and</text>
-<rect x="20.5" y="81.2" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="81.2" width="1" height="16.8" fill="#24292f"/>
 <text x="42" y="93.8" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">enter this code.</text>
-<rect x="20.5" y="98" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="98" width="1" height="16.8" fill="#24292f"/>
 <rect x="67.2" y="114.8" width="92.4" height="16.8" fill="#24292f"/>
-<rect x="20.5" y="114.8" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="114.8" width="1" height="16.8" fill="#24292f"/>
 <text x="75.6" y="127.4" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#fbfbfc" font-weight="600">WDJB-MJHT</text>
-<rect x="20.5" y="131.6" width="1" height="16.8" fill="#6e7781"/>
-<rect x="20.5" y="148.4" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="131.6" width="1" height="16.8" fill="#24292f"/>
+<rect x="20.5" y="148.4" width="1" height="16.8" fill="#24292f"/>
 <text x="42" y="161" textLength="319.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">Check the code there matches this one.</text>
-<rect x="20.5" y="165.2" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="177.8" textLength="168" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Code expires in 4:12</text>
-<rect x="20.5" y="182" width="1" height="16.8" fill="#6e7781"/>
-<text x="21" y="211.4" text-anchor="middle" fill="#6e7781">⠹</text>
-<text x="42" y="211.4" textLength="201.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">Waiting for your browser</text>
-<text x="247.8" y="211.4" text-anchor="middle" fill="#24292f">…</text>
-<rect x="20.5" y="215.6" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="223.5" width="4.7" height="1" fill="#6e7781"/>
+<rect x="20.5" y="165.2" width="1" height="16.8" fill="#24292f"/>
+<text x="42" y="177.8" textLength="168" lengthAdjust="spacingAndGlyphs" fill="#24292f">Code expires in 4:12</text>
+<rect x="20.5" y="182" width="1" height="16.8" fill="#24292f"/>
+<text x="21" y="211.4" text-anchor="middle" fill="#24292f">⠹</text>
+<text x="42" y="211.4" textLength="218.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">Waiting for you to sign in</text>
+<text x="264.6" y="211.4" text-anchor="middle" fill="#24292f">…</text>
+<rect x="20.5" y="215.6" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="223.5" width="4.7" height="1" fill="#24292f"/>
 <text x="42" y="228.2" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">c</text>
-<text x="58.8" y="228.2" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Copy code ·</text>
-<text x="159.6" y="228.2" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
-<text x="193.2" y="228.2" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Cancel</text>
+<text x="58.8" y="228.2" textLength="126" lengthAdjust="spacingAndGlyphs" fill="#24292f">copy the code ·</text>
+<text x="193.2" y="228.2" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
+<text x="226.8" y="228.2" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">cancel</text>
 <rect x="42" y="249.2" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="257.6" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="257.1" width="4.7" height="1" fill="#6e7781"/>
+<rect x="20.5" y="257.6" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="257.1" width="4.7" height="1" fill="#24292f"/>
 <text x="50.4" y="261.8" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="261.8" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· activate</text>
-<rect x="20.5" y="266" width="1" height="16.8" fill="#6e7781"/>
+<text x="201.6" y="261.8" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#24292f">· activate</text>
+<rect x="20.5" y="266" width="1" height="16.8" fill="#24292f"/>
 <text x="21" y="295.4" text-anchor="middle" fill="#14796f">◆</text>
 <text x="42" y="295.4" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">License key</text>
-<text x="151.2" y="295.4" textLength="319.2" lengthAdjust="spacingAndGlyphs" fill="#6e7781">You&#x27;ll find it in your purchase email.</text>
+<text x="151.2" y="295.4" textLength="319.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">You&#x27;ll find it in your purchase email.</text>
 <rect x="352.8" y="299.6" width="8.4" height="16.8" fill="#24292f"/>
-<rect x="20.5" y="299.6" width="1" height="16.8" fill="#6e7781"/>
+<rect x="20.5" y="299.6" width="1" height="16.8" fill="#24292f"/>
 <text x="42" y="312.2" textLength="126" lengthAdjust="spacingAndGlyphs" fill="#24292f">pkey_tidewater_</text>
-<text x="172.2" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="180.6" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="189" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="197.4" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="205.8" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="214.2" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="222.6" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="231" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="239.4" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="247.8" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="256.2" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="264.6" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="273" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="281.4" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="289.8" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="298.2" y="312.2" text-anchor="middle" fill="#6e7781">•</text>
-<text x="302.4" y="312.2" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">3WPLDA</text>
-<rect x="20.5" y="316.4" width="1" height="16.8" fill="#6e7781"/>
+<text x="172.2" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="180.6" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="189" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="197.4" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="205.8" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="214.2" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="222.6" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="231" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="239.4" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="247.8" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="256.2" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="264.6" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="273" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="281.4" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="289.8" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="298.2" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="306.6" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="315" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="323.4" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="331.8" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="340.2" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<text x="348.6" y="312.2" text-anchor="middle" fill="#24292f">•</text>
+<rect x="20.5" y="316.4" width="1" height="16.8" fill="#24292f"/>
 <text x="46.2" y="329" text-anchor="middle" fill="#1a7f37">✓</text>
-<text x="58.8" y="329" textLength="201.6" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Key for Tidewater Studio</text>
-<rect x="20.5" y="333.2" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="341.1" width="4.7" height="1" fill="#6e7781"/>
+<text x="58.8" y="329" textLength="201.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">Key for Tidewater Studio</text>
+<rect x="20.5" y="333.2" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="341.1" width="4.7" height="1" fill="#24292f"/>
 <text x="42" y="345.8" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Enter</text>
-<text x="92.4" y="345.8" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Activate license ·</text>
-<text x="252" y="345.8" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
-<text x="285.6" y="345.8" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Cancel</text>
+<text x="92.4" y="345.8" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#24292f">activate ·</text>
+<text x="184.8" y="345.8" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
+<text x="218.4" y="345.8" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">cancel</text>
 <rect x="42" y="366.8" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="375.2" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="374.7" width="4.7" height="1" fill="#6e7781"/>
+<rect x="20.5" y="375.2" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="374.7" width="4.7" height="1" fill="#24292f"/>
 <text x="50.4" y="379.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="379.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· activate</text>
-<rect x="20.5" y="383.6" width="1" height="16.8" fill="#6e7781"/>
+<text x="201.6" y="379.4" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#24292f">· activate</text>
+<rect x="20.5" y="383.6" width="1" height="16.8" fill="#24292f"/>
 <text x="21" y="413" text-anchor="middle" fill="#1a7f37">◇</text>
-<text x="42" y="413" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">License key</text>
-<text x="142.8" y="413" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· pkey_tidewater_</text>
-<text x="289.8" y="413" text-anchor="middle" fill="#6e7781">…</text>
-<text x="294" y="413" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">3WPLDA</text>
-<rect x="20.5" y="417.2" width="1" height="16.8" fill="#6e7781"/>
-<text x="21" y="446.6" text-anchor="middle" fill="#9a6700">▲</text>
-<text x="42" y="446.6" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Your license is on 3 of 3 devices</text>
-<rect x="20.5" y="450.8" width="1" height="16.8" fill="#6e7781"/>
-<text x="46.2" y="463.4" text-anchor="middle" fill="#6e7781">●</text>
-<text x="54.6" y="463.4" text-anchor="middle" fill="#6e7781">●</text>
-<text x="63" y="463.4" text-anchor="middle" fill="#6e7781">●</text>
-<text x="75.6" y="463.4" textLength="109.2" lengthAdjust="spacingAndGlyphs" fill="#6e7781">3 of 3 in use</text>
-<rect x="20.5" y="467.6" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="480.2" textLength="462" lengthAdjust="spacingAndGlyphs" fill="#24292f">To use it on this computer, replace one. You can add it</text>
-<rect x="20.5" y="484.4" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="497" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">back later.</text>
-<rect x="20.5" y="501.2" width="1" height="16.8" fill="#6e7781"/>
-<text x="21" y="530.6" text-anchor="middle" fill="#14796f">◆</text>
-<text x="42" y="530.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Replace a device</text>
-<rect x="20.5" y="534.8" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="547.4" textLength="420" lengthAdjust="spacingAndGlyphs" fill="#24292f">Replace a device in your browser. Tidewater Studio</text>
-<rect x="20.5" y="551.6" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="564.2" textLength="226.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">continues when you&#x27;re done.</text>
-<rect x="20.5" y="568.4" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="581" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
-<rect x="20.5" y="585.2" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="593.1" width="4.7" height="1" fill="#6e7781"/>
-<text x="42" y="597.8" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Enter</text>
-<text x="92.4" y="597.8" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Open in browser ·</text>
-<text x="243.6" y="597.8" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
-<text x="277.2" y="597.8" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Cancel</text>
-<rect x="42" y="618.8" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="627.2" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="626.7" width="4.7" height="1" fill="#6e7781"/>
-<text x="50.4" y="631.4" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="631.4" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· offline-request</text>
-<rect x="20.5" y="635.6" width="1" height="16.8" fill="#6e7781"/>
-<text x="21" y="665" text-anchor="middle" fill="#14796f">◆</text>
-<text x="42" y="665" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Offline activation</text>
-<rect x="20.5" y="669.2" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="681.8" textLength="470.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">Send this request code to whoever gave you your license.</text>
-<rect x="20.5" y="686" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="698.6" textLength="210" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Product: Tidewater Studio</text>
-<rect x="20.5" y="702.8" width="1" height="16.8" fill="#6e7781"/>
-<rect x="67.2" y="719.6" width="151.2" height="16.8" fill="#24292f"/>
-<rect x="20.5" y="719.6" width="1" height="16.8" fill="#6e7781"/>
-<text x="75.6" y="732.2" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#fbfbfc" font-weight="600">dev_8f3a2c19e04b</text>
-<rect x="20.5" y="736.4" width="1" height="16.8" fill="#6e7781"/>
-<rect x="20.5" y="753.2" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="765.8" textLength="436.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">Then load the activation file you get back, or paste</text>
-<rect x="20.5" y="770" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="782.6" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">its text.</text>
-<rect x="20.5" y="786.8" width="1" height="16.8" fill="#6e7781"/>
-<text x="42" y="799.4" textLength="252" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater import-bundle &lt;file&gt;</text>
-<text x="319.2" y="799.4" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Activate from file</text>
-<rect x="20.5" y="803.6" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="811.5" width="4.7" height="1" fill="#6e7781"/>
+<text x="42" y="413" textLength="243.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">License key · pkey_tidewater_</text>
+<text x="289.8" y="413" text-anchor="middle" fill="#24292f">•</text>
+<text x="298.2" y="413" text-anchor="middle" fill="#24292f">•</text>
+<text x="306.6" y="413" text-anchor="middle" fill="#24292f">•</text>
+<text x="315" y="413" text-anchor="middle" fill="#24292f">•</text>
+<text x="323.4" y="413" text-anchor="middle" fill="#24292f">•</text>
+<text x="331.8" y="413" text-anchor="middle" fill="#24292f">•</text>
+<text x="21" y="429.8" text-anchor="middle" fill="#9a6700">▲</text>
+<text x="42" y="429.8" textLength="277.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Your license is on 3 of 3 devices</text>
+<rect x="20.5" y="434" width="1" height="16.8" fill="#24292f"/>
+<text x="46.2" y="446.6" text-anchor="middle" fill="#24292f" font-weight="600">●</text>
+<text x="54.6" y="446.6" text-anchor="middle" fill="#24292f" font-weight="600">●</text>
+<text x="63" y="446.6" text-anchor="middle" fill="#24292f" font-weight="600">●</text>
+<rect x="20.5" y="450.8" width="1" height="16.8" fill="#24292f"/>
+<text x="42" y="463.4" textLength="453.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">Replace a device in your browser, then try again here.</text>
+<rect x="20.5" y="467.6" width="1" height="16.8" fill="#24292f"/>
+<text x="42" y="480.2" textLength="302.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" text-decoration="underline">key.plrs.im/portal/tidewater/devices</text>
+<rect x="20.5" y="484.4" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="492.3" width="4.7" height="1" fill="#24292f"/>
+<text x="42" y="497" textLength="42" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Enter</text>
+<text x="92.4" y="497" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">open in browser ·</text>
+<text x="243.6" y="497" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
+<text x="277.2" y="497" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">cancel</text>
+<rect x="42" y="518" width="151.2" height="16.8" fill="#26847a"/>
+<rect x="20.5" y="526.4" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="525.9" width="4.7" height="1" fill="#24292f"/>
+<text x="50.4" y="530.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
+<text x="201.6" y="530.6" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#24292f">· offline-request</text>
+<rect x="20.5" y="534.8" width="1" height="16.8" fill="#24292f"/>
+<text x="21" y="564.2" text-anchor="middle" fill="#14796f">◆</text>
+<text x="42" y="564.2" textLength="151.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Offline activation</text>
+<rect x="20.5" y="568.4" width="1" height="16.8" fill="#24292f"/>
+<text x="42" y="581" textLength="470.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">Send this request code to whoever gave you your license.</text>
+<rect x="20.5" y="585.2" width="1" height="16.8" fill="#24292f"/>
+<rect x="67.2" y="602" width="151.2" height="16.8" fill="#24292f"/>
+<rect x="20.5" y="602" width="1" height="16.8" fill="#24292f"/>
+<text x="75.6" y="614.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#fbfbfc" font-weight="600">dev_8f3a2c19e04b</text>
+<rect x="67.2" y="618.8" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="618.8" width="1" height="16.8" fill="#24292f"/>
+<rect x="67.2" y="635.6" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="635.6" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="635.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="92.4" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="100.8" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="109.2" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="126" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="635.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="159.6" y="644" width="8.4" height="8.4" fill="#000000"/>
+<rect x="168" y="644" width="8.4" height="8.4" fill="#000000"/>
+<rect x="176.4" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="635.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="243.6" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="252" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="260.4" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="635.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="635.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="67.2" y="652.4" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="652.4" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="100.8" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="109.2" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="117.6" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="134.4" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="151.2" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="159.6" y="660.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="168" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="184.8" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="201.6" y="652.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="652.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="252" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="260.4" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="268.8" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="285.6" y="652.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="67.2" y="669.2" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="669.2" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="100.8" y="669.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="109.2" y="669.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="669.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="151.2" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="159.6" y="677.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="168" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="176.4" y="669.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="184.8" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="193.2" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="201.6" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="210" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="235.2" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="252" y="669.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="260.4" y="669.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="669.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="669.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="67.2" y="686" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="686" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="92.4" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="100.8" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="109.2" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="126" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="151.2" y="686" width="8.4" height="16.8" fill="#000000"/>
+<rect x="168" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="176.4" y="694.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="184.8" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="193.2" y="694.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="201.6" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="243.6" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="252" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="260.4" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="686" width="8.4" height="8.4" fill="#000000"/>
+<rect x="67.2" y="702.8" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="702.8" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="702.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="92.4" y="711.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="100.8" y="702.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="109.2" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="702.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="126" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="159.6" y="702.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="168" y="711.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="176.4" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="201.6" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="711.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="243.6" y="702.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="252" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="260.4" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="702.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="711.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="67.2" y="719.6" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="719.6" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="719.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="92.4" y="728" width="8.4" height="8.4" fill="#000000"/>
+<rect x="100.8" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="109.2" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="719.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="126" y="719.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="134.4" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="142.8" y="728" width="8.4" height="8.4" fill="#000000"/>
+<rect x="151.2" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="159.6" y="719.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="168" y="719.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="176.4" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="201.6" y="728" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="719.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="218.4" y="728" width="8.4" height="8.4" fill="#000000"/>
+<rect x="226.8" y="728" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="252" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="260.4" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="719.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="719.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="285.6" y="719.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="67.2" y="736.4" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="736.4" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="744.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="92.4" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="100.8" y="736.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="109.2" y="736.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="117.6" y="736.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="126" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="159.6" y="744.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="176.4" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="184.8" y="744.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="193.2" y="744.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="201.6" y="744.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="226.8" y="744.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="243.6" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="252" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="744.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="736.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="67.2" y="753.2" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="753.2" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="753.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="109.2" y="753.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="761.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="126" y="753.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="134.4" y="753.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="151.2" y="761.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="184.8" y="761.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="193.2" y="753.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="201.6" y="753.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="753.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="226.8" y="761.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="753.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="243.6" y="753.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="260.4" y="761.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="753.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="753.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="753.2" width="8.4" height="16.8" fill="#000000"/>
+<rect x="67.2" y="770" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="770" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="100.8" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="109.2" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="142.8" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="151.2" y="778.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="159.6" y="770" width="8.4" height="16.8" fill="#000000"/>
+<rect x="168" y="778.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="184.8" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="201.6" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="770" width="8.4" height="16.8" fill="#000000"/>
+<rect x="226.8" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="243.6" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="252" y="770" width="8.4" height="16.8" fill="#000000"/>
+<rect x="260.4" y="778.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="770" width="8.4" height="16.8" fill="#000000"/>
+<rect x="277.2" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="770" width="8.4" height="8.4" fill="#000000"/>
+<rect x="67.2" y="786.8" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="786.8" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="786.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="92.4" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="100.8" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="109.2" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="126" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="786.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="151.2" y="795.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="159.6" y="795.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="168" y="786.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="176.4" y="786.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="184.8" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="201.6" y="795.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="795.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="786.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="235.2" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="252" y="786.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="260.4" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="786.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="786.8" width="8.4" height="16.8" fill="#000000"/>
+<rect x="67.2" y="803.6" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="803.6" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="100.8" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="109.2" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="117.6" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="134.4" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="151.2" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="176.4" y="803.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="184.8" y="812" width="8.4" height="8.4" fill="#000000"/>
+<rect x="193.2" y="812" width="8.4" height="8.4" fill="#000000"/>
+<rect x="201.6" y="812" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="803.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="803.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="226.8" y="803.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="243.6" y="803.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="252" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="260.4" y="803.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="803.6" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="812" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="803.6" width="8.4" height="16.8" fill="#000000"/>
+<rect x="67.2" y="820.4" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="820.4" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="820.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="100.8" y="820.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="109.2" y="820.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="820.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="820.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="151.2" y="820.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="159.6" y="828.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="184.8" y="828.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="193.2" y="820.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="201.6" y="820.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="210" y="828.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="218.4" y="828.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="226.8" y="820.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="243.6" y="820.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="252" y="828.8" width="8.4" height="8.4" fill="#000000"/>
+<rect x="260.4" y="820.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="268.8" y="820.4" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="820.4" width="8.4" height="16.8" fill="#000000"/>
+<rect x="67.2" y="837.2" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="837.2" width="1" height="16.8" fill="#24292f"/>
+<rect x="84" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="92.4" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="100.8" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="109.2" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="117.6" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="126" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="134.4" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="151.2" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="184.8" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="201.6" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="226.8" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="235.2" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="268.8" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="277.2" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="285.6" y="837.2" width="8.4" height="8.4" fill="#000000"/>
+<rect x="67.2" y="854" width="243.6" height="16.8" fill="#ffffff"/>
+<rect x="20.5" y="854" width="1" height="16.8" fill="#24292f"/>
+<rect x="20.5" y="870.8" width="1" height="16.8" fill="#24292f"/>
+<text x="42" y="883.4" textLength="252" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">tidewater import-bundle &lt;file&gt;</text>
+<rect x="20.5" y="887.6" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="895.5" width="4.7" height="1" fill="#24292f"/>
+<text x="58.8" y="900.2" textLength="336" lengthAdjust="spacingAndGlyphs" fill="#24292f">Activate from an offline activation file</text>
 </g></svg>

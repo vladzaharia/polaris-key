@@ -4,7 +4,12 @@
   not a terminal drop every escape; ``FORCE_COLOR`` keeps them on a pipe. Status roles are
   ANSI-16; truecolor is used for the product accent only with ``COLORTERM=truecolor`` or ``24bit``.
 * **Symbols.** Unicode, or ASCII with ``--ascii``, ``theme.symbols = "ascii"`` or ``TERM=dumb``.
-* **Width.** The layout targets 80 columns and degrades to 60; a narrower terminal still gets 60.
+* **Width.** The layout is ``min(80, columns)``. Below 32 columns the rail and its gutter are dropped
+  and everything lays out at the real width, rather than drawing for 32 and being cropped. Prose
+  wraps; a URL or a code wraps at its own break points and is never cut (:mod:`.text`). The Node kit
+  lays out the same way.
+* **Height.** 16 rows or fewer is a short terminal (a "landscape" window): the screens drop their
+  blank rows and put the key hints inline, so the code, the URL and the keys stay in view.
 * **Scheme.** The theme's ``color_scheme``, then ``PKEY_THEME``, then the terminal's background
   (OSC 11, asked only on an interactive terminal and only when the answer matters: truecolor, or
   no colour, where the QR inverts), then ``COLORFGBG``, then dark.
@@ -19,14 +24,37 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import sys
+import threading
 from dataclasses import dataclass, replace
 from typing import IO, Any, Callable, Mapping, Optional
 
 from .. import ansi
 
-__all__ = ["TermEnv", "detect", "parse_colorfgbg", "parse_osc11"]
+__all__ = [
+    "TermEnv",
+    "detect",
+    "layout_columns",
+    "parse_colorfgbg",
+    "parse_osc11",
+    "pop_pending",
+    "push_back",
+    "MIN_COLUMNS",
+    "MIN_LAYOUT_COLUMNS",
+]
+
+#: Below this many columns the rail and its gutter are dropped.
+MIN_LAYOUT_COLUMNS = 32
+
+#: The narrowest width anything is laid out at, in cells.
+MIN_COLUMNS = 10
+
+
+def layout_columns(columns: int) -> int:
+    """The layout width for a terminal ``columns`` cells wide: 80, or the terminal's own width."""
+    return max(MIN_COLUMNS, min(ansi.LAYOUT["columns"], int(columns)))
 
 
 @dataclass(frozen=True)
@@ -37,9 +65,10 @@ class TermEnv:
     interactive: bool = False
     color: str = "none"
     symbols: str = "unicode"
-    #: Layout width in cells, 60 to 80.
+    #: Layout width in cells, up to 80.
     width: int = ansi.LAYOUT["columns"]
-    #: Terminal rows, for the QR's 20-row floor.
+    #: Terminal rows: a live screen taller than this compacts by fit; a QR shows only when the whole
+    #: screen fits them.
     height: int = 24
     #: ``"dark"`` or ``"light"``: the terminal's background.
     scheme: str = "dark"
@@ -53,8 +82,17 @@ class TermEnv:
     #: ``TERM=dumb``: a terminal that draws no escape at all, so plain lines, no rails, no
     #: prompts, no cursor control and no bracketed paste (SIGN-IN.md D-77).
     dumb: bool = False
-    #: The terminal's real width in cells (``width`` is the layout's, never below 60).
+    #: The terminal's real width in cells (``width`` is the layout's, at most 80).
     columns: int = ansi.LAYOUT["columns"]
+    #: The person asked for a code (``--device-code``): sign-in shows it without saying there is
+    #: no browser.
+    device_code: bool = False
+
+    def resized(self, columns: int, rows: int) -> "TermEnv":
+        """The same terminal at a new size (SIGWINCH)."""
+        if not self.tty:
+            return self
+        return replace(self, columns=columns, height=rows, width=layout_columns(columns))
 
     @property
     def symbol(self) -> Mapping[str, str]:
@@ -96,9 +134,33 @@ def parse_osc11(reply: str) -> Optional[str]:
     return "light" if luminance > 0.5 else "dark"
 
 
+#: Input read from the terminal while the kit asked it a question, that was not the answer (a key the
+#: person pressed meanwhile): the key reader reads it first.
+_PENDING = bytearray()
+_PENDING_LOCK = threading.Lock()
+
+_OSC11_REPLY = re.compile(rb"\x1b\]11;[^\x07\x1b]*(?:\x07|\x1b\\)")
+
+
+def push_back(data: bytes) -> None:
+    """Give input back to the key reader that comes next."""
+    if data:
+        with _PENDING_LOCK:
+            _PENDING.extend(data)
+
+
+def pop_pending() -> bytes:
+    """The input given back by :func:`push_back`, once."""
+    with _PENDING_LOCK:
+        data = bytes(_PENDING)
+        _PENDING.clear()
+    return data
+
+
 def query_osc11(timeout: float = 0.12) -> Optional[str]:
     """Ask the terminal for its background (POSIX only). ``None`` when it does not answer in
-    ``timeout`` seconds, or when there is no controlling terminal."""
+    ``timeout`` seconds, or when there is no controlling terminal. Whatever is read that is not the
+    answer (an Esc the person pressed meanwhile) goes back to the key reader."""
     if os.name != "posix":
         return None
     try:
@@ -112,7 +174,9 @@ def query_osc11(timeout: float = 0.12) -> Optional[str]:
     try:
         old = termios.tcgetattr(fd)
         try:
-            _tty.setraw(fd)
+            # TCSADRAIN, never the default TCSAFLUSH: a key typed before the question is read, not
+            # thrown away.
+            _tty.setraw(fd, termios.TCSADRAIN)
             os.write(fd, b"\x1b]11;?\x1b\\")
             buf = b""
             while True:
@@ -120,11 +184,13 @@ def query_osc11(timeout: float = 0.12) -> Optional[str]:
                 if not ready:
                     break
                 buf += os.read(fd, 64)
-                if buf.endswith(b"\x1b\\") or buf.endswith(b"\x07"):
+                if _OSC11_REPLY.search(buf):
                     break
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
-        return parse_osc11(buf.decode("ascii", "replace")) if buf else None
+        reply = _OSC11_REPLY.search(buf)
+        push_back(_OSC11_REPLY.sub(b"", buf, count=1))
+        return parse_osc11(reply.group(0).decode("ascii", "replace")) if reply else None
     except Exception:
         return None
     finally:
@@ -174,7 +240,10 @@ def detect(
     else:
         color = "ansi16"
 
-    sym = symbols if symbols in ("unicode", "ascii") else ("ascii" if (ascii or dumb) else "unicode")
+    # ASCII symbols and the ASCII spinner where the terminal has no braille: TERM=dumb, the kernel
+    # console (TERM=linux), PKEY_ASCII=1 and --ascii (the Node kit's rules).
+    plain_symbols = ascii or dumb or term == "linux" or (e.get("PKEY_ASCII", "") not in ("", "0", "false", "False"))
+    sym = symbols if symbols in ("unicode", "ascii") else ("ascii" if plain_symbols else "unicode")
     if ascii:
         sym = "ascii"
 
@@ -182,7 +251,7 @@ def detect(
         cols, rows = (size or shutil.get_terminal_size)()
     except Exception:
         cols, rows = ansi.LAYOUT["columns"], 24
-    width = ansi.LAYOUT["columns"] if not out_tty else min(ansi.LAYOUT["columns"], max(ansi.LAYOUT["minColumns"], cols))
+    width = ansi.LAYOUT["columns"] if not out_tty else layout_columns(cols)
 
     scheme: Optional[str] = color_scheme if color_scheme in ("dark", "light") else None
     if scheme is None and e.get("PKEY_THEME") in ("dark", "light"):
@@ -209,11 +278,12 @@ def detect(
         width=width,
         height=rows if out_tty else 24,
         scheme=scheme,
-        hyperlinks=color != "none" and not dumb,
+        hyperlinks=tty and not dumb and not ci and not json,
         clipboard=interactive and not dumb,
         motion=interactive and not dumb and motion == "system",
         headless=headless,
         json=json,
         dumb=dumb,
         columns=cols if out_tty else ansi.LAYOUT["columns"],
+        device_code=device_code,
     )

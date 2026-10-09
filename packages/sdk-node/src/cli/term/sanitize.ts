@@ -8,9 +8,33 @@
 /** C0 controls, DEL and C1 controls: whatever could start, end or smuggle an escape. */
 export const CONTROL_CHARS = /[\u0000-\u001f\u007f-\u009f]/g;
 
-/** `text` with every control character removed. */
+/**
+ * Controls, plus what changes how text reads without showing: bidi marks, overrides and isolates
+ * (U+061C, U+200E, U+200F, U+202A-202E, U+2066-2069) and the zero-width characters U+200B, U+2060
+ * and U+FEFF. A device name with U+202E in it could otherwise read backwards.
+ */
+export const HIDDEN_CHARS =
+  /[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/g;
+
+/** U+200C and U+200D join letters and emoji (ja, ar, fa): kept inside a string, stripped at its edges. */
+const EDGE_JOINERS = /^[\u200c\u200d]+|[\u200c\u200d]+$/g;
+
+/**
+ * `text` without control characters, bidi controls or zero-width characters. One zero-width space
+ * stays: the one `pkey` puts in front of a leading `::` and inside `##[` so a CI log never reads a
+ * server's text as a workflow command (packages/cli/src/untrusted.ts). Stripping it here would
+ * undo that defence on every line the kit draws.
+ */
 export function clean(text: string): string {
-  return text.replace(CONTROL_CHARS, "");
+  return text
+    .replace(HIDDEN_CHARS, (ch, at: number) =>
+      ch === "\u200b" &&
+      (text.startsWith("::", at + 1) ||
+        (text.slice(at - 2, at) === "##" && text[at + 1] === "["))
+        ? ch
+        : "",
+    )
+    .replace(EDGE_JOINERS, "");
 }
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
@@ -21,7 +45,13 @@ const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
  * is drawn as text without a link.
  */
 export function safeLink(url: string | undefined | null): string | null {
-  if (!url || /[\s\u0000-\u001f\u007f-\u009f]/.test(url)) return null;
+  if (
+    !url ||
+    /[\s\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]/.test(
+      url,
+    )
+  )
+    return null;
   let u: URL;
   try {
     u = new URL(url);

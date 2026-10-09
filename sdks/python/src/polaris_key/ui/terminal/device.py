@@ -14,15 +14,23 @@ from __future__ import annotations
 import base64
 import json as _json
 import os
+import re
+import shutil
+import signal
 import sys
 import threading
 import time
-from typing import IO, Any, Callable, Iterable, List, Optional, Sequence
+from typing import IO, Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
-from .env import TermEnv
+from .env import TermEnv, pop_pending, push_back
+from .screen import fit_screen
 from .text import Line, Palette, Span, _merge, cell_len, clean, safe_link, to_ansi
 
-__all__ = ["Device", "KeyReader", "rich_available", "to_rich"]
+__all__ = ["Device", "KeyReader", "LiveRegion", "physical_rows", "rich_available", "to_rich"]
+
+
+#: The terminal's answer to ESC [ 6 n: the cursor's row and column.
+_CPR = re.compile(rb"\x1b\[(\d+);(\d+)R")
 
 
 def rich_available() -> bool:
@@ -91,7 +99,7 @@ def to_rich(lines: Iterable[Line], palette: Palette) -> Any:
         for s in spans:
             text = clean(s.text)
             link = safe_link(s.link) if palette.hyperlinks else None
-            if palette.color == "none" or not (s.roles or link):
+            if (palette.color == "none" and not palette.attributes and not link) or not (s.roles or link):
                 out.append(text)
                 continue
             params = palette.params(s.roles) if s.roles else ""
@@ -102,10 +110,13 @@ def to_rich(lines: Iterable[Line], palette: Palette) -> Any:
 def rich_console(env: TermEnv, stream: IO[str], *, width: Optional[int] = None, environ: Optional[dict] = None) -> Any:
     from rich.console import Console
 
-    system = {"none": None, "ansi16": "standard", "truecolor": "truecolor"}[env.color]
+    # NO_COLOR drops colour, not weight: on a terminal rich keeps bold and reverse (no_color strips the
+    # colours), anywhere else it writes nothing.
+    keeps_weight = env.tty and not env.dumb and not env.json
+    system = {"none": "standard" if keeps_weight else None, "ansi16": "standard", "truecolor": "truecolor"}[env.color]
     kw: dict = dict(
         file=stream,
-        force_terminal=env.tty and env.color != "none",
+        force_terminal=env.tty and not env.dumb and not env.json,
         color_system=system,
         no_color=env.color == "none",
         highlight=False,
@@ -121,6 +132,46 @@ def rich_console(env: TermEnv, stream: IO[str], *, width: Optional[int] = None, 
     return Console(**kw)
 
 
+def guard_sigterm(restore: Callable[[], None]) -> Callable[[], None]:
+    """Run ``restore`` (give the terminal back: cooked mode, cursor, paste mode) when the process is
+    terminated by SIGTERM, then let the termination go on as it would have (the previous handler,
+    or the default action, so the exit status is still 128 + 15). Returns the call that removes it.
+    Nothing is installed off the main thread, where Python cannot set handlers, or where the host
+    ignores SIGTERM on purpose."""
+    if not hasattr(signal, "SIGTERM") or threading.current_thread() is not threading.main_thread():
+        return lambda: None
+    prev: Any = signal.getsignal(signal.SIGTERM)
+    if prev == signal.SIG_IGN:
+        return lambda: None
+    if not callable(prev):
+        prev = signal.SIG_DFL  # getsignal says 0 or None for a handler Python did not install
+
+    def on_term(signum: int, frame: Any) -> None:
+        try:
+            restore()
+        except Exception:
+            pass
+        signal.signal(signal.SIGTERM, prev)
+        if callable(prev):
+            prev(signum, frame)
+        else:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    try:
+        signal.signal(signal.SIGTERM, on_term)
+    except (ValueError, OSError):
+        return lambda: None
+
+    def undo() -> None:
+        try:
+            if signal.getsignal(signal.SIGTERM) is on_term:
+                signal.signal(signal.SIGTERM, prev)
+        except (ValueError, OSError):
+            pass
+
+    return undo
+
+
 # ── Keys ─────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -129,12 +180,31 @@ class KeyReader:
     ``ctrl-u``, or the text typed or pasted (bracketed paste is unwrapped). ``Ctrl-C`` raises
     ``KeyboardInterrupt``. POSIX through termios, Windows through msvcrt."""
 
-    def __init__(self, stdin: Optional[IO[str]] = None, *, bracketed_paste: bool = True) -> None:
+    def __init__(
+        self,
+        stdin: Optional[IO[str]] = None,
+        *,
+        bracketed_paste: bool = True,
+        wake: Optional[int] = None,
+        registry: Optional["set[KeyReader]"] = None,
+    ) -> None:
         self._in = stdin or sys.stdin
+        #: The device's set of open readers, so a termination handled on the main thread can give
+        #: back a terminal that a reader on another thread (the update's Esc watcher) put in cbreak.
+        self._registry = registry
+        #: A pipe the device writes to on SIGWINCH: a blocking read wakes (returning ``""``), so the
+        #: flow's loop redraws at the new size without waiting for a key.
+        self._wake = wake
         self._fd: Optional[int] = None
         self._old: Any = None
         self._pending = ""
         self._paste = bracketed_paste
+        self._undo_term: Callable[[], None] = lambda: None
+        #: Held while a read waits on the terminal, so a cursor-position question from another
+        #: thread takes its turn.
+        self._lock = threading.Lock()
+        self._cursor: Optional[int] = None
+        self.active = False
 
     def __enter__(self) -> "KeyReader":
         if os.name == "posix":
@@ -143,30 +213,76 @@ class KeyReader:
 
             self._fd = self._in.fileno()
             self._old = termios.tcgetattr(self._fd)
-            tty.setcbreak(self._fd)
+            # TCSADRAIN, never the default TCSAFLUSH: a key typed while the flow waited on the
+            # network (Esc, say) is read, not thrown away.
+            tty.setcbreak(self._fd, termios.TCSADRAIN)
             if self._paste:
                 sys.stdout.write("\x1b[?2004h")
                 sys.stdout.flush()
+            self._undo_term = guard_sigterm(self._give_back)
+        self.active = True
+        if self._registry is not None:
+            self._registry.add(self)
         return self
 
+    def _give_back(self) -> None:
+        """Cooked mode, paste mode off and the cursor shown again (also from a SIGTERM handler)."""
+        import termios
+
+        if self._fd is None:
+            return
+        try:
+            if self._paste:
+                sys.stdout.write("\x1b[?2004l")
+            sys.stdout.write("\x1b[?25h")
+            sys.stdout.flush()
+        except Exception:
+            pass
+        termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
+
     def __exit__(self, *exc: Any) -> None:
+        self.active = False
+        if self._registry is not None:
+            self._registry.discard(self)
         if os.name == "posix" and self._fd is not None:
             import termios
 
+            self._undo_term()
             if self._paste:
                 sys.stdout.write("\x1b[?2004l")
                 sys.stdout.flush()
             termios.tcsetattr(self._fd, termios.TCSADRAIN, self._old)
 
+    def _scan(self, data: bytes) -> bytes:
+        """``data`` without the terminal's cursor-position answers, which are noted, not typed."""
+        for m in _CPR.finditer(data):
+            self._cursor = int(m.group(1))
+        return _CPR.sub(b"", data)
+
+    def _read_fd(self, timeout: Optional[float], wake: bool = True) -> bytes:
+        import select
+
+        fds = [self._fd] + ([self._wake] if wake and self._wake is not None else [])
+        ready, _, _ = select.select(fds, [], [], timeout)  # type: ignore[list-item]
+        if wake and self._wake is not None and self._wake in ready:
+            try:
+                os.read(self._wake, 4096)
+            except OSError:
+                pass
+            return b""
+        if self._fd not in ready:
+            return b""
+        return os.read(self._fd, 4096)  # type: ignore[arg-type]
+
     def _raw(self, timeout: Optional[float]) -> str:
         if os.name == "posix":
-            import select
-
-            ready, _, _ = select.select([self._fd], [], [], timeout)
-            if not ready:
-                return ""
-            data = os.read(self._fd, 4096)  # type: ignore[arg-type]
-            return data.decode("utf-8", "replace")
+            # What the kit read while it asked the terminal something (OSC 11) comes first.
+            given = pop_pending()
+            if given:
+                return self._scan(given).decode("utf-8", "replace")
+            with self._lock:
+                data = self._read_fd(timeout)
+            return self._scan(data).decode("utf-8", "replace")
         import msvcrt  # type: ignore[import-not-found]
 
         deadline = None if timeout is None else time.monotonic() + timeout
@@ -179,6 +295,31 @@ class KeyReader:
             code = msvcrt.getwch()  # type: ignore[attr-defined]
             return {"H": "\x1b[A", "P": "\x1b[B"}.get(code, "")
         return ch
+
+    def cursor_row(self, out: Any, timeout: float = 0.1) -> Optional[int]:
+        """Ask the terminal where the cursor is (ESC [ 6 n) and wait up to ``timeout`` seconds for
+        its answer, 1-based; ``None`` when it does not. Keys read meanwhile go back to the reader."""
+        if os.name != "posix" or self._fd is None or not self.active:
+            return None
+        self._cursor = None
+        try:
+            out.write("\x1b[6n")
+            out.flush()
+        except Exception:
+            return None
+        end = time.monotonic() + timeout
+        while self._cursor is None:
+            left = end - time.monotonic()
+            if left <= 0:
+                break
+            # A key watcher on another thread may be the one that reads the answer: it notes it.
+            if self._lock.acquire(timeout=min(left, 0.03)):
+                try:
+                    data = self._read_fd(min(left, 0.03), wake=False)
+                finally:
+                    self._lock.release()
+                push_back(self._scan(data))
+        return self._cursor
 
     def read(self, timeout: Optional[float] = None) -> Optional[str]:
         buf = self._pending or self._raw(timeout)
@@ -255,6 +396,8 @@ class Device:
         stdout: Optional[IO[str]] = None,
         stdin: Optional[IO[str]] = None,
         use_rich: Optional[bool] = None,
+        size: Optional[Callable[[], Tuple[int, int]]] = None,
+        cursor_row: Optional[Callable[[], Optional[int]]] = None,
     ) -> None:
         self.env = env
         self.palette = palette
@@ -262,6 +405,15 @@ class Device:
         self.inp = stdin or sys.stdin
         self.use_rich = rich_available() if use_rich is None else use_rich
         self._console: Any = None
+        self._size = size
+        self._cursor_row = cursor_row
+        self._reader: Optional[KeyReader] = None
+        self._readers: "set[KeyReader]" = set()
+        self._resized: List[Callable[[TermEnv], None]] = []
+        #: A resize pushed the flow's header into the terminal's scrollback: it is never printed again.
+        self.header_gone = False
+        self._wake_r: Optional[int] = None
+        self._wake_w: Optional[int] = None
         if not self.use_rich and env.color != "none" and os.name == "nt" and not _enable_vt():
             # A legacy Windows console without virtual-terminal processing: plain lines.
             self.palette = Palette(color="none")
@@ -272,7 +424,35 @@ class Device:
             self._console = rich_console(self.env, self.out)
         return self._console
 
+    def size(self) -> Tuple[int, int]:
+        """The terminal's size now (columns, rows)."""
+        if self._size is not None:
+            return self._size()
+        try:
+            sz = os.get_terminal_size(self.out.fileno())
+        except Exception:
+            sz = shutil.get_terminal_size((self.env.columns, self.env.height))
+        return sz.columns, sz.lines
+
+    def on_resize(self, fn: Callable[[TermEnv], None]) -> None:
+        """Call ``fn`` with the new :class:`TermEnv` when the terminal changes size."""
+        self._resized.append(fn)
+
+    def refresh_size(self) -> None:
+        """Re-read the terminal's size into ``env`` (and every ``on_resize`` listener: the kit)."""
+        try:
+            cols, rows = self.size()
+        except Exception:
+            return
+        if (cols, rows) == (self.env.columns, self.env.height):
+            return
+        self.env = self.env.resized(cols, rows)
+        for fn in self._resized:
+            fn(self.env)
+
     def print(self, lines: Sequence[Line]) -> None:
+        if self.header_gone:
+            lines = [ln for ln in lines if ln.role != "header"]
         if self.env.json or not lines:
             return
         if self.use_rich:
@@ -288,7 +468,49 @@ class Device:
         self.out.flush()
 
     def keys(self) -> KeyReader:
-        return KeyReader(self.inp, bracketed_paste=not self.env.dumb)
+        self._reader = KeyReader(self.inp, bracketed_paste=not self.env.dumb, wake=self._wake_fd(), registry=self._readers)
+        return self._reader
+
+    def give_back_keys(self) -> None:
+        """Give the terminal back (cooked mode, paste mode off, cursor shown) from every open key
+        reader: for a termination handled on the main thread while a reader runs on another."""
+        for reader in list(self._readers):
+            try:
+                reader._give_back()
+            except Exception:
+                pass
+
+    def cursor_row(self) -> Optional[int]:
+        """The cursor's row (1-based) from a cursor-position report, for a live region that must find
+        its own top after the window grew; ``None`` when the terminal does not answer in time or no
+        key reader is up to hear it."""
+        if self._cursor_row is not None:
+            return self._cursor_row()
+        reader = self._reader
+        if reader is None or not reader.active or not self.env.interactive:
+            return None
+        return reader.cursor_row(self.out)
+
+    def _wake_fd(self) -> Optional[int]:
+        """The read end of a pipe SIGWINCH writes to (POSIX, interactive terminals only)."""
+        if os.name != "posix" or not self.env.interactive:
+            return None
+        if self._wake_r is None:
+            try:
+                self._wake_r, self._wake_w = os.pipe()
+                os.set_blocking(self._wake_r, False)
+                os.set_blocking(self._wake_w, False)
+            except OSError:
+                self._wake_r = self._wake_w = None
+        return self._wake_r
+
+    def wake(self) -> None:
+        """Wake a blocking key read (a resize needs the flow to redraw)."""
+        if self._wake_w is not None:
+            try:
+                os.write(self._wake_w, b"\0")
+            except OSError:
+                pass
 
     def live(self) -> "LiveRegion":
         return LiveRegion(self)
@@ -317,16 +539,54 @@ class Device:
             return False
 
 
+Frame = Union[Sequence[Line], Callable[[], Sequence[Line]]]
+
+
+def physical_rows(widths: Sequence[int], columns: int) -> int:
+    """Rows lines of these cell widths take on a terminal ``columns`` wide (a wider line wraps)."""
+    c = max(1, columns)
+    return sum(max(1, -(-w // c)) for w in widths)
+
+
+def _erase(rows: int) -> str:
+    """Erase ``rows`` rows ending at the cursor's, leaving it at the start of the first."""
+    if rows <= 0:
+        return ""
+    return "\r" + (f"\x1b[{rows - 1}A" if rows > 1 else "") + "\x1b[J"
+
+
 class LiveRegion:
-    """Lines redrawn in place (spinners, countdowns, progress) at most every 80 ms; on a terminal
-    without motion the region is drawn once per change and never animated."""
+    """A flow's whole screen, redrawn in place (spinners, countdowns, progress) at most every 80 ms;
+    on a terminal without motion it is drawn once per change and never animated.
+
+    The flow hands over its lines (header to key hints), as a list or a function that builds them.
+    Each update lays them out spaced, compacts them to fit the terminal (``screen.fit_screen``) and
+    replaces the previous frame, erased by the rows it really took on the (reflowed) screen.
+
+    Nothing is written above the region while it is up, so no line is left at an old width: on a
+    resize (SIGWINCH) the region re-reads the size at its next update, erases what it drew, and lays
+    the same screen out again, as a fresh launch would. A header the resize pushed into the
+    terminal's own scrollback cannot be erased: it is never printed again (``Device.header_gone``),
+    so an outcome leaves one header and one result block, never the code view above it. The Node
+    kit's ``LiveRegion`` behaves the same."""
 
     def __init__(self, device: Device) -> None:
         self.d = device
-        self._lines: List[Line] = []
-        self._drawn = 0
+        self._frame: Optional[Frame] = None
+        #: Cell widths of the lines drawn now, and how many of the leading ones are the header.
+        self._drawn: List[int] = []
+        self._head = 0
         self._live: Any = None
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
+        self._undo_term: Callable[[], None] = lambda: None
+        self._resize_pending = False
+        self._old_winch: Any = None
+        self._winch = False
+        #: Rows of the flow that went into the terminal's scrollback and have not come back.
+        self._gone = 0
+        #: The window's height at the last resize, and whether it just grew.
+        self._rows_now = 0
+        self._grew = False
 
     @property
     def _redraws(self) -> bool:
@@ -334,48 +594,135 @@ class LiveRegion:
         motion only decides whether spinners turn), never on ``TERM=dumb``."""
         return (self.d.env.interactive or self.d.env.motion) and not self.d.env.dumb
 
-    def _rows(self, line: Line) -> int:
-        """Physical rows ``line`` takes: a terminal narrower than the 60-column layout wraps it."""
-        cols = max(1, self.d.env.columns)
-        return max(1, -(-cell_len(clean(line.text).rstrip()) // cols))
+    @staticmethod
+    def _widths(lines: Sequence[Line]) -> List[int]:
+        return [cell_len(clean(line.text).rstrip()) for line in lines]
 
     def __enter__(self) -> "LiveRegion":
-        if self.d.use_rich and self._redraws:
+        if not self._redraws:
+            return self
+        if self.d.use_rich and getattr(self.d.console, "legacy_windows", False):
+            # A legacy Windows console takes no cursor escapes: rich drives it through the console API.
             from rich.live import Live
 
             self._live = Live(console=self.d.console, auto_refresh=False, transient=True, redirect_stdout=False, redirect_stderr=False)
             self._live.__enter__()
-        elif self._redraws:
-            self.d.out.write("\x1b[?25l")
+            return self
+        self.d.out.write("\x1b[?25l")
+        self.d.out.flush()
+        self._listen(True)
+        self._rows_now = self.d.env.height
+        self._undo_term = guard_sigterm(self._give_back)
         return self
 
-    def update(self, lines: Sequence[Line]) -> None:
+    def _give_back(self) -> None:
+        """Termination: the cursor shown again, and the terminal handed back by any key reader that
+        a thread other than the main one has open (the update's Esc watcher)."""
+        self.d.give_back_keys()
+        self.d.out.write("\x1b[?25h")
+        self.d.out.flush()
+
+    def _listen(self, on: bool) -> None:
+        """Take SIGWINCH while the region is up (main thread only; the previous handler still runs)."""
+        if on == self._winch or not hasattr(signal, "SIGWINCH"):
+            return
+        if threading.current_thread() is not threading.main_thread():
+            return
+        try:
+            if on:
+                self._old_winch = signal.signal(signal.SIGWINCH, self._on_winch)
+            else:
+                signal.signal(signal.SIGWINCH, self._old_winch if self._old_winch is not None else signal.SIG_DFL)
+        except (ValueError, OSError):
+            return
+        self._winch = on
+
+    def _on_winch(self, signum: int, frame: Any) -> None:
+        # A signal handler never writes to the terminal (it may land mid-write): it notes the resize
+        # and wakes a blocking key read, and the flow's next update redraws.
+        old = self._old_winch
+        if callable(old):
+            old(signum, frame)
+        self._resize_pending = True
+        self.d.wake()
+
+    def _erase_rows(self) -> int:
+        """Rows to erase before the next frame. After a resize the terminal reflowed what was drawn,
+        and rows beyond its new height went into its scrollback, where they cannot be erased. A
+        window that grew after it shrank usually pulled those rows back onto the screen above the
+        region, as a stale copy of the top of the flow: the terminal is asked where the cursor is
+        (the region ends at it), and the rows above the region's real top are erased with it."""
+        cols = self.d.env.columns
+        if not self._resize_pending:
+            return physical_rows(self._drawn, cols)
+        self._resize_pending = False
+        rows_before = self._rows_now or self.d.env.height
+        self.d.refresh_size()
+        env = self.d.env
+        reflowed = physical_rows(self._drawn, env.columns)
+        growth = env.height - rows_before
+        self._rows_now = env.height
+        self._grew = growth > 0
+        above = 0
+        if self._gone > 0 and growth > 0:
+            row = self.d.cursor_row()  # still at the end of the (reflowed) region
+            mine = min(reflowed, env.height)
+            # Without an answer, assume the terminal restored as many rows as it grew by, up to the
+            # rows that scrolled away.
+            room = growth if row is None else max(0, row - mine)
+            above = min(self._gone, room)
+            self._gone -= above
+            if above:
+                self.d.header_gone = False
+        gone = max(0, reflowed - env.height)
+        if gone > 0 and self._head > 0:
+            self.d.header_gone = True
+        self._gone += gone
+        return reflowed - gone + above
+
+    def update(self, frame: Frame) -> None:
+        """Show ``frame`` (lines, or a function that builds them at the current size) in place of the
+        last one."""
         with self._lock:
-            self._lines = list(lines)
+            self._frame = frame
             if self._live is not None:
-                self._live.update(to_rich(self._lines, self.d.palette), refresh=True)
+                lines = list(frame() if callable(frame) else frame)
+                self._live.update(to_rich(lines, self.d.palette), refresh=True)
                 return
             if not self._redraws:
                 return
-            out = self.d.out
-            if self._drawn:
-                out.write(f"\x1b[{self._drawn}F\x1b[J")
-            for line in self._lines:
-                out.write(to_ansi(line, self.d.palette) + "\n")
-            self._drawn = sum(self._rows(line) for line in self._lines)
-            out.flush()
+            erase = _erase(self._erase_rows())
+            lines = list(frame() if callable(frame) else frame)
+            env = self.d.env
+            if self.d.header_gone and self._grew:
+                # The window may have room for the header again (nothing came back, but it fits).
+                if fit_screen(lines, env.height - 1, env.width, env.symbol["separator"]).head > 0:
+                    self.d.header_gone = False
+            if self.d.header_gone:
+                lines = [ln for ln in lines if ln.role != "header"]
+            fitted = fit_screen(lines, env.height - 1, env.width, env.symbol["separator"])
+            self._drawn = self._widths(fitted.lines)
+            self._head = fitted.head
+            self.d.out.write(erase + "\n".join(to_ansi(ln, self.d.palette) for ln in fitted.lines))
+            self.d.out.flush()
 
     def clear(self) -> None:
         with self._lock:
             if self._live is not None:
                 self._live.update(to_rich([], self.d.palette), refresh=True)
             elif self._drawn and self._redraws:
-                self.d.out.write(f"\x1b[{self._drawn}F\x1b[J")
+                self.d.out.write(_erase(self._erase_rows()))
                 self.d.out.flush()
-                self._drawn = 0
+            self._drawn = []
+            self._frame = None
+            self._head = 0
+            self._gone = 0
 
     def __exit__(self, *exc: Any) -> None:
         self.clear()
+        self._listen(False)
+        self._undo_term()
+        self._undo_term = lambda: None
         if self._live is not None:
             self._live.__exit__(None, None, None)
         elif self._redraws:

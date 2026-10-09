@@ -7,6 +7,10 @@
 export {
   detectTerminal,
   isCi,
+  layoutColumns,
+  MIN_COLUMNS,
+  MIN_LAYOUT_COLUMNS,
+  SHORT_ROWS,
   isHeadless,
   queryBackground,
   readsLogCommands,
@@ -31,6 +35,8 @@ export {
 export {
   columnsOf,
   contentWidth,
+  isNarrow,
+  DROP,
   GUTTER,
   keyHints,
   railLines,
@@ -41,6 +47,7 @@ export {
   type Symbols,
 } from "./layout.js";
 export {
+  breakPieces,
   cellWidth,
   charWidth,
   padEnd,
@@ -55,8 +62,11 @@ export {
 export {
   animate,
   LiveRegion,
+  physicalRows,
   realTicker,
   spinnerFrames,
+  type LiveHost,
+  type Screen,
   type Ticker,
 } from "./live.js";
 export { isCancel, isInterrupt, KeyReader, type Key } from "./keys.js";
@@ -78,11 +88,12 @@ export {
 export {
   percent,
   progressSpans,
-  QR_MIN_COLUMNS,
-  QR_MIN_ROWS,
+  QR_INDENT,
+  qrFits,
   qrLines,
 } from "./progress.js";
 export { displayUrl, osc52, osc8 } from "./osc.js";
+export { fitScreen, inlineHints, type FitOptions } from "./screen.js";
 export { clean, CONTROL_CHARS, hasLogCommand, safeLink } from "./sanitize.js";
 export {
   TERMINAL_LAYOUT,

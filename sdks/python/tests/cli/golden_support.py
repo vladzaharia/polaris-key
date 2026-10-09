@@ -39,7 +39,9 @@ def env(color: str, symbols: str, width: int, theme: str, *, tty: bool = True) -
         color=color if tty else "none",
         symbols=symbols,
         width=width,
-        height=24,
+        # 30 rows, as the Node kit's goldens: tall enough for the offline QR, which shows only
+        # where the whole screen fits with it (tests/cli/test_responsive.py covers 12 and 24).
+        height=30,
         scheme=theme,
         hyperlinks=tty and color != "none",
         clipboard=tty,

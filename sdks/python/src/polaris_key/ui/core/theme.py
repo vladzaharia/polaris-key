@@ -27,9 +27,10 @@ class Theme:
     color_scheme: str = "system"
     accent: str = "product"
     service_cues: bool = False
-    #: Per-role overrides, per scheme: ``{"dark": {"accent": "#…"}, "light": {…}}``. In the
-    #: terminal the roles are the ANSI roles (``accent``, ``success``, ``warning``, ``danger``,
-    #: ``info``, ``muted``, ``strong``, ``link``, ``chip``) and the values SGR parameters.
+    #: Per-role overrides, per scheme, as hex colours: ``{"dark": {"success": "#rrggbb"}, "light":
+    #: {…}}``, the one value language of every kit. In the terminal the roles are the ANSI roles
+    #: (``accent``, ``success``, ``warning``, ``danger``, ``info``, ``muted``, ``strong``, ``link``),
+    #: drawn only where the terminal draws truecolor and never under ``preset="native"``.
     colors: Mapping[str, Mapping[str, str]] = field(default_factory=dict)
     radius: Union[str, int] = "md"
     typography: Mapping[str, Any] = field(default_factory=dict)

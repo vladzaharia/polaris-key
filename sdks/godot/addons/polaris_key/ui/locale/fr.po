@@ -3327,10 +3327,10 @@ msgstr "Licence"
 msgid "cli.status.offline"
 msgstr "Hors ligne"
 
-#. Works offline until {date}
-#. Terminal status: the license keeps working without the internet until {date} (a short date).
+#. until {date}
+#. Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition.
 msgid "cli.status.offlineUntil"
-msgstr "Fonctionne hors ligne jusqu’au {date}"
+msgstr "jusqu’au {date}"
 
 #. Version
 #. Terminal status: the row label for the app's version and release channel.
@@ -3382,10 +3382,10 @@ msgstr "{device} n’a plus de nom."
 msgid "cli.devices.removed"
 msgstr "{device} a été retiré. Sa place est libre."
 
-#. Update cancelled. Nothing was installed.
-#. Terminal: the person stopped an update download.
+#. Update cancelled.
+#. Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it.
 msgid "cli.update.cancelled"
-msgstr "Mise à jour annulée. Rien n’a été installé."
+msgstr "Mise à jour annulée."
 
 #. No content is installed.
 #. Terminal: there are no downloadable content packs on this device.
@@ -3466,6 +3466,106 @@ msgstr "Installé depuis"
 #. Terminal diagnostics: the heading over features this device cannot use, each with its reason.
 msgid "cli.doctor.unsupported"
 msgstr "Non pris en charge ici"
+
+#. c copy the code · o open in browser · Esc cancel
+#. Terminal key hints while waiting for a code sign-in on a computer that has a browser: c copies the code, o opens the sign-in page with the code filled in. Keep each key first and the ' · ' separators.
+msgid "cli.keys.codeBrowser"
+msgstr "c copier le code · o ouvrir dans le navigateur · Échap annuler"
+
+#. This key is for another product ({app}). Use your {product} key.
+#. Terminal key prompt: the key belongs to a different product. {app} is that product's slug, {product} the product this command is for.
+msgid "cli.activate.otherProduct"
+msgstr "Cette clé est celle d’un autre produit ({app}). Utilisez votre clé {product}."
+
+#. {size} of {total}
+#. Terminal update progress: how much of the download is done. {size} is a bare number and {total} carries the unit, so 'of' joins '38' and '61 MB'.
+msgid "cli.update.figures"
+msgstr "{size} sur {total}"
+
+#. {size}/{total}
+#. Terminal update progress on a narrow line: the short form of the sizes. {size} is a bare number and {total} carries the unit.
+msgid "cli.update.figuresShort"
+msgstr "{size}/{total}"
+
+#. {time} left
+#. Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'.
+msgid "cli.update.timeLeft"
+msgstr "{time} restant"
+
+#. {version} is ready · {size}
+#. Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.ready"
+msgstr "{version} est prête · {size}"
+
+#. {version} is ready
+#. Terminal: the update is ready and its size is not known. {version} is the new version.
+msgid "cli.update.readyNoSize"
+msgstr "{version} est prête"
+
+#. Restart to finish updating.
+#. Terminal: after an update downloaded, what the person does next.
+msgid "cli.update.restart"
+msgstr "Redémarrez pour terminer la mise à jour."
+
+#. Nothing was installed.
+#. Terminal: an update download failed; nothing was changed on this device.
+msgid "cli.update.nothingInstalled"
+msgstr "Rien n’a été installé."
+
+#. Replace a device in your browser, then try again here.
+#. Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here.
+msgid "cli.deviceLimit.body"
+msgstr "Remplacez un appareil dans votre navigateur, puis réessayez ici."
+
+#. Devices
+#. Terminal status: the row label for how many devices use the license.
+msgid "cli.status.devices"
+msgstr "Appareils"
+
+#. {used} of {limit}
+#. Terminal status: devices in use out of the license's limit, like '2 of 3'.
+msgid "cli.status.seatsOf"
+msgstr "{used} sur {limit}"
+
+#. {version} is available · {size}
+#. Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product.
+msgid "cli.update.available"
+msgstr "{version} est disponible · {size}"
+
+#. {version} is available
+#. Terminal update check: a newer version exists and its size is not known. {version} is the version.
+msgid "cli.update.availableNoSize"
+msgstr "{version} est disponible"
+
+#. You have {version}
+#. Terminal update check: the version installed now. {version} is that version.
+msgid "cli.update.have"
+msgstr "Vous avez {version}"
+
+#. Install
+#. Terminal update check: what the 'update apply' command does, beside the command.
+msgid "cli.update.install"
+msgstr "Installer"
+
+#. Check your connection and run {command} again.
+#. Terminal changelog: what to do after the release notes failed to load. {command} is a command line.
+msgid "cli.changelog.fix"
+msgstr "Vérifiez votre connexion, puis exécutez à nouveau {command}."
+
+#. Ask whoever sent it for a new file.
+#. Terminal offline activation: what to do after an activation file was refused.
+msgid "cli.import.fix"
+msgstr "Demandez un nouveau fichier à la personne qui vous l’a envoyé."
+
+#. {product} doesn't use Polaris Key sign-in.
+#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+msgid "cli.identityOff.notice"
+msgstr "{product} n’utilise pas la connexion Polaris Key."
+
+#. Run {command} with your license key.
+#. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
+msgid "cli.identityOff.fix"
+msgstr "Exécutez {command} avec votre clé de licence."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

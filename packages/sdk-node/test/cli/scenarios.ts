@@ -513,7 +513,13 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     name: "update-prompt-available",
-    data: [...COMMON, "update check", "2.5.0", "tidewater update apply"],
+    data: [
+      ...COMMON,
+      "update check",
+      "2.5.0",
+      "tidewater update apply",
+      "tidewater changelog",
+    ],
     run: (h) =>
       updateCheckFlow(
         h.ctx,
@@ -531,7 +537,12 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     name: "update-prompt-mandatory",
-    data: [...COMMON, "update check", "tidewater update apply"],
+    data: [
+      ...COMMON,
+      "update check",
+      "tidewater update apply",
+      "tidewater changelog",
+    ],
     run: (h) =>
       updateCheckFlow(
         h.ctx,
@@ -750,6 +761,8 @@ export const SCENARIOS: Scenario[] = [
       "dev_4hQ8",
       "dev_7tR1",
       "3",
+      "tidewater devices rename <id> <name>",
+      "tidewater devices deauthorize <id>",
     ],
     run: (h) =>
       devicesListFlow(

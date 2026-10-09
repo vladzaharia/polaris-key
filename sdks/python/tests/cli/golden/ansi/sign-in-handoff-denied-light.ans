@@ -1,70 +1,53 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · login[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
 [31m✗[0m  [1mSign-in declined[0m
-[90m│[0m  Sign-in was declined. Start again.
-[90m│[0m
-[90m│[0m  [1mtidewater sign-in[0m   [90mGet a new code[0m
-[90m└[0m
+[2m│[0m
+[2m└[0m  [1mtidewater login[0m   [2mSign in again[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · login[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
 [31m✗[0m  [1mSign-in declined[0m
-[90m│[0m  Sign-in was declined. Start again.
-[90m│[0m
-[90m│[0m  [1mtidewater sign-in[0m   [90mGet a new code[0m
-[90m└[0m
+[2m│[0m
+[2m└[0m  [1mtidewater login[0m   [2mSign in again[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · login
+┌  [7m Tidewater Studio [0m · login
 │
-✗  Sign-in declined
-│  Sign-in was declined. Start again.
+✗  [1mSign-in declined[0m
 │
-│  tidewater sign-in   Get a new code
-└
+└  [1mtidewater login[0m   Sign in again
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - login[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
 [31mx[0m  [1mSign-in declined[0m
-[90m|[0m  Sign-in was declined. Start again.
-[90m|[0m
-[90m|[0m  [1mtidewater sign-in[0m   [90mGet a new code[0m
-[90m`[0m
+[2m|[0m
+[2m`[0m  [1mtidewater login[0m   [2mSign in again[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · login[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
 [31m✗[0m  [1mSign-in declined[0m
-[90m│[0m  Sign-in was declined. Start again.
-[90m│[0m
-[90m│[0m  [1mtidewater sign-in[0m   [90mGet a new code[0m
-[90m└[0m
+[2m│[0m
+[2m└[0m  [1mtidewater login[0m   [2mSign in again[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · login[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
 [31m✗[0m  [1mSign-in declined[0m
-[90m│[0m  Sign-in was declined. Start again.
-[90m│[0m
-[90m│[0m  [1mtidewater sign-in[0m   [90mGet a new code[0m
-[90m└[0m
+[2m│[0m
+[2m└[0m  [1mtidewater login[0m   [2mSign in again[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · login
+┌  [7m Tidewater Studio [0m · login
 │
-✗  Sign-in declined
-│  Sign-in was declined. Start again.
+✗  [1mSign-in declined[0m
 │
-│  tidewater sign-in   Get a new code
-└
+└  [1mtidewater login[0m   Sign in again
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - login[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
 [31mx[0m  [1mSign-in declined[0m
-[90m|[0m  Sign-in was declined. Start again.
-[90m|[0m
-[90m|[0m  [1mtidewater sign-in[0m   [90mGet a new code[0m
-[90m`[0m
+[2m|[0m
+[2m`[0m  [1mtidewater login[0m   [2mSign in again[0m
 ── pipe · 80 ──
 Tidewater Studio · login
 Sign-in declined
-Sign-in was declined. Start again.
 
-tidewater sign-in   Get a new code
+tidewater login   Sign in again

@@ -112,7 +112,7 @@ def test_device_limit_opens_the_browser_then_tries_again() -> None:
     assert opened == ["https://key.plrs.im/portal/tidewater/devices"]
     assert out.code == 0 and client.license.keys == [KEY, KEY]
     screen = t.device.out.getvalue()
-    assert C("deviceLimit.openBrowser") in screen and C("common.tryAgain") in screen
+    assert "open in browser" in screen and "try again" in screen
 
 
 def test_device_limit_without_a_terminal_reports_and_stops() -> None:
@@ -282,5 +282,5 @@ def test_a_live_region_counts_wrapped_rows_on_a_narrow_terminal() -> None:
     with d.live() as live:
         live.update([Line([Span("x" * 55)]), Line([Span("short")])])
         live.update([Line([Span("y")])])
-    # 55 cells in 40 columns take two rows, so the redraw moves up three.
-    assert "\x1b[3F" in out.getvalue()
+    # 55 cells in 40 columns take two rows: the redraw erases three, from the third back up two.
+    assert "short\r\x1b[2A\x1b[Jy" in out.getvalue()

@@ -6,6 +6,7 @@ import { openInBrowser } from "../identity/client.js";
 import { KitCopy, localeFromEnv } from "./copy.js";
 import {
   detectTerminal,
+  layoutColumns,
   queryBackground,
   schemeIsGuessed,
   type DetectOptions,
@@ -18,11 +19,13 @@ import { KeyReader } from "./term/keys.js";
 import {
   railLines,
   symbolsFor,
+  type LineMeta,
   type RailRow,
   type Symbols,
 } from "./term/layout.js";
-import { realTicker, type Ticker } from "./term/live.js";
+import { LiveRegion, realTicker, type Ticker } from "./term/live.js";
 import { safeLink } from "./term/sanitize.js";
+import { fitScreen, type Fitted } from "./term/screen.js";
 import { Painter } from "./term/paint.js";
 import {
   bundleIdentity,
@@ -76,7 +79,18 @@ export interface KitContext {
   /** Print rail rows on stdout. */
   rows(rows: readonly RailRow[]): void;
   /** Lines for rail rows, without printing. */
-  render(rows: readonly RailRow[]): string[];
+  render(rows: readonly RailRow[], meta?: LineMeta): string[];
+  /** Lines for rail rows that fit the terminal: compacted by tier, then cut from the top. */
+  fit(rows: readonly RailRow[]): Fitted;
+  /** Re-read the terminal's size into `caps` (a live region calls it on SIGWINCH). */
+  refreshSize(): void;
+  /**
+   * The cursor's row (1-based) from a cursor-position report, for a live region that must find
+   * its own top after the window grew; null when nobody can answer in time.
+   */
+  cursorRow(): Promise<number | null>;
+  /** A live region on stdout that lays its whole screen out again on a resize. */
+  live(): LiveRegion;
   /** Release the keyboard (raw mode off). Call when the flow ends. */
   close(): void;
 }
@@ -164,11 +178,14 @@ function buildContext(
     slug: o.slug,
     scheme: caps.scheme,
   });
+  // `colors` are hex per role, drawn only in truecolor; the native preset keeps the terminal's
+  // own palette, so it takes none of them.
   const painter = new Painter(
     caps,
     product.chip,
-    theme.colors?.[caps.scheme] ?? {},
-    product.accentSource === "ink",
+    theme.preset === "native" ? {} : (theme.colors?.[caps.scheme] ?? {}),
+    // The native preset keeps the terminal's palette: its accent role is ANSI cyan, never ink.
+    product.accentSource === "ink" && theme.preset !== "native",
   );
   const symbols = symbolsFor(caps);
   const copy = new KitCopy({
@@ -181,9 +198,16 @@ function buildContext(
     caps.dumb && caps.tty && stdin.isTTY === true && !caps.json && !caps.ci
       ? new KeyReader(stdin)
       : null;
-  const render = (rows: readonly RailRow[]) =>
-    railLines(rows, painter, symbols, caps.columns);
-  return {
+  const render = (rows: readonly RailRow[], meta?: LineMeta) =>
+    railLines(rows, painter, symbols, caps.columns, meta);
+  const fit = (rows: readonly RailRow[]) =>
+    fitScreen(rows, {
+      maxRows: caps.rows - 1,
+      columns: caps.columns,
+      separator: symbols.separator,
+      render,
+    });
+  const ctx: KitContext = {
     caps,
     painter,
     symbols,
@@ -206,13 +230,25 @@ function buildContext(
     keys,
     plainKeys,
     render,
+    fit,
     rows: (rows) => {
       const lines = render(rows);
       if (lines.length) stdout.write(`${lines.join("\n")}\n`);
     },
+    refreshSize: () => {
+      if (!caps.tty) return;
+      if (stdout.columns) caps.columns = layoutColumns(stdout.columns);
+      if (stdout.rows) caps.rows = stdout.rows;
+    },
+    cursorRow: () =>
+      keys
+        ? keys.cursorRow(() => stdout.write("\x1b[6n"), 100)
+        : Promise.resolve(null),
+    live: () => new LiveRegion(stdout, ctx),
     close: () => {
       keys?.close();
       plainKeys?.close();
     },
   };
+  return ctx;
 }

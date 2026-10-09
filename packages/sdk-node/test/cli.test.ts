@@ -480,9 +480,7 @@ describe("cli/commander adapter smoke", () => {
       version: "1.2.3",
     });
     // ...and the status command drew the gate (needs-activation) in the catalog's words.
-    expect(lines.join("\n")).toContain(
-      "Enter a license key or sign in to continue.",
-    );
+    expect(lines.join("\n")).toContain("Activate");
     // ...and --json carries the gate and the store status (P1b-09).
     lines.length = 0;
     await program.parseAsync(["status", "--json"], { from: "user" });

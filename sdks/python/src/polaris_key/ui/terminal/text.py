@@ -23,6 +23,9 @@ from ...core.manage import is_manage_url
 from .. import ansi
 
 __all__ = [
+    "BREAKS",
+    "DROP",
+    "break_pieces",
     "clean",
     "safe_link",
     "Span",
@@ -39,20 +42,29 @@ __all__ = [
 #: C0 controls, DEL and C1 controls: what could start or end a terminal escape (ESC, BEL, CSI
 #: 0x9B, OSC 0x9D, ST 0x9C …) or move the cursor. Text never carries them to a terminal.
 _CONTROLS = re.compile("[\x00-\x1f\x7f-\x9f]")
+#: Controls, plus what changes how text reads without showing: bidi marks, overrides and isolates
+#: (U+061C, U+200E, U+200F, U+202A-202E, U+2066-2069) and the zero-width characters U+200B, U+2060
+#: and U+FEFF. A device name with U+202E in it could otherwise read backwards.
+_HIDDEN = re.compile("[\x00-\x1f\x7f-\x9f\u061c\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]")
+#: U+200C and U+200D join letters and emoji (ja, ar, fa): kept inside a string, where they do their
+#: job, and stripped at its edges, where they only hide.
+_EDGE_JOINERS = re.compile("^[\u200c\u200d]+|[\u200c\u200d]+$")
 
 
 def clean(text: str) -> str:
-    """``text`` without control characters. Copy and data (a device label, a product name, a
-    changelog line, a URL from the server) are drawn as text, never as escapes: the kit's own
-    escapes are written by :func:`to_ansi` outside every span's text."""
-    return _CONTROLS.sub("", text) if text else text
+    """``text`` without control characters, bidi controls or zero-width characters. Copy and data (a
+    device label, a product name, a changelog line, a URL from the server) are drawn as text, never as
+    escapes: the kit's own escapes are written by :func:`to_ansi` outside every span's text."""
+    if not text:
+        return text
+    return _EDGE_JOINERS.sub("", _HIDDEN.sub("", text))
 
 
 def safe_link(url: Optional[str]) -> Optional[str]:
     """``url`` when it may become an OSC 8 hyperlink: an absolute ``https`` URL (or ``http`` to a
     loopback host) with no whitespace, control character or userinfo (the manage-URL rule of
     ``polaris_key.core.manage``). Anything else is drawn as text without a link."""
-    if not url or _CONTROLS.search(url) or not is_manage_url(url):
+    if not url or _HIDDEN.search(url) or not is_manage_url(url):
         return None
     return url
 
@@ -66,18 +78,34 @@ class Span:
     src: str = "space"
     #: Never broken across lines (a key, a user code, a URL).
     nobreak: bool = False
+    #: Part of one keep-unit (a name, an email, a date, "3 of 3", "38 MB", a key and its label): a
+    #: maximal run of adjacent ``unit`` spans moves to the next line whole and breaks at its own
+    #: spaces only when wider than the line. A non-``unit`` span (a separator) ends a run.
+    unit: bool = False
 
     def __post_init__(self) -> None:
-        if self.text and _CONTROLS.search(self.text):
+        if self.text and (_HIDDEN.search(self.text) or _EDGE_JOINERS.search(self.text)):
             object.__setattr__(self, "text", clean(self.text))
 
 
 @dataclass
 class Line:
     spans: List[Span] = field(default_factory=list)
+    #: Compaction tier for a live screen taller than the terminal (see ``fit_screen``): the line is
+    #: dropped at this tier, lowest first. ``None``: never dropped (the URL line, the code, the hints).
+    drop: Optional[int] = None
+    #: ``"spinner"`` is the waiting line the key hints merge onto first; ``"hints"`` the hints line
+    #: that merges (``hint_spans`` are its spans without the rail prefix); ``"header"`` the flow's
+    #: header lines, which a live region leaves out once a resize pushed them into the terminal's
+    #: scrollback (they cannot be erased, and are never printed a second time).
+    role: Optional[str] = None
+    hint_spans: Optional[List[Span]] = None
+    #: Essential when a live screen is cut to the terminal's height (the URL line, the code, the
+    #: key hints): every other line leaves first, from the top.
+    keep: bool = False
 
     def __add__(self, other: "Line") -> "Line":
-        return Line(self.spans + other.spans)
+        return Line(self.spans + other.spans, self.drop, self.role, self.hint_spans, self.keep)
 
     @property
     def text(self) -> str:
@@ -126,6 +154,69 @@ def plain(lines: Iterable[Line]) -> str:
 
 
 # ── Wrapping ─────────────────────────────────────────────────────────────────────────────────
+#
+# Three kinds of token never break at a space like prose does (the Node kit's width.ts is the
+# same):
+#
+# * a **key** or an id (``nobreak``): one line, cut in the middle when it cannot fit;
+# * a **URL** (``src="data:url"``): never cut and never given an ellipsis. One that does not fit
+#   the rest of the line starts a line of its own and, wider than a line, wraps after ``/`` or
+#   before ``?`` and ``&`` (then after ``-`` or before ``.``, then anywhere), hanging under the
+#   content column; every piece keeps the link;
+# * a **user code** (``src="data:code"``): never cut; wider than a line, it wraps after a ``-``.
+
+#: The compaction tiers a live screen drops, in order, when it is taller than the terminal.
+DROP = {"blank_prose": 2, "check": 3, "blank_code": 4, "countdown": 5}
+
+#: Span sources whose text wraps at its own break points and is never cut.
+BREAKS = {"data:url": "url", "data:code": "code"}
+
+
+def _split_at(text: str, after: str, before: str = "") -> List[str]:
+    out: List[str] = []
+    cur = ""
+    for ch in text:
+        if ch in before and cur:
+            out.append(cur)
+            cur = ""
+        cur += ch
+        if ch in after:
+            out.append(cur)
+            cur = ""
+    if cur:
+        out.append(cur)
+    return out
+
+
+def _hard_split(text: str, width: int) -> List[str]:
+    out: List[str] = []
+    cur, used = "", 0
+    for ch in text:
+        w = _char_width(ch)
+        if used + w > width and cur:
+            out.append(cur)
+            cur, used = "", 0
+        cur += ch
+        used += w
+    if cur:
+        out.append(cur)
+    return out
+
+
+def break_pieces(text: str, kind: str, width: int) -> List[str]:
+    """The pieces a URL (``kind="url"``) or a user code (``"code"``) may wrap between, none wider
+    than ``width``: a URL after ``/`` and before ``?`` and ``&``, a piece still too wide after
+    ``-`` and before ``.``; a code after ``-``; anything still too wide in runs of ``width`` cells.
+    Joined, the pieces are the text unchanged."""
+    w = max(1, width)
+    first = _split_at(text, "/", "?&") if kind == "url" else _split_at(text, "-")
+    second: List[str] = []
+    for p in first:
+        second += _split_at(p, "-", ".") if kind == "url" and cell_len(p) > w else [p]
+    out: List[str] = []
+    for p in second:
+        out += _hard_split(p, w) if cell_len(p) > w else [p]
+    return out
 
 
 def _fragments(spans: Sequence[Span]) -> Iterable[Tuple[str, Span]]:
@@ -148,7 +239,7 @@ def _fragments(spans: Sequence[Span]) -> Iterable[Tuple[str, Span]]:
                 while j < len(text) and text[j] != " " and _char_width(text[j]) != 2:
                     j += 1
                 kind = "word"
-            yield kind, Span(text[i:j], span.roles, span.link, span.src)
+            yield kind, Span(text[i:j], span.roles, span.link, span.src, span.nobreak, span.unit)
             i = j
 
 
@@ -183,31 +274,159 @@ def _word_len(word: Sequence[Span], *, trailing: bool = True) -> int:
     return cell_len(text if trailing else text.rstrip(" "))
 
 
-def wrap(spans: Sequence[Span], width: int) -> List[List[Span]]:
-    """Wrap ``spans`` to ``width`` cells on word boundaries, never splitting a ``nobreak`` span,
-    and without leaving a single orphan word on the last line when the line above can give one
-    (UI-KITS §1.5 rule 11)."""
-    words = _tokens(spans)
+def _is_piece(word: Sequence[Span]) -> bool:
+    return any(s.src in BREAKS for s in word)
+
+
+def _groups(spans: Sequence[Span]) -> List[Tuple[str, List[List[Span]], int]]:
+    """Prose words, each URL or code as one ``group`` of pieces, and each run of ``unit`` spans as
+    one ``unit`` group of words, in order. The spaces after a URL or a code stay with its last
+    piece."""
+    out: List[Tuple[str, List[List[Span]], int]] = []
+    run: List[Span] = []
+    unit: List[Span] = []
+
+    def flush() -> None:
+        if run:
+            for w in _tokens(run):
+                if w[0].text.strip(" ") == "" and out and out[-1][0] == "group":
+                    out[-1][1][-1].extend(w)  # spaces right after a URL or a code
+                else:
+                    out.append(("word", [w], 0))
+            run.clear()
+
+    def flush_unit() -> None:
+        if unit:
+            words = _tokens(unit)
+            out.append(("unit", words, cell_len("".join(s.text for s in unit).rstrip(" "))))
+            unit.clear()
+
+    for span in spans:
+        if span.unit and span.src not in BREAKS and span.text:
+            flush()
+            unit.append(span)
+            continue
+        flush_unit()
+        if span.src in BREAKS and span.text:
+            flush()
+            out.append(("group", [[span]], cell_len(span.text.strip(" "))))
+        else:
+            run.append(span)
+    flush()
+    flush_unit()
+    return out
+
+
+def wrap(spans: Sequence[Span], width: int, *, ellipsis: str = "…") -> List[List[Span]]:
+    """Wrap ``spans`` to ``width`` cells on word boundaries, without leaving a single orphan word on
+    the last line when the line above can give one (UI-KITS §1.5 rule 11). A URL or a code wraps
+    at its own break points and is never cut; any other ``nobreak`` span (a key, an id) wider than
+    the line is cut in the middle."""
+    width = max(1, width)
     lines: List[List[List[Span]]] = [[]]
     used = 0
-    for w in words:
-        n = _word_len(w, trailing=False)
-        if lines[-1] and used + n > width:
-            lines.append([])
-            used = 0
-        lines[-1].append(w)
-        used += _word_len(w)
-    # Orphan check: move one word down when the last line holds a single short word.
-    if len(lines) >= 2 and len(lines[-1]) == 1 and len(lines[-2]) > 2:
-        moved = lines[-2].pop()
-        if sum(_word_len(x) for x in [moved] + lines[-1]) <= width:
-            lines[-1].insert(0, moved)
-        else:
-            lines[-2].append(moved)
+
+    def trim(line: List[List[Span]]) -> None:
+        # A separator ("·") divides items on one line, and a line never ends with one or with a
+        # trailing space word left where a separator or unit moved away.
+        while len(line) > 1 and "".join(s.text for s in line[-1]).strip(" ") in ("·", ""):
+            line.pop()
+
+    def new_line() -> None:
+        trim(lines[-1])
+        lines.append([])
+
+    def only_whitespace(line: List[List[Span]]) -> bool:
+        return all("".join(s.text for s in w).strip(" ") == "" for w in line)
+
+    def pull_lead_in(line: List[List[Span]], first: int) -> List[List[Span]]:
+        # Pull a short lead-in ("go to") off the previous line onto a URL's own line, when it fits.
+        moved: List[List[Span]] = []
+        w = first
+        while line:
+            word = line[-1]
+            text = "".join(s.text for s in word)
+            if any(s.src in BREAKS or s.unit for s in word) or text.strip(" ") == "":
+                break
+            ww = cell_len(text.rstrip(" "))
+            if ww > 6 or len(moved) >= 2 or w + ww + 1 > width:
+                break
+            moved.insert(0, line.pop())
+            w += ww + 1
+        trim(line)
+        return moved
+
+    for kind, words, total in _groups(spans):
+        if kind == "unit":
+            # A unit that does not fit the rest of the line moves to the next line whole; wider
+            # than a line, it falls through to break at its own spaces.
+            if total <= width:
+                if lines[-1] and used + total > width:
+                    new_line()
+                    used = 0
+                for w in words:
+                    lines[-1].append(w)
+                    used += _word_len(w)
+                continue
+            kind = "words-run"
+        if kind in ("word", "words-run"):
+            for w in words:
+                n = _word_len(w, trailing=False)
+                if n > width and len(w) == 1 and w[0].nobreak:
+                    s0 = w[0]
+                    w = [Span(middle(s0.text, width, ellipsis=ellipsis), s0.roles, s0.link, s0.src, True)]
+                    n = _word_len(w, trailing=False)
+                if lines[-1] and used + n > width:
+                    new_line()
+                    used = 0
+                lines[-1].append(w)
+                used += _word_len(w)
+            continue
+        if kind == "group":
+            span = words[0][0]
+            tail = words[0][1:]  # the spaces after it
+            pieces = break_pieces(span.text, BREAKS[span.src], width)
+            if lines[-1] and used + total > width and not only_whitespace(lines[-1]):
+                lead = pull_lead_in(lines[-1], cell_len(pieces[0]))
+                new_line()
+                used = 0
+                for w in lead:
+                    lines[-1].append(w)
+                    used += _word_len(w)
+            for i, piece in enumerate(pieces):
+                word: List[Span] = [Span(piece, span.roles, span.link, span.src, True)]
+                if i == len(pieces) - 1:
+                    word += tail
+                n = cell_len(piece)
+                if lines[-1] and used + n > width:
+                    new_line()
+                    used = 0
+                lines[-1].append(word)
+                used += _word_len(word)
+            continue
+    # Orphan check: move one word down when the last line holds a single short word (never a piece
+    # of a URL or a code: moving one would put a space inside it).
+    def _is_unit(word: Sequence[Span]) -> bool:
+        return any(s.unit for s in word)
+
+    if len(lines) >= 2 and len(lines[-1]) == 1 and len(lines[-2]) > 2 and not _is_piece(lines[-1][0]) and not _is_unit(lines[-1][0]):
+        if not _is_piece(lines[-2][-1]) and not _is_unit(lines[-2][-1]):
+            moved = lines[-2].pop()
+            if sum(_word_len(x) for x in [moved] + lines[-1]) <= width:
+                lines[-1].insert(0, moved)
+                trim(lines[-2])
+            else:
+                lines[-2].append(moved)
     out: List[List[Span]] = []
     for ln in lines:
-        flat: List[Span] = [s for w in ln for s in w]
-        if flat:
+        flat: List[Span] = []
+        for s in (s for w in ln for s in w):
+            prev = flat[-1] if flat else None
+            if prev and prev.src in BREAKS and (prev.src, prev.roles, prev.link) == (s.src, s.roles, s.link):
+                flat[-1] = Span(prev.text + s.text, prev.roles, prev.link, prev.src, True)  # one URL or code piece per line
+            else:
+                flat.append(s)
+        if flat and not flat[-1].nobreak:
             last = flat[-1]
             flat[-1] = Span(last.text.rstrip(" "), last.roles, last.link, last.src, last.nobreak)
         out.append([s for s in flat if s.text])
@@ -231,9 +450,16 @@ class Palette:
     chip: str = "1;" + ansi.SGR["chip"] + ";" + ansi.SGR["accent"]
     hyperlinks: bool = False
     overrides: Tuple[Tuple[str, str], ...] = ()
+    #: With ``color="none"`` on a terminal: keep weight, not colour. Bold and reverse video stay
+    #: (the code chip, the key hints, titles) so the code is still the focal point; a pipe, TERM=dumb
+    #: and ``--json`` write no escape at all.
+    attributes: bool = False
 
     def params(self, roles: Sequence[str]) -> str:
         """The SGR parameters for ``roles``, in rich's order (attributes, then colours)."""
+        if self.color == "none":
+            keep = {"strong": ["1"], "code": ["1", "7"], "chip": ["7"]}
+            return _order([c for r in roles for c in keep.get(r, [])]) if self.attributes else ""
         over: Dict[str, str] = dict(self.overrides)
         codes: List[str] = []
         for role in roles:
@@ -309,7 +535,7 @@ def to_ansi(line: Line, palette: Palette) -> str:
         last = spans[-1]
         trimmed = last.text.rstrip(" ")
         spans = spans[:-1] + ([Span(trimmed, last.roles, last.link, last.src)] if trimmed else [])
-    if palette.color == "none":
+    if palette.color == "none" and not palette.attributes and not palette.hyperlinks:
         return "".join(clean(s.text) for s in spans)
     out: List[str] = []
     for s in spans:

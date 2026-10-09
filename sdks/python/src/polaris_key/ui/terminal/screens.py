@@ -8,6 +8,7 @@ Nothing is printed here; :mod:`.device` writes the lines, and :mod:`.flows` driv
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, List, Optional, Sequence, Tuple
 
 from ..core.models import (
@@ -25,8 +26,8 @@ from ..core.models import (
     UpdateView,
 )
 from . import fmt
-from .parts import Kit
-from .text import Line, Span
+from .parts import STACK_COLUMNS, Kit
+from .text import DROP, Line, Span, cell_len, wrap
 
 __all__ = [
     "activate",
@@ -52,25 +53,62 @@ DEVICE_CODE_URL = "https://key.plrs.im/device"
 Lines = List[Line]
 
 
-def _frame(k: Kit, verb: str, body: Lines, end: Sequence[Span] = ()) -> Lines:
+def _close(k: Kit, lines: Lines) -> Lines:
+    """End the rail on the last content row: a bare ``└`` row under a ``│`` row becomes that row's
+    own ``└``, so no empty closing row hangs below the content. Under a row that has a mark of its
+    own (a ``✓`` result, a status line) the bare row has nothing to close and is dropped."""
+    if not k.decor or len(lines) < 2:
+        return lines
+    last, prev = lines[-1], lines[-2]
+    rail, end = k.env.symbol["rail"], k.env.symbol["railEnd"]
+    bare = len(last.spans) <= 2 and last.spans and last.spans[0].text == end and not "".join(s.text for s in last.spans[1:]).strip()
+    if bare and len(prev.spans) > 1 and prev.spans[0].text == rail and "".join(s.text for s in prev.spans[1:]).strip():
+        first = Span(end, prev.spans[0].roles, None, "symbol")
+        return lines[:-2] + [Line([first] + prev.spans[1:], prev.drop, prev.role, prev.hint_spans)]
+    marks = {k.env.symbol[n] for n in ("ok", "fail", "warn", "stepDone", "stepActive")}
+    if bare and len(prev.spans) > 1 and prev.spans[0].text in marks and "".join(s.text for s in prev.spans[1:]).strip():
+        return lines[:-1]
+    return lines
+
+
+def _frame(k: Kit, verb: str, body: Lines, end: Sequence[Span] = (), hints: bool = False) -> Lines:
     out = [k.header(verb)]
     if k.decor:
-        out.append(k.rail())
+        out += [replace(ln, role="header") for ln in k.gap()]
     out += body
-    out += k.end(end)
-    return out
+    out += k.end(end, hints)
+    return _close(k, out)
 
 
-def _gap(k: Kit) -> Lines:
-    return [k.rail()] if k.decor else [Line([])]
+def _gap(k: Kit, tier: int = DROP["blank_prose"]) -> Lines:
+    """One blank rail row between blocks (dropped only when the screen does not fit)."""
+    return k.gap(tier)
 
 
 def _fixes(k: Kit, fixes: Sequence[Tuple[str, str]]) -> Lines:
-    """Fix commands, aligned: ``polaris-key activate   Use a different key``."""
+    """Fix commands, aligned: ``polaris-key activate   Use a different key``. Below 50 columns, or
+    when a row would not fit its line, each command stacks above its label."""
     if not fixes:
         return []
     width = max(len(f"{k.prog} {w}") for w, _ in fixes)
-    return [Line(k._prefix("rail") + k.command(w, label, width)) for w, label in fixes]
+    rows = [k.command(w, label, width) for w, label in fixes]
+    if k.env.width >= STACK_COLUMNS and all(k.fits(r) for r in rows):
+        return [Line(k._prefix("rail") + r) for r in rows]
+    out: Lines = []
+    for w, label in fixes:
+        # A command wider than the line wraps at its spaces with a four-cell hanging indent, deeper
+        # than the label under it.
+        for i, ln in enumerate(wrap(k.command(w), max(1, k.body_width - 4))):
+            out.append(Line(k._prefix("rail") + ([Span("    ")] if i else []) + ln))
+        if label:
+            out += k.body([k.t(label, "muted")], 2)
+    return out
+
+
+def _code_row(k: Kit, code: str) -> Lines:
+    """The user code in reverse video, under the content column (wrapped after a hyphen, never
+    cut, when it is wider than a line)."""
+    return [replace(ln, keep=True) for ln in k.body(([Span("   ")] if k.decor and not k.narrow else []) + [k.code(code)])]
 
 
 def _code_title_message(k: Kit, code: Optional[str], *, group: str = "codes") -> Tuple[Span, Span]:
@@ -85,25 +123,30 @@ def _code_title_message(k: Kit, code: Optional[str], *, group: str = "codes") ->
 # ── PolarisKeyGate, StatusScreen, GraceBanner, AccountAndLicense: `status` ───────────────────
 
 
+def _unit(span: Span) -> Span:
+    return replace(span, unit=True)
+
+
 def _account_rows(k: Kit, v: GateView) -> Lines:
-    out: Lines = []
-    pill = k.t("part.status.ok") if v.status == "ok" else k.t("part.status.grace") if v.status == "grace" else k.t("part.status.notApplicable")
-    first: List[Span] = [pill]
-    if v.tier:
-        first += [k.sep(), k.t("account.tier", tier=v.tier)]
+    """The board's table: one ✓ row per fact, the datum in bold and its detail in muted. Each name,
+    email and date is a keep-unit, so a narrow line breaks between them, never inside."""
+    seat = k.sep()
+    license_value: List[Span] = [k.u(v.tier, "tier", "strong") if v.tier else _unit(k.t("part.status.ok", "strong"))]
     if v.term:
-        first += [k.sep(), k.d(v.term, "term", "muted")]
-    out += k.body(first)
-    if v.signed_in and (v.holder or v.email):
-        row = [k.t("account.holder", name=v.holder or v.email)]
-        if v.holder and v.email:
-            row += [k.sep(), k.d(v.email, "email", "muted")]
-        out += k.body(row)
-    elif not v.signed_in:
-        out += k.body([k.t("account.keyOnly", "muted")])
+        license_value += [seat, k.u(v.term, "term", "muted")]
+    holder = v.email or v.holder
+    license_value += [seat, k.u(holder, "email", "muted")] if v.signed_in and holder else [seat, _unit(k.t("account.keyOnly", "muted"))]
+    rows: List[Tuple[str, Span, Sequence[Span]]] = [("ok", k.t("cli.status.license"), license_value)]
+    if v.seats_used is not None and v.seats_limit:
+        rows.append(("ok", k.t("cli.status.devices"), [_unit(k.t("cli.status.seatsOf", "strong", used=v.seats_used, limit=v.seats_limit))]))
+    if v.grace_until:
+        rows.append(("ok", k.t("cli.status.offline"), [_unit(k.t("cli.status.offlineUntil", "strong", date=fmt.date(v.grace_until, k.copy.locale)))]))
     if v.version:
-        out += k.body([k.t("account.version", version=v.version)] + ([k.sep(), k.d(v.channel, "channel", "muted")] if v.channel else []))
-    return out
+        value: List[Span] = [k.u(v.version, "version", "strong")]
+        if v.channel:
+            value += [seat, k.u(v.channel, "channel", "muted")]
+        rows.append(("ok", k.t("cli.status.version"), value))
+    return k.table(rows)
 
 
 def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
@@ -112,7 +155,6 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
     body: Lines = []
     end: List[Span] = []
     if v.component == "AccountAndLicense":
-        body += k.step("active", [k.t("account.title", "strong")])
         body += _account_rows(k, v)
     elif v.component == "GraceBanner":
         if v.state == "last-day":
@@ -120,7 +162,7 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
         else:
             body += k.step("warn", [k.t("grace.daysLeft", "strong", days=v.days_left or 0)])
         if v.grace_until:
-            body += k.body([k.t("grace.deadline", "muted", date=fmt.date(v.grace_until))])
+            body += k.body([k.t("grace.deadline", "muted", date=fmt.date(v.grace_until, k.copy.locale))])
         body += _gap(k)
         body += _account_rows(k, v)
         body += _gap(k)
@@ -137,7 +179,8 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
                 rng = k.t("status.allowedMax", "muted", max=v.allowed_max)
             body += k.body([rng])
         fixes = {
-            "revoked": [("activate", "signin.key.differentKey"), ("sign-out", "common.signOut")],
+            # A revoked device cannot be fixed by signing out: use another key, or the account's license.
+            "revoked": [("activate", "signin.key.differentKey"), ("login", "cli.fix.signIn")],
             "expired": [("activate", "status.renew")],
             "version-too-old": [("update", "status.update")],
             "version-too-new": [],
@@ -145,6 +188,7 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
         }[v.state]
         if fixes:
             body += _gap(k)
+            body += k.body([k.t("cli.status.fixes", product=k.product)])
             body += _fixes(k, fixes)
         if v.state == "channel-not-entitled" and v.developer:
             body += k.body([k.t("status.contact", "muted", developer=v.developer)])
@@ -152,10 +196,10 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
         body += k.step("ok", [k.t("core.gate.not-applicable.title", "strong")])
         body += k.body([k.t("core.gate.not-applicable.message", "muted")])
     else:
-        body += k.step("warn", [k.t("core.gate.needs-activation.title", "strong")])
-        body += k.body([k.t("core.gate.needs-activation.message")])
+        # The command rows say what a lede above them would, so there is none.
+        body += k.step("active", [k.t("core.gate.needs-activation.title", "strong")])
         body += _gap(k)
-        body += _fixes(k, [("activate", "welcome.useKey"), ("sign-in", "welcome.signIn")])
+        body += _fixes(k, [("activate", "welcome.useKey"), ("login", "welcome.signIn")])
     return _frame(k, verb, body, end)
 
 
@@ -163,22 +207,14 @@ def gate(k: Kit, v: GateView, verb: str = "status") -> Lines:
 
 
 def _masked(k: Kit, raw: str, verdict: KeyVerdict) -> List[Span]:
-    """The key as typed, masked: the prefix in clear, the body as bullets, the last six clear."""
-    if verdict.prefix and raw.startswith(verdict.prefix):
-        body = raw[len(verdict.prefix) :]
-        head = verdict.prefix
-    else:
-        body, head = raw, ""
-    tail = body[-6:] if len(body) > 6 else ""
-    dot = "*" if k.env.symbols == "ascii" else "•"
-    hidden = dot * (len(body) - len(tail))
-    room = k.body_width - len(head) - len(tail) - 2
-    if len(hidden) > room:
-        hidden = hidden[: max(room, 1)]
-    out = [k.d(head, "key")] if head else []
-    out += [Span(hidden, ("muted",), None, "symbol")] if hidden else []
-    out += [k.d(tail, "key")] if tail else []
-    return out
+    """The key as typed, masked: the public ``pkey_<product>_`` prefix, then bullets, never a
+    character of the secret (the Node kit's rule)."""
+    return [k.key_mask(raw)]
+
+
+def other_product(k: Kit, verdict: KeyVerdict) -> bool:
+    """A parsed key that belongs to another product than this command's."""
+    return verdict.state == "parsed" and bool(verdict.slug) and verdict.slug != _slug_of(k)
 
 
 def key_entry(
@@ -203,17 +239,18 @@ def key_entry(
     if busy:
         spin = k.env.symbol["ellipsis"] if not k.env.motion else _spinner(k, frame)
         body += k.body([Span(spin, ("muted",), None, "symbol"), Span(" "), k.t("activate.busy")])
+    elif other_product(k, verdict):
+        body += k.body([*k.icon("warn", "warning"), k.t("cli.activate.otherProduct", app=verdict.slug, product=k.product)])
     elif verdict.state == "parsed":
-        name = k.product if verdict.slug in (None, _slug_of(k)) else verdict.slug
-        body += k.body([*k.icon("ok", "success"), k.t("part.keyField.forProduct", "muted", product=name)])
+        body += k.body([*k.icon("ok", "success"), k.t("part.keyField.forProduct", "muted", product=k.product)])
     elif verdict.state == "cut-short":
         body += k.body([*k.icon("fail", "danger"), k.t("part.keyField.cutShort", prefix=verdict.prefix, used=verdict.used, limit=verdict.limit)])
     elif verdict.state == "malformed":
         body += k.body([*k.icon("fail", "danger"), k.t("part.keyField.malformed")])
     elif verdict.state == "empty" and show_empty:
         body += k.body([*k.icon("fail", "danger"), k.t("part.keyField.empty")])
-    hints = [] if busy else k.hints([("Enter", "activate.submit"), ("Esc", "common.cancel")])
-    return _frame(k, verb, body, hints)
+    hints = [] if busy else k.hint_string("cli.keys.activate")
+    return _frame(k, verb, body, hints, bool(hints))
 
 
 def _slug_of(k: Kit) -> Optional[str]:
@@ -241,7 +278,7 @@ def activate(k: Kit, v: ActivateView, verb: str = "activate") -> Lines:
         body += k.step("fail", [k.t("core.activation.key-entry-limit.title", "strong")])
         body += k.body([k.t("signin.key.noEntries", product=k.inline_product)])
         body += _gap(k)
-        body += _fixes(k, [("sign-in", "welcome.signIn")])
+        body += _fixes(k, [("login", "welcome.signIn")])
     else:
         kind = v.kind if k.copy.has(f"core.activation.{v.kind}.title") else "error"
         body += k.step("fail", [k.t(f"core.activation.{kind}.title", "strong")])
@@ -251,35 +288,39 @@ def activate(k: Kit, v: ActivateView, verb: str = "activate") -> Lines:
             body += _fixes(k, [("activate", "signin.key.differentKey")])
         elif kind == "enroll-claimed":
             body += _gap(k)
-            body += _fixes(k, [("sign-in", "welcome.signIn")])
+            body += _fixes(k, [("login", "welcome.signIn")])
     return _frame(k, verb, body, end)
 
 
-def device_limit(k: Kit, v: ActivateView, verb: str = "activate", *, opened: bool = False) -> Lines:
+def device_limit(k: Kit, v: ActivateView, verb: str = "activate", *, opened: bool = False, ended: bool = False) -> Lines:
     """DeviceLimit in browser mode (UI-KITS §4.3: layer 1 has no device list for a key, so
-    **Replace a device** opens ``manageUrl``), then **Try again**."""
+    **Replace a device** opens ``manageUrl``), then **Try again**. The board: the answered key row,
+    the title, the meter as dots only, one sentence, the page that frees a seat, the hints (or, once
+    the person left with Esc, the line that says what to run)."""
     body: Lines = _key_done(k, v.key)
-    if body:
-        body += _gap(k)
     if v.used is not None and v.limit is not None:
         body += k.step("warn", [k.t("deviceLimit.heading", "strong", used=v.used, limit=v.limit)])
         body += k.body(k.seat_meter(v.used, v.limit))
-        body += k.body([k.t("deviceLimit.lede", formFactor="computer")])
     else:
         body += k.step("warn", [k.t("core.activation.device-limit.title", "strong")])
-        body += k.body([k.t("core.activation.device-limit.message")])
     end: List[Span] = []
+    hints = False
     if v.manage_url:
-        body += _gap(k)
-        body += k.step("active", [k.t("deviceLimit.title", "strong")])
-        body += k.body([k.t("deviceLimit.browser", product=k.inline_product)])
-        body += k.body([k.link(v.manage_url, None, "muted")])
-        if k.env.interactive:
-            end = k.hints([("Enter", "common.tryAgain" if opened else "deviceLimit.openBrowser"), ("Esc", "common.cancel")])
+        # The terminal does not poll: it never promises the product continues by itself.
+        # Once the person has left, the closing line says what to run: the sentence that asked to try
+        # again here is not said a second time.
+        if not ended:
+            body += k.body([k.t("cli.deviceLimit.body")])
+        body += [replace(ln, keep=True) for ln in k.body([k.link(v.manage_url, None, "muted")])]
+        if ended:
+            end = [k.t("cli.deviceLimit.again", command=f"{k.prog} {verb}")]
+        elif k.env.interactive:
+            end, hints = k.hint_string("cli.keys.retry" if opened else "cli.keys.deviceLimit"), True
     else:
+        body += k.body([k.t("core.activation.device-limit.message")])
         body += _gap(k)
-        body += _fixes(k, [("activate", "common.tryAgain")])
-    return _frame(k, verb, body, end)
+        body += _fixes(k, [(verb, "common.tryAgain")])
+    return _frame(k, verb, body, end, hints)
 
 
 # ── Sign-in (SIGN-IN.md §4.15 frame 32) ──────────────────────────────────────────────────────
@@ -298,14 +339,31 @@ def _wait_line(k: Kit, key: str, frame: int, **args: Any) -> Lines:
     glyph = _spinner(k, frame) if k.env.motion else k.env.symbol["ellipsis"]
     if not k.decor:
         return [Line([k.t(key, **args)])]
-    return [Line([Span(glyph, ("muted",), None, "symbol"), Span("  "), k.t(key, **args)])]
+    # The glyph takes the rail's column; a status that is wider than the line wraps under itself,
+    # and the waiting role sits on its last line (where the key hints join).
+    rows = wrap([k.t(key, **args)], k.body_width - (2 if k.narrow else 0)) or [[]]
+    mark = Span(glyph, ("muted",), None, "symbol")
+    out = [Line([mark, Span(" " if k.narrow else "  ")] + rows[0])]
+    for r in rows[1:]:
+        out.append(Line(([Span("  ")] if k.narrow else k._prefix("rail")) + r))
+    out[-1] = replace(out[-1], role="spinner")
+    return out
+
+
+def _again(k: Kit, verb: str) -> Lines:
+    """The command that starts the flow over, for the verb the person ran (never another's)."""
+    return _gap(k) + _fixes(k, [(verb, "signin.again")])
 
 
 def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> Lines:
-    """``login`` / ``sign-in``: the browser presentation (no QR on any terminal, D-67)."""
+    """``login`` / ``sign-in``: the browser presentation (no QR on any terminal, D-67). The whole
+    screen is one frame: it compacts by fit while it waits (``screen.fit_screen``) and its ending is
+    one result block, never the code view above it."""
     body: Lines = []
     end: List[Span] = []
+    hints = False
     url = v.url or DEVICE_CODE_URL
+    wait = "signin.handoff.finishing" if v.state == "finishing" else "cli.signin.waitingCode"
     if v.state == "starting":
         body += _wait_line(k, "signInHandoff.starting", frame)
     elif v.state in ("handoff", "finishing") and v.component == "SignIn":
@@ -315,50 +373,70 @@ def sign_in(k: Kit, v: SignInView, verb: str = "sign-in", *, frame: int = 0) -> 
         body += _gap(k)
         body += _wait_line(k, "signin.handoff.finishing" if v.state == "finishing" else "signin.handoff.waiting", frame)
         if k.env.interactive and v.state != "finishing":
-            end = k.hint_string("signin.cli.keys")
-    elif v.state == "no-browser":
-        body += k.step("warn", [k.t("signin.handoff.noBrowser", "strong")])
-        body += k.body([k.t("signin.handoff.noBrowserBody")])
-        if v.url_complete:
-            body += k.body([k.link(v.url_complete)])
-        if k.env.interactive:
-            end = k.hints([("c", "signin.handoff.useCode"), ("Esc", "common.cancel")])
-    elif v.state in ("code", "link-copied") or (v.state == "finishing" and v.component == "SignInHandoff"):
-        if v.headless:
+            end, hints = k.hint_string("signin.cli.keys"), True
+    elif v.state in ("code", "link-copied", "no-browser") or (v.state == "finishing" and v.component == "SignInHandoff"):
+        if v.headless and not k.env.device_code:
+            # No browser here: say so. Someone who asked for a code (--device-code) needs no note.
             body += k.step("done", [k.t("signin.cli.headless")])
-        else:
+        elif v.no_browser:
+            body += k.step("warn", [k.t("signin.handoff.noBrowser", "strong")])
+        elif not v.headless or k.env.device_code:
             body += k.step("active", [k.t("signin.handoff.codeTitle", "strong")])
         body += _with_link(k, "signin.handoff.codeBody", url)
-        body += _gap(k)
-        body += [Line(k._prefix("rail") + ([Span("   ")] if k.decor else []) + [k.code(v.user_code or "")])]
-        body += _gap(k)
-        body += k.body([k.t("signin.handoff.check")])
+        body += _code_rows(k, v.user_code or "")
+        body += [replace(ln, drop=DROP["check"]) for ln in k.body([k.t("signin.handoff.check")])]
         if v.seconds_left is not None:
-            body += k.body([k.t("signin.handoff.expires", "muted", time=fmt.countdown(v.seconds_left))])
-        if v.copied:
-            body += k.body([*k.icon("ok", "success"), k.t("common.copied", "muted")])
+            body += [
+                replace(ln, drop=DROP["countdown"])
+                for ln in k.body([k.t("signin.handoff.expires", "muted", time=fmt.countdown(v.seconds_left))])
+            ]
         body += _gap(k)
-        body += _wait_line(k, "signin.handoff.finishing" if v.state == "finishing" else "signin.handoff.waiting", frame)
+        body += _wait_line(k, wait, frame)
         if k.env.interactive and v.state != "finishing":
-            pairs = [("c", "a11y.copyCode")] if k.env.clipboard else []
-            if not v.headless:
-                pairs.append(("o", "signin.handoff.openBrowser"))
-            end = k.hints(pairs + [("Esc", "common.cancel")])
+            browser = not v.headless and not v.no_browser
+            end, hints = _code_hints(k, browser, v.copied), True
     elif v.state == "done":
-        who = [k.t("signin.cli.signedIn", name=v.name, email=v.email)] if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
+        who = k.units("signin.cli.signedIn", "strong", name=v.name, email=v.email) if (v.name and v.email) else [k.t("account.holder", name=v.name or v.email or k.product)]
         body += k.step("ok", who)
         end = [k.t("signin.cli.closeTab", "muted")] if not v.headless else []
     else:
-        group = "codes"
+        # One result block: the title and the command that starts over, nothing that restates it.
         code = v.code or ("cancelled" if v.state == "cancelled" else "sign-in-failed")
-        title, message = _code_title_message(k, code, group=group)
-        body += k.step("fail", [title])
-        body += k.body([message])
-        again = {"expired": "signin.again", "denied": "signInHandoff.newCode"}.get(v.state)
-        if again:
-            body += _gap(k)
-            body += _fixes(k, [("sign-in", again)])
-    return _frame(k, verb, body, end)
+        if code == "identity_disabled":
+            # What happened, then the fix: this product takes a license key, not an account.
+            body += k.step("fail", [k.t("cli.identityOff.notice", "strong", product=k.inline_product)])
+            body += k.body([k.t("cli.identityOff.fix", command=f"{k.prog} activate")])
+        else:
+            title, _ = _code_title_message(k, code, group="codes")
+            body += k.step("fail", [title])
+            if v.state in ("expired", "denied", "cancelled"):
+                body += _again(k, verb)
+    return _frame(k, verb, body, end, hints)
+
+
+def _code_hints(k: Kit, browser: bool, copied: bool) -> List[Span]:
+    """The code view's key hints, in the catalog's words (the Node kit's too): ``c copy the code``
+    gives way to ``Copied`` on the same row, and ``o`` appears only where a browser can open."""
+    key = "cli.keys.codeBrowser" if browser else "cli.keys.code"
+    spans = k.hint_string(key)
+    if not copied:
+        return spans
+    # Drop the first hint (the copy key and its label) and put "✓ Copied" in its place.
+    rest: List[Span] = []
+    seen_sep = False
+    for sp in spans:
+        if seen_sep:
+            rest.append(sp)
+        elif sp.src == "symbol" and sp.text.strip() == k.env.symbol["separator"]:
+            seen_sep = True
+            rest.append(sp)
+    mark = [*k.icon("ok", "success"), k.t("common.copied", "success")]
+    return mark + rest
+
+
+def _code_rows(k: Kit, code: str) -> Lines:
+    """The user code with a blank rail row on each side (dropped only when the screen is tall)."""
+    return _gap(k, DROP["blank_code"]) + _code_row(k, code) + _gap(k, DROP["blank_code"])
 
 
 def _with_link(k: Kit, key: str, url: str) -> Lines:
@@ -367,7 +445,11 @@ def _with_link(k: Kit, key: str, url: str) -> Lines:
     text = k.s(key, url=marker)
     before, _, after = text.partition(marker)
     spans = [Span(before, (), None, "key:" + key), k.link(url), Span(after, (), None, "key:" + key)]
-    return k.body([s for s in spans if s.text])
+    # The lines that hold the URL stay when the screen is cut to the height; the lead-in goes first.
+    return [
+        replace(ln, keep=any(sp.src == "data:url" for sp in ln.spans))
+        for ln in k.body([s for s in spans if s.text])
+    ]
 
 
 def _if_not_opened(k: Kit, url: str) -> Lines:
@@ -380,26 +462,42 @@ def _if_not_opened(k: Kit, url: str) -> Lines:
 def offline_activation(k: Kit, v: OfflineView, verb: str = "offline-request") -> Lines:
     body: Lines = []
     if v.state == "default":
-        body += k.step("active", [k.t("offlineActivation.title", "strong")])
-        body += k.body([k.t("offlineActivation.request")])
-        body += k.body([k.t("offlineActivation.product", "muted", product=k.product)])
-        body += _gap(k)
-        body += [Line(k._prefix("rail") + ([Span("   ")] if k.decor else []) + [k.code(v.request_code or "")])]
-        qr = k.qr(v.request_code or "")
-        if qr:
-            body += _gap(k)
-            body += qr
-        body += _gap(k)
-        body += k.body([k.t("offlineActivation.loadHint")])
-        body += _fixes(k, [("import-bundle <file>", "offlineActivation.submit")])
+        # The chip already names the product: no "Product: …" line. One footer command row says
+        # what to do with the file that comes back, and the rail ends on it.
+        head = k.step("active", [k.t("offlineActivation.title", "strong")]) + k.body([k.t("offlineActivation.request")])
+        footer = _fixes(k, [("import-bundle <file>", "cli.verb.importBundle")])
+        code = _code_row(k, v.request_code or "")
+        plain = _frame(k, verb, head + _gap(k) + code + _gap(k) + footer)
+        spans = k.qr_spans(v.request_code or "")
+        if spans:
+            # Landscape: the QR beside the request, top-aligned with its title, when the line has
+            # room for both and the QR fits the height.
+            left_w = max((ln.width for ln in plain), default=0)
+            qr_w = max(cell_len(sp.text) for sp in spans)
+            title_at = 2 if k.decor else 0
+            if k.env.columns >= 100 and left_w + 2 + qr_w <= k.env.columns and title_at + len(spans) <= k.env.height - 1:
+                out: Lines = []
+                for i in range(max(len(plain), title_at + len(spans))):
+                    left = plain[i] if i < len(plain) else Line([])  # no rail below the closing row
+                    j = i - title_at
+                    if 0 <= j < len(spans):
+                        pad = Span(" " * (left_w - left.width + 2))
+                        left = Line(left.spans + [pad, spans[j]], left.drop, left.role, left.hint_spans)
+                    out.append(left)
+                return out
+            # Portrait: under the code, its own quiet zone the gap, when the whole screen fits.
+            stacked = _frame(k, verb, head + _gap(k) + code + k.qr(v.request_code or "") + footer)
+            if len(stacked) + 1 <= k.env.height:
+                return stacked
+        return plain
     elif v.state == "done":
         body += k.step("ok", [k.t("offlineActivation.done", "strong")])
         if v.imported:
             body += k.body([k.d(" + ".join(v.imported), "imported", "muted")])
     else:
-        title, message = _code_title_message(k, v.code)
-        body += k.step("fail", [title])
-        body += k.body([message])
+        # One title and who to ask for a new file: the same two lines in both kits.
+        body += k.step("fail", [k.t("core.codes.bundle.title", "strong")])
+        body += k.body([k.t("cli.import.fix")])
     return _frame(k, verb, body)
 
 
@@ -428,24 +526,27 @@ def devices(k: Kit, v: DevicesView, verb: str = "devices") -> Lines:
             done += [k.sep(), k.d(v.target.label or v.target.id, "device", "muted")]
         body += k.step("ok", done)
         return _frame(k, verb, body)
-    body += k.step("active", [k.t("devices.title", "strong"), k.sep(), k.t("devices.count", "muted", count=len(v.rows))])
-    body += k.body([k.t("devices.lede", "muted")])
+    # The title with the bare count, then one item per device: the name after its dot, and under it
+    # the platform (with when it was last seen), the id and which one is this. One left edge for
+    # an item's text: a continuation hangs under the name, never under the dot.
+    body += k.step("active", [k.t("devices.title", "strong"), k.sep(), k.d(len(v.rows), "count", "muted")])
     for row in v.rows:
-        body += _gap(k)
-        name = k.d(row.label, "device", "strong") if row.label else k.t("devices.unnamed", "strong")
-        first = [name]
-        if row.current:
-            first += [k.sep(), k.t("part.thisDeviceTitle", "accent", formFactor="computer")]
-        body += k.body(first)
+        name = _unit(k.d(row.label, "device", "strong")) if row.label else _unit(k.t("devices.unnamed", "strong"))
+        radio = k.sym("radioOn", "accent") if row.current else k.sym("radioOff", "muted")
         meta: List[Span] = []
         if row.platform and row.when:
-            meta.append(k.t("devices.meta", "muted", platform=row.platform, when=row.when))
+            meta.append(_unit(k.t("devices.meta", "muted", platform=row.platform, when=row.when)))
         elif row.platform:
-            meta.append(k.d(row.platform, "platform", "muted"))
+            meta.append(k.u(row.platform, "platform", "muted"))
         if meta:
             meta.append(k.sep())
-        meta.append(k.d(row.id, "id", "muted", nobreak=True))
-        body += k.body(meta, 2)
+        meta.append(Span(row.id, ("muted",), None, "data:id", True, True))
+        if row.current:
+            meta += [k.sep(), _unit(k.t("part.thisDeviceTitle", "muted", formFactor="computer"))]
+        lines = wrap([name], max(1, k.body_width - 2)) + wrap(meta, max(1, k.body_width - 2))
+        for i, ln in enumerate(lines):
+            lead = [radio, Span(" ")] if i == 0 else [Span("  ")]
+            body.append(Line(k._prefix("rail") + lead + ln))
     body += _gap(k)
     body += _fixes(k, [("devices rename <id> <name>", "devices.rename"), ("devices deauthorize <id>", "devices.remove")])
     return _frame(k, verb, body)
@@ -454,24 +555,59 @@ def devices(k: Kit, v: DevicesView, verb: str = "devices") -> Lines:
 # ── Updates ──────────────────────────────────────────────────────────────────────────────────
 
 
-def _progress_line(k: Kit, fraction: Optional[float], done: Optional[str], total: Optional[str], eta: Optional[str], key: str = "update.downloading") -> Lines:
+def _progress_line(
+    k: Kit,
+    fraction: Optional[float],
+    done: Optional[str],
+    total: Optional[str],
+    eta: Optional[str],
+    key: str = "update.downloading",
+    *,
+    done_bytes: Optional[int] = None,
+    total_bytes: Optional[int] = None,
+    eta_seconds: Optional[float] = None,
+) -> Lines:
+    """The download's progress: the bar (at least 16 cells), the percentage, then the figures. As
+    the line narrows the figures give way in order: the time left goes, then the sizes shorten to
+    ``38/61 MB``, then they move to their own muted line under the bar. Each number keeps its unit,
+    and the time left is left out until it is known (never ``0 s left``)."""
     f = fraction or 0.0
-    bar = k.bar(f)
-    spans = bar + ([Span(" ")] if bar else []) + [k.d(f"{round(f * 100)}%", "percent")]
-    out = k.body(spans)
-    meta: List[Span] = []
-    if done and total:
-        meta.append(k.t(key, "muted", size=done, total=total, time=eta or ""))
-    if eta and key == "update.downloading":
-        meta += [k.sep(), k.t("update.timeLeft", "muted", time=eta)]
-    if meta:
-        out += k.body(meta)
-    return out
+    pct = k.d(f"  {round(f * 100)}%", "percent", "strong")
+    if done_bytes is None or total_bytes is None or not k.decor:
+        bar = k.bar(f)
+        out = k.body(bar + ([Span(" ")] if bar else []) + [k.d(f"{round(f * 100)}%", "percent")])
+        meta: List[Span] = []
+        if done and total:
+            meta.append(k.t(key, "muted", size=done, total=total, time=eta or ""))
+        if eta and key == "update.downloading":
+            meta += [k.sep(), k.t("update.timeLeft", "muted", time=eta)]
+        return out + (k.body(meta) if meta else [])
+    loc = k.copy.locale
+    n, whole = fmt.size_pair(done_bytes, total_bytes, loc)
+    long = _unit(k.t("cli.update.figures", "muted", size=n, total=whole))
+    short = _unit(k.t("cli.update.figuresShort", "muted", size=n, total=whole))
+    left = _unit(k.t("cli.update.timeLeft", "muted", time=fmt.duration(eta_seconds, loc))) if eta_seconds and eta_seconds >= 1 else None
+    variants: List[List[Span]] = [[long, left] if left else [long], [long], [short]]
+    seen: List[List[Span]] = []
+    for v in variants:
+        if v not in seen:
+            seen.append(v)
+    for parts in seen:
+        meta = []
+        for i, sp in enumerate(parts):
+            meta += ([k.sep()] if i == 0 else [k.sep()]) + [sp]
+        room = k.body_width - cell_len(pct.text) - sum(cell_len(sp.text) for sp in meta)
+        if room >= 16:
+            return [Line(k._prefix("rail") + k.bar(f, min(36, room)) + [pct] + meta)]
+    # Narrower still: the figures on their own muted line under the bar.
+    out = [Line(k._prefix("rail") + k.bar(f, max(10, min(36, k.body_width - cell_len(pct.text)))) + [pct])]
+    return out + [Line(k._prefix("rail") + [long])]
 
 
 def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
     body: Lines = []
     end: List[Span] = []
+    hints = False
     if v.state == "up-to-date":
         body += k.step("ok", [k.t("update.upToDate", "strong")])
         if v.current:
@@ -485,44 +621,51 @@ def update(k: Kit, v: UpdateView, verb: str = "update") -> Lines:
         body += _gap(k)
         body += _fixes(k, [("update apply", "update.install")])
     elif v.state == "ready":
-        body += k.step("ok", [k.t("update.readyTitle", "strong", product=k.product, version=v.version)])
-        body += k.body([k.t("update.readyBody", product=k.inline_product)])
+        # One result block replaces the title and the bar; the chip already names the product.
+        title = k.t("cli.update.ready", "strong", version=v.version, size=v.size) if v.size else k.t("cli.update.readyNoSize", "strong", version=v.version)
+        body += k.step("ok", [title])
+        body += k.body([k.t("cli.update.restart")])
     elif v.state == "downloading":
         body += k.step("active", [k.t("update.title", "strong", product=k.product, version=v.version)])
-        body += _progress_line(k, v.fraction, v.done, v.total, v.eta)
+        body += _progress_line(k, v.fraction, v.done, v.total, v.eta, done_bytes=v.done_bytes, total_bytes=v.total_bytes, eta_seconds=v.eta_seconds)
         if k.env.interactive:
-            end = k.hints([("Ctrl-C", "common.cancel")])
+            end, hints = k.hint_string("cli.keys.download"), True
+    elif v.state == "failed":
+        # What happened, that nothing was installed, and the command to try again.
+        body += k.step("fail", [k.t(f"core.codes.{v.code}.title", "strong") if v.code and k.copy.has(f"core.codes.{v.code}.title") else k.t("core.fallback.title", "strong")])
+        body += k.body([k.t("cli.update.nothingInstalled")])
+        body += _gap(k)
+        body += _fixes(k, [("update apply", "common.tryAgain")])
+    elif v.state == "cancelled":
+        body += k.step("fail", [k.t("cli.update.cancelled", "strong")])
+        body += k.body([k.t("cli.update.nothingInstalled")])
     else:
         if v.state == "mandatory":
             body += k.step("warn", [k.t("update.mandatoryTitle", "strong", product=k.inline_product)])
             body += k.body([k.t("update.mandatoryBody", product=k.inline_product)])
-            body += k.body([k.t("update.title", "muted", product=k.product, version=v.version)])
-        else:
-            body += k.step("active", [k.t("update.title", "strong", product=k.product, version=v.version)])
-            if v.current and v.size:
-                body += k.body([k.t("update.current", "muted", version=v.current, size=v.size)])
-            elif v.current:
-                body += k.body([k.t("account.version", "muted", version=v.current)])
-        if v.critical:
-            body += k.body([*k.icon("warn", "warning"), k.t("update.critical")])
-        if v.notes:
+            if v.critical:
+                body += k.body([*k.icon("warn", "warning"), k.t("update.critical")])
             body += _gap(k)
-            body += k.body([k.t("update.whatsNew", "muted")])
-            for note in v.notes[:3]:
-                body += k.body([k.d(note, "notes")])
-            if v.notes_url:
-                body += k.body([k.t("update.allChanges", "muted", "link", link=v.notes_url, version=v.version)])
-        body += _gap(k)
-        if v.state == "store":
+            body += _fixes(k, [("update apply", "cli.update.install")] if v.installable else [])
+        elif v.state in ("store", "platform"):
+            body += k.step("active", [k.t("update.title", "strong", product=k.product, version=v.version)])
+            if v.critical:
+                body += k.body([*k.icon("warn", "warning"), k.t("update.critical")])
+            body += _gap(k)
             body += k.body([k.t("update.platform.generic", product=k.inline_product)])
-            if v.listing_url:
+            if v.state == "store" and v.listing_url:
                 body += k.body([k.link(v.listing_url, None, "muted")])
-        elif v.state == "platform":
-            body += k.body([k.t("update.platform.generic", product=k.inline_product)])
         else:
-            fixes = [("update apply", "update.install")] if v.installable else []
-            body += _fixes(k, fixes + [("changelog", "update.whatsNew")])
-    return _frame(k, verb, body, end)
+            # "2.5.0 is available", what you have now, and the two commands that follow from it.
+            title = k.t("cli.update.available", "strong", version=v.version, size=v.size) if v.size else k.t("cli.update.availableNoSize", "strong", version=v.version)
+            body += k.step("active", [title])
+            if v.current:
+                body += k.body([k.t("cli.update.have", "muted", version=v.current)])
+            if v.critical:
+                body += k.body([*k.icon("warn", "warning"), k.t("update.critical")])
+            body += _gap(k)
+            body += _fixes(k, ([("update apply", "cli.update.install")] if v.installable else []) + [("changelog", "update.whatsNew")])
+    return _frame(k, verb, body, end, hints)
 
 
 def update_progress(k: Kit, v: ProgressView, verb: str = "packs") -> Lines:
@@ -555,8 +698,7 @@ def release_notes(k: Kit, v: ReleaseNotesView, verb: str = "changelog") -> Lines
     body: Lines = []
     if v.state == "error":
         body += k.step("fail", [k.t("releaseNotes.error", "strong")])
-        body += _gap(k)
-        body += _fixes(k, [("changelog", "common.tryAgain")])
+        body += k.body([k.t("cli.changelog.fix", command=f"{k.prog} {verb}")])
         return _frame(k, verb, body)
     body += k.step("active", [k.t("releaseNotes.title", "strong", product=k.inline_product)])
     if v.state == "empty":
@@ -597,7 +739,7 @@ def boot(k: Kit, v: BootView, verb: str = "boot") -> Lines:
             out += k.step("warn", [k.t("boot.rolledBack")])
         out += k.step("ok", [k.d(k.product, "product", "strong"), k.sep(), k.t("boot.ready", "muted")])
         if v.update_available:
-            out += [Line([Span("   ")] + k.command("update", "update.availableTitle"))] if k.decor else [Line(k.command("update", "update.availableTitle"))]
+            out += _fixes(k, [("update", "update.availableTitle")])
         return out
     if v.state == "consent":
         body += k.step("active", [k.t("boot.consent.title", "strong")])

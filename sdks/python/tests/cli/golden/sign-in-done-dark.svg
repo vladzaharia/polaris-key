@@ -2,14 +2,14 @@
 <rect width="705.6" height="95.2" rx="12" fill="#101114" stroke="#26282e"/>
 <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
 <rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="22.4" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="21.9" width="4.7" height="1" fill="#7f848e"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#d7dae0"/>
 <text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="26.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· login</text>
-<rect x="20.5" y="30.8" width="1" height="16.8" fill="#7f848e"/>
+<text x="201.6" y="26.6" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· login</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#d7dae0"/>
 <text x="21" y="60.2" text-anchor="middle" fill="#5fd38d">✓</text>
-<text x="42" y="60.2" textLength="394.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Signed in as Mara Fennick (mara@fennick.studio)</text>
-<rect x="20.5" y="64.4" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="72.3" width="4.7" height="1" fill="#7f848e"/>
-<text x="42" y="77" textLength="252" lengthAdjust="spacingAndGlyphs" fill="#7f848e">You can close the browser tab.</text>
+<text x="42" y="60.2" textLength="394.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Signed in as Mara Fennick (mara@fennick.studio)</text>
+<rect x="20.5" y="64.4" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="72.3" width="4.7" height="1" fill="#d7dae0"/>
+<text x="42" y="77" textLength="252" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">You can close the browser tab.</text>
 </g></svg>

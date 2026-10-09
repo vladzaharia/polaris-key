@@ -187,6 +187,54 @@ describe("what the terminal draws (caps)", () => {
   });
 });
 
+describe("the host accent and NO_COLOR", () => {
+  it("paints the accent role, not only the chip, in truecolor; native keeps the palette", async () => {
+    const run = async (theme: object) => {
+      const { text } = await render(
+        {
+          variant: VARIANTS.find((v) => v.id === "truecolor-80-dark")!,
+          theme,
+          presentation: { ...TIDEWATER, accent: "#ff6a3d" },
+        },
+        async (h) => {
+          h.ctx.rows([{ mark: "active", spans: [{ text: "Step" }] }]);
+        },
+      );
+      return text;
+    };
+    const fg = resolveAccent("#ff6a3d", "dark").fg;
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(fg.slice(i, i + 2), 16));
+    expect(await run({})).toContain(`\x1b[38;2;${r};${g};${b}m`);
+    // theme.colors.accent still wins; the native preset hands the look to the terminal (cyan).
+    expect(await run({ colors: { dark: { accent: "#123456" } } })).toContain(
+      "\x1b[38;2;18;52;86m",
+    );
+    expect(await run({ preset: "native" })).not.toMatch(/38;2;/);
+  });
+  it("NO_COLOR drops the colour and keeps bold and reverse on a terminal", async () => {
+    const { raw } = await render(
+      {
+        variant: VARIANTS.find((v) => v.id === "no-color-80")!,
+      },
+      async (h) => {
+        h.ctx.rows([
+          {
+            mark: "active",
+            spans: [
+              { text: "Title", style: ["strong"] },
+              { text: " WDJB ", style: ["code"] },
+              { text: "dim", style: ["muted"] },
+            ],
+          },
+        ]);
+      },
+    );
+    expect(raw).toContain("\x1b[1mTitle");
+    expect(raw).toContain("\x1b[7m");
+    expect(raw).not.toMatch(/\x1b\[(?:3[0-79]|9[0-7]|4[0-79]|10[0-7]|[34]8)/);
+  });
+});
+
 describe("cell widths", () => {
   it("counts CJK as two cells and escapes as none", () => {
     expect(cellWidth("ライセンス")).toBe(10);
@@ -295,6 +343,7 @@ describe("product identity (UI-KITS §1.2) through the presentation seam", () =>
     expect(dark.chip).toEqual({
       solid: resolveAccent("#ff6a3d", "dark").solid,
       on: resolveAccent("#ff6a3d", "dark").on,
+      fg: resolveAccent("#ff6a3d", "dark").fg,
     });
     const light = resolveProduct({
       slug: "tidewater",
@@ -923,5 +972,23 @@ describe("help and completion", () => {
     expect(completionScript(ctx, "bash", CLI_VERBS)).toContain(
       'devices) [ "$COMP_CWORD" -eq 2 ] && words="list rename deauthorize"',
     );
+  });
+});
+
+describe("faint text on the Solarized QA palettes", () => {
+  it("renders SGR 2 distinct from, and no brighter than, the plain text", async () => {
+    const { ansiToSvg } = await import("./svg.js");
+    for (const theme of ["solarized-dark", "solarized-light"] as const) {
+      const svg = ansiToSvg("\x1b[2mmuted\x1b[0m plain", {
+        theme,
+        columns: 20,
+        title: "t",
+      });
+      const fills = [
+        ...svg.matchAll(/<text x="[^"]*" y="[\d.]+" fill="(#\w+)"/g),
+      ].map((m) => m[1]);
+      expect(fills).toHaveLength(2);
+      expect(fills[0]).not.toBe(fills[1]);
+    }
   });
 });

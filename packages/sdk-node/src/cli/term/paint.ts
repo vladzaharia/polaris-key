@@ -16,7 +16,7 @@ import type { Line, Span } from "./width.js";
  * The roles a span may carry: the generated table plus `code` (a user code in reverse video).
  * A `code` or `chip` span carries its own one-cell pad in its text, so widths stay exact.
  */
-export type Role = TerminalRole | "code";
+export type Role = TerminalRole | "code" | "qr";
 
 /** One `util.styleText` format name. */
 type StyleName = Extract<Parameters<typeof styleText>[0], string>;
@@ -24,6 +24,7 @@ type StyleName = Extract<Parameters<typeof styleText>[0], string>;
 /** SGR parameter → `util.styleText` format name. */
 const STYLE_NAMES: Record<string, StyleName> = {
   "1": "bold",
+  "2": "dim",
   "4": "underline",
   "7": "inverse",
   "31": "red",
@@ -37,6 +38,7 @@ const STYLE_NAMES: Record<string, StyleName> = {
 /** The style names for one role. */
 export function roleStyles(role: Role): StyleName[] {
   if (role === "code") return ["inverse", "bold"];
+  if (role === "qr") return ["black", "bgWhiteBright"];
   if (role === "reset") return [];
   return TERMINAL_SGR[role]
     .split(";")
@@ -48,6 +50,8 @@ export function roleStyles(role: Role): StyleName[] {
 export interface ChipColors {
   solid: string;
   on: string;
+  /** The accent as text (≥ 4.5:1 on the surface): the accent role's colour in truecolor. */
+  fg: string;
 }
 
 /** Per-role truecolor overrides from `theme.colors` (hex), applied only in truecolor. */
@@ -74,19 +78,57 @@ export class Painter {
     return this.caps.color !== "none";
   }
 
+  /**
+   * NO_COLOR and --no-color drop the colour, not the weight: on a terminal that is not dumb, bold
+   * and reverse video stay (the code chip, the key hints, titles), so the code is still the focal
+   * point. A pipe, TERM=dumb and --json write no escape at all.
+   */
+  get attributes(): boolean {
+    return (
+      this.caps.color === "none" &&
+      this.caps.tty &&
+      !this.caps.dumb &&
+      !this.caps.json
+    );
+  }
+
   /** Apply roles to text. */
   style(raw: string, roles: readonly string[] = []): string {
     // The writer's one sanitiser: no control character from any text reaches the terminal.
     const text = clean(raw);
-    if (!this.colored || text === "" || roles.length === 0) return text;
+    if (!this.colored) {
+      if (!this.attributes || text === "") return text;
+      const keep = roles.filter(
+        (r) => r === "strong" || r === "code" || r === "chip",
+      );
+      const names = keep.flatMap((r) =>
+        r === "chip" ? (["inverse"] as StyleName[]) : roleStyles(r as Role),
+      );
+      return names.length
+        ? styleText([...new Set(names)], text, { validateStream: false })
+        : text;
+    }
+    if (text === "" || roles.length === 0) return text;
     let out = text;
     for (const r of roles as Role[]) {
       const role: Role = this.ink && r === "accent" ? "strong" : r;
       const hex =
-        this.caps.color === "truecolor" && role !== "code"
+        this.caps.color === "truecolor" && role !== "code" && role !== "qr"
           ? this.overrides[role as TerminalRole]
           : undefined;
-      const c = hex ? rgb(hex) : null;
+      // The QR is black on white in every palette: the quiet zone and the light modules are
+      // background-coloured cells, so line spacing above 1.0 shows no stripes.
+      if (role === "qr" && this.caps.color === "truecolor") {
+        out = `\x1b[38;2;0;0;0m\x1b[48;2;255;255;255m${out}\x1b[39m\x1b[49m`;
+        continue;
+      }
+      // A host accent paints the accent role (the step diamond, the bar, accent text) too, not only
+      // the chip; `theme.colors.accent` still wins over it.
+      const fg =
+        !hex && role === "accent" && this.caps.color === "truecolor"
+          ? this.accent?.fg
+          : undefined;
+      const c = hex ? rgb(hex) : fg ? rgb(fg) : null;
       if (c) {
         out = `\x1b[38;2;${c[0]};${c[1]};${c[2]}m${out}\x1b[39m`;
         continue;
@@ -121,7 +163,10 @@ export class Painter {
   /** The chip's colours over already padded text. */
   chipText(raw: string): string {
     const text = clean(raw);
-    if (!this.colored) return text;
+    if (!this.colored)
+      return this.attributes && text
+        ? styleText("inverse", text, { validateStream: false })
+        : text;
     if (this.caps.color === "truecolor" && this.accent) {
       const bg = rgb(this.accent.solid);
       const fg = rgb(this.accent.on);

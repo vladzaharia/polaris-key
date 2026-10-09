@@ -1,69 +1,59 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [33m▲[39m  [1mOffline · reconnect today to keep using Tidewater Studio[22m
-[90m│[39m  [90mReconnect by Oct 5[39m
-[90m└[39m
+[2m└[22m  [2mReconnect by Oct 5[22m
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [33m▲[39m  [1mOffline · reconnect today to keep using Tidewater Studio[22m
-[90m│[39m  [90mReconnect by Oct 5[39m
-[90m└[39m
+[2m└[22m  [2mReconnect by Oct 5[22m
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
+[2m│[22m
 [33m▲[39m  [1mOffline · reconnect today to keep using Tidewater Studio[22m
-[90m│[39m  [90mReconnect by Oct 5[39m
-[90m└[39m
+[2m└[22m  [2mReconnect by Oct 5[22m
 
 #### no-color-80
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [27m · status
 │
-▲  Offline · reconnect today to keep using Tidewater Studio
-│  Reconnect by Oct 5
-└
+▲  [1mOffline · reconnect today to keep using Tidewater Studio[22m
+└  Reconnect by Oct 5
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
+[2m|[22m
 [33m![39m  [1mOffline - reconnect today to keep using Tidewater Studio[22m
-[90m|[39m  [90mReconnect by Oct 5[39m
-[90m`[39m
+[2m`[22m  [2mReconnect by Oct 5[22m
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [33m▲[39m  [1mOffline · reconnect today to keep using Tidewater Studio[22m
-[90m│[39m  [90mReconnect by Oct 5[39m
-[90m└[39m
+[2m└[22m  [2mReconnect by Oct 5[22m
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · status[22m
+[2m│[22m
 [33m▲[39m  [1mOffline · reconnect today to keep using Tidewater Studio[22m
-[90m│[39m  [90mReconnect by Oct 5[39m
-[90m└[39m
+[2m└[22m  [2mReconnect by Oct 5[22m
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · status[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · status[22m
+[2m│[22m
 [33m▲[39m  [1mOffline · reconnect today to keep using Tidewater Studio[22m
-[90m│[39m  [90mReconnect by Oct 5[39m
-[90m└[39m
+[2m└[22m  [2mReconnect by Oct 5[22m
 
 #### no-color-60
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [27m · status
 │
-▲  Offline · reconnect today to keep using Tidewater Studio
-│  Reconnect by Oct 5
-└
+▲  [1mOffline · reconnect today to keep using Tidewater Studio[22m
+└  Reconnect by Oct 5
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - status[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - status[22m
+[2m|[22m
 [33m![39m  [1mOffline - reconnect today to keep using Tidewater Studio[22m
-[90m|[39m  [90mReconnect by Oct 5[39m
-[90m`[39m
+[2m`[22m  [2mReconnect by Oct 5[22m

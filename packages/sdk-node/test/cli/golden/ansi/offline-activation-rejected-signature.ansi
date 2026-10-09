@@ -1,69 +1,59 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · import-bundle[22m
+[2m│[22m
 [31m✗[39m  [1mActivation file not valid[22m
-[90m│[39m  The activation file couldn't be read.
-[90m└[39m
+[2m└[22m  Ask whoever sent it for a new file.
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · import-bundle[22m
+[2m│[22m
 [31m✗[39m  [1mActivation file not valid[22m
-[90m│[39m  The activation file couldn't be read.
-[90m└[39m
+[2m└[22m  Ask whoever sent it for a new file.
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · import-bundle[22m
+[2m│[22m
 [31m✗[39m  [1mActivation file not valid[22m
-[90m│[39m  The activation file couldn't be read.
-[90m└[39m
+[2m└[22m  Ask whoever sent it for a new file.
 
 #### no-color-80
-┌   Tidewater Studio  · import-bundle
+┌  [7m Tidewater Studio [27m · import-bundle
 │
-✗  Activation file not valid
-│  The activation file couldn't be read.
-└
+✗  [1mActivation file not valid[22m
+└  Ask whoever sent it for a new file.
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - import-bundle[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - import-bundle[22m
+[2m|[22m
 [31mx[39m  [1mActivation file not valid[22m
-[90m|[39m  The activation file couldn't be read.
-[90m`[39m
+[2m`[22m  Ask whoever sent it for a new file.
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · import-bundle[22m
+[2m│[22m
 [31m✗[39m  [1mActivation file not valid[22m
-[90m│[39m  The activation file couldn't be read.
-[90m└[39m
+[2m└[22m  Ask whoever sent it for a new file.
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · import-bundle[22m
+[2m│[22m
 [31m✗[39m  [1mActivation file not valid[22m
-[90m│[39m  The activation file couldn't be read.
-[90m└[39m
+[2m└[22m  Ask whoever sent it for a new file.
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · import-bundle[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · import-bundle[22m
+[2m│[22m
 [31m✗[39m  [1mActivation file not valid[22m
-[90m│[39m  The activation file couldn't be read.
-[90m└[39m
+[2m└[22m  Ask whoever sent it for a new file.
 
 #### no-color-60
-┌   Tidewater Studio  · import-bundle
+┌  [7m Tidewater Studio [27m · import-bundle
 │
-✗  Activation file not valid
-│  The activation file couldn't be read.
-└
+✗  [1mActivation file not valid[22m
+└  Ask whoever sent it for a new file.
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - import-bundle[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - import-bundle[22m
+[2m|[22m
 [31mx[39m  [1mActivation file not valid[22m
-[90m|[39m  The activation file couldn't be read.
-[90m`[39m
+[2m`[22m  Ask whoever sent it for a new file.

@@ -1,114 +1,104 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · activate[39m
-[90m│[39m
-[90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
+[2m│[22m
+[2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mNo key entries left[22m
-[90m│[39m  This key has no entries left in Tidewater Studio. Add it to your account and
-[90m│[39m  Tidewater Studio signs you in instead.
-[90m│[39m
-[90m│[39m  [1mtidewater login[22m   [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This key has no entries left in Tidewater Studio. Add it to your account and
+[2m│[22m  Tidewater Studio signs you in instead.
+[2m│[22m
+[2m└[22m  [1mtidewater login[22m   [2mUse the license on your account[22m
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · activate[39m
-[90m│[39m
-[90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
+[2m│[22m
+[2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mNo key entries left[22m
-[90m│[39m  This key has no entries left in Tidewater Studio. Add it to your account and
-[90m│[39m  Tidewater Studio signs you in instead.
-[90m│[39m
-[90m│[39m  [1mtidewater login[22m   [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This key has no entries left in Tidewater Studio. Add it to your account and
+[2m│[22m  Tidewater Studio signs you in instead.
+[2m│[22m
+[2m└[22m  [1mtidewater login[22m   [2mUse the license on your account[22m
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · activate[39m
-[90m│[39m
-[90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · activate[22m
+[2m│[22m
+[2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mNo key entries left[22m
-[90m│[39m  This key has no entries left in Tidewater Studio. Add it to your account and
-[90m│[39m  Tidewater Studio signs you in instead.
-[90m│[39m
-[90m│[39m  [1mtidewater login[22m   [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This key has no entries left in Tidewater Studio. Add it to your account and
+[2m│[22m  Tidewater Studio signs you in instead.
+[2m│[22m
+[2m└[22m  [1mtidewater login[22m   [2mUse the license on your account[22m
 
 #### no-color-80
-┌   Tidewater Studio  · activate
+┌  [7m Tidewater Studio [27m · activate
 │
-◇  License key · pkey_tidewater_••••••
-✗  No key entries left
+◇  [1mLicense key[22m · pkey_tidewater_••••••
+✗  [1mNo key entries left[22m
 │  This key has no entries left in Tidewater Studio. Add it to your account and
 │  Tidewater Studio signs you in instead.
 │
-│  tidewater login   Use the license on your account
-└
+└  [1mtidewater login[22m   Use the license on your account
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - activate[39m
-[90m|[39m
-[90mo[39m  [1mLicense key[22m [90m- pkey_tidewater_[39m******
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - activate[22m
+[2m|[22m
+[2mo[22m  [1mLicense key[22m [2m- pkey_tidewater_[22m******
 [31mx[39m  [1mNo key entries left[22m
-[90m|[39m  This key has no entries left in Tidewater Studio. Add it to your account and
-[90m|[39m  Tidewater Studio signs you in instead.
-[90m|[39m
-[90m|[39m  [1mtidewater login[22m   [90mUse the license on your account[39m
-[90m`[39m
+[2m|[22m  This key has no entries left in Tidewater Studio. Add it to your account and
+[2m|[22m  Tidewater Studio signs you in instead.
+[2m|[22m
+[2m`[22m  [1mtidewater login[22m   [2mUse the license on your account[22m
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · activate[39m
-[90m│[39m
-[90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
+[2m│[22m
+[2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mNo key entries left[22m
-[90m│[39m  This key has no entries left in Tidewater Studio. Add it
-[90m│[39m  to your account and Tidewater Studio signs you
-[90m│[39m  in instead.
-[90m│[39m
-[90m│[39m  [1mtidewater login[22m   [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This key has no entries left in Tidewater Studio. Add it
+[2m│[22m  to your account and Tidewater Studio signs you
+[2m│[22m  in instead.
+[2m│[22m
+[2m└[22m  [1mtidewater login[22m   [2mUse the license on your account[22m
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · activate[39m
-[90m│[39m
-[90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · activate[22m
+[2m│[22m
+[2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mNo key entries left[22m
-[90m│[39m  This key has no entries left in Tidewater Studio. Add it
-[90m│[39m  to your account and Tidewater Studio signs you
-[90m│[39m  in instead.
-[90m│[39m
-[90m│[39m  [1mtidewater login[22m   [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This key has no entries left in Tidewater Studio. Add it
+[2m│[22m  to your account and Tidewater Studio signs you
+[2m│[22m  in instead.
+[2m│[22m
+[2m└[22m  [1mtidewater login[22m   [2mUse the license on your account[22m
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · activate[39m
-[90m│[39m
-[90m◇[39m  [1mLicense key[22m [90m· pkey_tidewater_[39m••••••
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · activate[22m
+[2m│[22m
+[2m◇[22m  [1mLicense key[22m [2m· pkey_tidewater_[22m••••••
 [31m✗[39m  [1mNo key entries left[22m
-[90m│[39m  This key has no entries left in Tidewater Studio. Add it
-[90m│[39m  to your account and Tidewater Studio signs you
-[90m│[39m  in instead.
-[90m│[39m
-[90m│[39m  [1mtidewater login[22m   [90mUse the license on your account[39m
-[90m└[39m
+[2m│[22m  This key has no entries left in Tidewater Studio. Add it
+[2m│[22m  to your account and Tidewater Studio signs you
+[2m│[22m  in instead.
+[2m│[22m
+[2m└[22m  [1mtidewater login[22m   [2mUse the license on your account[22m
 
 #### no-color-60
-┌   Tidewater Studio  · activate
+┌  [7m Tidewater Studio [27m · activate
 │
-◇  License key · pkey_tidewater_••••••
-✗  No key entries left
+◇  [1mLicense key[22m · pkey_tidewater_••••••
+✗  [1mNo key entries left[22m
 │  This key has no entries left in Tidewater Studio. Add it
 │  to your account and Tidewater Studio signs you
 │  in instead.
 │
-│  tidewater login   Use the license on your account
-└
+└  [1mtidewater login[22m   Use the license on your account
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - activate[39m
-[90m|[39m
-[90mo[39m  [1mLicense key[22m [90m- pkey_tidewater_[39m******
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - activate[22m
+[2m|[22m
+[2mo[22m  [1mLicense key[22m [2m- pkey_tidewater_[22m******
 [31mx[39m  [1mNo key entries left[22m
-[90m|[39m  This key has no entries left in Tidewater Studio. Add it
-[90m|[39m  to your account and Tidewater Studio signs you
-[90m|[39m  in instead.
-[90m|[39m
-[90m|[39m  [1mtidewater login[22m   [90mUse the license on your account[39m
-[90m`[39m
+[2m|[22m  This key has no entries left in Tidewater Studio. Add it
+[2m|[22m  to your account and Tidewater Studio signs you
+[2m|[22m  in instead.
+[2m|[22m
+[2m`[22m  [1mtidewater login[22m   [2mUse the license on your account[22m

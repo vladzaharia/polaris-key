@@ -1,59 +1,51 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
 [31m✗[0m  [1mNot available on this license[0m
-[90m│[0m  This build is newer than your license allows.
-[90m│[0m  [90mAllowed versions: 1.0.0 to 2.3.9[0m
-[90m└[0m
+[2m│[0m  This build is newer than your license allows.
+[2m└[0m  [2mAllowed versions: 1.0.0 to 2.3.9[0m
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
 [31m✗[0m  [1mNot available on this license[0m
-[90m│[0m  This build is newer than your license allows.
-[90m│[0m  [90mAllowed versions: 1.0.0 to 2.3.9[0m
-[90m└[0m
+[2m│[0m  This build is newer than your license allows.
+[2m└[0m  [2mAllowed versions: 1.0.0 to 2.3.9[0m
 ── no-color · 80 ──
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [0m · status
 │
-✗  Not available on this license
+✗  [1mNot available on this license[0m
 │  This build is newer than your license allows.
-│  Allowed versions: 1.0.0 to 2.3.9
-└
+└  Allowed versions: 1.0.0 to 2.3.9
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
 [31mx[0m  [1mNot available on this license[0m
-[90m|[0m  This build is newer than your license allows.
-[90m|[0m  [90mAllowed versions: 1.0.0 to 2.3.9[0m
-[90m`[0m
+[2m|[0m  This build is newer than your license allows.
+[2m`[0m  [2mAllowed versions: 1.0.0 to 2.3.9[0m
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
 [31m✗[0m  [1mNot available on this license[0m
-[90m│[0m  This build is newer than your license allows.
-[90m│[0m  [90mAllowed versions: 1.0.0 to 2.3.9[0m
-[90m└[0m
+[2m│[0m  This build is newer than your license allows.
+[2m└[0m  [2mAllowed versions: 1.0.0 to 2.3.9[0m
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · status[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · status[0m
+[2m│[0m
 [31m✗[0m  [1mNot available on this license[0m
-[90m│[0m  This build is newer than your license allows.
-[90m│[0m  [90mAllowed versions: 1.0.0 to 2.3.9[0m
-[90m└[0m
+[2m│[0m  This build is newer than your license allows.
+[2m└[0m  [2mAllowed versions: 1.0.0 to 2.3.9[0m
 ── no-color · 60 ──
-┌   Tidewater Studio  · status
+┌  [7m Tidewater Studio [0m · status
 │
-✗  Not available on this license
+✗  [1mNot available on this license[0m
 │  This build is newer than your license allows.
-│  Allowed versions: 1.0.0 to 2.3.9
-└
+└  Allowed versions: 1.0.0 to 2.3.9
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - status[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - status[0m
+[2m|[0m
 [31mx[0m  [1mNot available on this license[0m
-[90m|[0m  This build is newer than your license allows.
-[90m|[0m  [90mAllowed versions: 1.0.0 to 2.3.9[0m
-[90m`[0m
+[2m|[0m  This build is newer than your license allows.
+[2m`[0m  [2mAllowed versions: 1.0.0 to 2.3.9[0m
 ── pipe · 80 ──
 Tidewater Studio · status
 Not available on this license

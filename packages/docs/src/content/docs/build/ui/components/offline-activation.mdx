@@ -23,7 +23,7 @@ Activation without a network: the request code as text and a QR code, then a res
 
 <Tabs syncKey="ui-kit">
   <TabItem label="Terminal (Python)">
-    **Drop-in.** `offline-request` (the request code, and a half-block QR at 70 columns and 20 rows or more) and `import-bundle <file | ->`.
+    **Drop-in.** `offline-request` (the request code, and a half-block QR wherever the whole screen fits with it) and `import-bundle <file | ->`.
 
     **Styled part.** `screens.offline_activation(kit, view)` in `polaris_key.ui.terminal`, drawn with a `Kit`; restyle through
     `Theme(colors=…, symbols=…, preset="native")`.
@@ -32,11 +32,11 @@ Activation without a network: the request code as text and a QR code, then a res
 
   </TabItem>
   <TabItem label="Terminal (Node)">
-    **Drop-in.** `offline-request` (`offlineRequestFlow`) prints the request code, with a QR code on
-    a terminal of at least 70 columns by 20 rows (`default`); `import-bundle <file>`
+    **Drop-in.** `offline-request` (`offlineRequestFlow`) prints the request code, with a QR code
+    wherever the whole screen fits with it (`default`); `import-bundle <file>`
     (`importBundleFlow`) activates from the operator's file (`done`, `rejected-signature`).
 
-    **Styled part.** `codeRows`, and the `qrLines` primitive.
+    **Styled part.** `codeRows`, and the `qrLines` and `qrFits` primitives.
 
     **Headless.** None of its own: the request code is `client.core.deviceId` and the import
     `client.importBundle(jws)`.

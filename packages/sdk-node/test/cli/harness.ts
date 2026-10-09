@@ -19,7 +19,7 @@ export interface Variant {
   id: string;
   color: "truecolor" | "ansi16" | "none";
   ascii: boolean;
-  columns: 80 | 60;
+  columns: 80 | 60 | 32;
   scheme: "dark" | "light";
 }
 

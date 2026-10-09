@@ -1,30 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="212.8" viewBox="0 0 705.6 212.8" role="img" aria-label="UpdatePrompt, mandatory, terminal, dark theme">
-<rect width="705.6" height="212.8" rx="12" fill="#101114" stroke="#26282e"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="162.4" viewBox="0 0 705.6 162.4" role="img" aria-label="UpdatePrompt, mandatory, terminal, dark theme">
+<rect width="705.6" height="162.4" rx="12" fill="#101114" stroke="#26282e"/>
 <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
 <rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="22.4" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="21.9" width="4.7" height="1" fill="#7f848e"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#d7dae0"/>
 <text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="26.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#7f848e">· update</text>
-<rect x="20.5" y="30.8" width="1" height="16.8" fill="#7f848e"/>
+<text x="201.6" y="26.6" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· update</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#d7dae0"/>
 <text x="21" y="60.2" text-anchor="middle" fill="#e5c07b">▲</text>
 <text x="42" y="60.2" textLength="310.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Update to keep using Tidewater Studio</text>
-<rect x="20.5" y="64.4" width="1" height="16.8" fill="#7f848e"/>
+<rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
 <text x="42" y="77" textLength="613.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">This version is below the minimum supported version. Update to keep using</text>
-<rect x="20.5" y="81.2" width="1" height="16.8" fill="#7f848e"/>
+<rect x="20.5" y="81.2" width="1" height="16.8" fill="#d7dae0"/>
 <text x="42" y="93.8" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Tidewater Studio.</text>
-<rect x="20.5" y="98" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="110.6" textLength="168" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Tidewater Studio 2.5</text>
-<rect x="20.5" y="114.8" width="1" height="16.8" fill="#7f848e"/>
-<text x="46.2" y="127.4" text-anchor="middle" fill="#e5c07b">▲</text>
-<text x="58.8" y="127.4" textLength="394.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">This update includes an important security fix.</text>
-<rect x="20.5" y="131.6" width="1" height="16.8" fill="#7f848e"/>
-<rect x="20.5" y="148.4" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="161" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">tidewater update apply</text>
-<text x="252" y="161" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">Update now</text>
-<rect x="20.5" y="165.2" width="1" height="16.8" fill="#7f848e"/>
-<text x="42" y="177.8" textLength="159.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">tidewater changelog</text>
-<text x="252" y="177.8" textLength="84" lengthAdjust="spacingAndGlyphs" fill="#7f848e">What&#x27;s new</text>
-<rect x="20.5" y="182" width="1" height="8.4" fill="#7f848e"/>
-<rect x="20.5" y="189.9" width="4.7" height="1" fill="#7f848e"/>
+<rect x="20.5" y="98" width="1" height="16.8" fill="#d7dae0"/>
+<text x="46.2" y="110.6" text-anchor="middle" fill="#e5c07b">▲</text>
+<text x="58.8" y="110.6" textLength="394.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">This update includes an important security fix.</text>
+<rect x="20.5" y="114.8" width="1" height="16.8" fill="#d7dae0"/>
+<rect x="20.5" y="131.6" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="139.5" width="4.7" height="1" fill="#d7dae0"/>
+<text x="42" y="144.2" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">tidewater update apply</text>
+<text x="252" y="144.2" textLength="58.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Install</text>
 </g></svg>

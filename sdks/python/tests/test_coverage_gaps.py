@@ -276,7 +276,7 @@ def test_cli_activate_then_status_then_deactivate() -> None:
     st = core.status(c)
     assert st.code == 0
     assert st.data["status"] == "ok" and st.data["usable"] is True
-    assert any("Grace Hopper" in line for line in st.lines)
+    assert any(line.startswith("License") for line in st.lines)
     # P1b-09: the token store is named (in --json; in the lines only when degraded).
     assert st.data["tokenStore"] == {"backend": "memory", "degraded": None}
 
@@ -372,8 +372,8 @@ def test_cli_import_bundle_success_and_refusal(tmp_path) -> None:
     bad = sign_bundle("someone-else")
     r2 = core.import_bundle(c, bad)
     assert r2.code == 1
-    # The copy names the STEP, which is the operator's remedy.
-    assert C("core.codes.bundle-claims-rejected.message") in r2.lines
+    # One title and who to ask for a new file: the same two lines in both kits.
+    assert C("cli.import.fix") in r2.lines
     assert r2.data["error"] == "bundle-claims-rejected"
     c.close()
 

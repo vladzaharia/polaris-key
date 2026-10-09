@@ -1,7 +1,7 @@
 #### truecolor-80-dark
-[1mtidewater[22m[90m · Tidewater Studio license and updates[39m
+[1mtidewater[22m[2m · Tidewater Studio license and updates[22m
 
-[90mUsage[39m  tidewater <command> [options]
+[2mUsage[22m  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompts; never an argument)
@@ -53,12 +53,12 @@
   [1m--ascii[22m                   ASCII symbols only
   [1m-h, --help[22m                Help for a command
 
-[90mRun tidewater <command> --help for one command's options.[39m
+[2mRun tidewater <command> --help for one command's options.[22m
 
 #### truecolor-80-light
-[1mtidewater[22m[90m · Tidewater Studio license and updates[39m
+[1mtidewater[22m[2m · Tidewater Studio license and updates[22m
 
-[90mUsage[39m  tidewater <command> [options]
+[2mUsage[22m  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompts; never an argument)
@@ -110,12 +110,12 @@
   [1m--ascii[22m                   ASCII symbols only
   [1m-h, --help[22m                Help for a command
 
-[90mRun tidewater <command> --help for one command's options.[39m
+[2mRun tidewater <command> --help for one command's options.[22m
 
 #### ansi16-80
-[1mtidewater[22m[90m · Tidewater Studio license and updates[39m
+[1mtidewater[22m[2m · Tidewater Studio license and updates[22m
 
-[90mUsage[39m  tidewater <command> [options]
+[2mUsage[22m  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompts; never an argument)
@@ -167,69 +167,69 @@
   [1m--ascii[22m                   ASCII symbols only
   [1m-h, --help[22m                Help for a command
 
-[90mRun tidewater <command> --help for one command's options.[39m
+[2mRun tidewater <command> --help for one command's options.[22m
 
 #### no-color-80
-tidewater · Tidewater Studio license and updates
+[1mtidewater[22m · Tidewater Studio license and updates
 
 Usage  tidewater <command> [options]
 
-License
-  activate [key]            Add a license key (prompts; never an argument)
-  status                    License, devices and offline time
-  enroll                    Get the free license, when Tidewater Studio
+[1mLicense[22m
+  [1mactivate [key][22m            Add a license key (prompts; never an argument)
+  [1mstatus[22m                    License, devices and offline time
+  [1menroll[22m                    Get the free license, when Tidewater Studio
                             offers one
-  deactivate                Stop using your license on this device and free
+  [1mdeactivate[22m                Stop using your license on this device and free
                             its seat
 
-Account
-  login                     Sign in with your account in the browser
-  logout                    Sign out on this device
+[1mAccount[22m
+  [1mlogin[22m                     Sign in with your account in the browser
+  [1mlogout[22m                    Sign out on this device
 
-Devices
-  register                  Register this device without a license key
-  devices list              List the devices using your license
-  devices rename <deviceId> [label...]
+[1mDevices[22m
+  [1mregister[22m                  Register this device without a license key
+  [1mdevices list[22m              List the devices using your license
+  [1mdevices rename <deviceId> [label...][22m
                             Rename a device (no name clears it)
-  devices deauthorize <deviceId>
+  [1mdevices deauthorize <deviceId>[22m
                             Remove a device and free its seat
 
-Settings
-  config get <key>          Show one setting and where its value comes from
-  config list               List the settings you can see
-  config set <key> <value>  Change a setting on this device
-  config reset <key>        Reset a setting to its default
-  secret <key>              Print a secret delivered to this device
-  mint <recipeId>           Get a short-lived token from a recipe
+[1mSettings[22m
+  [1mconfig get <key>[22m          Show one setting and where its value comes from
+  [1mconfig list[22m               List the settings you can see
+  [1mconfig set <key> <value>[22m  Change a setting on this device
+  [1mconfig reset <key>[22m        Reset a setting to its default
+  [1msecret <key>[22m              Print a secret delivered to this device
+  [1mmint <recipeId>[22m           Get a short-lived token from a recipe
 
-Updates
-  update check              Check for a newer version
-  update apply              Download and install the newer version
-  changelog                 Show what's new in each version
+[1mUpdates[22m
+  [1mupdate check[22m              Check for a newer version
+  [1mupdate apply[22m              Download and install the newer version
+  [1mchangelog[22m                 Show what's new in each version
 
-Content
-  packs status              Show installed and downloading content
-  packs ensure <packIds...>
+[1mContent[22m
+  [1mpacks status[22m              Show installed and downloading content
+  [1mpacks ensure <packIds...>[22m
                             Download and install content, with progress
 
-Support
-  offline-request           Print the request code for offline activation
-  import-bundle <file>      Activate from an offline activation file
-  doctor                    Show what this device can do, for support
-  completion <shell>        Print shell completion for bash, zsh or fish
+[1mSupport[22m
+  [1moffline-request[22m           Print the request code for offline activation
+  [1mimport-bundle <file>[22m      Activate from an offline activation file
+  [1mdoctor[22m                    Show what this device can do, for support
+  [1mcompletion <shell>[22m        Print shell completion for bash, zsh or fish
 
-Options
-  --json                    JSON output for scripts, on every command
-  --no-color                Plain text (also NO_COLOR=1)
-  --ascii                   ASCII symbols only
-  -h, --help                Help for a command
+[1mOptions[22m
+  [1m--json[22m                    JSON output for scripts, on every command
+  [1m--no-color[22m                Plain text (also NO_COLOR=1)
+  [1m--ascii[22m                   ASCII symbols only
+  [1m-h, --help[22m                Help for a command
 
 Run tidewater <command> --help for one command's options.
 
 #### ascii-80
-[1mtidewater[22m[90m - Tidewater Studio license and updates[39m
+[1mtidewater[22m[2m - Tidewater Studio license and updates[22m
 
-[90mUsage[39m  tidewater <command> [options]
+[2mUsage[22m  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m            Add a license key (prompts; never an argument)
@@ -281,12 +281,12 @@ Run tidewater <command> --help for one command's options.
   [1m--ascii[22m                   ASCII symbols only
   [1m-h, --help[22m                Help for a command
 
-[90mRun tidewater <command> --help for one command's options.[39m
+[2mRun tidewater <command> --help for one command's options.[22m
 
 #### truecolor-60-dark
-[1mtidewater[22m[90m · Tidewater Studio license and updates[39m
+[1mtidewater[22m[2m · Tidewater Studio license and updates[22m
 
-[90mUsage[39m  tidewater <command> [options]
+[2mUsage[22m  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompts; never
@@ -350,12 +350,12 @@ Run tidewater <command> --help for one command's options.
   [1m--ascii[22m           ASCII symbols only
   [1m-h, --help[22m        Help for a command
 
-[90mRun tidewater <command> --help for one command's options.[39m
+[2mRun tidewater <command> --help for one command's options.[22m
 
 #### truecolor-60-light
-[1mtidewater[22m[90m · Tidewater Studio license and updates[39m
+[1mtidewater[22m[2m · Tidewater Studio license and updates[22m
 
-[90mUsage[39m  tidewater <command> [options]
+[2mUsage[22m  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompts; never
@@ -419,12 +419,12 @@ Run tidewater <command> --help for one command's options.
   [1m--ascii[22m           ASCII symbols only
   [1m-h, --help[22m        Help for a command
 
-[90mRun tidewater <command> --help for one command's options.[39m
+[2mRun tidewater <command> --help for one command's options.[22m
 
 #### ansi16-60
-[1mtidewater[22m[90m · Tidewater Studio license and updates[39m
+[1mtidewater[22m[2m · Tidewater Studio license and updates[22m
 
-[90mUsage[39m  tidewater <command> [options]
+[2mUsage[22m  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompts; never
@@ -488,81 +488,81 @@ Run tidewater <command> --help for one command's options.
   [1m--ascii[22m           ASCII symbols only
   [1m-h, --help[22m        Help for a command
 
-[90mRun tidewater <command> --help for one command's options.[39m
+[2mRun tidewater <command> --help for one command's options.[22m
 
 #### no-color-60
-tidewater · Tidewater Studio license and updates
+[1mtidewater[22m · Tidewater Studio license and updates
 
 Usage  tidewater <command> [options]
 
-License
-  activate [key]    Add a license key (prompts; never
+[1mLicense[22m
+  [1mactivate [key][22m    Add a license key (prompts; never
                     an argument)
-  status            License, devices and offline time
-  enroll            Get the free license, when Tidewater
+  [1mstatus[22m            License, devices and offline time
+  [1menroll[22m            Get the free license, when Tidewater
                     Studio offers one
-  deactivate        Stop using your license on this device
+  [1mdeactivate[22m        Stop using your license on this device
                     and free its seat
 
-Account
-  login             Sign in with your account in the browser
-  logout            Sign out on this device
+[1mAccount[22m
+  [1mlogin[22m             Sign in with your account in the browser
+  [1mlogout[22m            Sign out on this device
 
-Devices
-  register          Register this device without a
+[1mDevices[22m
+  [1mregister[22m          Register this device without a
                     license key
-  devices list      List the devices using your license
-  devices rename <deviceId> [label...]
+  [1mdevices list[22m      List the devices using your license
+  [1mdevices rename <deviceId> [label...][22m
                     Rename a device (no name clears it)
-  devices deauthorize <deviceId>
+  [1mdevices deauthorize <deviceId>[22m
                     Remove a device and free its seat
 
-Settings
-  config get <key>  Show one setting and where its value
+[1mSettings[22m
+  [1mconfig get <key>[22m  Show one setting and where its value
                     comes from
-  config list       List the settings you can see
-  config set <key> <value>
+  [1mconfig list[22m       List the settings you can see
+  [1mconfig set <key> <value>[22m
                     Change a setting on this device
-  config reset <key>
+  [1mconfig reset <key>[22m
                     Reset a setting to its default
-  secret <key>      Print a secret delivered to this device
-  mint <recipeId>   Get a short-lived token from a recipe
+  [1msecret <key>[22m      Print a secret delivered to this device
+  [1mmint <recipeId>[22m   Get a short-lived token from a recipe
 
-Updates
-  update check      Check for a newer version
-  update apply      Download and install the newer version
-  changelog         Show what's new in each version
+[1mUpdates[22m
+  [1mupdate check[22m      Check for a newer version
+  [1mupdate apply[22m      Download and install the newer version
+  [1mchangelog[22m         Show what's new in each version
 
-Content
-  packs status      Show installed and downloading content
-  packs ensure <packIds...>
+[1mContent[22m
+  [1mpacks status[22m      Show installed and downloading content
+  [1mpacks ensure <packIds...>[22m
                     Download and install content,
                     with progress
 
-Support
-  offline-request   Print the request code for
+[1mSupport[22m
+  [1moffline-request[22m   Print the request code for
                     offline activation
-  import-bundle <file>
+  [1mimport-bundle <file>[22m
                     Activate from an offline activation file
-  doctor            Show what this device can do,
+  [1mdoctor[22m            Show what this device can do,
                     for support
-  completion <shell>
+  [1mcompletion <shell>[22m
                     Print shell completion for bash, zsh
                     or fish
 
-Options
-  --json            JSON output for scripts, on
+[1mOptions[22m
+  [1m--json[22m            JSON output for scripts, on
                     every command
-  --no-color        Plain text (also NO_COLOR=1)
-  --ascii           ASCII symbols only
-  -h, --help        Help for a command
+  [1m--no-color[22m        Plain text (also NO_COLOR=1)
+  [1m--ascii[22m           ASCII symbols only
+  [1m-h, --help[22m        Help for a command
 
 Run tidewater <command> --help for one command's options.
 
 #### ascii-60
-[1mtidewater[22m[90m - Tidewater Studio license and updates[39m
+[1mtidewater[22m[2m - Tidewater Studio license and updates[22m
 
-[90mUsage[39m  tidewater <command> [options]
+[2mUsage[22m  tidewater <command> [options]
 
 [1mLicense[22m
   [1mactivate [key][22m    Add a license key (prompts; never
@@ -626,4 +626,4 @@ Run tidewater <command> --help for one command's options.
   [1m--ascii[22m           ASCII symbols only
   [1m-h, --help[22m        Help for a command
 
-[90mRun tidewater <command> --help for one command's options.[39m
+[2mRun tidewater <command> --help for one command's options.[22m

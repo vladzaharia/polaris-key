@@ -830,7 +830,14 @@ export function findCommand(name: string): PkeyCommand | undefined {
 
 // ── Rendering ────────────────────────────────────────────────────────────────────────────────
 
-/** Two columns: each term strong, its description muted and wrapped under its own column. */
+/** Below this many columns a help row stacks: the term, then its description under it. */
+const STACK_COLUMNS = 50;
+
+/**
+ * Two columns: each term strong, its description muted and wrapped under its own column, never
+ * past the terminal's width. Below 50 columns, or when the description column would be narrower
+ * than 16 cells, each term stacks above its description (two cells further in).
+ */
 function twoColumns(
   term: Term,
   rows: ReadonlyArray<readonly [string, string]>,
@@ -838,20 +845,38 @@ function twoColumns(
   indent = 2,
 ): string[] {
   const { painter, caps } = term;
-  const descCol = indent + column + 2;
-  const width = Math.max(20, caps.columns - descCol);
+  const stacked =
+    caps.columns < STACK_COLUMNS || caps.columns - (indent + column + 2) < 16;
+  const descCol = stacked ? indent + 2 : indent + column + 2;
+  const width = Math.max(1, caps.columns - descCol);
   const out: string[] = [];
   for (const [t, text] of rows) {
-    const lines = wrapSpans([{ text, style: ["muted"] }], width);
     const name = painter.style(t, ["strong"]);
-    const fits = cellWidth(t) <= column;
-    if (!fits) out.push(`${" ".repeat(indent)}${name}`);
+    const fits = !stacked && cellWidth(t) <= column;
+    // A term wider than the line wraps at its spaces, continued two cells further in; a stacked
+    // command that wrapped indents its description by four, so the two read apart without bold.
+    const termLines = fits
+      ? []
+      : wrapSpans(
+          [{ text: t, style: ["strong"] }],
+          Math.max(1, caps.columns - indent - 2),
+        );
+    const col = stacked && termLines.length > 1 ? indent + 4 : descCol;
+    const lines = wrapSpans(
+      [{ text, style: ["muted"] }],
+      Math.max(1, caps.columns - col),
+    );
+    termLines.forEach((l, i) =>
+      out.push(
+        `${" ".repeat(i === 0 ? indent : indent + 2)}${painter.line(l)}`,
+      ),
+    );
     lines.forEach((l, i) => {
       const body = painter.line(l);
       out.push(
         i === 0 && fits
           ? `${" ".repeat(indent)}${name}${" ".repeat(column - cellWidth(t) + 2)}${body}`
-          : `${" ".repeat(descCol)}${body}`,
+          : `${" ".repeat(col)}${body}`,
       );
     });
   }
@@ -880,13 +905,16 @@ export function renderHelp(term: Term): string {
     ...COMMON_OPTIONS.map(([t]) => t),
   ]);
   const out: string[] = [
-    line([
-      { text: "pkey", style: ["strong"] },
-      {
-        text: ` ${symbols.separator} Polaris Key platform CLI`,
-        style: ["muted"],
-      },
-    ]),
+    ...wrapSpans(
+      [
+        { text: "pkey", style: ["strong"] },
+        {
+          text: ` ${symbols.separator} Polaris Key platform CLI`,
+          style: ["muted"],
+        },
+      ],
+      term.caps.columns,
+    ).map(line),
     "",
     line([
       { text: "Usage", style: ["muted"] },
@@ -905,12 +933,15 @@ export function renderHelp(term: Term): string {
   out.push(...twoColumns(term, COMMON_OPTIONS, column));
   out.push(
     "",
-    line([
-      {
-        text: "Run pkey <command> --help for a command's options.",
-        style: ["muted"],
-      },
-    ]),
+    ...wrapSpans(
+      [
+        {
+          text: "Run pkey <command> --help for a command's options.",
+          style: ["muted"],
+        },
+      ],
+      term.caps.columns,
+    ).map(line),
   );
   return `${out.join("\n")}\n`;
 }
@@ -1004,7 +1035,7 @@ function rowSubs(term: string): string[] {
 
 /** Paragraph text wrapped to the terminal, indented. */
 function paragraph(term: Term, text: string, indent = 2): string[] {
-  const width = Math.max(20, term.caps.columns - indent);
+  const width = Math.max(1, term.caps.columns - indent);
   return wrapSpans([{ text }], width).map(
     (l) => `${" ".repeat(indent)}${term.painter.line(l)}`,
   );
@@ -1036,13 +1067,17 @@ export function renderCommandHelp(
     : undefined;
   const title = known ? `pkey ${cmd.name} ${sub}` : `pkey ${cmd.name}`;
   const out: string[] = [
-    line([
-      { text: title, style: ["strong"] },
-      {
-        text: ` ${symbols.separator} ${row ? row[1] : cmd.summary}`,
-        style: ["muted"],
-      },
-    ]),
+    // The title and its summary wrap to the terminal like every other line.
+    ...wrapSpans(
+      [
+        { text: title, style: ["strong"] },
+        {
+          text: ` ${symbols.separator} ${row ? row[1] : cmd.summary}`,
+          style: ["muted"],
+        },
+      ],
+      term.caps.columns,
+    ).map(line),
     "",
     line([{ text: "Usage", style: ["strong"] }]),
   ];

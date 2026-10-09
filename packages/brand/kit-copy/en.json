@@ -2717,9 +2717,9 @@
       "note": "Terminal status: the row label for how long the app works without the internet."
     },
     "cli.status.offlineUntil": {
-      "value": "Works offline until {date}",
+      "value": "until {date}",
       "role": "body",
-      "note": "Terminal status: the license keeps working without the internet until {date} (a short date)."
+      "note": "Terminal status: the license keeps working without the internet until {date} (a short date). It follows the row label 'Offline', so it starts with the preposition."
     },
     "cli.status.version": {
       "value": "Version",
@@ -2772,9 +2772,9 @@
       "note": "Terminal: a device was removed from the license."
     },
     "cli.update.cancelled": {
-      "value": "Update cancelled. Nothing was installed.",
+      "value": "Update cancelled.",
       "role": "body",
-      "note": "Terminal: the person stopped an update download."
+      "note": "Terminal: the person stopped an update download. The title; 'Nothing was installed.' is the body line under it."
     },
     "cli.packs.none": {
       "value": "No content is installed.",
@@ -2855,6 +2855,106 @@
       "value": "Not supported here",
       "role": "label",
       "note": "Terminal diagnostics: the heading over features this device cannot use, each with its reason."
+    },
+    "cli.keys.codeBrowser": {
+      "value": "c copy the code · o open in browser · Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hints while waiting for a code sign-in on a computer that has a browser: c copies the code, o opens the sign-in page with the code filled in. Keep each key first and the ' · ' separators."
+    },
+    "cli.activate.otherProduct": {
+      "value": "This key is for another product ({app}). Use your {product} key.",
+      "role": "body",
+      "note": "Terminal key prompt: the key belongs to a different product. {app} is that product's slug, {product} the product this command is for."
+    },
+    "cli.update.figures": {
+      "value": "{size} of {total}",
+      "role": "body",
+      "note": "Terminal update progress: how much of the download is done. {size} is a bare number and {total} carries the unit, so 'of' joins '38' and '61 MB'."
+    },
+    "cli.update.figuresShort": {
+      "value": "{size}/{total}",
+      "role": "body",
+      "note": "Terminal update progress on a narrow line: the short form of the sizes. {size} is a bare number and {total} carries the unit."
+    },
+    "cli.update.timeLeft": {
+      "value": "{time} left",
+      "role": "body",
+      "note": "Terminal update progress: the estimated time left. {time} is a short duration such as '20 s'."
+    },
+    "cli.update.ready": {
+      "value": "{version} is ready · {size}",
+      "role": "body",
+      "note": "Terminal: the update finished downloading. {version} is the new version, {size} the download size (like '61 MB'). The chip above already names the product."
+    },
+    "cli.update.readyNoSize": {
+      "value": "{version} is ready",
+      "role": "body",
+      "note": "Terminal: the update is ready and its size is not known. {version} is the new version."
+    },
+    "cli.update.restart": {
+      "value": "Restart to finish updating.",
+      "role": "body",
+      "note": "Terminal: after an update downloaded, what the person does next."
+    },
+    "cli.update.nothingInstalled": {
+      "value": "Nothing was installed.",
+      "role": "body",
+      "note": "Terminal: an update download failed; nothing was changed on this device."
+    },
+    "cli.deviceLimit.body": {
+      "value": "Replace a device in your browser, then try again here.",
+      "role": "body",
+      "note": "Terminal: every device on the license is in use. The terminal does not poll, so it says what to do and asks to try again here."
+    },
+    "cli.status.devices": {
+      "value": "Devices",
+      "role": "label",
+      "note": "Terminal status: the row label for how many devices use the license."
+    },
+    "cli.status.seatsOf": {
+      "value": "{used} of {limit}",
+      "role": "body",
+      "note": "Terminal status: devices in use out of the license's limit, like '2 of 3'."
+    },
+    "cli.update.available": {
+      "value": "{version} is available · {size}",
+      "role": "body",
+      "note": "Terminal update check: a newer version exists. {version} is the version, {size} the download size (like '61 MB'). The chip above already names the product."
+    },
+    "cli.update.availableNoSize": {
+      "value": "{version} is available",
+      "role": "body",
+      "note": "Terminal update check: a newer version exists and its size is not known. {version} is the version."
+    },
+    "cli.update.have": {
+      "value": "You have {version}",
+      "role": "body",
+      "note": "Terminal update check: the version installed now. {version} is that version."
+    },
+    "cli.update.install": {
+      "value": "Install",
+      "role": "label",
+      "note": "Terminal update check: what the 'update apply' command does, beside the command."
+    },
+    "cli.changelog.fix": {
+      "value": "Check your connection and run {command} again.",
+      "role": "body",
+      "note": "Terminal changelog: what to do after the release notes failed to load. {command} is a command line."
+    },
+    "cli.import.fix": {
+      "value": "Ask whoever sent it for a new file.",
+      "role": "body",
+      "note": "Terminal offline activation: what to do after an activation file was refused."
+    },
+    "cli.identityOff.notice": {
+      "value": "{product} doesn't use Polaris Key sign-in.",
+      "role": "body",
+      "note": "Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product."
+    },
+    "cli.identityOff.fix": {
+      "value": "Run {command} with your license key.",
+      "role": "body",
+      "note": "Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'."
     }
   }
 }

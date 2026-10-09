@@ -15,6 +15,7 @@ import {
   animate,
   cellWidth,
   detectTerminal,
+  layoutColumns,
   LiveRegion,
   Painter,
   progressSpans,
@@ -23,6 +24,7 @@ import {
   symbolsFor,
   truncateEnd,
   type Line,
+  type RailRow,
   type Symbols,
   type TerminalCaps,
   type Ticker,
@@ -96,8 +98,20 @@ export class Spinner implements StageProgress {
     private readonly ticker: Ticker = realTicker,
   ) {
     this.term = termFor(err, env, flags);
-    this.region = this.term.caps.animate
-      ? new LiveRegion(err, this.term.caps)
+    const caps = this.term.caps;
+    // The spinner's line is already styled text, so the region's host passes it through as is.
+    const render = (rows: readonly RailRow[]) =>
+      rows.map((r) => r.spans.map((x) => x.text).join(""));
+    this.region = caps.animate
+      ? new LiveRegion(err, {
+          caps,
+          refreshSize: () => {
+            if (err.columns) caps.columns = layoutColumns(err.columns);
+            if (err.rows) caps.rows = err.rows;
+          },
+          render,
+          fit: (rows) => ({ lines: render(rows), head: 0 }),
+        })
       : null;
   }
 
@@ -168,7 +182,7 @@ export class Spinner implements StageProgress {
 
   private draw(): void {
     if (!this.region || !this.label || !this.atLineStart) return;
-    this.region.draw([this.line()]);
+    this.region.draw(() => [{ mark: "none", spans: [{ text: this.line() }] }]);
   }
 
   /** One line, never wider than the terminal (a wrapped line would break the redraw). */

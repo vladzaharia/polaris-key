@@ -1,119 +1,109 @@
 #### truecolor-80-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · changelog[39m
-[90m│[39m
-[36m◆[39m  [1mWhat's new in Tidewater Studio[22m
-[90m│[39m
-[90m│[39m  [1mVersion 2.5.0[22m[90m  · Released Oct 2[39m
-[90m│[39m  Stem export in one click, with loudness matching.
-[90m│[39m
-[90m│[39m  [1mVersion 2.4.1[22m[90m  · Released Sep 12[39m
-[90m│[39m  Track freeze now works with every plug-in.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · changelog[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mWhat's new in Tidewater Studio[22m
+[2m│[22m
+[2m│[22m  [1mVersion 2.5.0[22m[2m  · Released Oct 2[22m
+[2m│[22m  Stem export in one click, with loudness matching.
+[2m│[22m
+[2m│[22m  [1mVersion 2.4.1[22m[2m  · Released Sep 12[22m
+[2m└[22m  Track freeze now works with every plug-in.
 
 #### truecolor-80-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · changelog[39m
-[90m│[39m
-[36m◆[39m  [1mWhat's new in Tidewater Studio[22m
-[90m│[39m
-[90m│[39m  [1mVersion 2.5.0[22m[90m  · Released Oct 2[39m
-[90m│[39m  Stem export in one click, with loudness matching.
-[90m│[39m
-[90m│[39m  [1mVersion 2.4.1[22m[90m  · Released Sep 12[39m
-[90m│[39m  Track freeze now works with every plug-in.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · changelog[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mWhat's new in Tidewater Studio[22m
+[2m│[22m
+[2m│[22m  [1mVersion 2.5.0[22m[2m  · Released Oct 2[22m
+[2m│[22m  Stem export in one click, with loudness matching.
+[2m│[22m
+[2m│[22m  [1mVersion 2.4.1[22m[2m  · Released Sep 12[22m
+[2m└[22m  Track freeze now works with every plug-in.
 
 #### ansi16-80
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · changelog[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · changelog[22m
+[2m│[22m
 [36m◆[39m  [1mWhat's new in Tidewater Studio[22m
-[90m│[39m
-[90m│[39m  [1mVersion 2.5.0[22m[90m  · Released Oct 2[39m
-[90m│[39m  Stem export in one click, with loudness matching.
-[90m│[39m
-[90m│[39m  [1mVersion 2.4.1[22m[90m  · Released Sep 12[39m
-[90m│[39m  Track freeze now works with every plug-in.
-[90m└[39m
+[2m│[22m
+[2m│[22m  [1mVersion 2.5.0[22m[2m  · Released Oct 2[22m
+[2m│[22m  Stem export in one click, with loudness matching.
+[2m│[22m
+[2m│[22m  [1mVersion 2.4.1[22m[2m  · Released Sep 12[22m
+[2m└[22m  Track freeze now works with every plug-in.
 
 #### no-color-80
-┌   Tidewater Studio  · changelog
+┌  [7m Tidewater Studio [27m · changelog
 │
-◆  What's new in Tidewater Studio
+◆  [1mWhat's new in Tidewater Studio[22m
 │
-│  Version 2.5.0  · Released Oct 2
+│  [1mVersion 2.5.0[22m  · Released Oct 2
 │  Stem export in one click, with loudness matching.
 │
-│  Version 2.4.1  · Released Sep 12
-│  Track freeze now works with every plug-in.
-└
+│  [1mVersion 2.4.1[22m  · Released Sep 12
+└  Track freeze now works with every plug-in.
 
 #### ascii-80
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - changelog[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - changelog[22m
+[2m|[22m
 [36m*[39m  [1mWhat's new in Tidewater Studio[22m
-[90m|[39m
-[90m|[39m  [1mVersion 2.5.0[22m[90m  - Released Oct 2[39m
-[90m|[39m  Stem export in one click, with loudness matching.
-[90m|[39m
-[90m|[39m  [1mVersion 2.4.1[22m[90m  - Released Sep 12[39m
-[90m|[39m  Track freeze now works with every plug-in.
-[90m`[39m
+[2m|[22m
+[2m|[22m  [1mVersion 2.5.0[22m[2m  - Released Oct 2[22m
+[2m|[22m  Stem export in one click, with loudness matching.
+[2m|[22m
+[2m|[22m  [1mVersion 2.4.1[22m[2m  - Released Sep 12[22m
+[2m`[22m  Track freeze now works with every plug-in.
 
 #### truecolor-60-dark
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · changelog[39m
-[90m│[39m
-[36m◆[39m  [1mWhat's new in Tidewater Studio[22m
-[90m│[39m
-[90m│[39m  [1mVersion 2.5.0[22m[90m  · Released Oct 2[39m
-[90m│[39m  Stem export in one click, with loudness matching.
-[90m│[39m
-[90m│[39m  [1mVersion 2.4.1[22m[90m  · Released Sep 12[39m
-[90m│[39m  Track freeze now works with every plug-in.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · changelog[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mWhat's new in Tidewater Studio[22m
+[2m│[22m
+[2m│[22m  [1mVersion 2.5.0[22m[2m  · Released Oct 2[22m
+[2m│[22m  Stem export in one click, with loudness matching.
+[2m│[22m
+[2m│[22m  [1mVersion 2.4.1[22m[2m  · Released Sep 12[22m
+[2m└[22m  Track freeze now works with every plug-in.
 
 #### truecolor-60-light
-[90m┌[39m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[90m · changelog[39m
-[90m│[39m
-[36m◆[39m  [1mWhat's new in Tidewater Studio[22m
-[90m│[39m
-[90m│[39m  [1mVersion 2.5.0[22m[90m  · Released Oct 2[39m
-[90m│[39m  Stem export in one click, with loudness matching.
-[90m│[39m
-[90m│[39m  [1mVersion 2.4.1[22m[90m  · Released Sep 12[39m
-[90m│[39m  Track freeze now works with every plug-in.
-[90m└[39m
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · changelog[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mWhat's new in Tidewater Studio[22m
+[2m│[22m
+[2m│[22m  [1mVersion 2.5.0[22m[2m  · Released Oct 2[22m
+[2m│[22m  Stem export in one click, with loudness matching.
+[2m│[22m
+[2m│[22m  [1mVersion 2.4.1[22m[2m  · Released Sep 12[22m
+[2m└[22m  Track freeze now works with every plug-in.
 
 #### ansi16-60
-[90m┌[39m  [36m[7m Tidewater Studio [27m[39m[90m · changelog[39m
-[90m│[39m
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · changelog[22m
+[2m│[22m
 [36m◆[39m  [1mWhat's new in Tidewater Studio[22m
-[90m│[39m
-[90m│[39m  [1mVersion 2.5.0[22m[90m  · Released Oct 2[39m
-[90m│[39m  Stem export in one click, with loudness matching.
-[90m│[39m
-[90m│[39m  [1mVersion 2.4.1[22m[90m  · Released Sep 12[39m
-[90m│[39m  Track freeze now works with every plug-in.
-[90m└[39m
+[2m│[22m
+[2m│[22m  [1mVersion 2.5.0[22m[2m  · Released Oct 2[22m
+[2m│[22m  Stem export in one click, with loudness matching.
+[2m│[22m
+[2m│[22m  [1mVersion 2.4.1[22m[2m  · Released Sep 12[22m
+[2m└[22m  Track freeze now works with every plug-in.
 
 #### no-color-60
-┌   Tidewater Studio  · changelog
+┌  [7m Tidewater Studio [27m · changelog
 │
-◆  What's new in Tidewater Studio
+◆  [1mWhat's new in Tidewater Studio[22m
 │
-│  Version 2.5.0  · Released Oct 2
+│  [1mVersion 2.5.0[22m  · Released Oct 2
 │  Stem export in one click, with loudness matching.
 │
-│  Version 2.4.1  · Released Sep 12
-│  Track freeze now works with every plug-in.
-└
+│  [1mVersion 2.4.1[22m  · Released Sep 12
+└  Track freeze now works with every plug-in.
 
 #### ascii-60
-[90m+[39m  [36m[7m Tidewater Studio [27m[39m[90m - changelog[39m
-[90m|[39m
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - changelog[22m
+[2m|[22m
 [36m*[39m  [1mWhat's new in Tidewater Studio[22m
-[90m|[39m
-[90m|[39m  [1mVersion 2.5.0[22m[90m  - Released Oct 2[39m
-[90m|[39m  Stem export in one click, with loudness matching.
-[90m|[39m
-[90m|[39m  [1mVersion 2.4.1[22m[90m  - Released Sep 12[39m
-[90m|[39m  Track freeze now works with every plug-in.
-[90m`[39m
+[2m|[22m
+[2m|[22m  [1mVersion 2.5.0[22m[2m  - Released Oct 2[22m
+[2m|[22m  Stem export in one click, with loudness matching.
+[2m|[22m
+[2m|[22m  [1mVersion 2.4.1[22m[2m  - Released Sep 12[22m
+[2m`[22m  Track freeze now works with every plug-in.

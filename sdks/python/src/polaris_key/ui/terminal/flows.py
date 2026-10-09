@@ -18,7 +18,7 @@ import json as _json
 import sys
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import IO, Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ...core.errors import PolarisError
@@ -74,6 +74,13 @@ class Terminal:
         self.kit = kit
         self.device = device
         self.verb = verb
+        #: Ctrl-C ended an interactive step (exit 130, as Node's INTERRUPT); Esc is a plain cancel.
+        self.interrupted = False
+        # A resize (SIGWINCH, read by a live region) lays the kit's screens out at the new width.
+        device.on_resize(self._resized)
+
+    def _resized(self, env: TermEnv) -> None:
+        self.kit.env = env
 
     @classmethod
     def create(
@@ -93,6 +100,7 @@ class Terminal:
         stdin: Optional[IO[str]] = None,
         term_env: Optional[TermEnv] = None,
         use_rich: Optional[bool] = None,
+        size: Optional[Callable[[], Tuple[int, int]]] = None,
     ) -> "Terminal":
         th = theme or Theme()
         te = term_env or detect(
@@ -109,7 +117,7 @@ class Terminal:
         )
         slug = product or (getattr(client, "product", None) if client is not None else None)
         kit = Kit.create(te, theme=th, product=slug, source=presentation_source(client), prog=prog)
-        return cls(kit, Device(te, kit.palette(), stdout=stdout, stdin=stdin, use_rich=use_rich), verb)
+        return cls(kit, Device(te, kit.palette(), stdout=stdout, stdin=stdin, use_rich=use_rich, size=size), verb)
 
     @property
     def env(self) -> TermEnv:
@@ -164,6 +172,12 @@ def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Out
         signed_in = False
     ar = getattr(st, "allowedRange", None)
     core = getattr(client, "core", None)
+    # The tier the licence carries ("Pro"), as the Node kit reads it: its label, else its id.
+    try:
+        info = client.license.license_info()
+    except Exception:
+        info = None
+    tier = (getattr(info, "tierLabel", None) or getattr(info, "tier", None)) if info is not None else None
     view = gate_view(
         st.status,
         now=_now(),
@@ -173,6 +187,7 @@ def status(client: Any, t: Terminal, *, store_line: Optional[str] = None) -> Out
         holder=(getattr(profile, "name", None) or None) if profile else None,
         email=(getattr(profile, "email", None) or None) if profile else None,
         signed_in=signed_in or bool(profile and getattr(profile, "email", None)),
+        tier=tier or None,
         version=getattr(core, "version", None),
         channel=getattr(core, "channel", None),
         developer=t.kit.identity.developer,
@@ -215,7 +230,7 @@ def _busy(t: Terminal, fn: Callable[[], Any], draw: Callable[[int], List[Line]])
     frame = 0
     with t.device.live() as live:
         while w.is_alive():
-            live.update(draw(frame))
+            live.update(lambda f=frame: draw(f))
             frame += 1
             w.join(0.08)
     if w.error is not None:
@@ -224,35 +239,40 @@ def _busy(t: Terminal, fn: Callable[[], Any], draw: Callable[[int], List[Line]])
 
 
 def read_key(t: Terminal) -> Optional[str]:
-    """Masked key entry (UI-KITS §4.3): the prefix stays clear, the body is bullets, the last six
-    characters show; the verdict updates as you type, a cut-short key is caught on Enter, and the
-    key never touches argv or shell history. ``None`` when the person cancels."""
+    """Masked key entry (UI-KITS §4.3): the prefix stays clear, the body is bullets and none of it
+    shows; the verdict updates as you type, a cut-short key is caught on Enter, a key for
+    another product is a warning that does not submit, and the key never touches argv or shell
+    history. ``None`` when the person cancels (Esc, or Ctrl-C with ``t.interrupted`` set)."""
     k = t.kit
     raw = ""
     show_empty = False
     final = False
-    with t.device.keys() as keys, t.device.live() as live:
-        while True:
-            verdict = parse_key(raw, final=final)
-            live.update(screens.key_entry(k, raw, verdict, show_empty=show_empty))
-            key = keys.read(None)
-            if key is None:
-                continue
-            if key == "esc":
-                return None
-            if key == "enter":
-                v = parse_key(raw, final=True)
-                if v.state == "parsed":
-                    return v.key
-                show_empty, final = v.state == "empty", True
-                continue
-            final, show_empty = False, False
-            if key == "backspace":
-                raw = raw[:-1]
-            elif key == "ctrl-u":
-                raw = ""
-            elif key not in ("up", "down", ""):
-                raw += "".join(ch for ch in key if not ch.isspace())
+    try:
+        with t.device.keys() as keys, t.device.live() as live:
+            while True:
+                verdict = parse_key(raw, final=final)
+                live.update(lambda r=raw, v=verdict, e=show_empty: screens.key_entry(k, r, v, show_empty=e))
+                key = keys.read(None)
+                if not key:
+                    continue  # a wake (a resize) or nothing: draw again
+                if key == "esc":
+                    return None
+                if key == "enter":
+                    v = parse_key(raw, final=True)
+                    if v.state == "parsed" and not screens.other_product(k, v):
+                        return v.key
+                    show_empty, final = v.state == "empty", True
+                    continue
+                final, show_empty = False, False
+                if key == "backspace":
+                    raw = raw[:-1]
+                elif key == "ctrl-u":
+                    raw = ""
+                elif key not in ("up", "down"):
+                    raw += "".join(ch for ch in key if not ch.isspace())
+    except KeyboardInterrupt:
+        t.interrupted = True
+        return None
 
 
 def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
@@ -265,7 +285,9 @@ def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
             return usage(t, "activate --key-stdin | --key-file <path>")
         key = read_key(t)
         if key is None:
-            return Outcome(1, [], {"kind": "cancelled"})
+            # Nothing changed: the header, the step and the line saying so (never a blank screen).
+            lines = screens._frame(k, verb, k.step("done", [k.t("part.keyField.label")]), [k.t("cli.nothingChanged", "muted")])
+            return Outcome(130 if t.interrupted else 1, lines, {"kind": "cancelled"})
     verdict = parse_key(key, final=True)
     while True:
         result = _busy(t, lambda: client.license.activate_with_key(key), lambda f: screens.key_entry(k, key, verdict, busy=True, frame=f))
@@ -279,27 +301,33 @@ def activate(client: Any, t: Terminal, key: Optional[str]) -> Outcome:
             return Outcome(0, screens.activate(k, view, verb), data)
         if view.component == "DeviceLimit" and view.manage_url and t.env.interactive:
             if not _replace_in_browser(t, view, verb):
-                return Outcome(1, screens.activate(k, view, verb), data)
+                # The hints give way to the line that says what to run: nothing live-looking is
+                # left above the shell prompt.
+                return Outcome(130 if t.interrupted else 1, screens.device_limit(k, view, verb, ended=True), data)
             continue
         return Outcome(1, screens.activate(k, view, verb), data)
 
 
 def _replace_in_browser(t: Terminal, view: Any, verb: str) -> bool:
     """Replace a device: Enter opens ``manageUrl``; once opened, Enter tries again. ``False``
-    when the person leaves (Esc)."""
+    when the person leaves (Esc, or Ctrl-C with ``t.interrupted`` set)."""
     k = t.kit
     opened = False
-    with t.device.keys() as keys, t.device.live() as live:
-        while True:
-            live.update(screens.device_limit(k, view, verb, opened=opened))
-            key = keys.read(None)
-            if key == "esc":
-                return False
-            if key == "enter":
-                if opened:
-                    return True
-                t.device.open_url(view.manage_url)
-                opened = True
+    try:
+        with t.device.keys() as keys, t.device.live() as live:
+            while True:
+                live.update(lambda o=opened: screens.device_limit(k, view, verb, opened=o))
+                key = keys.read(None)
+                if key == "esc":
+                    return False
+                if key == "enter":
+                    if opened:
+                        return True
+                    t.device.open_url(view.manage_url)
+                    opened = True
+    except KeyboardInterrupt:
+        t.interrupted = True
+        return False
 
 
 def enroll(client: Any, t: Terminal) -> Outcome:
@@ -375,31 +403,46 @@ def sign_in(
     cancelled = False
     if t.env.interactive:
         frame = 0
-        with t.device.keys() as keys, t.device.live() as live:
-            while worker.is_alive():
-                model.tick(prompt.expiresAt - _now())
-                live.update(screens.sign_in(k, model.view, verb, frame=frame))
-                frame += 1
-                key = keys.read(0.08)
-                if key == "esc":
-                    cancel.set()
-                    cancelled = True
-                    break
-                if key == "c":
-                    if model.view.state in ("code",) and t.device.copy(prompt.userCode):
-                        model.copied()
-                    else:
-                        model.use_code()
-                elif key in ("enter", "o") and model.view.state in ("handoff", "code", "no-browser"):
-                    opener(prompt.verificationUriComplete)
+        copied_at = 0.0
+        try:
+            with t.device.keys() as keys, t.device.live() as live:
+                while worker.is_alive():
+                    model.tick(prompt.expiresAt - _now())
+                    if model.view.copied and time.monotonic() - copied_at > 2:
+                        model.uncopy()  # "Copied" is on the hints row for about two seconds
+                    live.update(lambda v=model.view, f=frame: screens.sign_in(k, v, verb, frame=f))
+                    frame += 1
+                    key = keys.read(0.08)
+                    if key == "esc":
+                        cancel.set()
+                        cancelled = True
+                        break
+                    code_view = model.view.state in ("code", "no-browser")
+                    if key == "c":
+                        if code_view:
+                            if t.device.copy(prompt.userCode):
+                                model.copied()
+                                copied_at = time.monotonic()
+                        else:
+                            model.use_code()
+                    elif key == "enter" and model.view.state == "handoff":
+                        opener(prompt.verificationUriComplete)
+                    elif key == "o" and code_view and not model.view.headless and not model.view.no_browser:
+                        opener(prompt.verificationUriComplete)
+        except KeyboardInterrupt:
+            cancel.set()
+            cancelled = True
+            t.interrupted = True
         worker.join(5)
     else:
         if not t.env.json:
             t.device.print(screens.sign_in(k, view, verb))
+            # Piped output prints its header once: the result that follows is only the result.
+            t.device.header_gone = True
         worker.join()
     if cancelled or (isinstance(worker.error, PolarisError) and worker.error.code == "cancelled"):
         model.cancelled()
-        return Outcome(1, screens.sign_in(k, model.view, verb), {"state": "cancelled"})
+        return Outcome(130 if t.interrupted else 1, screens.sign_in(k, model.view, verb), {"state": "cancelled"})
     if worker.error is not None:
         code = getattr(worker.error, "code", "sign-in-failed")
         model.failed(code if isinstance(code, str) else "sign-in-failed")
@@ -436,20 +479,25 @@ def sign_out(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
 # ── devices ──────────────────────────────────────────────────────────────────────────────────
 
 
-def _rows(client: Any) -> Tuple[DeviceRow, ...]:
+def _rows(client: Any, locale: str = "en") -> Tuple[DeviceRow, ...]:
     rows = []
     for d in client.list_devices():
-        rows.append(DeviceRow(d.id, d.label, d.platform, bool(d.current)))
-    return tuple(rows)
+        seen = getattr(d, "lastVerifiedAt", None) if d.current else None
+        when = fmt.relative(seen, time.time(), locale) if seen else None
+        platform = " ".join(p for p in (d.platform, getattr(d, "arch", None)) if p) or None
+        rows.append(DeviceRow(d.id, d.label, platform, bool(d.current), when))
+    # This device first, as the Node kit lists them.
+    return tuple(sorted(rows, key=lambda r: not r.current))
 
 
 def devices(client: Any, t: Terminal, words: Sequence[str], *, yes: bool = False) -> Outcome:
     k = t.kit
-    verb = t.verb or "devices"
     action = words[0] if words else "list"
+    # The header names the sub-verb, as the Node kit's does (`devices list`, `devices rename`, …).
+    verb = f"{t.verb or 'devices'} {action}" if action in ("list", "rename", "deauthorize") else (t.verb or "devices")
     try:
         if action == "list":
-            rows = _rows(client)
+            rows = _rows(client, k.copy.locale)
             view = DevicesView("Devices", "list" if rows else "empty", rows)
             data = {"devices": [{"id": r.id, "label": r.label, "platform": r.platform, "current": r.current} for r in rows]}
             return Outcome(0, screens.devices(k, view, verb), data)
@@ -563,25 +611,49 @@ def mint(client: Any, t: Terminal, words: Sequence[str]) -> Outcome:
 
 
 class _Progress:
-    """Download progress into a live region (≤ 10 Hz) and ``--json`` progress lines (each 5 %)."""
+    """Download progress into a live region (≤ 10 Hz) and ``--json`` progress lines (each 5 %). On an
+    interactive terminal Esc cancels the download (a key watcher beside it); Ctrl-C raises
+    ``KeyboardInterrupt`` out of it, and both leave a result block, never a blank screen."""
 
-    def __init__(self, t: Terminal, draw: Callable[[float, str, str, Optional[str]], List[Line]]) -> None:
+    def __init__(self, t: Terminal, draw: Callable[[float, int, int, Optional[float]], List[Line]]) -> None:
         self.t = t
         self.draw = draw
         self.live = t.device.live()
         self.started = time.monotonic()
         self.last = 0.0
         self.pct = -1
+        self.total = 0
+        self.cancelled = threading.Event()
+        self._stop = threading.Event()
+        self._watcher: Optional[threading.Thread] = None
 
     def __enter__(self) -> "_Progress":
         self.live.__enter__()
+        if self.t.env.interactive:
+            self._watcher = threading.Thread(target=self._watch, daemon=True)
+            self._watcher.start()
         return self
 
+    def _watch(self) -> None:
+        try:
+            with self.t.device.keys() as keys:
+                while not self._stop.is_set():
+                    if keys.read(0.1) == "esc":
+                        self.cancelled.set()
+                        return
+        except Exception:
+            return
+
     def __exit__(self, *exc: Any) -> None:
+        self._stop.set()
+        if self._watcher is not None:
+            self._watcher.join(1)
         self.live.__exit__(*exc)
 
     def __call__(self, done: int, total: int) -> None:
-        loc = self.t.kit.copy.locale
+        if self.cancelled.is_set():
+            raise PolarisError("cancelled", "The download was cancelled; the next call resumes.")
+        self.total = total
         f = done / total if total else 1.0
         pct = int(f * 100)
         if pct != self.pct and (pct % 5 == 0 or pct == 100):
@@ -592,14 +664,65 @@ class _Progress:
             return
         self.last = now
         elapsed = now - self.started
-        eta = fmt.duration(elapsed * (total - done) / done, loc) if done and done < total else None
-        self.live.update(self.draw(f, fmt.size(done, loc), fmt.size(total, loc), eta))
+        eta = elapsed * (total - done) / done if done and done < total else None
+        self.live.update(lambda: self.draw(f, done, total, eta))
+
+
+def _update_lines(k: Kit, verb: str, view: UpdateView, f: float, done: int, total: int, eta: Optional[float]) -> List[Line]:
+    loc = k.copy.locale
+    shown = replace(
+        view,
+        state="downloading",
+        fraction=f,
+        done=fmt.size(done, loc),
+        total=fmt.size(total, loc),
+        eta=fmt.duration(eta, loc) if eta else None,
+        done_bytes=done,
+        total_bytes=total,
+        eta_seconds=eta,
+    )
+    return screens.update(k, shown, verb)
+
+
+def _fetch(
+    client: Any,
+    t: Terminal,
+    view: UpdateView,
+    current: Optional[str],
+    verb: str,
+    data: Dict[str, Any],
+    run: Callable[["_Progress"], Any],
+    extra: Callable[[Any], Dict[str, Any]],
+    unsupported_check: bool = False,
+) -> Outcome:
+    """Download (or install) with progress, ending in one result block: ready, cancelled (Esc exits 1,
+    Ctrl-C 130, nothing installed) or failed (what happened, that nothing was installed, and the
+    command to try again)."""
+    k = t.kit
+    base = replace(view, current=current)
+    bar = _Progress(t, lambda f, a, b, e: _update_lines(k, verb, base, f, a, b, e))
+    try:
+        with bar:
+            out = run(bar)
+    except KeyboardInterrupt:
+        t.interrupted = True
+        return Outcome(130, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled"})
+    except PolarisError as e:
+        if e.code == "cancelled":
+            return Outcome(1, screens.update(k, replace(base, state="cancelled"), verb), {**data, "state": "cancelled"})
+        return Outcome(1, screens.update(k, replace(base, state="failed", code=e.code), verb), {**data, "state": "error", "error": e.code})
+    if unsupported_check and getattr(out, "kind", None) == "unsupported":
+        return _error_outcome(t, "unsupported", verb)
+    size = fmt.size(bar.total, k.copy.locale) if bar.total else None
+    done = replace(base, state="ready", size=size)
+    return Outcome(0, screens.update(k, done, verb), {**data, **extra(out)})
 
 
 def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[str] = None, to: Optional[str] = None) -> Outcome:
     k = t.kit
-    verb = t.verb or "update"
     action = words[0] if words else "check"
+    # The header names the sub-verb, as the Node kit's does (`update check`, `update apply`, …).
+    verb = f"{t.verb or 'update'} {action}" if action in ("check", "download", "apply") else (t.verb or "update")
     current = getattr(getattr(client, "core", None), "version", None)
     try:
         if client.update._configured is None:
@@ -611,30 +734,27 @@ def update(client: Any, t: Terminal, words: Sequence[str], *, channel: Optional[
             return Outcome(0, screens.update(k, view, verb), {"state": state, "version": vc.version, "updateAvailable": vc.updateAvailable})
         check = client.update.decide(channel=channel)
         d = check.decision
-        view = update_view(d, current=current)
+        # The download's size, as the release gave it ("61 MB"), for "2.5.0 is available · 61 MB".
+        bytes_ = getattr(getattr(d, "release", None), "size", None)
+        size = fmt.size(bytes_, k.copy.locale) if isinstance(bytes_, int) and not isinstance(bytes_, bool) and bytes_ > 0 else None
+        view = update_view(d, current=current, size=size)
         data: Dict[str, Any] = {"state": view.state, "decision": d.to_dict(), "channel": check.channel}
         if action == "check":
             return Outcome(0, screens.update(k, view, verb), data)
         if action == "download":
             if not to:
                 return usage(t, "update download --to <path>")
-            draw = lambda f, a, b, e: screens.update(k, UpdateView("UpdatePrompt", "downloading", view.version, current, fraction=f, done=a, total=b, eta=e), verb)  # noqa: E731
-            with _Progress(t, draw) as bar:
-                got = client.release.fetch(check, to=to, on_progress=bar)
-            done = UpdateView("UpdatePrompt", "ready", view.version, current)
-            return Outcome(0, screens.update(k, done, verb), {**data, "path": got.path, "size": got.size, "sha256": got.sha256})
+            return _fetch(client, t, view, current, verb, data, lambda bar: client.release.fetch(check, to=to, on_progress=bar), lambda got: {"path": got.path, "size": got.size, "sha256": got.sha256})
         if action == "apply":
             if client.update.driver is None and d.action == "binary":
                 from ...update.drivers import SelfReplaceDriver
 
                 client.update.set_driver(SelfReplaceDriver())
-            draw = lambda f, a, b, e: screens.update(k, UpdateView("UpdatePrompt", "downloading", view.version, current, fraction=f, done=a, total=b, eta=e), verb)  # noqa: E731
-            with _Progress(t, draw) as bar:
-                out = client.update.install(check, on_progress=bar)
-            if out.kind == "unsupported":
-                return _error_outcome(t, "unsupported", verb)
-            done = UpdateView("UpdatePrompt", "ready", view.version, current)
-            return Outcome(0, screens.update(k, done, verb), {**data, "installed": out.kind})
+
+            def finish(out: Any) -> Dict[str, Any]:
+                return {"installed": out.kind}
+
+            return _fetch(client, t, view, current, verb, data, lambda bar: client.update.install(check, on_progress=bar), finish, unsupported_check=True)
     except PolarisError as e:
         return _error_outcome(t, e.code, verb)
     return usage(t, "update [check | download --to <path> | apply]")
@@ -699,7 +819,8 @@ def boot(client: Any, t: Terminal, *, yes: bool = False) -> Outcome:
     live.__enter__()
 
     def draw() -> None:
-        live.update(screens.boot_progress(k, state["stage"], state["frame"], done=state["done"], total=state["total"]))
+        st, fr, dn, tt = state["stage"], state["frame"], state["done"], state["total"]
+        live.update(lambda: screens.boot_progress(k, st, fr, done=dn, total=tt))
         state["frame"] += 1
 
     def on_stage(_: Any, emits: Any) -> None:

@@ -1,13 +1,13 @@
 // The progress bar and the terminal QR (UI-KITS.md §1.4 "Feedback", the update board): a thin
 // bar of heavy rules, filled in the accent and empty in muted, with the figures beside it; and a
-// half-block QR that is shown only when the terminal is at least 70 columns by 20 rows, never in
-// ASCII, and never for sign-in (SIGN-IN.md D-67).
+// half-block QR that is shown only where it fits (as wide as the terminal, and the whole screen
+// with it as tall), never in ASCII, and never for sign-in (SIGN-IN.md D-67).
 
 import { TERMINAL_LAYOUT } from "../tokens.generated.js";
 import { qr } from "../../qr/index.js";
 import type { TerminalCaps } from "./caps.js";
 import type { Symbols } from "./layout.js";
-import type { Span } from "./width.js";
+import { cellWidth, type Span } from "./width.js";
 
 /** The bar for `fraction` (0–1) as spans, `width` cells wide. */
 export function progressSpans(
@@ -30,24 +30,42 @@ export function percent(done: number, total: number): number {
   return done >= total ? 100 : Math.min(99, p);
 }
 
-/** Below these the QR is hidden (UI-KITS §1.4). */
-export const QR_MIN_COLUMNS = 70;
-export const QR_MIN_ROWS = 20;
+/** Cells before a QR row: the rail, the gutter and the code's indent (it lines up with the code). */
+export const QR_INDENT = 6;
 
 /**
- * The half-block QR lines for `text`, or null when this terminal should not draw one (too small,
- * ASCII, not a terminal) or the text does not fit a QR. Light themes get the inverted symbol so it
- * scans as dark modules on light.
+ * The half-block QR lines for `text`, or null when this terminal should not draw one (ASCII) or
+ * the text does not fit a QR. With colour, dark modules are the half blocks and the quiet zone and
+ * light modules are spaces painted on a white background (the `qr` role: black on white in every
+ * palette), so a terminal with line spacing above 1.0 shows no stripes. Without colour a dark
+ * terminal gets the light modules as blocks and a light one the dark modules, so it scans either
+ * way. Whether it fits the screen is the caller's to decide with `qrFits`.
  */
 export function qrLines(
   text: string,
-  caps: Pick<TerminalCaps, "unicode" | "tty" | "rows" | "scheme"> & {
-    terminalColumns: number;
-  },
+  caps: Pick<TerminalCaps, "unicode" | "scheme" | "color">,
 ): string[] | null {
   if (!caps.unicode) return null;
-  if (caps.terminalColumns < QR_MIN_COLUMNS || caps.rows < QR_MIN_ROWS)
-    return null;
-  const t = qr.terminal(text, { invert: caps.scheme === "light" });
+  const invert = caps.color !== "none" || caps.scheme === "light";
+  const t = qr.terminal(text, { invert });
   return t ? t.split("\n") : null;
+}
+
+/**
+ * Whether a QR fits: it is drawn only on a terminal, only when it is as narrow as the terminal
+ * (its own width plus the indent) and only when the whole screen with it (`screenLines` without
+ * it, plus its rows, plus the line the cursor rests on after it) fits the terminal's height. The
+ * thresholds come from the content, never fixed numbers, so a QR shows wherever it really fits
+ * and never pushes the header off the screen.
+ */
+export function qrFits(
+  lines: readonly string[],
+  caps: Pick<TerminalCaps, "tty" | "rows"> & { terminalColumns: number },
+  screenLines: number,
+): boolean {
+  if (!caps.tty || lines.length === 0) return false;
+  const width = QR_INDENT + Math.max(...lines.map((l) => cellWidth(l)));
+  return (
+    width <= caps.terminalColumns && screenLines + lines.length + 1 <= caps.rows
+  );
 }

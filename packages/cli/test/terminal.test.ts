@@ -125,12 +125,39 @@ describe("grouped help", () => {
     expect(lines[i + 1]).toMatch(/^ {30}Pause, resume, halt or complete/);
   });
 
-  it("an unknown command prints the overview on stderr and exits 2", async () => {
+  it("fits 40 columns too: below 50 each command stacks above its description", async () => {
+    const tiny = await run([], {
+      tty: true,
+      columns: 40,
+      env: { NO_COLOR: "1" },
+    });
+    for (const line of tiny.out.split("\n"))
+      expect(cellWidth(line), line).toBeLessThanOrEqual(40);
+    const lines = tiny.out.split("\n").map(stripAnsi);
+    const i = lines.indexOf("  init");
+    expect(i).toBeGreaterThan(0);
+    expect(lines[i + 1]).toMatch(/^ {4}Scaffold \.pkey\/ in this directory/);
+    // A term wider than the line wraps at its spaces, continued two cells further in.
+    const j = lines.indexOf("  distribution");
+    expect(lines[j + 1]).toBe("    pause|resume|halt|complete");
+  });
+
+  it("an unknown command prints only the error on stderr, and exits 2", async () => {
     const r = await run(["nope"]);
     expect(r.code).toBe(2);
     expect(r.out).toBe("");
-    expect(r.err).toContain('Unknown command "nope".');
-    expect(r.err).toContain("Run pkey <command> --help");
+    expect(r.err).toBe(
+      '✗  Unknown command "nope". Run pkey help to see every command.\n',
+    );
+    // Narrow, it wraps under its text; the hundred lines of help never push it out of view.
+    const narrow = await run(["nope"], {
+      tty: true,
+      columns: 32,
+      env: { NO_COLOR: "1" },
+    });
+    for (const line of narrow.err.split("\n"))
+      expect(cellWidth(line)).toBeLessThanOrEqual(32);
+    expect(narrow.err.split("\n").length).toBeLessThan(6);
   });
 });
 
@@ -409,17 +436,24 @@ describe("colour only on a colour terminal", () => {
     ])
       for (const argv of [[], ["release", "--help"], ["validate"]]) {
         const r = await run(argv, { cwd, ...opts });
-        expect(r.out).not.toContain(ESC);
+        // A pipe writes no escape at all; NO_COLOR on a terminal drops colour, not weight.
+        if (opts.tty)
+          expect(r.out).not.toMatch(
+            /\x1b\[(?:3[0-79]|9[0-7]|4[0-79]|10[0-7]|[34]8)/,
+          );
+        else expect(r.out).not.toContain(ESC);
       }
     const flag = await run(["--no-color"], { tty: true });
-    expect(flag.out).not.toContain(ESC);
-    expect(flag.out).toContain("pkey · Polaris Key platform CLI");
+    expect(flag.out).not.toMatch(
+      /\x1b\[(?:3[0-79]|9[0-7]|4[0-79]|10[0-7]|[34]8)/,
+    );
+    expect(stripAnsi(flag.out)).toContain("pkey · Polaris Key platform CLI");
   });
 
   it("a colour terminal gets SGR roles: strong headings, muted descriptions, the verdict's role", async () => {
     const help = await run([], { tty: true, env: {} });
     expect(help.out).toContain(`${ESC}[1mManifest${ESC}[22m`);
-    expect(help.out).toContain(`${ESC}[90m`);
+    expect(help.out).toContain(`${ESC}[2m`);
     // The same words underneath.
     expect(stripAnsi(help.out)).toBe((await run([])).out);
 
@@ -471,7 +505,7 @@ describe("the spinner", () => {
     t.tick();
     expect(stripAnsi(err.text())).toContain("⠙  Hashing 3 files");
     s.advance(2, 3);
-    expect(stripAnsi(err.text())).toMatch(/Hashing 3 files {2}━+ 2\/3$/);
+    expect(stripAnsi(err.text())).toMatch(/Hashing 3 files {2}━+─* 2\/3$/);
     const out = s.wrap(stream(false));
     const before = err.text().length;
     out.write("Matched 1 build\n");

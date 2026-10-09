@@ -43,8 +43,17 @@ export class KeyReader {
   private waiting: ((k: Key | null) => void) | null = null;
   private started = false;
   private closed = false;
+  private cursor: ((row: number | null) => void) | null = null;
   private readonly onKey = (str: string | undefined, key: Partial<Key>) => {
     const k = toKey(str, key);
+    // A cursor-position report (ESC [ row ; col R) is the terminal's answer, not a key.
+    const report = /^\x1b\[(\d+);(\d+)R$/.exec(k.sequence);
+    if (report) {
+      const answer = this.cursor;
+      this.cursor = null;
+      answer?.(Number(report[1]));
+      return;
+    }
     if (this.waiting) {
       const w = this.waiting;
       this.waiting = null;
@@ -61,6 +70,26 @@ export class KeyReader {
     this.input.setRawMode?.(true);
     this.input.on("keypress", this.onKey);
     this.input.resume?.();
+  }
+
+  /**
+   * Ask the terminal where the cursor is: `ask` writes the request (ESC [ 6 n) and the answer comes
+   * back through the keys, filtered out of them. Null when it does not answer in `timeoutMs`.
+   */
+  cursorRow(ask: () => void, timeoutMs: number): Promise<number | null> {
+    if (this.closed) return Promise.resolve(null);
+    this.start();
+    this.cursor?.(null);
+    return new Promise((resolve) => {
+      const done = (row: number | null) => {
+        clearTimeout(timer);
+        if (this.cursor === done) this.cursor = null;
+        resolve(row);
+      };
+      const timer = setTimeout(() => done(null), timeoutMs);
+      this.cursor = done;
+      ask();
+    });
   }
 
   /** The next key, or null when the reader closed or `signal` aborted. */
@@ -94,6 +123,7 @@ export class KeyReader {
     this.input.pause?.();
     this.waiting?.(null);
     this.waiting = null;
+    this.cursor?.(null);
   }
 }
 

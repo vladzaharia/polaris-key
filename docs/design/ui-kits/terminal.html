@@ -175,6 +175,19 @@
       .cols60 {
         width: calc(60 * 8.4px + 33.6px);
       }
+      .cols120 {
+        width: calc(120 * 8.4px + 33.6px);
+      }
+      .qr {
+        background: #fff;
+        color: #000;
+      }
+      .cols40 {
+        width: calc(40 * 8.4px + 33.6px);
+      }
+      .cols32 {
+        width: calc(32 * 8.4px + 33.6px);
+      }
       .strip {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -253,7 +266,7 @@
     <main class="board">
       <figure>
         <figcaption>
-          terminal · sign-in (device code, no QR, 80 × 24)
+          terminal · sign-in with --device-code (no QR, 80 × 24)
         </figcaption>
         <div class="shot cols80" data-shot="sign-in">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
@@ -281,7 +294,9 @@
         </div>
       </figure>
       <figure>
-        <figcaption>terminal · status and update progress</figcaption>
+        <figcaption>
+          terminal · status, update progress and the finished block
+        </figcaption>
         <div class="shot cols80" data-shot="update">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
           <pre id="update"></pre>
@@ -354,6 +369,46 @@
         <div class="shot cols60" data-shot="narrow">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 60 × 24</div>
           <pre id="narrow"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · a short window (40 × 12): blank rows go, the hints join the
+          waiting line's rail, the URL, code and keys stay
+        </figcaption>
+        <div class="shot cols40" data-shot="short">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 40 × 12</div>
+          <pre id="short"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · a narrow window (32 × 24): the same screen, wrapped at the
+          column
+        </figcaption>
+        <div class="shot cols32" data-shot="narrow-32">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 32 × 24</div>
+          <pre id="narrow32"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · an ending is one result block: Esc replaces the code view,
+          nothing is left above it
+        </figcaption>
+        <div class="shot cols80" data-shot="ended">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="ended"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · offline request on a wide window (120 × 24): the QR beside
+          the text, the rail closed on the command
+        </figcaption>
+        <div class="shot cols120" data-shot="offline-landscape">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 120 × 24</div>
+          <pre id="offlineWide"></pre>
         </div>
       </figure>
       <figure>
@@ -450,13 +505,14 @@
         draw([
           [
             ["m", "$ "],
-            ["", "tidewater login"],
+            ["", "tidewater login --device-code"],
           ],
           head("login"),
           [["m", "│"]],
           [
-            ["m", "◇"],
-            ["", "  No browser on this computer. Use a code instead:"],
+            ["cy", "◆"],
+            ["", "  "],
+            ["s", "Sign in with a code"],
           ],
           rail(
             ["", "On any phone or computer, go to "],
@@ -473,8 +529,132 @@
             ["m", "⠋"],
             ["", "  Waiting for you to sign in…"],
           ],
-          rail(...keys(["c", "copy the code"], ["Esc", "cancel"])),
+          [["m", "└  "], ...keys(["c", "copy the code"], ["Esc", "cancel"])],
         ]),
+      );
+
+      // The narrow and short boards are the Node kit's own output (the resolution matrix in
+      // packages/sdk-node/test/cli/responsive.test.ts), coloured by the glyph that starts a line.
+      const glyphClass = {
+        "┌": "m",
+        "│": "m",
+        "└": "m",
+        "◆": "cy",
+        "◇": "m",
+        "⠋": "m",
+        "✓": "ok",
+        "✗": "err",
+        "▲": "warn",
+      };
+      const plain = (id, text) =>
+        put(
+          id,
+          text.split("\n").map((line) => {
+            const first = [...line][0];
+            const c = glyphClass[first];
+            const rest = line.slice(first ? first.length : 0);
+            if (!c) return L(["", line]);
+            const body = rest
+              .replace(
+                /^(\s*)( Tidewater Studio )(.*)$/,
+                (_, a, chip, tail) => `${a}\u0000${chip}\u0000${tail}`,
+              )
+              .split("\u0000");
+            if (body.length === 3)
+              return L(
+                [c, first],
+                ["", body[0]],
+                ["chip", body[1]],
+                ["m", body[2]],
+              );
+            return L([c, first], ["", rest]);
+          }),
+        );
+      // The offline request beside its QR: columns 80 and on are the QR's white cells.
+      put(
+        "offlineWide",
+        [
+          "┌   Tidewater Studio  · offline-request",
+          "│",
+          "◆  Offline activation",
+          "│  Send this request code to whoever gave you your license.                     █▀▀▀▀▀█  ▄▄▀█ █▀▀▀▀▀█",
+          "│                                                                               █ ███ █  █▄▀▀ █ ███ █",
+          "│      dev_9fK2Lw7QmZ                                                           █ ▀▀▀ █ ▄▀▄ ▀ █ ▀▀▀ █",
+          "│                                                                               ▀▀▀▀▀▀▀ ▀ █▄█ ▀▀▀▀▀▀▀",
+          "└  tidewater import-bundle <file>   Activate from an offline activation file    █  ▀ █▀ █▄█▀ █ ▀▄  ▄▄",
+          "                                                                                █▀█▄▄▄▀█ ███▀▀▄ ▄█▀▄█",
+          "                                                                                ▀▀▀▀ ▀▀▀█ ██▄▄█▄▄▀ ▀█",
+          "                                                                                █▀▀▀▀▀█ ▄▄▀ ▀  ██▀ █▄",
+          "                                                                                █ ███ █ ▄▄█▄▀ ▄█▄██▄▄",
+          "                                                                                █ ▀▀▀ █  ▄█▀█▀ ▀██  ▀",
+          "                                                                                ▀▀▀▀▀▀▀ ▀▀  ▀▀▀    ▀",
+        ].map((line) => {
+          const text = line.padEnd(80);
+          const left = text.slice(0, 80);
+          const qr = line.slice(80);
+          const first = [...left][0];
+          const c = glyphClass[first];
+          const body = [...left].slice(1).join("");
+          const chip = /^(\s*)( Tidewater Studio )(.*)$/.exec(body);
+          const segs = chip
+            ? [
+                [c, first],
+                ["", chip[1]],
+                ["chip", chip[2]],
+                ["m", chip[3]],
+              ]
+            : [
+                [c ?? "", first ?? ""],
+                [first === "└" && /tidewater/.test(body) ? "s" : "", body],
+              ];
+          return L(...segs, ...(qr ? [["qr", " " + qr + " "]] : []));
+        }),
+      );
+      plain(
+        "short",
+        [
+          "┌   Tidewater Studio  · login",
+          "◆  Sign in with a code",
+          "│  On any phone or computer,",
+          "│  go to key.plrs.im/device and enter",
+          "│  this code.",
+          "│",
+          "│      WDJB-MJHT",
+          "│",
+          "│  Code expires in 4:12",
+          "⠋  Waiting for you to sign in…",
+          "└  c copy the code · Esc cancel",
+        ].join("\n"),
+      );
+      plain(
+        "narrow32",
+        [
+          "┌   Tidewater Studio  · login",
+          "│",
+          "◆  Sign in with a code",
+          "│  On any phone or computer, go",
+          "│  to key.plrs.im/device and",
+          "│  enter this code.",
+          "│",
+          "│      WDJB-MJHT",
+          "│",
+          "│  Check the code there matches",
+          "│  this one.",
+          "│  Code expires in 4:12",
+          "│",
+          "⠋  Waiting for you to sign in…",
+          "└  c copy the code · Esc cancel",
+        ].join("\n"),
+      );
+      plain(
+        "ended",
+        [
+          "┌   Tidewater Studio  · login",
+          "│",
+          "✗  Sign-in cancelled",
+          "│",
+          "└  tidewater login   Sign in again",
+        ].join("\n"),
       );
 
       // 2. Activate (golden activate-parsed): the key is never echoed. The public product prefix
@@ -530,7 +710,7 @@
           ["", "  "],
           ["s", "Your license is on 3 of 3 devices"],
         ],
-        rail(["s", "●●●"], ["m", " 3 of 3 in use"]),
+        rail(["s", "●●●"]),
         ...(cols < 80
           ? [
               rail(["", "Replace a device in your browser. Tidewater Studio"]),
@@ -555,44 +735,60 @@
       // 4. Status and update. Truecolor is for the product chip only (§1.4): the step glyph and
       // the progress fill use ANSI cyan.
       const bar = (p, w) =>
-        `<span class="cy">${esc("━".repeat(Math.round(p * w)))}</span><span class="m">${esc("━".repeat(w - Math.round(p * w)))}</span>`;
-      put("update", [
-        L(["m", "$ "], ["", "tidewater status"]),
-        L(
-          ["s", "Tidewater Studio Pro"],
-          ["m", " · Lifetime · mara@fennick.studio"],
-        ),
-        L(["m", "  Devices              "], ["", "2 of 3"]),
-        L(
-          ["m", "  Version              "],
-          ["", "2.4.1"],
-          ["m", " · checked 2 min ago"],
-        ),
-        L(
-          ["m", "  Works offline until  "],
-          ["", "Oct 8 "],
-          ["warn", "(3 days)"],
-          ["m", " · go online to renew"],
-        ),
-        "",
-        L(["m", "$ "], ["", "tidewater update"]),
-        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · update"]),
-        L(["m", "│"]),
-        L(
-          ["cy", "◆"],
-          ["", "  "],
-          ["s", "Tidewater Studio 2.5"],
-          ["m", " · 61 MB"],
-        ),
-        R(["", "Stem export in one click, with loudness matching"]),
-        R(["", "Track freeze now works with every plug-in"]),
-        R(["m", "Release notes: "], ["m u", "tidewater.app/releases/2.5"]),
-        L(["m", "│"]),
-        {
-          html: `<span class="m">${esc("│")}</span>  ${bar(0.62, 36)}  62% <span class="m">${esc("· 38 of 61 MB · 20 s left")}</span>`,
-        },
-        L(["m", "└  "], ...keys(["ctrl-c", "cancel"])),
-      ]);
+        `<span class="cy">${esc("━".repeat(Math.round(p * w)))}</span><span class="m">${esc("─".repeat(w - Math.round(p * w)))}</span>`;
+      put(
+        "update",
+        [
+          L(["m", "$ "], ["", "tidewater status"]),
+          head("status"),
+          [["m", "│"]],
+          [
+            ["ok", "✓"],
+            ["", "  License   "],
+            ["s", "Pro"],
+            ["m", " · mara@fennick.studio"],
+          ],
+          [
+            ["ok", "✓"],
+            ["", "  Offline   "],
+            ["", "until Oct 19"],
+          ],
+          [
+            ["ok", "✓"],
+            ["", "  Version   "],
+            ["s", "2.4.1"],
+            ["m", " · stable"],
+          ],
+          [["m", "└"]],
+          "",
+          L(["m", "$ "], ["", "tidewater update apply"]),
+          head("update apply"),
+          [["m", "│"]],
+          [
+            ["cy", "◆"],
+            ["", "  "],
+            ["s", "Tidewater Studio 2.5.0"],
+          ],
+          {
+            html: `<span class="m">${esc("│")}</span>  ${bar(0.62, 22)}  62% <span class="m">${esc("· 38 of 61 MB · 7 s left")}</span>`,
+          },
+          [["m", "└  "], ...keys(["Esc", "cancel"])],
+          "",
+          L(["m", "$ "], ["", "tidewater update apply"]),
+          head("update apply"),
+          [["m", "│"]],
+          [
+            ["ok", "✓"],
+            ["", "  "],
+            ["s", "2.5.0 is ready"],
+            ["m", " · 61 MB"],
+          ],
+          [
+            ["m", "└  "],
+            ["m", "Restart to finish updating."],
+          ],
+        ].map((x) => (Array.isArray(x) ? L(...x) : x)),
+      );
 
       // 5. Status error
       put("err", [

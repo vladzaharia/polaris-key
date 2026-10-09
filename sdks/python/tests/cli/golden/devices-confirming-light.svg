@@ -2,17 +2,17 @@
 <rect width="705.6" height="95.2" rx="12" fill="#fbfbfc" stroke="#dcdee3"/>
 <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
 <rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
-<rect x="20.5" y="22.4" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="21.9" width="4.7" height="1" fill="#6e7781"/>
+<rect x="20.5" y="22.4" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="21.9" width="4.7" height="1" fill="#24292f"/>
 <text x="50.4" y="26.6" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#ffffff" font-weight="600">Tidewater Studio</text>
-<text x="201.6" y="26.6" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#6e7781">· devices</text>
-<rect x="20.5" y="30.8" width="1" height="16.8" fill="#6e7781"/>
+<text x="201.6" y="26.6" textLength="75.6" lengthAdjust="spacingAndGlyphs" fill="#24292f">· devices</text>
+<rect x="20.5" y="30.8" width="1" height="16.8" fill="#24292f"/>
 <text x="21" y="60.2" text-anchor="middle" fill="#9a6700">▲</text>
 <text x="42" y="60.2" textLength="445.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Remove Work laptop? It signs out of Tidewater Studio.</text>
-<rect x="20.5" y="64.4" width="1" height="8.4" fill="#6e7781"/>
-<rect x="20.5" y="72.3" width="4.7" height="1" fill="#6e7781"/>
+<rect x="20.5" y="64.4" width="1" height="8.4" fill="#24292f"/>
+<rect x="20.5" y="72.3" width="4.7" height="1" fill="#24292f"/>
 <text x="42" y="77" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">y</text>
-<text x="58.8" y="77" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Remove ·</text>
+<text x="58.8" y="77" textLength="67.2" lengthAdjust="spacingAndGlyphs" fill="#24292f">Remove ·</text>
 <text x="134.4" y="77" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#24292f" font-weight="600">Esc</text>
-<text x="168" y="77" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#6e7781">Cancel</text>
+<text x="168" y="77" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#24292f">Cancel</text>
 </g></svg>

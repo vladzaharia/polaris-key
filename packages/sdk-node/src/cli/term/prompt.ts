@@ -9,8 +9,8 @@
 
 import type { TerminalCaps, TerminalOutput } from "./caps.js";
 import { isCancel, isInterrupt, type Key, type KeyReader } from "./keys.js";
-import { railLines, type RailRow, type Symbols } from "./layout.js";
-import { LiveRegion } from "./live.js";
+import { type RailRow, type Symbols } from "./layout.js";
+import { LiveRegion, type LiveHost } from "./live.js";
 import type { Painter } from "./paint.js";
 import type { Line } from "./width.js";
 
@@ -32,6 +32,8 @@ export interface PromptContext {
   out: TerminalOutput;
   keys: KeyReader;
   signal?: AbortSignal;
+  /** The flow's context: it lays the prompt out again on a resize and fits it to the screen. */
+  host: LiveHost;
 }
 
 /** The longest secret a prompt takes (a pasted key is 42 characters). */
@@ -45,9 +47,28 @@ function printable(k: Key): string {
   return /^[^\x00-\x1f\x7f]+$/.test(s) ? s : "";
 }
 
-function frame(ctx: PromptContext, rows: RailRow[]): string[] {
-  return railLines(rows, ctx.painter, ctx.symbols, ctx.caps.columns);
+/** A prompt's region: it always redraws (typing needs it), even with motion off. */
+export function interactiveRegion(
+  out: TerminalOutput,
+  host: LiveHost,
+): LiveRegion {
+  return new LiveRegion(out, {
+    get caps() {
+      return { ...host.caps, animate: true };
+    },
+    refreshSize: () => host.refreshSize(),
+    render: (r) => host.render(r),
+    fit: (r) => host.fit(r),
+    cursorRow: () => host.cursorRow?.() ?? Promise.resolve(null),
+  });
 }
+
+function region(ctx: PromptContext): LiveRegion {
+  return interactiveRegion(ctx.out, ctx.host);
+}
+
+/** The rows of a screen (kept as a function so call sites read the same as before). */
+const frame = (_ctx: PromptContext, rows: RailRow[]): RailRow[] => rows;
 
 export interface SecretPrompt {
   /** The step's title row (label, then the lede in muted). */
@@ -60,7 +81,12 @@ export interface SecretPrompt {
   hints: Line;
   /** Called on Enter: a row to show instead of submitting (an empty or cut-short key). */
   check?(value: string): RailRow | null;
-  /** The rows that stay once the value is submitted. */
+  /** Rows above the prompt that belong to the same screen (the flow's header). */
+  lead?(): readonly RailRow[];
+  /**
+   * The rows that stay once the value is submitted. Empty: the prompt is erased and the flow's
+   * next screen draws the answered step itself.
+   */
   done(value: string): RailRow[];
   /** The rows that stay when the user cancels. */
   cancelled(): RailRow[];
@@ -71,34 +97,36 @@ export async function promptSecret(
   ctx: PromptContext,
   p: SecretPrompt,
 ): Promise<string | Cancel> {
-  const live = new LiveRegion(ctx.out, { animate: true });
+  const live = region(ctx);
   let value = "";
   let problem: RailRow | null = null;
   const caret = ctx.symbols.rail === "|" ? "_" : "▌";
   const render = () => {
     const field: Line = [...p.mask(value), { text: caret, style: ["accent"] }];
     const rows: RailRow[] = [
+      ...(p.lead?.() ?? []),
       { mark: "active", spans: p.title },
       { mark: "rail", spans: field },
     ];
     const v = problem ?? p.verdict?.(value) ?? null;
     if (v) rows.push(v);
     rows.push({ mark: "end", spans: p.hints });
-    live.draw(frame(ctx, rows));
+    live.draw(() => rows);
   };
   try {
     render();
     for (;;) {
       const k = await ctx.keys.next(ctx.signal);
       if (k === null || isCancel(k)) {
-        live.commit(frame(ctx, p.cancelled()));
+        live.commit([...(p.lead?.() ?? []), ...p.cancelled()]);
         return cancelled(k);
       }
       if (k.name === "return" || k.name === "enter") {
-        problem = p.check?.(value) ?? null;
+        problem = p.check?.(value.trim()) ?? null;
         if (!problem) {
-          live.commit(frame(ctx, p.done(value)));
-          return value;
+          const kept = p.done(value.trim());
+          if (kept.length) live.commit([...(p.lead?.() ?? []), ...kept]);
+          return value.trim();
         }
       } else if (k.name === "backspace") {
         value = [...value].slice(0, -1).join("");
@@ -135,7 +163,7 @@ export async function promptConfirm(
   ctx: PromptContext,
   p: ConfirmPrompt,
 ): Promise<boolean | Cancel> {
-  const live = new LiveRegion(ctx.out, { animate: true });
+  const live = region(ctx);
   try {
     live.draw(frame(ctx, [{ mark: "active", spans: p.title }]));
     for (;;) {
@@ -180,7 +208,7 @@ export async function promptSelect<T>(
   ctx: PromptContext,
   p: SelectPrompt<T>,
 ): Promise<T | Cancel> {
-  const live = new LiveRegion(ctx.out, { animate: true });
+  const live = region(ctx);
   let at = Math.min(Math.max(p.initial ?? 0, 0), p.options.length - 1);
   const render = () => {
     const rows: RailRow[] = [{ mark: "active", spans: p.title }];

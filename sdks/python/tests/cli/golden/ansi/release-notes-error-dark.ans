@@ -1,61 +1,44 @@
 ── truecolor · 80 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · changelog[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · changelog[0m
+[2m│[0m
 [31m✗[0m  [1mRelease notes couldn't be loaded.[0m
-[90m│[0m
-[90m│[0m  [1mtidewater changelog[0m   [90mTry again[0m
-[90m└[0m
+[2m└[0m  Check your connection and run tidewater changelog again.
 ── ansi16 · 80 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · changelog[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · changelog[0m
+[2m│[0m
 [31m✗[0m  [1mRelease notes couldn't be loaded.[0m
-[90m│[0m
-[90m│[0m  [1mtidewater changelog[0m   [90mTry again[0m
-[90m└[0m
+[2m└[0m  Check your connection and run tidewater changelog again.
 ── no-color · 80 ──
-┌   Tidewater Studio  · changelog
+┌  [7m Tidewater Studio [0m · changelog
 │
-✗  Release notes couldn't be loaded.
-│
-│  tidewater changelog   Try again
-└
+✗  [1mRelease notes couldn't be loaded.[0m
+└  Check your connection and run tidewater changelog again.
 ── ascii · 80 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - changelog[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - changelog[0m
+[2m|[0m
 [31mx[0m  [1mRelease notes couldn't be loaded.[0m
-[90m|[0m
-[90m|[0m  [1mtidewater changelog[0m   [90mTry again[0m
-[90m`[0m
+[2m`[0m  Check your connection and run tidewater changelog again.
 ── truecolor · 60 ──
-[90m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[90m · changelog[0m
-[90m│[0m
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · changelog[0m
+[2m│[0m
 [31m✗[0m  [1mRelease notes couldn't be loaded.[0m
-[90m│[0m
-[90m│[0m  [1mtidewater changelog[0m   [90mTry again[0m
-[90m└[0m
+[2m└[0m  Check your connection and run tidewater changelog again.
 ── ansi16 · 60 ──
-[90m┌[0m  [1;7;36m Tidewater Studio [0m[90m · changelog[0m
-[90m│[0m
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · changelog[0m
+[2m│[0m
 [31m✗[0m  [1mRelease notes couldn't be loaded.[0m
-[90m│[0m
-[90m│[0m  [1mtidewater changelog[0m   [90mTry again[0m
-[90m└[0m
+[2m└[0m  Check your connection and run tidewater changelog again.
 ── no-color · 60 ──
-┌   Tidewater Studio  · changelog
+┌  [7m Tidewater Studio [0m · changelog
 │
-✗  Release notes couldn't be loaded.
-│
-│  tidewater changelog   Try again
-└
+✗  [1mRelease notes couldn't be loaded.[0m
+└  Check your connection and run tidewater changelog again.
 ── ascii · 60 ──
-[90m+[0m  [1;7;36m Tidewater Studio [0m[90m - changelog[0m
-[90m|[0m
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - changelog[0m
+[2m|[0m
 [31mx[0m  [1mRelease notes couldn't be loaded.[0m
-[90m|[0m
-[90m|[0m  [1mtidewater changelog[0m   [90mTry again[0m
-[90m`[0m
+[2m`[0m  Check your connection and run tidewater changelog again.
 ── pipe · 80 ──
 Tidewater Studio · changelog
 Release notes couldn't be loaded.
-
-tidewater changelog   Try again
+Check your connection and run tidewater changelog again.

@@ -3,13 +3,18 @@
 // One theme value with the §3.1 field names. What each field does in a terminal:
 //
 //   preset       "polaris-key" (default) draws the product chip in the product's accent;
-//                "native" hands the look to the terminal: ANSI roles only, an inverse chip.
+//                "native" hands the look to the terminal: ANSI roles only (the user's palette),
+//                an inverse chip, no `colors`; NO_COLOR still drops every escape.
 //   colorScheme  "system" (default) follows PKEY_THEME, COLORFGBG and OSC 11; "dark" / "light"
 //                pin it. It changes only the truecolor chip and the QR's polarity.
 //   accent       "product" (default) resolves integrator → presentation → derived from the icon →
 //                ink; "core" is Polaris violet; a hex colour is the integrator's own; "service"
 //                has no section in a terminal and behaves as "product".
-//   colors       per-role truecolor overrides, per scheme (`{ dark: { success: "#…" } }`).
+//   colors       per-role overrides, per scheme, as hex: `{ dark: { success: "#3fb27f" } }`. The
+//                roles are the terminal's (accent, success, warning, danger, info, muted, strong,
+//                link); a value is drawn only where the terminal draws truecolor, so on ANSI-16 the
+//                roles keep following the user's palette, and NO_COLOR drops them with every other
+//                escape. The native preset ignores them. The Python kit takes the same value.
 //   density      "compact" drops the blank rail rows between steps; "spacious" keeps them.
 //   motion       "reduced" / "none" stop the spinner and redraws (lines print once).
 //   product      the integrator's ProductIdentity, which wins over every other source.
@@ -228,7 +233,9 @@ export function resolveProduct(o: ResolveIdentityOptions): ResolvedProduct {
   const native = o.theme?.preset === "native";
   const chip =
     input && !native
-      ? (({ solid, on }) => ({ solid, on }))(resolveAccent(input, o.scheme))
+      ? (({ solid, on, fg }) => ({ solid, on, fg }))(
+          resolveAccent(input, o.scheme),
+        )
       : null;
   return { ...base, accentSource: source, accentHex: input, chip };
 }
