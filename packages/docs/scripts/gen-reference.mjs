@@ -638,6 +638,26 @@ function corpusInventory() {
   const syncScenarios = corpusJson("sync-scenarios.json");
   const deviceLabel = corpusJson("device-label.json");
   const presentationMatrix = corpusJson("presentation-matrix.json");
+  const uiMatrix = corpusJson("ui-matrix.json");
+  const uiFamilies = [
+    "gate",
+    "activate",
+    "signIn",
+    "deviceLimit",
+    "devices",
+    "update",
+    "settings",
+    "paywall",
+  ];
+  const uiRows = uiFamilies.flatMap((f) => uiMatrix[f] ?? []);
+  // States to handle (docs plan §10): each component's states and the copy keys its rows show.
+  const uiStates = new Map();
+  for (const r of uiRows) {
+    const key = `${r.expect.component}\u0000${r.expect.state}`;
+    const keys = uiStates.get(key) ?? new Set();
+    for (const k of r.expect.copy) keys.add(k);
+    uiStates.set(key, keys);
+  }
   const content = corpusJson("content/cases.json");
   const contentSections = Object.entries(content)
     .filter(([, v]) => Array.isArray(v))
@@ -665,7 +685,7 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`configMatrixVersion ${configMatrix.configMatrixVersion}\`,
 \`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`,
 \`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`deviceLabelVersion ${deviceLabel.deviceLabelVersion}\`,
-\`presentationMatrixVersion ${presentationMatrix.presentationMatrixVersion}\`,
+\`presentationMatrixVersion ${presentationMatrix.presentationMatrixVersion}\`, \`uiMatrixVersion ${uiMatrix.uiMatrixVersion}\`,
 \`contentCorpusVersion ${content.contentCorpusVersion}\`, \`syncScenariosVersion ${syncScenarios.syncScenariosVersion}\`.
 Wire contract v4 (\`docs/security/WIRE-CONTRACT-V4.md\`) adds the \`feedCases\` and
 \`releaseRecordCases\` families, the strict-verifier \`jwsCases\`, a \`nonWireIntegers\` member
@@ -721,6 +741,40 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       `## Product presentation (\`presentation-matrix.json\`): ${presentationMatrix.parseCases?.length ?? "?"} parse, ${presentationMatrix.pickCases?.length ?? "?"} size-choice and ${presentationMatrix.verifyCases?.length ?? "?"} verification cases`,
       "",
       "WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed field by field (a malformed field is dropped, never refusing discovery), the icon size a hero of `px` points at `scale` fetches given the types the platform decodes, and the SHA-256 check before any icon byte is shown. A generator-local reference in `tools/presentation-matrix.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/presentation` is checked against the file by its own test, like every SDK. Non-ASCII is written escaped.",
+      "",
+      `## UI state matrix (\`ui-matrix.json\`): ${uiRows.length} component rows, ${uiMatrix.theme?.length ?? "?"} theme rows, ${uiMatrix.i18n?.length ?? "?"} i18n rows`,
+      "",
+      "The UI kits' layer (c), pinned once for every language (`plans/UK-02b.md`): each row drives the headless model of one component with an input (SDK results, `plans/I-04.md`'s license-choice views, kit-side values) and names its state, the copy keys it shows and its actions. `hidden` means the drop-in renders nothing because a service it depends on is off. Inline sign-in rows have a sheet twin, every component has a presentation-absent row, and the negative rows carry UI-KITS §4.1's Must not. The `theme` rows pin the accent, scheme, icon and preset resolution; the `i18n` rows the catalog lookup and the ICU subset, computed from the kit copy by the generator. No reference state machine: ui-core, the Swift presentation core, Kotlin `commonMain`, the Godot controllers and `polaris_key.ui.core` each run every row.",
+      "",
+      table(
+        ["Family", "Components", "Rows"],
+        uiFamilies.map((f) => [
+          `\`${f}\``,
+          [...new Set((uiMatrix[f] ?? []).map((r) => r.expect.component))].join(
+            ", ",
+          ),
+          String((uiMatrix[f] ?? []).length),
+        ]),
+      ),
+      "",
+      "### States to handle",
+      "",
+      "Every state a kit, or an app drawing its own UI, handles, with the copy keys the rows show for it (kit keys from `packages/brand/kit-copy/`, `core.*` keys from `conformance/parity/copy.<locale>.json`).",
+      "",
+      table(
+        ["Component", "State", "Copy keys"],
+        [...uiStates].map(([key, keys]) => {
+          const [component, state] = key.split("\u0000");
+          return [
+            component,
+            `\`${state}\``,
+            [...keys]
+              .sort()
+              .map((k) => `\`${k}\``)
+              .join(", ") || "none",
+          ];
+        }),
+      ),
       "",
       `## Content corpus (\`content/cases.json\`): ${Object.keys(content.blobs ?? {}).length} blobs, ${blobBytes.toLocaleString("en-US")} bytes`,
       "",

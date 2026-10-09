@@ -22,7 +22,7 @@ only corpus. `corpusVersion 2`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
 `planMatrixVersion 2`, `deviceLabelVersion 1`,
-`presentationMatrixVersion 1`,
+`presentationMatrixVersion 1`, `uiMatrixVersion 1`,
 `contentCorpusVersion 2`, `syncScenariosVersion 1`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
 `releaseRecordCases` families, the strict-verifier `jwsCases`, a `nonWireIntegers` member
@@ -92,6 +92,169 @@ WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label ev
 ## Product presentation (`presentation-matrix.json`): 131 parse, 32 size-choice and 6 verification cases
 
 WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's unsigned `core.presentation`, parsed field by field (a malformed field is dropped, never refusing discovery), the icon size a hero of `px` points at `scale` fetches given the types the platform decodes, and the SHA-256 check before any icon byte is shown. A generator-local reference in `tools/presentation-matrix.ts` recomputes every row and imports nothing it checks; `@polaris-key/client-core/presentation` is checked against the file by its own test, like every SDK. Non-ASCII is written escaped.
+
+## UI state matrix (`ui-matrix.json`): 337 component rows, 27 theme rows, 77 i18n rows
+
+The UI kits' layer (c), pinned once for every language (`plans/UK-02b.md`): each row drives the headless model of one component with an input (SDK results, `plans/I-04.md`'s license-choice views, kit-side values) and names its state, the copy keys it shows and its actions. `hidden` means the drop-in renders nothing because a service it depends on is off. Inline sign-in rows have a sheet twin, every component has a presentation-absent row, and the negative rows carry UI-KITS §4.1's Must not. The `theme` rows pin the accent, scheme, icon and preset resolution; the `i18n` rows the catalog lookup and the ICU subset, computed from the kit copy by the generator. No reference state machine: ui-core, the Swift presentation core, Kotlin `commonMain`, the Godot controllers and `polaris_key.ui.core` each run every row.
+
+| Family | Components | Rows |
+| --- | --- | --- |
+| `gate` | PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast | 56 |
+| `activate` | Welcome, Activate, OfflineActivation | 35 |
+| `signIn` | SignIn, SignInHandoff, LicenseChoice | 143 |
+| `deviceLimit` | DeviceLimit | 8 |
+| `devices` | Devices | 13 |
+| `update` | UpdatePrompt, UpdateProgress, ReleaseNotes | 42 |
+| `settings` | AccountAndLicense, Settings | 25 |
+| `paywall` | Paywall, EntitlementGate | 15 |
+
+### States to handle
+
+Every state a kit, or an app drawing its own UI, handles, with the copy keys the rows show for it (kit keys from `packages/brand/kit-copy/`, `core.*` keys from `conformance/parity/copy.<locale>.json`).
+
+| Component | State | Copy keys |
+| --- | --- | --- |
+| PolarisKeyGate | `booting` | `gate.checking` |
+| PolarisKeyGate | `needs-activation` | `core.gate.needs-activation.message`, `core.gate.needs-activation.title` |
+| PolarisKeyGate | `licensed` | none |
+| PolarisKeyGate | `grace` | `common.reconnect`, `core.gate.grace.message`, `core.gate.grace.title` |
+| PolarisKeyGate | `blocked` | `part.status.blocked` |
+| PolarisKeyGate | `error` | `common.tryAgain`, `gate.error.title` |
+| Boot | `progress` | `a11y.busy`, `boot.deciding`, `boot.ready`, `boot.starting`, `boot.syncing`, `common.loading`, `gate.checking` |
+| Boot | `consent` | `boot.consent.body`, `boot.consent.bodyMetered`, `boot.consent.download`, `boot.consent.title`, `common.notNow` |
+| Boot | `fetching` | `a11y.progress`, `boot.fetching`, `boot.fetchingProgress` |
+| Boot | `offline` | `boot.continueOffline`, `boot.offline.body`, `boot.offline.playable`, `boot.offline.title`, `common.tryAgain` |
+| Boot | `blocked` | `core.gate.version-too-old.message`, `core.gate.version-too-old.title`, `status.update` |
+| Boot | `declined` | `boot.declined.body`, `boot.declined.title`, `common.tryAgain` |
+| Boot | `rolled-back` | `boot.rolledBack` |
+| Boot | `error` | `boot.error.body`, `common.tryAgain`, `gate.error.title` |
+| StatusScreen | `revoked` | `common.signOut`, `core.gate.revoked.message`, `core.gate.revoked.title`, `signin.key.differentKey` |
+| StatusScreen | `expired` | `core.gate.expired.message`, `core.gate.expired.title`, `status.renew`, `status.useAnotherLicense` |
+| StatusScreen | `version-too-old` | `core.gate.version-too-old.message`, `core.gate.version-too-old.title`, `status.allowedMax`, `status.allowedMin`, `status.allowedRange`, `status.update` |
+| StatusScreen | `version-too-new` | `core.gate.version-too-new.message`, `core.gate.version-too-new.title`, `status.allowedMax`, `status.allowedRange` |
+| StatusScreen | `channel-not-entitled` | `core.gate.channel-not-entitled.message`, `core.gate.channel-not-entitled.title`, `status.contact`, `status.switchChannel` |
+| StatusScreen | `hidden` | none |
+| GraceBanner | `days-left` | `common.dismiss`, `common.reconnect`, `grace.daysLeft`, `grace.deadline` |
+| GraceBanner | `last-day` | `common.reconnect`, `grace.lastDay` |
+| GraceBanner | `expired` | `core.gate.expired.message`, `core.gate.expired.title` |
+| GraceBanner | `hidden` | none |
+| Toast | `info` | `a11y.toastTimer`, `common.dismiss`, `toast.updateAvailable` |
+| Toast | `success` | `common.copied` |
+| Toast | `warning` | `common.dismiss` |
+| Toast | `error` | `common.dismiss`, `core.codes.sync-failed.message`, `core.codes.sync-failed.title` |
+| Toast | `with-progress` | `toast.undo`, `updateProgress.downloading` |
+| Toast | `hidden` | none |
+| Welcome | `default` | `a11y.productIcon`, `common.byDeveloper`, `welcome.continueFree`, `welcome.lede`, `welcome.offline`, `welcome.restore`, `welcome.signIn`, `welcome.title`, `welcome.trial`, `welcome.useKey` |
+| Welcome | `busy` | `a11y.busy`, `common.working`, `welcome.title` |
+| Welcome | `capability-limited` | `welcome.ledeKeyOnly`, `welcome.ledeSignInOnly`, `welcome.title` |
+| Welcome | `hidden` | none |
+| Activate | `empty` | `activate.lede`, `activate.submit`, `activate.title`, `common.paste`, `part.keyField.label`, `part.keyField.placeholder` |
+| Activate | `typing` | `activate.submit`, `part.keyField.label` |
+| Activate | `parsed` | `activate.submit`, `part.keyField.forProduct` |
+| Activate | `cut-short` | `part.keyField.cutShort` |
+| Activate | `busy` | `a11y.busy`, `activate.busy` |
+| Activate | `rejected` | `core.activation.key-entry-limit.message`, `core.activation.key-entry-limit.title`, `core.activation.license-disabled.message`, `core.activation.license-disabled.title`, `core.codes.license_owned.message`, `core.codes.license_owned.title`, `part.keyField.empty`, `part.keyField.malformed` |
+| Activate | `device-limit` | `core.activation.device-limit.message`, `core.activation.device-limit.title`, `deviceLimit.noManage`, `deviceLimit.title`, `part.seatMeter.caption` |
+| Activate | `done` | `core.activation.ok.message`, `core.activation.ok.title`, `part.keyField.verdict` |
+| Activate | `hidden` | none |
+| OfflineActivation | `default` | `offlineActivation.copyCode`, `offlineActivation.dropHint`, `offlineActivation.loadFile`, `offlineActivation.loadHint`, `offlineActivation.paste`, `offlineActivation.product`, `offlineActivation.request`, `offlineActivation.submit`, `offlineActivation.title` |
+| OfflineActivation | `loaded` | `offlineActivation.codeCopied`, `offlineActivation.empty`, `offlineActivation.submit` |
+| OfflineActivation | `rejected-signature` | `core.codes.bundle-jws-rejected.message`, `core.codes.bundle-jws-rejected.title` |
+| OfflineActivation | `done` | `offlineActivation.done` |
+| OfflineActivation | `hidden` | none |
+| SignIn | `methods` | `common.cancel`, `signIn.title`, `signin.choice.keyInstead`, `signin.desktop.continue`, `signin.email.continue`, `signin.link.deviceCode`, `signin.menu.signIn`, `signin.methods.ledeApp`, `signin.passkey`, `signin.provider.continue`, `signin.provider.group` |
+| SignIn | `handoff` | `signin.handoff.again`, `signin.handoff.browserBody`, `signin.handoff.title`, `signin.handoff.useCode`, `signin.handoff.waiting` |
+| SignIn | `code` | none |
+| SignIn | `finishing` | `a11y.busy`, `signin.handoff.finishing` |
+| SignIn | `choose` | `signin.choice.title`, `signin.desktop.notifyChoose` |
+| SignIn | `replace` | `signin.replace.lede`, `signin.replace.open`, `signin.replace.openSystem`, `signin.replace.title` |
+| SignIn | `key` | `core.codes.license_owned.message`, `core.codes.license_owned.title`, `part.keyField.label`, `signin.key.addTitle` |
+| SignIn | `done` | `signin.desktop.toast`, `signin.done.start`, `signin.return.signedInShort` |
+| SignIn | `error` | `signIn.methodError`, `signIn.noMethods` |
+| SignIn | `expired` | `core.codes.sign-in-expired.message`, `core.codes.sign-in-expired.title`, `signin.again`, `signin.handoff.tooLong` |
+| SignIn | `hidden` | none |
+| SignInHandoff | `starting` | `a11y.busy`, `signInHandoff.starting` |
+| SignInHandoff | `waiting` | `common.cancel`, `signin.handoff.again`, `signin.handoff.title`, `signin.handoff.useCode`, `signin.handoff.waiting` |
+| SignInHandoff | `no-browser` | `signin.handoff.copyLink`, `signin.handoff.noBrowser`, `signin.handoff.noBrowserBody` |
+| SignInHandoff | `link-copied` | `signInHandoff.linkCopied` |
+| SignInHandoff | `code` | `a11y.code`, `a11y.copyAddress`, `a11y.copyCode`, `a11y.qr`, `part.code.label`, `part.qr.enlarge`, `signInHandoff.scan`, `signInHandoff.scanTv`, `signin.handoff.codeBody`, `signin.handoff.codeTitle`, `signin.handoff.openBrowser`, `signin.handoff.url` |
+| SignInHandoff | `finishing` | `signInHandoff.ok`, `signin.handoff.finishing` |
+| SignInHandoff | `denied` | `core.codes.sign-in-denied.message`, `core.codes.sign-in-denied.title`, `signInHandoff.newCode` |
+| SignInHandoff | `expired` | `core.codes.sign-in-expired.message`, `core.codes.sign-in-expired.title`, `signInHandoff.newCode` |
+| SignInHandoff | `cancelled` | `signInHandoff.newCode`, `signin.handoff.cancelled` |
+| SignInHandoff | `hidden` | none |
+| LicenseChoice | `loading` | `common.loading`, `signin.choice.title` |
+| LicenseChoice | `many` | `signin.choice.continue`, `signin.choice.devices`, `signin.choice.group`, `signin.choice.lede`, `signin.choice.meta`, `signin.choice.origin.developer`, `signin.choice.origin.free`, `signin.choice.origin.keyAdded`, `signin.choice.origin.signIn`, `signin.choice.origin.store`, `signin.choice.title`, `signin.term.lifetime`, `signin.term.until` |
+| LicenseChoice | `one` | `signin.choice.continue`, `signin.choice.lede`, `signin.choice.title` |
+| LicenseChoice | `current` | `signin.choice.tag.current` |
+| LicenseChoice | `keep` | `signin.choice.keep`, `signin.choice.keepMeta` |
+| LicenseChoice | `new` | `signin.choice.ledeNew`, `signin.choice.metaNew`, `signin.choice.tag.new` |
+| LicenseChoice | `create` | `signin.choice.create`, `signin.choice.createMeta` |
+| LicenseChoice | `all-full` | `signin.choice.allFull`, `signin.choice.allFullCreate`, `signin.choice.noneReplaceable`, `signin.choice.tag.full` |
+| LicenseChoice | `mixed` | none |
+| LicenseChoice | `replace-open` | `signin.replace.back`, `signin.replace.confirm`, `signin.replace.consequence`, `signin.replace.open`, `signin.replace.title` |
+| LicenseChoice | `raced` | `signin.choice.raced`, `signin.replace.raced` |
+| LicenseChoice | `none-keys` | `signin.choice.keyInstead`, `signin.none.body`, `signin.none.title` |
+| LicenseChoice | `none-no-keys` | `signin.none.body`, `signin.none.get`, `signin.none.otherAccount`, `signin.none.title` |
+| LicenseChoice | `grant-expired` | `signin.again`, `signin.handoff.tooLong` |
+| LicenseChoice | `hidden` | none |
+| DeviceLimit | `default` | `a11y.formFactor`, `a11y.seatMeter`, `common.back`, `deviceLimit.confirmTitle`, `deviceLimit.consequence`, `deviceLimit.heading`, `deviceLimit.lede`, `deviceLimit.primary`, `deviceLimit.title`, `part.seatMeter.caption`, `signin.replace.leastRecent`, `signin.replace.meta` |
+| DeviceLimit | `busy` | `a11y.busy`, `common.working`, `deviceLimit.primary` |
+| DeviceLimit | `removed` | `deviceLimit.removed` |
+| DeviceLimit | `failed` | `common.tryAgain`, `deviceLimit.failed` |
+| DeviceLimit | `browser-mode` | `a11y.externalLink`, `a11y.qr`, `deviceLimit.browser`, `deviceLimit.openBrowser`, `deviceLimit.scan`, `deviceLimit.title` |
+| DeviceLimit | `hidden` | none |
+| Devices | `list` | `a11y.formFactor`, `a11y.removeDevice`, `a11y.renameDevice`, `devices.count`, `devices.lede`, `devices.meta`, `devices.remove`, `devices.rename`, `devices.title`, `devices.unnamed`, `part.thisDeviceTitle` |
+| Devices | `loading` | `common.loading`, `devices.title` |
+| Devices | `renaming` | `common.cancel`, `common.save`, `devices.renameLabel` |
+| Devices | `confirming` | `common.cancel`, `devices.remove`, `devices.removeConfirm` |
+| Devices | `empty` | `devices.empty` |
+| Devices | `browser-mode` | `a11y.externalLink`, `devices.browser`, `devices.manage` |
+| Devices | `error` | `common.tryAgain`, `devices.loadFailed`, `devices.removeFailed`, `devices.renameFailed` |
+| Devices | `hidden` | none |
+| UpdatePrompt | `available` | `update.allChanges`, `update.availableTitle`, `update.critical`, `update.current`, `update.install`, `update.later`, `update.restartWhenReady`, `update.skipVersion`, `update.title`, `update.whatsNew` |
+| UpdatePrompt | `downloading` | `a11y.progress`, `update.downloading`, `update.later`, `update.restartWhenReady`, `update.timeLeft` |
+| UpdatePrompt | `ready` | `update.later`, `update.readyBody`, `update.readyTitle`, `update.restartNow` |
+| UpdatePrompt | `mandatory` | `update.install`, `update.mandatoryBody`, `update.mandatoryTitle` |
+| UpdatePrompt | `blocked` | `update.blockedBody`, `update.blockedTitle` |
+| UpdatePrompt | `store` | `update.altstore`, `update.appStore`, `update.googlePlay`, `update.openStore`, `update.steam`, `update.testflight` |
+| UpdatePrompt | `platform` | `update.availableTitle`, `update.platform.appInstaller`, `update.platform.command`, `update.platform.generic`, `update.platform.itch`, `update.platform.package`, `update.platform.steam`, `update.platform.store`, `update.platform.web` |
+| UpdatePrompt | `revoked-required-content` | `core.codes.pack-revoked.title`, `update.install`, `update.revokedContent` |
+| UpdatePrompt | `up-to-date` | `update.checkNow`, `update.upToDate` |
+| UpdatePrompt | `hidden` | none |
+| UpdateProgress | `queued` | `updateProgress.contentTitle`, `updateProgress.queued` |
+| UpdateProgress | `downloading` | `a11y.progress`, `updateProgress.downloading` |
+| UpdateProgress | `installing` | `updateProgress.installing` |
+| UpdateProgress | `paused` | `updateProgress.paused`, `updateProgress.resume` |
+| UpdateProgress | `failed` | `common.tryAgain`, `updateProgress.failed` |
+| UpdateProgress | `done` | `updateProgress.done` |
+| UpdateProgress | `hidden` | none |
+| ReleaseNotes | `list` | `releaseNotes.released`, `releaseNotes.title`, `releaseNotes.version` |
+| ReleaseNotes | `loading` | `common.loading`, `releaseNotes.title` |
+| ReleaseNotes | `empty` | `releaseNotes.empty` |
+| ReleaseNotes | `error` | `common.tryAgain`, `releaseNotes.error` |
+| ReleaseNotes | `hidden` | none |
+| AccountAndLicense | `signed-in` | `a11y.externalLink`, `account.autoUpdate`, `account.channel`, `account.cloudSync`, `account.devices`, `account.holder`, `account.managedSettings`, `account.tier`, `account.title`, `account.updates`, `account.version`, `common.manage`, `common.signOut`, `part.poweredBy`, `update.checkNow` |
+| AccountAndLicense | `key-only` | `account.keyOnly`, `account.tier`, `account.title`, `account.updates`, `common.signOut` |
+| AccountAndLicense | `loading` | `account.title`, `common.loading` |
+| AccountAndLicense | `offline` | `account.offline`, `part.status.grace` |
+| Settings | `list` | `settings.advanced`, `settings.empty`, `settings.fromDeveloper`, `settings.off`, `settings.on`, `settings.range`, `settings.reset`, `settings.search`, `settings.source.default`, `settings.source.env`, `settings.source.local`, `settings.title` |
+| Settings | `loading` | `common.loading`, `settings.title` |
+| Settings | `dirty` | `common.save`, `settings.unsaved` |
+| Settings | `saving` | `settings.saved`, `settings.saving` |
+| Settings | `locked` | `a11y.locked`, `settings.setBy`, `settings.setByGuardian` |
+| Settings | `error` | `common.tryAgain`, `settings.error`, `settings.loadFailed` |
+| Settings | `hidden` | none |
+| Paywall | `offers` | `paywall.includes`, `paywall.portal`, `paywall.redeem`, `paywall.title`, `paywall.upgrade` |
+| Paywall | `loading` | `common.loading` |
+| Paywall | `purchasing` | `a11y.busy`, `paywall.purchasing` |
+| Paywall | `purchased` | `common.done`, `paywall.purchased` |
+| Paywall | `restore` | `paywall.restore` |
+| Paywall | `not-available` | `paywall.notAvailable` |
+| Paywall | `hidden` | none |
+| EntitlementGate | `entitled` | none |
+| EntitlementGate | `not-entitled` | `entitlement.locked`, `entitlement.unlock` |
+| EntitlementGate | `loading` | `common.loading` |
 
 ## Content corpus (`content/cases.json`): 71 blobs, 3,743,530 bytes
 

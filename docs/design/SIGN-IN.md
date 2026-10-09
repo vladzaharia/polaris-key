@@ -783,7 +783,8 @@ underneath morphs (§3.18):
 3. **Choose a license** (frames 36, 18, 39, 40), and **Replace a device** in place of the list
    (frames 37, 30). Also the key field (**Use a license key instead**) and the no-license state.
 4. **Done** (frame 41) when a license was added or issued now; otherwise the app opens with the
-   toast (frame 27). Errors and expiry render in place too.
+   toast (frame 27). With License off there is no license and no tier to name, so the form ends on
+   Done with `signin.return.signedInShort` alone. Errors and expiry render in place too.
 
 **No sheet, dialog or popup is stacked on the form.** The one exception is the destructive
 confirm of a Replace, which uses the system confirmation where the platform's guidelines expect one
@@ -1445,8 +1446,8 @@ or alone with its `presentation`. Its steps, `SignInHandoff`, `LicenseChoice` (w
 `ReplaceDevice`), `Activate` and `Done`, are the styled parts; `DeviceLimit` (titled **Replace a
 device**) stays the key path's screen. The headless layer is one model, `SignInModel` (`useSignIn`,
 `SignInModel`, `rememberSignInState`, `PKeySignInController`, `SignInViewModel`), with the step
-models inside it, over the SDK primitives of §2.4. All take their states from the conformance UI
-fixtures (UK-02b `signin-form`).
+models inside it, over the SDK primitives of §2.4. All take their states from the `signIn`
+family of `conformance/corpus/v2/ui-matrix.json` (UK-02b).
 
 **Desktop apps** (§3.17, §4.15). The columns above group a toolkit's mobile and desktop builds;
 this table is the desktop answer, and it wins for desktop where the two differ. **C** here is the
@@ -1817,9 +1818,9 @@ question:
 | 8   | Cancel                                      | `access_denied` everywhere, no new device-facing answer (§F.8; D-51 revised)                                                                                                                      | The plan                         |
 | 9   | Routes, field names, error code, I-13 shape | `…/licenses[/:id/devices]`, `choice`, `license_choice_required` (I-08), `freeAccountDevice()`, `rankAnchorCandidates`, `bindSignedInDevice`, `status: "choose"`                                   | The plan (this document follows) |
 
-**Conformance:** UI fixtures for `LicenseChoice` in UK-02b (loading, many, one, current, keep, new,
-create, all-full, sign-in, mixed, replace-open, raced, none-keys, none-no-keys,
-none-replaceable), and I-04 §C's transcripts plus §F.6's `devicecode-sign-in.json`, with
+**Conformance:** the `LicenseChoice` rows of `ui-matrix.json`'s `signIn` family (UK-02b: loading,
+many, one, current, keep, new, create, all-full, sign-in, mixed, replace-open, raced, none-keys,
+none-no-keys, none-replaceable, grant-expired), and I-04 §C's transcripts plus §F.6's `devicecode-sign-in.json`, with
 their Swift and Godot mirrors (`gen:transcripts`).
 
 ### 6.3 Changes to planned contracts
@@ -1877,7 +1878,8 @@ the app"). In brief:
   never looks anything up by license key. A Replace is `freeAccountDevice()` with the portal's
   rules, budget, audit and email.
 - **Wire:** additive and opt-in. `PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2;
-  no corpus change; new transcripts and the parity rows `identity.choice` and `ui.kit.signin`.
+  no corpus change; new transcripts and the parity rows `identity.choice` and `ui.signin` (the
+  one form's row, UK-02b D1).
 - **Deployed:** old SDKs keep card behaviour; a new SDK on an old Worker falls back to card mode;
   grants in flight are dropped on a rollback.
 

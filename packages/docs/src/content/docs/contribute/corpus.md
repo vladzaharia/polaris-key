@@ -76,24 +76,25 @@ silently stop matching a returning machine to its existing free-tier enrollment.
 
 ## What's in the corpus
 
-Thirteen files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
+Fourteen files and the content corpus, one directory, so a runner can point at `corpus/v2/` and find everything it needs:
 
-| File                       | Contents                                                                                                                                                                                                                                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `cases.json`               | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles, and (wire contract v4) channel feeds and release records. A case whose payload holds a number that cannot be a wire integer lists those pointers in `nonWireIntegers`, beside `expect`. |
-| `gate-matrix.json`         | The client gate's decision table — every input combination and the state it must produce (`rows`) — and, in `entitlementRows`, what `isEntitled` answers in each licence state.                                                                                                       |
-| `fingerprint.json`         | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`.                                                                       |
-| `stage-matrix.json`        | The boot stage machine (client boot behaviour, outside the wire contract): rows, guard cases and (version 2) boot-confirmation cases.                                                                                                                                                 |
-| `headers.json`             | WIRE-CONTRACT-V3 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                                                                                          |
-| `config-matrix.json`       | WIRE-CONTRACT-V4 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                                                                                            |
-| `update-matrix.json`       | WIRE-CONTRACT-V4 §11.1: version comparisons, capability narrowing, the decision's outlet, rollout buckets and every update-decision row with its boot value.                                                                                                                          |
-| `outlet-matrix.json`       | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                            |
-| `plan-matrix.json`         | WIRE-CONTRACT-V4 §11.4: the install planner's rows, variant selection and target mapping (packs v1).                                                                                                                                                                                  |
-| `feed-url-matrix.json`     | The app-updater feed URLs (`appcast`, `winsparkle`, `velopack`, `appInstaller`, `zsync`) expanded from discovery's `update.endpoints` templates, or `{unsupported: "product"}` when a template is missing (`plans/SP-00.md` D5).                                                      |
-| `sync-scenarios.json`      | WIRE-CONTRACT-V4 §11.5 (U-18): the Cloud Sync client scenarios, literal data written by hand in `tools/sync-scenarios.ts` (see below).                                                                                                                                                |
-| `device-label.json`        | WIRE-CONTRACT-V4 §12.7.1 (PX-W13): raw device labels and their normalised form, or none. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped; no row holds U+0000, which a Godot `String` cannot.     |
-| `presentation-matrix.json` | WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's `core.presentation` parsed field by field (`parseCases`), the icon size chosen for a pixel size, scale and decodable set (`pickCases`), and icon bytes checked against their SHA-256 (`verifyCases`, base64 bytes). ASCII only.            |
-| `content/`                 | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                 |
+| File                       | Contents                                                                                                                                                                                                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cases.json`               | JWS cases, license/config documents, trust manifests, clock-floor sequences, offline bundles, and (wire contract v4) channel feeds and release records. A case whose payload holds a number that cannot be a wire integer lists those pointers in `nonWireIntegers`, beside `expect`.          |
+| `gate-matrix.json`         | The client gate's decision table — every input combination and the state it must produce (`rows`) — and, in `entitlementRows`, what `isEntitled` answers in each licence state.                                                                                                                |
+| `fingerprint.json`         | Hardware-fingerprint and device-id derivation vectors, and the §6.1 source rules: `windowsCim` (with `windowsCimCommand`), `linuxAnchor`, `ramBuckets`. Node and Python run all three; Swift runs `ramBuckets`.                                                                                |
+| `stage-matrix.json`        | The boot stage machine (client boot behaviour, outside the wire contract): rows, guard cases and (version 2) boot-confirmation cases.                                                                                                                                                          |
+| `headers.json`             | WIRE-CONTRACT-V3 §5.2: each runtime spelling of a platform or arch and its canonical header value, or none. The rows are the `PLATFORM_SPELLINGS` / `ARCH_SPELLINGS` tables.                                                                                                                   |
+| `config-matrix.json`       | WIRE-CONTRACT-V4 §2.2.1: config precedence, the variable name, the strict environment value and the user-visible list, each with a no-environment answer where it differs (`expectNoEnv`).                                                                                                     |
+| `update-matrix.json`       | WIRE-CONTRACT-V4 §11.1: version comparisons, capability narrowing, the decision's outlet, rollout buckets and every update-decision row with its boot value.                                                                                                                                   |
+| `outlet-matrix.json`       | WIRE-CONTRACT-V4 §11.2: outlet capability defaults and narrowing, the listing-URL prefixes, the detection signals and every detection row.                                                                                                                                                     |
+| `plan-matrix.json`         | WIRE-CONTRACT-V4 §11.4: the install planner's rows, variant selection and target mapping (packs v1).                                                                                                                                                                                           |
+| `feed-url-matrix.json`     | The app-updater feed URLs (`appcast`, `winsparkle`, `velopack`, `appInstaller`, `zsync`) expanded from discovery's `update.endpoints` templates, or `{unsupported: "product"}` when a template is missing (`plans/SP-00.md` D5).                                                               |
+| `sync-scenarios.json`      | WIRE-CONTRACT-V4 §11.5 (U-18): the Cloud Sync client scenarios, literal data written by hand in `tools/sync-scenarios.ts` (see below).                                                                                                                                                         |
+| `device-label.json`        | WIRE-CONTRACT-V4 §12.7.1 (PX-W13): raw device labels and their normalised form, or none. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped; no row holds U+0000, which a Godot `String` cannot.              |
+| `presentation-matrix.json` | WIRE-CONTRACT-V4 §5.5 (HA-12): discovery's `core.presentation` parsed field by field (`parseCases`), the icon size chosen for a pixel size, scale and decodable set (`pickCases`), and icon bytes checked against their SHA-256 (`verifyCases`, base64 bytes). ASCII only.                     |
+| `ui-matrix.json`           | The UI kits' layer-(c) state matrix (`plans/UK-02b.md` §4): for each of the eight component families an input and the component, state, copy keys and actions every kit's headless model answers; the `theme` resolution and the `i18n` lookup and formatter. Generated, unsigned, ASCII only. |
+| `content/`                 | WIRE-CONTRACT-V4 §2.6: `content/cases.json` (path rules, the files index, the chunk index, full, delta, file and chunk apply, `packSetId`, the content stamp, `frameWindow`) over the committed blobs in `content/blobs/`. Source only, not mirrored.                                          |
 
 There is exactly one corpus: v1 was deleted when wire contract v2 shipped, so there is no
 dual-shape ambiguity for a runner to pick the wrong side of. Version constants travel with the
@@ -101,7 +102,7 @@ files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerpr
 `stageMatrixVersion` **3**, `headersVersion` **2**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
 `feedUrlMatrixVersion` **1**, `syncScenariosVersion` **1**, `deviceLabelVersion` **1**,
-`contentCorpusVersion` **2**, `presentationMatrixVersion` **1** — and case counts, generated
+`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **1** — and case counts, generated
 straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
@@ -173,7 +174,7 @@ over it and needs a PR of its own with the guard deliberately relaxed. `.prettie
 `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`,
 `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `plan-matrix.json`,
 `feed-url-matrix.json`, `sync-scenarios.json`, `device-label.json`, `presentation-matrix.json`,
-`content/cases.json`, and the Godot
+`ui-matrix.json`, `content/cases.json`, and the Godot
 mirror are all output.
 `pnpm gen:corpus -- --check` regenerates every one of them **in memory** and fails if any
 committed file differs — the mirror included. A red drift job means a wire-affecting change wasn't
@@ -271,6 +272,19 @@ asserts they equal `@polaris-key/protocol/core`'s generated constants. `client-c
 is checked against the file like any other SDK, by its own test
 (`packages/client-core/test/presentation.test.ts`), because a golden file that shares code with
 the implementation it checks cannot catch a bug in it.
+
+`ui-matrix.json` (`plans/UK-02.md` §4, `plans/UK-02b.md` §4) is generated from rows authored in
+`tools/ui-matrix.ts`, ASCII only and **append-only** within `uiMatrixVersion` 1: a new row keeps
+the version; a changed row, input member or rule bumps it, and each runner checks the generated
+`UI_MATRIX_VERSION`. There is no reference state machine: the generator checks structure (every
+must state has a row and the rows' copy covers its `components.json` list, every component has a
+presentation-absent row and a row per service it depends on, the sign-in form ends one way,
+inline rows get sheet twins), and the five runners (UK-03, UK-07, UK-09, UK-11, UK-12) are the
+independent implementations. Its i18n strings are computed from the kit copy by a formatter that
+imports nothing it checks. A feature package adds its `components.json` state, its catalog keys
+and its rows in one PR and holds the corpus lane while it regenerates. **A copy-only edit** (a
+reworded or translated key) changes the file only through the computed i18n strings: run
+`pnpm gen:corpus` and commit the result, without the lane (`plans/UK-02b.md` D13).
 
 `update-matrix.json` and `outlet-matrix.json` (wire contract v4) are hand-authored from the
 plan's row lists (`plans/P3-01.md` §4.6, §4.7) and **append-only** as well. The generator carries
