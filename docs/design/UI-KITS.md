@@ -76,6 +76,7 @@ renders at five sizes, `gaps/` the Python and Node CLI output). Findings below c
 
 ### Contents
 
+[Design language (v2)](#design-language-v2-2026-10-08) ·
 [1. The Polaris Key default look](#1-the-polaris-key-default-look) ·
 [2. Tokens in every kit](#2-tokens-in-every-kit) · [3. One theme API](#3-one-theme-api) ·
 [4. The component catalogue](#4-the-component-catalogue) ·
@@ -83,6 +84,269 @@ renders at five sizes, `gaps/` the Python and Node CLI output). Findings below c
 [6. Samples and docs](#6-samples-and-docs) · [7. Visual QA](#7-visual-qa) ·
 [8. Mockups](#8-mockups) · [9. What this supersedes](#9-what-this-supersedes) ·
 [10. Build plan](#10-build-plan) · [11. Questions for the owner](#11-questions-for-the-owner)
+
+---
+
+## Design language (v2, 2026-10-08)
+
+The six built kits (React, SwiftUI, Compose, Godot, and the Node and Python terminals) went through
+multi-reviewer UX rounds on 2026-10-08. What those reviewers demanded and the builders shipped is
+now the language of every kit (owner, 2026-10-08: "extend this design language to all the other UI
+kits"). These rules add to §1.5 and win over §1–§8 where they differ; the owner decisions above
+still win. Where §1.5, §2.1, §4 or §7.1 already fixes a measure, the rule points there instead of
+repeating it. How each kit applies the rules, and its minimum checks, are in the
+[application matrix](UI-KITS-LANGUAGE-MATRIX.md). UK-55 turns the mechanical rules into lint;
+UK-56 redraws the boards of the platforms that have no built kit yet.
+
+Each rule says how it is tested, why it exists, and which reviewed screens set it. Evidence ids name
+the built screens of those rounds (for example `compose.sign-in`); the rule is what the review
+accepted for them. A measure without a unit is in logical pixels (dp on Android, pt on Apple).
+
+**DL1. Layout follows the container's shape, not the device.** The arrangement is a function of the
+kit root's measured size, never of the device class, the OS, the input or the keyboard.
+
+- **Landscape:** two panes for screens with a control group (Welcome and activation, the sign-in
+  code view, device limit, revoked). The start pane holds identity, title and lede; the end pane
+  holds the act. The panes are top-aligned to each other, the row is centred and capped at about
+  1040, with a 48 gutter. A message screen (a sentence and its actions) never splits: it is one
+  block at most 560 wide, with its actions in a trailing row.
+- **Short landscape** (under 30rem tall): two columns as well, with no inner scroll. If it still
+  overflows, the window scrolls and the start column sticks, so the title stays in view.
+- **Tall:** content top-anchored under a fixed inset, the heading block near the upper third
+  (spacers 1:2), actions docked at the bottom safe area and riding above the keyboard.
+- **Tablet portrait and 4:3:** one centred column of about 480–600, in the tall form; never two
+  narrow panes.
+- **Large windows:** a sheet-scale surface (the two-pane row, or the 560 card) on the product
+  ambient, at the platform's desktop type scale; never a phone column on a bare page, never
+  stretched to the window.
+- **No floating void:** identity heads the screen and the content is anchored; no screen is one
+  sentence afloat in empty space.
+- Focusing a field or raising the keyboard never changes the arrangement or rebuilds the field; a
+  covered field scrolls into view.
+
+A new kit starts from the Compose rule, the most general one (two panes at compact height under
+480, on TV, or from 840 wide at 1.4:1, never under 560 wide), and records its own thresholds in its
+tests. _Test:_ at every §7.1 row, the title and the primary are inside the first viewport, no
+control is partly scrolled away, and the arrangement matches the shape, asserted directly rather
+than through the kit's own layout metrics. _Why:_ portrait cards scrolled the title away in
+landscape, phone columns floated on wide pages, and a keyboard dropped as the page re-laid out.
+_Evidence:_ `compose.sign-in`, `react.license-gate.login`, `swiftui.gate`, `godot.gate`.
+
+**DL2. Interruptions sit over the app; blocking screens own the window; panes join the host.**
+
+- A dismissible interruption (an optional update, sign-in or offline activation opened from
+  settings, any dialog over a running game) is a card over the §2.1 scrim with the host visible
+  behind it, and a bottom sheet below a 560 container. The host is inert, Escape, B or Back
+  dismisses it, and focus returns to the opener.
+- A blocking gate (boot, sign-in before first use, a mandatory update) owns the window on an opaque
+  ground with the product ambient.
+- An embedded pane (devices, settings, sign-out) starts at the host's start edge, is at most 40rem
+  wide, never centres itself, and offers `bare` to drop its own frame. Its controls have opaque
+  fills, so their contrast never depends on the host's ground.
+
+_Test:_ the scrim, `inert` and focus return asserted on every dismissible state; contrast checked
+on a light and a dark host. _Why:_ optional prompts were opaque takeovers, and Sign out measured
+1.04:1 on a light host. _Evidence:_ `react.update-prompt.dialog`, `godot.update.modal`,
+`react.polaris-logout`.
+
+**DL3. One spacing scale, with density steps.** Every margin, padding and gap is a `--pk-space-*`
+step (BRAND §4.6; the 2 and 6 steps only inside a control) or a `kit.ts` component token, in any
+unit. Density (§3.1) moves control heights and gaps by whole steps; Godot and TV default to
+`spacious`. When a screen does not fit, it gives way in this order and stops as soon as it fits:
+decoration (hero size, ambient), then secondary lines (a device echo, a drop hint, an optional
+subtitle, the code check line), then the QR toward its minimum (DL14), then the actions under both
+columns, then the product header to its one-line form, then one density step, and only then a
+scroll. The title, the code, the URL, the primary and the key hints never give way, and type never
+shrinks below its floor to make room. _Test:_ UK-55 `spacing-off-scale`; the §7.1 renders. _Why:_
+the owner's "Spacing. Spacing. Spacing.": one rhythm is what makes ten kits read as one product.
+_Evidence:_ `godot.sign_in`, `godot.activation.device_limit`, `swiftui.gate`,
+`terminal.node-login-code`.
+
+**DL4. One primary per screen; everything else recedes.**
+
+- Exactly one filled (prominent) control at a time. It follows the state: Sign in on an empty
+  Welcome, Activate once a key is typed, the fix once a refusal arrives (DL6). A lone action is
+  always the primary.
+- Secondaries are tonal or bordered, never bare text when paired; tertiary actions (Activate
+  offline, Copy diagnostics) are text links at the foot. No "or" dividers.
+- Groups follow §1.5 rule 10. A group that does not fit stacks whole, never 2 + 1.
+- A busy control keeps its label and its focus (DL9) and adds the indicator.
+
+_Test:_ `one-primary` on every fixture render. _Why:_ after a refusal the way out was the weakest
+button, and Welcome showed two primaries. _Evidence:_ `swiftui.gate`,
+`compose.gate-device-limit-manage`, `react.license-gate.device-limit`, `godot.gate`.
+
+**DL5. The product is the identity.** Every gate, sign-in, update, settings and status screen is
+headed by the product's icon, or its monogram (the initial at weight 600 on `surface-sunken`, in the
+platform's icon shape), and its name in `text-strong`, at one size per context (§1.2). The name
+appears once per screen: a split's identity pane shows the icon only. At short heights the header
+collapses to one line; it is never removed. The Polaris mark appears only in the opt-in Powered-by
+line or badge (§1.6). _Test:_ UK-55 `polaris-mark`; the header present at every §7.1 row. _Why:_ the
+Pinned K stood in for the product, and phone screens had no identity at all. _Evidence:_
+`compose.sign-in`, `react.license-gate.login`, `godot.activation.device_limit`, `swiftui.gate`.
+
+**DL6. A refusal the person can resolve is a neutral callout, and its fix is the primary.** This
+covers device limit, revoked, expired, version too old or too new, and channel not entitled.
+
+- The callout sits under the control it concerns, in default text on the sunken surface: no danger
+  colour, no `aria-invalid` on a valid key, no error glyph. A full license is a limit, not an
+  error (§1.5 rule 9). This replaces the danger-subtle callout of the SwiftUI fix round.
+- The fixing action is the screen's only primary and takes focus. A fix that leaves the app carries
+  the new-window glyph, and on return the kit retries once.
+- Every blocking state has an action that can change its outcome: revoked shows the sign-in
+  methods, expired offers another license. A fix the kit cannot reach is named in words, and Try
+  again stays.
+
+_Test:_ UK-55 `refusal-styling` on the refusal fixtures. _Why:_ the device limit looked like an
+error with its fix as the weakest button, and revoked was a dead end. _Evidence:_
+`react.license-gate.device-limit`, `compose.gate-device-limit-manage`,
+`godot.activation.device_limit`, `react.license-gate.revoked`, `compose.gate-revoked`.
+
+**DL7. Errors sit under the control that caused them, and every state is designed.**
+
+- Each action has its own message slot directly under it: key errors under the key field, sign-in
+  errors under Sign in, a row's error in its row. Only an input that is itself wrong takes
+  `aria-invalid` and the danger stroke. The message is announced, focus moves to it or to its
+  field, and it clears on edit or on a new attempt.
+- A failed load is an error state with Try again, never an empty state. An unknown code shows the
+  catalog's fallback sentence.
+- Loading shows nothing for the first 250–300 ms, then the identity, a muted label and the 2 px
+  shimmer (§1.5 rule 4).
+- Cancelling is not an error: the flow closes with no "cancelled" screen. Expired, denied and
+  failed keep a result with the action that starts again.
+
+_Test:_ a render per fixture state; announcement and focus assertions. _Why:_ errors appeared at the
+top of panels or under the extras, and a failed load claimed "No devices". _Evidence:_
+`react.device-manager.load-error`, `swiftui.gate-limit`, `godot.gate.error`,
+`react.license-gate.loading`.
+
+**DL8. Copy is verbatim from the catalogs, says each fact once, in the reader's terms.** Every
+visible string is a key of `packages/brand/kit-copy/` or `core.copy` (§4.7). A kit never writes a
+string; a missing one is a catalog change for every kit. Platforms vary only the verb and the casing
+(§1.5 rule 11). No lede restates the buttons, no body repeats its title, and no caption under a
+meter repeats the count its title gives. Titles name the state ("Code expired", not "Sign in"). No
+raw codes, slugs or platform ids (`macos` is macOS), and `{product}` wherever "the game" or "this
+app" would go. _Test:_ the string lint (§7.3); UK-55 `catalog-string` over native sources. _Why:_
+copy had drifted between kits ("Retry" beside "Try again", raw ranges, "sign in" three times on one
+screen). _Evidence:_ `react.license-gate.expired`, `compose.gate-expired`,
+`terminal.node-status-none`, `godot.update.modal`.
+
+**DL9. Focus is always somewhere useful, and visible where it must be.**
+
+- **Initial focus on every screen:** the primary, or the first sign-in method on the gate. A
+  dialog that interrupts play focuses Later and ignores input for 250 ms (§4.3). On a coarse
+  pointer a text field is never focused on appear. After pointer input a game focuses nothing, and
+  the first D-pad or arrow press focuses the initial control. On TV and pad-only devices the first
+  focus is never a control that opens a browser.
+- **Never lost across async work:** a busy control keeps focus (`aria-disabled`, not `disabled`).
+  After a result, focus goes to the error's field or to the next screen's initial control; after a
+  removal, to the next row or the heading. A closing dialog returns focus to its opener, and
+  Escape, B or Back always backs out.
+- **A visible ring:** on pointer platforms on keyboard focus only (no ring at rest on a cold
+  start); on D-pad, gamepad and TV always, 3 px at a 2 px offset at TV distance, at least 3:1
+  against both the control and the ground, in the resolved accent's `focus`, with the focused TV
+  control lifted (scale up to 1.05, or the platform's focus effect). Under `native`, a host ring
+  thinner or fainter than that gives way to the kit's.
+
+_Test:_ per-kit focus tests (a cold start with no pointer lands inside the screen; after each async
+action a control inside has focus); UK-55 `initial-focus`. _Why:_ focus fell to the page after
+Activate, Save and Sign out, gamepads got none, and the first-focused TV button crashed a TV with no
+browser. _Evidence:_ `compose.focus`, `godot.gate`, `react.license-gate.login`,
+`react.device-manager.rename`.
+
+**DL10. Targets and type have platform floors.** Targets, controls and the Godot and TV type floor
+are §1.5 rule 5 and §2.1 (`controlHeight`); the web floor is §7.3's 12 px. A compact control still
+reaches 2.75rem on a coarse pointer. On phones body text is at least 16 dp and controls at least
+48 dp (44 pt), computed from the screen's real density in engines that see only pixels. A user code
+is never smaller than the title beside it. _Test:_ matrix assertions on every control and text run.
+_Why:_ a Godot game on a phone drew 12 dp body text and 37 dp buttons. _Evidence:_ `godot.sign_in`,
+`swiftui.signin`.
+
+**DL11. Text scales with the person's setting, everywhere.** Web kits size type and breakpoints in
+rem (fluid type in container units, never `vw` or px); Apple kits scale Rubik with `UIFontMetrics`
+or `relativeTo:` to AX5; Compose uses sp with the system's non-linear scale and never overrides
+`Density`; Qt uses point sizes and the font scale; Godot applies its 0.75–2 scale ladder and the
+content scale; terminals reflow at the terminal's size. At large text a screen gives way in the DL3
+order and wraps. It never clips, never cuts a key or a code inside a group (a code breaks at its
+hyphen), and never hyphenates a URL. _Test:_ the §7.1 200 % row; UK-55 `px-font`. _Why:_ at AX3 URLs
+broke mid-word and the offline request code was cut with an ellipsis. _Evidence:_
+`swiftui.signin-long`, `swiftui.offline`, `react.license-gate.login`.
+
+**DL12. Three weights.** 400 for body and row titles, 500 for labels, buttons and the product header,
+600 for headings; 700 only in the game wordmark fallback (§1.5 rule 6). The variable Rubik draws
+them, and the CJK fallback has its own 600 face, so `ja`, `ko` and `zh-Hans` headings stay
+headings. _Test:_ UK-55 `weights`. _Why:_ every Compose title was bold, and Japanese titles rendered
+at body weight. _Evidence:_ `compose.sign-in`, `godot.gate`.
+
+**DL13. Two presets: `native` follows the host, `polaris-key` resolves the product accent.**
+
+- **`polaris-key`:** the product accent through the contrast resolver (§3.3) for every role:
+  `solid` for fills only, `fg` for accent text and glyphs, `on`, `subtle` and `focus`. Never violet
+  by default.
+- **`native`:** the host's scheme (`system` resolves against the ground the kit sits on, not only
+  the OS), tint, shapes, fonts and control styles (macOS rounded-border fields and link-style
+  extras, Fluent, libadwaita, Material dynamic colour). The resolver still runs against the host's
+  surfaces, so text keeps 4.5:1 and fills 3:1. Status colours stay the brand's. A host theme with
+  an empty or transparent panel still gets a ground.
+- **Both presets** keep the platform idiom: title case and the default-button order on macOS,
+  Return and Escape bound to the primary and Cancel, a lone Android Cancel as a centred text
+  button, B on consoles.
+
+_Test:_ every §7.1 row in both presets; contrast on every render; a host-accent scene on a custom
+host ground. _Why:_ violet stood in for the product, and native screens were unreadable on light
+hosts and light game themes. _Evidence:_ `compose.accent`, `react.system-on-light-host`,
+`godot.settings`, `swiftui.signin`.
+
+**DL14. QR codes and links fail closed.**
+
+- **Where:** a QR appears only where the device cannot browse: TV, console and pad-only screens,
+  and an offline-activation request. Never on a phone, and never on a desktop surface (SIGN-IN.md
+  D-67), which retires §4.3's web QR beside the code. A phone leads with Open browser, then the code
+  with Copy.
+- **Size:** at least 160 physical px and at most 42 % of the short side, one size per kit, on a
+  92 % white tile with an 8 px quiet zone (and a hairline in light), its modules scaled by a whole
+  factor, always beside the URL and the code in text.
+- **Content:** the QR, Copy and the visible text carry exactly the same code or link.
+- **Links:** only https links the server or the integrator supplied (`deviceCodeUrl`,
+  `verificationUri`, `manageUrl`, a release URL); the loopback redirect is the one http exception.
+  Every link passes the kit's one validating opener before it is shown, encoded or opened. A
+  missing or invalid link hides its control and its QR and leaves the rest of the screen working; a
+  kit never makes up a URL. When the opener fails, the screen stays and shows
+  `signin.handoff.noBrowser` with Copy link.
+- **Expiry:** at 0:00 the code view switches to expired locally while any poll finishes.
+
+_Test:_ UK-55 `link-validation`; QR size assertions per row; a no-browser test; a countdown-at-zero
+test. _Why:_ a QR was the hero on the phone itself, Copy carried a different code than the one
+shown, and Open sign-in page crashed a TV with no browser. _Evidence:_ `compose.sign-in`,
+`godot.sign_in`, `swiftui.offline`, `godot.activation.device_limit`.
+
+**DL15. Every screen passes the size matrix.** The rows are §7.1's (GUI and terminal), in both
+schemes and both presets. A kit adds its platform's own rows (keyboard up, split screen, overscan,
+resize sequences) and never drops one. _Test:_ the kit's matrix suite. _Why:_ the owner's
+"responsive, with landscape layouts where the window is landscape". _Evidence:_ the matrix suites
+of the six built kits.
+
+**DL16. Motion and transparency follow the person's settings.** Motion is §4.8: under reduced motion
+every duration is 0 with no fade, and the shimmer and busy indicators hold still (the countdown
+steps once a second). Reduced transparency makes every glass surface and scrim opaque (§4.4).
+_Test:_ the reduced-motion and reduced-transparency renders. _Why:_ motion is part of the product
+(owner, 2026-10-05), so the setting that turns it off must turn all of it off. _Evidence:_
+`react.license-gate.loading`.
+
+**DL17. Content stays inside the safe area.** Content and docked actions stay inside the insets: the
+notch and home indicator, game title-safe 5 %, and TV overscan (48 horizontal and 27–32 vertical on
+Android TV; the system's elsewhere). A full-bleed surface's ground and bottom padding run past its
+content's end by the inset, and docked actions ride above the on-screen keyboard. _Test:_ the inset
+rows (notched phones, TV) assert no control inside an inset. _Why:_ full-bleed cards ended above
+their own padding, and TV screens had no overscan margin. _Evidence:_ `compose.sign-in`,
+`godot.gate`, `react.license-gate.login`.
+
+**DL18. One line to drop in, then customise.** The drop-in is the one call of §4.2, and it runs every
+state with no integrator layout code; the theme (§3) and copy overrides customise it; the styled
+parts and the headless model (§1.3) rebuild it. Nothing in DL1–DL17 needs integrator code to hold.
+_Test:_ the sample integrates in §4.2's line count, and the matrix renders the drop-in itself, not a
+test layout. _Why:_ "as easy to drop in (piecemeal or whole) as possible" (owner brief). _Evidence:_
+the §6.1 samples.
 
 ---
 

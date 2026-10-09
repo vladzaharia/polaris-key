@@ -60,6 +60,15 @@ These approved plans change this package. Where they differ from the text below,
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; the web browses, so no QR).
+- **In this kit:** Container queries on the kit root, in rem, drive DL1, with the root's measured height for short landscape (under 30rem). DL2 is `<dialog>` in the top layer over the §2.1 scrim, a bottom sheet under 35rem, an inert host and focus returned to the opener. Spacing is `--pk-space-*` only. Focus lives in shadow roots with `delegatesFocus`, and the ring follows a keydown-since-load flag. `colorScheme: "system"` walks up from the host element, across shadow roots, to the first opaque ground. `native` is `Canvas`, `CanvasText`, `AccentColor` and the host's font. Links open through one https-checking opener. The Fluent, GNOME and Mac sheet variants come from `theme.platform`.
+- **Minimum check:** Every §7.1 GUI row in Chromium and WebKit, both schemes and both presets, plus `forced-colors` and a 24 px root, with DL1's viewport assertions and axe on every render.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 Any web page can gate itself with two lines (`<script type=module>` + `<pk-gate>`), every component exists as a Lit 3 element in the Polaris look, and the elements own the shared stylesheet and DOM contract that React reuses.
@@ -117,6 +126,7 @@ The universal fallback for every web framework (§5.1), and the base for Vue, Sv
 - [ ] A design review against the mockups (`web.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

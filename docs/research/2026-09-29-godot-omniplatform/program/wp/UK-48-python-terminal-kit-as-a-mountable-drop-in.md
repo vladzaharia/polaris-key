@@ -18,6 +18,15 @@ The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) 
 
 - Adds `namespace` and `onCollision`, and accepts the host's `rich.Console`. Follows UK-51's `cli` rows and exit 4.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL16 and DL18 in the [terminal form](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#terminal-form); DL17 does not apply.
+- **In this kit:** Mounted into argparse, click or typer, the kit keeps the host's look outside its own verbs: it accepts the host's `rich.Console` (the native preset), hides integration flags, and prints locale dates and platform names (DL8). One call mounts it (DL18).
+- **Minimum check:** Every verb's goldens at the terminal rows, offline and update-unconfigured included, in both themes; help at 32, 40 and 80 columns.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 Python terminal kit as a mountable drop-in, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -56,6 +65,7 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 - [ ] The `require_*` snippets are tested files.
 - [ ] The SP-33a Python CLI golden compiles.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

@@ -27,6 +27,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; phones browse).
+- **In this kit:** The shape comes from `useWindowDimensions()`, never `Platform.isPad`. RN primitives cannot draw Liquid Glass or Expressive shapes: evaluate a native view for the iOS 26 glass primary against the iOS 18 material look before choosing. `native` uses `PlatformColor` and `DynamicColorIOS`. `allowFontScaling` stays on with no multiplier cap below 2. DL9 uses `AccessibilityInfo.setAccessibilityFocus` and the hardware-keyboard ring on Android. Safe areas come from `react-native-safe-area-context`, keyboard avoidance never re-lays out the screen, and `Linking.openURL` runs behind the https check.
+- **Minimum check:** Maestro or Detox on an iPhone and an Android phone (portrait and landscape), a tablet, and 200 % font, both schemes and both presets.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 An Expo or bare React Native app gates itself with one component, and the screens follow the iOS 26 and Android idioms of §1.4.
@@ -78,6 +87,7 @@ React Native is a should row of §5.1; it reuses the React hooks and ui-core, an
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (`ios.html`, `android.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

@@ -50,6 +50,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: a QR on Android TV only).
+- **In this kit:** Android TV follows the Compose TV screens already built: two panes, the QR in the end pane at min(200 dp, 40 % of the height), first focus on Use a license key instead, a 3 dp ring and 1.05 scale, overscan of 48 dp horizontally and 27–32 dp vertically, Back cancels. Glance uses `GlanceTheme` (the native preset by nature) with the product's icon and one action. The progress notification uses catalog strings and the product's icon.
+- **Minimum check:** The TV row with a focus pass; Glance at its size classes and the notification, both schemes.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 The Android TV and Glance surface exists over the existing core, with no second state machine, and is baselined in both themes.
@@ -99,6 +108,7 @@ A could row of §5.1; UpdateProgress names the foreground-service notification (
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

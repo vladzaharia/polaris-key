@@ -43,6 +43,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18, inherited from UK-07 (see [hosted surfaces](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#hosted-surfaces)).
+- **In this kit:** Hosts UK-07's views. Sheets present with a grabber at the medium detent, and as `.formSheet` on iPad. Mac Catalyst uses "Optimize for Mac", so UK-08's sizes and title case apply; evaluate that Catalyst's scaling does not undercut DL10.
+- **Minimum check:** Pixel equality with UK-07's baselines for the hosted states at the iPhone and iPad rows; Catalyst at the desktop rows.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 The UIKit and Mac Catalyst surface of the Swift kit exists, reuses the SwiftUI views and presentation core with no second implementation, and is baselined in both themes.
@@ -94,6 +103,7 @@ UIKit apps cannot adopt a SwiftUI modifier; they need presenters over the same v
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups (the Apple boards (`ios.html`, `desktop.html`) and the UK-01 additions) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

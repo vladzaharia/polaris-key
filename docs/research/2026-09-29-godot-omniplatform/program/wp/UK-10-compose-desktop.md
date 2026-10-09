@@ -1,16 +1,16 @@
 # UK-10 Compose Multiplatform kit for JVM desktop: `desktopMain` with the §1.4 desktop dialog model, Windows/macOS/Linux variants, focus rings, desktop density, UpdatePrompt over UK-40's updater
 
-| Field       | Value                                                                                              |
-| ----------- | -------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                       |
-| Size        | 2–3 engineer-weeks                                                                                 |
-| Depends on  | [UK-09](UK-09-compose-android.md), [UK-40](UK-40-kotlin-jvm-desktop.md)                            |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-41](UK-41-must-tier-closeout.md)                       |
-| Role        | `pkey-sdk-porter`                                                                                  |
-| Plan mode   | no                                                                                                 |
-| Gates       | Compose Desktop screenshot tests for Windows, macOS and Linux chrome; the Compose lint equivalents |
-| Human input | none                                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                          |
+| Field       | Value                                                                                                          |
+| ----------- | -------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                   |
+| Size        | 2–3 engineer-weeks                                                                                             |
+| Depends on  | [UK-09](UK-09-compose-android.md), [UK-40](UK-40-kotlin-jvm-desktop.md), [UK-56](UK-56-kit-mockups-refresh.md) |
+| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-41](UK-41-must-tier-closeout.md)                                   |
+| Role        | `pkey-sdk-porter`                                                                                              |
+| Plan mode   | no                                                                                                             |
+| Gates       | Compose Desktop screenshot tests for Windows, macOS and Linux chrome; the Compose lint equivalents             |
+| Human input | none                                                                                                           |
+| Repo        | `vladzaharia/polaris-key`                                                                                      |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -63,6 +63,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Quality bar.** Meets the bar in `.claude/agents/pkey-ux-reviewer.md` ("a GOOD UI", good use of visual space), not just no overflow.
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only).
+- **In this kit:** `desktopMain` runs the same `PolarisWindow` shape rule at window sizes, in the [desktop chrome](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#desktop-chrome) for each OS, at desktop density. Update and settings are real windows.
+- **Minimum check:** Compose Desktop screenshots on the three chromes at the phone, tablet, desktop and wide rows as window sizes, and at font scale 2, both schemes and both presets.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
 ## Goal
 
@@ -117,6 +126,7 @@ Kotlin JVM desktop is second-class today; the owner asked for full parity: kit, 
 - [ ] A design review against the mockups (`windows.html`, `linux.html`, `desktop.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

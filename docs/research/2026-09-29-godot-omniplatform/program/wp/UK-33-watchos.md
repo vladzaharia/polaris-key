@@ -1,16 +1,16 @@
 # UK-33 Optional: watchOS: Core 64-bit literal fix, license status glance, companion sign-in
 
-| Field       | Value                                                                         |
-| ----------- | ----------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (could) |
-| Size        | 1.5–2 engineer-weeks                                                          |
-| Depends on  | [UK-07](UK-07-swiftui-ios.md), [SP-08](SP-08-apple-platform-values.md)        |
-| Unblocks    | none                                                                          |
-| Role        | `pkey-sdk-porter`                                                             |
-| Plan mode   | no                                                                            |
-| Gates       | baselines in both themes; the string lint                                     |
-| Human input | none                                                                          |
-| Repo        | `vladzaharia/polaris-key`                                                     |
+| Field       | Value                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (could)                                 |
+| Size        | 1.5–2 engineer-weeks                                                                                          |
+| Depends on  | [UK-07](UK-07-swiftui-ios.md), [SP-08](SP-08-apple-platform-values.md), [UK-56](UK-56-kit-mockups-refresh.md) |
+| Unblocks    | none                                                                                                          |
+| Role        | `pkey-sdk-porter`                                                                                             |
+| Plan mode   | no                                                                                                            |
+| Gates       | baselines in both themes; the string lint                                                                     |
+| Human input | none                                                                                                          |
+| Repo        | `vladzaharia/polaris-key`                                                                                     |
 
 ## Consolidation 2026-10-07
 
@@ -24,6 +24,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 ## Owner direction (2026-10-08)
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
+
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL4, DL5, DL7–DL13 and DL16 (DL14: no QR).
+- **In this kit:** No built precedent: evaluate first. A glance is one column: the product's icon and name, the license state as icon plus word, and one action. Sign-in hands off to the iPhone, because the watch cannot browse; evaluate whether the glance shows the device code or only Continue on iPhone. watchOS is dark only, so there is one scheme; Dynamic Type applies.
+- **Minimum check:** 41, 45 and 49 mm at the default and largest text sizes.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
 
 ## Goal
 
@@ -74,6 +83,7 @@ A could row of §5.1; Core first needs its 64-bit literal overflow fixed (SW). T
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

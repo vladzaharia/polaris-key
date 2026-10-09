@@ -25,6 +25,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; wx cannot draw DL2's scrim, so evaluate).
+- **In this kit:** wxPython draws native widgets, so it is the native preset by nature: spacing through sizer borders on the scale, the platform's own focus, the platform dialog only as the form's host (confirmations stay inline, §1.5 rule 3). Evaluate what wx can show of DL2 without a scrim. Kivy draws its own: the `polaris-key` preset in dp and sp (sp follows the font scale), 48 dp targets and the kit ring on keyboard focus.
+- **Minimum check:** wx at the desktop rows as window sizes; Kivy at the phone, tablet and desktop rows; both schemes.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 The wxPython and Kivy surface exists over the existing core, with no second state machine, and is baselined in both themes.
@@ -74,6 +83,7 @@ A could row of §5.1, demand-driven. The spec is [`docs/design/UI-KITS.md`](../.
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

@@ -25,6 +25,15 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; the web browses, so no QR); Flet is the native preset.
+- **In this kit:** NiceGUI and Gradio embed the elements, so the language comes with them; evaluate whether each host's CSS isolation (Gradio's component wrappers) lets the container queries and fonts through. Flet is Flutter, not a DOM: an adapter over `polaris_key.ui.core` in Flet's Material controls, which makes it the native preset.
+- **Minimum check:** The embeds at phone portrait and desktop pass `pnpm ui:lint`; Flet screenshots at the same rows; both schemes.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 The NiceGUI, Gradio and Flet surface exists over the existing core, with no second state machine, and is baselined in both themes.
@@ -74,6 +83,7 @@ A could row of §5.1, demand-driven. The spec is [`docs/design/UI-KITS.md`](../.
 - [ ] The kit's framework page and its tab on each component page exist in the docs `build/ui/` section (UK-16 scaffold); the kit README is install + one-line flow + link.
 - [ ] A design review against the mockups is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

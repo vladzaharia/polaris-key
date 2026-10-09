@@ -345,6 +345,17 @@ and UK-16 (docs scaffold), then UK-03 (ui-core) and the kits. Kits read the prod
 only through HA-13/HA-14 via a seam, so they do not wait for them; UK-41 verifies it at the end of
 the must tier. UK-30 (Tk) is dropped.
 
+**Design language v2 (2026-10-08).** The owner asked for the built kits' design language on every
+kit. [UI-KITS.md](../../../design/UI-KITS.md#design-language-v2-2026-10-08) states it as rules DL1–DL18,
+and [UI-KITS-LANGUAGE-MATRIX.md](../../../design/UI-KITS-LANGUAGE-MATRIX.md) applies it to every UK
+package that is not done or dropped. Each of those briefs has a `## Design language v2 (2026-10-08)`
+section with its rules, its adaptation and its acceptance (the matrix rows pass, and a UX review
+gives every built screen a quality verdict of good or better), plus one acceptance line pointing
+at it. Two packages are new, under the stage "design language v2 (2026-10-08)": UK-55, the
+mechanical rules as lint with debt ledgers (optional), and UK-56, the boards of the platforms with
+no built kit (required, because UK-06, UK-08, UK-10 and UK-12 review against them; the parked
+UK-21, UK-24, UK-26, UK-27 and UK-33 wait for it too).
+
 Phase DOC (documentation) follows [`docs/research/2026-10-08-docs/`](../../2026-10-08-docs/README.md)
 §6.1. Its 28 packages keep the plan's own `DOC-<nn>[a-z]` ids, which `check.mjs` accepts; the plan
 suggested registering them under ST, PX and SP, but a package's id must start with its phase.

@@ -12,6 +12,15 @@
 | Human input | none                                                                                                      |
 | Repo        | `vladzaharia/polaris-key`                                                                                 |
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL16 and DL18 in the [terminal form](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#terminal-form); DL17 does not apply.
+- **In this kit:** Textual has widgets, focus and its own CSS, so the language maps closely: two panes once the terminal is at least 100 columns, otherwise one; spacing in whole cells; one `variant="primary"` button in the accent and tonal blocks for the rest, never bracketed buttons (§8, terminal board); `AUTO_FOCUS` on the primary with Textual's focus style as the ring; Textual's own theme as the native preset.
+- **Minimum check:** Textual snapshot tests at 80×24, 60×24, 40×24 and 120×40, both themes.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 Textual screens for host apps, as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -45,6 +54,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 ## Acceptance criteria
 
 - [ ] A Textual host pushes `PolarisGateScreen` and the gate resolves to the host's callback.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

@@ -65,6 +65,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; iPhone and iPad browse).
+- **In this kit:** Liquid Glass on 26 (a `.glassProminent` capsule primary, `.glass` secondaries), the material fallback on 18. One scroll tree whose arrangement comes from the keyboard-independent size: the split only at width ≥ 1.15 × height and at least 760×520; the tall form with 1:2 spacers, the act 24 pt above the bottom safe area and the hero at 120 pt; iPad portrait a column of about 480 pt. One prominent button at a time, with `.keyboardShortcut(.defaultAction)` moving with it. The device-limit callout is neutral (DL6). `@AccessibilityFocusState` and announcements carry DL7 and DL9; a hardware keyboard gets `.defaultFocus` on the primary, and touch never raises the keyboard on appear. `native` uses the system fonts, the app's tint and the system grounds.
+- **Minimum check:** iPhone 440×956 and 956×440, SE 375×667 and 667×375, and iPad in both orientations, at L, AX3 and AX5, on iOS 26 and 18, both schemes and both presets; `performAccessibilityAudit`. The UX review compares with the fix round's `swiftui.*` renders.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 An iOS app gates itself with `.polarisKeyGate(client)`, every §4.1 component exists as a public SwiftUI view in the Liquid Glass idiom on 26 and a polished material fallback on 18, and the package floor is iOS 18.
@@ -133,6 +142,7 @@ Today's Swift kit is one iOS 17-era screen with about 10 % of the catalogue (§0
 - [ ] A design review against the mockups (`ios.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

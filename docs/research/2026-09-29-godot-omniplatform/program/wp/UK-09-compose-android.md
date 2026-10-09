@@ -65,6 +65,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: a QR on Android TV only).
+- **In this kit:** Material 3 Expressive. `PolarisWindow.twoPane` is the DL1 rule (compact height, TV, or from 840 dp at 1.4:1; never under 560 dp), with the two-pane row capped at 1040 dp and a 48 dp gutter. Tall phones top-anchor under a 48 dp inset (56 dp from 600 dp wide), with a weight spacer and `imePadding`; tablets in portrait centre a 520–600 dp column; message screens never split. Buttons are 56 dp and fully round, secondaries `FilledTonalButton`, a lone Cancel a centred text button. The device-limit text is neutral supporting text, never `isError`. The ring shows when the input mode is keyboard, and always on TV (3 dp, scale 1.05). Type is sp with no `Density` override, and the variable Rubik at 400, 500 and 600. `native` takes the host `MaterialTheme` with dynamic colour, the resolver runs over the host surfaces, and status colours stay the brand's. The URI opener is guarded and falls back to the no-browser notice.
+- **Minimum check:** Roborazzi and `ResponsiveLayoutTest` at the §7.1 rows plus 891×411 at 1.5× and 2.0×, 640×360 at 1.5×, 960×540 TV and non-TV, and 2560×1440, both presets; the focused-state references; `AccessibilityTest`. The UX review compares with the fix round's `compose.*` renders.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 An Android app gates itself with `PolarisKeyGate(client) { App() }`, the kit is Material 3 Expressive in the Polaris look, and its states live in `commonMain` so the desktop kit reuses them.
@@ -132,6 +141,7 @@ Today's Compose kit is Material 3 at its 2023 level, Android only, pinned to the
 - [ ] A design review against the mockups (`android.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

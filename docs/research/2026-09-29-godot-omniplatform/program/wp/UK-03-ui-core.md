@@ -75,6 +75,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL4, DL6, DL7, DL9, DL13, DL14 and DL16 as data; the rest render in UK-04 and UK-05.
+- **In this kit:** The language as data, so every JS kit renders the same decision. Each view model names, per state, its one primary action, the refusal tone (`neutral` for the DL6 states), the slot each error belongs to and the initial-focus target. The link policy lives here: https-only validation, the switch to expired at 0:00, and whether the surface may show a QR. The theme resolver runs `resolveAccent` against the host's surfaces under `native` (the Compose round's `surfaces` parameter, ported), and the 250–300 ms loading delay is a model timer.
+- **Minimum check:** Fixture tests assert, per state, the primary id, the refusal tone, the error slot, the initial-focus id and the link verdict. No screens, so no §7.1 rows.
+- **Acceptance:** the fixture assertions above pass; the UX review happens on the screens UK-04 and UK-05 render from these models.
+
 ## Goal
 
 Every JS kit renders from one state machine per component: `@polaris-key/ui-core` passes every UI fixture, resolves the theme and product identity, and has no DOM or framework dependency.
@@ -128,6 +137,7 @@ Layer (c) for the JS kits; elements, React, Vue, Svelte, Angular and React Nativ
 - [ ] Every UK-02b fixture passes.
 - [ ] A test with a fake `PresentationSource` resolves the product accent (and `accentDark` in dark) with no integrator input; with no source it falls through to the bundle and then the derived accent.
 - [ ] No DOM, React or Lit import in the package (a test asserts it).
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md).
 
 ## Verify

@@ -4,7 +4,7 @@
 | ----------- | ---------------------------------------------------------------------------------------------------------- |
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                               |
 | Size        | 2–3 engineer-weeks                                                                                         |
-| Depends on  | [UK-07](UK-07-swiftui-ios.md)                                                                              |
+| Depends on  | [UK-07](UK-07-swiftui-ios.md), [UK-56](UK-56-kit-mockups-refresh.md)                                       |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-24](UK-24-appkit-kit.md), [UK-41](UK-41-must-tier-closeout.md) |
 | Role        | `pkey-sdk-porter`                                                                                          |
 | Plan mode   | no                                                                                                         |
@@ -64,6 +64,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only).
+- **In this kit:** Mac scale: 13 pt body, 22 pt titles and 26 pt on Welcome, `.large` controls and `.extraLarge` only for the Welcome hero. Title case on every button and menu item. Return is bound to the one prominent button and Escape to Cancel, with Cancel directly left of the default and a leading slot for Paste. Inset sheets of about 440 pt, without dimming. The split Welcome window carries product art, its pane one step quieter than the form under `native`. Under `native`: `.roundedBorder` large fields, `.link` extras and the system focus ring; under `polaris-key`, the resolved accent ring. Full Keyboard Access reaches everything. macOS does not apply Dynamic Type to these fonts (the fix round dropped its Mac AX rows), so evaluate which large-text setting macOS offers before choosing the 200 % row's stand-in.
+- **Minimum check:** Mac windows 480×520 (sheet), 900×640, 1440×900 and 1920×1080 on macOS 26 and 15, both schemes and both presets; a keyboard-only walk of every flow.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 A Mac app gets the Mac-scale kit: sheets below the title bar, a Settings pane, menu commands and a Sparkle update window drawn by the kit, at 13 pt body and 28 pt controls.
@@ -119,6 +128,7 @@ The iOS layout at Mac scale reads as a phone app; macOS needs its own sizes, win
 - [ ] A design review against the mockups (`desktop.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

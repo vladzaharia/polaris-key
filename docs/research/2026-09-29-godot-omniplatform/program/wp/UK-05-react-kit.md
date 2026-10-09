@@ -67,6 +67,15 @@ Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usabili
 - **Review.** Several UX reviews (`pkey-ux-reviewer`), not one.
 - **Two implementation paths.** An integrator drops in the kit or builds their own UI on the SDK. The in-app experience leads with the drop-in kit and links to the docs for integrating directly with your own UI. The docs present both paths.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL18 (DL14: links only; the web browses, so no QR).
+- **In this kit:** Shares the elements' stylesheet and DOM contract, so DL1–DL3 and DL10–DL12 come from UK-04's CSS. React adds what CSS cannot: focus moves through refs (a pending target after Save, removal and retry), `inert` siblings while a modal is mounted, a StrictMode-safe provider and `bare` on embedded panels. The fix round's outcomes carry over unchanged: the scheme resolved against the host's ground, the neutral device-limit callout, docked phone actions and two columns in short landscape.
+- **Minimum check:** The React browser suite's sizes (the §7.1 rows plus 568×320, 667×375 and 800×600) in both schemes and both presets, and the pixel diff against UK-04; the UX review compares with the fix round's `react.*` renders.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 A React app gates itself in four lines, every §4.1 component exists as a native React component on ui-core sharing the elements' stylesheet and DOM contract, and the old neutral default is gone.
@@ -124,6 +133,7 @@ Today's React kit is correct but looks like a 2019 admin page and lacks half the
 - [ ] A design review against the mockups (`web.html`) is recorded in the PR (§7.4); any disagreement between mockup and spec is fixed first.
 - [ ] `parity.json` for this SDK records the `ui.*` rows this kit proves (UK-02b ids), with snapshot plus fixture-run proofs.
 - [ ] Docs, in this PR ([docs plan](../../../2026-10-08-docs/README.md) §10): its part of `<StatesToHandle>` from the fixtures; a kit tab per component; a component page returns when a kit ships it; a recipes page at UK-31.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify

@@ -18,6 +18,15 @@ The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) 
 
 - `withLicense` becomes `requireLicense` (one name for servers and CLIs); adds `namespace`, `onCollision` and `frame: false`; yargs moves to `./cli/yargs`. Follows UK-51's `cli` rows and exit 4.
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL16 and DL18 in the [terminal form](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#terminal-form); DL17 does not apply.
+- **In this kit:** Mounted into a host CLI, the kit keeps the host's look outside its own verbs (`frame: false`): grouped help lists the host's commands first, the product chip heads only the kit's flows, and one call mounts it (DL18). A gated command's refusal prints the DL6 line and exits 4 (UK-51).
+- **Minimum check:** Help goldens at 32, 40 and 80 columns; the gated command's outcome goldens at the terminal rows.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 Node terminal kit for existing CLIs, as the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.2 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -56,6 +65,7 @@ Eighteen hands-on trials across Node, React, Python, Swift, Kotlin and Godot (th
 - [ ] `tsc` with `skipLibCheck: false` passes in a commander-only project.
 - [ ] The SP-33a Node CLI golden is 8 lines or fewer and compiles.
 - [ ] `pkey-ux-reviewer` passes every changed screen.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

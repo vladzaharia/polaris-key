@@ -18,6 +18,8 @@ catches what a machine can see. This list is for what it cannot.
       it renders, and lists no component state the kit owns as unrendered.
 - [ ] For React and the elements kit: the cross-renderer diff in the report is active and every pair
       matches.
+- [ ] The kit's row of the [design-language matrix](../UI-KITS-LANGUAGE-MATRIX.md) holds: its
+      minimum checks pass, and the UX review gives every screen a quality verdict of good or better.
 
 ## The product is the hero (§1.2)
 

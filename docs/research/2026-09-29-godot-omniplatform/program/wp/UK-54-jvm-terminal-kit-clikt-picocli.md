@@ -12,6 +12,15 @@
 | Human input | none                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                               |
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL1–DL16 and DL18 in the [terminal form](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#terminal-form); DL17 does not apply.
+- **In this kit:** Mordant draws the same frames as the Node and Python kits: its terminal detection decides ANSI-16 or truecolor and honours `NO_COLOR`; the rail, glyphs and compaction order are shared; Clikt and picocli mount the verbs with one call (DL18).
+- **Minimum check:** The terminal rows; text parity with the Node and Python kits at 80×24.
+- **Acceptance:** the matrix rows above pass, and a UX review (`pkey-ux-reviewer`) of the built screens gives each a quality verdict of good or better.
+
 ## Goal
 
 JVM terminal kit on Mordant, with Clikt and picocli adapters, as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -46,6 +55,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 - [ ] A Clikt and a picocli host mount the verbs and gate a command; a refusal exits 4.
 - [ ] The Mordant screens match UK-51's `cli` rows.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify

@@ -12,6 +12,15 @@
 | Human input | none                                                                                                                                                                                                                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                              |
 
+## Design language v2 (2026-10-08)
+
+This package follows the [design language](../../../../design/UI-KITS.md#design-language-v2-2026-10-08) (rules DL1–DL18). Its row of the [application matrix](../../../../design/UI-KITS-LANGUAGE-MATRIX.md):
+
+- **Rules:** DL6, DL7 and DL8 as data, in the [terminal form](../../../../design/UI-KITS-LANGUAGE-MATRIX.md#terminal-form).
+- **In this kit:** The `cli` rows pin the language for every terminal kit: a refused gate is a refusal with its fix (▲ and the command that resolves it), never a failure (✗); its copy keys come from the catalogs; it exits 4.
+- **Minimum check:** The `cli` family's rows; no screens.
+- **Acceptance:** the `cli` rows encode DL6–DL8 and pass; the UX review happens on the screens UK-46, UK-48 and UK-52–UK-54 render from them.
+
 ## Goal
 
 Terminal drop-in contract: the `cli` family in `ui-matrix.json`, exit 4, as the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.1 scopes it. Done when every acceptance criterion holds and the green gate passes.
@@ -48,6 +57,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 - [ ] The `cli` family pins the verb sets, the collision and help rules, the gate outcomes and exit 4.
 - [ ] A refused gate exits 4 and, with `--json`, prints the `error` code (decision 10).
 - [ ] `parity:check` and `gen:constants -- --check` pass.
+- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
