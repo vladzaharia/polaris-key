@@ -5,6 +5,7 @@ import {
   signJws,
   base64UrlDecode,
   base64UrlEncodeBytes,
+  importSigningKey,
 } from "@polaris-key/jws";
 import {
   ALT_KID,
@@ -53,6 +54,7 @@ import {
   SMALL_ORDER_REF,
 } from "./reference/ed25519.js";
 import { refVerifyJws } from "./reference/jws.js";
+import { noncanonical } from "./trust.js";
 import { refNonWire } from "./reference/tokens.js";
 
 // ── §1–§2 raw-JWS vectors ────────────────────────────────────────────────────
@@ -579,9 +581,115 @@ export async function buildJwsCases(): Promise<JwsCaseV2[]> {
   // §10: annotate every U+0000 string in each pinned document (one case today). Wire contract
   // v4's 44 vectors follow the existing 36, which stay byte-identical (plans/P3-01.md §4.3).
   const v4 = await buildJwsCasesV4();
-  return [...cases, ...v4].map((c) =>
+  // V4 §1's canonical base64url follows, appended so every earlier case stays byte-identical.
+  const canonical = await buildJwsCasesCanonical();
+  return [...cases, ...v4, ...canonical].map((c) =>
     placeNonWire({ ...c, expect: annotateNul(c.expect) }),
   );
+}
+
+// ── V4 §1: canonical base64url ─────────────────────────────────────────────────────────────
+// A lenient decoder ignores the unused low bits of a segment's last character, so up to sixteen
+// spellings decode to the same bytes. Each vector is a genuine JWS (or key) respelled that way;
+// every one of them verifies under a decoder without the canonical rule.
+
+async function buildJwsCasesCanonical(): Promise<JwsCaseV2[]> {
+  const LIC: TypV3 = "pkey-license+jws";
+  const TRUST = { [PIN_KID]: pub(PIN_KID) };
+  const lic = (id: string, extra: Record<string, unknown> = {}) =>
+    licenseDoc({ licenseId: `lic_${id.replaceAll("-", "_")}`, ...extra });
+  /** Sign over ENCODED segments exactly as given (a non-canonical one included). */
+  const signEncoded = async (encHeader: string, encPayload: string) => {
+    const key = await importSigningKey(pem(PIN_KID));
+    const input = `${encHeader}.${encPayload}`;
+    const sig = await crypto.subtle.sign(
+      { name: "Ed25519" },
+      key,
+      utf8Bytes(input),
+    );
+    return `${input}.${base64UrlEncodeBytes(new Uint8Array(sig))}`;
+  };
+  const enc = (text: string) => base64UrlEncodeBytes(utf8Bytes(text));
+  const out: JwsCaseV2[] = [];
+
+  {
+    const jws = await signAs(
+      lic("sig-noncanonical-trailing-bits"),
+      PIN_KID,
+      LIC,
+    );
+    const [h, p, sig] = jws.split(".") as [string, string, string];
+    out.push({
+      id: "sig-noncanonical-trailing-bits",
+      description:
+        "V4 §1 canonical base64url: a genuine licence document whose 86-character signature has one of its last character's four unused bits set. A lenient decoder reads the same 64 bytes and the signature verifies; the canonical rule refuses the segment.",
+      jws: `${h}.${p}.${noncanonical(sig)}`,
+      trust: TRUST,
+      typ: LIC,
+      expect: { verify: "fail" },
+    });
+  }
+  out.push({
+    id: "pubkey-noncanonical-trailing-bits",
+    description:
+      "V4 §1: a genuine document, verified against a trust set whose key for its `kid` is the right 32 bytes spelled non-canonically (an unused bit of the 43rd character set). Every trust-set key must be canonical; the key is refused, so the document does not verify.",
+    jws: await signAs(lic("pubkey-noncanonical-trailing-bits"), PIN_KID, LIC),
+    trust: { [PIN_KID]: noncanonical(pub(PIN_KID)) },
+    typ: LIC,
+    expect: { verify: "fail" },
+  });
+  {
+    const header = enc(headerText(LIC, PIN_KID));
+    if (header.length % 4 === 0)
+      throw new Error("header-noncanonical-trailing-bits: no unused bits");
+    out.push({
+      id: "header-noncanonical-trailing-bits",
+      description:
+        "V4 §1: the protected header's last character has an unused bit set, and the signature is computed over that exact spelling, so it verifies as written. The canonical rule refuses the header segment before the signature is checked.",
+      jws: await signEncoded(
+        noncanonical(header),
+        enc(JSON.stringify(lic("header-noncanonical-trailing-bits"))),
+      ),
+      trust: TRUST,
+      typ: LIC,
+      expect: { verify: "fail" },
+    });
+  }
+  {
+    // Tune the payload so its encoding has unused bits (a JSON length not divisible by 3).
+    let doc = lic("payload-noncanonical-trailing-bits");
+    while (utf8Bytes(JSON.stringify(doc)).length % 3 === 0)
+      doc = { ...doc, x: `${(doc.x as string | undefined) ?? ""}x` };
+    out.push({
+      id: "payload-noncanonical-trailing-bits",
+      description:
+        "V4 §1: the payload segment's last character has an unused bit set, and the signature covers that exact spelling. A lenient decoder reads the same document; the canonical rule refuses the payload segment.",
+      jws: await signEncoded(
+        enc(headerText(LIC, PIN_KID)),
+        noncanonical(enc(JSON.stringify(doc))),
+      ),
+      trust: TRUST,
+      typ: LIC,
+      expect: { verify: "fail" },
+    });
+  }
+  out.push({
+    id: "segment-trailing-newline",
+    description:
+      "V4 §1: a genuine JWS with a newline after the signature. A newline is outside the alphabet; a validator whose pattern's `$` matches before a final newline accepted it.",
+    jws: `${await signAs(lic("segment-trailing-newline"), PIN_KID, LIC)}\n`,
+    trust: TRUST,
+    typ: LIC,
+    expect: { verify: "fail" },
+  });
+
+  // Recompute every verdict with the reference verifier, and prove each respelling is one a
+  // lenient decoder accepts: undoing it gives a JWS (or key) the reference verifies.
+  for (const c of out) {
+    if (refVerifyJws(c.jws, c.trust, c.typ, c.maxPayloadBytes) !== null)
+      throw new Error(`jwsCases canonical: the reference accepts ${c.id}`);
+  }
+  return out;
 }
 
 // ── §4.3 the new `jwsCases` ──────────────────────────────────────────────────────────────────

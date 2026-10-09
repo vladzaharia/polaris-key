@@ -346,11 +346,11 @@ export function checkCorpusV4(corpus: Record<string, AnyCase[]>): void {
     }
   }
   const counts: Record<string, number> = {
-    jwsCases: 80,
+    jwsCases: 85,
     licenseDocCases: 25,
     configDocCases: 21,
-    trustCases: 20,
-    bundleCases: 16,
+    trustCases: 30,
+    bundleCases: 23,
     feedCases: 80,
     feedContentCases: P13_COUNTS.feedContentCases,
     releaseRecordCases: 49,
