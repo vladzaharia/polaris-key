@@ -75,14 +75,14 @@
                 <div class="task done">
                   <span class="task-mark"></span>
                   <div class="task-title">Signed appcast</div>
-                  <div class="task-desc">Every update in it is signed with that key.</div>
                 </div>
                 <div class="task blocked">
                   <span class="task-mark"></span>
                   <div class="task-title">Builds carry the same key</div>
-                  <div class="task-desc">Version 4.2.2 was built with the wrong key (<span class="mono">kZ8r…Q1c=</span>, expected <span class="mono">pJ3m…vWc=</span>).</div>
+                  <div class="task-desc">Version 4.2.2 was built with the wrong key.</div>
+                  <div class="task-desc">It has <span class="mono">kZ8r…Q1c=</span>, not <span class="mono">pJ3m…vWc=</span>.</div>
                   <div class="task-body">
-                    <p class="type-small">Put back the key from the command below and publish 4.2.3.</p>
+                    <p class="type-small">Put back this key, then publish 4.2.3.</p>
                     <div class="cmd"><span>pkey release keys init --sparkle --show-public</span><button class="btn ghost icon xs" aria-label="Copy"><i class="ic ic-copy"></i></button></div>
                     <div><button class="btn outline sm"><i class="ic ic-mail"></i>Email the 37 owners of 4.2.2</button></div>
                   </div>
@@ -102,7 +102,6 @@
 <span class="t-c">// In applicationDidFinishLaunching, after PolarisKey starts.</span>
 <span class="t-k">let</span> updates <span class="t-o">=</span> <span class="t-k">try</span> <span class="t-t">PolarisSparkle</span>(client: polarisKey)
 updates.<span class="t-f">startUpdater</span>()</pre>
-              <div class="code-foot"><i class="ic ic-lock sm"></i><span>Each check carries the device’s license token.</span></div>
             </div>
           </div>
         </div>
@@ -123,8 +122,7 @@ updates.<span class="t-f">startUpdater</span>()</pre>
         <div class="card-body tight">
           <div class="mk-split center">
             <div class="mk-stack-1">
-              <span>Updater: WinSparkle, chosen by Ana Lima on Oct 7</span>
-              <span class="hint">Velopack also fits apps packaged with <span class="mono">vpk</span>. App Installer needs MSIX; DJDL makes an .msi.</span>
+              <span>Updater chosen by Ana Lima on Oct 7</span>
             </div>
             <div><button class="btn outline sm">Change</button></div>
           </div>
@@ -136,17 +134,17 @@ updates.<span class="t-f">startUpdater</span>()</pre>
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">Signing key</div>
-                <div class="task-desc">The Sparkle key signs Windows updates too.</div>
+                <div class="task-desc">Same key as macOS</div>
               </div>
               <div class="task done">
                 <span class="task-mark"></span>
                 <div class="task-title">WinSparkle appcast</div>
-                <div class="task-desc">Lists 4.2.2 (x64) on stable and 4.3.0-beta.3 on beta.</div>
+                <div class="task-desc">4.2.2 (x64) on stable, 4.3.0-beta.3 on beta</div>
               </div>
               <div class="task waiting">
                 <span class="task-mark"></span>
                 <div class="task-title">First update check</div>
-                <div class="task-desc">Ship a Windows build with this code; it shows Verified after its first check.</div>
+                <div class="task-desc">Ship a Windows build with this code.</div>
               </div>
             </div>
           </div>
@@ -165,13 +163,11 @@ updates.<span class="t-f">startUpdater</span>()</pre>
 <span class="t-t">WinSparkle</span>.<span class="t-f">win_sparkle_set_http_header</span>(
     <span class="t-s">"Authorization"</span>, <span class="t-s">"Bearer "</span> <span class="t-o">+</span> polarisKey.<span class="t-f">updateToken</span>())
 <span class="t-t">WinSparkle</span>.<span class="t-f">win_sparkle_init</span>()</pre>
-              <div class="code-foot"><i class="ic ic-lock sm"></i><span>The header carries the device’s license token. Licenses on beta read <span class="mono">update/beta/winsparkle.xml</span>.</span></div>
+              <div class="code-foot"><i class="ic ic-info sm"></i><span>Licenses on beta read <span class="mono">update/beta/winsparkle.xml</span>.</span></div>
             </div>
           </div>
         </div>
       </section>
-
-      <p class="icon-line type-small muted"><i class="ic ic-eye-off sm"></i><span>Not shown: zsync, Play in-app updates (no Linux or Android builds). <a class="link" href="#">Plan a platform in Settings</a></span></p>
 
       <!-- The page's settings rows, also reachable from the settings hub. Access is read-only here (P2-10). At wide, the aside. -->
       <section class="card aside span-3" aria-labelledby="rules">
@@ -180,7 +176,7 @@ updates.<span class="t-f">startUpdater</span>()</pre>
         </div>
         <div class="card-rows">
           <div class="setting-row">
-            <div><div class="setting-title">Compatibility window</div><div class="setting-desc">Copies from 4.0.0 update in place. Older copies are told to download the newest release.</div></div>
+            <div><div class="setting-title">Compatibility window</div><div class="setting-desc">Copies from 4.0.0 update in place.</div><div class="setting-desc">Older copies are told to download the newest release.</div></div>
             <button class="btn outline sm">Change</button>
           </div>
           <div class="setting-row">

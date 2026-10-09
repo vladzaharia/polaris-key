@@ -67,18 +67,18 @@
             <div class="list-row"><span class="icon-tile"><i class="ic ic-arrow-up"></i></span><span class="list-row-text"><strong>Jonas Ortiz</strong> promoted <span class="mono">1.7.2</span> from beta</span><span class="list-row-meta">Sep 18, 09:12</span></div>
           </div>
           <div class="card-foot start">
-            <span class="icon-line type-small muted"><i class="ic ic-users sm"></i><span>Every license, 18,240 · 2,184 devices checked in this week</span></span>
+            <div class="mk-stack-1"><span class="icon-line type-small muted"><i class="ic ic-users sm"></i><span>All 18,240 licenses</span></span><span class="icon-line type-small muted"><i class="ic ic-monitor-smartphone sm"></i><span>2,184 devices checked in this week</span></span></div>
           </div>
         </section>
 
         <section class="card" aria-labelledby="t-beta">
           <div class="card-head">
-            <div class="title mk-cluster baseline"><h2 id="t-beta"><span class="tag">beta</span></h2><span class="meta">Built in · beta licenses also get stable</span></div>
+            <div class="title mk-cluster baseline"><h2 id="t-beta"><span class="tag">beta</span></h2><span class="meta">Built in</span></div>
             <button class="btn ghost icon sm" aria-label="More for beta"><i class="ic ic-ellipsis"></i></button>
           </div>
           <div class="card-body">
             <div class="mk-split">
-              <div class="mk-stack-1"><span class="type-stat mono">1.8.1</span><span class="type-small muted">Published Oct 7, 09:40 · fixes the Android 15 crash</span></div>
+              <div class="mk-stack-1"><span class="type-stat mono">1.8.1</span><span class="type-small muted">Published Oct 7, 09:40</span><span class="type-small muted">Fixes the Android 15 crash</span></div>
               <div><button class="btn primary sm"><i class="ic ic-arrow-up"></i>Promote 1.8.1 to stable</button></div>
             </div>
           </div>
@@ -94,7 +94,7 @@
 
         <section class="card" aria-labelledby="t-dev">
           <div class="card-head">
-            <div class="title mk-cluster baseline"><h2 id="t-dev"><span class="tag">dev</span></h2><span class="meta">Built in · dev licenses also get beta</span></div>
+            <div class="title mk-cluster baseline"><h2 id="t-dev"><span class="tag">dev</span></h2><span class="meta">Built in</span></div>
             <button class="btn ghost icon sm" aria-label="More for dev"><i class="ic ic-ellipsis"></i></button>
           </div>
           <div class="card-body">
@@ -102,7 +102,7 @@
           </div>
           <div class="card-rows grow">
             <div class="list-row"><span class="icon-tile muted"><i class="ic ic-circle-dot"></i></span><span class="list-row-text"><strong>CI</strong> published <span class="mono">1.9.0-dev.13</span>, main @ e02b9f4</span><span class="list-row-meta">Oct 6, 17:30</span></div>
-            <div class="list-row"><span class="icon-tile muted"><i class="ic ic-trash-2"></i></span><span class="list-row-text">Cleaned up 11 dev builds (<span class="mono">1.7.3-dev.1</span> to <span class="mono">.11</span>) when 1.7.3 reached stable</span><span class="list-row-meta">Sep 30, 16:40</span></div>
+            <div class="list-row"><span class="icon-tile muted"><i class="ic ic-trash-2"></i></span><span class="list-row-text">Cleaned up 11 dev builds (<span class="mono">1.7.3-dev.1</span> to <span class="mono">.11</span>)</span><span class="list-row-meta">Sep 30, 16:40</span></div>
           </div>
           <div class="card-foot start">
             <span class="icon-line type-small muted"><i class="ic ic-users sm"></i><span>4 licenses with dev added</span></span>
@@ -147,7 +147,7 @@
               <tr>
                 <td><span class="tag">stable</span></td>
                 <td>Download page, update checks</td>
-                <td><div>App Store review</div><div class="cell-sub">You submit: one typed click</div></td>
+                <td><div>App Store review</div><div class="cell-sub">You submit</div></td>
                 <td><div>Production</div><div class="cell-sub">Staged rollout</div></td>
                 <td class="muted"><span class="type-mono">default</span></td>
                 <td><div class="type-mono">windows-x64</div><div class="type-mono">linux-x86_64</div></td>
@@ -183,12 +183,12 @@
             <div class="attn-row">
               <span class="pill warning sm"><i class="ic ic-triangle-alert"></i>Not connected</span>
               <span class="attn-subject"><i class="ic ic-steam"></i>Steam</span>
-              <span class="attn-text">No Steamworks publisher key yet, so no release reaches Steam’s branches.</span>
+              <span class="attn-text">No release reaches Steam’s branches.</span>
               <a class="link" href="#">Connect Steam<i class="ic ic-arrow-right"></i></a>
             </div>
           </div>
           <div class="table-foot">
-            <span class="icon-line"><i class="ic ic-file-code-2 sm"></i><span>Change a lane in <span class="mono">.pkey/distribution</span> or on the channel’s Releases tab. A custom track reaches a store only once you map it.</span></span>
+            <span class="icon-line"><i class="ic ic-file-code-2 sm"></i><span>Change a lane in <span class="mono">.pkey/distribution</span> or on the channel’s Releases tab</span></span>
           </div>
         </div>
       </section>
@@ -203,7 +203,10 @@
         <button class="btn ghost icon sm" aria-label="Close"><i class="ic ic-x"></i></button>
       </div>
       <div class="dialog-body">
-        <p>Stable goes back to 1.7.3. 1.8.0 stays on beta and dev, and you can promote it again.</p>
+        <div class="mk-stack-1">
+          <p>Stable goes back to 1.7.3.</p>
+          <p>1.8.0 stays on beta and dev.</p>
+        </div>
         <div class="field">
           <label class="field-label">Reason <span class="optional">Optional, shown in Activity</span></label>
           <div class="textarea"><span>Crashes on launch on some Android 15 phones.</span></div>
@@ -212,7 +215,7 @@
           <div class="card-rows">
             <div class="setting-row with-icon top">
               <span class="icon-tile sm muted"><i class="ic ic-polaris"></i></span>
-              <div><div class="setting-title">Polaris Key</div><div class="setting-desc">Update checks and the download page; devices on 1.8.0 keep it.</div></div>
+              <div><div class="setting-title">Polaris Key</div><div class="setting-desc">Update checks and the download page.</div><div class="setting-desc">Devices on 1.8.0 keep it.</div></div>
               <span class="status accent"><i class="ic ic-arrow-down"></i>Back to 1.7.3</span>
             </div>
             <div class="setting-row with-icon top">

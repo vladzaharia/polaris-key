@@ -5,11 +5,11 @@
   "surface": "console",
   "packages": ["P2-09", "P2-08", "A-24"],
   "uxRows": [],
-  "summary": "Diceroll's Release tracks where beta's newest build (1.7.0-beta.4, Aug 30) is older than stable 1.7.3, so beta licenses get stable until a newer beta publishes, said as one neutral line in the lane. The playtest track, not moved for five weeks, is not called out: its lane says 'Dev is 11 builds ahead' quietly with a ghost Promote.",
+  "summary": "Diceroll's Release tracks where beta's newest build (1.7.0-beta.4, Aug 30) is older than stable 1.7.3, so beta licenses get stable until a newer beta publishes, said in the lane as two neutral lines, one fact each. The playtest track, not moved for five weeks, is not called out: its lane says 'Dev is 11 builds ahead' quietly with a ghost Promote.",
   "compare": [
-    "A track is called out only when its newest build is older than the track it falls back to (lead answer 1): beta 1.7.0-beta.4 behind stable 1.7.3. The lane says the consequence once, as a neutral info line ('Older than stable 1.7.3, so beta licenses get stable until a newer beta publishes'); no badge, no amber, never the word 'stale', no Promote on the older build.",
-    "A track merely not moved for N weeks is not stale: playtest shows a quiet meta 'From dev · Dev is 11 builds ahead' and a ghost 'Promote 1.9.0-dev.14'; it never appears in Needs attention.",
-    "The beta lane's foot counts who is affected: '312 licenses, on stable 1.7.3 for now'.",
+    "A track is called out only when its newest build is older than the track it falls back to (lead answer 1): beta 1.7.0-beta.4 behind stable 1.7.3. The lane says it once, as two neutral lines ('Older than stable 1.7.3', then 'Beta licenses get stable until a newer beta publishes'); no badge, no amber, never the word 'stale', no Promote on the older build.",
+    "A track merely not moved for N weeks is not stale: playtest shows quiet meta lines 'From dev' and 'Dev is 11 builds ahead' and a ghost 'Promote 1.9.0-dev.14'; it never appears in Needs attention.",
+    "The beta lane's foot counts who is affected: '312 licenses' (what they get is said once, in the lane).",
     "Release tracks is a list: no masthead tile (lead answer 3); Ship builds is one identity: Release cyan, Package glyph; crumb 'Diceroll › Ship builds' (B5)."
   ],
   "status": "mockup",

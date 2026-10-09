@@ -9,7 +9,7 @@
   "summary": "The confirmation behind 'Promote 1.8.1 to stable' on Diceroll's Release tracks, after the 1.8.0 demote: what goes live on each channel (Polaris Key at once, a staged Google Play rollout prefilled to 20%, itch.io, the App Store after review, Steam skipped because it isn't connected) and a typed confirmation of the version.",
   "compare": [
     "Opens over Release tracks in the state of packages.release-tracks (stable on 1.7.3, itch.io's failed switch-back in stable's lane); Release accent (cyan).",
-    "The title is a question naming the release and the track; the first sentence says 1.8.1 joins stable, stays on beta, and every license gets it.",
+    "The title is a question naming the release and the track; the one line says 'Every license gets 1.8.1.' (the title already says it joins stable).",
     "'What changes' has one row per channel with an outcome at the right: Polaris Key 'At once' (update checks, the download page and Library); Google Play 'Staged' with the percentage as a field prefilled from the last rollout; itch.io 'Goes live' (replacing the 1.8.0 build left on windows-x64); App Store 'After review' with 'Submit 1.8.1 for App Store review' checked; Steam 'Skipped' (no Steamworks publisher key yet), with Connect Steam.",
     "Going live on stores is one typed click: 'Type 1.8.1 to promote it to stable' with the kit's neutral confirm word (nothing is lost), then the primary 'Promote 1.8.1 to stable' with an up arrow. Cancel is the kit's outline button.",
     "If a channel fails, the result is the same partial-success form as the demote on packages.release-tracks: a warning toast 'Promoted 1.8.1, except on <channel>' with Retry and a callout in stable's lane.",

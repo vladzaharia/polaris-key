@@ -47,7 +47,6 @@
       <header class="page-head is-record">
         <nav class="crumbs" aria-label="Breadcrumb"><span class="crumb-chip" data-service="release" aria-hidden="true"><i class="svc"></i></span><a href="#">DJDL</a><i class="ic ic-chevron-right"></i><a href="#">Ship builds</a><i class="ic ic-chevron-right"></i><a href="#">Packages</a><i class="ic ic-chevron-right"></i><a href="#">PyPI</a></nav>
         <div class="page-heading"><h1>Publish djdl-crates to PyPI.org</h1></div>
-        <p class="page-sub"><span>From DJDL’s own CI, through PyPI’s trusted publishing.</span></p>
       </header>
 
       <!-- F-35: the registry wizard (claim, trusted-publisher deep link, verify) and the per-package L2 approval. -->
@@ -60,7 +59,8 @@
           <div class="task done">
             <span class="task-mark"></span>
             <div class="task-title">Claim the name on PyPI.org</div>
-            <div class="task-desc"><span class="mono">djdl-crates</span> was free; a pending publisher reserves it for <span class="mono">example-org/djdl</span>.</div>
+            <div class="task-desc"><span class="mono">djdl-crates</span> was free.</div>
+            <div class="task-desc">A pending publisher reserves it for <span class="mono">example-org/djdl</span>.</div>
           </div>
           <div class="task done">
             <span class="task-mark"></span>
@@ -79,7 +79,8 @@
           <div class="task done">
             <span class="task-mark"></span>
             <div class="task-title">Verify</div>
-            <div class="task-desc">Oct 2, 10:16: PyPI.org trusts <span class="mono">release.yml</span> in <span class="mono">example-org/djdl</span>, and the workflow has its step.</div>
+            <div class="task-desc split-line"><span>PyPI.org trusts <span class="mono">release.yml</span> in <span class="mono">example-org/djdl</span></span><span class="meta">Oct 2, 10:16</span></div>
+            <div class="task-desc">The workflow has its step</div>
             <div class="task-body">
               <div class="code fade-x wrap-phone">
                 <div class="code-head"><span class="code-file">.github/workflows/release.yml</span><button class="btn ghost xs"><i class="ic ic-copy"></i>Copy</button></div>
@@ -94,7 +95,8 @@
           <div class="task current">
             <span class="task-mark"></span>
             <div class="task-title">Approve</div>
-            <div class="task-desc">From the next run of <span class="mono">release.yml</span>, each new version of <span class="mono">djdl-crates</span> on these tracks also goes to PyPI.org.</div>
+            <div class="task-desc">Each new version of <span class="mono">djdl-crates</span> on these tracks also goes to PyPI.org.</div>
+            <div class="task-desc">Starts with the next run of <span class="mono">release.yml</span>.</div>
             <div class="task-body">
               <div class="mk-cluster">
                 <span class="chip on">stable</span>
