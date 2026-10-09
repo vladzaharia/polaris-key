@@ -536,7 +536,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "Open your library",
     "signin.choice.freed": "A device is free on this license now.",
     "signin.replace.opensBrowser": "Opens Polaris Key in your browser",
-    "signin.cli.opening": "Opening Polaris Key in your browser…",
+    "signin.cli.opening": "Opening your browser…",
     "signin.cli.ifNotOpened": "If it didn't open, go to {url}",
     "signin.cli.keys": "Enter open again · c use a code · Esc cancel",
     "signin.cli.headless": "No browser on this computer. Use a code instead:",
@@ -703,8 +703,38 @@ export const KIT_COPY: Readonly<
     "cli.update.install": "Install",
     "cli.changelog.fix": "Check your connection and run {command} again.",
     "cli.import.fix": "Ask whoever sent it for a new file.",
-    "cli.identityOff.notice": "{product} doesn't use Polaris Key sign-in.",
+    "cli.identityOff.notice": "{product} doesn't offer account sign-in.",
     "cli.identityOff.fix": "Run {command} with your license key.",
+    "cli.login.attach": "Use this device's license key on your account? (y/N)",
+    "cli.keys.confirm": "y yes · n no · Esc cancel",
+    "cli.signin.signedInName": "Signed in as {name}",
+    "update.verifying": "Verifying…",
+    "cli.update.readyRestart": "{version} is ready · Restart to finish",
+    "cli.update.notConfiguredTitle": "Updates aren't set up",
+    "cli.update.notConfigured":
+      "Run {command} to see if a newer version is out.",
+    "cli.update.download": "Download {version} from {url}.",
+    "cli.update.npx":
+      "npx runs the newest version each time. Run {command} to use {version}.",
+    "cli.status.keyRevoked.title": "This license key no longer works",
+    "cli.status.keyRevoked.message":
+      "It may have expired or been turned off. Check it at {url}, or activate with another key.",
+    "cli.activate.unauthorized":
+      "That key wasn't accepted. Check it for typos. If it's right, it may have expired or been turned off: see {url}.",
+    "cli.option.reveal":
+      "Print the value (without it, secret and mint print nothing)",
+    "cli.secret.hidden": "{name} is set. To print its value, run {command}.",
+    "cli.mint.hidden":
+      "Nothing was minted. To mint and print a token, run {command}.",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -1767,7 +1797,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "Bibliothek öffnen",
     "signin.choice.freed": "Auf dieser Lizenz ist jetzt ein Gerät frei.",
     "signin.replace.opensBrowser": "Öffnet Polaris Key in Ihrem Browser",
-    "signin.cli.opening": "Polaris Key wird in Ihrem Browser geöffnet…",
+    "signin.cli.opening": "Ihr Browser wird geöffnet…",
     "signin.cli.ifNotOpened":
       "Falls er sich nicht geöffnet hat, öffnen Sie {url}",
     "signin.cli.keys": "Enter erneut öffnen · c Code verwenden · Esc abbrechen",
@@ -1957,10 +1987,43 @@ export const KIT_COPY: Readonly<
     "cli.changelog.fix":
       "Prüfen Sie Ihre Verbindung und führen Sie {command} erneut aus.",
     "cli.import.fix": "Bitten Sie den Absender um eine neue Datei.",
-    "cli.identityOff.notice":
-      "{product} verwendet die Polaris Key-Anmeldung nicht.",
+    "cli.identityOff.notice": "{product} bietet keine Kontoanmeldung.",
     "cli.identityOff.fix":
       "Führen Sie {command} mit Ihrem Lizenzschlüssel aus.",
+    "cli.login.attach":
+      "Den Lizenzschlüssel dieses Geräts für Ihr Konto verwenden? (y/N)",
+    "cli.keys.confirm": "y ja · n nein · Esc abbrechen",
+    "cli.signin.signedInName": "Angemeldet als {name}",
+    "update.verifying": "Wird überprüft…",
+    "cli.update.readyRestart":
+      "{version} ist bereit · Zum Abschließen neu starten",
+    "cli.update.notConfiguredTitle": "Aktualisierungen sind nicht eingerichtet",
+    "cli.update.notConfigured":
+      "Mit {command} sehen Sie, ob eine neuere Version erschienen ist.",
+    "cli.update.download": "Laden Sie {version} von {url} herunter.",
+    "cli.update.npx":
+      "npx startet jedes Mal die neueste Version. Mit {command} nutzen Sie {version}.",
+    "cli.status.keyRevoked.title":
+      "Dieser Lizenzschlüssel funktioniert nicht mehr",
+    "cli.status.keyRevoked.message":
+      "Er ist möglicherweise abgelaufen oder deaktiviert. Prüfen Sie ihn unter {url} oder aktivieren Sie mit einem anderen Schlüssel.",
+    "cli.activate.unauthorized":
+      "Dieser Schlüssel wurde nicht akzeptiert. Prüfen Sie ihn auf Tippfehler. Stimmt er, ist er vielleicht abgelaufen oder deaktiviert: siehe {url}.",
+    "cli.option.reveal":
+      "Den Wert ausgeben (ohne diese Option geben secret und mint nichts aus)",
+    "cli.secret.hidden":
+      "{name} ist gesetzt. Mit {command} geben Sie den Wert aus.",
+    "cli.mint.hidden":
+      "Es wurde nichts erzeugt. Mit {command} erzeugen und geben Sie ein Token aus.",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "Ein Fehler ist aufgetreten",
     "core.fallback.message":
       "Ein Fehler ist aufgetreten ({code}). Versuchen Sie es erneut.",
@@ -3031,7 +3094,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "Ouvrir votre bibliothèque",
     "signin.choice.freed": "Un appareil est désormais libre sur cette licence.",
     "signin.replace.opensBrowser": "Ouvre Polaris Key dans votre navigateur",
-    "signin.cli.opening": "Ouverture de Polaris Key dans votre navigateur…",
+    "signin.cli.opening": "Ouverture de votre navigateur…",
     "signin.cli.ifNotOpened": "S’il ne s’est pas ouvert, rendez-vous sur {url}",
     "signin.cli.keys": "Entrée rouvrir · c utiliser un code · Échap annuler",
     "signin.cli.headless":
@@ -3219,8 +3282,40 @@ export const KIT_COPY: Readonly<
     "cli.import.fix":
       "Demandez un nouveau fichier à la personne qui vous l’a envoyé.",
     "cli.identityOff.notice":
-      "{product} n’utilise pas la connexion Polaris Key.",
+      "{product} ne propose pas la connexion avec un compte.",
     "cli.identityOff.fix": "Exécutez {command} avec votre clé de licence.",
+    "cli.login.attach":
+      "Utiliser la clé de licence de cet appareil sur votre compte ? (y/N)",
+    "cli.keys.confirm": "y oui · n non · Esc annuler",
+    "cli.signin.signedInName": "Connecté en tant que {name}",
+    "update.verifying": "Vérification…",
+    "cli.update.readyRestart": "{version} est prête · Redémarrez pour terminer",
+    "cli.update.notConfiguredTitle": "Les mises à jour ne sont pas configurées",
+    "cli.update.notConfigured":
+      "Lancez {command} pour voir si une version plus récente existe.",
+    "cli.update.download": "Téléchargez la version {version} sur {url}.",
+    "cli.update.npx":
+      "npx lance la version la plus récente à chaque fois. Lancez {command} pour utiliser {version}.",
+    "cli.status.keyRevoked.title": "Cette clé de licence ne fonctionne plus",
+    "cli.status.keyRevoked.message":
+      "Elle a peut-être expiré ou été désactivée. Vérifiez-la sur {url} ou activez avec une autre clé.",
+    "cli.activate.unauthorized":
+      "Cette clé n’a pas été acceptée. Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée : voir {url}.",
+    "cli.option.reveal":
+      "Afficher la valeur (sans cette option, secret et mint n’affichent rien)",
+    "cli.secret.hidden":
+      "{name} est défini. Pour afficher sa valeur, lancez {command}.",
+    "cli.mint.hidden":
+      "Rien n’a été généré. Pour générer et afficher un jeton, lancez {command}.",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "Something went wrong",
     "core.fallback.message": "Something went wrong ({code}). Try again.",
     "core.codes.unauthorized.title": "Not signed in",
@@ -4262,7 +4357,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "Abrir tu biblioteca",
     "signin.choice.freed": "Ya hay un dispositivo libre en esta licencia.",
     "signin.replace.opensBrowser": "Abre Polaris Key en tu navegador",
-    "signin.cli.opening": "Abriendo Polaris Key en tu navegador…",
+    "signin.cli.opening": "Abriendo tu navegador…",
     "signin.cli.ifNotOpened": "Si no se abrió, ve a {url}",
     "signin.cli.keys": "Intro abrir de nuevo · c usar un código · Esc cancelar",
     "signin.cli.headless":
@@ -4448,8 +4543,41 @@ export const KIT_COPY: Readonly<
     "cli.changelog.fix": "Revisa tu conexión y vuelve a ejecutar {command}.",
     "cli.import.fix": "Pide un archivo nuevo a quien te lo envió.",
     "cli.identityOff.notice":
-      "{product} no usa el inicio de sesión de Polaris Key.",
+      "{product} no ofrece inicio de sesión con cuenta.",
     "cli.identityOff.fix": "Ejecuta {command} con tu clave de licencia.",
+    "cli.login.attach":
+      "¿Usar la clave de licencia de este dispositivo en tu cuenta? (y/N)",
+    "cli.keys.confirm": "y sí · n no · Esc cancelar",
+    "cli.signin.signedInName": "Sesión iniciada como {name}",
+    "update.verifying": "Verificando…",
+    "cli.update.readyRestart": "{version} está lista · Reinicia para terminar",
+    "cli.update.notConfiguredTitle":
+      "Las actualizaciones no están configuradas",
+    "cli.update.notConfigured":
+      "Ejecuta {command} para ver si hay una versión más reciente.",
+    "cli.update.download": "Descarga la versión {version} en {url}.",
+    "cli.update.npx":
+      "npx ejecuta siempre la versión más reciente. Ejecuta {command} para usar {version}.",
+    "cli.status.keyRevoked.title": "Esta clave de licencia ya no funciona",
+    "cli.status.keyRevoked.message":
+      "Puede que haya caducado o se haya desactivado. Compruébala en {url} o activa con otra clave.",
+    "cli.activate.unauthorized":
+      "No se aceptó esa clave. Comprueba que no tenga errores. Si es correcta, puede que haya caducado o se haya desactivado: consulta {url}.",
+    "cli.option.reveal":
+      "Mostrar el valor (sin esta opción, secret y mint no muestran nada)",
+    "cli.secret.hidden":
+      "{name} está definido. Para mostrar su valor, ejecuta {command}.",
+    "cli.mint.hidden":
+      "No se generó nada. Para generar e imprimir un token, ejecuta {command}.",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "Algo salió mal",
     "core.fallback.message": "Algo salió mal ({code}). Vuelve a intentarlo.",
     "core.codes.unauthorized.title": "Sin sesión iniciada",
@@ -5515,7 +5643,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "Abrir sua biblioteca",
     "signin.choice.freed": "Agora há um dispositivo livre nesta licença.",
     "signin.replace.opensBrowser": "Abre o Polaris Key no navegador",
-    "signin.cli.opening": "Abrindo o Polaris Key no navegador…",
+    "signin.cli.opening": "Abrindo o navegador…",
     "signin.cli.ifNotOpened": "Se não abrir, acesse {url}",
     "signin.cli.keys": "Enter abre de novo · c usa um código · Esc cancela",
     "signin.cli.headless": "Não há navegador neste computador. Use um código:",
@@ -5692,8 +5820,40 @@ export const KIT_COPY: Readonly<
     "cli.update.install": "Instalar",
     "cli.changelog.fix": "Verifique sua conexão e execute {command} novamente.",
     "cli.import.fix": "Peça um novo arquivo a quem o enviou.",
-    "cli.identityOff.notice": "{product} não usa o login do Polaris Key.",
+    "cli.identityOff.notice": "{product} não oferece login com conta.",
     "cli.identityOff.fix": "Execute {command} com a sua chave de licença.",
+    "cli.login.attach":
+      "Usar a chave de licença deste dispositivo na sua conta? (y/N)",
+    "cli.keys.confirm": "y sim · n não · Esc cancelar",
+    "cli.signin.signedInName": "Conectado como {name}",
+    "update.verifying": "Verificando…",
+    "cli.update.readyRestart": "{version} está pronta · Reinicie para concluir",
+    "cli.update.notConfiguredTitle": "As atualizações não estão configuradas",
+    "cli.update.notConfigured":
+      "Execute {command} para ver se há uma versão mais nova.",
+    "cli.update.download": "Baixe a versão {version} em {url}.",
+    "cli.update.npx":
+      "O npx executa sempre a versão mais recente. Execute {command} para usar {version}.",
+    "cli.status.keyRevoked.title": "Esta chave de licença não funciona mais",
+    "cli.status.keyRevoked.message":
+      "Ela pode ter expirado ou sido desativada. Confira em {url} ou ative com outra chave.",
+    "cli.activate.unauthorized":
+      "Essa chave não foi aceita. Confira se não há erros de digitação. Se estiver certa, ela pode ter expirado ou sido desativada: veja {url}.",
+    "cli.option.reveal":
+      "Mostrar o valor (sem esta opção, secret e mint não mostram nada)",
+    "cli.secret.hidden":
+      "{name} está definido. Para mostrar o valor, execute {command}.",
+    "cli.mint.hidden":
+      "Nada foi gerado. Para gerar e mostrar um token, execute {command}.",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "Algo deu errado",
     "core.fallback.message": "Algo deu errado ({code}). Tente novamente.",
     "core.codes.unauthorized.title": "Não conectado",
@@ -6745,7 +6905,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "Apri la tua libreria",
     "signin.choice.freed": "Ora c'è un dispositivo libero su questa licenza.",
     "signin.replace.opensBrowser": "Apre Polaris Key nel browser",
-    "signin.cli.opening": "Apertura di Polaris Key nel browser…",
+    "signin.cli.opening": "Apertura del browser…",
     "signin.cli.ifNotOpened": "Se non si è aperto, vai su {url}",
     "signin.cli.keys": "Invio riapri · c usa un codice · Esc annulla",
     "signin.cli.headless":
@@ -6927,8 +7087,40 @@ export const KIT_COPY: Readonly<
     "cli.changelog.fix":
       "Controlla la connessione ed esegui di nuovo {command}.",
     "cli.import.fix": "Chiedi un nuovo file a chi te l’ha inviato.",
-    "cli.identityOff.notice": "{product} non usa l’accesso con Polaris Key.",
+    "cli.identityOff.notice": "{product} non offre l’accesso con un account.",
     "cli.identityOff.fix": "Esegui {command} con la tua chiave di licenza.",
+    "cli.login.attach":
+      "Usare la chiave di licenza di questo dispositivo sul tuo account? (y/N)",
+    "cli.keys.confirm": "y sì · n no · Esc annulla",
+    "cli.signin.signedInName": "Accesso effettuato come {name}",
+    "update.verifying": "Verifica in corso…",
+    "cli.update.readyRestart": "{version} è pronta · Riavvia per completare",
+    "cli.update.notConfiguredTitle": "Gli aggiornamenti non sono configurati",
+    "cli.update.notConfigured":
+      "Esegui {command} per vedere se è uscita una versione più recente.",
+    "cli.update.download": "Scarica la versione {version} da {url}.",
+    "cli.update.npx":
+      "npx esegue ogni volta la versione più recente. Esegui {command} per usare {version}.",
+    "cli.status.keyRevoked.title": "Questa chiave di licenza non funziona più",
+    "cli.status.keyRevoked.message":
+      "Potrebbe essere scaduta o disattivata. Controllala su {url} o attiva con un’altra chiave.",
+    "cli.activate.unauthorized":
+      "Quella chiave non è stata accettata. Controlla di non aver sbagliato a digitarla. Se è giusta, potrebbe essere scaduta o disattivata: vedi {url}.",
+    "cli.option.reveal":
+      "Mostra il valore (senza questa opzione, secret e mint non mostrano nulla)",
+    "cli.secret.hidden":
+      "{name} è impostato. Per mostrarne il valore, esegui {command}.",
+    "cli.mint.hidden":
+      "Non è stato generato nulla. Per generare e mostrare un token, esegui {command}.",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "Si è verificato un problema",
     "core.fallback.message": "Si è verificato un problema ({code}). Riprova.",
     "core.codes.unauthorized.title": "Accesso non effettuato",
@@ -7995,7 +8187,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "ライブラリを開く",
     "signin.choice.freed": "このライセンスのデバイス枠が1つ空きました。",
     "signin.replace.opensBrowser": "ブラウザでPolaris Keyが開きます",
-    "signin.cli.opening": "ブラウザでPolaris Keyを開いています…",
+    "signin.cli.opening": "ブラウザを開いています…",
     "signin.cli.ifNotOpened": "開かない場合は{url}にアクセスしてください",
     "signin.cli.keys": "Enter もう一度開く · c コードを使う · Esc キャンセル",
     "signin.cli.headless":
@@ -8178,9 +8370,41 @@ export const KIT_COPY: Readonly<
       "接続を確認してから、もう一度{command}を実行してください。",
     "cli.import.fix": "送ってくれた人に新しいファイルを依頼してください。",
     "cli.identityOff.notice":
-      "{product}はPolaris Keyのサインインを使いません。",
+      "{product}はアカウントでのサインインに対応していません。",
     "cli.identityOff.fix":
       "ライセンスキーを使って{command}を実行してください。",
+    "cli.login.attach":
+      "このデバイスのライセンスキーをアカウントで使いますか？ (y/N)",
+    "cli.keys.confirm": "y はい · n いいえ · Esc キャンセル",
+    "cli.signin.signedInName": "{name}としてサインインしました",
+    "update.verifying": "検証中…",
+    "cli.update.readyRestart": "{version}の準備ができました · 再起動して完了",
+    "cli.update.notConfiguredTitle": "アップデートが設定されていません",
+    "cli.update.notConfigured":
+      "{command}を実行して新しいバージョンを確認してください。",
+    "cli.update.download": "{url} から{version}をダウンロードしてください。",
+    "cli.update.npx":
+      "npxは毎回最新バージョンを実行します。{command}で{version}を使えます。",
+    "cli.status.keyRevoked.title": "このライセンスキーは使えなくなりました",
+    "cli.status.keyRevoked.message":
+      "期限切れか無効にされた可能性があります。{url} で確認するか、別のキーでアクティベートしてください。",
+    "cli.activate.unauthorized":
+      "そのキーは受け付けられませんでした。入力を確認してください。正しい場合は、期限切れか無効にされた可能性があります。{url} をご確認ください。",
+    "cli.option.reveal":
+      "値を出力（指定しないと secret と mint は何も出力しません）",
+    "cli.secret.hidden":
+      "{name}は設定されています。値を出力するには{command}を実行してください。",
+    "cli.mint.hidden":
+      "何も発行していません。トークンを発行して出力するには{command}を実行してください。",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "問題が発生しました",
     "core.fallback.message":
       "問題が発生しました（{code}）。もう一度お試しください。",
@@ -9232,7 +9456,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "내 라이브러리 열기",
     "signin.choice.freed": "이제 이 라이선스에 빈 기기 자리가 있어요.",
     "signin.replace.opensBrowser": "브라우저에서 Polaris Key가 열려요",
-    "signin.cli.opening": "브라우저에서 Polaris Key를 여는 중…",
+    "signin.cli.opening": "브라우저를 여는 중…",
     "signin.cli.ifNotOpened": "열리지 않았다면 {url}에 접속하세요",
     "signin.cli.keys": "Enter 다시 열기 · c 코드 사용 · Esc 취소",
     "signin.cli.headless":
@@ -9400,9 +9624,39 @@ export const KIT_COPY: Readonly<
     "cli.update.install": "설치",
     "cli.changelog.fix": "연결을 확인한 다음 {command}을(를) 다시 실행하세요.",
     "cli.import.fix": "보낸 사람에게 새 파일을 요청하세요.",
-    "cli.identityOff.notice":
-      "{product}은(는) Polaris Key 로그인을 사용하지 않아요.",
+    "cli.identityOff.notice": "{product}은(는) 계정 로그인을 지원하지 않아요.",
     "cli.identityOff.fix": "라이선스 키로 {command}을(를) 실행하세요.",
+    "cli.login.attach": "이 기기의 라이선스 키를 계정에서 사용할까요? (y/N)",
+    "cli.keys.confirm": "y 예 · n 아니요 · Esc 취소",
+    "cli.signin.signedInName": "{name} 계정으로 로그인됨",
+    "update.verifying": "확인하는 중…",
+    "cli.update.readyRestart": "{version} 준비 완료 · 다시 시작하면 끝나요",
+    "cli.update.notConfiguredTitle": "업데이트가 설정되지 않았어요",
+    "cli.update.notConfigured":
+      "{command}을(를) 실행해 새 버전이 있는지 확인하세요.",
+    "cli.update.download": "{url}에서 {version}을(를) 내려받으세요.",
+    "cli.update.npx":
+      "npx는 실행할 때마다 최신 버전을 사용해요. {command}(으)로 {version}을(를) 사용하세요.",
+    "cli.status.keyRevoked.title": "이 라이선스 키는 더 이상 사용할 수 없어요",
+    "cli.status.keyRevoked.message":
+      "만료되었거나 꺼졌을 수 있어요. {url}에서 확인하거나 다른 키로 활성화하세요.",
+    "cli.activate.unauthorized":
+      "이 키는 사용할 수 없어요. 오타가 없는지 확인하세요. 맞다면 만료되었거나 꺼졌을 수 있어요. {url}을(를) 확인하세요.",
+    "cli.option.reveal":
+      "값을 출력 (없으면 secret과 mint는 아무것도 출력하지 않아요)",
+    "cli.secret.hidden":
+      "{name}이(가) 설정되어 있어요. 값을 출력하려면 {command}을(를) 실행하세요.",
+    "cli.mint.hidden":
+      "아무것도 발급하지 않았어요. 토큰을 발급해 출력하려면 {command}을(를) 실행하세요.",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "문제가 발생했어요",
     "core.fallback.message": "문제가 발생했어요({code}). 다시 시도하세요.",
     "core.codes.unauthorized.title": "로그인되지 않음",
@@ -10395,7 +10649,7 @@ export const KIT_COPY: Readonly<
     "signin.return.library": "打开你的资料库",
     "signin.choice.freed": "此许可证现在有一台空余设备。",
     "signin.replace.opensBrowser": "在浏览器中打开Polaris Key",
-    "signin.cli.opening": "正在浏览器中打开Polaris Key…",
+    "signin.cli.opening": "正在打开浏览器…",
     "signin.cli.ifNotOpened": "如果未打开，请前往{url}",
     "signin.cli.keys": "Enter 再次打开 · c 使用代码 · Esc 取消",
     "signin.cli.headless": "这台电脑上没有浏览器。请改用代码：",
@@ -10555,8 +10809,36 @@ export const KIT_COPY: Readonly<
     "cli.update.install": "安装",
     "cli.changelog.fix": "请检查网络连接，然后再次运行{command}。",
     "cli.import.fix": "请向发送者索取新文件。",
-    "cli.identityOff.notice": "{product}不使用 Polaris Key 登录。",
+    "cli.identityOff.notice": "{product}不支持账户登录。",
     "cli.identityOff.fix": "请使用许可证密钥运行{command}。",
+    "cli.login.attach": "要在你的账户中使用此设备的许可证密钥吗？(y/N)",
+    "cli.keys.confirm": "y 是 · n 否 · Esc 取消",
+    "cli.signin.signedInName": "已登录为{name}",
+    "update.verifying": "正在验证…",
+    "cli.update.readyRestart": "{version} 已就绪 · 重新启动以完成",
+    "cli.update.notConfiguredTitle": "未设置更新",
+    "cli.update.notConfigured": "运行 {command} 查看是否有新版本。",
+    "cli.update.download": "请从 {url} 下载 {version}。",
+    "cli.update.npx":
+      "npx 每次都会运行最新版本。运行 {command} 即可使用 {version}。",
+    "cli.status.keyRevoked.title": "此许可证密钥已失效",
+    "cli.status.keyRevoked.message":
+      "它可能已过期或被停用。请在 {url} 查看，或使用其他密钥激活。",
+    "cli.activate.unauthorized":
+      "此密钥未被接受。请检查是否有输入错误。如果无误，它可能已过期或被停用：请查看 {url}。",
+    "cli.option.reveal":
+      "输出该值（不加此选项时，secret 和 mint 不输出任何内容）",
+    "cli.secret.hidden": "{name} 已设置。要输出其值，请运行 {command}。",
+    "cli.mint.hidden": "未生成任何内容。要生成并输出令牌，请运行 {command}。",
+    "cli.platform.macos": "macOS",
+    "cli.platform.ios": "iOS",
+    "cli.platform.android": "Android",
+    "cli.platform.windows": "Windows",
+    "cli.platform.linux": "Linux",
+    "cli.platform.web": "Web",
+    "cli.platform.tvos": "tvOS",
+    "cli.platform.visionos": "visionOS",
+    "cli.platform.watchos": "watchOS",
     "core.fallback.title": "出现问题",
     "core.fallback.message": "出现问题（{code}）。请重试。",
     "core.codes.unauthorized.title": "未登录",

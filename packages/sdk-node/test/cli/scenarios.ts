@@ -45,7 +45,12 @@ const COMMON = ["Tidewater Studio", "tidewater"];
 const statusScenario = (
   name: string,
   status: string,
-  extra: Partial<{ graceUntil: number; info: unknown }> = {},
+  extra: Partial<{
+    graceUntil: number;
+    info: unknown;
+    /** `identity.current()`; null is a key only device. */
+    identity: unknown;
+  }> = {},
 ): Scenario => ({
   name,
   data: [
@@ -70,6 +75,9 @@ const statusScenario = (
             : {}),
         }),
         ...(extra.info !== undefined ? { licenseInfo: extra.info } : {}),
+        ...(extra.identity !== undefined
+          ? { identity: { current: async () => extra.identity } }
+          : {}),
       }),
     ),
 });
@@ -461,6 +469,7 @@ export const SCENARIOS: Scenario[] = [
     graceUntil: now + 14 * DAY,
   }),
   statusScenario("account-and-license-key-only", "ok", {
+    identity: null,
     graceUntil: now + 14 * DAY,
     info: {
       licenseId: "l",
@@ -468,6 +477,20 @@ export const SCENARIOS: Scenario[] = [
       tierLabel: "Pro",
       deviceLimit: 3,
       profile: null,
+      entitledChannels: [],
+      status: "ok",
+    },
+  }),
+  // A signed-in account whose profile has an empty name and email (a provider that shared
+  // neither): the row says it is signed in; it never ends in a dangling separator.
+  statusScenario("account-and-license-signed-in-empty-profile", "ok", {
+    graceUntil: now + 14 * DAY,
+    identity: { name: "", email: "", signedInAt: now - DAY },
+    info: {
+      licenseId: "l",
+      tier: "pro",
+      deviceLimit: 3,
+      profile: { name: "", email: "" },
       entitledChannels: [],
       status: "ok",
     },
@@ -775,6 +798,8 @@ export const SCENARIOS: Scenario[] = [
               status: "ok",
               label: "Mara's iPad",
               platform: "iPadOS",
+              // The roster's last-seen time is epoch seconds.
+              lastSeen: now - 3 * DAY,
             },
             {
               id: "dev_9fK2Lw7QmZ",
@@ -783,7 +808,8 @@ export const SCENARIOS: Scenario[] = [
               label: "Work laptop",
               platform: "linux",
               arch: "x64",
-              lastVerifiedAt: NOW / 1000 - 3600,
+              // The real client reports this device's own last verification in epoch milliseconds.
+              lastVerifiedAt: NOW - 3_600_000,
             },
             {
               id: "dev_7tR1",
@@ -792,6 +818,7 @@ export const SCENARIOS: Scenario[] = [
               label: "MacBook Pro",
               platform: "macOS",
               arch: "arm64",
+              lastSeen: now - DAY,
             },
           ],
         }),

@@ -2217,7 +2217,7 @@
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
     },
     "signin.cli.opening": {
-      "value": "Opening Polaris Key in your browser…",
+      "value": "Opening your browser…",
       "role": "body",
       "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting."
     },
@@ -2947,14 +2947,134 @@
       "note": "Terminal offline activation: what to do after an activation file was refused."
     },
     "cli.identityOff.notice": {
-      "value": "{product} doesn't use Polaris Key sign-in.",
+      "value": "{product} doesn't offer account sign-in.",
       "role": "body",
-      "note": "Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product."
+      "note": "Terminal sign-in: the product has no account sign-in. {product} is the product."
     },
     "cli.identityOff.fix": {
       "value": "Run {command} with your license key.",
       "role": "body",
       "note": "Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'."
+    },
+    "cli.login.attach": {
+      "value": "Use this device's license key on your account? (y/N)",
+      "role": "body",
+      "note": "Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press."
+    },
+    "cli.keys.confirm": {
+      "value": "y yes · n no · Esc cancel",
+      "role": "hint",
+      "note": "Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators."
+    },
+    "cli.signin.signedInName": {
+      "value": "Signed in as {name}",
+      "role": "body",
+      "note": "Terminal: the sign-in finished and only the name is known. {name} = the account's name."
+    },
+    "update.verifying": {
+      "value": "Verifying…",
+      "role": "body",
+      "note": "Update progress: the download finished and the update is being checked before it is installed."
+    },
+    "cli.update.readyRestart": {
+      "value": "{version} is ready · Restart to finish",
+      "role": "body",
+      "note": "Terminal: an update was downloaded and checked; it takes effect after a restart. {version} = a version string such as 2.5.0. Keep the ' · ' separator."
+    },
+    "cli.update.notConfiguredTitle": {
+      "value": "Updates aren't set up",
+      "role": "title",
+      "note": "Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead."
+    },
+    "cli.update.notConfigured": {
+      "value": "Run {command} to see if a newer version is out.",
+      "role": "body",
+      "note": "Terminal: update apply on a build with no signed update feed set up, under the title above. {command} = a terminal command, shown as is."
+    },
+    "cli.update.download": {
+      "value": "Download {version} from {url}.",
+      "role": "body",
+      "note": "Terminal: update apply on an install that cannot update itself; the new version is downloaded by hand. {version} = a version string such as 2.5.0; {url} = a web address, shown as a link."
+    },
+    "cli.update.npx": {
+      "value": "npx runs the newest version each time. Run {command} to use {version}.",
+      "role": "body",
+      "note": "Terminal: update apply when the product was started with npx. {command} = a terminal command, shown as is; {version} = a version string such as 2.5.0."
+    },
+    "cli.status.keyRevoked.title": {
+      "value": "This license key no longer works",
+      "role": "title",
+      "note": "Terminal status: a device activated with a license key only, and the license is no longer valid."
+    },
+    "cli.status.keyRevoked.message": {
+      "value": "It may have expired or been turned off. Check it at {url}, or activate with another key.",
+      "role": "body",
+      "note": "Terminal status, under the title above. {url} = the product's account page on Polaris Key, shown as a link."
+    },
+    "cli.activate.unauthorized": {
+      "value": "That key wasn't accepted. Check it for typos. If it's right, it may have expired or been turned off: see {url}.",
+      "role": "body",
+      "note": "Terminal activate: the server did not accept the license key. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. {url} = the product's account page on Polaris Key, shown as a link."
+    },
+    "cli.option.reveal": {
+      "value": "Print the value (without it, secret and mint print nothing)",
+      "role": "body",
+      "note": "Terminal help: what the --reveal flag of the secret and mint commands does. secret and mint are command names; keep them as is."
+    },
+    "cli.secret.hidden": {
+      "value": "{name} is set. To print its value, run {command}.",
+      "role": "body",
+      "note": "Terminal: the secret command without --reveal. {name} = the secret's name; {command} = a terminal command, shown as is."
+    },
+    "cli.mint.hidden": {
+      "value": "Nothing was minted. To mint and print a token, run {command}.",
+      "role": "body",
+      "note": "Terminal: the mint command without --reveal. {command} = a terminal command, shown as is."
+    },
+    "cli.platform.macos": {
+      "value": "macOS",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.platform.ios": {
+      "value": "iOS",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.platform.android": {
+      "value": "Android",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.platform.windows": {
+      "value": "Windows",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.platform.linux": {
+      "value": "Linux",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.platform.web": {
+      "value": "Web",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.platform.tvos": {
+      "value": "tvOS",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.platform.visionos": {
+      "value": "visionOS",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.platform.watchos": {
+      "value": "watchOS",
+      "role": "label",
+      "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
     }
   }
 }

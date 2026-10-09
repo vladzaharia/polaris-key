@@ -2780,10 +2780,10 @@ msgstr "このライセンスのデバイス枠が1つ空きました。"
 msgid "signin.replace.opensBrowser"
 msgstr "ブラウザでPolaris Keyが開きます"
 
-#. Opening Polaris Key in your browser…
+#. Opening your browser…
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.opening"
-msgstr "ブラウザでPolaris Keyを開いています…"
+msgstr "ブラウザを開いています…"
 
 #. If it didn't open, go to {url}
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is.
@@ -3537,15 +3537,135 @@ msgstr "接続を確認してから、もう一度{command}を実行してくだ
 msgid "cli.import.fix"
 msgstr "送ってくれた人に新しいファイルを依頼してください。"
 
-#. {product} doesn't use Polaris Key sign-in.
-#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+#. {product} doesn't offer account sign-in.
+#. Terminal sign-in: the product has no account sign-in. {product} is the product.
 msgid "cli.identityOff.notice"
-msgstr "{product}はPolaris Keyのサインインを使いません。"
+msgstr "{product}はアカウントでのサインインに対応していません。"
 
 #. Run {command} with your license key.
 #. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
 msgid "cli.identityOff.fix"
 msgstr "ライセンスキーを使って{command}を実行してください。"
+
+#. Use this device's license key on your account? (y/N)
+#. Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press.
+msgid "cli.login.attach"
+msgstr "このデバイスのライセンスキーをアカウントで使いますか？ (y/N)"
+
+#. y yes · n no · Esc cancel
+#. Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "cli.keys.confirm"
+msgstr "y はい · n いいえ · Esc キャンセル"
+
+#. Signed in as {name}
+#. Terminal: the sign-in finished and only the name is known. {name} = the account's name.
+msgid "cli.signin.signedInName"
+msgstr "{name}としてサインインしました"
+
+#. Verifying…
+#. Update progress: the download finished and the update is being checked before it is installed.
+msgid "update.verifying"
+msgstr "検証中…"
+
+#. {version} is ready · Restart to finish
+#. Terminal: an update was downloaded and checked; it takes effect after a restart. {version} = a version string such as 2.5.0. Keep the ' · ' separator.
+msgid "cli.update.readyRestart"
+msgstr "{version}の準備ができました · 再起動して完了"
+
+#. Updates aren't set up
+#. Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead.
+msgid "cli.update.notConfiguredTitle"
+msgstr "アップデートが設定されていません"
+
+#. Run {command} to see if a newer version is out.
+#. Terminal: update apply on a build with no signed update feed set up, under the title above. {command} = a terminal command, shown as is.
+msgid "cli.update.notConfigured"
+msgstr "{command}を実行して新しいバージョンを確認してください。"
+
+#. Download {version} from {url}.
+#. Terminal: update apply on an install that cannot update itself; the new version is downloaded by hand. {version} = a version string such as 2.5.0; {url} = a web address, shown as a link.
+msgid "cli.update.download"
+msgstr "{url} から{version}をダウンロードしてください。"
+
+#. npx runs the newest version each time. Run {command} to use {version}.
+#. Terminal: update apply when the product was started with npx. {command} = a terminal command, shown as is; {version} = a version string such as 2.5.0.
+msgid "cli.update.npx"
+msgstr "npxは毎回最新バージョンを実行します。{command}で{version}を使えます。"
+
+#. This license key no longer works
+#. Terminal status: a device activated with a license key only, and the license is no longer valid.
+msgid "cli.status.keyRevoked.title"
+msgstr "このライセンスキーは使えなくなりました"
+
+#. It may have expired or been turned off. Check it at {url}, or activate with another key.
+#. Terminal status, under the title above. {url} = the product's account page on Polaris Key, shown as a link.
+msgid "cli.status.keyRevoked.message"
+msgstr "期限切れか無効にされた可能性があります。{url} で確認するか、別のキーでアクティベートしてください。"
+
+#. That key wasn't accepted. Check it for typos. If it's right, it may have expired or been turned off: see {url}.
+#. Terminal activate: the server did not accept the license key. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. {url} = the product's account page on Polaris Key, shown as a link.
+msgid "cli.activate.unauthorized"
+msgstr "そのキーは受け付けられませんでした。入力を確認してください。正しい場合は、期限切れか無効にされた可能性があります。{url} をご確認ください。"
+
+#. Print the value (without it, secret and mint print nothing)
+#. Terminal help: what the --reveal flag of the secret and mint commands does. secret and mint are command names; keep them as is.
+msgid "cli.option.reveal"
+msgstr "値を出力（指定しないと secret と mint は何も出力しません）"
+
+#. {name} is set. To print its value, run {command}.
+#. Terminal: the secret command without --reveal. {name} = the secret's name; {command} = a terminal command, shown as is.
+msgid "cli.secret.hidden"
+msgstr "{name}は設定されています。値を出力するには{command}を実行してください。"
+
+#. Nothing was minted. To mint and print a token, run {command}.
+#. Terminal: the mint command without --reveal. {command} = a terminal command, shown as is.
+msgid "cli.mint.hidden"
+msgstr "何も発行していません。トークンを発行して出力するには{command}を実行してください。"
+
+#. macOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.macos"
+msgstr "macOS"
+
+#. iOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.ios"
+msgstr "iOS"
+
+#. Android
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.android"
+msgstr "Android"
+
+#. Windows
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.windows"
+msgstr "Windows"
+
+#. Linux
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.linux"
+msgstr "Linux"
+
+#. Web
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.web"
+msgstr "Web"
+
+#. tvOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.tvos"
+msgstr "tvOS"
+
+#. visionOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.visionos"
+msgstr "visionOS"
+
+#. watchOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.watchos"
+msgstr "watchOS"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

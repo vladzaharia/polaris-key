@@ -2788,7 +2788,7 @@ msgstr ""
 msgid "signin.replace.opensBrowser"
 msgstr ""
 
-#. Opening Polaris Key in your browser…
+#. Opening your browser…
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.opening"
 msgstr ""
@@ -3546,14 +3546,134 @@ msgstr ""
 msgid "cli.import.fix"
 msgstr ""
 
-#. {product} doesn't use Polaris Key sign-in.
-#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+#. {product} doesn't offer account sign-in.
+#. Terminal sign-in: the product has no account sign-in. {product} is the product.
 msgid "cli.identityOff.notice"
 msgstr ""
 
 #. Run {command} with your license key.
 #. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
 msgid "cli.identityOff.fix"
+msgstr ""
+
+#. Use this device's license key on your account? (y/N)
+#. Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press.
+msgid "cli.login.attach"
+msgstr ""
+
+#. y yes · n no · Esc cancel
+#. Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "cli.keys.confirm"
+msgstr ""
+
+#. Signed in as {name}
+#. Terminal: the sign-in finished and only the name is known. {name} = the account's name.
+msgid "cli.signin.signedInName"
+msgstr ""
+
+#. Verifying…
+#. Update progress: the download finished and the update is being checked before it is installed.
+msgid "update.verifying"
+msgstr ""
+
+#. {version} is ready · Restart to finish
+#. Terminal: an update was downloaded and checked; it takes effect after a restart. {version} = a version string such as 2.5.0. Keep the ' · ' separator.
+msgid "cli.update.readyRestart"
+msgstr ""
+
+#. Updates aren't set up
+#. Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead.
+msgid "cli.update.notConfiguredTitle"
+msgstr ""
+
+#. Run {command} to see if a newer version is out.
+#. Terminal: update apply on a build with no signed update feed set up, under the title above. {command} = a terminal command, shown as is.
+msgid "cli.update.notConfigured"
+msgstr ""
+
+#. Download {version} from {url}.
+#. Terminal: update apply on an install that cannot update itself; the new version is downloaded by hand. {version} = a version string such as 2.5.0; {url} = a web address, shown as a link.
+msgid "cli.update.download"
+msgstr ""
+
+#. npx runs the newest version each time. Run {command} to use {version}.
+#. Terminal: update apply when the product was started with npx. {command} = a terminal command, shown as is; {version} = a version string such as 2.5.0.
+msgid "cli.update.npx"
+msgstr ""
+
+#. This license key no longer works
+#. Terminal status: a device activated with a license key only, and the license is no longer valid.
+msgid "cli.status.keyRevoked.title"
+msgstr ""
+
+#. It may have expired or been turned off. Check it at {url}, or activate with another key.
+#. Terminal status, under the title above. {url} = the product's account page on Polaris Key, shown as a link.
+msgid "cli.status.keyRevoked.message"
+msgstr ""
+
+#. That key wasn't accepted. Check it for typos. If it's right, it may have expired or been turned off: see {url}.
+#. Terminal activate: the server did not accept the license key. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. {url} = the product's account page on Polaris Key, shown as a link.
+msgid "cli.activate.unauthorized"
+msgstr ""
+
+#. Print the value (without it, secret and mint print nothing)
+#. Terminal help: what the --reveal flag of the secret and mint commands does. secret and mint are command names; keep them as is.
+msgid "cli.option.reveal"
+msgstr ""
+
+#. {name} is set. To print its value, run {command}.
+#. Terminal: the secret command without --reveal. {name} = the secret's name; {command} = a terminal command, shown as is.
+msgid "cli.secret.hidden"
+msgstr ""
+
+#. Nothing was minted. To mint and print a token, run {command}.
+#. Terminal: the mint command without --reveal. {command} = a terminal command, shown as is.
+msgid "cli.mint.hidden"
+msgstr ""
+
+#. macOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.macos"
+msgstr ""
+
+#. iOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.ios"
+msgstr ""
+
+#. Android
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.android"
+msgstr ""
+
+#. Windows
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.windows"
+msgstr ""
+
+#. Linux
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.linux"
+msgstr ""
+
+#. Web
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.web"
+msgstr ""
+
+#. tvOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.tvos"
+msgstr ""
+
+#. visionOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.visionos"
+msgstr ""
+
+#. watchOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.watchos"
 msgstr ""
 
 #. Something went wrong

@@ -9,7 +9,11 @@
 
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { PolarisKeyClient } from "../client.js";
-import type { SignInPrompt, SignInResult } from "../identity/client.js";
+import type {
+  ShownIdentity,
+  SignInPrompt,
+  SignInResult,
+} from "../identity/client.js";
 import type { ActivationResult } from "../license/endpoints.js";
 import { SDK_NAME, SDK_VERSION } from "../version.js";
 import { Feature } from "../constants.generated.js";
@@ -22,9 +26,11 @@ import {
   devicesView,
   installView,
   keyVerdict,
+  present,
   progressView,
   statusExit,
   statusView,
+  tierName,
   updateView,
   type ActivateOutcome,
   type DeviceLimitView,
@@ -188,6 +194,24 @@ async function readPiped(ctx: KitContext): Promise<string> {
   );
 }
 
+/**
+ * Load the product's discovery once when this session has none, so a capability is decided from
+ * the product's own answer and not from the fail-closed default that stands in before it (a
+ * client that has never discovered believes the product runs only License and Config, so
+ * `login` would say sign-in is off). A build that pinned `expectedServices` needs no round trip.
+ * Best effort: offline, the flow goes on with what the client believes.
+ */
+export async function ensureDiscovery(client: PolarisKeyClient): Promise<void> {
+  const c = client as Partial<PolarisKeyClient>;
+  if (c.servicesPinned === true) return;
+  if (typeof c.discovery === "function" && c.discovery() !== null) return;
+  try {
+    await c.discover?.();
+  } catch {
+    // The flow decides from what the client already believes.
+  }
+}
+
 const lastPercent = new WeakMap<KitContext, Map<string, number>>();
 
 /** A `--json` progress line, at most one per whole percent per item. */
@@ -267,14 +291,20 @@ export async function statusFlow(
   ctx: KitContext,
   client: PolarisKeyClient,
 ): Promise<FlowResult> {
+  await ensureDiscovery(client);
   const st = client.status();
   const info = client.license.licenseInfo();
   const store = await client.storeStatus().catch(() => null);
   const services = client.capabilities();
+  // Signed in is a fact of the account on this device, not of the license profile.
+  const identity = await client.identity
+    .current()
+    .catch(() => null);
   const view = statusView({
     status: st.status,
     ...(st.graceUntil !== undefined ? { graceUntil: st.graceUntil } : {}),
     info,
+    identity,
     now: Math.floor(ctx.now() / 1000),
     can: {
       signIn: services.identity?.enabled === true,
@@ -295,11 +325,14 @@ export async function statusFlow(
       ? { min: st.allowedRange.min ?? null, max: st.allowedRange.max ?? null }
       : null,
     profile: profile
-      ? { name: profile.name ?? null, email: profile.email ?? null }
+      ? {
+          name: present(profile.name),
+          email: present(profile.email),
+        }
       : null,
     version: client.core.version,
     channel: client.core.channel,
-    tier: info?.tierLabel ?? info?.tier ?? null,
+    tier: tierName(info),
     // UK-13's shape (UI-KITS §1.4): the backend and why it is degraded, never a bare string.
     tokenStore: store
       ? {
@@ -326,14 +359,21 @@ export async function statusFlow(
         style,
         unit: true,
       });
+      // The holder, or what is true without one: signed in, or a license key alone.
+      const holderText =
+        view.holder ??
+        (view.state === "signed-in"
+          ? t("signInHandoff.ok")
+          : t("account.keyOnly"));
       const table: Array<{ mark: "ok"; label: string; value: Line }> = [
         {
           mark: "ok",
           label: t("cli.status.license"),
           value: [
             unit(view.tier ?? t("part.status.ok"), ["strong"]),
-            sepSpan,
-            unit(view.holder ?? t("account.keyOnly"), ["muted"]),
+            ...(holderText
+              ? [sepSpan, unit(holderText, ["muted"])]
+              : []),
           ],
         },
       ];
@@ -440,6 +480,7 @@ export async function checkFlow(
   ctx: KitContext,
   client: PolarisKeyClient,
 ): Promise<FlowResult> {
+  await ensureDiscovery(client);
   await busy(ctx, ctx.copy.t("gate.checking"), () =>
     client.sync().catch(() => undefined),
   );
@@ -822,6 +863,7 @@ export async function enrollFlow(
   client: PolarisKeyClient,
 ): Promise<FlowResult> {
   show(ctx, productHeader(ctx, "enroll"));
+  await ensureDiscovery(client);
   let r;
   try {
     r = await busy(ctx, ctx.copy.t("activate.busy"), () =>
@@ -843,6 +885,17 @@ export async function enrollFlow(
 
 // ── login, logout, deactivate ──────────────────────────────────────────────────────────────
 
+/** "Signed in as Mara (mara@…)": the name and email shown, whichever the account has. */
+function signedInLine(ctx: KitContext, who: ShownIdentity): string | Line {
+  const name = present(who.name);
+  const email = present(who.email);
+  const t = ctx.copy.t.bind(ctx.copy);
+  if (name && email) return unitLine(ctx, "signin.cli.signedIn", { name, email });
+  if (email) return t("cli.signin.signedInEmail", { email });
+  if (name) return t("cli.signin.signedInName", { name });
+  return t("signInHandoff.ok");
+}
+
 export interface LoginArgs {
   /** `--device-code`: skip the browser (SIGN-IN.md D-68). */
   deviceCode?: boolean;
@@ -862,6 +915,7 @@ export async function loginFlow(
   args: LoginArgs = {},
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
+  await ensureDiscovery(client);
   if (!client.capabilities().identity?.enabled) {
     // What happened, then the fix: this product takes a license key, not an account.
     const notice = t("cli.identityOff.notice", { product: ctx.product.name });
@@ -929,9 +983,21 @@ export async function loginFlow(
   const frames = spinnerFrames(ctx.caps.unicode);
   let copiedAt = -Infinity;
   let frame = 0;
+  // The attach question (a key license is held): asked on the live screen, in place of the wait.
+  const ask: {
+    now: { who: ShownIdentity; answer: (attach: boolean) => void } | null;
+  } = { now: null };
   // The whole screen, header to key hints: it is laid out spaced and compacts by fit (screen.ts).
   const screen = (): RailRow[] => {
     const rows: RailRow[] = [...header()];
+    if (ask.now) {
+      rows.push(
+        stepRow("ok", signedInLine(ctx, ask.now.who)),
+        stepRow("active", t("cli.login.attach")),
+        hintsRow(ctx, t("cli.keys.confirm")),
+      );
+      return rows;
+    }
     if (useCode) {
       if (headlessNote)
         rows.push(stepRow("done", [{ text: t("signin.cli.headless") }]));
@@ -1019,7 +1085,16 @@ export async function loginFlow(
       if (isCancel(k)) {
         interrupt = isInterrupt(k);
         abort.abort(new Error("cancelled"));
+        // A question left open answers No, so the wait can end.
+        ask.now?.answer(false);
         return;
+      }
+      if (ask.now) {
+        // Only y or n answer; Enter takes the default, No.
+        if (k.name === "y") ask.now.answer(true);
+        else if (k.name === "n" || k.name === "return" || k.name === "enter")
+          ask.now.answer(false);
+        continue;
       }
       if (!useCode && (k.name === "return" || k.name === "enter"))
         await Promise.resolve(
@@ -1041,7 +1116,25 @@ export async function loginFlow(
 
   let r: SignInResult | "cancelled";
   try {
-    r = await client.identity.waitForSignIn(prompt, { signal: abort.signal });
+    r = await client.identity.waitForSignIn(prompt, {
+      signal: abort.signal,
+      // A device that holds a key license is asked before that license is added to the account,
+      // and the answer is No unless the person says yes (nobody to ask: a pipe, --json, CI).
+      confirm: async (who, attachable) => {
+        if (!attachable || quiet(ctx) || !ctx.keys) return false;
+        return new Promise<boolean>((resolve) => {
+          ask.now = {
+            who,
+            answer: (attach) => {
+              ask.now = null;
+              draw();
+              resolve(attach);
+            },
+          };
+          draw();
+        });
+      },
+    });
   } catch (e) {
     if (abort.signal.aborted) r = "cancelled";
     else {
@@ -1082,16 +1175,12 @@ export async function loginFlow(
     };
   }
   if (r.status === "ready") {
-    const who = r.identity ?? {};
-    const line: string | Line =
-      who.name && who.email
-        ? unitLine(ctx, "signin.cli.signedIn", {
-            name: who.name,
-            email: who.email,
-          })
-        : who.email
-          ? t("cli.signin.signedInEmail", { email: who.email })
-          : t("signInHandoff.ok");
+    // The identity the sign-in showed; when it showed none, the one now stored on this device.
+    const who =
+      r.identity && (present(r.identity.name) || present(r.identity.email))
+        ? r.identity
+        : ((await client.identity.current().catch(() => null)) ?? {});
+    const line = signedInLine(ctx, who);
     const result = {
       state: "signedIn",
       name: who.name ?? null,
@@ -1219,10 +1308,8 @@ export async function deactivateFlow(
 
 // ── devices ────────────────────────────────────────────────────────────────────────────────
 
-function relative(ctx: KitContext, epoch: number): string {
-  // The cache keeps `lastVerifiedAt` in milliseconds where the type says seconds: a value that
-  // large cannot be seconds, so it is read as the milliseconds it is (not "20,713,526 days ago").
-  const epochSeconds = epoch > 1e11 ? epoch / 1000 : epoch;
+/** Epoch seconds for how long ago, in days ("today", "yesterday", "3 days ago"). */
+function relative(ctx: KitContext, epochSeconds: number): string {
   const days = Math.round((epochSeconds - ctx.now() / 1000) / 86_400);
   const fmt = new Intl.RelativeTimeFormat(ctx.copy.locale, { numeric: "auto" });
   return Math.abs(days) >= 1 ? fmt.format(days, "day") : fmt.format(0, "day");
@@ -1235,6 +1322,7 @@ export async function devicesListFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "devices list"));
+  await ensureDiscovery(client);
   let list;
   try {
     list = await busy(ctx, t("common.loading"), () => client.listDevices());
@@ -1250,7 +1338,13 @@ export async function devicesListFlow(
       label: d.label ?? null,
       platform: [d.platform, d.arch].filter(Boolean).join(" ") || null,
       current: d.current,
-      lastSeenAt: d.current ? (d.lastVerifiedAt ?? null) : null,
+      // The roster's `lastSeen` is epoch seconds for every device; this device's own
+      // `lastVerifiedAt` is epoch MILLISECONDS and only the fallback when the roster has none.
+      lastSeenAt:
+        d.lastSeen ??
+        (d.current && d.lastVerifiedAt !== undefined
+          ? d.lastVerifiedAt / 1000
+          : null),
     })),
   );
   if (view.state === "empty") {
@@ -1368,6 +1462,7 @@ export async function devicesRenameFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "devices rename"));
+  await ensureDiscovery(client);
   try {
     await busy(ctx, t("common.working"), () =>
       client.renameDevice(deviceId, label),
@@ -1399,6 +1494,7 @@ export async function devicesRemoveFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "devices deauthorize"));
+  await ensureDiscovery(client);
   const self = deviceId === client.core.deviceId;
   try {
     await busy(ctx, t("common.working"), () =>
@@ -1430,6 +1526,7 @@ export async function registerFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "register"));
+  await ensureDiscovery(client);
   const r = await busy(ctx, t("common.working"), async () => {
     const res = await client.devices.register();
     return res;
@@ -1471,6 +1568,7 @@ export async function updateCheckFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "update check"));
+  await ensureDiscovery(client);
   const product = ctx.product.name;
   const apply = cmd(ctx, "update apply");
   const availableRows = (version: string, bytes: number | null): RailRow[] => [
@@ -1738,6 +1836,7 @@ export async function updateApplyFlow(
   const t = ctx.copy.t.bind(ctx.copy);
   const product = ctx.product.name;
   const header = () => productHeader(ctx, "update apply");
+  await ensureDiscovery(client);
   let r;
   try {
     r = await busy(
@@ -1937,6 +2036,7 @@ export async function changelogFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "changelog"));
+  await ensureDiscovery(client);
   let rows;
   try {
     rows = await busy(ctx, t("common.loading"), () =>
@@ -2009,6 +2109,7 @@ export async function packsStatusFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   show(ctx, productHeader(ctx, "packs status"));
+  await ensureDiscovery(client);
   let s;
   try {
     s = await client.update.packs.state();
@@ -2093,6 +2194,7 @@ export async function packsEnsureFlow(
 ): Promise<FlowResult> {
   const t = ctx.copy.t.bind(ctx.copy);
   const header = () => productHeader(ctx, "packs ensure");
+  await ensureDiscovery(client);
   const live = quiet(ctx) ? null : ctx.live();
   live?.draw(header);
   const started = ctx.now();

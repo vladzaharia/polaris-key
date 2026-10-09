@@ -632,7 +632,7 @@
           "copy": ["updateProgress.downloading", "a11y.progress"]
         },
         "installing": {
-          "copy": ["updateProgress.installing"]
+          "copy": ["updateProgress.installing", "update.verifying"]
         },
         "paused": {
           "copy": ["updateProgress.paused", "updateProgress.resume"]

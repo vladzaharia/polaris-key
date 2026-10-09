@@ -137,7 +137,11 @@ export interface DeviceInfo {
   status: LicenseState["status"];
   licenseId?: string;
   profile?: DocProfile;
+  /** When this device last verified its documents, in epoch MILLISECONDS (this device only). */
   lastVerifiedAt?: number;
+  /** When the server last heard from this device, in epoch SECONDS, from the roster (every
+   *  device on the licence, this one included). */
+  lastSeen?: number;
   label?: string | null;
   platform?: string | null;
   arch?: string | null;
@@ -612,6 +616,7 @@ export class PolarisKeyClient {
         device.licenseId ?? (device.current ? current.licenseId : undefined),
       profile: device.current ? current.profile : undefined,
       lastVerifiedAt: device.current ? current.lastVerifiedAt : undefined,
+      ...(device.lastSeen !== undefined ? { lastSeen: device.lastSeen } : {}),
       label: device.label,
       platform: device.platform,
       arch: device.arch,

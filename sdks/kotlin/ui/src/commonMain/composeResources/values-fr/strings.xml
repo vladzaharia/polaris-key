@@ -1038,7 +1038,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_opensBrowser">Ouvre Polaris Key dans votre navigateur</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
-    <string name="signin_cli_opening">Ouverture de Polaris Key dans votre navigateur…</string>
+    <string name="signin_cli_opening">Ouverture de votre navigateur…</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signin_cli_ifNotOpened">S’il ne s’est pas ouvert, rendez-vous sur %1$s</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
@@ -1338,10 +1338,58 @@
     <string name="cli_changelog_fix">Vérifiez votre connexion, puis exécutez à nouveau %1$s.</string>
     <!-- Terminal offline activation: what to do after an activation file was refused. -->
     <string name="cli_import_fix">Demandez un nouveau fichier à la personne qui vous l’a envoyé.</string>
-    <!-- Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product. Arguments: 1=product. -->
-    <string name="cli_identityOff_notice">%1$s n’utilise pas la connexion Polaris Key.</string>
+    <!-- Terminal sign-in: the product has no account sign-in. {product} is the product. Arguments: 1=product. -->
+    <string name="cli_identityOff_notice">%1$s ne propose pas la connexion avec un compte.</string>
     <!-- Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'. Arguments: 1=command. -->
     <string name="cli_identityOff_fix">Exécutez %1$s avec votre clé de licence.</string>
+    <!-- Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press. -->
+    <string name="cli_login_attach">Utiliser la clé de licence de cet appareil sur votre compte ? (y/N)</string>
+    <!-- Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
+    <string name="cli_keys_confirm">y oui · n non · Esc annuler</string>
+    <!-- Terminal: the sign-in finished and only the name is known. {name} = the account's name. Arguments: 1=name. -->
+    <string name="cli_signin_signedInName">Connecté en tant que %1$s</string>
+    <!-- Update progress: the download finished and the update is being checked before it is installed. -->
+    <string name="update_verifying">Vérification…</string>
+    <!-- Terminal: an update was downloaded and checked; it takes effect after a restart. {version} = a version string such as 2.5.0. Keep the ' · ' separator. Arguments: 1=version. -->
+    <string name="cli_update_readyRestart">%1$s est prête · Redémarrez pour terminer</string>
+    <!-- Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead. -->
+    <string name="cli_update_notConfiguredTitle">Les mises à jour ne sont pas configurées</string>
+    <!-- Terminal: update apply on a build with no signed update feed set up, under the title above. {command} = a terminal command, shown as is. Arguments: 1=command. -->
+    <string name="cli_update_notConfigured">Lancez %1$s pour voir si une version plus récente existe.</string>
+    <!-- Terminal: update apply on an install that cannot update itself; the new version is downloaded by hand. {version} = a version string such as 2.5.0; {url} = a web address, shown as a link. Arguments: 1=version, 2=url. -->
+    <string name="cli_update_download">Téléchargez la version %1$s sur %2$s.</string>
+    <!-- Terminal: update apply when the product was started with npx. {command} = a terminal command, shown as is; {version} = a version string such as 2.5.0. Arguments: 1=command, 2=version. -->
+    <string name="cli_update_npx">npx lance la version la plus récente à chaque fois. Lancez %1$s pour utiliser %2$s.</string>
+    <!-- Terminal status: a device activated with a license key only, and the license is no longer valid. -->
+    <string name="cli_status_keyRevoked_title">Cette clé de licence ne fonctionne plus</string>
+    <!-- Terminal status, under the title above. {url} = the product's account page on Polaris Key, shown as a link. Arguments: 1=url. -->
+    <string name="cli_status_keyRevoked_message">Elle a peut-être expiré ou été désactivée. Vérifiez-la sur %1$s ou activez avec une autre clé.</string>
+    <!-- Terminal activate: the server did not accept the license key. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. {url} = the product's account page on Polaris Key, shown as a link. Arguments: 1=url. -->
+    <string name="cli_activate_unauthorized">Cette clé n’a pas été acceptée. Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée : voir %1$s.</string>
+    <!-- Terminal help: what the -reveal flag of the secret and mint commands does. secret and mint are command names; keep them as is. -->
+    <string name="cli_option_reveal">Afficher la valeur (sans cette option, secret et mint n’affichent rien)</string>
+    <!-- Terminal: the secret command without -reveal. {name} = the secret's name; {command} = a terminal command, shown as is. Arguments: 1=name, 2=command. -->
+    <string name="cli_secret_hidden">%1$s est défini. Pour afficher sa valeur, lancez %2$s.</string>
+    <!-- Terminal: the mint command without -reveal. {command} = a terminal command, shown as is. Arguments: 1=command. -->
+    <string name="cli_mint_hidden">Rien n’a été généré. Pour générer et afficher un jeton, lancez %1$s.</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_macos">macOS</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_ios">iOS</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_android">Android</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_windows">Windows</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_linux">Linux</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_web">Web</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_tvos">tvOS</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_visionos">visionOS</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_watchos">watchOS</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Something went wrong</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
