@@ -55,8 +55,7 @@
         <div class="card-head">
           <div class="title">
             <h2 id="auto-title">Automatic licenses</h2>
-            <p>Issued at sign-in or from Discover, tied to the account with no key. They only ever move up a tier.</p>
-          </div>
+                      </div>
         </div>
         <div class="card-body">
           <div class="choices cols-3" role="radiogroup" aria-label="Who gets a license automatically">
@@ -92,7 +91,7 @@
               </tr>
               <tr>
                 <td><div class="cell-with-logo"><span class="icon-tile sm neutral"><i class="ic ic-id-card"></i></span><div><div class="cell-title">Claim <code>vpnAccess</code> is <code>true</code></div><div class="cell-sub">From Pocket ID</div></div></div></td>
-                <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-puzzle accent"></i>Polaris VPN</span><span class="cell-sub">Add-on, on top of the tier</span></div></td>
+                <td><div class="cell-stack"><span class="pill sm"><i class="ic ic-puzzle accent"></i>Polaris VPN</span><span class="cell-sub">Add-on</span></div></td>
                 <td class="hide-narrow">Polaris VPN included</td>
                 <td class="num"><span class="icon-text warning"><i class="ic ic-triangle-alert"></i>0</span></td>
                 <td class="row-menu"><button class="btn ghost icon xs" aria-label="Claim vpnAccess: more"><i class="ic ic-ellipsis"></i></button></td>
@@ -102,7 +101,7 @@
                 <td colspan="5" class="indent">
                   <div class="callout warning">
                     <i class="ic ic-triangle-alert"></i>
-                    <div class="grow"><div class="callout-title">Pocket ID doesn’t send <code>vpnAccess</code>, so this rule can’t match</div><div class="callout-text">Add the claim to Pocket ID’s claim map in Connections.</div></div>
+                    <div class="grow"><div class="callout-title">This rule can’t match</div><div class="callout-text">Pocket ID doesn’t send <code>vpnAccess</code>. Add it to Pocket ID’s claim map.</div></div>
                     <button class="btn outline sm">Open Connections</button>
                   </div>
                 </td>
@@ -119,7 +118,6 @@
         </div>
         <div class="card-foot start">
           <button class="btn outline sm"><i class="ic ic-plus"></i>Add rule</button>
-          <span class="type-small muted">When several match, the higher tier wins; add-ons add to it.</span>
         </div>
       </section>
 
@@ -128,13 +126,13 @@
         <!-- Anonymous devices: the Anonymous devices tier, anonymous entry's only home (LX-36). -->
         <section class="card" aria-labelledby="anon-title">
           <div class="card-head">
-            <div class="title"><h2 id="anon-title">Anonymous devices</h2><p>Devices that haven’t signed in or entered a key</p></div>
+            <div class="title"><h2 id="anon-title">Anonymous devices</h2></div>
           </div>
           <div class="card-body">
             <div class="field">
               <label class="field-label">They get</label>
               <div class="select"><i class="ic ic-layers accent"></i><span class="grow">Free</span><i class="ic ic-chevrons-up-down"></i></div>
-              <span class="hint">1 device, 2 decks, no recording. Nothing requires sign-in or a key.</span>
+              <span class="hint">1 device · 2 decks · no recording</span>
             </div>
           </div>
         </section>
@@ -142,13 +140,13 @@
         <!-- Discover visibility (PS-12): one setting, three values. -->
         <section class="card" aria-labelledby="discover-title">
           <div class="card-head">
-            <div class="title"><h2 id="discover-title">Discover</h2><p>Showing DJDL on Polaris Key’s Discover page</p></div>
+            <div class="title"><h2 id="discover-title">Discover</h2></div>
           </div>
           <div class="card-body">
             <div class="radio-list" role="radiogroup" aria-label="Show on Discover">
               <div class="radio-option"><span class="radio"><span class="box"></span>Hidden</span><span class="radio-desc">Only people with a key or a license from you.</span></div>
-              <div class="radio-option"><span class="radio on"><span class="box"></span>People who can get it</span><span class="radio-desc">Anyone a rule covers, under its label. Adding DJDL issues their license.</span></div>
-              <div class="radio-option"><span class="radio"><span class="box"></span>Everyone signed in</span><span class="radio-desc">Every Polaris Key account. You type <code>djdl</code> to confirm.</span></div>
+              <div class="radio-option"><span class="radio on"><span class="box"></span>People who can get it</span><span class="radio-desc">Anyone a rule covers</span><span class="radio-desc">Adding DJDL issues their license</span></div>
+              <div class="radio-option"><span class="radio"><span class="box"></span>Everyone signed in</span><span class="radio-desc">Every Polaris Key account</span></div>
             </div>
           </div>
         </section>
@@ -162,7 +160,7 @@
         <div class="card-body tight tinted">
           <dl class="mk-grid-4">
             <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-globe"></i>Public</dt><dd class="type-meta muted">Anyone, no sign-in.</dd></div>
-            <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-log-in"></i>Signed in</dt><dd class="type-meta muted">Signed in to DJDL, with or without a license.</dd></div>
+            <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-log-in"></i>Signed in</dt><dd class="type-meta muted">With or without a license.</dd></div>
             <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-key-round"></i>Customers</dt><dd class="type-meta muted">Holds a DJDL license: by account, key or device.</dd></div>
             <div class="mk-stack-1"><dt class="icon-text strong"><i class="ic ic-badge-check"></i>Holds an entitlement</dt><dd class="type-meta muted">A customer whose license includes the one you name.</dd></div>
           </dl>
@@ -175,13 +173,13 @@
           </div>
           <div class="item-row">
             <span class="icon-tile sm neutral"><i class="ic ic-download"></i></span>
-            <div class="item-text"><div class="item-title">App downloads</div><div class="item-desc">DJDL 4.2.0 for macOS and Windows on key.plrs.im/djdl</div></div>
+            <div class="item-text"><div class="item-title">App downloads</div><div class="item-desc">key.plrs.im/djdl</div></div>
             <div class="item-end"><div class="segmented sm matrix fit" role="radiogroup" aria-label="App downloads"><span>Public</span><span>Signed in</span><span class="on">Customers</span><span>Entitlement</span></div></div>
           </div>
           <p class="eyebrow rows-label">Packs</p>
           <div class="item-row">
             <span class="icon-tile sm neutral"><i class="ic ic-package"></i></span>
-            <div class="item-text"><div class="item-title">Stem separation models</div><div class="item-desc">412 MB, on first use · set in <code>.pkey/release</code>, approved Oct 4</div></div>
+            <div class="item-text"><div class="item-title">Stem separation models</div><div class="item-desc">412 MB · on first use</div></div>
             <div class="item-end"><div class="segmented sm matrix fit" role="radiogroup" aria-label="Stem separation models"><span>Public</span><span>Signed in</span><span>Customers</span><span class="on">Holds <span class="mono">stems</span></span></div></div>
           </div>
           <div class="item-row">
@@ -192,7 +190,7 @@
           <p class="eyebrow rows-label">Packages</p>
           <div class="item-row">
             <span class="icon-tile sm neutral"><i class="ic ic-boxes"></i></span>
-            <div class="item-text"><div class="item-title">npm <code>@djdl</code></div><div class="item-desc">djdl-mapping-kit on pkg.plrs.im. Entitlement limits are set per package.</div></div>
+            <div class="item-text"><div class="item-title">npm <code>@djdl</code></div><div class="item-desc">djdl-mapping-kit on pkg.plrs.im</div></div>
             <div class="item-end"><div class="segmented sm matrix fit" role="radiogroup" aria-label="npm @djdl"><span class="on">Public</span><span class="na" aria-disabled="true" title="Packages can’t use Signed in">—</span><span>Customers</span><span class="na" aria-disabled="true" title="Set an entitlement on the package itself">—</span></div></div>
           </div>
         </div>
@@ -201,7 +199,7 @@
       <!-- Who can see this? The persona preview, from the same accessFor() the sign-in uses. -->
       <section class="card" aria-labelledby="check-title">
         <div class="card-head">
-          <div class="title"><h2 id="check-title">Check a person</h2><p>Nothing is saved or sent.</p></div>
+          <div class="title"><h2 id="check-title">Check a person</h2></div>
         </div>
         <div class="card-split">
           <div class="form">
@@ -223,14 +221,14 @@
           <div class="mk-stack-5">
             <div class="callout">
               <i class="ic ic-user-check"></i>
-              <div class="grow"><div class="callout-title">Dana gets Education, plus Polaris VPN</div><div class="callout-text">From <code>example.edu</code> and claim <code>vpnAccess</code>. Polaris VPN waits for Pocket ID to send that claim.</div></div>
+              <div class="grow"><div class="callout-title">Dana gets Education, plus Polaris VPN</div><div class="callout-text">From <code>example.edu</code> and claim <code>vpnAccess</code></div></div>
             </div>
             <ul class="icon-list">
               <li class="success"><i class="ic ic-check"></i><span>Discover shows DJDL as “Education license”</span></li>
               <li class="success"><i class="ic ic-check"></i><span>Update checks</span><span class="type-small muted">Customers</span></li>
               <li class="success"><i class="ic ic-check"></i><span>App downloads</span><span class="type-small muted">Customers</span></li>
               <li class="success"><i class="ic ic-check"></i><span>Controller mappings</span><span class="type-small muted">Public</span></li>
-              <li class="danger"><i class="ic ic-x"></i><span>Stem separation models</span><span class="type-small muted">Holds <code>stems</code></span><span class="sub">Education doesn’t include <code>stems</code>; the add-on or Studio does.</span></li>
+              <li class="danger"><i class="ic ic-x"></i><span>Stem separation models</span><span class="type-small muted">Holds <code>stems</code></span><span class="sub">Education doesn’t include <code>stems</code></span></li>
               <li class="success"><i class="ic ic-check"></i><span>npm <code>@djdl</code></span><span class="type-small muted">Public</span></li>
             </ul>
           </div>
@@ -295,12 +293,12 @@
             </div>
             <div class="item-row">
               <span class="avatar md">TL</span>
-              <div class="item-text"><div class="item-title">Theo Lindqvist</div><div class="item-desc">theo@example.com · Studio, made by hand</div></div>
+              <div class="item-text"><div class="item-title">Theo Lindqvist</div><div class="item-desc">theo@example.com · made by hand</div></div>
               <div class="item-end"><span class="type-small muted">No change</span></div>
             </div>
           </div>
           <div class="card-foot between"><span class="type-small muted">1 more: Felix Brandt gets Studio</span><button class="btn ghost xs">Show all 4</button></div>
-          <div class="card-foot start"><span class="type-small muted">Changes apply at each person’s next sign-in. Licenses made by hand or bought never change.</span></div>
+          <div class="card-foot start"><span class="type-small muted">Changes apply at each person’s next sign-in.</span></div>
         </section>
       </div>
       <div class="dialog-foot std">

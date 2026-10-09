@@ -9,10 +9,10 @@
   "order": 13,
   "compare": [
     "A board of drawers (.board.cols-2.wide-3), each in a stage with the drawer's own edges.",
-    "Done: a success callout '200 keys created in Mixer bundle · Oct 2026' / 'Each is a floating Standard license.'; the CSV as a tinted file row (djdl-mixer-bundle-oct-2026.csv, 200 rows, 18 KB) with Download CSV, the only primary; 'Download now: this is the only time the keys can be shown.'; Open batch and Close.",
+    "Done: a success callout '200 keys created' (no second line); the CSV as a tinted file row (djdl-mixer-bundle-oct-2026.csv, 200 rows, 18 KB) with Download CSV, the only primary; 'Download now: this is the only time the keys can be shown.'; Open batch and Close.",
     "Downloaded: the file row says 'Downloaded at 10:42' with Download again (secondary); 'Download again works until you close this.'; Done closes without asking.",
     "Closing early: 'Close without the CSV?' over the drawer: 'The 200 keys can’t be shown again, so nobody could use them.'; Close without keys (danger outline) and Download CSV (primary).",
-    "Partial result: a warning 'Created 120 of 200 keys' / 'Polaris Key stopped answering. Retry makes the other 80 in the same batch, with their own CSV.' with Retry; the CSV with 120 rows.",
+    "Partial result: a warning 'Created 120 of 200 keys' with 'Polaris Key stopped answering.' and, on its own line, 'Retry makes the other 80, in a second CSV.' with Retry; the CSV with 120 rows.",
     "Dialog and drawer head (B4): a 3px rule in the origin's accent along the top (none on a destructive or cautious confirmation), a head band with a hairline, one leading glyph or none (severity on a confirmation, the subject's mark on a record, never a service tile), title at or under 20/28; blurred backdrop with a flat fallback under reduced transparency.",
     "The same drawer head as licenses.bulk-keys: one title, no second icon (admin-1-26)."
   ],

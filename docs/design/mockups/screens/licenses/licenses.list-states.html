@@ -8,7 +8,6 @@
 <div class="board cols-2 start floor" data-service="license">
   <div class="board-title">
     <h1>Licenses list states</h1>
-    <p>The other four states of licenses.list.</p>
   </div>
 
   <!-- First run (ADMIN.md T2: Empty is first-run, why and create). -->
@@ -32,7 +31,7 @@
         </div>
       </div>
     </div>
-    <figcaption><strong>First run</strong>No holder filter, search or table head. New license moves into the empty state, so there is one primary.</figcaption>
+    <figcaption><strong>First run</strong></figcaption>
   </figure>
 
   <!-- No match (ADMIN.md T2: filtered empty is no-results with Clear filters). -->
@@ -69,7 +68,7 @@
         </div>
       </div>
     </div>
-    <figcaption><strong>No match</strong>Search, holder and tier stay set. Clear filters resets all three.</figcaption>
+    <figcaption><strong>No match</strong>Clear filters resets all three.</figcaption>
   </figure>
 
   <!-- Loading (ADMIN.md T2: skeleton rows that match the columns; no spinner, no “Loading…”). -->
@@ -105,7 +104,7 @@
         </div>
       </div>
     </div>
-    <figcaption><strong>Loading</strong>Skeleton rows at the real row height under the real column heads, and skeleton holder counts. Screen readers hear “Loading licenses” after 150 ms.</figcaption>
+    <figcaption><strong>Loading</strong>Screen readers hear “Loading licenses” after 150 ms.</figcaption>
   </figure>
 
   <!-- Error (ADMIN.md T2: inline in the table body with Retry; filters stay). -->
@@ -132,7 +131,7 @@
                 <div class="empty" role="alert">
                   <span class="empty-icon danger"><i class="ic ic-circle-x"></i></span>
                   <h3>Licenses didn’t load</h3>
-                  <p>Polaris Key took too long to answer (504). Retry loads the same list with your filters.</p>
+                  <p>Polaris Key took too long to answer (504).</p>
                   <div class="btn-row"><button class="btn outline"><i class="ic ic-refresh-cw"></i>Retry</button></div>
                 </div>
               </td></tr></tbody>
@@ -141,6 +140,6 @@
         </div>
       </div>
     </div>
-    <figcaption><strong>Error</strong>Inline in the table body, not a toast; the filters stay set.</figcaption>
+    <figcaption><strong>Error</strong></figcaption>
   </figure>
 </div>
