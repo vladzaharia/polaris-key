@@ -36,7 +36,7 @@ import { bearer, parseJsonObject } from "../../../core/platform.js";
 import { licenseUsable, validateDeviceToken } from "../../../core/devices.js";
 import { trustRefusal } from "../../../core/deviceTrust.js";
 import type { DeviceRow } from "../../../core/data.js";
-import { sha256Hex } from "../../../platform/hash.js";
+import { sha256Hex } from "../../../core/platform.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { readCappedText } from "../../../core/readCapped.js";
 import { isStore, type Store } from "../../../core/storeGrants.js";
