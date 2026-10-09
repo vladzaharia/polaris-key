@@ -171,7 +171,7 @@ export const syncErrors: Scenario = {
       const r = new TranscriptRecorder({
         id: "sync-errors",
         description:
-          "The document status ladder. (1) A 401 on the licence document gets exactly one POST /license/token and one retry with the rotated token; the licence was disabled when the document was fetched and re-enabled before the re-acquire, so each answer is the Worker's real one. (2) A 403 version block with allowedRange gates the client as version-too-old while the config document 304s. (3) A 500 on the config document is an error for that document only; the licence 304 clears the block.",
+          "The document status ladder. (1) A 401 on the licence document gets exactly one POST /license/token and one retry with the rotated token; the licence was disabled when the document was fetched and re-enabled before the re-acquire, so each answer is the Worker's real one. (2) A 403 version block with allowedRange gates the client as version-too-old while the config document 304s; the block deletes the cached licence document and its ETag in the same write. (3) So the next licence request is unconditional, and its 200 clears the block; a 500 on the config document is an error for that document only.",
         features: ["core.sync"],
         requires: ["core.store"],
         product: PRODUCT,
@@ -270,22 +270,23 @@ export const syncErrors: Scenario = {
           action: "sync",
           args: { force: false },
           now: T0 + 120,
-          note: "The config document answers 500; the licence 304s and clears the block.",
+          note: "The block deleted the licence document and its ETag, so the licence request is unconditional and its 200 clears the block; the config document answers 500.",
         },
         async (s) => {
           await trust(s, PRODUCT);
-          expect(
-            (await document(s, PRODUCT, "license", licenseEtag)).status,
-          ).toBe(304);
+          // WIRE-CONTRACT-V4 §4.3: no If-None-Match, because no licence document is held.
+          const lic = await document(s, PRODUCT, "license");
+          expect(lic.status).toBe(200);
+          expect(etagOf(lic)).toBe(licenseEtag);
           const cfg = await document(s, PRODUCT, "config", configEtag);
           expect(cfg.status).toBe(500);
           expect((await syncReport(s, PRODUCT, VALUES)).status).toBe(200);
         },
         {
-          applied: false,
+          applied: true,
           unauthorized: false,
           blocked: false,
-          documents: { license: "unchanged", config: "error" },
+          documents: { license: "applied", config: "error" },
           licenseStatus: "ok",
           tokenHeld: true,
         },

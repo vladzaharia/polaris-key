@@ -1280,6 +1280,9 @@ public const val DATA_ONLY_TAIL_BYTES: Int = 65557
 /** Wire contract v4 limit `MAX_DELEGATIONS_PER_CHECK` (`@polaris-key/protocol/core`). */
 public const val MAX_DELEGATIONS_PER_CHECK: Int = 16
 
+/** Wire contract v4 limit `MAX_TRUST_SIGNER_ATTEMPTS` (`@polaris-key/protocol/core`). */
+public const val MAX_TRUST_SIGNER_ATTEMPTS: Int = 4
+
 /** Packs on the wire: `MAX_PACK_VARIANTS` (plans/P4-01.md §2.13, `@polaris-key/protocol/core`). */
 public const val MAX_PACK_VARIANTS: Int = 32
 
