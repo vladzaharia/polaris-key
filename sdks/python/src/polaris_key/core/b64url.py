@@ -48,7 +48,15 @@ def b64url_decode(s: str) -> bytes:
     pad = "=" * ((4 - (len(s) % 4)) % 4)
     # `validate=True` is redundant after the alphabet check above but keeps the guarantee
     # local to this call: a future edit to the regex can't silently re-open R2-05.
-    return base64.urlsafe_b64decode(s + pad)
+    try:
+        raw = base64.urlsafe_b64decode(s + pad)
+    except Exception as exc:  # a length of 4n+1 is not base64 at all
+        raise ValueError("base64url input has an impossible length") from exc
+    # Canonical form (wire contract v4 §1): the last character's unused low bits must be
+    # zero, so one byte string has exactly one spelling. Re-encoding is the whole test.
+    if b64url_encode(raw) != s:
+        raise ValueError("base64url input is not canonical")
+    return raw
 
 
 def b64url_encode(data: bytes) -> str:
