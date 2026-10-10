@@ -37,7 +37,10 @@ const rp = (over: Partial<RelyingParty> = {}): RelyingParty => ({
 interface FakeIdp {
   fetch: (url: string, init?: RequestInit) => Promise<Response>;
   calls: Array<{ url: string; init?: RequestInit }>;
-  sign: (claims: Record<string, unknown>, opts?: { kid?: string }) => Promise<string>;
+  sign: (
+    claims: Record<string, unknown>,
+    opts?: { kid?: string },
+  ) => Promise<string>;
 }
 
 async function fakeIdp(
@@ -142,7 +145,10 @@ describe("the gated fetch (SSRF)", () => {
 
   it("a connection's allowlist is its issuer host and its jwks_uri host only", () => {
     expect(
-      connectionHosts("https://Idp.Example/tenant", "https://keys.idp.example/j"),
+      connectionHosts(
+        "https://Idp.Example/tenant",
+        "https://keys.idp.example/j",
+      ),
     ).toEqual(["idp.example", "keys.idp.example"]);
     expect(connectionHosts("not a url")).toEqual([]);
   });
@@ -150,14 +156,20 @@ describe("the gated fetch (SSRF)", () => {
 
 describe("discovery", () => {
   it("refuses a document whose issuer is not the configured one", async () => {
-    const idp = await fakeIdp({ discovery: { issuer: "https://other.example" } });
+    const idp = await fakeIdp({
+      discovery: { issuer: "https://other.example" },
+    });
     await expect(discover(rp(), { fetch: idp.fetch })).rejects.toThrow(
       /issuer mismatch/,
     );
   });
 
   it("refuses a document that aims the token POST or the keys at another host", async () => {
-    for (const field of ["token_endpoint", "jwks_uri", "authorization_endpoint"]) {
+    for (const field of [
+      "token_endpoint",
+      "jwks_uri",
+      "authorization_endpoint",
+    ]) {
       const idp = await fakeIdp({
         discovery: { [field]: "https://exfil.example/x" },
       });
@@ -176,7 +188,9 @@ describe("discovery", () => {
   });
 
   it("refuses an issuer without the code flow", async () => {
-    const idp = await fakeIdp({ discovery: { response_types_supported: ["id_token"] } });
+    const idp = await fakeIdp({
+      discovery: { response_types_supported: ["id_token"] },
+    });
     await expect(discover(rp(), { fetch: idp.fetch })).rejects.toThrow(
       /code flow/,
     );
@@ -191,7 +205,10 @@ describe("RFC 9207 iss on the authorization response", () => {
       /iss mismatch/,
     );
     expect(() =>
-      checkAuthorizationIss({ ...d, issParameterSupported: false }, "https://mixup.example"),
+      checkAuthorizationIss(
+        { ...d, issParameterSupported: false },
+        "https://mixup.example",
+      ),
     ).toThrow(/iss mismatch/);
     expect(() => checkAuthorizationIss(d, ISSUER)).not.toThrow();
   });
@@ -234,9 +251,9 @@ describe("the ID token", () => {
   });
 
   it("refuses another issuer, and a stale iat even with a valid exp", async () => {
-    await expect(redeem({ iss: "https://rogue.example" })).rejects.toBeInstanceOf(
-      OidcVerifyError,
-    );
+    await expect(
+      redeem({ iss: "https://rogue.example" }),
+    ).rejects.toBeInstanceOf(OidcVerifyError);
     await expect(
       redeem({ iat: Math.floor(Date.now() / 1000) - 3600 }),
     ).rejects.toBeInstanceOf(OidcVerifyError);

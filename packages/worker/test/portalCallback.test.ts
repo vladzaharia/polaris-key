@@ -113,7 +113,10 @@ async function callbackWith(
           : input.url,
     );
     fetched.push(u.toString());
-    const meta = await issuerMetadataResponse(u.toString(), idp.jwks.keys[0] ?? null);
+    const meta = await issuerMetadataResponse(
+      u.toString(),
+      idp.jwks.keys[0] ?? null,
+    );
     if (meta) return meta;
     if (u.origin === ISSUER && u.pathname === "/api/oidc/token")
       return new Response(JSON.stringify({ id_token: idToken }), {

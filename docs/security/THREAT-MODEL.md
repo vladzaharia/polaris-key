@@ -8007,6 +8007,19 @@ plans/I-27.md §6: one row per threat, each written by the package that builds i
   every group or claim rule names its connection, so one IdP's `groups` never satisfies a rule
   written for another. A connection's `name`, `picture` and `birthdate` feed only the sign-in's
   imported profile and are never stored on the link.
+- **The rewritten `/callback` (I-30).** Every connection, the env-seeded platform IdP included,
+  finishes at `/callback`, whose flow record (single-use, bound to the starting browser) names the
+  connection. The seeded row first applies I-17's policy (`ended` refuses, `operators-only`
+  refuses an unknown subject); every identity then goes through `beginProviderSignIn`, so an
+  address the connection does not vouch for meets the email gate's code and never lands on an
+  email-less account. Because the seeded row has no verified domain, Pocket ID vouches for no
+  address on the card and `/callback` until a domain is verified: a known link whose account has
+  a confirmed email signs in as before, and anyone else sees one email code (announced in the
+  release notes). The legacy product callback keeps today's rule until I-32b (the I-17 section).
+  The seeded row is the only source for the card and `/callback` from this release: a changed
+  `PLATFORM_OIDC_*` does not rewrite it, and its client secret is sealed under `PLATFORM_KEK` with
+  the AAD `pkey:v2:_platform:identity-connection:<id>`. The session's `amr` is
+  `connection:<id>`.
 - **SSRF (I-30).** Discovery, the JWKS, the token request and the DNS-over-HTTPS lookups all go
   through the one gated fetch (`core/oidc/client.ts`): `https:` only, no credentials in the URL,
   the default port only, no private, loopback, link-local or reserved address literal, and a host
@@ -8026,6 +8039,18 @@ plans/I-27.md §6: one row per threat, each written by the package that builds i
   redeemed after the domain became enforced. What routing reveals is that a domain uses single
   sign-on, which its verification already made public in DNS.
 
+- **Auto-link through a verified domain (I-30; Owner decisions Q1, 2026-10-08).** The rule "never
+  join by email match" is narrowed to one case (`connections/autoLink.ts`): a sign-in through a
+  PLATFORM connection whose address is inside one of its DNS-verified domains with
+  `email_verified`, for an identity with no link yet, where exactly one active account has
+  verified that exact address. The identity is then linked to that account, every verified
+  address of the account is mailed ("<label> was connected to your Polaris Key account"), and the
+  link is audited (`account.link.auto`). A product connection, an unverified domain, a subdomain or
+  lookalike, an unverified claim, or an address on two accounts never auto-links: those keep the
+  email gate's join offer, with proof of both identities (tests). Residual: the domain's IdP is
+  trusted for its own domain's addresses, which is what verifying the domain asserts; an IdP that
+  mints `email_verified` for an address it does not control can take over that address's account,
+  so only platform admins verify domains, and the mail tells the owner at once.
 - **Birth date (I-33).** `accounts.birthdate` and `birthdate_source` (`accounts/birthdate.ts`).
   Never released to an app, and never stored without the person's acceptance.
   - _Stored only on acceptance._ A connection's mapped `birthdate` claim rides only in the
@@ -8059,9 +8084,9 @@ privacyUrl}` with https URLs reads as unset, and an unreadable store fails the s
   than creating an account without the acceptance published terms require. The acceptance is
   written in the same batch that creates the account, on both new-account paths (a provider's
   first sign-in and a new address's email code), and records the version the gate opened with.
-  Residual: until I-30 sends the platform IdP's `/callback` through the gate and I-32b retires the
-  legacy product callback, those two paths create accounts without the step, so publishing waits
-  for them (docs/RUNBOOK.md).
+  Residual: I-30 sends the platform IdP's `/callback` through the gate (an identity with no
+  account always opens it), so only the legacy product callback still creates accounts without
+  the step until I-32b retires it, and publishing waits for that (docs/RUNBOOK.md).
 
 ### Product backends: `X-PKey-License` (SP-53)
 

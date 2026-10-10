@@ -103,9 +103,7 @@ export function parseClaimMap(raw: string | null | undefined): ClaimMap {
   }
   if (Array.isArray(o.claims)) {
     const claims = [
-      ...new Set(
-        o.claims.map(one).filter((x): x is string => x !== undefined),
-      ),
+      ...new Set(o.claims.map(one).filter((x): x is string => x !== undefined)),
     ].slice(0, CLAIM_MAP_MAX_CLAIMS);
     if (claims.length > 0) out.claims = claims;
   }
@@ -278,8 +276,7 @@ export async function routeForDomain(
   if (!d) return null;
   for (const scope of scopes) {
     const row = await db.first<ConnectionRow & { enforce: number }>(
-      `SELECT ${COLUMNS
-        .split(",")
+      `SELECT ${COLUMNS.split(",")
         .map((c) => `c.${c.trim()}`)
         .join(", ")}, d.enforce
          FROM identity_connection_domains d

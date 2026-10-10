@@ -671,7 +671,9 @@ function installIdpFetch(idToken: string): void {
           : input instanceof URL
             ? input.toString()
             : input.url;
-      const meta = await issuerMetadataResponse(u, idpKey.getKey, { kid: "r12-idp" });
+      const meta = await issuerMetadataResponse(u, idpKey.getKey, {
+        kid: "r12-idp",
+      });
       if (meta) return meta;
       if (u.includes("/api/oidc/token")) {
         return new Response(JSON.stringify({ id_token: idToken }), {

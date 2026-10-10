@@ -139,7 +139,10 @@ async function signInThrough(
   claims: Record<string, unknown>,
 ): Promise<{ login: Response; callback: Response }> {
   installIdp({}, "unused");
-  const login = await d.send("GET", `/login/sso/${CONN}?login_hint=ada%40corp.example`);
+  const login = await d.send(
+    "GET",
+    `/login/sso/${CONN}?login_hint=ada%40corp.example`,
+  );
   expect(login.status).toBe(302);
   const authorize = new URL(login.headers.get("location")!);
   installIdp(claims, authorize.searchParams.get("nonce")!);
@@ -327,7 +330,9 @@ describe("seed-platform-connection", () => {
     });
     expect(JSON.stringify(plan)).not.toContain("SENTINEL");
     expect(plan.linksLegacyOidc).toBe(1);
-    expect(await resolveConnection(w.db, PLATFORM_ENV_CONNECTION_ID)).toBeNull();
+    expect(
+      await resolveConnection(w.db, PLATFORM_ENV_CONNECTION_ID),
+    ).toBeNull();
 
     const first = await applyPlatformConnectionSeed(w.env, w.db, NOW);
     expect(first.inserted).toBe(true);
@@ -357,7 +362,9 @@ describe("seed-platform-connection", () => {
     );
 
     expect(await downPlatformConnectionSeed(w.db)).toBe(1);
-    expect(await resolveConnection(w.db, PLATFORM_ENV_CONNECTION_ID)).toBeNull();
+    expect(
+      await resolveConnection(w.db, PLATFORM_ENV_CONNECTION_ID),
+    ).toBeNull();
   });
 
   it("seeds nothing without the trio", async () => {

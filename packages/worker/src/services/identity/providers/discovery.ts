@@ -127,14 +127,19 @@ export async function verifyProviderIdToken(
   expect: IdTokenExpectations,
 ): Promise<JWTPayload> {
   const notification = expect.shape === "notification";
-  return verifyIdToken(discovered, providerRelyingParty(discovered.kind), token, {
-    audience: expect.audience,
-    nonce: expect.nonce,
-    subjectless: notification,
-    maxTokenAge: notification ? NOTIFICATION_MAX_AGE : undefined,
-    fetch: expect.fetch,
-    nowMs: expect.nowMs,
-  });
+  return verifyIdToken(
+    discovered,
+    providerRelyingParty(discovered.kind),
+    token,
+    {
+      audience: expect.audience,
+      nonce: expect.nonce,
+      subjectless: notification,
+      maxTokenAge: notification ? NOTIFICATION_MAX_AGE : undefined,
+      fetch: expect.fetch,
+      nowMs: expect.nowMs,
+    },
+  );
 }
 
 /** A provider's "email verified" assertion: the boolean `true`, or Apple's string `"true"`. */

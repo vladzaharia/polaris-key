@@ -51,7 +51,10 @@ export async function jwksOf(
   const jwk =
     key && typeof key === "object" && "kty" in (key as object)
       ? { ...(key as Record<string, unknown>) }
-      : ((await exportJWK(key as CryptoKey)) as unknown as Record<string, unknown>);
+      : ((await exportJWK(key as CryptoKey)) as unknown as Record<
+          string,
+          unknown
+        >);
   if (kid && !jwk.kid) jwk.kid = kid;
   return { keys: [jwk] };
 }
@@ -75,7 +78,8 @@ export async function issuerMetadataResponse(
     return json(issuerDiscovery(issuer, opts.discovery));
   }
   if (url.endsWith(JWKS)) {
-    const k = typeof key === "function" ? await (key as () => Promise<unknown>)() : key;
+    const k =
+      typeof key === "function" ? await (key as () => Promise<unknown>)() : key;
     return json(k ? await jwksOf(k, opts.kid ?? TEST_IDP_KID) : { keys: [] });
   }
   return null;
