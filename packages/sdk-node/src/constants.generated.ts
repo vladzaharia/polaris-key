@@ -517,6 +517,7 @@ export const Feature = {
   coreCopy: "core.copy",
   coreBackend: "core.backend",
   licenseGate: "license.gate",
+  licenseSignedinuser: "license.signedinuser",
   licenseActivate: "license.activate",
   licenseEnroll: "license.enroll",
   licenseDeactivate: "license.deactivate",
@@ -631,6 +632,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "core.copy",
   "core.backend",
   "license.gate",
+  "license.signedinuser",
   "license.activate",
   "license.enroll",
   "license.deactivate",
@@ -1468,6 +1470,9 @@ export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 export const REQUEST_HANDLE_TTL_SECONDS = 600;
 
+/** Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`). */
+export const PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$";
+
 /** Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
 export const PRESENTATION_TEXT_MAX_BYTES = 1024;
 
@@ -1602,6 +1607,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "core.copy": { status: "implemented", service: "sdk", na: [] },
   "core.backend": { status: "planned", service: "license", na: [] },
   "license.gate": { status: "implemented", service: "license", na: [] },
+  "license.signedinuser": { status: "implemented", service: "license", na: [] },
   "license.activate": { status: "implemented", service: "license", na: [] },
   "license.enroll": { status: "implemented", service: "license", na: [] },
   "license.deactivate": { status: "implemented", service: "license", na: [] },
@@ -1761,4 +1767,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "95cbd4c10cc69be6bc588992700ed5a341e6af0f96b9222a89cb87435a50195f";
+  "0ec50e1d0faa285055290e69e70fd3d67f71faeacf4500ec2073877ee68ae3e3";

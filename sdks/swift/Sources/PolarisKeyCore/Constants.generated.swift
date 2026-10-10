@@ -517,6 +517,7 @@ public enum Feature {
     public static let coreCopy = "core.copy"
     public static let coreBackend = "core.backend"
     public static let licenseGate = "license.gate"
+    public static let licenseSignedinuser = "license.signedinuser"
     public static let licenseActivate = "license.activate"
     public static let licenseEnroll = "license.enroll"
     public static let licenseDeactivate = "license.deactivate"
@@ -630,6 +631,7 @@ public let FEATURE_VALUES: [String] = [
     "core.copy",
     "core.backend",
     "license.gate",
+    "license.signedinuser",
     "license.activate",
     "license.enroll",
     "license.deactivate",
@@ -1379,6 +1381,9 @@ public let REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$"
 /// Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
 public let REQUEST_HANDLE_TTL_SECONDS = 600
 
+/// Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`).
+public let PAIRWISE_SUBJECT_PATTERN = "^ps_[A-Za-z0-9_-]{22}$"
+
 /// Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`).
 public let PRESENTATION_TEXT_MAX_BYTES = 1024
 
@@ -1514,6 +1519,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.copy": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "core.backend": CapabilityRow(status: "planned", service: "license", na: []),
     "license.gate": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.signedinuser": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.enroll": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.deactivate": CapabilityRow(status: "implemented", service: "license", na: []),
@@ -1612,4 +1618,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "809c14d711580a9c088a49f4e0f485efbfa2825aedb813769ca692820427d49f"
+public let CAPABILITY_DIGEST = "6d5b6146277267e2f9c64b1b01be878d56ef4aec35234945de83f75c92854885"

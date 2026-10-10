@@ -519,6 +519,7 @@ public object Feature {
     public const val coreCopy: String = "core.copy"
     public const val coreBackend: String = "core.backend"
     public const val licenseGate: String = "license.gate"
+    public const val licenseSignedinuser: String = "license.signedinuser"
     public const val licenseActivate: String = "license.activate"
     public const val licenseEnroll: String = "license.enroll"
     public const val licenseDeactivate: String = "license.deactivate"
@@ -632,6 +633,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "core.copy",
     "core.backend",
     "license.gate",
+    "license.signedinuser",
     "license.activate",
     "license.enroll",
     "license.deactivate",
@@ -1419,6 +1421,9 @@ public const val REQUEST_HANDLE_PATTERN: String = "^rq_[A-Za-z0-9_-]{22}\$"
 /** Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`). */
 public const val REQUEST_HANDLE_TTL_SECONDS: Int = 600
 
+/** Signed-in subject: `PAIRWISE_SUBJECT_PATTERN` (WIRE-CONTRACT-V4 §3.2, `@polaris-key/protocol/core`). */
+public const val PAIRWISE_SUBJECT_PATTERN: String = "^ps_[A-Za-z0-9_-]{22}\$"
+
 /** Product presentation: `PRESENTATION_TEXT_MAX_BYTES` (WIRE-CONTRACT-V4 §5.5, `@polaris-key/protocol/core`). */
 public const val PRESENTATION_TEXT_MAX_BYTES: Int = 1024
 
@@ -1536,6 +1541,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "core.copy" to CapabilityRow("implemented", "sdk", listOf()),
     "core.backend" to CapabilityRow("planned", "license", listOf()),
     "license.gate" to CapabilityRow("implemented", "license", listOf()),
+    "license.signedinuser" to CapabilityRow("implemented", "license", listOf()),
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
     "license.enroll" to CapabilityRow("implemented", "license", listOf()),
     "license.deactivate" to CapabilityRow("implemented", "license", listOf()),
@@ -1634,4 +1640,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "4cd3437189744b9bbbc09a3e650d22d6f7f527239e44d5d2d1bcd8d2954b514e"
+public const val CAPABILITY_DIGEST: String = "dcac4ed360b6c3cdd2c29b7915101087e2867ab0755453512435749d2e2734c1"

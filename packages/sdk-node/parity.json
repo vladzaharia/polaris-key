@@ -65,6 +65,9 @@
     "license.gate": {
       "status": "implemented"
     },
+    "license.signedinuser": {
+      "status": "implemented"
+    },
     "license.activate": {
       "status": "implemented"
     },

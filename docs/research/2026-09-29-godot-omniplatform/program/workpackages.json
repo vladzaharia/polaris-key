@@ -11959,7 +11959,7 @@
     },
     {
       "id": "SP-54b",
-      "title": "Native signed-in-user readers: Python, Swift, Kotlin and Godot decode `profile.user.subject`, replay `licenseUserCases`, parity row `license.signedInUser`",
+      "title": "Native signed-in-user readers: Python, Swift, Kotlin and Godot decode `profile.user.subject`, replay `licenseUserCases`, parity row `license.signedinuser`",
       "phase": "SP",
       "stage": "framework drop-ins (2026-10-08)",
       "lane": "sdk",

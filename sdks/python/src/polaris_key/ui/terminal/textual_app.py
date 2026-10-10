@@ -24,6 +24,7 @@ from textual.widgets import Button, Footer, ListItem, ListView, Static
 from .. import _tokens
 from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, presentation_source, resolve_identity
+from ...core.models import license_user
 from ..core.models import DevicesView, DeviceRow, GateView, gate_view, update_view
 from ..core.theme import Theme
 from .text import clean
@@ -135,7 +136,7 @@ class PolarisKeyApp(App):
             grace_until=getattr(st, "graceUntil", None),
             holder=getattr(profile, "name", None) if profile else None,
             email=getattr(profile, "email", None) if profile else None,
-            signed_in=bool(profile),
+            signed_in=license_user(profile) is not None,
             version=getattr(getattr(c, "core", None), "version", None),
         )
 
