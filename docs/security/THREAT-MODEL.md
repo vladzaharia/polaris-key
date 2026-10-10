@@ -5408,6 +5408,16 @@ directory holds operators only, which closes G5 (operator and customer in one di
   later asserts an address another account uses, `signIn` keeps it on the method as unverified
   (as the gate's `createAccount` does), so no address is verified on two accounts and no licence
   waiting on it moves.
+  - _Since I-30 (plans/I-27.md §2.3)._ The env trio is seeded once as a platform connection, and
+    that row is the only source for the login card and the portal's `/callback`, which now end at
+    the email gate through `beginProviderSignIn`. On those gate paths the narrowed rule applies
+    (`connectionVouchesForEmail`): the connection vouches only for an address inside one of its
+    DNS-verified domains, so until the owner verifies one, a new identity, or an account with no
+    confirmed email, meets one email code at the gate. The legacy product callback
+    (`services/identity/oidc.ts`, the claim above) keeps today's rule
+    (`providerVouchesForEmail({kind: "oidc"})`) until I-32b retires that engine: it has no email
+    gate, and narrowing it there would land each claim on an account with no email (no join
+    offer, a second account, no association of waiting licences).
 - **Licences.** The subject's `sub`-keyed licences attach only through the link it now holds,
   only on products whose provider is `platform` (R5-02), only while floating (an owned licence
   never moves) and only where the product's auto-link resolves on; the portal's link sweep does
@@ -7963,6 +7973,58 @@ A licence's `status` stays `active`/`disabled`; `ended_reason` records why it en
 ### Identity consolidation (I-27)
 
 plans/I-27.md §6: one row per threat, each written by the package that builds it.
+
+- **Rogue connection (I-30; I-32 for product scope).** A connection is an upstream OIDC provider
+  the platform signs people in through (`identity_connections`). Only a platform admin creates or
+  changes a platform connection (I-31's console; until then only the `source: env` seed of the
+  `PLATFORM_OIDC_*` trio exists). A product connection is tenant-scoped: it signs in only inside
+  its product (`tenant_scope = product:<slug>`), its issuer must pass `OIDC_ISSUER_ALLOWLIST`, its
+  audience is always `customers` (a table CHECK), and it never vouches for an address, so its
+  identities always meet the email gate's code (`connectionVouchesForEmail`, tests). An operator
+  audience (`operators`, `both`) is a platform connection's only, and a console write of either
+  is refused until ST-32's Superadmin gate; the env seed is exempt.
+- **Domain takeover or lapse (I-30).** A domain counts only once a TXT record at
+  `_pkey-challenge.<domain>` holds `pkey-domain-verification=<token>`, with one random token per
+  connection and domain, so one connection's record proves nothing for another
+  (`services/identity/connections/domains.ts`). Domains are exact: `example.com` never covers
+  `sub.example.com`, `evil-example.com` or `example.com.evil.net`, and a domain or address that is
+  not plain ASCII before it is lower-cased is refused, so a lookalike (the Kelvin sign folds into
+  `k` under `toLowerCase`, a Cyrillic letter, a punycode label) never matches a verified domain.
+  Each `(scope, domain)` has at most one verified owner: a second connection's proof is refused as
+  taken, and a partial unique index backs the rule. The maintenance cron re-checks every verified
+  domain daily: an answer without the token unverifies it at once, and resolver errors keep the
+  state for 72 hours after the last conclusive answer, then unverify it. An unverified domain does
+  not route, vouch or enforce (tests: verified, absent and erroring answers, the 72-hour lapse,
+  takeover with the other connection's record and with its own, subdomain, suffix and homograph).
+  Residual: whoever controls a domain's DNS controls its proof, which is the point; a registrar
+  or DNS-provider compromise is out of scope, and the window after a hostile DNS change is at most
+  one day.
+- **Group and claim injection (I-30; LX-36 and ST-32 read them).** Groups and access-rule claims
+  come only from the claims a connection's claim map names, in an ID token the one client verified
+  (signature, `iss`, exact `aud` and `azp`, nonce, freshness). Groups are capped at 100 names, each
+  a printable name; claims are kept only for the names the map lists under `claims[]`. Both are
+  replaced at every sign-in through the link, in one `UPDATE` (`groups_json`, `claims_json`), and
+  every group or claim rule names its connection, so one IdP's `groups` never satisfies a rule
+  written for another. A connection's `name`, `picture` and `birthdate` feed only the sign-in's
+  imported profile and are never stored on the link.
+- **SSRF (I-30).** Discovery, the JWKS, the token request and the DNS-over-HTTPS lookups all go
+  through the one gated fetch (`core/oidc/client.ts`): `https:` only, no credentials in the URL,
+  the default port only, no private, loopback, link-local or reserved address literal, and a host
+  on the relying party's own allowlist (a connection's issuer host and its configured `jwks_uri`
+  host; `cloudflare-dns.com` alone for domain proofs). A URL inside a discovery document on any
+  other host is refused, not followed; redirects are never followed; bodies are capped and every
+  call has a timeout. Keys are verified with jose's `createLocalJWKSet` over the gated JWKS;
+  `createRemoteJWKSet`, which dialled outside any guard, is gone (a source test). Product issuers
+  are tenant-supplied and must also pass `OIDC_ISSUER_ALLOWLIST`.
+- **Routing enumeration (I-30).** `POST /api/signin/email/start` routes an address to a connection
+  when its domain is verified by an active connection whose audience covers the surface. The
+  answer (`next: {kind: "sso", connection: {id, label}, enforced}`) depends on the domain only,
+  never on whether an account exists (a test compares the bytes for a known and an unknown address
+  in the same domain, routed, enforced and unrouted), and the start keeps its Turnstile check and
+  rate limits. A routed start sends no email until the person picks the code; an enforced domain
+  never gets an email code or magic link, at the start, on resend, or when an earlier code is
+  redeemed after the domain became enforced. What routing reveals is that a domain uses single
+  sign-on, which its verification already made public in DNS.
 
 - **Birth date (I-33).** `accounts.birthdate` and `birthdate_source` (`accounts/birthdate.ts`).
   Never released to an app, and never stored without the person's acceptance.
