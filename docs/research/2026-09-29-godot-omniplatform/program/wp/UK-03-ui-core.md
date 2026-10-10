@@ -89,7 +89,7 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 
 Done when the Themes row holds. This package draws no screens of its own, so the other rows do not apply (EXPERIENCE.md §7.3).
 
-- [ ] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes.
+- [x] Themes: dark and light; a custom product accent on a light and a dark ground (kits, hosted sign-in); forced-colors; prefers-contrast: more; reduced transparency; contrast measured on the render (text 4.5:1, UI 3:1) for every state colour in its service accent, both themes. (ui-core draws nothing: `test/theme.test.ts` measures every resolved role of seven accents, the UK-47 review's pink, navy and yellow included, in both schemes on the brand's surfaces and on host grounds, and the ink primary; the React kit's `mergeTheme` runs the same resolver. Forced colours, `prefers-contrast` and reduced transparency are the renderers' (UK-04, UK-05); reduced motion is modelled in `resolveTheme`.)
 
 ## Goal
 
@@ -147,11 +147,11 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every UK-02b fixture passes.
-- [ ] A test with a fake `PresentationSource` resolves the product accent (and `accentDark` in dark) with no integrator input; with no source it falls through to the bundle and then the derived accent.
-- [ ] No DOM, React or Lit import in the package (a test asserts it).
-- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
-- [ ] The green gate passes (AGENTS.md).
+- [x] Every UK-02b fixture passes (`test/uiMatrix.test.ts`: every row of all ten families of `ui-matrix.json` version 2, the signIn family through `SignInModel`).
+- [x] A test with a fake `PresentationSource` resolves the product accent (and `accentDark` in dark) with no integrator input; with no source it falls through to the bundle and then the derived accent (`test/theme.test.ts`).
+- [x] No DOM, React or Lit import in the package (a test asserts it: `test/imports.test.ts`, and the package compiles without the DOM library).
+- [x] The acceptance in "Design language v2 (2026-10-08)" above holds (`test/decisions.test.ts`: per state, over every matrix row, the primary, the refusal tone, the error slot, the initial focus and the link verdict).
+- [x] The green gate passes (AGENTS.md).
 
 ## Verify
 
