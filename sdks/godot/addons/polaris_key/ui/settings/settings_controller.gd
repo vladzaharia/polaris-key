@@ -139,16 +139,14 @@ static func _sort(rows: Array) -> void:
 		return a["key"] < b["key"])
 
 
-## The name "Set by …" names: the product's name from this session's discovery document, else its
-## slug.
+## The name "Set by …" names: the developer from the product's presentation, else the presented
+## name, else the product's identity (the options, then the project), never its slug. Plain text:
+## the panel draws it bidi-isolated.
 static func product_name(sdk: Node) -> String:
-	if sdk == null or sdk.get("core") == null:
-		return String(PKeyUiTheme.product_identity()["name"])
-	var m = sdk.core.discovery_manifest
-	if m is Dictionary and m.get("developerName") is String and m["developerName"] != "":
-		return m["developerName"]
-	if m is Dictionary and m.get("name") is String and m["name"] != "":
-		return m["name"]
-	# The product's name from the options or the project, never its slug.
-	var n := String(PKeyUiTheme.product_identity()["name"])
-	return n
+	if sdk != null and sdk.has_method("presentation"):
+		var p: Dictionary = sdk.presentation()
+		if p.get("developerName") is String and p["developerName"] != "":
+			return p["developerName"]
+		if p.get("name") is String and p["name"] != "":
+			return p["name"]
+	return String(PKeyUiTheme.product_identity()["name"])

@@ -17,8 +17,7 @@
       "status": "implemented"
     },
     "core.presentation": {
-      "status": "planned",
-      "wp": "HA-14"
+      "status": "implemented"
     },
     "core.sync": {
       "status": "implemented"

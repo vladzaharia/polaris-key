@@ -8,8 +8,12 @@ extends BoxContainer
 ## both centred, for a centred column (a portrait screen, the boot splash).
 ##
 ## The identity is PKeyUiTheme.product_identity(): PKeyOptions.ui_product_name and
-## ui_product_icon, else the project's `application/config/name` and `application/config/icon`.
-## Sizes follow the theme (its PKeyLayout constants), so the header scales with the screen.
+## ui_product_icon, else the product's presentation from discovery (its name and verified icon),
+## else the project's `application/config/name` and `application/config/icon`. Sizes follow the
+## theme (its PKeyLayout constants), so the header scales with the screen. A presented icon is
+## asked for at the size this header draws it (`PKeyPresentationSource.icon(side, screen scale)`);
+## the texture shown stays until that one resolves. The name is drawn bidi-isolated
+## (PKeyUiTheme.isolate); `product_name()` is the plain name.
 
 ## Lead a screen (larger icon, section-sized name) rather than head a step.
 var hero := false:
@@ -50,6 +54,12 @@ var _tile: PanelContainer
 var _initial: Label
 var _name: Label
 var _start: HorizontalAlignment
+## The plain name shown, the presented icon this header fetched (and that icon's hash), and the
+## request it last made ("<sha>|<side>|<scale>").
+var _plain := ""
+var _fetched: Texture2D = null
+var _fetched_sha := ""
+var _asked := ""
 
 
 func _init() -> void:
@@ -99,18 +109,72 @@ func refresh() -> void:
 	var id := PKeyUiTheme.product_identity()
 	var title: String = id["name"]
 	var icon: Texture2D = id["icon"]
-	_name.text = title
-	_icon.texture = icon
-	_icon.visible = icon != null
-	_tile.visible = icon == null and title != ""
-	_initial.text = title.strip_edges().left(1)
-	visible = title != "" or icon != null
+	if _presented() and _fetched != null and _fetched_sha == PKeyUiTheme.presentation_icon_sha:
+		icon = _fetched
+	_plain = title
+	_name.text = PKeyUiTheme.isolate(title)
+	_initial.text = initial_of(title)
+	_show(icon)
 	_size()
 
 
-## The product's name as shown.
+## The product's name as shown (without the bidi isolates the label draws around it).
 func product_name() -> String:
-	return _name.text
+	return _plain
+
+
+func _show(icon: Texture2D) -> void:
+	_icon.texture = icon
+	_icon.visible = icon != null
+	_tile.visible = icon == null and _plain != ""
+	visible = _plain != "" or icon != null
+
+
+## True when the icon comes from the product's presentation (the integrator set none).
+func _presented() -> bool:
+	return PKeyUiTheme.product_icon == null and PKeyUiTheme.presentation != null and PKeyUiTheme.presentation_icon_sha != ""
+
+
+## Ask the presentation for the icon at `side` logical pixels on this screen's scale, once per size.
+func _request_icon(side: float) -> void:
+	if not _presented() or side <= 0.0:
+		return
+	var k := _screen_scale()
+	var sha := PKeyUiTheme.presentation_icon_sha
+	var key := "%s|%d|%.3f" % [sha, roundi(side), k]
+	if key == _asked:
+		return
+	_asked = key
+	PKeyUiTheme.presentation.icon_to(side, k, _on_icon.bind(key, sha))
+
+
+func _on_icon(tex: ImageTexture, key: String, sha: String) -> void:
+	if tex == null or key != _asked or sha != PKeyUiTheme.presentation_icon_sha or not _presented():
+		return
+	_fetched = tex
+	_fetched_sha = sha
+	_show(tex)
+
+
+## Physical pixels per logical one where this header draws (the window's stretch and any scale
+## above it); 1 outside the tree.
+func _screen_scale() -> float:
+	if not is_inside_tree():
+		return 1.0
+	var s := get_screen_transform().get_scale()
+	var k := maxf(absf(s.x), absf(s.y))
+	return k if is_finite(k) and k > 0.0 else 1.0
+
+
+## The monogram's letter: the name's first character that is not a space, a bidi control or a
+## zero-width mark.
+static func initial_of(title: String) -> String:
+	for i in title.length():
+		var c := title.unicode_at(i)
+		if c == 0x20 or c == 0xa0 or c == 0x61c or c == 0xfeff or (c >= 0x200b and c <= 0x200f) or (c >= 0x202a and c <= 0x202e) or (c >= 0x2066 and c <= 0x2069):
+			continue
+		return title.substr(i, 1)
+	return ""
 
 
 func _size() -> void:
@@ -142,6 +206,7 @@ func _size() -> void:
 	var bold := get_theme_font("font", "PKeyTitle") if has_theme_font("font", "PKeyTitle") else null
 	if bold != null:
 		_initial.add_theme_font_override("font", bold)
+	_request_icon(side)
 
 
 func _constant(n: StringName) -> int:

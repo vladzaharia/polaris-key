@@ -838,7 +838,7 @@ func _update_values(shown: Array) -> void:
 		# something else.
 		var locked: bool = r["enforced"]
 		(n["lock_row"] as Control).visible = locked
-		(n["set_by"] as Label).text = (t.text("settings_set_by", product) if product != "" else t.text("settings_set_by_developer")) if locked else ""
+		(n["set_by"] as Label).text = (t.text("settings_set_by", PKeyUiTheme.isolate(product)) if product != "" else t.text("settings_set_by_developer")) if locked else ""
 		var d: String = r["description"]
 		var repeats := locked and (d.to_lower().contains("set by") or d == "")
 		show_text(n["description"], tr(d) if d != "" and not repeats else "")
