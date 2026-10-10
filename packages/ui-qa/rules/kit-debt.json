@@ -48,6 +48,12 @@
       "rule": "compose-system-alert",
       "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisDevices.kt",
       "count": 2
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-rtl",
+      "file": "sdks/godot/addons/polaris_key/ui/settings/pkey_settings_panel.gd",
+      "count": 1
     }
   ]
 }
