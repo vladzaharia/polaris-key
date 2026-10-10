@@ -15,8 +15,8 @@ import {
 
 import { encodeQr } from "@polaris-key/node/qr";
 
-import { actionOf, OPENS } from "./contract.js";
-import { isTitleKey, LAYOUTS, type Layout } from "./layout.js";
+import { actionOf, OPENS, placeKeys } from "./contract.js";
+import { LAYOUTS, type Layout } from "./layout.js";
 import type { Resolved } from "./theme.js";
 
 /** What a template needs to draw one view. */
@@ -479,46 +479,6 @@ export function a11yOnly(c: RenderCtx): TemplateResult | typeof nothing {
 
 // ── The one screen template ──────────────────────────────────────────────────────────────────
 
-/** Sort keys: the layout's order first, then core titles before the rest, then by name. */
-function ordered(keys: string[], layout: Layout): string[] {
-  const rank = (k: string) => {
-    const i = layout.order?.indexOf(k) ?? -1;
-    if (i >= 0) return i;
-    if (k.endsWith(".title")) return 100;
-    if (k.endsWith(".message")) return 101;
-    return 200;
-  };
-  return [...keys].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
-}
-
-/** Split a view's copy into the places the layout gives each key. */
-export function placeKeys(view: View, layout: Layout) {
-  const all = view.copy.filter((k) => !k.startsWith("a11y."));
-  const content = new Set(layout.content ?? []);
-  // The view's primary is the one filled control (DL4), drawn even where the state's copy leaves
-  // it out (a busy control keeps its label; a capability-limited Welcome keeps its one path).
-  const primary = view.decisions.primary;
-  const controls = layout.controls.filter(
-    (k) => all.includes(k) || (k === primary && !content.has(k)),
-  );
-  const links = (layout.links ?? []).filter((k) => all.includes(k));
-  const placed = new Set([...controls, ...links, ...content]);
-  const rest = all.filter((k) => !placed.has(k));
-  const titles = ordered(
-    rest.filter((k) => isTitleKey(k, layout)),
-    layout,
-  );
-  const meta = rest.filter((k) => layout.meta?.includes(k));
-  const footnote = rest.filter((k) => layout.footnote?.includes(k));
-  const body = ordered(
-    rest.filter(
-      (k) => !titles.includes(k) && !meta.includes(k) && !footnote.includes(k),
-    ),
-    layout,
-  );
-  return { controls, links, titles, meta, body, footnote };
-}
-
 /** The controls, the primary first on top in a card (§1.5 rule 10). */
 export function actions(
   c: RenderCtx,
@@ -632,4 +592,4 @@ export function callout(
   </div>`;
 }
 
-export { LAYOUTS, actionOf, countdown };
+export { LAYOUTS, actionOf, countdown, placeKeys };

@@ -99,6 +99,8 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "signin.replace.openSystem",
       "signin.done.start",
       "signin.again",
+      // The key step's submit (the key field is the SignIn form's content).
+      "activate.submit",
       "common.cancel",
     ],
     links: [

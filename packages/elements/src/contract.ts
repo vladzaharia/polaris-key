@@ -4,7 +4,9 @@
 // React (`@polaris-key/react`) imports this subpath and renders the same `pk-*` classes and
 // `data-part` names, so one state drawn by either renderer is the same pixels. No Lit, no DOM.
 
-import { ACTION_KEYS, type Action } from "@polaris-key/ui-core";
+import { ACTION_KEYS, type Action, type View } from "@polaris-key/ui-core";
+
+import { isTitleKey, type Layout } from "./layout.js";
 
 import { stylesCss } from "./styles.js";
 
@@ -55,6 +57,61 @@ export function actionOf(key: string): Action | null {
   ][])
     if (keys.includes(key)) return action;
   return null;
+}
+
+// ── Where a view's keys go ───────────────────────────────────────────────────────────────────
+
+/** Sort keys: the layout's order first, then core titles before the rest, then by name. */
+function ordered(keys: string[], layout: Layout): string[] {
+  const rank = (k: string) => {
+    const i = layout.order?.indexOf(k) ?? -1;
+    if (i >= 0) return i;
+    if (k.endsWith(".title")) return 100;
+    if (k.endsWith(".message")) return 101;
+    return 200;
+  };
+  return [...keys].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+
+/**
+ * Split a view's copy into the places the layout gives each key. The view's primary is the one
+ * filled control (DL4), drawn as a control wherever the layout would otherwise put its key: a
+ * busy control keeps its label, a capability-limited Welcome keeps its one path, a link or a
+ * title key that is the state's fix (Activate's Replace a device, LicenseChoice's key) is filled.
+ * Only a primary the component draws inside its own content (a row's Remove) stays there.
+ */
+export function placeKeys(view: View, layout: Layout) {
+  const all = view.copy.filter((k) => !k.startsWith("a11y."));
+  const content = new Set(layout.content ?? []);
+  const primary = view.decisions.primary;
+  const controls = layout.controls.filter(
+    (k) => all.includes(k) || (k === primary && !content.has(k)),
+  );
+  if (
+    primary !== null &&
+    all.includes(primary) &&
+    !content.has(primary) &&
+    !controls.includes(primary)
+  )
+    controls.unshift(primary);
+  const links = (layout.links ?? []).filter(
+    (k) => all.includes(k) && k !== primary,
+  );
+  const placed = new Set([...controls, ...links, ...content]);
+  const rest = all.filter((k) => !placed.has(k));
+  const titles = ordered(
+    rest.filter((k) => isTitleKey(k, layout)),
+    layout,
+  );
+  const meta = rest.filter((k) => layout.meta?.includes(k));
+  const footnote = rest.filter((k) => layout.footnote?.includes(k));
+  const body = ordered(
+    rest.filter(
+      (k) => !titles.includes(k) && !meta.includes(k) && !footnote.includes(k),
+    ),
+    layout,
+  );
+  return { controls, links, titles, meta, body, footnote };
 }
 
 // ── The light-DOM stylesheet ─────────────────────────────────────────────────────────────────
