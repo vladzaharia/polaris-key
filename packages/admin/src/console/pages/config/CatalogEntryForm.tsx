@@ -1,10 +1,9 @@
 import * as React from "react";
 import { AlertCircle, ChevronRight } from "lucide-react";
-import { SUPPORTED_FORMATS } from "@polaris-key/catalog";
+import { SUPPORTED_FORMATS, userSettingIssues } from "@polaris-key/catalog";
 import type {
   UserSettingConflict,
   UserSettingPolicy,
-  UserSettingSync,
 } from "@polaris-key/catalog";
 import type { ConfigEntry, ConfigKind, ManagementState } from "../../../api.js";
 import { KIND_LABELS } from "../../../lib/labels.js";
@@ -45,21 +44,31 @@ const TYPE_LABELS: Record<SchemaType, string> = {
   object: "Object (JSON)",
 };
 
-/** Where a user setting's value roams (S-17 §5.3), in the console's words. */
-const USER_SYNC_OPTIONS: { value: UserSettingSync; label: string }[] = [
+/** Where a synced setting's value roams (plans/U-01b.md D2), in the console's words. A key that
+ *  does not sync is `user: {sync: "local"}`, the Syncs switch turned off. */
+const USER_SCOPE_OPTIONS: { value: "user" | "platform"; label: string }[] = [
   { value: "user", label: "Everywhere the person signs in" },
   { value: "platform", label: "Per platform family" },
-  { value: "device", label: "Per device" },
-  { value: "local", label: "Never leaves the device" },
 ];
 
-/** How concurrent writes resolve. `max`/`min` need a number schema, `merge` an object. */
-const USER_CONFLICT_OPTIONS: { value: UserSettingConflict; label: string }[] = [
-  { value: "lastWrite", label: "Last write wins" },
-  { value: "max", label: "Keep the highest" },
-  { value: "min", label: "Keep the lowest" },
-  { value: "merge", label: "Merge members" },
-];
+const USER_CONFLICT_LABELS: Record<UserSettingConflict, string> = {
+  lastWrite: "Last write wins",
+  max: "Keep the highest",
+  min: "Keep the lowest",
+  merge: "Merge members",
+};
+
+/**
+ * The conflict policies a value type allows (plans/U-01b.md §2.2, R7): a number gets last write,
+ * highest or lowest; an object (a set is an object of booleans) gets last write or merge; every
+ * other type, a list included, gets last write only. `union` and `revision` are record policies.
+ */
+export function conflictOptionsFor(type: string): UserSettingConflict[] {
+  if (type === "number" || type === "integer")
+    return ["lastWrite", "max", "min"];
+  if (type === "object") return ["lastWrite", "merge"];
+  return ["lastWrite"];
+}
 
 const WIDGETS = [
   "password",
@@ -682,13 +691,23 @@ export function CatalogEntryForm({
 
         {entry.kind === "config" ? (
           <Group
-            title="User setting"
+            title="Synced setting"
             open={userOpen}
             onOpenChange={setUserOpen}
             problem={userIssue !== undefined}
           >
             <UserSettingFields
               user={entry.user}
+              type={type}
+              locked={
+                entry.managementDefault === "enforced" ||
+                entry.managementDefault === "hidden"
+              }
+              note={
+                userSettingIssues(entry as unknown as Json).find(
+                  (u) => u.severity === "warning",
+                )?.message
+              }
               error={userIssue}
               onChange={(user) => set("user", user)}
             />
@@ -769,79 +788,140 @@ export function CatalogEntryForm({
   );
 }
 
+/** `user` with no members is no block: an absent block means synced everywhere, last write. */
+function compact(user: UserSettingPolicy): UserSettingPolicy | undefined {
+  return Object.keys(user).length > 0 ? user : undefined;
+}
+
 /**
- * The entry's `user` block (S-17 §5.10: "User setting" with scope, conflict and listed). A user
- * setting's value is chosen by the person and kept on their device by the Config SDK; with Cloud
- * Sync on and the person signed in, it syncs. The operator can still enforce the key, which is
- * why an enforced or hidden management default refuses the block (rule 2).
+ * The entry's `user` block (plans/U-01b.md D2). Every Editable `config` key is a synced setting:
+ * a person's choice, kept on the device and, with Cloud Sync on and the person signed in, synced.
+ * The block only tunes it, so turning the Syncs switch off writes `user: {sync: "local"}` rather
+ * than dropping the block (no block means "synced"). A catalog-locked key (`enforced` or `hidden`)
+ * never syncs, and a block on it is a no-op: the publish route warns, and so does the form.
  */
 function UserSettingFields({
   user,
+  type,
+  locked,
+  note,
   error,
   onChange,
 }: {
   user: UserSettingPolicy | undefined;
+  /** The schema's type, which decides the conflict policies on offer. */
+  type: string;
+  /** The key's management default locks it, so it never syncs. */
+  locked: boolean;
+  /** A non-blocking note from the publish route's checks. */
+  note: string | undefined;
   error: string | undefined;
   onChange: (next: UserSettingPolicy | undefined) => void;
 }): React.ReactElement {
+  const u = user ?? {};
+  const syncs = u.sync !== "local";
+  const conflict = u.conflict ?? "lastWrite";
+  const allowed = conflictOptionsFor(type);
+  // A policy the type does not allow stays on offer, so the refusal below it can be read and fixed.
+  const offered = allowed.includes(conflict) ? allowed : [...allowed, conflict];
   return (
     <div className="space-y-4">
-      <Checkbox
-        label="People choose this value"
-        description="Kept on each device by the Config SDK; with Cloud Sync on, it syncs for people who sign in."
-        checked={user !== undefined}
-        onCheckedChange={(on) => onChange(on ? { sync: "user" } : undefined)}
-      />
-      {user ? (
+      {locked ? (
+        <p className="text-sm text-fg-muted">
+          Locked keys never sync: people cannot change them.
+        </p>
+      ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField name="user-sync" label="Syncs" value={user.sync}>
-              {(f) => (
-                <Select
-                  {...f}
-                  value={user.sync}
-                  options={USER_SYNC_OPTIONS}
-                  onChange={(v) =>
-                    onChange({
-                      ...user,
-                      sync: (v ?? "user") as UserSettingSync,
-                    })
-                  }
-                />
+          <Checkbox
+            label="Syncs across devices"
+            description="With Cloud Sync on, a person's choice follows them to every device they sign in on. Off: it stays on the device."
+            checked={syncs}
+            onCheckedChange={(on) => {
+              if (on) {
+                const { sync: _local, ...rest } = u;
+                onChange(compact(rest));
+              } else {
+                onChange({
+                  sync: "local",
+                  ...(u.listed === false ? { listed: false } : {}),
+                });
+              }
+            }}
+          />
+          {syncs ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                name="user-sync"
+                label="Syncs"
+                value={u.sync ?? "user"}
+              >
+                {(f) => (
+                  <Select
+                    {...f}
+                    value={u.sync ?? "user"}
+                    options={USER_SCOPE_OPTIONS}
+                    onChange={(v) =>
+                      onChange(
+                        compact(
+                          withField(
+                            u,
+                            "sync",
+                            v === "platform" ? "platform" : undefined,
+                          ),
+                        ),
+                      )
+                    }
+                  />
+                )}
+              </FormField>
+              {offered.length === 1 ? (
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-fg-strong">
+                    When two devices disagree
+                  </p>
+                  <p className="text-sm">{USER_CONFLICT_LABELS.lastWrite}</p>
+                </div>
+              ) : (
+                <FormField
+                  name="user-conflict"
+                  label="When two devices disagree"
+                  value={conflict}
+                >
+                  {(f) => (
+                    <Select
+                      {...f}
+                      value={conflict}
+                      options={offered.map((value) => ({
+                        value,
+                        label: USER_CONFLICT_LABELS[value],
+                      }))}
+                      onChange={(v) =>
+                        onChange(
+                          compact(
+                            withField(
+                              u,
+                              "conflict",
+                              v === "lastWrite" ? undefined : v,
+                            ),
+                          ),
+                        )
+                      }
+                    />
+                  )}
+                </FormField>
               )}
-            </FormField>
-            <FormField
-              name="user-conflict"
-              label="When two devices disagree"
-              value={user.conflict ?? "lastWrite"}
-            >
-              {(f) => (
-                <Select
-                  {...f}
-                  value={user.conflict ?? "lastWrite"}
-                  options={USER_CONFLICT_OPTIONS}
-                  onChange={(v) =>
-                    onChange(
-                      withField(
-                        user,
-                        "conflict",
-                        v === "lastWrite" ? undefined : v,
-                      ),
-                    )
-                  }
-                />
-              )}
-            </FormField>
-          </div>
+            </div>
+          ) : null}
           <Checkbox
             label="Show in settings panels"
-            checked={user.listed !== false}
+            checked={u.listed !== false}
             onCheckedChange={(on) =>
-              onChange(withField(user, "listed", on ? undefined : false))
+              onChange(compact(withField(u, "listed", on ? undefined : false)))
             }
           />
         </>
-      ) : null}
+      )}
+      {note ? <p className="text-xs text-fg-muted">{note}</p> : null}
       {error ? (
         <p role="alert" className="text-xs text-danger">
           {error}

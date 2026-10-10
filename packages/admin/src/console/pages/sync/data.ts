@@ -3,19 +3,29 @@
  * page so the Overview (Core's chunk) does not pull the Cloud Sync chunk in.
  */
 
-import type { ConfigEntry } from "@polaris-key/catalog";
+import { syncedSettings, type SettingRoute } from "@polaris-key/catalog";
 import { ApiError, type ProductCatalog } from "../../../api.js";
 
-export type UserSettingEntry = ConfigEntry & {
-  user: NonNullable<ConfigEntry["user"]>;
-};
+/** One synced setting's route (plans/U-01b.md §2.5): its scope, policy and whether it is listed. */
+export type SyncedSettingRow = Extract<SettingRoute, { route: "synced" }>;
 
-/** The catalog's user settings (`config` entries with a `user` block), in catalog order. */
+/**
+ * The catalog's synced settings, in catalog order: every Editable `config` key, with or without a
+ * `user` block (plans/U-01b.md D2), read through the one derivation every client uses
+ * (`syncedSettings`). Keys routed `local`, locked keys, secrets and flags are not among them.
+ */
 export function userSettings(
   catalog: ProductCatalog | null,
-): UserSettingEntry[] {
-  return (catalog?.entries ?? []).filter(
-    (e): e is UserSettingEntry => e.kind === "config" && e.user !== undefined,
+): SyncedSettingRow[] {
+  return syncedSettings({ entries: catalog?.entries ?? [] }).filter(
+    (r): r is SyncedSettingRow => r.route === "synced",
+  );
+}
+
+/** Whether the catalog declares a collection on the `saves` template. */
+export function declaresSaves(catalog: ProductCatalog | null): boolean {
+  return (catalog?.cloudSync?.collections ?? []).some(
+    (c) => c.template === "saves",
   );
 }
 

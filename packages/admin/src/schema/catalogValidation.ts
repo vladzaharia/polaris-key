@@ -7,7 +7,8 @@
  * a server 422: an `entries` array, a key per entry, a known kind, no duplicate keys, and a valid
  * `user` block (`userSettingIssues`, the rules the publish route runs). Each problem
  * carries the entry it belongs to, so the form marks the entry and the JSON mode puts a lint
- * marker on its line.
+ * marker on its line. Only `userSettingIssues`' errors block; its warnings (a `user` block on a
+ * locked key, which does nothing) are `catalogNotes`, shown beside the entry as in `pkey validate`.
  */
 
 import {
@@ -84,13 +85,16 @@ export function catalogIssues(doc: unknown): CatalogIssue[] {
     }
     const schema = schemaIssue(raw.schema);
     if (schema) issues.push({ ...at, field: "schema", message: schema });
-    // A user setting's block (Cloud Sync rules 1–5): the same check the publish route runs.
-    for (const u of userSettingIssues(raw))
+    // A synced setting's block (Cloud Sync rules 1–5): the same check the publish route runs.
+    // A warning never blocks; `catalogNotes` carries it.
+    for (const u of userSettingIssues(raw)) {
+      if (u.severity !== "error") continue;
       issues.push({
         ...at,
         field: u.at === "schema" ? "schema" : "user",
         message: u.message,
       });
+    }
   });
   const keyIssue = catalogKeyIssue(doc);
   if (keyIssue) {
@@ -106,6 +110,29 @@ export function catalogIssues(doc: unknown): CatalogIssue[] {
     });
   }
   return issues;
+}
+
+/**
+ * The draft's non-blocking notes, in entry order: today only the warning that a `user` block on a
+ * catalog-locked key (`managementDefault` `enforced` or `hidden`) has no effect, because the key
+ * never syncs. They never stop a publish.
+ */
+export function catalogNotes(doc: unknown): CatalogIssue[] {
+  if (!isObject(doc) || !Array.isArray(doc.entries)) return [];
+  const notes: CatalogIssue[] = [];
+  doc.entries.forEach((raw, index) => {
+    if (!isObject(raw)) return;
+    const key = typeof raw.key === "string" ? raw.key : undefined;
+    for (const u of userSettingIssues(raw))
+      if (u.severity === "warning")
+        notes.push({
+          index,
+          ...(key ? { key } : {}),
+          field: "user",
+          message: u.message,
+        });
+  });
+  return notes;
 }
 
 /** 1-based line and column of a character offset. */
@@ -170,9 +197,18 @@ export function catalogDiagnostics(text: string): CodeDiagnostic[] {
     const at = lineCol(text, syntaxErrorOffset(text, message));
     return [{ ...at, message: `Invalid JSON: ${message}`, severity: "error" }];
   }
-  return catalogIssues(doc).map((issue) => ({
-    ...(issue.key ? lineOfKey(text, issue.key) : { line: 1, column: 1 }),
-    message: issue.message,
-    severity: "error" as const,
-  }));
+  const at = (issue: CatalogIssue) =>
+    issue.key ? lineOfKey(text, issue.key) : { line: 1, column: 1 };
+  return [
+    ...catalogIssues(doc).map((issue) => ({
+      ...at(issue),
+      message: issue.message,
+      severity: "error" as const,
+    })),
+    ...catalogNotes(doc).map((note) => ({
+      ...at(note),
+      message: note.message,
+      severity: "warning" as const,
+    })),
+  ];
 }

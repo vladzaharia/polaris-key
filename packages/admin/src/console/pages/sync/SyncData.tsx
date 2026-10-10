@@ -1,9 +1,10 @@
 /**
- * Cloud Sync → Data (U-04; S-17 §5.10, plans/U-01.md §3). Read-only: what this product declares
- * for Cloud Sync, all of it authored in `.pkey/schema` (the data shape) and `.pkey/product` (limits
- * and access policy). The page reads the active catalog: its user settings (`config` entries with
- * a `user` block), and its `cloudSync` block's collections, saves and migrations. The platform
- * ceilings every declared limit is held to close the page.
+ * Cloud Sync → Data (U-04; plans/U-01b.md §3.3). Read-only: what this product declares for Cloud
+ * Sync, all of it in `.pkey/schema`. The page reads the active catalog: its synced settings (every
+ * Editable `config` key, through `syncedSettings`) and its `cloudSync` block's collections and
+ * migrations. The platform's limits close the page. Every number on it is a constant from
+ * `@polaris-key/catalog`, never typed (R8). A person's quota is the `pkey.cloudSync.bytes`
+ * entitlement, set on Tiers, so it is not here.
  *
  * Cloud Sync has no principal without sign-in (plans/U-01.md §0): a device gets one only when a
  * person signs in through the product; a device activated with a licence key keeps its settings
@@ -15,12 +16,14 @@ import { useQuery } from "@tanstack/react-query";
 import {
   CLOUD_SYNC_CEILINGS,
   CLOUD_SYNC_DEFAULTS,
+  CLOUD_SYNC_SAVE_SLOTS,
+  CLOUD_SYNC_TEMPLATES,
+  resolveCollection,
   type CatalogCloudSync,
-  type UserSettingConflict,
-  type UserSettingSync,
+  type SyncConflict,
 } from "@polaris-key/catalog";
 import { api, type ProductCatalog } from "../../../api.js";
-import { formatBytes, formatCount } from "../../../lib/format.js";
+import { formatCount } from "../../../lib/format.js";
 import { Callout } from "../../../ui/Callout.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
@@ -34,25 +37,36 @@ import { r } from "../../routes.js";
 import { SettingsSection } from "../../templates/Settings.js";
 import { noCatalog, userSettings } from "./data.js";
 
-export const SYNC_LABEL: Record<UserSettingSync, string> = {
+/** Where a synced setting roams. */
+export const SYNC_LABEL: Record<"user" | "platform", string> = {
   user: "Everywhere the person signs in",
   platform: "Per platform family",
-  device: "Per device",
-  local: "Never leaves the device",
 };
 
-export const CONFLICT_LABEL: Record<UserSettingConflict, string> = {
+/** The one conflict vocabulary (plans/U-01b.md §2.2), in the console's words. */
+export const CONFLICT_LABEL: Record<SyncConflict, string> = {
   lastWrite: "Last write wins",
   max: "Keep the highest",
   min: "Keep the lowest",
   merge: "Merge members",
+  union: "Combine as a set",
+  revision: "Ask the player",
 };
 
-const ACCESS_LABEL: Record<string, string> = {
-  owner: "The person's devices",
-  ownerRead: "Devices read, the console writes",
-  server: "Console and backend only",
-};
+const KiB = 1024;
+const UNITS = ["bytes", "KiB", "MiB", "GiB", "TiB"] as const;
+
+/** Binary bytes, the way the limits are set: 65536 → "64 KiB", 268435456 → "256 MiB". */
+export function formatBinaryBytes(bytes: number): string {
+  let value = bytes;
+  let unit = 0;
+  while (value >= KiB && unit < UNITS.length - 1) {
+    value /= KiB;
+    unit++;
+  }
+  const rounded = Number.isInteger(value) ? value : Number(value.toFixed(2));
+  return `${new Intl.NumberFormat("en").format(rounded)} ${UNITS[unit]}`;
+}
 
 const muted = (text: string): React.ReactElement => (
   <span className="text-fg-muted">{text}</span>
@@ -75,8 +89,7 @@ export function SyncDataPage({ slug }: { slug: string }): React.ReactElement {
       title="Data"
       description={
         <>
-          Declared in <code className="font-mono text-xs">.pkey/schema</code>{" "}
-          and <code className="font-mono text-xs">.pkey/product</code>.
+          Declared in <code className="font-mono text-xs">.pkey/schema</code>.
         </>
       }
       refetching={catalog.isFetching && !catalog.isPending}
@@ -135,9 +148,9 @@ function SyncDataBody({
 }): React.ReactElement {
   const settings = userSettings(catalog);
   const cs: CatalogCloudSync = catalog?.cloudSync ?? {};
-  const collections = cs.collections ?? [];
+  const collections = (cs.collections ?? []).map(resolveCollection);
   const migrations = cs.migrations ?? [];
-
+  const saves = CLOUD_SYNC_TEMPLATES.saves;
   return (
     <div className="space-y-6">
       <Callout title="Only signed-in people sync">
@@ -147,11 +160,11 @@ function SyncDataBody({
 
       <SettingsSection
         id="sync-settings"
-        title="User settings"
+        title="Synced settings"
         description={
           <>
-            Config keys with a <code className="font-mono text-xs">user</code>{" "}
-            block.{" "}
+            Every config key people can change. Keys the game adds itself also
+            sync.{" "}
             <Link
               to={r.catalog(slug)}
               className="text-accent-fg underline underline-offset-2"
@@ -161,15 +174,32 @@ function SyncDataBody({
           </>
         }
       >
-        <div className="px-5 py-4">
+        <div className="space-y-4 px-5 py-4">
+          <DescriptionList
+            columns={3}
+            items={[
+              {
+                term: "Keys per player",
+                detail: `Up to ${formatCount(CLOUD_SYNC_DEFAULTS.settings.maxKeys)}`,
+              },
+              {
+                term: "Size per player",
+                detail: `Up to ${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.settings.maxBytes)}`,
+              },
+              {
+                term: "Largest value",
+                detail: formatBinaryBytes(
+                  CLOUD_SYNC_DEFAULTS.settings.maxValueBytes,
+                ),
+              },
+            ]}
+          />
           {settings.length === 0 ? (
-            <p className="text-sm text-fg-muted">
-              No catalog key is a user setting.
-            </p>
+            <p className="text-sm text-fg-muted">No catalog key syncs.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <caption className="sr-only">User settings</caption>
+                <caption className="sr-only">Synced settings</caption>
                 <thead className="text-xs text-fg-muted">
                   <tr className="border-b border-border">
                     <th scope="col" className="py-2 pr-4 font-bold">
@@ -190,13 +220,9 @@ function SyncDataBody({
                   {settings.map((e) => (
                     <tr key={e.key}>
                       <td className="py-2 pr-4">{mono(e.key)}</td>
-                      <td className="py-2 pr-4">{SYNC_LABEL[e.user.sync]}</td>
-                      <td className="py-2 pr-4">
-                        {CONFLICT_LABEL[e.user.conflict ?? "lastWrite"]}
-                      </td>
-                      <td className="py-2">
-                        {e.user.listed === false ? "Hidden" : "Shown"}
-                      </td>
+                      <td className="py-2 pr-4">{SYNC_LABEL[e.scope]}</td>
+                      <td className="py-2 pr-4">{CONFLICT_LABEL[e.policy]}</td>
+                      <td className="py-2">{e.listed ? "Shown" : "Hidden"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -209,11 +235,7 @@ function SyncDataBody({
       <SettingsSection
         id="sync-collections"
         title="Collections"
-        description={
-          cs.open
-            ? "Undeclared collection names are allowed at the default limits."
-            : "Only declared collections accept records."
-        }
+        description="Only declared collections accept records."
       >
         <div className="px-5 py-4">
           {collections.length === 0 ? (
@@ -230,58 +252,50 @@ function SyncDataBody({
                       Name
                     </th>
                     <th scope="col" className="py-2 pr-4 font-bold">
-                      Written by
+                      Records
                     </th>
                     <th scope="col" className="py-2 pr-4 font-bold">
                       Conflicts
                     </th>
+                    <th scope="col" className="py-2 pr-4 font-bold">
+                      Files
+                    </th>
                     <th scope="col" className="py-2 font-bold">
-                      At first sign-in
+                      Needs entitlement
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {collections.map((c) => (
                     <tr key={c.name}>
-                      <td className="py-2 pr-4">{mono(c.name)}</td>
                       <td className="py-2 pr-4">
-                        {ACCESS_LABEL[c.access] ?? c.access}
+                        {mono(c.name)}
+                        {c.label !== c.name ? (
+                          <span className="ml-2 text-fg-muted">{c.label}</span>
+                        ) : null}
                       </td>
-                      <td className="py-2 pr-4">{c.conflict ?? "revision"}</td>
-                      <td className="py-2">{c.onAttach ?? "prompt"}</td>
+                      <td className="py-2 pr-4">
+                        Up to {formatCount(c.maxRecords)} per player
+                      </td>
+                      <td className="py-2 pr-4">
+                        {CONFLICT_LABEL[c.conflict]}
+                        {c.conflictField ? (
+                          <> on {mono(c.conflictField)}</>
+                        ) : null}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {formatBinaryBytes(c.files.maxBytes)}, last{" "}
+                        {formatCount(c.files.keepRevisions)}{" "}
+                        {c.files.keepRevisions === 1 ? "version" : "versions"}
+                      </td>
+                      <td className="py-2">
+                        {c.requires ? mono(c.requires) : muted("None")}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
-      </SettingsSection>
-
-      <SettingsSection id="sync-saves" title="Saves">
-        <div className="px-5 py-4">
-          {cs.saves === undefined ? (
-            <p className="text-sm text-fg-muted">Saves are not declared.</p>
-          ) : (
-            <DescriptionList
-              columns={3}
-              items={[
-                {
-                  term: "Conflicts",
-                  detail: cs.saves.conflict ?? "prompt",
-                },
-                {
-                  term: "Needs entitlement",
-                  detail: cs.saves.requiresFlag
-                    ? mono(cs.saves.requiresFlag)
-                    : muted("None"),
-                },
-                {
-                  term: "Newer formats",
-                  detail: cs.saves.format?.refuseNewer ? "Refused" : "Accepted",
-                },
-              ]}
-            />
           )}
         </div>
       </SettingsSection>
@@ -317,40 +331,39 @@ function SyncDataBody({
 
       <SettingsSection
         id="sync-ceilings"
-        title="Platform ceilings"
-        description={
-          <>
-            Limits in <code className="font-mono text-xs">.pkey/product</code>{" "}
-            stay within these.
-          </>
-        }
+        title="Platform limits"
+        description="A person's quota is the pkey.cloudSync.bytes entitlement, set on tiers."
       >
         <div className="px-5 py-4">
           <DescriptionList
             columns={3}
             items={[
               {
-                term: "Settings per person",
-                detail: formatBytes(
-                  CLOUD_SYNC_CEILINGS.perPerson.settingsBytes,
-                ),
-                help: `Default ${formatBytes(CLOUD_SYNC_DEFAULTS.licensed.settingsBytes)}.`,
+                term: "Default quota",
+                detail: formatBinaryBytes(CLOUD_SYNC_DEFAULTS.quotaBytes),
+                help: `Without a licence: ${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.unlicensedQuotaBytes)}, no files.`,
               },
               {
-                term: "Records per person",
-                detail: formatBytes(
-                  CLOUD_SYNC_CEILINGS.perPerson.collectionBytes,
-                ),
-                help: `Default ${formatCount(CLOUD_SYNC_DEFAULTS.licensed.records)} records in ${formatBytes(CLOUD_SYNC_DEFAULTS.licensed.collectionBytes)}.`,
+                term: "Quota per person",
+                detail: `Up to ${formatBinaryBytes(CLOUD_SYNC_CEILINGS.perPerson.bytes)}`,
               },
               {
-                term: "Saves per person",
-                detail: formatBytes(CLOUD_SYNC_CEILINGS.perPerson.saveBytes),
-                help: `Default ${formatCount(CLOUD_SYNC_DEFAULTS.licensed.saves.slots)} slots of ${formatBytes(CLOUD_SYNC_DEFAULTS.licensed.saves.maxBytes)}.`,
+                term: "Saves",
+                detail: `Up to ${formatCount(CLOUD_SYNC_SAVE_SLOTS)} per player`,
+                help: `${formatBinaryBytes(saves.files.maxBytes)} each, last ${formatCount(saves.files.keepRevisions)} versions kept.`,
+              },
+              {
+                term: "Records per collection",
+                detail: `Up to ${formatCount(CLOUD_SYNC_DEFAULTS.records.maxRecords)}`,
+                help: `${formatBinaryBytes(CLOUD_SYNC_DEFAULTS.records.maxRecordBytes)} each.`,
+              },
+              {
+                term: "One file",
+                detail: `Up to ${formatBinaryBytes(CLOUD_SYNC_CEILINGS.perPerson.fileBytes)}`,
               },
               {
                 term: "Data per product",
-                detail: formatBytes(CLOUD_SYNC_CEILINGS.perProduct.bytes),
+                detail: formatBinaryBytes(CLOUD_SYNC_CEILINGS.perProduct.bytes),
               },
               {
                 term: "People holding data",
