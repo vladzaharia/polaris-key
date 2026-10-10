@@ -30,7 +30,6 @@
 
 import type { Db } from "../../db/types.js";
 import {
-  deployVarParser,
   platformStoreRows,
   type SettingsEnv,
 } from "../platformSettings.js";
@@ -73,6 +72,24 @@ export function sameValue(a: unknown, b: unknown): boolean {
   return canonicalJson(a) === canonicalJson(b);
 }
 
+function positiveInteger(raw: string): number | undefined {
+  const n = Number(raw.trim());
+  return Number.isSafeInteger(n) && n > 0 ? n : undefined;
+}
+
+/**
+ * A-13's integer `[vars]` parsers, by `[vars]` name: deploy values are reviewed in the repo, so
+ * they keep their pre-A-13 parsing rather than the runtime bounds.
+ */
+const DEPLOY_PARSERS: Readonly<Record<string, (raw: string) => number | undefined>> =
+  {
+    LAZY_DELTA_MAX_BYTES: positiveInteger,
+    BLOB_GC_GRACE_DAYS: (raw) => {
+      const n = Number(raw.trim());
+      return raw.trim() !== "" && Number.isFinite(n) && n > 0 ? n : undefined;
+    },
+  };
+
 /**
  * A `[vars]` string as the entry's value, or `undefined` when it is not one. A-13's integer keys
  * keep their pre-A-13 parsing (deploy values are reviewed in the repo, so they are not held to
@@ -80,7 +97,7 @@ export function sameValue(a: unknown, b: unknown): boolean {
  */
 export function parseDeployValue(def: SettingDef, raw: unknown): unknown {
   if (typeof raw !== "string" || def.varName === undefined) return undefined;
-  const legacy = deployVarParser(def.varName);
+  const legacy = DEPLOY_PARSERS[def.varName];
   if (legacy && def.value.kind === "integer") return legacy(raw);
   const t = raw.trim();
   let v: unknown;

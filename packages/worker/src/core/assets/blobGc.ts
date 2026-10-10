@@ -142,7 +142,7 @@ import {
   err,
 } from "../console/respond.js";
 import { ErrorCode } from "../errors.js";
-import { platformSettings } from "../platformSettings.js";
+import { platformSetting } from "../settings/platformRead.js";
 
 // ── Settings ─────────────────────────────────────────────────────────────────────────────────
 
@@ -199,17 +199,18 @@ export function blobGcSettings(
 
 /**
  * The deployment's effective settings (A-13): both values resolved through the platform settings
- * store (`core/platformSettings.ts`), so a console value applies unless the `[vars]` value of
+ * store (`core/settings/platformRead.ts`), so a console value applies unless the `[vars]` value of
  * `BLOB_GC_MODE` is a hard `off`, and an unreadable store stops the collector rather than run it.
  */
 export async function effectiveBlobGcSettings(
   env: Env,
   db: Db,
 ): Promise<BlobGcSettings> {
-  const s = await platformSettings(env, db);
   return blobGcSettings({
-    BLOB_GC_MODE: String(s.BLOB_GC_MODE.value),
-    BLOB_GC_GRACE_DAYS: String(s.BLOB_GC_GRACE_DAYS.value),
+    BLOB_GC_MODE: await platformSetting(env, db, "blobs.gc.mode"),
+    BLOB_GC_GRACE_DAYS: String(
+      await platformSetting(env, db, "blobs.gc.graceDays"),
+    ),
   });
 }
 

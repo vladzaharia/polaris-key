@@ -24,7 +24,7 @@ import {
 } from "../../../../core/assets/deltaDemand.js";
 import { pairMessage } from "./messages.js";
 import { shouldQueue } from "./policy.js";
-import { platformSetting } from "../../../../core/platformSettings.js";
+import { platformSetting } from "../../../../core/settings/platformRead.js";
 import { ciDeltaFroms, findPair } from "./records.js";
 import {
   forgetCold,
@@ -56,7 +56,7 @@ export async function sweepLazyDeltas(
   let queued = 0;
   const queue = env.DELTA_QUEUE;
   if (queue && settings.enabled) {
-    const maxBytes = await platformSetting(env, db, "LAZY_DELTA_MAX_BYTES");
+    const maxBytes = await platformSetting(env, db, "deltas.lazy.maxBytes");
     let budget =
       settings.dailyCap - (await generatedSince(db, product, now - 86400));
     for (const p of await hotPairs(

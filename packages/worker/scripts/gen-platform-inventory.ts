@@ -6,7 +6,7 @@
  *
  * The source is `packages/worker/src/platform/env.ts`: every `Env` member carries one
  * `@inventory <kind> <area>` JSDoc tag and, when a console value can override it, one
- * `@editable <PLATFORM_SETTINGS key>`. The checks, in both modes:
+ * `@editable <platform setting row key>`. The checks, in both modes:
  *
  *   1. every `Env` member has exactly one valid `@inventory` tag (a known kind and area), and an
  *      `@editable` names a `PLATFORM_SETTINGS` entry whose `varName` is that member;
@@ -27,7 +27,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as prettier from "prettier";
 import ts from "typescript";
-import { PLATFORM_SETTINGS } from "../src/core/platformSettings.js";
+import { aliasedPlatformEntries } from "../src/core/settings/platformRead.js";
 import {
   INVENTORY_AREAS,
   INVENTORY_KINDS,
@@ -81,7 +81,10 @@ export function parseEnvInventory(source: string): {
   );
   if (!iface) return { entries, errors: ["env.ts declares no `Env`"] };
   const editableKeys = new Map(
-    PLATFORM_SETTINGS.map((d) => [d.key as string, d.varName]),
+    aliasedPlatformEntries().map((d) => [
+      d.storage.kind === "scalar" ? d.storage.storedAs! : d.key,
+      d.varName!,
+    ]),
   );
   for (const m of iface.members) {
     if (ts.isIndexSignatureDeclaration(m)) continue;
@@ -125,7 +128,7 @@ export function parseEnvInventory(source: string): {
       if (kind !== "var") errors.push(`${name}: only a var can be @editable`);
       else if (editableKeys.get(editable) !== name)
         errors.push(
-          `${name}: @editable ${editable} is not a PLATFORM_SETTINGS key whose varName is ${name}`,
+          `${name}: @editable ${editable} is not a registry platform setting row key whose varName is ${name}`,
         );
     }
     entries.push({
@@ -138,10 +141,10 @@ export function parseEnvInventory(source: string): {
   }
   // Every registry key must point back at its var, so the console's editable set and the
   // inventory cannot disagree.
-  for (const d of PLATFORM_SETTINGS)
-    if (!entries.some((e) => e.editable === d.key))
+  for (const [rowKey, varName] of editableKeys)
+    if (!entries.some((e) => e.editable === rowKey))
       errors.push(
-        `PLATFORM_SETTINGS ${d.key}: its var ${d.varName} carries no matching @editable tag in env.ts`,
+        `registry platform setting ${rowKey}: its var ${varName} carries no matching @editable tag in env.ts`,
       );
   return { entries, errors };
 }

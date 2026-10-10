@@ -14,12 +14,13 @@
 
 import type { ReservedDisplayNamesMode } from "@polaris-key/manifest";
 import type { Db } from "../../db/types.js";
-import { platformSetting, type SettingsEnv } from "../platformSettings.js";
+import type { SettingsEnv } from "../platformSettings.js";
+import { platformSetting } from "../settings/platformRead.js";
 
 /** The platform's severity for a reserved display name. */
 export function reservedDisplayNamesMode(
   env: SettingsEnv,
   db: Db,
 ): Promise<ReservedDisplayNamesMode> {
-  return platformSetting(env, db, "IDENTITY_RESERVED_DISPLAY_NAMES");
+  return platformSetting(env, db, "identity.reservedDisplayNames");
 }

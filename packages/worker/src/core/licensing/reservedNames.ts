@@ -18,14 +18,15 @@ import {
   type ReservedNamesMode,
 } from "@polaris-key/manifest";
 import type { Db } from "../../db/types.js";
-import { platformSetting, type SettingsEnv } from "../platformSettings.js";
+import type { SettingsEnv } from "../platformSettings.js";
+import { platformSetting } from "../settings/platformRead.js";
 
 /** The platform's severity for an incompatible reserved-name declaration. */
 export function reservedNamesMode(
   env: SettingsEnv,
   db: Db,
 ): Promise<ReservedNamesMode> {
-  return platformSetting(env, db, "LICENSING_RESERVED_NAMES");
+  return platformSetting(env, db, "licensing.reservedNames");
 }
 
 /** The incompatible reserved-name declarations of a catalog (empty when there are none). */

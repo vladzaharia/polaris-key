@@ -327,19 +327,8 @@ export async function liveRowClaimKeys(
 export type RowSettingRefusal = {
   ok: false;
   status: 404 | 409 | 422;
-  reason:
-    | "unknown_setting"
-    | "setting_pending"
-    | "invalid_value"
-    | "reason_required"
-    | "invalid_reason"
-    | "invalid_expected_version"
-    | "version_conflict"
-    | "not_claimed"
-    | "invalid_manifest_value"
-    // ST-20 through `writeSetting()`: a manifest-authoritative product without (or with a bad)
-    // break-glass claim, and anything else the one write path refuses.
-    | WriteRefusal["reason"];
+  /** `writeSetting()`'s reasons, plus the two that are this route's own state checks. */
+  reason: WriteRefusal["reason"] | "not_claimed" | "invalid_manifest_value";
   message: string;
   /** On a version conflict: the value in force now, so the console can offer "reload". */
   current?: RowSettingView;
@@ -364,88 +353,6 @@ export interface RowSettingWriteInput {
 }
 
 const NEXT_RESYNC = "applies at the next resync";
-
-/** The refusal shared by write and revert before anything is read: the entry, the product. */
-function preflight(
-  def: SettingDef,
-  product: RowSettingProduct,
-): RowSettingRefusal | null {
-  if (!isRowBacked(def))
-    return {
-      ok: false,
-      status: 404,
-      reason: "unknown_setting",
-      message: `${def.key} is not a row-backed product setting`,
-    };
-  if (def.pending)
-    return {
-      ok: false,
-      status: 409,
-      reason: "setting_pending",
-      message: `${def.key} is not available yet (${def.pending.wp})`,
-    };
-  // The system product, and any product in manifest-authoritative mode (ST-20), is decided by
-  // `writeSetting()`: a console write there is refused (`manifest_authoritative`) unless it is a
-  // break-glass claim with a reason.
-  return null;
-}
-
-function checkReason(
-  def: SettingDef,
-  reason: unknown,
-): RowSettingRefusal | string | null {
-  if (reason === undefined || reason === null || reason === "") {
-    if (def.critical)
-      return {
-        ok: false,
-        status: 422,
-        reason: "reason_required",
-        message: `${def.key} is critical: give a reason for the change`,
-      };
-    return null;
-  }
-  if (
-    typeof reason !== "string" ||
-    reason.trim() === "" ||
-    reason.length > MAX_SETTING_REASON
-  )
-    return {
-      ok: false,
-      status: 422,
-      reason: "invalid_reason",
-      message: `reason must be text of at most ${MAX_SETTING_REASON} characters`,
-    };
-  return reason.trim();
-}
-
-function checkVersion(
-  expected: unknown,
-  view: RowSettingView,
-): RowSettingRefusal | null {
-  // Required, as platform settings require it: a write that names no version could overwrite a
-  // change it never saw.
-  if (
-    typeof expected !== "number" ||
-    !Number.isSafeInteger(expected) ||
-    expected < 0
-  )
-    return {
-      ok: false,
-      status: 422,
-      reason: "invalid_expected_version",
-      message:
-        "expectedVersion is required: the version the setting was read at (0 when unset)",
-    };
-  if (expected !== view.version)
-    return {
-      ok: false,
-      status: 409,
-      reason: "version_conflict",
-      message: `${view.def.key} changed since it was read (version ${view.version}, expected ${expected})`,
-      current: view,
-    };
-  return null;
-}
 
 /** A `writeSetting()` refusal as this route answers it (a version conflict with the value now). */
 async function fromWriteRefusal(
@@ -488,20 +395,7 @@ export async function writeRowSetting(
   actor: AuditActor,
   now: number,
 ): Promise<RowSettingWriteResult> {
-  const refused = preflight(def, product);
-  if (refused) return refused;
-  if (!fitsValueSpec(def.value, input.value))
-    return {
-      ok: false,
-      status: 422,
-      reason: "invalid_value",
-      message: `${JSON.stringify(input.value) ?? "undefined"} is not a value of ${def.key}`,
-    };
-  const reason = checkReason(def, input.reason);
-  if (reason !== null && typeof reason !== "string") return reason;
   const { view } = await readOne(ctx.db, product, def, now);
-  const conflict = checkVersion(input.expectedVersion, view);
-  if (conflict) return conflict;
 
   const claimed = claimsApply(product);
   const res = await writeSetting(
@@ -509,13 +403,16 @@ export async function writeRowSetting(
     {
       key: def.key,
       value: input.value,
-      // Re-checked in the write's own batch: the loser of a race writes nothing.
-      expectedVersion: view.version,
-      reason,
+      // Checked in the write's own batch: the loser of a race writes nothing.
+      expectedVersion: input.expectedVersion as number | undefined,
+      // `writeSetting()` refuses a reason that is not text.
+      reason: (typeof input.reason === "string"
+        ? input.reason.trim()
+        : input.reason) as string | null | undefined,
       audit: {
         action: claimed ? "setting.claim" : "setting.update",
         summary: ({ breakGlass }) =>
-          `${def.key} set in the console${claimed ? " (claimed from the manifest)" : ""}: ${auditValue(view.value)} → ${auditValue(input.value)}${reason ? ` (reason: ${reason})` : ""}${breakGlass ? ` (break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()}: ${breakGlass.reason})` : ""}`,
+          `${def.key} set in the console${claimed ? " (claimed from the manifest)" : ""}: ${auditValue(view.value)} → ${auditValue(input.value)}${typeof input.reason === "string" && input.reason.trim() ? ` (reason: ${input.reason.trim()})` : ""}${breakGlass ? ` (break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()}: ${breakGlass.reason})` : ""}`,
       },
     },
     {
@@ -523,8 +420,11 @@ export async function writeRowSetting(
       origin: "console",
       now,
       product,
-      // This route checks the version and the reason itself (above), with its own answers.
+      // No typed confirmation on this route; the version and a critical key's reason are
+      // `writeSetting()`'s own checks.
       strict: false,
+      requireVersion: true,
+      requireReason: true,
       breakGlass: input.breakGlass,
     },
   );
@@ -552,8 +452,6 @@ export async function revertRowSetting(
   actor: AuditActor,
   now: number,
 ): Promise<RowSettingRevertResult> {
-  const refused = preflight(def, product);
-  if (refused) return refused;
   const { row, view } = await readOne(ctx.db, product, def, now);
   if (!row || row.source !== "console")
     return {
@@ -564,8 +462,6 @@ export async function revertRowSetting(
         ? `${def.key} is not claimed: it already follows the manifest`
         : `${def.key} is not set in the console: it already has its default`,
     };
-  const conflict = checkVersion(input.expectedVersion, view);
-  if (conflict) return conflict;
 
   let restore: { value: unknown } | null = null;
   let applied = true;
@@ -602,7 +498,7 @@ export async function revertRowSetting(
     {
       key: def.key,
       op: "reset",
-      expectedVersion: row.version,
+      expectedVersion: input.expectedVersion as number | undefined,
       // The manifest's value goes back as a `source = 'manifest'` row (none: the row goes).
       ...(restore ? { restore: restore.value } : {}),
       audit: {
@@ -618,6 +514,7 @@ export async function revertRowSetting(
       now,
       product,
       strict: false,
+      requireVersion: true,
       // The restored manifest row's author, as the resync spells its own.
       ...(restore ? { author: "revert" } : {}),
     },
