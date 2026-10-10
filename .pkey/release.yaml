@@ -87,6 +87,12 @@ release:
       name: "@polaris-key/react"
       artifacts:
         tarball: { match: "polaris-key-react-*.tgz" }
+    npm.ui-core:
+      kind: package
+      ecosystem: npm
+      name: "@polaris-key/ui-core"
+      artifacts:
+        tarball: { match: "polaris-key-ui-core-*.tgz" }
     npm.zstd-wasm:
       kind: package
       ecosystem: npm

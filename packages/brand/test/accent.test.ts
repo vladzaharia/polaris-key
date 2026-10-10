@@ -216,3 +216,43 @@ describe("deriveAccent", () => {
     expect(dark).toBeCloseTo(lo, 2);
   });
 });
+
+describe("resolveAccent on a host's grounds (DL13, the native preset)", () => {
+  it("defaults to the brand's surfaces, so the shared vectors hold", () => {
+    for (const scheme of THEMES)
+      expect(resolveAccent("#369186", scheme, accentSurfaces(scheme))).toEqual(
+        resolveAccent("#369186", scheme),
+      );
+  });
+
+  it.each([
+    ["the Compose round's #3a3d45 host", ["#3a3d45", "#2f3238", "#44474f"]],
+    ["a chat app's greys", ["#1e1f22", "#2b2d31", "#313338"]],
+  ])("keeps a navy accent readable on %s (native dark)", (_name, grounds) => {
+    const r = resolveAccent("#1b2a6b", "dark", grounds);
+    for (const g of grounds) {
+      expect(contrastRatio(r.solid, g)).toBeGreaterThanOrEqual(ACCENT_RULES.ui);
+      expect(contrastRatio(r.fg, g)).toBeGreaterThanOrEqual(ACCENT_RULES.text);
+      expect(contrastRatio(r.focus, g)).toBeGreaterThanOrEqual(ACCENT_RULES.ui);
+    }
+    expect(contrastRatio(r.on, r.solid)).toBeGreaterThanOrEqual(
+      ACCENT_RULES.text,
+    );
+  });
+
+  it("keeps a yellow accent readable on a warm light host", () => {
+    const grounds = ["#fdf6e3", "#ffffff"];
+    const r = resolveAccent("#ffd400", "light", grounds);
+    for (const g of grounds) {
+      expect(contrastRatio(r.solid, g)).toBeGreaterThanOrEqual(ACCENT_RULES.ui);
+      expect(contrastRatio(r.fg, g)).toBeGreaterThanOrEqual(ACCENT_RULES.text);
+    }
+    expect(contrastRatio(r.on, r.solid)).toBeGreaterThanOrEqual(
+      ACCENT_RULES.text,
+    );
+  });
+
+  it("refuses an empty list of grounds", () => {
+    expect(() => resolveAccent("#369186", "dark", [])).toThrow(RangeError);
+  });
+});

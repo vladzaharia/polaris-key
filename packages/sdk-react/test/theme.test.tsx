@@ -293,12 +293,70 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
     };
     const dark = mergeTheme(partial, "dark");
     const light = mergeTheme(partial, "light");
-    expect(dark.tokens.accent).toBe("#123456");
+    // The accent runs through the resolver for each scheme, against that scheme's grounds.
     expect(light.tokens.accent).toBe("#123456");
+    expect(dark.tokens.accent).not.toBe("#123456");
+    expect(contrastRatio(dark.tokens.accent, "#010101")).toBeGreaterThanOrEqual(
+      3,
+    );
     expect(dark.tokens.background).toBe("#010101");
     expect(light.tokens.background).toBe("#fafafa");
     expect(light.tokens.text).toBe(neutralLightTokens.text);
     expect(mergeTheme(partial).scheme).toBe("dark");
+  });
+});
+
+describe("a product accent through the resolver (UI-KITS.md §3.3, DL13)", () => {
+  // Accents that read badly before the resolver ran: a pink on dark (label 3.84:1), a navy on
+  // dark (label 1.71:1, fill 1.57:1), a yellow on light (label 1.63:1).
+  const CASES = [
+    ["pink", "#ff4fa3", "dark"],
+    ["navy", "#1b2a6b", "dark"],
+    ["yellow", "#ffd400", "light"],
+    ["pink", "#ff4fa3", "light"],
+    ["navy", "#1b2a6b", "light"],
+    ["yellow", "#ffd400", "dark"],
+  ] as const;
+  for (const branding of ["neutral", "polaris-key"] as const)
+    for (const [name, accent, scheme] of CASES)
+      it(`${name} under ${branding}, ${scheme}: a readable primary and ring`, () => {
+        const t = mergeTheme({ branding, tokens: { accent } }, scheme).tokens;
+        expect(contrastRatio(t.accentText, t.accent)).toBeGreaterThanOrEqual(
+          4.5,
+        );
+        for (const ground of [t.background, t.surface, t.surfaceSunken]) {
+          expect(contrastRatio(t.accent, ground)).toBeGreaterThanOrEqual(3);
+          expect(contrastRatio(t.ring, ground)).toBeGreaterThanOrEqual(3);
+        }
+      });
+
+  it("the focus ring follows the product accent, not the brand's violet", () => {
+    for (const scheme of ["dark", "light"] as const) {
+      const t = mergeTheme(
+        { branding: "polaris-key", tokens: { accent: "#ff6a3d" } },
+        scheme,
+      ).tokens;
+      expect(t.ring).not.toBe(THEME_TOKENS[scheme].focus);
+      expect(t.ring.toLowerCase()).not.toBe("#9a5cff");
+    }
+  });
+
+  it("keeps what the integrator set beside the accent, and a var() as given", () => {
+    const owned = mergeTheme(
+      { tokens: { accent: "#ff4fa3", accentText: "#000000", ring: "#00ff00" } },
+      "dark",
+    ).tokens;
+    expect(owned).toMatchObject({
+      accent: "#ff4fa3",
+      accentText: "#000000",
+      ring: "#00ff00",
+    });
+    const host = mergeTheme(
+      { tokens: { accent: "var(--app-accent)" } },
+      "dark",
+    ).tokens;
+    expect(host.accent).toBe("var(--app-accent)");
+    expect(host.ring).toBe(neutralDarkTokens.ring);
   });
 });
 

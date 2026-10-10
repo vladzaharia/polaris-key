@@ -759,13 +759,27 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       "",
       "### Declared gaps",
       "",
-      "Variants the matrix does not pin yet, each with the work package that appends its rows (`vocabulary.gaps`):",
+      ...((uiMatrix.vocabulary?.gaps ?? []).length === 0
+        ? [
+            "None: every variant of the verification recipe is pinned (`vocabulary.gaps` is empty).",
+          ]
+        : [
+            "Variants the matrix does not pin yet, each with the work package that appends its rows (`vocabulary.gaps`):",
+            "",
+            ...uiMatrix.vocabulary.gaps.map(
+              (g) =>
+                `- \`${g.id}\` (${g.owner}): ${mdxProse(g.what)} ${mdxProse(g.then)}`,
+            ),
+          ]),
       "",
-      ...(uiMatrix.vocabulary?.gaps ?? []).map(
-        (g) =>
-          `- \`${g.id}\` (${g.owner}): ${mdxProse(g.what)} ${mdxProse(g.then)}`,
-      ),
-      "",
+      ...(uiMatrix.vocabulary?.loadingDelay
+        ? [
+            "### The loading delay",
+            "",
+            `DL7: a loading state shows nothing until ${uiMatrix.vocabulary.loadingDelay.min}-${uiMatrix.vocabulary.loadingDelay.max} ms after its request started, then its usual copy. The rows give \`elapsedMs\` below ${uiMatrix.vocabulary.loadingDelay.min} or from ${uiMatrix.vocabulary.loadingDelay.max}, never inside the window, so each kit's model timer may wait anywhere in it. The delayed states: ${uiMatrix.vocabulary.loadingDelay.states.map((x) => `\`${x}\``).join(", ")}.`,
+            "",
+          ]
+        : []),
       "### States to handle",
       "",
       "Every state a kit, or an app drawing its own UI, handles, with the copy keys the rows show for it (kit keys from `packages/brand/kit-copy/`, `core.*` keys from `conformance/parity/copy.<locale>.json`).",

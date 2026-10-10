@@ -140,8 +140,9 @@ jobs:
   #   tier 0  brand, protocol, zstd-wasm     no @polaris-key dependency
   #   tier 1  catalog, jws                   protocol
   #   tier 2  client-core, manifest          jws or catalog
-  #   tier 3  node, react                    client-core (react: brand)
-  #   tier 4  cli                            node, manifest
+  #   tier 3  ui-core                        client-core (and brand, an optional peer)
+  #   tier 4  node, react                    ui-core (react: brand)
+  #   tier 5  cli                            node, manifest
   #
   # releaseWorkflows.test.ts derives the tiers from the packages' own dependencies and simulates a
   # stuck leg in each tier. On top of the order, publish-package.yml reads every @polaris-key pin
@@ -213,7 +214,7 @@ jobs:
       fail-fast: false
       max-parallel: 3
       matrix:
-        package: [node, react]
+        package: [ui-core]
     permissions:
       contents: read
       id-token: write
@@ -228,6 +229,25 @@ jobs:
   npm-tier-4:
     name: npm feed, tier 4
     needs: [version, npm-pack, npm-tier-3]
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        package: [node, react]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-package.yml
+    with:
+      deliverable: npm.${{ matrix.package }}
+      artifact: npm-packages
+      dir: ${{ matrix.package }}
+      version: ${{ needs.version.outputs.version }}
+      channel: ${{ needs.version.outputs.channel }}
+
+  npm-tier-5:
+    name: npm feed, tier 5
+    needs: [version, npm-pack, npm-tier-4]
     strategy:
       fail-fast: false
       max-parallel: 3
@@ -252,7 +272,7 @@ jobs:
   # resolves.
   npm-install:
     name: npm installs from the feed
-    needs: [version, npm-tier-4]
+    needs: [version, npm-tier-5]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -720,6 +740,7 @@ jobs:
         npm-tier-2,
         npm-tier-3,
         npm-tier-4,
+        npm-tier-5,
         python,
         swift,
         maven,
@@ -785,6 +806,7 @@ jobs:
         npm-tier-2,
         npm-tier-3,
         npm-tier-4,
+        npm-tier-5,
         python,
         swift,
         maven,

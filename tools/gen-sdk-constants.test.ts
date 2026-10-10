@@ -214,7 +214,7 @@ describe("the sources", () => {
       syncScenariosVersion: 1,
       deviceLabelVersion: 1,
       presentationMatrixVersion: 1,
-      uiMatrixVersion: 1,
+      uiMatrixVersion: 2,
       contentCorpusVersion: 2,
     });
     expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);

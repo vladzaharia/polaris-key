@@ -1,17 +1,47 @@
-// The terminal kit's headless layer (docs/design/UI-KITS.md §1.3 layer c, §4.6): pure functions
-// from SDK results to a view, `{ component, state, copy }` plus the data the view shows. The
-// component and state names are those of packages/brand/kit-copy/components.json, and `copy`
-// lists the catalog keys the view's visible strings come from, so a host that draws its own UI
-// on these gets the same steps, states and copy keys as the drop-in flows (and the UK-02b
-// ui-matrix rows can be run against them as they land).
+// The terminal kit's headless layer (docs/design/UI-KITS.md §1.3 layer c, §4.6), moved here from
+// `@polaris-key/node`'s CLI (UK-14) so the Node terminal renders from the one JS headless layer:
+// pure functions from SDK results to a terminal view, `{ component, state, copy }` plus the data
+// the view shows. The component and state names are those of packages/brand/kit-copy/
+// components.json, and `copy` lists the catalog keys the terminal's strings come from, including
+// its own `cli.*` lines (its verbs, key hints and fixes).
+//
+// These are the terminal's renderings of the shared models in ./models (which ui-matrix.json
+// pins for every kit): the terminal draws what its verbs reach (plans/UK-02b.md D12) and names
+// its fixes as verbs. The SDK types they read are taken structurally, so `@polaris-key/node`'s
+// results pass in as they are and this package never imports the SDK.
 //
 // Nothing here touches a terminal, a network or a clock: the flows feed the SDK's answers in.
 
-import { ErrorCode } from "../constants.generated.js";
-import type { LicenseInfo } from "../license/client.js";
 import type { UpdateDecision } from "@polaris-key/protocol/update";
-import type { ActivationResult } from "../license/endpoints.js";
-import type { InstallOutcome } from "../update/drivers/types.js";
+
+/** The SDK's `network-error` code (ErrorCode.networkError). */
+const NETWORK_ERROR = "network-error";
+
+/** The license fields a terminal view reads (`@polaris-key/node`'s LicenseInfo). */
+export interface TerminalLicenseInfo {
+  tier: string | null;
+  tierLabel: string | null;
+  profile?: { email?: string | null; name?: string | null } | null;
+}
+
+/** An activation or enrolment result (`@polaris-key/node`'s ActivationResult), structurally. */
+export type TerminalActivationResult =
+  | { kind: "ok"; [k: string]: unknown }
+  | {
+      kind: "device-limit";
+      code?: string;
+      limit?: number;
+      deviceCount?: number;
+      manageUrl?: string;
+      [k: string]: unknown;
+    }
+  | { kind: string; code: string; [k: string]: unknown };
+
+/** How an install ended (`@polaris-key/node`'s InstallOutcome), structurally. */
+export interface TerminalInstallOutcome {
+  kind: "restartRequired" | "handedOff" | "storeOpened" | "unsupported";
+  [k: string]: unknown;
+}
 
 /** A view: which component and state, the catalog keys it shows, and its data. */
 export interface View<C extends string = string, S extends string = string> {
@@ -187,8 +217,8 @@ const ACTIVATION_KINDS = new Set([
 
 /** The view for an activation (or enrolment) result. */
 export function activationOutcome(
-  r: ActivationResult,
-  info: Pick<LicenseInfo, "tier" | "tierLabel"> | null = null,
+  r: TerminalActivationResult,
+  info: Pick<TerminalLicenseInfo, "tier" | "tierLabel"> | null = null,
 ): ActivateOutcome {
   if (r.kind === "ok")
     return {
@@ -198,7 +228,8 @@ export function activationOutcome(
       tier: tierName(info),
     };
   if (r.kind === "device-limit") {
-    const manageUrl = r.manageUrl ?? null;
+    const d = r as Extract<TerminalActivationResult, { kind: "device-limit" }>;
+    const manageUrl = d.manageUrl ?? null;
     return {
       component: "Activate",
       state: "device-limit",
@@ -221,19 +252,20 @@ export function activationOutcome(
               "part.seatMeter.caption",
               "core.activation.device-limit.message",
             ],
-        used: r.deviceCount ?? null,
-        limit: r.limit ?? null,
+        used: d.deviceCount ?? null,
+        limit: d.limit ?? null,
         manageUrl,
       },
     };
   }
-  if (r.kind === "refused" || r.kind === "error") {
+  const c = r as { kind: string; code: string };
+  if (c.kind === "refused" || c.kind === "error") {
     const code =
-      r.kind === "error"
-        ? r.code === ErrorCode.networkError
+      c.kind === "error"
+        ? c.code === NETWORK_ERROR
           ? "network"
           : "unknown"
-        : r.code;
+        : c.code;
     const kind = code === "key_entry_limit" ? "key-entry-limit" : null;
     return {
       component: "Activate",
@@ -245,14 +277,14 @@ export function activationOutcome(
       kind,
     };
   }
-  const kind = ACTIVATION_KINDS.has(r.kind) ? r.kind : null;
+  const kind = ACTIVATION_KINDS.has(c.kind) ? c.kind : null;
   return {
     component: "Activate",
     state: "rejected",
     copy: kind
       ? [`core.activation.${kind}.title`, `core.activation.${kind}.message`]
-      : [`core.codes.${r.code}.title`, `core.codes.${r.code}.message`],
-    code: r.code,
+      : [`core.codes.${c.code}.title`, `core.codes.${c.code}.message`],
+    code: c.code,
     kind,
   };
 }
@@ -377,7 +409,7 @@ export type StatusView =
 export interface StatusInput {
   status: GateStatus | string;
   graceUntil?: number;
-  info: Pick<LicenseInfo, "tier" | "tierLabel" | "profile"> | null;
+  info: Pick<TerminalLicenseInfo, "tier" | "tierLabel" | "profile"> | null;
   /** `identity.current()`: who this device is signed in as, or null for a key only device.
    *  Whether it is signed in comes from here, never from the license profile. */
   identity?: { name?: string | null; email?: string | null } | null;
@@ -401,7 +433,10 @@ function titleCase(v: string | null): string | null {
 
 /** The tier as a person reads it: the server's label, else its id with a capital. */
 export function tierName(
-  info: Partial<Pick<LicenseInfo, "tier" | "tierLabel">> | null | undefined,
+  info:
+    | Partial<Pick<TerminalLicenseInfo, "tier" | "tierLabel">>
+    | null
+    | undefined,
 ): string | null {
   return present(info?.tierLabel) ?? titleCase(present(info?.tier));
 }
@@ -644,7 +679,7 @@ export function progressView(
 
 /** The view for how an install ended. */
 export function installView(
-  o: InstallOutcome,
+  o: TerminalInstallOutcome,
 ): View<"UpdatePrompt", "ready" | "store" | "platform" | "blocked"> {
   switch (o.kind) {
     case "restartRequired":

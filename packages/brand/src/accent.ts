@@ -4,7 +4,8 @@
 //
 //   deriveAccent(rgba)          the input colour when a product supplies none: the most saturated
 //                               hue cluster of the icon's opaque pixels, at an accent lightness
-//   resolveAccent(hex, scheme)  solid, on, fg, subtle and focus for one colour scheme
+//   resolveAccent(hex, scheme)  solid, on, fg, subtle and focus for one colour scheme, on the
+//                               brand's surfaces or (the native preset) a host's own grounds
 //
 // Every step is a lightness move in OKLCH (hue and chroma held; chroma is only trimmed when a
 // lightness leaves the sRGB gamut, by oklchToHex). The searches are fixed-length bisections and
@@ -123,14 +124,19 @@ export function accentLabel(hex: string): AccentLabel {
     : "ink";
 }
 
-/** `solid` for a colour, a label and a scheme. Shared by resolveAccent and the danger solid. */
+/**
+ * `solid` for a colour, a label and a scheme. Shared by resolveAccent and the danger solid.
+ * `grounds` are the surfaces it must read on, page first: the brand's by default (the shared
+ * vectors), or a host's own when a kit runs under the `native` preset (UI-KITS.md DL13).
+ */
 export function accentSolid(
   hex: string,
   scheme: Theme,
   label: AccentLabel,
+  grounds: readonly string[] = accentSurfaces(scheme),
 ): string {
   const base = hexToOklch(normalizeHex(hex));
-  const surfaces = accentSurfaces(scheme);
+  const surfaces = grounds.map(normalizeHex);
   const onUi = (h: string) => clears(h, surfaces, ACCENT_RULES.ui);
   if (label === "white") {
     const readable = (h: string) =>
@@ -150,10 +156,14 @@ export function accentSolid(
     : solid;
 }
 
-/** `fg` for a colour in a scheme: text that clears 4.5:1 on every surface. */
-export function accentFg(hex: string, scheme: Theme): string {
+/** `fg` for a colour in a scheme: text that clears 4.5:1 on every surface of `grounds`. */
+export function accentFg(
+  hex: string,
+  scheme: Theme,
+  grounds: readonly string[] = accentSurfaces(scheme),
+): string {
   const base = hexToOklch(normalizeHex(hex));
-  const surfaces = accentSurfaces(scheme);
+  const surfaces = grounds.map(normalizeHex);
   const readable = (h: string) => clears(h, surfaces, ACCENT_RULES.text);
   return scheme === "dark"
     ? moveUntil(
@@ -168,19 +178,37 @@ export function accentFg(hex: string, scheme: Theme): string {
       );
 }
 
-/** Resolve any input colour into the five accent roles for one scheme (UI-KITS.md §3.3). */
+/**
+ * Resolve any input colour into the five accent roles for one scheme (UI-KITS.md §3.3).
+ * `grounds` are the surfaces the roles must read on, page first: the brand's four by default
+ * (the shared vectors), or the host's own under the `native` preset, so a host's accent keeps
+ * 3:1 (fills) and 4.5:1 (text) on the host's grounds (DL13; the Compose kit's `surfaces`).
+ */
 export function resolveAccent(
   hex: string,
   scheme: Theme,
+  grounds: readonly string[] = accentSurfaces(scheme),
 ): ResolvedProductAccent {
+  if (grounds.length === 0)
+    throw new RangeError("resolveAccent: grounds needs at least the page");
   const label = accentLabel(hex);
-  const solid = accentSolid(hex, scheme, label);
-  const fg = accentFg(hex, scheme);
+  const solid = accentSolid(hex, scheme, label, grounds);
+  const fg = accentFg(hex, scheme, grounds);
+  // On the brand's surfaces the preferred label always clears 4.5:1 on `solid`. A host's lighter
+  // dark grounds can lift a dark accent's solid past where white reads (navy on a #313338 host):
+  // then the other label, so the primary is never unreadable.
+  const preferred = label === "white" ? ACCENT_WHITE : ACCENT_INK;
+  const other = label === "white" ? ACCENT_INK : ACCENT_WHITE;
+  const on =
+    contrastRatio(preferred, solid) >= ACCENT_RULES.text ||
+    contrastRatio(other, solid) <= contrastRatio(preferred, solid)
+      ? preferred
+      : other;
   return {
     solid,
-    on: label === "white" ? ACCENT_WHITE : ACCENT_INK,
+    on,
     fg,
-    subtle: mixOver(solid, SUBTLE_ALPHA[scheme], accentSurfaces(scheme)[0]!),
+    subtle: mixOver(solid, SUBTLE_ALPHA[scheme], normalizeHex(grounds[0]!)),
     focus: scheme === "dark" ? fg : solid,
   };
 }
