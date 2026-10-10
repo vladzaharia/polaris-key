@@ -600,7 +600,12 @@ static func neutral_with(base_size: int, text: Color, bold: Font, panel: StyleBo
 	t.set_meta(BASE_SIZE_META, base_size)
 	# The kit's switch, check box and chevron icons in the game's text colour (`kit_icons`).
 	var off := ground.lerp(text, 0.35)
-	t.set_meta(ICON_PALETTE_META, {"on": text, "knob": ground, "off": off, "ink": text, "muted": ground.lerp(Color(text, 1.0), 0.72)})
+	# A switch that is on reads against its own knob and against the off state, whatever the ground:
+	# a knob too close to the track (a light ground under light text) turns to the opposite ink.
+	var knob := ground
+	if absf(knob.get_luminance() - text.get_luminance()) < 0.45:
+		knob = Color.BLACK if text.get_luminance() > 0.5 else Color.WHITE
+	t.set_meta(ICON_PALETTE_META, {"on": text, "knob": knob, "off": off, "ink": text, "muted": ground.lerp(Color(text, 1.0), 0.72)})
 	return t
 
 

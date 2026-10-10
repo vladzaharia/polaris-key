@@ -36,7 +36,7 @@ PKeyGate/Center/Card/Scroll/Body/Split/Form/PKeyActivationPanel/Card/Scroll/Stac
 == syncing ==
 Center/Scroll/Shell/Lead/Product/Monogram/Initial: Label "P"
 Center/Scroll/Shell/Lead/Product/Name: Label "Polaris Key SDK"
-Center/Scroll/Shell/Side/Progress/Status: Label "Checking for updates…"
+Center/Scroll/Shell/Side/Progress/Status: Label "Connecting…"
 Center/Scroll/Shell/Side/Progress/Bar: ProgressBar
 == consent metered ==
 Center/Scroll/Shell/Lead/Product/Monogram/Initial: Label "P"

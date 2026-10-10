@@ -805,7 +805,7 @@ func _update_values(shown: Array) -> void:
 		elif input is HSlider:
 			(input as HSlider).set_value_no_signal(float(v) if PKeyClaims.is_number(v) else 0.0)
 			var unit: String = r["unit"]
-			(n["value"] as Label).text = "%s%s" % [("%d" % int(v)) if r["integer"] and PKeyClaims.is_number(v) else str(v), (" " + unit) if unit != "" else ""]
+			(n["value"] as Label).text = "" if v == null else "%s%s" % [("%d" % int(v)) if r["integer"] and PKeyClaims.is_number(v) else str(v), (" " + unit) if unit != "" else ""]
 		elif input is SpinBox:
 			(input as SpinBox).set_value_no_signal(float(v) if PKeyClaims.is_number(v) else 0.0)
 		elif input is OptionButton:

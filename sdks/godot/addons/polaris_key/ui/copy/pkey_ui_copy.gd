@@ -20,7 +20,7 @@ extends Resource
 const DEFAULTS := {
 	# ── PKeyBoot ────────────────────────────────────────────────────────────────────────────
 	"boot_starting": "Starting…",
-	"boot_syncing": "Checking for updates…",
+	"boot_syncing": "Connecting…",
 	"boot_gate": "Checking your license…",
 	"boot_deciding": "Looking for a newer version…",
 	"boot_fetching": "Downloading content…",
@@ -210,7 +210,7 @@ const DEFAULTS := {
 	"update_platform_body": "A newer version is available. It installs through the store or platform you got this game from.",
 	"update_mandatory_body": "This version is below the minimum supported version. Please update; you can keep playing until you do.",
 	"update_blocked_title": "This version is no longer supported",
-	"update_blocked_body": "This version is below the minimum supported version, and no update is available here yet. You can keep playing.",
+	"update_blocked_body": "No update is available here yet. You can keep playing.",
 	"update_content_floor_body": "Some of this game's content needs a newer version. Please update; you can keep playing until you do.",
 	"update_revoked_title": "Content withdrawn",
 	"update_revoked_body": "Some of this game's content was withdrawn by its developer and can't be used. Update the app to keep playing.",
@@ -270,7 +270,7 @@ const DEFAULTS := {
 	"error_internal_error": "The service had a problem. Try again later.",
 	"error_network-error": "{product} couldn't connect. Check your connection and try again.",
 	"error_timeout": "{product} didn't answer in time. Try again.",
-	"error_invalid-response": "This device couldn't verify the license it was given. Check its date and time and that the game is up to date, then try again.",
+	"error_invalid-response": "{product} couldn't verify this license. Check the date and time, update the game, then try again.",
 	"error_service-unavailable": "This isn't enabled for this game.",
 	"error_no-token": "Activate or sign in first.",
 	"error_local-only": "This copy runs offline only.",

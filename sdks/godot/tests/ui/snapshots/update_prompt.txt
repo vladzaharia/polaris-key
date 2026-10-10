@@ -40,7 +40,7 @@ Card/Scroll/Body/Text/Message: Label "A newer version is available. Steam instal
 Card/Scroll/Body/Actions/Dismiss: Button "Not now" [focus 1]
 == blocked (locked) ==
 Card/Scroll/Body/Text/Title: Label "This version is no longer supported"
-Card/Scroll/Body/Text/Message: Label "This version is below the minimum supported version, and no update is available here yet. You can keep playing."
+Card/Scroll/Body/Text/Message: Label "No update is available here yet. You can keep playing."
 == binary native with no plugin (the download link) ==
 Card/Scroll/Body/Text/Title: Label "An update is available"
 Card/Scroll/Body/Text/Message: Label "Version 1.5.0 is available."
