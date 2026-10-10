@@ -4,13 +4,21 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (framework drop-ins (2026-10-08))                                                                                                                                                                       |
 | Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                   |
-| Depends on  | [SP-53](SP-53-backend-credential-contract.md)                                                                                                                                                                                                          |
+| Depends on  | [SP-53](SP-53-backend-credential-contract.md), [SP-54](SP-54-signed-in-subject-in-licence-document.md)                                                                                                                                                 |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-61](SP-61-spring-boot-starter.md), [SP-65](SP-65-end-to-end-ci-client-backend-pkey-dev.md), [SP-67](SP-67-developer-webhooks-delivery-and-adapters.md), [SP-68](SP-68-requiresignin-accepts-i21-tokens.md) |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                      |
 | Plan mode   | no                                                                                                                                                                                                                                                     |
 | Gates       | `drift-gate`, `ci:kotlin`                                                                                                                                                                                                                              |
 | Human input | none                                                                                                                                                                                                                                                   |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                              |
+
+## Plan follow-through (2026-10-09)
+
+Approved [`plans/SP-53.md`](../plans/SP-53.md) and [`plans/SP-54.md`](../plans/SP-54.md) (2026-10-09) bear on this package; where they differ from the text below, they win.
+
+- **Dependency.** Depends on SP-53 (the verdict, `backend-matrix.json`) and now also on SP-54: `requireSignIn()` reads `profile.user.subject` through its own port of the `licenseUserOf` rule, and replays `licenseUserCases` plus the `verdict` rows.
+- **Corrections.** The privacy file is `docs/PRIVACY.md`; there are eight locales, not nine (`en`, `de`, `es`, `it`, `ja`, `ko`, `pt-BR`, `zh-Hans`); `tools/gen-sdk-constants.test.ts` pins the `sdkId` list, which already holds this package's `<lang>-server` value after SP-53.
+- **Sequencing.** SP-53 merges first, then SP-54 rebases, swaps SP-53's private subject decoder for `licenseUserOf` and runs the one batched `pnpm gen corpus` after UK-03. This package builds on the integrated tree and regenerates nothing.
 
 ## Goal
 

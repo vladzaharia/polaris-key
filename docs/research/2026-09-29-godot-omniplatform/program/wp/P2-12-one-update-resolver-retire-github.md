@@ -25,6 +25,10 @@ Registered by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/R
 - `release.channelWorkflow` and `release.betaBranch` are removed at the switch, not deprecated: PR 2 makes them a validator error naming the replacement and migrates `products/djdl/product.json` (D7).
 - PR 2 merges only under the switch rule (§6.5). Deleting the GitHub-resolved resolver is [P2-12b](P2-12b-retire-github-resolver.md)'s.
 
+## Plan follow-through (2026-10-09)
+
+Approved [`plans/P2-08.md`](../plans/P2-08.md) (2026-10-09) meets the condition in `plans/P2-12.md` §7: P2-08 teaches `classifyChannel` and `defaultIncludes` the `dev` selector (and the matching write-time include), so legacy surfaces serve `dev` after this package's switch.
+
 ## SDK usability review (2026-10-08)
 
 Accepted changes from the [SDK usability review](../../../2026-10-08-sdk-usability/README.md) §10.1. Where they differ from the text below, they win.

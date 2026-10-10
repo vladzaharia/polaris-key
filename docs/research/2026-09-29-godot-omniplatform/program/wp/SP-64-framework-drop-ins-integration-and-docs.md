@@ -36,6 +36,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 ## Design notes
 
 - The docs are public (owner, 2026-10-08).
+- No client SDK changes, except SP-54b (the native `profile.user` readers, reached through UK-48; approved `plans/SP-54.md`, 2026-10-09). Sign-in lanes describe the signed-in subject as `profile.user.subject`, and a client that signs in refreshes the licence document afterwards (SP-58).
 - The managed-config server lane is written on the plain client; `serverClient()` (SP-63, optional) is a later improvement.
 
 ## Screen acceptance (brand transition, 2026-10-09)

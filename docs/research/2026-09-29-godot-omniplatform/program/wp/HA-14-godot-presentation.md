@@ -7,7 +7,7 @@
 | Depends on  | [HA-11](HA-11-presentation-discovery-plan.md), [HA-12](HA-12-presentation-discovery.md)                                                                                                                                                 |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [ST-41](ST-41-integration-page-overview-card.md), [SP-35](SP-35-sdk-api-registry-api-json-0-9.md), [SP-35b](SP-35b-sdk-api-renames-godot-swift-kotlin.md), [UK-41](UK-41-must-tier-closeout.md) |
 | Role        | `pkey-godot-engineer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                |
-| Plan mode   | yes: executes the approved [`plans/HA-11.md`](../plans/HA-11.md)                                                                                                                                                                        |
+| Plan mode   | yes: executes the approved [`plans/HA-14.md`](../plans/HA-14.md) (2026-10-09) under [`plans/HA-11.md`](../plans/HA-11.md)                                                                                                               |
 | Gates       | plan mode; corpus and transcript runners; UI snapshots                                                                                                                                                                                  |
 | Human input | none                                                                                                                                                                                                                                    |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                               |
@@ -17,6 +17,18 @@
 The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) records this package as **keep** in [`backlog-changes.json`](../../../2026-10-07-dx-consolidation/backlog-changes.json) ([Track J, SDK and UI-kit consolidation](../../../2026-10-07-dx-consolidation/tracks.md#j-sdk-and-ui-kit-consolidation)); the [decision record](../../../2026-10-07-dx-consolidation/integration.md) has the reasoning. This section wins over the text below where they differ.
 
 > Godot side of HA-13.
+
+## Approved plan (2026-10-09)
+
+[`plans/HA-14.md`](../plans/HA-14.md) is approved (2026-10-09, recommendation on D1 to D5). Where it differs from the text below, it wins.
+
+- **Sequencing.** Godot-only and independent of HA-13 (no shared code). It touches no corpus, so it does not wait for UK-03; it may start in parallel. If a runner finds a corpus gap, the rows join the post-UK-03 batch in HA-13's plan §4 (one `pnpm gen corpus`, append-only). Before coding, verify the `pkey_ui_theme.gd` and `ProductIdentity` state: UK-50 is merged (`DEV_PROJECT_NAME`, `hide_dev_project_name`, a header that scales with the title) and the plan plugs into today's `PKeyUiTheme.product_identity()`; UK-11 later imports `PKeyPresentationSource`.
+- **Fetch (D1).** A second `PKeyTransport` for icons with one additive option `follow_redirects = false` (a 3xx comes back as a status and reads as a miss), reusing the deadline, body cap and https checks; the 4.4.1 floor editor hands a 303 or 307 back as a plain success and 4.7 reports `REDIRECT_LIMIT_REACHED`, so both are tested. Web accepts the redirect and relies on the hash, with a typed N/A in the test (D5).
+- **Decode budget (D2).** Header dimensions are read before decode and refused above `PRESENTATION_ICON_MAX_DIMENSION` or a local 16-megapixel budget.
+- **Cache (D3).** One `presentation.json` per install under `user://polaris_key/presentation/`, the approved path.
+- **Dark accent (D4).** `PKeyUiTheme.presentation_accent_dark` is set from `accentDark` and applies in the dark scheme; the order stays integrator, product, icon-derived, ink.
+- **Hook.** After a successful `discover()` the source reparses, stores `presentation.json`, prunes to 4 files and emits `changed` only when the member differs; a manifest with no member clears it; a failed `discover()` keeps the last one; a cold boot loads the file through the same parser.
+- **Tests and docs.** `suite_presentation.gd` (tagged `core.presentation`), the transcript `discover` action asserting `expect.presentation`, kit snapshots with and without presentation, and the dark-accent row; docs: the Godot part of `build/ui/theming`, `sdks/godot/README.md` and `CHANGELOG.md`. `core.presentation` flips to `implemented` in `sdks/godot/parity.json` only.
 
 ## Goal
 

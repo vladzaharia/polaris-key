@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (SDK usability review (2026-10-08))                            |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                               |
-| Depends on  | [UK-51](UK-51-terminal-drop-in-contract.md)                                                                                          |
+| Depends on  | [UK-51](UK-51-terminal-drop-in-contract.md), [SP-54b](SP-54b-native-signed-in-user-readers.md)                                       |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [SP-64](SP-64-framework-drop-ins-integration-and-docs.md), [UK-53](UK-53-textual-screens.md) |
 | Role        | `pkey-implementer`                                                                                                                   |
 | Plan mode   | no                                                                                                                                   |
@@ -17,6 +17,7 @@
 The [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §12.2 changes this package. Where it differs from the text below, it wins.
 
 - Adds `namespace` and `onCollision`, and accepts the host's `rich.Console`. Follows UK-51's `cli` rows and exit 4.
+- Depends on [SP-54b](SP-54b-native-signed-in-user-readers.md) (approved `plans/SP-54.md`, 2026-10-09): `signed_in` comes from the Python `license_user()` reader, and SP-54b fixes the terminal kit's `signed_in = signed_in or bool(profile and profile.email)` bug at `ui/terminal/flows.py:189`. This package builds the mount, the gate and `@require_license` on that reader and runs UK-51's `mount`, `help` and `gate` rows.
 
 ## Design language v2 (2026-10-08)
 

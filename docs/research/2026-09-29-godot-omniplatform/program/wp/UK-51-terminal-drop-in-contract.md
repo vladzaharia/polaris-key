@@ -3,11 +3,11 @@
 | Field       | Value                                                                                                                                                                                                                                                                                                                              |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (framework drop-ins (2026-10-08))                                                                                                                                                                                                                            |
-| Size        | 0.4–0.6 engineer-weeks                                                                                                                                                                                                                                                                                                             |
-| Depends on  | [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                                                                                                                                                                                                                             |
+| Size        | 0.6–0.9 engineer-weeks                                                                                                                                                                                                                                                                                                             |
+| Depends on  | [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-03](UK-03-ui-core.md), [UK-45](UK-45-node-terminal-kit-0-8-x-fixes.md)                                                                                                                                                                                                                 |
 | Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [UK-46](UK-46-node-terminal-kit-for-existing-clis.md), [UK-48](UK-48-python-terminal-kit-as-a-mountable-drop-in.md), [UK-52](UK-52-node-cli-oclif-ink.md), [UK-53](UK-53-textual-screens.md), [UK-54](UK-54-jvm-terminal-kit-clikt-picocli.md), [UK-59](UK-59-built-kit-boards-refresh.md) |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                              |
-| Plan mode   | yes: executes the approved plan [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §7.1 and §9.3                                                                                                                                                                                                          |
+| Plan mode   | yes: executes the approved [`plans/UK-51.md`](../plans/UK-51.md) (2026-10-09), which executes the [framework drop-ins plan](../../../2026-10-08-framework-drop-ins/README.md) §7.1 and §9.3                                                                                                                                        |
 | Gates       | `plan-mode`, `corpus`, `drift-gate`                                                                                                                                                                                                                                                                                                |
 | Human input | none                                                                                                                                                                                                                                                                                                                               |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                          |
@@ -20,6 +20,16 @@ This package follows the [design language](../../../../design/UI-KITS.md#design-
 - **In this kit:** The `cli` rows pin the language for every terminal kit: a refused gate is a refusal with its fix (▲ and the command that resolves it), never a failure (✗); its copy keys come from the catalogs; it exits 4.
 - **Minimum check:** The `cli` family's rows; no screens.
 - **Acceptance:** the `cli` rows encode DL6–DL8 and pass; the UX review happens on the screens UK-46, UK-48 and UK-52–UK-54 render from them.
+
+## Plan follow-through (2026-10-09)
+
+[`plans/UK-51.md`](../plans/UK-51.md) is approved (2026-10-09, recommendation on every decision). Where it differs from the text below, it wins.
+
+- **Corrections to this brief.** There are no "UK-02b `terminal` rows": `terminal` is only a theme `kit` value, and the capability table is hard-coded in Node's `uk45.test.ts` while Python tests cases one at a time; UK-51 moves the table into the corpus. Python has no exit table today (literals): UK-51 adds the module. The `cli` family is its own object with typed sections and a `checkCli` pass, not an entry in `COMPONENT_FAMILIES`.
+- **Version number.** The next free `UI_MATRIX_VERSION` at merge time, expected 3 (UK-03 also bumps it); one regeneration (`pnpm gen corpus` then `pnpm gen constants`).
+- **Sequencing.** After UK-03 has regenerated and merged, and after UK-45 (merged; the `outcomes`, `stdin` and `capabilities` rows pin its behaviour and its test table moves). Ship order: UK-45, UK-03, UK-51, the adapters. The human refusal goes to stderr; `--json` keeps the result line on stdout.
+- **Follow-ups.** UK-46, UK-48, UK-52, UK-53 and UK-54 run the `mount`, `help` and `gate` rows when they build their adapters (a failing row is a bug against the row). UK-59 draws the pipe/non-TTY quadrant on `terminal.html` from the `gate` rows. P0-51 includes the `cli` family in the 1.0 review. `update apply`'s hand-off exit is left to UK-46 and UK-48.
+- **Docs and gates.** `gen-reference.mjs` counts the `cli` family beside the component families, `contribute/corpus.md` and the generated `reference/corpus.mdx`; the drift gates are `gen corpus --check`, `gen constants --check`, `parity:check` and the docs build.
 
 ## Goal
 
@@ -36,7 +46,7 @@ The owner asked for drop-ins that gate a server route or a CLI command with the 
 
 ## Scope
 
-**In:** Execute §7.1 and §9.3: a `cli` family in `ui-matrix.json` — verb ids and sets (`END_USER` default, developer verbs opt-in), mount and collision outcomes (`polaris-verb-collision`), help grouping (`cli.help.group`), the gate outcome for each gate state × TTY × `--json`, and exit 4. `EXIT.licenseRequired = 4` in Node's `cli/json.ts` and Python's exit table (`status` keeps exit 1). `uiMatrixVersion` becomes 2.
+**In:** Execute §7.1 and §9.3: a `cli` family in `ui-matrix.json` — verb ids and sets (`END_USER` default, developer verbs opt-in), mount and collision outcomes (`polaris-verb-collision`), help grouping (`cli.help.group`), the gate outcome for each gate state × TTY × `--json`, and exit 4. `EXIT.licenseRequired = 4` in Node's `cli/json.ts` and a new Python exit table module `polaris_key/ui/terminal/exit.py` (the codes are literals today in `flows.py`, `text.py`, `argparse_cli.py` and `verbs.py`; `status` keeps exit 1). `UI_MATRIX_VERSION` bumps to the next free number at merge (expected 3, since UK-03 also bumps).
 
 **Out** (and where it belongs instead):
 
@@ -69,7 +79,9 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 - [ ] The `cli` family pins the verb sets, the collision and help rules, the gate outcomes and exit 4.
 - [ ] A refused gate exits 4 and, with `--json`, prints the `error` code (decision 10).
-- [ ] `parity:check` and `gen constants --check` pass.
+- [ ] `parity:check`, `gen constants --check` and `gen corpus --check` pass; the new feature `ui.cli.contract` is required on `node` and `python`.
+- [ ] Node's `EXIT.licenseRequired === 4` and the Python exit table are tested now; a refused gate fixture exits 4 once UK-46 lands.
+- [ ] No refusal fixture carries ✗; each carries ▲ and its fix.
 - [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
