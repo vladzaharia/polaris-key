@@ -38,7 +38,7 @@ export function LibraryHero({
   return (
     <article
       aria-labelledby="hero-name"
-      className="grid overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 split:grid-cols-[1.45fr_1fr] short:min-[35rem]:grid-cols-[1.45fr_1fr]"
+      className="grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1 split:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] short:min-[35rem]:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]"
     >
       <ProductArt
         slug={product.slug}
@@ -51,9 +51,9 @@ export function LibraryHero({
         // Whole art, never cropped: contained over a blurred cover copy where the column is taller
         // than the art's 16:9 (side by side); exactly 16:9 when stacked.
         fit="contain"
-        className="aspect-video split:aspect-auto split:self-stretch short:min-[35rem]:aspect-auto short:min-[35rem]:self-stretch"
+        className="aspect-video w-full max-h-[min(40svh,28rem)] split:aspect-auto split:max-h-none split:self-stretch short:min-[35rem]:aspect-auto short:min-[35rem]:max-h-none short:min-[35rem]:self-stretch"
       />
-      <div className="flex flex-col gap-5 p-6 wide:p-9 short:gap-3 short:p-5">
+      <div className="flex min-w-0 flex-col gap-5 p-6 wide:p-9 short:gap-3 short:p-5">
         <div className="flex items-center gap-4">
           <ProductIcon
             slug={product.slug}
