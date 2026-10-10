@@ -169,7 +169,13 @@ for (const family of FAMILIES) {
             root!.querySelector(`button[data-key="${key}"]`),
             `${key} is a control`,
           ).not.toBeNull();
-        if (role === "title" && keyed && component !== "GraceBanner")
+        // A title key that labels the view's primary (Activate's Replace a device) is a control.
+        if (
+          role === "title" &&
+          keyed &&
+          component !== "GraceBanner" &&
+          key !== view.decisions.primary
+        )
           expect(
             keyed.closest("h1,h2,.callout-title,.label") !== null,
             `${key} is a heading`,
@@ -189,6 +195,14 @@ for (const family of FAMILIES) {
         expect([view.decisions.primary, ...drawn]).toContain(
           filled[0]!.getAttribute("data-key"),
         );
+      // DL4/DL6: a view with a primary draws it as the one filled control.
+      if (view.decisions.primary !== null && component !== "PolarisKeyGate")
+        expect(
+          root!.querySelector(
+            `:is([data-variant="primary"],[data-variant="danger"])[data-key="${view.decisions.primary}"]`,
+          ),
+          `${view.decisions.primary} is the filled control`,
+        ).not.toBeNull();
       // The app renders under the grace banner, outside the kit root, so the kit's stylesheet
       // never reaches it.
       if (component === "PolarisKeyGate" && view.state === "grace")

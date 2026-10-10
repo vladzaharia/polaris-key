@@ -45,6 +45,7 @@ import {
 } from "@polaris-key/elements/contract";
 
 import { text, type KitCtx } from "./parts.js";
+import { useSdkGate, type GateStep } from "./sdk.js";
 import { adoptKitStyles } from "./styles.js";
 import { renderView } from "./views.js";
 
@@ -154,7 +155,12 @@ function identityKey(o: KitTheme): string {
 }
 
 /** Everything one kit component resolves and holds: the model, the theme, the identity. */
-function useKit(component: ComponentName, props: KitProps) {
+function useKit(
+  component: ComponentName,
+  props: KitProps,
+  /** The view drawn for a view (the gate hands to Welcome, StatusScreen…): focus follows it. */
+  drawnOf?: (view: View, input: UiInput) => View,
+) {
   const provided = useContext(ThemeContext);
   const options = useMemo(
     () => mergeThemes(provided, props.theme),
@@ -340,12 +346,13 @@ function useKit(component: ComponentName, props: KitProps) {
   });
 
   // DL9: focus what the view says, when the kit already holds focus or was asked to.
-  const focusKey = `${view.component}.${view.state}`;
+  const focusView = drawnOf ? drawnOf(view, input) : view;
+  const focusKey = `${focusView.component}.${focusView.state}`;
   const lastFocus = useRef<string | null>(null);
   useEffect(() => {
     if (focusKey === lastFocus.current) return;
     lastFocus.current = focusKey;
-    const target = view.decisions.focus;
+    const target = focusView.decisions.focus;
     const root = rootRef.current;
     if (target === null || !root) return;
     const holds =
@@ -372,6 +379,8 @@ function KitRoot(props: {
   kit: Kit;
   bare?: boolean;
   className?: string;
+  /** Escape backs out of the step (DL9), where there is one to back out of. */
+  onEscape?: () => void;
   children: ReactNode;
 }): ReactNode {
   const { view, resolved: r, copy, rootRef, shape, kb } = props.kit;
@@ -392,6 +401,16 @@ function KitRoot(props: {
       data-bare={props.bare ? "" : undefined}
       lang={copy.locale}
       style={themeVars(r) as CSSProperties}
+      onKeyDown={
+        props.onEscape
+          ? (e) => {
+              if (e.key === "Escape" && !e.defaultPrevented) {
+                e.preventDefault();
+                props.onEscape!();
+              }
+            }
+          : undefined
+      }
     >
       {props.children}
     </div>
@@ -417,6 +436,26 @@ export function kitComponent(component: ComponentName) {
 export interface PolarisKeyGateProps extends KitProps {
   /** The app, drawn once the license holds (and under the grace banner while offline grace runs). */
   children?: ReactNode;
+  /** The app's own address, added to the device-limit link as `return=` (PX-W8). */
+  returnUrl?: string;
+}
+
+/** The component the gate draws for its state and the sign-in step it is on. */
+function gateScreen(view: View, step: GateStep): ComponentName | null {
+  switch (view.state) {
+    case "grace":
+      return "GraceBanner";
+    case "needs-activation":
+      return step === "activate"
+        ? "Activate"
+        : step === "handoff"
+          ? "SignInHandoff"
+          : "Welcome";
+    case "blocked":
+      return step === "activate" ? "Activate" : "StatusScreen";
+    default:
+      return null;
+  }
 }
 
 /**
@@ -425,13 +464,47 @@ export interface PolarisKeyGateProps extends KitProps {
  * runs. It never flashes activation during a cached-session check (the model keeps `booting`).
  */
 export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
-  const kit = useKit("PolarisKeyGate", props);
+  // Inside <PolarisKeyProvider> with no `input`, the gate starts itself from the SDK.
+  const sdk = useSdkGate(
+    props.returnUrl !== undefined ? { returnUrl: props.returnUrl } : {},
+  );
+  const driven = props.input === undefined && sdk !== null;
+  const step: GateStep = driven ? sdk.step : "home";
+  const productName = driven ? sdk.productName : null;
+  const theme = useMemo(
+    () =>
+      productName
+        ? mergeThemes({ product: { name: productName } }, props.theme)
+        : props.theme,
+    [productName, props.theme],
+  );
+  const kit = useKit(
+    "PolarisKeyGate",
+    {
+      ...props,
+      ...(theme ? { theme } : {}),
+      input: driven ? sdk.input : props.input,
+      onAction: (a) => {
+        if (driven) sdk.act(a.key);
+        props.onAction?.(a);
+      },
+      onInput: (field, value) => {
+        if (driven) sdk.edit(field, value);
+        props.onInput?.(field, value);
+      },
+    },
+    (v, input) => {
+      const screen = gateScreen(v, step);
+      return screen ? viewOf(screen, input) : v;
+    },
+  );
   const { view, input } = kit;
   if (view.state === "hidden" || view.state === "licensed")
     return <>{props.children}</>;
   const c = kit.ctxFor(view);
   const sub = (component: ComponentName) =>
     renderView(kit.ctxFor(viewOf(component, input)));
+  const screen = gateScreen(view, step);
   // The gate's own state, announced once while the screen it hands to draws the paths.
   const announce = (
     <p className="visually-hidden" role="status">
@@ -457,18 +530,11 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
         </>
       );
     case "needs-activation":
-      body = (
-        <>
-          {announce}
-          {sub("Welcome")}
-        </>
-      );
-      break;
     case "blocked":
       body = (
         <>
           {announce}
-          {sub("StatusScreen")}
+          {sub(screen!)}
         </>
       );
       break;
@@ -476,7 +542,13 @@ export function PolarisKeyGate(props: PolarisKeyGateProps): ReactNode {
       body = renderView(c);
   }
   return (
-    <KitRoot kit={kit} className={props.className}>
+    <KitRoot
+      kit={kit}
+      className={props.className}
+      onEscape={
+        driven && step !== "home" ? () => sdk.act("common.back") : undefined
+      }
+    >
       {body}
     </KitRoot>
   );

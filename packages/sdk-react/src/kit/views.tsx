@@ -6,8 +6,8 @@
 import type { ReactNode } from "react";
 import type { View } from "@polaris-key/ui-core";
 import {
-  isTitleKey,
   LAYOUTS,
+  placeKeys,
   type Layout,
 } from "@polaris-key/elements/contract";
 
@@ -39,54 +39,6 @@ const ERROR_PREFIXES = ["core.codes.", "core.activation."];
 const isErrorKey = (k: string) =>
   ERROR_PREFIXES.some((p) => k.startsWith(p)) ||
   /(Failed|\.failed|methodError|\.error)$/.test(k);
-
-/** Sort keys: the layout's order first, then core titles before the rest, then by name. */
-function ordered(keys: string[], layout: Layout): string[] {
-  const rank = (k: string) => {
-    const i = layout.order?.indexOf(k) ?? -1;
-    if (i >= 0) return i;
-    if (k.endsWith(".title")) return 100;
-    if (k.endsWith(".message")) return 101;
-    return 200;
-  };
-  return [...keys].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
-}
-
-/** Split a view's copy into the places the layout gives each key. */
-export function placeKeys(view: View, layout: Layout) {
-  const all = view.copy.filter((k) => !k.startsWith("a11y."));
-  const content = new Set(layout.content ?? []);
-  // The view's primary is the one filled control (DL4), drawn even where the state's copy leaves
-  // it out (a busy control keeps its label; a capability-limited Welcome keeps its one path).
-  const primary = view.decisions.primary;
-  const controls = layout.controls.filter(
-    (k) => all.includes(k) || (k === primary && !content.has(k)),
-  );
-  const linkKeys = (layout.links ?? []).filter((k) => all.includes(k));
-  const placed = new Set([...controls, ...linkKeys, ...content]);
-  const rest = all.filter((k) => !placed.has(k));
-  const titleKeys = ordered(
-    rest.filter((k) => isTitleKey(k, layout)),
-    layout,
-  );
-  const meta = rest.filter((k) => layout.meta?.includes(k));
-  const footnote = rest.filter((k) => layout.footnote?.includes(k));
-  const body = ordered(
-    rest.filter(
-      (k) =>
-        !titleKeys.includes(k) && !meta.includes(k) && !footnote.includes(k),
-    ),
-    layout,
-  );
-  return {
-    controls,
-    links: linkKeys,
-    titles: titleKeys,
-    meta,
-    body,
-    footnote,
-  };
-}
 
 /** Keys the content of a component draws itself. */
 function contentFor(c: KitCtx): ReactNode {
