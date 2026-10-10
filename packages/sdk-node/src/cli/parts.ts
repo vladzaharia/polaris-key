@@ -20,7 +20,11 @@
 // leave the view. Printed output never compacts; it scrolls.
 
 import type { KitContext } from "./context.js";
-import { keyVerdict, seatCells, type StatusFix } from "./models.js";
+import {
+  keyVerdict,
+  seatCells,
+  type StatusFix,
+} from "@polaris-key/ui-core/terminal";
 import {
   columnsOf,
   contentWidth,

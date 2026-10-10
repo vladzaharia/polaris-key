@@ -3,7 +3,7 @@
 // the rail and returns the exit code and the `--json` envelope's fields. Under `--json` a flow
 // draws nothing and never prompts.
 //
-// The flows sit on the headless models (models.ts) and the styled parts (parts.ts); every
+// The flows sit on the headless models (`@polaris-key/ui-core/terminal`) and the styled parts (parts.ts); every
 // visible string is a catalog key (copy.ts). Masked key entry never shows a character of the
 // secret, and a key is never printed, logged or put in the JSON.
 
@@ -28,7 +28,7 @@ import {
   updateView,
   type ActivateOutcome,
   type DeviceLimitView,
-} from "./models.js";
+} from "@polaris-key/ui-core/terminal";
 import {
   codeRows,
   commandRows,
