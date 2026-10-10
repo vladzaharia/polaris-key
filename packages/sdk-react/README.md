@@ -52,7 +52,32 @@ scope to it once, in the project's `.npmrc` (Yarn, Bun and the rest:
 pnpm add @polaris-key/react react react-dom
 ```
 
-`react` / `react-dom` `>=18` are peer dependencies. The package is `sideEffects: false`.
+`react` / `react-dom` `>=18` are peer dependencies. Only its two stylesheets have side effects.
+
+## The UI kit
+
+The Polaris Key look, in your product's accent, with no layout code (UI-KITS.md §4.2):
+
+```tsx
+import { PolarisKeyProvider, PolarisKeyGate } from "@polaris-key/react";
+
+<PolarisKeyProvider productSlug="acme">
+  <PolarisKeyGate>
+    <App />
+  </PolarisKeyGate>
+</PolarisKeyProvider>;
+```
+
+`<PolarisKeyGate>` starts itself from the provider: it never shows sign-in before the first state,
+renders the app once the license holds (under the grace banner while offline grace runs), and runs
+Welcome, the key, the device limit and the sign-in code in between. Every other component of the
+catalogue (`Welcome`, `Activate`, `DeviceLimit`, `Devices`, `UpdatePrompt`, `Settings`, `Paywall`, …)
+and the headless models are on `@polaris-key/react/kit`; theme them with
+`<PolarisKeyTheme theme={…}>` or a component's `theme`. The kit adopts its stylesheet itself (no
+inline `<style>`, so a strict CSP holds); a server-rendered app imports
+`@polaris-key/react/styles.css`, and `@polaris-key/react/fonts.css` brings Rubik. Restyle with the
+`pk-*` classes, `data-part` names and `--pk-*` variables, all in `@layer polaris-key`, so your own
+CSS wins. Docs: `/docs/build/ui/`.
 
 ## Quick start
 
