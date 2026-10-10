@@ -28,6 +28,9 @@ export interface Layout {
   links?: readonly string[];
   /** Keys that read as a title though their name does not say so. */
   titles?: readonly string[];
+  /** Title keys drawn as the subhead under the h1 (an h2 at body size): a fact that heads the
+   *  content, not a second title. */
+  subtitles?: readonly string[];
   /** Short status lines in muted meta type. */
   meta?: readonly string[];
   /** The footnote at the foot of the card. */
@@ -172,7 +175,10 @@ export const LAYOUTS: Readonly<Record<ComponentName, Layout>> = {
       "common.back",
     ],
     meta: ["common.working"],
-    order: ["deviceLimit.heading", "deviceLimit.lede"],
+    // The component is titled Replace a device in every kit (owner, 2026-10-05); the count
+    // heads the content under it, then the lede (UI-KITS.md §4.3 DeviceLimit).
+    order: ["deviceLimit.title", "deviceLimit.heading", "deviceLimit.lede"],
+    subtitles: ["deviceLimit.heading"],
     content: [
       "part.seatMeter.caption",
       "signin.replace.meta",

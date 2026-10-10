@@ -185,6 +185,34 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="landscape"][data-theme="dark"] .stage[data-split] .passport {
   background: radial-gradient(closest-side, var(--pk-accent-subtle, var(--pk-surface-sunken)), var(--pk-surface-sunken));
 }
+/* DL1 dark: the icon ambient fills the identity panel (the icon blurred under the icon). */
+.passport-ambient {
+  display: none;
+}
+.pk-root[data-shape="landscape"] .stage[data-split] .passport {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+}
+.pk-root[data-shape="landscape"][data-theme="dark"]:not([data-preset="native"]) .stage[data-split] .passport-ambient {
+  display: block;
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.passport-ambient img {
+  position: absolute;
+  inset: -20%;
+  inline-size: 140%;
+  block-size: 140%;
+  object-fit: cover;
+  filter: blur(56px) saturate(1.15);
+  opacity: 0.5;
+}
+.pk-root[data-shape="landscape"][data-preset="native"] .stage[data-split] .passport {
+  background: var(--pk-surface-sunken);
+}
 .pk-root[data-shape="landscape"] .stage[data-split] .passport .icon {
   --pk-icon-size: 7.5rem;
 }
@@ -195,8 +223,12 @@ const KIT_CSS = String.raw`
 .pk-root[data-shape="landscape"] .stage[data-split] .passport .by {
   display: none;
 }
-.pk-root[data-shape="landscape"] .stage[data-split] .actions {
+.pk-root[data-shape="landscape"] .stage[data-split] .actions,
+.pk-root[data-shape="landscape"] .stage[data-split] .links {
   justify-content: start;
+}
+.pk-root[data-shape="landscape"] .stage[data-split] .links {
+  margin-inline-start: calc(-1 * var(--pk-space-1));
 }
 .pk-root[data-shape="short"] .stage {
   padding-block: var(--pk-space-4);
@@ -283,6 +315,13 @@ p {
 .title[data-size="section"] {
   font-size: 1.25rem;
   line-height: 1.75rem;
+}
+/* The subhead under the h1: a fact that heads the content (DeviceLimit's count). */
+.title[data-size="sub"] {
+  font-family: var(--pk-kit-type-body-family);
+  font-size: 1.125rem;
+  line-height: 1.625rem;
+  font-weight: 500;
 }
 .lede,
 .body {
@@ -554,6 +593,34 @@ bdi {
 .row .row-title {
   color: var(--pk-text-strong);
 }
+.row[data-part="settings-row"] {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.row-text {
+  display: grid;
+  gap: var(--pk-space-0_5);
+  min-inline-size: 0;
+}
+.row-value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1_5);
+  color: var(--pk-text-muted);
+  text-align: end;
+}
+.row-value .glyph {
+  inline-size: 1rem;
+  block-size: 1rem;
+}
+.group {
+  display: grid;
+  gap: var(--pk-space-2);
+}
+.group-label {
+  margin: 0;
+  padding-inline: var(--pk-space-1);
+  color: var(--pk-text-muted);
+}
 .row .row-actions {
   display: flex;
   gap: var(--pk-space-1);
@@ -697,6 +764,10 @@ bdi {
 }
 .pane .actions .btn {
   inline-size: auto;
+}
+/* A pane starts at the host's start edge, its links too (DL2). */
+.pane .links {
+  justify-content: start;
 }
 
 /* ── Banner, toast, inline status ────────────────────────────────────────────────────────── */
@@ -850,6 +921,14 @@ dialog[open] .card {
     outline: 2px solid Highlight;
     outline-offset: -2px;
   }
+  /* The blurred icon is decoration: under forced colours it goes, with the tinted grounds. */
+  .ambient,
+  .passport-ambient {
+    display: none !important;
+  }
+  .pk-root .stage[data-split] .passport {
+    background: Canvas;
+  }
 }
 @media (prefers-contrast: more) {
   .pk-root {
@@ -859,6 +938,10 @@ dialog[open] .card {
   }
 }
 @media (prefers-reduced-transparency: reduce) {
+  .ambient img,
+  .passport-ambient {
+    display: none !important;
+  }
   dialog::backdrop {
     backdrop-filter: none;
     background: var(--pk-surface-page);

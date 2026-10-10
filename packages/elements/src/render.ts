@@ -587,6 +587,7 @@ export function titles(
   c: RenderCtx,
   keys: string[],
   size: "display" | "title" | "section" = "title",
+  subtitles: readonly string[] = [],
 ): TemplateResult | typeof nothing {
   if (keys.length === 0) return nothing;
   const [first, ...more] = keys;
@@ -604,7 +605,7 @@ export function titles(
       (k) =>
         html`<h2
           class="title"
-          data-size="section"
+          data-size=${subtitles.includes(k) ? "sub" : "section"}
           part="heading"
           data-part="heading"
           data-key=${k}

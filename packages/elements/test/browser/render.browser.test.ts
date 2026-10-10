@@ -238,6 +238,12 @@ describe("forced colours", () => {
     const el = await mount(status, "dark", 900);
     const card = el.shadowRoot!.querySelector<HTMLElement>(".card")!;
     expect(getComputedStyle(card).borderTopStyle).toBe("solid");
+    // The blurred icon is decoration: it goes under forced colours.
+    const art = [
+      ...el.shadowRoot!.querySelectorAll(".ambient, .passport-ambient"),
+    ];
+    expect(art.length).toBeGreaterThan(0);
+    for (const n of art) expect(getComputedStyle(n).display).toBe("none");
     // Under forced colours the OS's system colours set contrast; axe reads the author colours.
     expect(await axeViolations(el, ["color-contrast"])).toEqual([]);
     if (__PKEY_KIT_SHOTS__)

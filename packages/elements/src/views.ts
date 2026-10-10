@@ -7,6 +7,7 @@ import { ifDefined } from "lit/directives/if-defined.js";
 import { countdown, type View } from "@polaris-key/ui-core";
 
 import { LAYOUTS, type Layout } from "./layout.js";
+import { platformLabel } from "./platforms.js";
 import {
   actions,
   button,
@@ -164,6 +165,9 @@ function progressFor(c: RenderCtx): TemplateResult | typeof nothing {
 /** A locked value (ChannelPicker, a managed setting): the lock glyph, named. */
 function locked(c: RenderCtx): TemplateResult | typeof nothing {
   if (!c.view.copy.includes("a11y.locked")) return nothing;
+  // Settings name the lock on the locked row itself.
+  if (c.view.component === "Settings" && c.input.config?.some((r) => r.locked))
+    return nothing;
   return html`<span
     role="img"
     data-key="a11y.locked"
@@ -228,6 +232,11 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
     >
       ${loading ? shimmer() : nothing}
       <div class="split passport">
+        ${layout.split && c.resolved.iconUrl
+          ? html`<div class="passport-ambient" aria-hidden="true">
+              <img src=${c.resolved.iconUrl} alt="" />
+            </div>`
+          : nothing}
         ${showIdentity
           ? productHeader(c, layout.header, {
               name: !titleNames,
@@ -236,7 +245,12 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
           : nothing}
       </div>
       <div class="texts" data-part="texts">
-        ${titles(c, p.titles, heroTitle ? "display" : "title")}
+        ${titles(
+          c,
+          p.titles,
+          heroTitle ? "display" : "title",
+          layout.subtitles,
+        )}
         ${paragraphs(
           c,
           body.filter((k) => k !== "common.byDeveloper"),
@@ -483,7 +497,7 @@ function deviceLimitContent(c: RenderCtx): TemplateResult | typeof nothing {
                 ><br />
                 <span class="meta">
                   ${text(c, "signin.replace.meta", {
-                    platform: d.platform ?? "",
+                    platform: platformLabel(d.platform),
                     when: days(d.lastSeenDays),
                   })}
                   ${i === leastRecent && keys.has("signin.replace.leastRecent")
@@ -762,7 +776,7 @@ function deviceRows(c: RenderCtx): TemplateResult | typeof nothing {
                   · `
                 : nothing}
               ${text(c, "devices.meta", {
-                platform: d.platform ?? "",
+                platform: platformLabel(d.platform),
                 when: days(d.lastSeenDays),
               })}
             </span>
@@ -807,47 +821,132 @@ function releaseNotes(c: RenderCtx): TemplateResult | typeof nothing {
   </div>`;
 }
 
+/** A config row as the kit takes it: ui-core's row plus the catalog entry's `label`, when the
+ *  adapter passes it (every product catalog entry has one). */
+type SettingsRow = NonNullable<RenderCtx["input"]["config"]>[number] & {
+  label?: string;
+};
+
+/** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
+ *  "Audio volume"), never the raw key (DL8). */
+export function settingLabel(row: SettingsRow): string {
+  if (row.label?.trim()) return row.label.trim();
+  const phrase = row.key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[._\-\s/:]+/)
+    .filter(Boolean)
+    .map((w) => w.toLocaleLowerCase())
+    .join(" ");
+  return phrase ? phrase[0]!.toLocaleUpperCase() + phrase.slice(1) : row.key;
+}
+
 function settingsRows(c: RenderCtx): TemplateResult | typeof nothing {
   const keys = new Set(c.view.copy);
-  const rows = c.input.config ?? [];
-  const shown = [...keys].filter(
+  const rows = (c.input.config ?? []) as SettingsRow[];
+  const used = new Set<string>();
+  const use = (k: string) => (keys.has(k) ? (used.add(k), true) : false);
+  // Each row: its name, where its value comes from (or who set it), and the value at the end.
+  const drawn = rows.map((r) => {
+    const meta: TemplateResult[] = [];
+    const from = r.locked
+      ? r.org
+        ? "settings.setBy"
+        : "settings.setByGuardian"
+      : `settings.source.${r.source}`;
+    if (use(from))
+      meta.push(
+        html`<span data-key=${from}
+          >${text(c, from, { org: r.org ?? "" })}</span
+        >`,
+      );
+    if (
+      r.type === "number" &&
+      typeof r.min === "number" &&
+      typeof r.max === "number" &&
+      use("settings.range")
+    )
+      meta.push(
+        html`<span data-key="settings.range"
+          >${text(c, "settings.range", { min: r.min, max: r.max })}</span
+        >`,
+      );
+    let value: unknown = nothing;
+    if (typeof r.value === "boolean") {
+      const k = r.value ? "settings.on" : "settings.off";
+      use(k);
+      value = html`<span data-key=${k}>${text(c, k)}</span>`;
+    } else if (r.value !== undefined && r.value !== null)
+      value = html`<bdi>${String(r.value)}</bdi>`;
+    return html`<li class="row" part="settings-row" data-part="settings-row">
+      <span class="row-text">
+        <span class="row-title"><bdi>${settingLabel(r)}</bdi></span>
+        ${meta.length
+          ? html`<span class="meta"
+              >${meta.map((m, i) => html`${i ? " · " : ""}${m}`)}</span
+            >`
+          : nothing}
+      </span>
+      <span class="row-value"
+        >${r.locked && keys.has("a11y.locked")
+          ? html`<span
+              role="img"
+              data-key="a11y.locked"
+              aria-label=${plain(c, "a11y.locked")}
+              >${GLYPHS.lock()}</span
+            >`
+          : nothing}${value}</span
+      >
+    </li>`;
+  });
+  // The provenance group's heading (B10: "From <Developer>" for what the person can change).
+  const group = use("settings.fromDeveloper")
+    ? html`<h2 class="label group-label" data-key="settings.fromDeveloper">
+        ${text(c, "settings.fromDeveloper")}
+      </h2>`
+    : nothing;
+  const search = use("settings.search")
+    ? html`<div class="field" data-part="search">
+        <input
+          type="search"
+          data-key="settings.search"
+          aria-label=${plain(c, "settings.search")}
+          placeholder=${plain(c, "settings.search")}
+          autocomplete="off"
+          @input=${(e: Event) =>
+            c.edit("search", (e.target as HTMLInputElement).value)}
+        />
+      </div>`
+    : nothing;
+  // A key of the state no row carried (an "On" with no boolean row) still shows, once.
+  const rest = [...keys].filter(
     (k) =>
-      k.startsWith("settings.") &&
+      !used.has(k) &&
       (k.startsWith("settings.source.") ||
         k === "settings.on" ||
         k === "settings.off" ||
         k === "settings.setBy" ||
         k === "settings.setByGuardian" ||
-        k === "settings.fromDeveloper" ||
-        k === "settings.range" ||
-        k === "settings.search"),
+        k === "settings.range"),
   );
-  if (rows.length === 0 && shown.length === 0) return nothing;
-  return html`<ul class="list" data-part="settings-list">
-    ${rows.map(
-      (r) =>
-        html`<li class="row" part="settings-row" data-part="settings-row">
-          <span></span>
-          <span><span class="row-title">${r.key}</span></span>
-          <span class="meta"
-            >${r.locked && keys.has("settings.setBy")
-              ? text(c, "settings.setBy", { org: r.org ?? "" })
-              : r.value === undefined
-                ? ""
-                : String(r.value)}</span
-          >
-        </li>`,
-    )}
-    ${shown
-      .filter((k) => !(k === "settings.setBy" && rows.some((r) => r.locked)))
-      .map(
-        (k) =>
-          html`<li class="row">
-            <span></span><span class="meta" data-key=${k}>${text(c, k)}</span
-            ><span></span>
-          </li>`,
-      )}
-  </ul>`;
+  if (rows.length === 0 && rest.length === 0)
+    return group === nothing && search === nothing
+      ? nothing
+      : html`${search}${group}`;
+  return html`${search}
+    <div class="group" data-part="settings-group">
+      ${group}
+      <ul class="list" data-part="settings-list">
+        ${drawn}
+      </ul>
+      ${rest.length
+        ? html`<p class="meta">
+            ${rest.map(
+              (k, i) =>
+                html`${i ? " · " : ""}<span data-key=${k}>${text(c, k)}</span>`,
+            )}
+          </p>`
+        : nothing}
+    </div>`;
 }
 
 function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
