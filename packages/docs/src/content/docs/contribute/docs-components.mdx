@@ -25,17 +25,26 @@ import RunbookSection from "../../../components/docs/RunbookSection.astro";
 
 Import a component at the top of the page that uses it. Props are the contract; the console's `ui/` styles them.
 
-| Component | What it renders | Props |
-| --------- | --------------- | ----- |
-
-{DOCS_COMPONENTS.map((c) => (
-
-  <tr key={c.name}>
-    <td><code>{c.name}</code></td>
-    <td>{c.summary}</td>
-    <td>{c.props.join(", ")}</td>
-  </tr>
-))}
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>What it renders</th>
+      <th>Props</th>
+    </tr>
+  </thead>
+  <tbody>
+    {DOCS_COMPONENTS.map((c) => (
+      <tr key={c.name}>
+        <td>
+          <code>{c.name}</code>
+        </td>
+        <td>{c.summary}</td>
+        <td>{c.props.join(", ")}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
 
 ## Choose an SDK
 
@@ -97,7 +106,7 @@ Name a label exactly as the screen shows it: select <UiLabel name="portal.activa
 
 <PortalShot
   id="activate-enter"
-  caption="The **Activate license** dialog"
+  caption="The Activate license dialog"
   alt="The Activate license dialog with a field for the license key"
 />
 
