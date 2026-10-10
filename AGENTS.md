@@ -212,6 +212,7 @@ Godot, and Kotlin for the features its parity manifest has implemented).
 | `platform-inventory` | `pnpm gen platform-inventory` | Platform inventory from the tagged Env members                                    |
 | `storefront-ci`      | `pnpm gen storefront-ci`      | CLI copy of the Worker's storefront CI plane                                      |
 | `settings`           | `pnpm gen settings`           | Settings reference page and console search index                                  |
+| `cli-reference`      | `pnpm gen cli-reference`      | The pkey CLI reference page, from the command table                               |
 | `brand`              | `pnpm gen brand`              | Brand tokens, launch kit, kit copy and per-SDK theme files                        |
 | `action-bundle`      | `pnpm gen action-bundle`      | The publish Action's committed esbuild bundle of the CLI                          |
 | `docs-reference`     | `pnpm gen docs-reference`     | Docs reference pages generated from the validators, routes, migrations and corpus |

@@ -182,6 +182,18 @@ export const GENERATORS: Generator[] = [
     write: [tsx("packages/worker/scripts/gen-settings.ts")],
   },
   {
+    id: "cli-reference",
+    title: "The pkey CLI reference page, from the command table",
+    order: 75,
+    inputs: [
+      "packages/cli/scripts/gen-reference.ts",
+      "packages/cli/src/help.ts",
+    ],
+    outputs: ["packages/docs/src/content/docs/reference/cli.mdx"],
+    write: [tsx("packages/cli/scripts/gen-reference.ts")],
+    needsBuild: true,
+  },
+  {
     id: "brand",
     title: "Brand tokens, launch kit, kit copy and per-SDK theme files",
     order: 80,

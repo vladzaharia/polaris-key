@@ -17,6 +17,7 @@ import {
   completionScript,
   COMPLETION_SHELLS,
   findCommand,
+  GROUPS,
   renderHelp,
   shortUrl,
   VALUELESS_FLAGS,
@@ -163,7 +164,8 @@ describe("the command table", () => {
 // ── Help and completion are generated from it ────────────────────────────────────────────────
 
 describe("help and completion come from the table", () => {
-  const term = () => termFor({ isTTY: false, columns: 80 }, {}, undefined);
+  const term = () =>
+    termFor({ isTTY: false, columns: 80, write: () => true }, {}, undefined);
 
   it("every command's rows are in the overview and every name is in each shell's script", () => {
     const help = stripAnsi(renderHelp(term()));
@@ -633,5 +635,47 @@ product:
     });
     expect(out.code).toBe(0);
     expect(out.out).toContain("Moved /slug");
+  });
+});
+
+// ── The reference page ───────────────────────────────────────────────────────────────────────
+
+describe("reference/cli.mdx", () => {
+  it("is the table rendered: the committed page is byte-identical to the generator's output", async () => {
+    const { renderAll, PAGE_PATH } =
+      await import("../scripts/gen-reference.js");
+    const committed = await readFile(
+      path.join(__dirname, "..", "..", "..", PAGE_PATH),
+      "utf8",
+    );
+    expect(committed).toBe(renderAll()[PAGE_PATH]);
+  });
+
+  it("lists every command, every group heading and every Action input", async () => {
+    const { renderPage } = await import("../scripts/gen-reference.js");
+    const page = renderPage();
+    for (const c of COMMANDS) expect(page).toContain(`### \`pkey ${c.name}\``);
+    for (const [, heading] of GROUPS) expect(page).toContain(`## ${heading}`);
+    for (const input of ACTION_INPUTS)
+      expect(page).toContain(`| \`${input}\` |`);
+  });
+
+  it("negative control: a command added to the table is on the page", async () => {
+    const { renderPage } = await import("../scripts/gen-reference.js");
+    const fake: PkeyCommand = {
+      name: "zzfake",
+      group: "shell",
+      json: false,
+      summary: "A command added for the test",
+      rows: [["zzfake", "x"]],
+      usage: ["pkey zzfake"],
+    };
+    (COMMANDS as PkeyCommand[]).push(fake);
+    try {
+      expect(renderPage()).toContain("### `pkey zzfake`");
+    } finally {
+      (COMMANDS as PkeyCommand[]).pop();
+    }
+    expect(renderPage()).not.toContain("zzfake");
   });
 });
