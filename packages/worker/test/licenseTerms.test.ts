@@ -359,7 +359,7 @@ describe("one terms implementation", () => {
       /\?\?\s*product\.defaultDeviceLimit/,
       /\?\?\s*p\.defaultMaxOfflineDays/,
       /\?\?\s*p\.defaultDeviceLimit/,
-      /license\.device_limit\s*\?\?(?!\s*null\b)/,
+      /license\.device_limit\s*\?\?(?!\s*(?:null\b|"inherit"))/,
       /licenseOwnDeviceLimit\([^)]*\)\s*\?\?/,
     ];
     const hits: string[] = [];
