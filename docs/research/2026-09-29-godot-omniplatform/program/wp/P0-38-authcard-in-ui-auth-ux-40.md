@@ -43,7 +43,7 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 **In:**
 
-- Promote LoginCard, ProviderRow, Glyphs and KeyField; one CodeEntry for SignInPage, StepUp and SignInMethods; step slots per SIGN-IN.md §8; t() only; the Worker twin renderAuthCard() in brandHtml.ts reads the same catalog (expired code or link with Send a new code, device pages with the product header; UX-43). PX-12, PX-14, PX-15, PX-21 and the console login (ST-30) build on it. Absorbs UX-40 and UX-43.
+- Promote LoginCard, ProviderRow, Glyphs and KeyField; one CodeEntry for SignInPage, StepUp and SignInMethods; step slots per SIGN-IN.md §3.2; t() only; the Worker twin renderAuthCard() in brandHtml.ts reads the same catalog (expired code or link with Send a new code, device pages with the product header; UX-43). PX-12, PX-14, PX-15, PX-21 and the console login (ST-30) build on it. Absorbs UX-40 and UX-43.
 
 **Out** (and where it belongs instead):
 
