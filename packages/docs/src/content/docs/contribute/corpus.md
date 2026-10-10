@@ -101,7 +101,7 @@ dual-shape ambiguity for a runner to pick the wrong side of. Version constants t
 files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerprintVersion` **1**,
 `stageMatrixVersion` **3**, `headersVersion` **2**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
-`feedUrlMatrixVersion` **1**, `syncScenariosVersion` **1**, `deviceLabelVersion` **1**,
+`feedUrlMatrixVersion` **1**, `syncScenariosVersion` **2**, `deviceLabelVersion` **1**,
 `contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **1** — and case counts, generated
 straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
@@ -261,6 +261,15 @@ template every SDK's runner copies). Its self-check fixes the step, call and ass
 requires every listed rule to have a scenario, checks HLC and `clientId` syntax, and refuses a
 fresh `mutationId` at or below one the same client already sent. A new scenario keeps
 `syncScenariosVersion`; a vocabulary or expectation change bumps it.
+
+Version **2** (`plans/U-01b.md` §4) was such a change: the calls became the shipped `set` and
+`clear`, every pull body carries `quota` and `usage` in place of `limits`, the scenario catalog's
+settings are routes (`syncedSettings`), `states` pins `sync` in place of `pending`, and
+`locked-key-refused` lost its unknown-key step (an undeclared key is an open setting). It appends
+the `legacyLocal` init member (the `config.local` contents handed to `importLocal`), the rules and
+scenarios for open settings, setting routes, the import, record field policies, 403 reasons, paused
+writes and parked rejections, and a last section, `settingCases`: catalog entries in,
+`syncedSettings` routes out.
 
 `presentation-matrix.json` (`plans/HA-11.md` §4, `plans/HA-12.md` §4) is hand-authored, ASCII
 only and **append-only**: a new row keeps `presentationMatrixVersion`; a changed row or rule bumps
