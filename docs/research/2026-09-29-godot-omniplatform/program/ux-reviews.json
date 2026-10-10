@@ -1,1 +1,34 @@
-{ "reviews": {} }
+{
+  "reviews": {
+    "UK-45": {
+      "verdict": "pass",
+      "date": "2026-10-10",
+      "evidence": "/Users/vlad/Repos/pk-wt/_lead/evidence/UK-45/ux-review.md"
+    },
+    "UK-47": {
+      "verdict": "pass",
+      "date": "2026-10-10",
+      "evidence": "/Users/vlad/Repos/pk-wt/UK-47-evidence/ux-review.md"
+    },
+    "UK-50": {
+      "verdict": "pass",
+      "date": "2026-10-10",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/godot-kit/final5/"
+    },
+    "ST-50": {
+      "verdict": "pass",
+      "date": "2026-10-10",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/ST-50/"
+    },
+    "PX-30": {
+      "verdict": "pass",
+      "date": "2026-10-10",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/PX-30/"
+    },
+    "HA-14": {
+      "verdict": "pass",
+      "date": "2026-10-10",
+      "evidence": "/Users/vlad/Repos/pk-wt/_mockups/review/godot-kit/final5/"
+    }
+  }
+}
