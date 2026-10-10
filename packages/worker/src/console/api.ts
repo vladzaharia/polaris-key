@@ -199,7 +199,8 @@ export async function handleAdminApi(
   }
 
   // Strip the `/api` prefix; tolerate a trailing slash. HEAD reads as GET.
-  let p = path.startsWith("/api") ? path.slice(4) : path;
+  let p = path.split(/[?#]/)[0]!;
+  p = p.startsWith("/api") ? p.slice(4) : p;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
   const segments = p.split("/").filter(Boolean);
   const method = req.method === "HEAD" ? "GET" : req.method;

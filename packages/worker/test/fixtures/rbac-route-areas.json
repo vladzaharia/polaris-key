@@ -118,7 +118,7 @@
   "POST /products/:slug/users/:subject/licenses/:id/relink": "core",
   "POST /products/:slug/users/licenses/:id/make-floating": "core",
   "POST /products/:slug/users/licenses/:id/reassign": "core",
-  "POST /products/:slug/users/relinks/:relinkId/undo": "core",
+  "POST /products/:slug/users/relinks/:id/undo": "core",
   "POST /products/kek": "platform",
   "POST /products/link-repo": "platform",
   "PUT /platform/feeds/**": "platform",

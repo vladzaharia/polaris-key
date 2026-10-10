@@ -259,7 +259,7 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["POST"], `${P}/users/licenses/:id/reassign`, "core", product, {
     stepUp: true,
   }),
-  ...rows(["POST"], `${P}/users/relinks/:relinkId/undo`, "core", product, {
+  ...rows(["POST"], `${P}/users/relinks/:id/undo`, "core", product, {
     stepUp: true,
   }),
   // An account's per-licence overrides are Managed config's.
