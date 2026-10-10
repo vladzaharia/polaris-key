@@ -99,6 +99,13 @@
 //                                                                         recordRevoked, verifyFeed
 //   dataOnlyCases     §2.5's data-only rule (content/cases.json)       → dataOnlyRefusal
 //
+// And `backend-matrix.json`, product backends (WIRE-CONTRACT-V4 §14, plans/SP-53.md §4), through
+// `defineBackendSuites`, which takes the copy catalog's tables from its runner:
+//
+//   verdict           §14.2's six steps on `X-PKey-License`             → backendVerdict
+//   problem           §14.3's problem body, challenge and locale         → backendProblem
+//   client            §14.5's refresh-and-retry rule                     → clientBackendAction
+//
 // `filesIndexCases` and `applyCases` run once per zstd backend the runner hands over (the Node
 // runner: the WASM decoder, `node:zlib` where its probe passes, and a failed probe; the browser:
 // the WASM decoder), so a verdict cannot depend on the decoder.
@@ -228,6 +235,16 @@ import {
   type VerifyOptions,
   type ZstdPort,
 } from "@polaris-key/client-core";
+import {
+  BACKEND_LOCALES,
+  backendProblem,
+  backendVerdict,
+  clientBackendAction,
+  type BackendCopyTable,
+  type BackendLocale,
+  type BackendRefusalCode,
+  type ClientBackendInput,
+} from "@polaris-key/client-core/backend";
 import type { FeedDeltas } from "@polaris-key/protocol/update";
 import type { FilesIndexDoc, PackVariant } from "@polaris-key/protocol/packs";
 
@@ -1916,6 +1933,113 @@ export function defineCorpusSuites({
           ).toBe(c.expect.revoked);
       });
     }
+  });
+}
+
+// ── plans/SP-53.md §4 — product backends (WIRE-CONTRACT-V4 §14) ─────────────────────────────
+
+/** `backend-matrix.json` (backendMatrixVersion 1), the three sections this module replays. */
+export interface BackendMatrix {
+  backendMatrixVersion: number;
+  constants: { locales: string[] };
+  verdict: {
+    id: string;
+    description: string;
+    input: {
+      headers: [string, string][];
+      now: number;
+      options: {
+        products: string[];
+        maxAgeSeconds?: number;
+        require?: (
+          | { kind: "entitlement"; name: string }
+          | { kind: "signIn" }
+        )[];
+      };
+      trust: Record<string, TrustSet>;
+    };
+    expect: { status: number; code: string | null; context: unknown };
+  }[];
+  problem: {
+    id: string;
+    input: {
+      code: BackendRefusalCode;
+      acceptLanguage: string | null;
+      realm: string;
+    };
+    expect: {
+      status: number;
+      locale: string;
+      challenge: string | null;
+      type: string;
+      title: string;
+      detail: string;
+    };
+  }[];
+  client: {
+    id: string;
+    input: ClientBackendInput;
+    expect: { action: string };
+  }[];
+}
+
+/** The file under `conformance/corpus/v2/`, and the copy tables under `conformance/parity/`. */
+export const BACKEND_MATRIX_FILE = "backend-matrix.json";
+export const backendCopyFile = (locale: BackendLocale): string =>
+  `copy.${locale}.json`;
+
+/**
+ * Replays `backend-matrix.json` through `@polaris-key/client-core/backend`: every `verdict` row
+ * through `backendVerdict`, every `problem` row through `backendProblem` with the copy catalog's
+ * tables (each locale's `codes`), and every `client` row through `clientBackendAction`. The
+ * server cores (SP-55 to SP-57, SP-62) and the client halves (SP-58, SP-59) replay the same rows.
+ */
+export function defineBackendSuites({
+  matrix,
+  copy,
+}: {
+  matrix: BackendMatrix;
+  copy: Record<BackendLocale, BackendCopyTable>;
+}): void {
+  // @pkey-feature core.backend server.license server.signin
+  describe(`backend-matrix v${matrix.backendMatrixVersion} — the verdict (WIRE-CONTRACT-V4 §14.2)`, () => {
+    it("is version 1, with every section and the client-core locales", () => {
+      expect(matrix.backendMatrixVersion).toBe(1);
+      expect(matrix.constants.locales).toEqual([...BACKEND_LOCALES]);
+      expect(matrix.verdict.length).toBeGreaterThan(0);
+      expect(matrix.problem.length).toBeGreaterThan(0);
+      expect(matrix.client.length).toBeGreaterThan(0);
+    });
+    for (const row of matrix.verdict)
+      it(`${row.id} → ${row.expect.code ?? row.expect.status}`, async () => {
+        const got = await backendVerdict(row.input);
+        expect(
+          { status: got.status, code: got.code, context: got.context },
+          row.description,
+        ).toEqual(row.expect);
+      });
+  });
+
+  describe(`backend-matrix v${matrix.backendMatrixVersion} — the problem body (§14.3)`, () => {
+    for (const row of matrix.problem)
+      it(row.id, () => {
+        const got = backendProblem(row.input.code, {
+          acceptLanguage: row.input.acceptLanguage,
+          realm: row.input.realm,
+          copy,
+        });
+        const { status, locale, challenge, type, title, detail } = got;
+        expect({ status, locale, challenge, type, title, detail }).toEqual(
+          row.expect,
+        );
+      });
+  });
+
+  describe(`backend-matrix v${matrix.backendMatrixVersion} — the client rule (§14.5)`, () => {
+    for (const row of matrix.client)
+      it(`${row.id} → ${row.expect.action}`, () => {
+        expect(clientBackendAction(row.input)).toBe(row.expect.action);
+      });
   });
 }
 

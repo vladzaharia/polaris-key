@@ -102,6 +102,10 @@
     "./presentation": {
       "types": "./dist/presentation.d.ts",
       "default": "./dist/presentation.js"
+    },
+    "./backend": {
+      "types": "./dist/backend.d.ts",
+      "default": "./dist/backend.js"
     }
   },
   "files": [

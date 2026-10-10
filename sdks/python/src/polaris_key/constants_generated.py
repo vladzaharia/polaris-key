@@ -87,6 +87,7 @@ __all__ = [
     "DEVICE_LABEL_VERSION",
     "PRESENTATION_MATRIX_VERSION",
     "UI_MATRIX_VERSION",
+    "BACKEND_MATRIX_VERSION",
     "CONTENT_CORPUS_VERSION",
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
@@ -1553,6 +1554,10 @@ PRESENTATION_MATRIX_VERSION: Final[int] = 1
 
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
 UI_MATRIX_VERSION: Final[int] = 2
+
+
+#: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
+BACKEND_MATRIX_VERSION: Final[int] = 1
 
 
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.

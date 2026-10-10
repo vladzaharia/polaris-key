@@ -1320,6 +1320,9 @@ public const val PRESENTATION_MATRIX_VERSION: Int = 1
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
 public const val UI_MATRIX_VERSION: Int = 2
 
+/** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
+public const val BACKEND_MATRIX_VERSION: Int = 1
+
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 public const val CONTENT_CORPUS_VERSION: Int = 2
 

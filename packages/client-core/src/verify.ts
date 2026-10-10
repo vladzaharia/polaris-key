@@ -118,7 +118,7 @@ export const CONFIG_DOC: DocTypeSpec<ConfigDoc> = {
  */
 function validateEnvelope(
   doc: DocClaims,
-  opts: VerifyOptions,
+  opts: DocClaimOptions,
   now: number,
   nonWire: NonWireIntegers = NO_NON_WIRE_INTEGERS,
 ): boolean {
@@ -155,6 +155,28 @@ function validateEnvelope(
   return true;
 }
 
+/** `VerifyOptions` without the trust set: what the claim half needs. */
+export type DocClaimOptions = Omit<VerifyOptions, "trust">;
+
+/**
+ * The claim half of `verifyDoc`: the shared envelope and the type's own claims, over a payload
+ * that `verifyJws` has already authenticated with `spec.typ`. `nonWire` is that payload's
+ * `nonWireIntegers`. A product backend (WIRE-CONTRACT-V4 §14.2 step 3) calls it after choosing
+ * the trust set by the document's `aud`, with the device id it has to compare.
+ */
+export function validateDocClaims<T extends DocClaims>(
+  doc: unknown,
+  spec: DocTypeSpec<T>,
+  opts: DocClaimOptions,
+  nonWire: NonWireIntegers,
+): doc is T {
+  if (!isPlainObject(doc)) return false;
+  const now = opts.now ?? Math.floor(Date.now() / 1000);
+  if (!validateEnvelope(doc as unknown as DocClaims, opts, now, nonWire))
+    return false;
+  return spec.validate(doc as unknown as T, nonWire);
+}
+
 /**
  * Verify one signed Polaris Key document of a known type. Returns the payload, or `null` on ANY
  * failure — never a throw, so every call site fails closed identically.
@@ -171,13 +193,9 @@ export async function verifyDoc<T extends DocClaims>(
     typ: spec.typ,
   });
   if (!v) return null;
-  const doc = v.payload;
-  if (!isPlainObject(doc)) return null;
-  const now = opts.now ?? Math.floor(Date.now() / 1000);
-  if (!validateEnvelope(doc as DocClaims, opts, now, v.nonWireIntegers))
-    return null;
-  if (!spec.validate(doc, v.nonWireIntegers)) return null;
-  return doc;
+  return validateDocClaims(v.payload, spec, opts, v.nonWireIntegers)
+    ? v.payload
+    : null;
 }
 
 /** Verify a `pkey-license+jws` document (§2.1). */

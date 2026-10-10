@@ -220,9 +220,12 @@ describe("the sources", () => {
       deviceLabelVersion: 1,
       presentationMatrixVersion: 1,
       uiMatrixVersion: 2,
+      backendMatrixVersion: 1,
       contentCorpusVersion: 2,
     });
     expect(SOURCES.protocol.PROTOCOL_VERSION).toBe(4);
+    // SP-53 (WIRE-CONTRACT-V4 §14): the backend header joins the HEADER_* names.
+    expect(SOURCES.protocol.HEADER_LICENSE).toBe("X-PKey-License");
     // PX-W13: the identity subpath's constants ride along with core's.
     expect(SOURCES.protocol.DEVICE_LABEL_MAX_CODEPOINTS).toBe(64);
     expect(SOURCES.protocol.REQUEST_HANDLE_TTL_SECONDS).toBe(600);
