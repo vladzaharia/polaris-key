@@ -42,13 +42,11 @@
 
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
-import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   AdminBodyError,
   adminJson,
   err,
-  forbidden,
   notFound,
 } from "../../core/console/respond.js";
 import { handlePlatformSettings } from "./platformSettings.js";
@@ -194,8 +192,7 @@ export async function handlePlatform(
   rest: string[],
   now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
-  if (!isPlatformAdmin(env, session))
-    return forbidden("platform admin required");
+  // ST-29: the dispatcher's route table checked this route's area with `can()` before routing here.
   // F-03: the package-feeds bootstrap (the system product), the one platform write here so far.
   if (rest.length === 2 && rest[0] === "feeds" && rest[1] === "bootstrap") {
     if (req.method !== "POST")

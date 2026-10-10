@@ -76,6 +76,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
     }),
     setting({
       key: "release.sparkleEd25519Pub",
+      rbacArea: "keys",
       scope: "product",
       service: "release",
       area: "release.signing",

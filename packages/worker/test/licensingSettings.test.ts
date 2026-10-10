@@ -44,6 +44,7 @@ import { revertRowSetting, writeRowSetting } from "../src/core/rowSettings.js";
 import { BREAK_GLASS_MAX_SECONDS } from "../src/core/settingsClaims.js";
 import type { Db, DbParam } from "../src/db/types.js";
 import { withDefaultHead } from "./githubHead.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -555,6 +556,7 @@ describe("the settings API refuses what the registry refuses", () => {
         { value: "rank-first", expectedVersion: 1 },
         ACTOR,
         AFTER + 5,
+        ROOT_PRINCIPAL,
       ),
       writeRowSetting(
         { env: {}, db, registry: SETTINGS },
@@ -563,6 +565,7 @@ describe("the settings API refuses what the registry refuses", () => {
         { value: "most-free-seats", expectedVersion: 1 },
         ACTOR,
         AFTER + 5,
+        ROOT_PRINCIPAL,
       ),
     ]);
     expect([a.ok, b.ok].sort()).toEqual([false, true]);
@@ -591,6 +594,7 @@ describe("the settings API refuses what the registry refuses", () => {
         { expectedVersion: 2 },
         ACTOR,
         AFTER + 5,
+        ROOT_PRINCIPAL,
       ),
       revertRowSetting(
         { env: {}, db, registry: SETTINGS },
@@ -599,6 +603,7 @@ describe("the settings API refuses what the registry refuses", () => {
         { expectedVersion: 2 },
         ACTOR,
         AFTER + 5,
+        ROOT_PRINCIPAL,
       ),
     ]);
     expect([a.ok, b.ok].sort()).toEqual([false, true]);

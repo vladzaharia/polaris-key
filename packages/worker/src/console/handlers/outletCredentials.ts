@@ -58,12 +58,10 @@ import {
   platformPinHolder,
 } from "../../core/platformCredentials.js";
 import { audit } from "../../core/console/audit.js";
-import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   err,
-  forbidden,
   notFound,
   readBody,
 } from "../../core/console/respond.js";
@@ -78,7 +76,7 @@ export async function handleOutletCredentials(
   id: string | undefined,
   now: number,
 ): Promise<Response> {
-  if (!isPlatformAdmin(env, session)) return forbidden("platform admin only");
+  // ST-29: the dispatcher checked the `keys` area on this product before routing here.
 
   if (id === undefined) {
     if (req.method !== "GET")

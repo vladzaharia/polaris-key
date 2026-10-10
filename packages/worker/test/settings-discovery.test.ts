@@ -31,6 +31,7 @@ import { getReleaseConfig } from "../src/services/release/config.js";
 import { parseManualChannels } from "../src/services/release/channels.js";
 import { setServices } from "../src/core/repo.js";
 import { keyEntryLimit } from "../src/core/licensing/keyEntries.js";
+import { ROOT_PRINCIPAL } from "./rbacFixtures.js";
 
 interface Probe {
   /** A value to write that differs from the seeded product's. */
@@ -299,6 +300,7 @@ describe("discovery and enforcement agree after a write (ST-04)", () => {
           {
             actor: { sub: "u1", name: null, email: null },
             origin: "console",
+            principal: ROOT_PRINCIPAL,
             now: NOW,
             product: "acme",
             strict: false,

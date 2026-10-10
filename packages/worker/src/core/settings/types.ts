@@ -25,6 +25,7 @@
  */
 
 import type { DbParam, DbStatement } from "../../db/types.js";
+import type { AreaId } from "../rbac/areas.js";
 import type { ServiceSlug } from "../services.js";
 
 export type SettingScope = "platform" | "product" | "entity";
@@ -236,8 +237,15 @@ export interface SettingDef<T = unknown> {
   securityWidening?: boolean;
   /** `secret`: only presence is ever shown or audited, never a value. */
   sensitivity: "config" | "secret";
-  /** The capability a write needs (ST-21), e.g. `settings.product.license.write`. */
-  capability: string;
+  /**
+   * The console area a write needs (ST-29; ST-28 plan §3): `writeSettings()` checks
+   * `can(principal, scope, rbacArea, "edit")` on every console write, and the product settings
+   * routes take the area from here. `setting()` defaults it from the owner (`SERVICE_AREA`; Core
+   * keys `core`, platform entries `platform`). A security-widening product key always declares
+   * `keys` (credentials and trust anchors) or `settings` (access policy), so an admin narrowed to
+   * one area cannot widen that area's trust (`SECURITY_WIDENING_AREAS`, rules.ts).
+   */
+  rbacArea: AreaId;
   /** When the owning service is off: hide the row, show it read-only, or show it as usual. */
   visibleWhen?: {
     service?: ServiceSlug;

@@ -1,43 +1,30 @@
 /**
- * The admin JSON API dispatcher: `handleAdminApi(req, env, db, path, now)` where `path` is
- * everything AFTER `/manage` (e.g. `/api/me`, `/api/products/djdl/licenses`). Two route
- * families:
+ * The admin JSON API dispatcher: `handleAdminApi(req, env, db, path, now)`, where `path` is
+ * everything AFTER `/manage` (e.g. `/api/me`, `/api/products/djdl/license/licenses`).
  *
- *   /api/me                                  — the signed-in identity + CSRF + grants
- *   /api/products                            — PLATFORM registry CRUD (platform admins only)
- *   /api/products/<slug>/...                 — per-product admin (platform admins only)
- *   /api/platform/{version,deployment,activity,operations} — instance-wide, product-less
- *                                              (platform admins only; A-11/A-12/A-14,
- *                                              `handlers/platform.ts`)
- *   /api/platform/store-connections/...      — team-level store connections (platform admins
- *                                              only; A-16, `handlers/platformStoreConnections.ts`)
+ * Deny by default (ST-29; ST-28 plan §2.7). Every route is a row of the one route table
+ * (`./routes.ts`), and this module walks it in a fixed order, never trusting the SPA:
  *
- * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
- * left at the top level here is core/platform — the things a product has whether or not it runs
- * any service: `secrets/*`, `outlet-credentials/*`, `claims/*`, `settings/backfill`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
- * `activity`, `refusals`, `assets`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`, `devices/*`, `users/*`. Everything
- * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
+ *   1. **Session, then principal.** A valid signed cookie session is required (401). The
+ *      principal is resolved from it (`resolveConsoleCaller`: today the root rule, the platform
+ *      admin group) and set on `session.principal` for the handler. This is the ONLY module that
+ *      reads the session cookie (`sessionFromRequest`); the docs gate uses the same resolver. A
+ *      principal with no grant is no member, and every route answers it 403 (after the limiter).
+ *   2. **Rate limit.** A per-member budget on the whole surface (R1-04).
+ *   3. **CSRF.** Mutations must echo `X-PKey-CSRF`; a mismatch is a 403 (double-submit;
+ *      `SameSite=Strict` is the primary defense). Logout is a POST so it goes through it (R1-03).
+ *   4. **Match.** No row: 404. A row for the path but not the method: 405 with `Allow`.
+ *   5. **One product load** for a `/products/:slug` row (404).
+ *   6. **`can()`** on the row's area and level: a 403 `{error: {code: "forbidden", reason:
+ *      "no_access", scope, area}}`, with a budgeted `access.denied` row on a product (a few per
+ *      member and product per window: the burst is the signal, and an unbudgeted write per 403
+ *      is a D1 amplifier).
+ *   7. **Step-up** for a row that needs it: a 403 `step_up_required` (`./stepUp.ts`).
+ *   8. **The handler**, with a malformed body answered as its 4xx (P0-16).
  *
- *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
- *   release/{health,resync,releases}             update/settings        identity/portal
- *
- * Security posture, enforced on EVERY request (never trusting the SPA):
- *   - **Session-gated**: a valid signed cookie session is required (401 otherwise).
- *   - **Group-gated**: every route — platform and per-product alike — requires
- *     `PLATFORM_ADMIN_GROUP`. There is no product-level admin: a product's `admin_group`
- *     column grants nothing. 403 otherwise.
- *   - **Rate-limited**: per-session-subject budget on the whole surface, plus a much tighter
- *     one on the audited 403 branch (R1-04).
- *   - **CSRF**: mutations must echo `X-PKey-CSRF`; mismatch ⇒ 403. Logout is a POST so that
- *     it goes through that check rather than around it (R1-03).
- *   - **Product-scoped D1**: every per-product query carries the slug — no cross-tenant read.
- *   - **Catalog-validated**: config/secret/flag values validate against the active catalog
- *     before any write (422 on failure).
- *   - **Secrets are write-only**: responses NEVER echo a stored secret value.
- *   - **Audited**: every mutation appends an audit row with the verified actor.
- *
- * This module is intentionally thin: session/CSRF gating plus top-level routing to the
- * focused handler modules under ./handlers. Shared helpers live under ./lib.
+ * The handlers keep the rest of the posture: product-scoped D1 (every per-product query carries
+ * the slug), catalog validation before writes, write-only secrets, an audit row per mutation with
+ * the verified actor, and `writeSettings()`'s own area check on every key it writes.
  */
 
 import { constantTimeEqual } from "../platform/compare.js";
@@ -45,341 +32,139 @@ import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import { getProduct } from "../core/repo.js";
 import { rateLimitOk } from "../core/rateLimit.js";
-import { canAdminProduct } from "./authz.js";
 import { audit } from "../core/console/audit.js";
-
-/** Admin limiter shard. One global Durable Object for the whole platform — see the note in
- *  rateLimitDo.ts; sub-sharding it is tracked as R10-04a. */
-const ADMIN_RL_SHARD = "_admin";
-import { revokeAdminSessions } from "../core/console/sessionRevocation.js";
 import {
-  buildClearCookie,
   CSRF_HEADER,
   sessionFromRequest,
   type AdminSession,
 } from "../core/console/session.js";
 import {
   AdminBodyError,
-  adminJson,
   err,
-  forbidden,
   isMutation,
   notFound,
   unauthorized,
 } from "../core/console/respond.js";
-import { handleMe } from "./handlers/me.js";
-import { handleSummary } from "./handlers/summary.js";
-import { handleGithub } from "./handlers/github.js";
-import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
-import { handlePlatform } from "./handlers/platform.js";
-import { handleFeedsAdmin } from "./handlers/feeds.js";
 import {
-  handleProducts,
-  handleProductScopedResource,
-} from "./handlers/products.js";
-import { handleActivity } from "./handlers/activity.js";
-import { handleProductSettingsBackfill } from "./handlers/settingsBackfill.js";
-import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
-import { handleProductDevices } from "./handlers/devices.js";
-import { handleProductUsers } from "./handlers/users.js";
-import { handleRefusals } from "./handlers/refusals.js";
-import { handleHostedAssets } from "./handlers/hostedAssets.js";
-import { handleTrustPolicy } from "./handlers/trustPolicy.js";
-import { handleProductSettings } from "./handlers/productSettings.js";
-import { handleServicesAdmin } from "./handlers/servicesAdmin.js";
-import { handleBundleMint } from "./handlers/bundles.js";
-import { handleBlobGcAdmin } from "../core/assets/blobGc.js";
-import { loadProduct } from "../core/products.js";
-import { handleProductStorefronts } from "./handlers/polarisKeyStorefront.js";
-import { buildHooks } from "../core/hooks.js";
-import { manifestIngestFor } from "../core/registry.js";
-import { licenseDeleteFor } from "../core/licensing/licenseDelete.js";
-import { SERVICES, SETTINGS } from "../mount.js";
-import type { ServiceSlug } from "../core/services.js";
+  can,
+  PLATFORM,
+  productScope,
+  resolvePrincipal,
+  type AreaId,
+  type Principal,
+  type Scope,
+} from "./authz.js";
+import { findRoute, levelOf } from "./routeMatch.js";
+import {
+  ADMIN_ROUTES,
+  isProductRoute,
+  methodNotAllowed,
+  type AdminRoute,
+} from "./routes.js";
+import { requireStepUp } from "./stepUp.js";
+import { SETTINGS } from "../mount.js";
 
-// ── per-product routing ────────────────────────────────────────────────────────
-async function handleProductScoped(
+/** Admin limiter shard. One global Durable Object for the whole platform — see the note in
+ *  rateLimitDo.ts; sub-sharding it is tracked as R10-04a. */
+const ADMIN_RL_SHARD = "_admin";
+
+/** A verified console caller: the session and the principal resolved for it. */
+export interface ConsoleCaller {
+  session: AdminSession;
+  principal: Principal;
+}
+
+/**
+ * The console's one session reader (ST-29): verify the cookie, then resolve the principal. `null`
+ * when there is no valid, unrevoked session. The admin API (below) and the docs gate (`docs.ts`)
+ * both come through here, so they cannot disagree about who is asking; a grep test keeps
+ * `sessionFromRequest` to this module.
+ */
+export async function resolveConsoleCaller(
+  env: Env,
+  db: Db | null,
   req: Request,
+  now: number,
+): Promise<ConsoleCaller | null> {
+  const session = await sessionFromRequest(env, req, now);
+  if (!session) return null;
+  const principal = await resolvePrincipal(
+    env,
+    db,
+    { sub: session.sub, groups: session.groups },
+    now,
+  );
+  return { session: { ...session, principal }, principal };
+}
+
+/** The scope string a 403 names: `platform`, or `product:<slug>`. */
+function scopeName(scope: Scope): string {
+  return scope.kind === "product" ? `product:${scope.slug}` : "platform";
+}
+
+/**
+ * The area a row needs. `byKey` (`settings/:key`, `claims/:key`) takes the registry key's
+ * `rbacArea`; a key the registry does not know needs `settings`, and its handler answers 404.
+ */
+export function areaFor(
+  route: AdminRoute,
+  params: Record<string, string>,
+): AreaId {
+  if (route.area !== "byKey") return route.area;
+  const key = params.key ?? "";
+  return SETTINGS.get(key, "product")?.rbacArea ?? "settings";
+}
+
+/** The 403 for a principal that lacks the area (P0-16's nested error shape). */
+function forbiddenArea(scope: Scope, area: AreaId): Response {
+  return err(403, "forbidden", "You don't have access to this.", {
+    reason: "no_access",
+    scope: scopeName(scope),
+    area,
+  });
+}
+
+/**
+ * The budgeted `access.denied` row for an authenticated reach into a product (R1-04). One D1
+ * write per denied request is an amplifier for anyone holding a session that fails the check, and
+ * the denial needs no CSRF token on a GET: a few rows per member and product per window carry all
+ * the signal, and beyond that the 403 is still returned, just not written. A platform-scope
+ * denial writes nothing, as before the route table.
+ */
+async function auditDenied(
   env: Env,
   db: Db,
   session: AdminSession,
   slug: string,
-  rest: string[],
+  area: AreaId,
   now: number,
-): Promise<Response> {
-  const product = await getProduct(db, slug);
-  if (!product) return notFound();
-  if (!canAdminProduct(env, session)) {
-    // Authenticated-but-unauthorized access is low-volume + high-signal, so we audit it
-    // (attributed to the verified actor). NOTE: we intentionally do NOT audit the
-    // unauthenticated credential-path 401s — that would be a D1-write DoS amplifier.
-    //
-    // R1-04: the same reasoning applies here. The 403 branch is a GET, so no CSRF token is
-    // required, and one D1 write per request is an amplifier for any actor holding a session
-    // that fails this gate. The audit row is therefore budgeted: a few per actor+product per
-    // window is all the signal an operator needs — the burst itself is the interesting event,
-    // not each request in it — and beyond that the 403 is still returned, just not written.
-    if (
-      await rateLimitOk(
-        env,
-        ADMIN_RL_SHARD,
-        {
-          bucket: "adminAccessDenied",
-          id: `${session.sub}:${slug}`,
-          limit: 3,
-          windowSec: 300,
-        },
-        now,
-      )
-    ) {
-      await audit(
-        db,
-        slug,
-        session,
-        now,
-        "access.denied",
-        { kind: "product", id: slug },
-        `Denied admin access to product ${slug}`,
-      );
-    }
-    return forbidden("not an admin of this product");
-  }
-
-  // §R1 regrouped the customer-portal settings under Identity. The console spells the canonical
-  // `identity/portal`, and the transitional `portal` → `identity/portal` rewrite is GONE: the
-  // bare spelling now falls through to the 404 every other unknown resource gets. Everything
-  // else in §R1's admin table moved the same way — `licenses`/`tiers`/`policy` are License's,
-  // `schema`/`profiles` are Config's — with no aliases left behind.
-  const [resource, id] = rest;
-
-  // ── per-SERVICE admin (design spec §4.2) ────────────────────────────────────────────────
-  //
-  // `/manage/api/products/<slug>/<service>/…` is the service's own, dispatched through the same
-  // descriptor the public router uses (`ServiceDescriptor.adminHandle`). The FULL remaining path
-  // is handed over, not the five destructured positions below — a service routes itself.
-  //
-  // Enablement is NOT checked here, unlike the public dispatcher. An operator has to be able to
-  // reach a service's settings in order to configure it before turning it on, and the console is
-  // already behind the platform-admin gate above; hiding a disabled service from an authenticated
-  // platform admin would protect nothing and would make "enable then configure" impossible.
-  // F-11: the Feeds admin API in product scope, `…/distribution/feeds/…`. Spelled under
-  // Distribution (its sidebar section), but composed in the admin layer, because a yank writes
-  // Release's package rows and the settings are Distribution's (`handlers/feeds.ts` explains).
-  if (resource === "distribution" && rest[1] === "feeds") {
-    // The system product's feeds are the platform's: reachable only from Platform → Package feeds
-    // (`/manage/api/platform/feeds/…`), never as a product scope.
-    const owner = await getProduct(db, slug);
-    if (!owner || owner.system === 1) return notFound();
-    return handleFeedsAdmin(
-      req,
-      env,
-      db,
-      session,
-      { kind: "product", slug },
-      rest.slice(2),
-      now,
-    );
-  }
-
-  if (resource && SERVICES.has(resource as ServiceSlug)) {
-    const descriptor = SERVICES.get(resource as ServiceSlug)!;
-    if (descriptor.adminHandle) {
-      const loaded = await loadProduct(env, db, slug);
-      if (!loaded) return notFound();
-      const res = await descriptor.adminHandle({
-        req,
-        env,
-        db,
-        product: loaded,
-        rest: rest.slice(1),
-        now,
-        session,
-        // Core's ingest pipeline over the same registry (P2b-02): Release's resync route runs it.
-        ingest: manifestIngestFor(SERVICES),
-        // Core's licence-deletion collector (`core/licensing/licenseDelete.ts`): License's delete route.
-        licenseDelete: licenseDeleteFor(SERVICES),
-        // ST-04: the settings registry, for the handlers that write through `writeSetting()`.
-        settings: SETTINGS,
-        // Same gate as the public path: a hook whose providing service is off answers `null`,
-        // even though the admin route itself is reachable while its own service is off.
-        hooks: buildHooks(SERVICES, loaded.services, {
-          env,
-          db,
-          product: loaded,
-          now,
-        }),
-      });
-      if (res) return res;
-    }
-    return notFound();
-  }
-
-  // The settings backfill (ST-01c, S-18 §4.14, owner decision D19). CORE, like `claims`: it
-  // moves the product onto ST-01b's claim model once and keeps its reports. Ahead of the
-  // generic `settings/<key>` routes (LX-06, S-18 §4.7), which would read `backfill` as a key.
-  //   POST /products/<slug>/settings/backfill?dryRun=1|0
-  //   GET  /products/<slug>/settings/backfill[/<reportId>]
-  if (resource === "settings" && rest[1] === "backfill")
-    return handleProductSettingsBackfill(
-      req,
-      env,
-      db,
-      session,
-      slug,
-      rest.slice(2),
-      now,
-    );
-
-  // Platform-owned per-product resources — they exist for a product running NO service at all,
-  // which is why they are not under one:
-  //   PUT  /products/<slug>/secrets/<name>
-  //   POST /products/<slug>/keys/rotate
-  //   GET|PUT|DELETE /products/<slug>/outlet-credentials[/<id>]   (P5-01)
-  //   DELETE /products/<slug>/claims/<key>   (ST-01b: Revert a console claim to the manifest)
+): Promise<void> {
   if (
-    resource === "secrets" ||
-    resource === "keys" ||
-    resource === "outlet-credentials" ||
-    resource === "claims"
-  ) {
-    return handleProductScopedResource(
-      req,
+    await rateLimitOk(
       env,
+      ADMIN_RL_SHARD,
+      {
+        bucket: "adminAccessDenied",
+        id: `${session.sub}:${slug}`,
+        limit: 3,
+        windowSec: 300,
+      },
+      now,
+    )
+  )
+    await audit(
       db,
-      session,
       slug,
-      resource,
-      id,
-      now,
-    );
-  }
-
-  // The product settings API's first slice (LX-06, S-18 §4.7): the row-backed claimable settings
-  // of every service in one store. CORE, like `claims`: a console edit claims, Revert hands back.
-  //   GET /products/<slug>/settings/effective[?area=]
-  //   PATCH|DELETE /products/<slug>/settings/<key>
-  if (resource === "settings")
-    return handleProductSettings(
-      req,
-      env,
-      db,
       session,
-      product,
-      rest.slice(1),
       now,
+      "access.denied",
+      { kind: "product", id: slug },
+      `Denied admin access to product ${slug} (${area})`,
     );
-
-  // Trusted publishing (P2-02): the publisher policy and static CI tokens. CORE, like the
-  // secrets: the credential store serves Release now and Distribution (P2b-03) later.
-  //   GET|PUT /products/<slug>/ci-publisher
-  //   GET|POST /products/<slug>/ci-tokens, DELETE /products/<slug>/ci-tokens/<tokenId>
-  if (resource === "ci-publisher")
-    return handleCiPublisher(req, env, db, session, slug, id, now);
-  if (resource === "ci-tokens")
-    return handleCiTokens(req, env, db, session, slug, id, now);
-
-  // The device-trust policy (P6-02): which operations require an attested device, enforced or
-  // log-only, and the App Attest / Play Integrity settings. CORE, like the device trust level.
-  //   GET|PUT|DELETE /products/<slug>/trust-policy
-  if (resource === "trust-policy")
-    return handleTrustPolicy(req, env, db, session, slug, id, now);
-
-  // Which Polaris Key services this product runs (plan §R4). A CORE resource, not a per-service
-  // one: a service cannot own its own off switch, because it would have to be running to be
-  // turned off. `id` carries the single sub-action (`revert`).
-  if (resource === "services") {
-    return handleServicesAdmin(req, env, db, session, slug, id, now, SETTINGS);
-  }
-
-  // Offline activation bundles (wire v3 §7). CORE for the same reason `services` is: one bundle
-  // carries the License document AND the Config document, either of which may be absent, so it
-  // belongs to neither service — a config-only product mints one with no license in it at all.
-  if (resource === "bundles") {
-    return handleBundleMint(req, env, db, session, slug, id, now, SETTINGS);
-  }
-
-  // The blob collector's dry run and the bundle live-data ratios (P4-14). CORE, like the blob
-  // store itself: liveness is read through the product's hooks, as the nightly collector reads it.
-  //   GET /products/<slug>/blob-gc, GET /products/<slug>/blob-gc/bundles
-  if (resource === "blob-gc") {
-    const loaded = await loadProduct(env, db, slug);
-    if (!loaded) return notFound();
-    const hooks = buildHooks(SERVICES, loaded.services, {
-      env,
-      db,
-      product: loaded,
-      now,
-    });
-    return handleBlobGcAdmin(req, env, db, slug, hooks, id, now);
-  }
-
-  if (resource === "activity") {
-    return handleActivity(req, db, slug);
-  }
-
-  // UX-15: the refusal log (`core/licensing/refusals.ts`). CORE, like `activity`: the refusal site is
-  // Core's `authorizeDevice`, whichever service (License, Identity) asked it for a seat.
-  //   GET /products/<slug>/refusals[?refusedSince=&licenseId=&limit=]
-  if (resource === "refusals") {
-    return handleRefusals(req, db, slug, rest.slice(1), now);
-  }
-
-  // PS-06: the Polaris Key storefront's console panel (notes/S-21 §6.6). CORE, like `assets`:
-  // every product can list on Polaris Key whether or not it runs Distribution (S-21 §6.2), and
-  // the panel composes Identity's listing and engine with Distribution's listing model.
-  //   GET  /products/<slug>/storefronts/polaris-key
-  //   POST /products/<slug>/storefronts/polaris-key/preview
-  //   GET  /products/<slug>/storefronts/polaris-key/analytics
-  if (resource === "storefronts") {
-    return handleProductStorefronts(
-      req,
-      env,
-      db,
-      session,
-      slug,
-      rest.slice(1),
-      now,
-    );
-  }
-
-  // HA-05, HA-06: the product's hosted assets (`core/assets/hostedAssetPulls.ts`,
-  // `core/assets/hostedAssetUploads.ts`). CORE, like `activity`: a product hosts its presentation icon
-  // whether or not it runs Distribution. HA-08: the operator's "mirror now" for release files
-  // (`services/release/mirror.ts`).
-  //   GET  /products/<slug>/assets
-  //   POST /products/<slug>/assets/mirror
-  //   POST|DELETE /products/<slug>/assets/<slot>[?locale=]
-  if (resource === "assets") {
-    return handleHostedAssets(req, env, db, session, slug, rest.slice(1), now);
-  }
-
-  // Every device of the product, licensed or not. CORE: a product that issues no licenses (open
-  // or requires-identity registration) still has devices, and License's per-license route cannot
-  // reach them.
-  if (resource === "devices") {
-    return handleProductDevices(
-      req,
-      env,
-      db,
-      session,
-      slug,
-      rest.slice(1),
-      now,
-    );
-  }
-
-  // The product's users, keyed by pairwise subject (I-12). CORE: the account is platform-level,
-  // so a product with Identity off still has users (its licence owners).
-  if (resource === "users") {
-    return handleProductUsers(req, env, db, session, slug, rest.slice(1), now);
-  }
-
-  return notFound();
 }
 
 /**
- * Admin API dispatcher. `path` is everything AFTER `/manage` (so it begins with `/api`).
- * Verifies the session, CSRF-checks mutations, then routes. Returns 401/403 cleanly.
+ * The admin API dispatcher. `path` is everything AFTER `/manage` (so it begins with `/api`).
  */
 export async function handleAdminApi(
   req: Request,
@@ -388,22 +173,22 @@ export async function handleAdminApi(
   path: string,
   now: number,
 ): Promise<Response> {
-  const session = await sessionFromRequest(env, req, now);
-  if (!session) return unauthorized();
+  // 1. Session, then principal.
+  const caller = await resolveConsoleCaller(env, db, req, now);
+  if (!caller) return unauthorized();
+  const { session, principal } = caller;
 
-  // R1-04: the admin API had NO rate limiter of any kind — only /manage/login and
-  // /manage/callback were limited — while several of its routes write to D1. The budget is
-  // keyed by the VERIFIED session subject, not the IP, so it follows the actor rather than
-  // the network path, and it is generous enough that the SPA's normal fan-out never trips it.
-  // Fails OPEN (see rateLimit.ts): a signed-in operator must not be locked out of the console
-  // by a limiter outage, and the session gate above is the real access control here.
+  // 2. R1-04: a budget keyed by the VERIFIED member, not the IP, so it follows the actor rather
+  // than the network path, and generous enough that the SPA's normal fan-out never trips it.
+  // Fails OPEN (see rateLimit.ts): a signed-in operator must not be locked out of the console by
+  // a limiter outage, and the checks below are the real access control here.
   if (
     !(await rateLimitOk(
       env,
       ADMIN_RL_SHARD,
       {
         bucket: "adminApi",
-        id: session.sub,
+        id: principal.memberId,
         limit: 600,
         windowSec: 60,
       },
@@ -413,80 +198,77 @@ export async function handleAdminApi(
     return err(429, "rate_limited", "too many admin API requests");
   }
 
-  // Strip the `/api` prefix; tolerate trailing slash.
+  // Strip the `/api` prefix; tolerate a trailing slash. HEAD reads as GET.
   let p = path.startsWith("/api") ? path.slice(4) : path;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
   const segments = p.split("/").filter(Boolean);
+  const method = req.method === "HEAD" ? "GET" : req.method;
+  const found = findRoute(ADMIN_ROUTES, method, segments);
 
-  // CSRF on every mutation (double-submit; SameSite=Strict is the primary defense).
+  // A verified session whose principal holds no grant is not a member: every route answers the
+  // same 403, so it learns nothing about what exists. (The sign-in gate mints no such session; one
+  // appears when the platform group changes under a live cookie.) A reach into an existing
+  // product is still audited on that product.
+  if (!can(principal, PLATFORM, "console", "view")) {
+    if (found.kind === "route" && isProductRoute(found.route)) {
+      const target = await getProduct(db, found.match.params.slug ?? "");
+      if (target)
+        await auditDenied(env, db, session, target.slug, "console", now);
+    }
+    return forbiddenArea(PLATFORM, "console");
+  }
+
+  // 3. CSRF on every mutation (double-submit; SameSite=Strict is the primary defense).
   if (isMutation(req.method)) {
     const presented = req.headers.get(CSRF_HEADER);
     if (!presented || !constantTimeEqual(presented, session.csrf))
-      return forbidden("csrf");
+      return err(403, "forbidden", "csrf");
   }
 
-  const [head, ...rest] = segments;
+  // 4. Match.
+  if (found.kind === "none") return notFound();
+  if (found.kind === "method") return methodNotAllowed(found.allow);
+  const { route, match } = found;
 
-  if (head === "me") return handleMe(env, db, session);
-  // Home's product cards: one fact per service for every visible product.
-  if (head === "summary")
-    return handleSummary(req, env, db, session, rest, now);
-  if (head === "platform" && rest[0] === "store-connections")
-    return handlePlatformStoreConnections(
+  // 5. One product load for a product-scoped row.
+  let scope: Scope = PLATFORM;
+  let product = null;
+  if (isProductRoute(route)) {
+    product = await getProduct(db, match.params.slug ?? "");
+    if (!product) return notFound();
+    scope = productScope(product);
+  }
+
+  // 6. The area.
+  const area = areaFor(route, match.params);
+  if (!can(principal, scope, area, levelOf(route))) {
+    if (scope.kind === "product")
+      await auditDenied(env, db, session, scope.slug, area, now);
+    return forbiddenArea(scope, area);
+  }
+
+  // 7. Step-up.
+  if (route.stepUp) {
+    const refused = requireStepUp(session, now);
+    if (refused) return refused;
+  }
+
+  // 8. The handler.
+  try {
+    return await route.handler({
       req,
       env,
       db,
       session,
-      rest.slice(1),
       now,
-    );
-  if (head === "platform")
-    return handlePlatform(req, env, db, session, rest, now);
-  if (head === "logout") {
-    // R1-03: logout clears the session, so it is a mutation and must go through the CSRF
-    // check above — which `isMutation` only applies to non-GET methods. As a GET it was a
-    // state-changing route that skipped the gate entirely; cross-site exploitation was
-    // blocked only by `SameSite=Strict`, i.e. by a cookie attribute that a future relax to
-    // `SameSite=Lax` (the usual fix for post-OIDC redirects) would quietly remove.
-    if (req.method !== "POST")
-      return err(405, "method_not_allowed", "logout requires POST");
-    // Sign-out also voids the cookie server-side, for every browser
-    // this operator holds; a replay of the old cookie is a 401.
-    let revoked = true;
-    try {
-      await revokeAdminSessions(env, session.sub, now);
-    } catch {
-      revoked = false;
-    }
-    return adminJson({ ok: true, revoked }, 200, {
-      "set-cookie": buildClearCookie(),
+      segments,
+      params: match.params,
+      rest: match.rest,
+      product,
     });
+  } catch (e) {
+    if (e instanceof AdminBodyError)
+      return err(e.status, e.code, e.message, e.extra);
+    throw e;
   }
-  // UX-72 (W22): the repositories the GitHub App can read, for the New Product picker.
-  if (head === "github") return handleGithub(req, env, db, session, rest, now);
-  if (head === "products") {
-    // /products, /products/link-repo, or /products/<slug>/...
-    // `link-repo` is a single-segment action, NOT a slug — handleProducts special-cases it
-    // (with its platform-admin gate) before treating the segment as a product slug.
-    try {
-      if (rest.length <= 1)
-        return await handleProducts(req, env, db, session, rest, now);
-      const [slug, ...productRest] = rest;
-      return await handleProductScoped(
-        req,
-        env,
-        db,
-        session,
-        slug!,
-        productRest,
-        now,
-      );
-    } catch (e) {
-      if (e instanceof AdminBodyError)
-        return err(e.status, e.code, e.message, e.extra);
-      throw e;
-    }
-  }
-
-  return notFound();
 }

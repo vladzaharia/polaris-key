@@ -402,6 +402,7 @@ async function write(
         email: session.email ?? null,
       },
       origin: "console",
+      principal: session.principal,
       now,
       ...(typeof body.confirm === "string" ? { confirm: body.confirm } : {}),
     },

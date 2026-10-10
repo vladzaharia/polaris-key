@@ -13,6 +13,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
   entries: [
     setting({
       key: "distribution.access",
+      rbacArea: "settings",
       scope: "product",
       service: "distribution",
       area: "distribution.access",
@@ -117,6 +118,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
     }),
     setting({
       key: "distribution.commerce",
+      rbacArea: "commerce",
       scope: "product",
       service: "distribution",
       area: "distribution.commerce",

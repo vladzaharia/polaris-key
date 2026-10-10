@@ -36,10 +36,17 @@ async function admin(
   path: string,
   body?: unknown,
   groups = ["platform-admins"],
+  opts: { stepUp?: boolean } = {},
 ): Promise<Response> {
   const { token, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups },
+    {
+      sub: "u1",
+      name: "Ada",
+      email: "ada@x.io",
+      groups,
+      ...(opts.stepUp ? { authTime: NOW, stepUp: true } : {}),
+    },
     NOW,
   );
   const full = `/api${path}`;
@@ -207,9 +214,20 @@ describe("the package-feeds bootstrap (F-03)", () => {
       error: { message: "reserved slug" },
     });
     await admin("POST", "/platform/feeds/bootstrap");
-    const del = await admin("DELETE", `/products/${SYSTEM_PRODUCT_SLUG}`, {
+    // ST-29: deleting a product is a step-up route in the route table, so the dispatcher asks for
+    // the step-up before the handler refuses the system product.
+    const plain = await admin("DELETE", `/products/${SYSTEM_PRODUCT_SLUG}`, {
       confirmSlug: SYSTEM_PRODUCT_SLUG,
     });
+    expect(plain.status).toBe(403);
+    expect(await plain.json()).toMatchObject({ code: "step_up_required" });
+    const del = await admin(
+      "DELETE",
+      `/products/${SYSTEM_PRODUCT_SLUG}`,
+      { confirmSlug: SYSTEM_PRODUCT_SLUG },
+      undefined,
+      { stepUp: true },
+    );
     expect(del.status).toBe(409);
     expect((await getProduct(db, SYSTEM_PRODUCT_SLUG))?.status).not.toBe(
       "deleted",

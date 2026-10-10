@@ -63,6 +63,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   setting({
     key: "core.adminGroup",
+    rbacArea: "settings",
     scope: "product",
     service: "core",
     area: "access",
@@ -85,6 +86,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   setting({
     key: "core.web.origins",
+    rbacArea: "keys",
     scope: "product",
     service: "core",
     area: "access",
@@ -112,6 +114,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   setting({
     key: "core.manifest.authoritative",
+    rbacArea: "settings",
     scope: "product",
     service: "core",
     area: "general",
@@ -165,6 +168,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   // through `services_source`, so it is claimable like the enablement beside it.
   setting({
     key: "core.registration",
+    rbacArea: "settings",
     scope: "product",
     service: "core",
     area: "services",
@@ -205,6 +209,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   // table and its readers rather than registering a second one.
   setting({
     key: "core.secrets",
+    rbacArea: "keys",
     scope: "product",
     service: "core",
     area: "keys",
@@ -269,6 +274,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   setting({
     key: "core.trustPolicy",
+    rbacArea: "keys",
     scope: "product",
     service: "core",
     area: "access",
@@ -296,6 +302,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
 
   setting({
     key: "storefront.polarisKey.listed",
+    rbacArea: "commerce",
     scope: "product",
     service: "core",
     area: "storefront",
@@ -317,6 +324,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   setting({
     key: "storefront.polarisKey.audience",
+    rbacArea: "commerce",
     scope: "product",
     service: "core",
     area: "storefront",
@@ -339,6 +347,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   setting({
     key: "storefront.polarisKey.offerPaths",
+    rbacArea: "commerce",
     scope: "product",
     service: "core",
     area: "storefront",
@@ -363,6 +372,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   setting({
     key: "storefront.polarisKey.groupLabels",
+    rbacArea: "commerce",
     scope: "product",
     service: "core",
     area: "storefront",

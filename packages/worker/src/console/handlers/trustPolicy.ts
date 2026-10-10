@@ -32,12 +32,10 @@ import {
   type SettingWrite,
   type WriteOptions,
 } from "../../core/settings/write.js";
-import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   err,
-  forbidden,
   notFound,
   readBody,
   settingRefused,
@@ -59,7 +57,7 @@ export async function handleTrustPolicy(
   id: string | undefined,
   now: number,
 ): Promise<Response> {
-  if (!isPlatformAdmin(env, session)) return forbidden("platform admin only");
+  // ST-29: the dispatcher checked the `keys` area on this product before routing here.
   if (id !== undefined) return notFound();
   const row = await getProduct(db, slug);
   if (!row) return notFound();
@@ -77,6 +75,7 @@ export async function handleTrustPolicy(
         email: session.email ?? null,
       },
       origin: "console",
+      principal: session.principal,
       now,
       product: row,
       strict: false,

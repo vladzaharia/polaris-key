@@ -1182,6 +1182,7 @@ async function putRetention(
         name: session.name ?? null,
         email: session.email ?? null,
       },
+      principal: session.principal,
       now,
     },
   );

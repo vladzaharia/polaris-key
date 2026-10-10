@@ -44,7 +44,7 @@ import { renderBrandPage } from "../core/brandHtml.js";
 import { escapeHtml } from "../platform/html.js";
 import { pkcePair } from "../platform/pkce.js";
 import { randomToken } from "../platform/random.js";
-import { hasAnyAdminGrant } from "./authz.js";
+import { can, PLATFORM, resolvePrincipal } from "./authz.js";
 import {
   STEP_UP_MAX_AGE_SECONDS,
   buildSessionCookie,
@@ -377,9 +377,16 @@ export async function handleAdminCallback(
     return htmlError(401, "Sign-in could not be verified.");
   }
 
-  // Admin authority is platform-wide, so the gate needs no product list — the `listProducts`
-  // read that used to feed the (ignored) `_products` parameter is gone.
-  if (!hasAnyAdminGrant(env, identity.groups)) {
+  // The sign-in gate is the console's membership check (ST-29): the principal this identity
+  // resolves to must hold at least one grant. Today the only grant is the root rule (the
+  // platform admin group), so this admits exactly who it always did.
+  const principal = await resolvePrincipal(
+    env,
+    db,
+    { sub: identity.sub, groups: identity.groups },
+    now,
+  );
+  if (!can(principal, PLATFORM, "console", "view")) {
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.refused",
       sub: identity.sub,

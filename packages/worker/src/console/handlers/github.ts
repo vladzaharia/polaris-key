@@ -25,12 +25,10 @@
 import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
-import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../../core/console/session.js";
 import {
   adminJson,
   err,
-  forbidden,
   notFound,
 } from "../../core/console/respond.js";
 import {
@@ -173,8 +171,7 @@ export async function handleGithub(
   now: number,
   fetchImpl: FetchImpl = fetch,
 ): Promise<Response> {
-  if (!isPlatformAdmin(env, session))
-    return forbidden("platform admin required");
+  // ST-29: the dispatcher's route table checked this route's area with `can()` before routing here.
   if (segments.length !== 1 || segments[0] !== "repositories")
     return notFound();
   if (req.method !== "GET")

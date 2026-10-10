@@ -75,6 +75,7 @@ import {
   DEFAULT_FINGERPRINT_POLICY,
 } from "../../src/core/fingerprint.js";
 import { DEFAULT_SERVICES } from "../../src/core/services.js";
+import { ROOT_PRINCIPAL } from "../rbacFixtures.js";
 
 // ── workerd codegen emulation ────────────────────────────────────────────────
 
@@ -267,6 +268,8 @@ describe("R10-01 catalog validation no longer generates code at request time", (
       email: "a@b.c",
       groups: [],
       csrf: "x",
+      // ST-29: the dispatcher sets the caller's principal; this handler is called directly.
+      principal: ROOT_PRINCIPAL,
     } as unknown as AdminSession;
     const body = JSON.stringify({
       schemaVersion: 1,

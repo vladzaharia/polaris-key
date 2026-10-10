@@ -76,6 +76,7 @@ import {
   type SettingsWriteContext,
   type WriteRefusal,
 } from "../../../core/settings/write.js";
+import type { Principal } from "../../../core/rbac/can.js";
 
 /** The actor the automatic prune records (`pruned_by`, the audit's `actor_sub`). */
 export const PRUNE_ACTOR = "system:feed-retention";
@@ -225,6 +226,8 @@ export async function setPruneRetention(
     enabled: boolean;
     expectedVersion: number;
     actor: AuditActor;
+    /** ST-29: the console caller, for `writeSettings()`'s area check. */
+    principal?: Principal;
     now: number;
   },
 ): Promise<"written" | "stale" | "locked" | WriteRefusal> {
@@ -247,6 +250,7 @@ export async function setPruneRetention(
       actor: w.actor,
       author: `admin:${w.actor.sub ?? "system"}`,
       origin: "console",
+      principal: w.principal,
       now: w.now,
       product: w.product,
       // The route's contract always carried `expectedVersion`; its confirmation is the console's.

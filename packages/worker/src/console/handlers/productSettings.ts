@@ -44,6 +44,7 @@ import { claimsApply } from "../../core/settingsClaims.js";
 import type { SettingDef } from "../../core/settings/types.js";
 import { SETTINGS } from "../../mount.js";
 import type { AdminSession } from "../../core/console/session.js";
+import { can } from "../authz.js";
 import {
   adminJson,
   err,
@@ -129,7 +130,7 @@ async function snapshotManifest(db: Db, product: ProductRow): Promise<unknown> {
 }
 
 function refusal(r: RowSettingRefusal, product: ProductRow): Response {
-  return err(r.status, ErrorCode.BadRequest, r.message, {
+  return err(r.status, r.status === 403 ? ErrorCode.Forbidden : ErrorCode.BadRequest, r.message, {
     reason: r.reason,
     ...(r.current
       ? {
@@ -160,7 +161,17 @@ export async function handleProductSettings(
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
     const area = new URL(req.url).searchParams.get("area");
-    const defs = rowBackedSettings().filter((d) => !area || d.area === area);
+    // ST-29: only the keys whose area the caller holds on this product.
+    const scope = {
+      kind: "product",
+      slug: product.slug,
+      system: product.system === 1,
+    } as const;
+    const defs = rowBackedSettings().filter(
+      (d) =>
+        (!area || d.area === area) &&
+        can(session.principal, scope, d.rbacArea, "view"),
+    );
     const views = await readRowSettings(db, product, defs, now);
     const manifest = await snapshotManifest(db, product);
     return adminJson({
@@ -207,6 +218,7 @@ export async function handleProductSettings(
       },
       actor,
       now,
+      session.principal,
     );
     if (!res.ok) return refusal(res, product);
     return adminJson({
@@ -225,6 +237,7 @@ export async function handleProductSettings(
       { expectedVersion: body.expectedVersion },
       actor,
       now,
+      session.principal,
     );
     if (!res.ok) return refusal(res, product);
     return adminJson({

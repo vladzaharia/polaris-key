@@ -1,24 +1,31 @@
 /**
  * `setting()`: the one constructor every slice uses, so the shared fields (`since`,
- * `sensitivity`, `readers`, the default `capability`) are filled the same way everywhere.
+ * `sensitivity`, `readers`, the default `rbacArea`) are filled the same way everywhere.
  * Its own module so the slices and the registry do not import each other.
  */
 
+import { SERVICE_AREA, type AreaId } from "../rbac/areas.js";
 import type { SettingDef } from "./types.js";
+
+/** The area a setting's owner defaults it to (ST-28 plan §3): its service's, else Core's. */
+function defaultArea(def: Pick<SettingDef, "scope" | "service">): AreaId {
+  if (def.scope === "platform" || def.service === "platform") return "platform";
+  if (def.service === "core") return "core";
+  return SERVICE_AREA[def.service];
+}
 
 /** Fill the fields every entry shares, so slices stay readable (`since`, `sensitivity`, …). */
 export function setting(
-  def: Omit<SettingDef, "capability" | "sensitivity" | "since" | "readers"> &
+  def: Omit<SettingDef, "rbacArea" | "sensitivity" | "since" | "readers"> &
     Partial<
-      Pick<SettingDef, "capability" | "sensitivity" | "since" | "readers">
+      Pick<SettingDef, "rbacArea" | "sensitivity" | "since" | "readers">
     >,
 ): SettingDef {
-  const owner = def.scope === "platform" ? "platform" : def.service;
   return {
     sensitivity: "config",
     since: "ST-03",
     readers: [],
-    capability: `settings.${def.scope}.${owner}.write`,
+    rbacArea: defaultArea(def),
     ...def,
   };
 }
