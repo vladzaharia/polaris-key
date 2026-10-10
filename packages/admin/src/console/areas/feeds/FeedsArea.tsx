@@ -165,7 +165,7 @@ export function FeedNav({
             "after:absolute after:inset-x-1.5 after:bottom-0 after:h-0.5 after:rounded-full",
             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
             active
-              ? "bg-accent-subtle font-bold text-fg-strong after:bg-accent"
+              ? "bg-accent-subtle font-medium text-fg-strong after:bg-accent"
               : "text-fg-muted after:bg-transparent hover:bg-hover hover:text-fg-strong",
           )}
         >
@@ -437,7 +437,7 @@ function OwnersPanel({
       aria-labelledby="feeds-owners"
       className="rounded-lg border border-border bg-surface-raised p-5"
     >
-      <h2 id="feeds-owners" className="text-sm font-bold text-fg-strong">
+      <h2 id="feeds-owners" className="text-sm font-semibold text-fg-strong">
         Owners
       </h2>
       <p className="mt-1 text-sm text-fg-muted">

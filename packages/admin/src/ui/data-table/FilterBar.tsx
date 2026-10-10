@@ -93,7 +93,7 @@ function FacetMenu({ facet }: { facet: FilterBarFacet }): React.ReactElement {
         >
           {facet.label}
           {count ? (
-            <span className="rounded-full bg-accent-subtle px-1.5 text-xs font-bold text-fg-strong tabular-nums">
+            <span className="rounded-full bg-accent-subtle px-1.5 text-xs font-medium text-fg-strong tabular-nums">
               {count}
             </span>
           ) : null}
@@ -102,7 +102,7 @@ function FacetMenu({ facet }: { facet: FilterBarFacet }): React.ReactElement {
       className="w-64 p-2"
     >
       <fieldset>
-        <legend className="px-2 pb-1 text-xs font-bold text-fg-muted">
+        <legend className="px-2 pb-1 text-xs font-semibold text-fg-muted">
           {facet.label}
         </legend>
         <ul className="max-h-72 overflow-y-auto pk-scroll">

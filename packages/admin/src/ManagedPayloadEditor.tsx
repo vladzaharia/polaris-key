@@ -686,7 +686,7 @@ export function ManagedPayloadEditor({
                         [group.category]: !prev[group.category],
                       }))
                     }
-                    className="flex w-full flex-wrap items-center gap-2 rounded-md px-1 py-1 text-left text-sm font-bold text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+                    className="flex w-full flex-wrap items-center gap-2 rounded-md px-1 py-1 text-left text-sm font-medium text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     <ChevronDown
                       aria-hidden
@@ -886,7 +886,7 @@ function ReviewDrawer({
                 className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm"
               >
                 <p className="flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-bold text-fg-strong">
+                  <span className="font-medium text-fg-strong">
                     {entry.label}
                   </span>
                   <code className="font-mono text-xs text-fg-muted">

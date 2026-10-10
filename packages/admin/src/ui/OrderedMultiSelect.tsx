@@ -108,7 +108,7 @@ export function OrderedMultiSelect({
             >
               <span
                 aria-hidden
-                className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-subtle text-xs font-bold text-fg-strong tabular-nums"
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-subtle text-xs font-medium text-fg-strong tabular-nums"
               >
                 {i + 1}
               </span>

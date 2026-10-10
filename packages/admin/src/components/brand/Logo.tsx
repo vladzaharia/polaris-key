@@ -74,7 +74,7 @@ export function Logo({
     <span className={cn("inline-flex items-center gap-3 text-fg", className)}>
       <LogoMark size={48} section={section} />
       <span
-        className="flex items-baseline gap-1.5 font-bold tracking-tight text-fg-strong"
+        className="flex items-baseline gap-1.5 font-medium tracking-tight text-fg-strong"
         aria-hidden
       >
         Polaris&nbsp;Key

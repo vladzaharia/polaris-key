@@ -98,7 +98,7 @@ export function OneTimeSecretPanel({
     <>
       <DialogBody className="space-y-4 text-sm">
         <div className="space-y-1.5">
-          <p id={valueId} className="font-bold text-fg-strong">
+          <p id={valueId} className="font-medium text-fg-strong">
             {label}
           </p>
           <div className="flex items-start gap-2 rounded-md border border-border bg-surface-sunken p-3">
@@ -163,7 +163,7 @@ export function OneTimeSecretPanel({
             role="alert"
             className="space-y-2 rounded-md border border-warning-border bg-warning-subtle p-3"
           >
-            <p className="flex items-center gap-2 font-bold text-fg-strong">
+            <p className="flex items-center gap-2 font-medium text-fg-strong">
               <TriangleAlert aria-hidden className="size-4 text-warning" />
               Close without copying? It can&apos;t be shown again.
             </p>

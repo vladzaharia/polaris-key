@@ -60,7 +60,7 @@ export function ProductStatusPill({
     <StatusPill
       tone={status.tone}
       icon={ICON[status.kind]}
-      className={cn("font-bold", className)}
+      className={cn("font-medium", className)}
     >
       {status.label}
     </StatusPill>
@@ -73,7 +73,7 @@ export function ProductStatusPill({
       <StatusPill
         tone={status.tone}
         icon={ICON[status.kind]}
-        className={cn("h-8 px-3.5 font-bold", className)}
+        className={cn("h-8 px-3.5 font-medium", className)}
       >
         {status.label}
       </StatusPill>

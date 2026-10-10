@@ -121,7 +121,7 @@ export function LibraryTile({
               <h3
                 id={`tile-${product.slug}`}
                 className={cn(
-                  "truncate font-bold text-fg-strong",
+                  "truncate font-medium text-fg-strong",
                   compact
                     ? "text-base @max-[17rem]/tile:whitespace-normal"
                     : "text-lg",
@@ -156,7 +156,7 @@ export function LibraryTile({
                   <span
                     data-cue="text"
                     className={cn(
-                      "inline-block font-bold text-accent-fg",
+                      "inline-block font-medium text-accent-fg",
                       cue.animate && "pk-pop-in",
                     )}
                   >

@@ -100,7 +100,7 @@ export function ProductHeader({
           <h1
             ref={headingRef}
             tabIndex={-1}
-            className="pk-vt-hero-title w-fit text-headline font-bold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit text-headline font-semibold leading-tight text-fg-strong outline-none desk:text-4xl"
           >
             {product.name}
           </h1>
@@ -108,7 +108,7 @@ export function ProductHeader({
             {pres.developer ? (
               <span>
                 by{" "}
-                <span className="font-bold text-accent-fg">
+                <span className="font-medium text-accent-fg">
                   {pres.developer}
                 </span>
               </span>

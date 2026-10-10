@@ -231,7 +231,7 @@ export function ChannelLane({
         <div className="flex flex-wrap items-center gap-2">
           <h2
             id={headingId}
-            className="font-mono text-base font-bold text-fg-strong"
+            className="font-mono text-base font-semibold text-fg-strong"
           >
             {c.channel}
           </h2>

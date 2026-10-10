@@ -61,7 +61,7 @@ export function LibraryHero({
           <div className="min-w-0">
             <h2
               id="hero-name"
-              className="truncate text-2xl font-bold text-fg-strong desk:text-3xl"
+              className="truncate text-2xl font-semibold text-fg-strong desk:text-3xl"
             >
               {product.name}
             </h2>
@@ -126,7 +126,7 @@ export function LibraryHero({
         </dl>
         <a
           href={href.product(product.slug)}
-          className="mt-auto inline-flex items-center gap-2 self-start font-bold text-accent-fg hover:underline"
+          className="mt-auto inline-flex items-center gap-2 self-start font-medium text-accent-fg hover:underline"
         >
           {product.kind === "entry"
             ? "Details and downloads"
