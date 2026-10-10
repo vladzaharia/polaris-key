@@ -12,7 +12,7 @@
 // failure carries Try again (and "Replace a device" when the license is full); a version block
 // offers the update when the product runs the Update service. Every string is catalog copy.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
   useLicenseGate,
   type GateScreen,
@@ -20,13 +20,20 @@ import {
 } from "../react/hooks.js";
 import { SPACE } from "@polaris-key/brand";
 import { PolarisLogin, openManageUrl } from "./PolarisLogin.js";
+import { HandoffHeader } from "./SignInHandoff.js";
 import { Button } from "./primitives/buttons.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
-import { FullWindow, bannerStyle, mutedText } from "./primitives/card.js";
+import {
+  FullWindow,
+  bannerStyle,
+  dangerText,
+  mutedText,
+} from "./primitives/card.js";
 import { REDUCED_MOTION, matches } from "./primitives/media.js";
 import { screenLogo } from "./brand.js";
-import { knownProductName, type PolarisTheme } from "./theme.js";
+import { productLabel, type PolarisTheme } from "./theme.js";
 import { formatCopy } from "./format.js";
+import { openLink, safeLink } from "./links.js";
 import { errorSentence, errorTitle, type ErrorLike } from "./errors.js";
 import { activationTitle } from "../core/copy.js";
 import { useLatestVersion } from "../update/useLatestVersion.js";
@@ -59,7 +66,7 @@ export interface LicenseGateProps {
 
 /** The product's name for copy that names it, or the theme's placeholder. */
 function productOf(theme: PolarisTheme): string {
-  return knownProductName(theme) ?? theme.copy.productName;
+  return productLabel(theme);
 }
 
 function blockTitleBody(
@@ -87,8 +94,12 @@ function blockTitleBody(
 
 /** A Try again that shows its busy state and never lets the retry's rejection reach the page
  *  (the failure is the screen's to show, through the gate's state). */
-function useRetry(retry: () => Promise<void>): [boolean, () => void] {
+function useRetry(
+  retry: () => Promise<void>,
+): [boolean, () => void, ErrorLike | null] {
   const [busy, setBusy] = useState(false);
+  // What the last attempt failed with, until the next attempt starts.
+  const [failure, setFailure] = useState<ErrorLike | null>(null);
   const alive = useRef(true);
   useEffect(
     () => () => {
@@ -99,13 +110,19 @@ function useRetry(retry: () => Promise<void>): [boolean, () => void] {
   const run = (): void => {
     if (busy) return;
     setBusy(true);
+    setFailure(null);
     void retry()
-      .catch(() => undefined)
+      .catch((e: unknown) => {
+        if (alive.current)
+          setFailure(
+            e && typeof e === "object" ? (e as ErrorLike) : { code: "unknown" },
+          );
+      })
       .finally(() => {
         if (alive.current) setBusy(false);
       });
   };
-  return [busy, run];
+  return [busy, run, failure];
 }
 
 /**
@@ -113,7 +130,7 @@ function useRetry(retry: () => Promise<void>): [boolean, () => void] {
  * identity, "Checking your license…" in muted text and a 2 px indeterminate bar along the top
  * edge (still, under reduced motion).
  */
-function LoadingScreen(props: { theme: PolarisTheme }): JSX.Element {
+function LoadingScreen(props: { theme: PolarisTheme }): React.JSX.Element {
   const [shown, setShown] = useState(false);
   useEffect(() => {
     const id = setTimeout(() => setShown(true), 300);
@@ -126,7 +143,7 @@ function LoadingScreen(props: { theme: PolarisTheme }): JSX.Element {
   );
 }
 
-function LoadingCard(props: { theme: PolarisTheme }): JSX.Element {
+function LoadingCard(props: { theme: PolarisTheme }): React.JSX.Element {
   const bar = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const el = bar.current;
@@ -186,7 +203,7 @@ function LoadingCard(props: { theme: PolarisTheme }): JSX.Element {
 function GraceBanner(props: {
   theme: PolarisTheme;
   graceUntil: number | undefined;
-}): JSX.Element {
+}): React.JSX.Element {
   const { theme, graceUntil } = props;
   const c = theme.copy;
   let text = `${c.graceTitle} — ${c.graceBody}`;
@@ -235,7 +252,7 @@ function GraceBanner(props: {
 
 /** A version block. Too old, with the Update service on: "Get the update" first (the update
  *  prompt's action) and Try again second; otherwise Try again alone. */
-function VersionBlock(props: { ctx: UseLicenseGate }): JSX.Element {
+function VersionBlock(props: { ctx: UseLicenseGate }): React.JSX.Element {
   const { ctx } = props;
   const { theme } = ctx;
   const { title, body } = blockTitleBody(theme, ctx.status);
@@ -243,9 +260,8 @@ function VersionBlock(props: { ctx: UseLicenseGate }): JSX.Element {
   const [busy, retry] = useRetry(ctx.retry);
   const offerUpdate = ctx.status === "version-too-old" && latest.enabled;
   const update = (): void => {
-    const url = latest.latest?.url;
-    if (url && typeof window !== "undefined")
-      window.open(url, "_blank", "noopener,noreferrer");
+    const url = safeLink(latest.latest?.url);
+    if (url) openLink(url);
     else void latest.check().catch(() => undefined);
   };
   return offerUpdate ? (
@@ -286,7 +302,7 @@ function VersionBlock(props: { ctx: UseLicenseGate }): JSX.Element {
 function ErrorScreen(props: {
   ctx: UseLicenseGate;
   returnUrl?: string;
-}): JSX.Element {
+}): React.JSX.Element {
   const { ctx } = props;
   const { theme } = ctx;
   const [busy, retry] = useRetry(ctx.retry);
@@ -353,7 +369,87 @@ function ErrorScreen(props: {
   );
 }
 
-export function LicenseGate(props: LicenseGateProps): JSX.Element {
+/**
+ * Revoked and expired: one title, then every way out. The sign-in methods are the action (Sign in
+ * first and filled, then "Use a different key"), docked at the bottom on a phone exactly as on
+ * the sign-in screen, and Try again re-reads the state for a licence that was restored since.
+ */
+function StatusScreen(props: {
+  ctx: UseLicenseGate;
+  revoked: boolean;
+  returnUrl?: string;
+}): React.JSX.Element {
+  const { ctx, revoked } = props;
+  const { theme } = ctx;
+  const [busy, retry, failure] = useRetry(ctx.retry);
+  // While a sign-in's hand-off is up the screen yields to it: its title, and no second button
+  // that reads like Cancel (Try again returns with the methods).
+  const [handoff, setHandoff] = useState<
+    "waiting" | "expired" | "unavailable" | null
+  >(null);
+  // The head's slot for the code: it sits with the title, and only the buttons dock (DL1).
+  const [codeSlot, setCodeSlot] = useState<HTMLElement | null>(null);
+  const live = handoff === "waiting" || handoff === "expired";
+  const failureId = useId();
+  const title = live
+    ? handoff === "expired"
+      ? theme.copy.handoffExpiredTitle
+      : theme.copy.handoffTitle
+    : revoked
+      ? theme.copy.revokedTitle
+      : theme.copy.expiredTitle;
+  return (
+    <MessageScreen
+      title={title}
+      body={
+        live ? "" : revoked ? theme.copy.revokedBody : theme.copy.expiredBody
+      }
+      logo={live ? <HandoffHeader theme={theme} /> : screenLogo(theme)}
+      headExtra={
+        live ? (
+          <div
+            ref={setCodeSlot}
+            style={{ display: "contents" }}
+            data-polaris-code-slot=""
+          />
+        ) : null
+      }
+      extra={
+        <PolarisLogin
+          heading={false}
+          bare
+          differentKey
+          onHandoff={setHandoff}
+          codeSlot={codeSlot}
+          {...(props.returnUrl ? { returnUrl: props.returnUrl } : {})}
+        />
+      }
+      {...(live
+        ? {}
+        : {
+            onRetry: retry,
+            retryBusy: busy,
+            retryLabel: theme.copy.retryLabel,
+            retryVariant: "quiet" as const,
+            retryDescribedBy: failure ? failureId : undefined,
+          })}
+      notice={
+        failure && !live ? (
+          <p
+            id={failureId}
+            role="alert"
+            style={dangerText}
+            data-polaris-gate-retry-error=""
+          >
+            {errorSentence(failure)}
+          </p>
+        ) : null
+      }
+    />
+  );
+}
+
+export function LicenseGate(props: LicenseGateProps): React.JSX.Element {
   const ctx = useLicenseGate();
   const { theme } = ctx;
   const slots = props.slots ?? {};
@@ -408,19 +504,12 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
       break;
     case "revoked":
     case "expired": {
-      // One title, then the sign-in methods, which are the action: they dock at the bottom on a
-      // phone exactly as on the sign-in screen, and take focus.
       const revoked = screen === "revoked";
       const slot = revoked ? slots.revoked : slots.expired;
       content = slot ? (
         slot(ctx)
       ) : (
-        <MessageScreen
-          title={revoked ? theme.copy.revokedTitle : theme.copy.expiredTitle}
-          body={revoked ? theme.copy.revokedBody : theme.copy.expiredBody}
-          logo={screenLogo(theme)}
-          extra={<PolarisLogin heading={false} bare {...returnUrl} />}
-        />
+        <StatusScreen ctx={ctx} revoked={revoked} {...returnUrl} />
       );
       break;
     }

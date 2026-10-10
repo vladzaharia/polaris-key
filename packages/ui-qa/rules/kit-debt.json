@@ -1,5 +1,5 @@
 {
-  "$comment": "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-07, compose UK-09, godot UK-11, qt UK-12). The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.",
+  "$comment": "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-07, compose UK-09, godot UK-11, qt UK-12, react UK-05). The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.",
   "debt": [
     {
       "kit": "compose",

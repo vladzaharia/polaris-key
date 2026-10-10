@@ -40,6 +40,11 @@ const SEED: Record<string, string> = {
   "terminal-python-escape": 'print("\\x1b[31mred\\x1b[0m")',
   "terminal-python-colour-literal": 'ACCENT = "#ff6a3d"',
   "terminal-python-stock-spinner": 'with console.status("Working"):',
+  "react-rtl": "const s = { marginLeft: 8 };",
+  "react-system-dialog": "if (window.confirm('Remove?')) remove();",
+  "react-uppercase": 'const s = { textTransform: "uppercase" };',
+  "react-colour-literal": 'const s = { color: "#ff6a3d" };',
+  "react-px-font": 'const s = { fontSize: "13px" };',
   "terminal-raw-escape": "out.write(`\\x1b[36m${name}\\x1b[39m`);",
   "terminal-stock-prompt": "const rl = createInterface({ input, output });",
   "terminal-console": 'console.log("Activated");',
@@ -50,6 +55,7 @@ const EXT: Record<string, string> = {
   compose: ".kt",
   godot: ".gd",
   qt: ".py",
+  react: ".tsx",
   "terminal-python": ".py",
   "terminal-node": ".ts",
 };
@@ -118,6 +124,19 @@ describe("the per-kit source lints (bin/kit-lint.mjs)", () => {
     ]);
     writeFileSync(f, "Modifier.padding(start = 8.dp)\n");
     expect(lintKits(root).findings[0]!.detail).toMatch(/stale debt/);
+  });
+
+  it("react-uppercase flags an upper-cased string, not a capitalised first letter", () => {
+    const root = seededRoot();
+    const dir = join(root, rules.kits.react!.roots[0]!);
+    writeFileSync(
+      join(dir, "caps.tsx"),
+      "const a = w.charAt(0).toUpperCase() + w.slice(1);\nconst b = title.toUpperCase();\n",
+    );
+    const hits = scan(root, ["react"]).filter((h) =>
+      h.file.endsWith("caps.tsx"),
+    );
+    expect(hits.map((h) => h.line)).toEqual([2]);
   });
 
   it("skips generated files and honours a reasoned allow comment", () => {

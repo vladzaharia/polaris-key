@@ -30,7 +30,11 @@ import {
   type VersionCheck,
   type ImportBundleResult,
 } from "../core/index.js";
-import { readEntitled, readEntitledChannels } from "../core/adapter.js";
+import {
+  isSignInRefusal,
+  readEntitled,
+  readEntitledChannels,
+} from "../core/adapter.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 import type { PolarisTheme } from "../components/theme.js";
@@ -141,7 +145,7 @@ export function usePolarisKey(): UsePolarisKey {
       busyByService: state.busy,
       error: firstError(state.error),
       errorByService: state.error,
-      refresh: () => adapter.refresh(),
+      refresh: () => adapter.refresh({ force: true }),
       signInWithOidc: () => adapter.signInWithOidc(),
       submitKey: (key: string) => adapter.submitKey(key),
       signOut: () => adapter.signOut(),
@@ -198,7 +202,7 @@ export function useLicense(): UseLicense {
     entitledChannels: readEntitledChannels(state),
     busy: state.busy.license,
     error: state.error.license,
-    refresh: () => adapter.refresh(),
+    refresh: () => adapter.refresh({ force: true }),
   };
 }
 
@@ -418,20 +422,7 @@ export interface UseLicenseGate {
   retry: () => Promise<void>;
 }
 
-/**
- * A refusal of something the person did on the sign-in card: a key they typed (an activation
- * outcome, the device limit among them) or a sign-in they started. The card shows it under the
- * control they used, with "Replace a device" when the refusal carries the portal link, and they
- * act on it there; the error screen's Try again re-reads the state, which fixes neither.
- */
-export function isSignInRefusal(error: PolarisError): boolean {
-  return (
-    error.activation !== undefined ||
-    error.code === ErrorCode.signInFailed ||
-    error.code === ErrorCode.signInExpired ||
-    error.code === ErrorCode.keyEntryUnsupported
-  );
-}
+export { isSignInRefusal };
 
 export function screenFor(state: PolarisState): GateScreen {
   if (state.phase === "loading") return "loading";
@@ -480,7 +471,7 @@ export function useLicenseGate(): UseLicenseGate {
     theme,
     usable: isUsable(state.status),
     error: state.error.license ?? state.error.identity,
-    retry: () => adapter.refresh(),
+    retry: () => adapter.refresh({ force: true }),
   };
 }
 

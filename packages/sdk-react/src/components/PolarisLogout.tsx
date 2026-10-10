@@ -18,7 +18,7 @@ export interface PolarisLogoutProps {
   label?: string;
 }
 
-export function PolarisLogout(props: PolarisLogoutProps): JSX.Element {
+export function PolarisLogout(props: PolarisLogoutProps): React.JSX.Element {
   const auth = usePolarisAuth();
   const theme = usePolarisTheme();
   const label = props.label ?? theme.copy.signOutLabel;

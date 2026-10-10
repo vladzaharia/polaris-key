@@ -104,6 +104,7 @@ export interface DeviceInfo {
   status: LicenseStatus;
   licenseId?: string;
   profile?: DocProfile;
+  /** When the device was last verified or seen, epoch SECONDS. */
   lastVerifiedAt?: number;
   /** Operator-set label, when the backend supports device management. */
   label?: string | null;
@@ -271,6 +272,14 @@ export interface OidcSignInHandle {
   verificationUrl?: string;
   /** Optional user code to display alongside the URL. */
   userCode?: string;
+  /** The bare verification page, for typing the code by hand (additive; absent from older
+   *  hosts). */
+  verificationUri?: string;
+  /** Epoch seconds the code expires at, on this client's clock (additive). */
+  expiresAt?: number;
+  /** Stop waiting for the sign-in: polling ends and nothing is reported as an error. Absent
+   *  from a host that cannot stop the wait (additive). */
+  cancel?: () => void;
 }
 
 /** A device-code sign-in in progress (identity.devicecode, RFC 8628): what a sign-in screen
@@ -384,7 +393,10 @@ export interface PolarisAdapter {
   /** Subscribe to state changes; returns an unsubscribe. */
   subscribe(cb: (state: PolarisState) => void): () => void;
   /** Re-pull the license/config from the source of truth and re-apply. */
-  refresh(): Promise<void>;
+  /** Re-read the state from the transport. An automatic caller (a timer) passes nothing and
+   *  stays off the network while the transport backs off; a person's retry passes
+   *  `force: true` and goes through. */
+  refresh(opts?: { force?: boolean }): Promise<void>;
   /** Begin an OIDC sign-in. Desktop returns a verification handle; browser navigates
    *  the page (and never resolves, since the page unloads). */
   signInWithOidc(): Promise<OidcSignInHandle | void>;

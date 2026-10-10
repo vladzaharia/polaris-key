@@ -328,7 +328,7 @@ export function FullWindow({
   onEscape,
   onKeyDown,
   ...rest
-}: FullWindowProps): JSX.Element {
+}: FullWindowProps): React.JSX.Element {
   const [ref, size] = useRemSize<HTMLDivElement>();
   const el = useRef<HTMLDivElement | null>(null);
   const layout = windowLayoutOf(size, { scrim: scrim !== undefined });

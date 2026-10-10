@@ -3,7 +3,7 @@
 // kit (SwiftUI, Compose, Godot, Qt) and the Node terminal kit (terminal-node). Zero dependencies, so each kit's CI lane runs it with plain
 // Node and no install:
 //
-//   node packages/ui-qa/bin/kit-lint.mjs [--kit=swiftui,compose,godot,qt,terminal-node] [--record] [--json]
+//   node packages/ui-qa/bin/kit-lint.mjs [--kit=swiftui,compose,godot,qt,react,terminal-node] [--record] [--json]
 //
 // Rules: packages/ui-qa/rules/kit-rules.json. Debt: packages/ui-qa/rules/kit-debt.json counts, per
 // rule and file, the hits that existed when the lint landed; each kit's modernisation work package
@@ -19,7 +19,7 @@ const RULES = "packages/ui-qa/rules/kit-rules.json";
 const DEBT = "packages/ui-qa/rules/kit-debt.json";
 
 const DEBT_COMMENT =
-  "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-07, compose UK-09, godot UK-11, qt UK-12). The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.";
+  "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-07, compose UK-09, godot UK-11, qt UK-12, react UK-05). The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.";
 
 function walk(dir, exts, out) {
   let entries;

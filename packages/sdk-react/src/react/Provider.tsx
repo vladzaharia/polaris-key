@@ -41,6 +41,12 @@ import { useIsomorphicLayoutEffect } from "../components/primitives/layout.js";
 import { PolarisContext } from "./context.js";
 import { DARK_QUERY, resolveSystemScheme } from "./hostScheme.js";
 
+/** Disposals waiting out a possible immediate re-run of the Provider's effect. */
+const pendingDisposals = new WeakMap<
+  PolarisAdapter,
+  ReturnType<typeof setTimeout>
+>();
+
 export interface PolarisKeyProviderProps {
   /** The product slug — path-scopes every request. */
   productSlug: string;
@@ -198,7 +204,7 @@ function resolveMode(
 
 export function PolarisKeyProvider(
   props: PolarisKeyProviderProps,
-): JSX.Element {
+): React.JSX.Element {
   const {
     productSlug,
     baseUrl,
@@ -250,6 +256,40 @@ export function PolarisKeyProvider(
     [trustKey],
   );
 
+  // Inline literals must not rebuild the adapter either: a rebuilt adapter is a new load (a new
+  // discovery fetch, a dropped session). The local overrides compare by value; the test seams
+  // (`fetchImpl`, `navigate`, `now`) are called through a ref, so a new closure each render is
+  // the same adapter calling the latest one.
+  const overridesKey = localOverrides ? JSON.stringify(localOverrides) : "";
+  const overrides = useMemo<Record<string, JSONValue> | undefined>(
+    () =>
+      overridesKey === ""
+        ? undefined
+        : (JSON.parse(overridesKey) as Record<string, JSONValue>),
+    [overridesKey],
+  );
+  const seams = useRef({ fetchImpl, navigate, now });
+  seams.current = { fetchImpl, navigate, now };
+  const stableFetch = useMemo<typeof fetch | undefined>(
+    () =>
+      fetchImpl
+        ? (...args) => (seams.current.fetchImpl ?? fetch)(...args)
+        : undefined,
+    // Present or absent; which closure it is does not matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fetchImpl === undefined],
+  );
+  const stableNavigate = useMemo<((url: string) => void) | undefined>(
+    () => (navigate ? (url) => seams.current.navigate?.(url) : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigate === undefined],
+  );
+  const stableNow = useMemo<(() => number) | undefined>(
+    () => (now ? () => (seams.current.now ?? now)() : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [now === undefined],
+  );
+
   // Construction does no I/O: the browser adapter is built with `autoStart: false` and started
   // from the effect below, so a render (including a server render) never touches the network.
   const adapter = useMemo<PolarisAdapter>(() => {
@@ -258,18 +298,18 @@ export function PolarisKeyProvider(
     if (resolved === "desktop") {
       return desktopAdapter({
         bridge,
-        now,
-        localOverrides,
+        now: stableNow,
+        localOverrides: overrides,
         expectServices: expected,
       });
     }
     return new BrowserAdapter({
       productSlug,
       baseUrl,
-      fetchImpl,
-      navigate,
-      now,
-      localOverrides,
+      fetchImpl: stableFetch,
+      navigate: stableNavigate,
+      now: stableNow,
+      localOverrides: overrides,
       version,
       expectServices: expected,
       ...(auth ? { auth } : {}),
@@ -284,10 +324,10 @@ export function PolarisKeyProvider(
     bridge,
     productSlug,
     baseUrl,
-    fetchImpl,
-    navigate,
-    now,
-    localOverrides,
+    stableFetch,
+    stableNavigate,
+    stableNow,
+    overrides,
     version,
     expected,
     auth,
@@ -295,14 +335,31 @@ export function PolarisKeyProvider(
     store,
   ]);
 
-  // Begin the first load once mounted (SP-R13). `start()` is idempotent, so StrictMode's double
-  // effect is harmless; an injected adapter that has no `start` is left alone.
+  // Begin the first load once mounted (SP-R13) and own the adapter's lifetime. `start()` is
+  // idempotent and an injected adapter that has no `start` is left alone.
+  //
+  // StrictMode (and a Suspense or Offscreen re-show) runs an effect, its cleanup and the effect
+  // again on the SAME adapter. Disposing in that cleanup would leave a dead adapter (its store
+  // subscription and every `onConfigChange` listener gone) for the rest of the page's life, so
+  // the disposal is scheduled, and the effect running again cancels it. A real unmount, or a new
+  // adapter replacing this one, finds no second run and disposes.
   useEffect(() => {
+    const pending = pendingDisposals.get(adapter);
+    if (pending !== undefined) {
+      clearTimeout(pending);
+      pendingDisposals.delete(adapter);
+    }
     (adapter as { start?: () => void }).start?.();
+    return () => {
+      pendingDisposals.set(
+        adapter,
+        setTimeout(() => {
+          pendingDisposals.delete(adapter);
+          adapter.dispose();
+        }, 0),
+      );
+    };
   }, [adapter]);
-
-  // Dispose the adapter when it (or the provider) goes away.
-  useEffect(() => () => adapter.dispose(), [adapter]);
 
   // Optional refresh loop. The adapter's own store already notifies subscribers when state
   // changes, so there's no separate onChange here — a tier change simply re-renders whatever

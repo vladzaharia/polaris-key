@@ -210,6 +210,18 @@ export function provider(
 
 const app = host(<p>Host app content.</p>);
 
+/** A device-code sign-in the host started: the code, the page it belongs to, and `seconds` of
+ *  life left on this machine's clock. */
+function handoff(seconds: number) {
+  return {
+    flowId: "flow-1",
+    userCode: "WDJB-MJHT",
+    verificationUrl: "https://key.plrs.im/activate?code=WDJB-MJHT",
+    verificationUri: "https://key.plrs.im/activate",
+    expiresAt: Date.now() / 1000 + seconds,
+  };
+}
+
 async function typeKey(root: HTMLElement): Promise<void> {
   const reveal = root.querySelector<HTMLButtonElement>(
     "[data-polaris-use-key]",
@@ -279,6 +291,36 @@ export const SCENES: Scene[] = [
     gate: true,
   },
   {
+    id: "signin-handoff",
+    render: (scheme) =>
+      gate(emptyBridgeState({ capabilities: ALL }), scheme, (bridge) => {
+        bridge.beginSignIn = async () => handoff(587);
+      }),
+    act: async (root) => {
+      root.querySelector<HTMLButtonElement>("[data-polaris-oidc]")!.click();
+    },
+    before: "[data-polaris-oidc]",
+    ready: '[data-polaris-handoff="waiting"]',
+    primary: "[data-polaris-handoff-open]",
+    focus: "[data-polaris-handoff-open]",
+    gate: true,
+  },
+  {
+    id: "signin-handoff.expired",
+    render: (scheme) =>
+      gate(emptyBridgeState({ capabilities: ALL }), scheme, (bridge) => {
+        bridge.beginSignIn = async () => handoff(1);
+      }),
+    act: async (root) => {
+      root.querySelector<HTMLButtonElement>("[data-polaris-oidc]")!.click();
+    },
+    before: "[data-polaris-oidc]",
+    ready: '[data-polaris-handoff="expired"]',
+    primary: "[data-polaris-handoff-again]",
+    focus: "[data-polaris-handoff-again]",
+    gate: true,
+  },
+  {
     id: "license-gate.error",
     render: (scheme) =>
       gate(
@@ -343,6 +385,25 @@ export const SCENES: Scene[] = [
     gate: true,
   },
   {
+    id: "license-gate.revoked.handoff",
+    render: (scheme) =>
+      gate(
+        okBridgeState({ capabilities: ALL, lastSyncUnauthorized: true }),
+        scheme,
+        (bridge) => {
+          bridge.beginSignIn = async () => handoff(587);
+        },
+      ),
+    act: async (root) => {
+      root.querySelector<HTMLButtonElement>("[data-polaris-oidc]")!.click();
+    },
+    before: "[data-polaris-oidc]",
+    ready: '[data-polaris-handoff="waiting"]',
+    primary: "[data-polaris-handoff-open]",
+    focus: "[data-polaris-handoff-open]",
+    gate: true,
+  },
+  {
     id: "license-gate.version",
     render: (scheme) =>
       gate(blocked("version-too-old", { min: "5.0.0" }), scheme),
@@ -403,6 +464,27 @@ export const SCENES: Scene[] = [
     ready: '[data-polaris-update="dialog"] [data-polaris-actions]',
     primary: '[data-polaris-update="dialog"] [data-polaris-actions] button',
     focus: '[data-polaris-update="dialog"] [data-polaris-actions] button',
+  },
+  {
+    id: "update-prompt.failed",
+    render: (scheme) =>
+      provider(
+        adapterFor(okBridgeState({ capabilities: ALL }), (bridge) => {
+          const ok = bridge.invoke!;
+          bridge.invoke = (async (service: string, method: string) => {
+            if (service === "update" && method === "check")
+              throw new PolarisError("network-error", "offline");
+            return ok(service, method);
+          }) as never;
+        }),
+        scheme,
+        <>
+          <UpdatePrompt showWhenCurrent />
+          {app}
+        </>,
+      ),
+    ready: '[data-polaris-update="failed"] button',
+    primary: '[data-polaris-update="failed"] button',
   },
   {
     id: "update-prompt.banner",
@@ -506,6 +588,8 @@ export const SYSTEM_ON_LIGHT_HOST: Scene = {
 /** The scenes the preset axis runs (the brand and a host's own font and accent). */
 export const PRESET_SCENE_IDS = [
   "license-gate.login",
+  "signin-handoff",
+  "license-gate.revoked",
   "license-gate.device-limit",
   "license-gate.expired",
   "update-prompt.dialog",

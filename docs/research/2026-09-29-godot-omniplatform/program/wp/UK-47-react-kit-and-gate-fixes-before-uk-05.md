@@ -87,6 +87,48 @@ Applied from the brand and transition integration ([Brand transition decisions](
 
 - React kit: under `branding='polaris-key'` with no product accent the primary is ink, never violet (B2/DL13: kits keep the host or product accent); the name 'Polaris Key' appears only in `signin.footer` and the device URL; the Welcome primary reads 'Sign in' (catalog `welcome.signIn`). (sdk-a-20)
 
+## Corrections from the code (UK-47 build)
+
+The code is the fact; where it differed from the brief, this is what was built.
+
+- Already in the code, so only tested: the neutral device-limit callout with "Replace a device" as
+  the primary and its `manageUrl` link; the sign-in methods on the revoked and expired screens;
+  the scheme resolved against the host's ground; the opaque Sign out. Not rebuilt.
+- No QR in the hand-off. The scope line lists one, and DL14 (the web browses) retires it on the
+  web; the card leads with Open browser, then the code with Copy, then the address.
+- The `signInWithOidc` handle gains optional fields `verificationUri`, `expiresAt` and `cancel`,
+  and `adapter.refresh()` an optional `{ force }`. Both are additive and unavoidable for "expiry
+  and cancel" and a Try again that goes through a 401 backoff; SP-35 names them in 0.9.
+- `signin.footer` ("Polaris Key signs you in for {app}...") is not drawn: it needs the
+  developer's name, which the kit does not have (HA-13 brings `core.presentation`). The kit names
+  Polaris Key nowhere else under `branding="polaris-key"`.
+- `lastVerifiedAt` is seconds on `DeviceInfo` (the gate's own field keeps client-core's
+  milliseconds, which the corpus pins).
+- 401 backoff is in the bearer session (the 5xx curve); the Provider's timer refresh waits, a
+  person's Try again and a hook's `refresh()` go through.
+
+- Custom product accent (the brief's hierarchy row, "the product accent in kits"): **blocked on
+  UK-03**. The kit does not run `resolveAccent`, so a custom accent can be unreadable (label
+  1.6:1 for a yellow on light, 1.7:1 for a navy on dark; UX review V7). Until UK-03 the README
+  tells integrators to set `accentText` and `ring` with `accent`.
+- Update-check failure copy has no catalog key: "Couldn't check for updates.", "Check your
+  connection." and "Updates aren't available for this app." live in `theme.copy` as proposals for
+  `update.checkFailed`, `update.checkOffline` and `update.checkUnavailable` (UK-02 owns the nine
+  locales).
+- UX review round (F1 to F12, V1 to V9): the countdown is `aria-live="off"`; the hand-off is split
+  so the code stays with the title and only the buttons dock; Try again that fails says so;
+  revoked and expired yield their title and Try again to a live hand-off. Skipped, as agreed: V2
+  (`prefers-contrast`) and V6 (large-window layout).
+
+## Evidence (built, real Chromium)
+
+The React browser suite (964 renders: 17 sizes in both schemes, host and Polaris Key presets on
+the main screens) is green with the new scenes `signin-handoff`, `signin-handoff.expired` and
+`update-prompt.failed`. Renders: /Users/vlad/Repos/pk-wt/UK-47-evidence/ (per scene, `<size>-<scheme>[-<preset>].png`,
+contact sheets beside them). Baselines of the kit before the changes:
+packages/sdk-react/test/visual/**screenshots**/. Not run here: forced-colors, prefers-contrast and
+reduced-transparency renders, and the pkey-ux-reviewer pass (the lead's).
+
 ## Steps
 
 1. Verify this brief against the code (the code is the fact) and record any correction here, in the same branch.

@@ -154,6 +154,39 @@ describe("sync backoff (SP-R02)", () => {
     expect(h.docRequests).toHaveLength(2);
   });
 
+  it("repeated 401s back off, on the same curve, and a forced pass goes through", async () => {
+    const unauthorized = () => new Response("{}", { status: 401 });
+    const h = harness([unauthorized(), unauthorized(), unauthorized()]);
+    // The first 401 is applied at once (the licence document is dropped, the device reads revoked).
+    const first = await h.session.sync();
+    expect(first.unauthorized).toBe(true);
+    expect(h.docRequests).toHaveLength(1);
+    // The next automatic passes stay off the network: revocation is reversible, so polling goes
+    // on, but not on every tick. random() = 0: half of the 30 s base.
+    expect((await h.session.sync()).deferredUntil).toBe(NOW + 15);
+    expect(h.docRequests).toHaveLength(1);
+    h.advance(15);
+    await h.session.sync();
+    expect(h.docRequests).toHaveLength(2);
+    // The second consecutive 401 doubles the wait: exp = 60, random() = 0 gives 30.
+    expect((await h.session.sync()).deferredUntil).toBe(NOW + 15 + 30);
+    // A person's Try again is forced and is never deferred.
+    await h.session.sync({ force: true });
+    expect(h.docRequests).toHaveLength(3);
+  });
+
+  it("a healthy pass after 401s ends the backoff", async () => {
+    const h = harness([
+      new Response("{}", { status: 401 }),
+      new Response(null, { status: 304 }),
+    ]);
+    await h.session.sync();
+    h.advance(15);
+    await h.session.sync();
+    await h.session.sync();
+    expect(h.docRequests).toHaveLength(3);
+  });
+
   it("a 4xx that is not 429 is not a reason to back off", async () => {
     const h = harness([new Response("", { status: 404 })]);
     await h.session.sync();

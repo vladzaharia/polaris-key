@@ -251,6 +251,18 @@ export {
   anyBusy,
   copyServices,
   defaultServices,
+  // The core copy helpers (the catalog's sentences for a failure, a status, an activation
+  // outcome), for an app that renders its own screens.
+  activationMessage,
+  activationTitle,
+  copyLocales,
+  copyMessage,
+  copyTitle,
+  describeError,
+  hasCopy,
+  registerCopyLocale,
+  type CopyBundle,
+  type CopyParams,
   firstError,
   noBusy,
   noErrors,

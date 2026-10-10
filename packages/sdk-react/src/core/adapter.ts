@@ -23,6 +23,8 @@ import {
   type GateInput,
   type ResolveContext,
 } from "@polaris-key/client-core";
+import { ErrorCode } from "../constants.generated.js";
+import type { PolarisError } from "./types.js";
 import {
   type DeviceInfo,
   type PolarisDocs,
@@ -33,6 +35,7 @@ import {
 import {
   noBusy,
   noErrors,
+  withError,
   type ServiceBusyMap,
   type ServiceErrorMap,
   type ServicesMap,
@@ -110,6 +113,51 @@ export interface ProjectFlags {
  * Project the documents + gate inputs into the immutable snapshot the store holds. `phase`
  * flips to `ready` here — this is only ever called after a first transport resolution.
  */
+/**
+ * A refusal of something the person did on the sign-in card: a key they typed (an activation
+ * outcome, the device limit among them) or a sign-in they started. The card shows it under the
+ * control they used, with "Replace a device" when the refusal carries the portal link, and they
+ * act on it there.
+ */
+export function isSignInRefusal(error: {
+  code?: string;
+  activation?: unknown;
+}): boolean {
+  return (
+    error.activation !== undefined ||
+    error.code === ErrorCode.signInFailed ||
+    error.code === ErrorCode.signInExpired ||
+    error.code === ErrorCode.signInDenied ||
+    error.code === ErrorCode.keyEntryUnsupported
+  );
+}
+
+/**
+ * The errors that survive a refresh: the sign-in refusals standing in the license and identity
+ * slots. A refresh re-reads the state; it does not retry what the person did, so it neither
+ * clears their refusal nor replaces it with its own failure.
+ */
+export function standingRefusals(prev: ServiceErrorMap): ServiceErrorMap {
+  let out = noErrors();
+  for (const slug of ["license", "identity"] as const) {
+    const e = prev[slug];
+    if (e && isSignInRefusal(e)) out = withError(out, slug, e);
+  }
+  return out;
+}
+
+/** The error map after a refresh failed with `err`: the failure lands in the license slot,
+ *  unless a sign-in refusal stands there, which stays (the person still has to act on it). */
+export function refreshFailure(
+  prev: ServiceErrorMap,
+  err: PolarisError,
+): ServiceErrorMap {
+  const standing = prev.license;
+  return standing && isSignInRefusal(standing)
+    ? prev
+    : withError(prev, "license", err);
+}
+
 export function projectState(
   mode: PolarisMode,
   docs: PolarisDocs,
@@ -140,8 +188,20 @@ export function projectState(
     localOverrides,
     entitlements: flattenEntries(docs.license?.entitlements),
     busy: flags.busy ?? noBusy(),
-    error: flags.error ?? noErrors(),
+    // A refusal means nothing once the licence is usable (the person got in another way).
+    error: isUsable(gate.status)
+      ? withoutRefusals(flags.error ?? noErrors())
+      : (flags.error ?? noErrors()),
   };
+}
+
+function withoutRefusals(errors: ServiceErrorMap): ServiceErrorMap {
+  let out = errors;
+  for (const slug of ["license", "identity"] as const) {
+    const e = out[slug];
+    if (e && isSignInRefusal(e)) out = withError(out, slug, null);
+  }
+  return out;
 }
 
 /** The same snapshot with a new override map: the effective `config` re-resolved over the
@@ -166,8 +226,10 @@ export function currentDeviceFromState(s: PolarisState): DeviceInfo | null {
   };
   if (s.licenseId) out.licenseId = s.licenseId;
   if (s.profile) out.profile = s.profile;
+  // `DeviceInfo.lastVerifiedAt` is epoch SECONDS, like every other time the kit shows; the
+  // gate's own field is client-core's milliseconds.
   if (s.gate.lastVerifiedAt !== undefined)
-    out.lastVerifiedAt = s.gate.lastVerifiedAt;
+    out.lastVerifiedAt = Math.floor(s.gate.lastVerifiedAt / 1000);
   return out;
 }
 

@@ -41,7 +41,10 @@ export function groundOf(theme: PolarisTheme): PolarisResolvedScheme {
 
 /** The product's monogram: its name's first letter, weight 600, on the sunken surface. It is
  *  decorative: the title beside it names the product. */
-function MonogramTile(props: { name: string; size: string }): JSX.Element {
+function MonogramTile(props: {
+  name: string;
+  size: string;
+}): React.JSX.Element {
   const initial = Array.from(props.name.trim())[0]?.toLocaleUpperCase() ?? "";
   return (
     <span
@@ -100,7 +103,7 @@ export interface PoweredByPolarisKeyProps {
  */
 export function PoweredByPolarisKey(
   props: PoweredByPolarisKeyProps,
-): JSX.Element {
+): React.JSX.Element {
   const theme = usePolarisTheme();
   return <PoweredBy theme={theme} {...props} />;
 }
@@ -108,7 +111,7 @@ export function PoweredByPolarisKey(
 /** The badge without the context lookup (the components already hold the theme). */
 export function PoweredBy(
   props: PoweredByPolarisKeyProps & { theme: PolarisTheme },
-): JSX.Element {
+): React.JSX.Element {
   const {
     theme,
     layout = "compact",

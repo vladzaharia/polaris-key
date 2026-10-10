@@ -295,7 +295,11 @@ describe("DesktopAdapter — OIDC sign-in", () => {
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
     await ready(adapter);
     const handle = await adapter.signInWithOidc();
-    expect(handle).toEqual({ verificationUrl: "https://v", userCode: "ABCD" });
+    expect(handle).toMatchObject({
+      verificationUrl: "https://v",
+      userCode: "ABCD",
+    });
+    expect(typeof (handle as { cancel?: unknown }).cancel).toBe("function");
     await ready(adapter);
     await new Promise((r) => setTimeout(r, 0));
     expect(adapter.snapshot().status).toBe("ok");

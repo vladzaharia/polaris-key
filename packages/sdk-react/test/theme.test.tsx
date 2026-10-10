@@ -139,8 +139,13 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
     for (const t of [neutralDarkTokens, neutralLightTokens]) {
       expect(t.fontFamily).toBe("inherit");
       const brandHexes = new Set(
-        [...Object.values(darkTokens), ...Object.values(lightTokens)].map((v) =>
-          v.toLowerCase(),
+        [darkTokens, lightTokens].flatMap((brand) =>
+          Object.entries(brand)
+            // Ink (the primary's fill and its label) is neutral in both themes by design.
+            .filter(
+              ([k]) => !["accent", "accentHover", "accentText"].includes(k),
+            )
+            .map(([, v]) => v.toLowerCase()),
         ),
       );
       for (const k of ["accent", "ring", "background"] as const)
@@ -148,12 +153,16 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
     }
   });
 
-  it("the neutral copy never names Polaris Key; the brand's copy does", () => {
+  it("the neutral copy never names Polaris Key; the brand's copy names it only as a placeholder", () => {
     for (const text of Object.values(mergeTheme().copy))
       expect(text).not.toMatch(/Polaris Key/);
-    expect(mergeTheme(polarisKeyTheme).copy.oidcButtonLabel).toBe(
-      "Continue with Polaris Key",
+    // The sign-in button stays "Sign in" (welcome.signIn) under the brand too: the platform is
+    // named in the Powered-by line and the hand-off's address, not on the product's button.
+    expect(mergeTheme(polarisKeyTheme).copy.oidcButtonLabel).toBe("Sign in");
+    const named = Object.entries(mergeTheme(polarisKeyTheme).copy).filter(
+      ([, text]) => /Polaris Key/.test(text),
     );
+    expect(named.map(([k]) => k)).toEqual(["productName"]);
     // An integrator's copy wins under either branding.
     expect(
       mergeTheme({ ...polarisKeyTheme, copy: { oidcButtonLabel: "Go" } }).copy
@@ -198,8 +207,9 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
       [darkTokens, THEME_TOKENS.dark],
       [lightTokens, THEME_TOKENS.light],
     ] as const) {
-      expect(tokens.accent).toBe(brand.accent.violet.solid);
-      expect(tokens.accentText).toBe(brand.accent.violet.on);
+      // The primary is ink, not the brand's violet: a kit speaks in the product's accent or in
+      // ink (B2, DL13).
+      expect(tokens.accent).not.toBe(brand.accent.violet.solid);
       expect(tokens.ring).toBe(brand.focus);
       expect(tokens.background).toBe(brand.surface.page);
       expect(tokens.surface).toBe(brand.surface.raised);
@@ -216,10 +226,13 @@ describe("theme — neutral by default, Polaris Key on one option", () => {
   });
 
   it("carries no blue or indigo accent (BRAND.md §5.1), including the high-contrast variant", () => {
+    // The primary is ink (a neutral); the colour the brand adds is the focus ring.
+    expect([darkTokens.accent, lightTokens.accent]).toEqual([
+      "#f4f4f5",
+      "#18181b",
+    ]);
     const accents: [string, "dark" | "light"][] = [
-      [darkTokens.accent, "dark"],
       [darkTokens.ring, "dark"],
-      [lightTokens.accent, "light"],
       [lightTokens.ring, "light"],
       [highContrastTheme.tokens!.accent!, "dark"],
     ];

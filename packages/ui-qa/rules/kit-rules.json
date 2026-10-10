@@ -27,6 +27,10 @@
     "terminal-node": {
       "roots": ["packages/sdk-node/src/cli"],
       "extensions": [".ts"]
+    },
+    "react": {
+      "roots": ["packages/sdk-react/src/components"],
+      "extensions": [".ts", ".tsx"]
     }
   },
   "rules": [
@@ -223,6 +227,42 @@
       "pattern": "\\.toUpperCase\\(\\)|\\.toLocaleUpperCase\\(",
       "spec": "§1.5 rule 6, rule 11",
       "says": "No all-caps copy: the catalog's sentence case is what the terminal shows."
+    },
+    {
+      "id": "react-rtl",
+      "kit": "react",
+      "pattern": "\\b(margin|padding|border)(Left|Right)\\b|textAlign:\\s*[\"'](left|right)[\"']|\\b(left|right):\\s*[\"']?[0-9]",
+      "spec": "§4.7, §7.3",
+      "says": "RTL-safe layout: logical properties (marginInlineStart, insetInlineEnd, textAlign start/end), never left/right."
+    },
+    {
+      "id": "react-system-dialog",
+      "kit": "react",
+      "pattern": "(^|[^.\\w])(alert|confirm|prompt)\\(|window\\.(alert|confirm|prompt)\\(",
+      "spec": "§1.5 rule 3",
+      "says": "No browser dialogs (alert, confirm, prompt); use the kit's inline confirm or dialog."
+    },
+    {
+      "id": "react-uppercase",
+      "kit": "react",
+      "pattern": "textTransform:\\s*[\"']uppercase[\"']|[A-Za-z_\\]]\\.toUpperCase\\(\\)",
+      "spec": "§1.5 rule 6",
+      "says": "No all-caps labels (a whole string upper-cased; capitalising a first letter is fine)."
+    },
+    {
+      "id": "react-colour-literal",
+      "kit": "react",
+      "pattern": "#[0-9a-fA-F]{3,8}\\b|\\brgba?\\(|\\bhsla?\\(",
+      "spec": "§2.1, §7.3",
+      "says": "No colour literal outside the theme tokens (components/theme.ts); use a --pk-* custom property.",
+      "exclude": ["/theme\\.ts$"]
+    },
+    {
+      "id": "react-px-font",
+      "kit": "react",
+      "pattern": "fontSize:\\s*[\"']?[0-9.]+px",
+      "spec": "§4.7 DL11",
+      "says": "Type is sized in rem or a type-scale step, never px, so it follows the person's text size."
     }
   ]
 }

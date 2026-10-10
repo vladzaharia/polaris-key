@@ -46,6 +46,7 @@ import { useIsomorphicLayoutEffect } from "./primitives/layout.js";
 import { TextField } from "./primitives/input.js";
 import { themePoweredBy } from "./brand.js";
 import { formatCopy } from "./format.js";
+import { safeLink } from "./links.js";
 import { knownProductName, type PolarisTheme } from "./theme.js";
 
 export interface DeviceManagerSlots {
@@ -162,10 +163,10 @@ export function platformName(id: string | null | undefined): string | null {
     .join(" ");
 }
 
-/** "2 days ago", from epoch seconds (or milliseconds). */
+/** "2 days ago", from epoch seconds (`DeviceInfo.lastVerifiedAt`). */
 function lastSeen(at: number | undefined, now = Date.now()): string | null {
   if (at === undefined || !Number.isFinite(at) || at <= 0) return null;
-  const ms = at > 1e11 ? at : at * 1000;
+  const ms = at * 1000;
   const seconds = Math.round((ms - now) / 1000);
   const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
   const abs = Math.abs(seconds);
@@ -224,7 +225,7 @@ function cssEscape(id: string): string {
     : id.replace(/["\\]/g, "\\$&");
 }
 
-export function DeviceManager(props: DeviceManagerProps): JSX.Element {
+export function DeviceManager(props: DeviceManagerProps): React.JSX.Element {
   const theme = usePolarisTheme();
   // The ADAPTER, not `usePolarisKey()`: that hook rebuilds its bound callbacks on every
   // snapshot, so an effect depending on it would re-fetch the roster on every state change.
@@ -472,7 +473,7 @@ function UnsupportedLine(props: {
   theme: PolarisTheme;
   manageUrl?: string;
   marker: "unsupported" | "partial";
-}): JSX.Element {
+}): React.JSX.Element {
   const { theme, manageUrl } = props;
   return (
     <div
@@ -486,9 +487,9 @@ function UnsupportedLine(props: {
       }}
     >
       <p style={mutedText}>{theme.copy.devicesUnsupportedBody}</p>
-      {manageUrl ? (
+      {safeLink(manageUrl) ? (
         <a
-          href={manageUrl}
+          href={safeLink(manageUrl)!}
           target="_blank"
           rel="noopener noreferrer"
           style={manageLink}
@@ -512,7 +513,7 @@ function DeviceRow(props: {
   onClose: (refocus: string) => void;
   onRename: (label: string | null) => Promise<void>;
   onRemove: () => Promise<void>;
-}): JSX.Element {
+}): React.JSX.Element {
   const { device, theme } = props;
   const title = titleOf(device, theme);
   const meta = metaOf(device, theme);
@@ -757,7 +758,7 @@ function CancelButton(props: {
   label: string;
   disabled?: boolean;
   onClick: () => void;
-}): JSX.Element {
+}): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     ref.current?.focus();

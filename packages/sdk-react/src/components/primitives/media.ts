@@ -46,3 +46,4 @@ export function matches(query: string): boolean {
 
 export const COARSE_POINTER = "(pointer: coarse)";
 export const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+export const FORCED_COLORS = "(forced-colors: active)";

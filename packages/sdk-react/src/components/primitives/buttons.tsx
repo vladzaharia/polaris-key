@@ -26,6 +26,7 @@ import { typeStep } from "./card.js";
 import { useFocusRing } from "./focus.js";
 import {
   COARSE_POINTER,
+  FORCED_COLORS,
   REDUCED_MOTION,
   matches,
   useMediaQuery,
@@ -104,7 +105,7 @@ const styles: Record<ButtonVariant, CSSProperties> = {
 
 /** The busy ring: 1rem, drawn in the label's colour, turning unless motion is reduced. Web
  *  Animations rather than a keyframes rule, which an inline style cannot carry. */
-function BusyRing(): JSX.Element {
+function BusyRing(): React.JSX.Element {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     const el = ref.current;
@@ -174,6 +175,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const name = label ?? (typeof children === "string" ? children : undefined);
     const ring = useFocusRing();
     const coarse = useMediaQuery(COARSE_POINTER);
+    const forced = useMediaQuery(FORCED_COLORS);
     const inert = Boolean(disabled || busy);
     const click = (e: MouseEvent<HTMLButtonElement>): void => {
       // Ignored rather than natively disabled, so focus stays here; preventing the default also
@@ -192,11 +194,33 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         style={{
           ...styles[variant],
           ...(size === "compact" ? compactStyle : null),
-          ...(size === "compact" && coarse ? { minHeight: "2.75rem" } : null),
+          // A touch target is 44 px: the compact, quiet and ghost buttons grow to it.
+          ...((size === "compact" ||
+            variant === "quiet" ||
+            variant === "ghost") &&
+          coarse
+            ? { minHeight: "2.75rem" }
+            : null),
+          // Forced colours drop an author fill, so the one primary is drawn in the system's
+          // selection pair: a solid block no other button has.
+          // `forcedColorAdjust: none` keeps the system pair: left on `auto`, the browser paints a
+          // Canvas backplate behind the label and the label disappears.
+          ...(forced && variant === "primary"
+            ? {
+                background: "Highlight",
+                color: "HighlightText",
+                borderColor: "Highlight",
+                forcedColorAdjust: "none",
+              }
+            : null),
           ...(disabled ? { opacity: 0.42, cursor: "not-allowed" } : null),
           ...(busy && !disabled ? { cursor: "progress" } : null),
           ...style,
           ...ring.style,
+          // The focus ring is a system colour here, so it shows on the Highlight fill.
+          ...(forced && variant === "primary" && ring.style.outline
+            ? { outlineColor: "CanvasText" }
+            : null),
         }}
         onFocus={ring.onFocus}
         onBlur={ring.onBlur}

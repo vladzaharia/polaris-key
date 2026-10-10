@@ -211,6 +211,28 @@ the link in a new tab with the key fragment on an `/activate` link and `return=`
 once. `openManageUrl(url, { key, returnUrl })` and the `withManageReturn` / `withManageKey`
 helpers are exported for a custom screen. The link is never an auth failure: nothing is wiped.
 
+## Signing in by browser (device code)
+
+A page that signs in with a device token (`auth: "bearer"`) and a desktop host that reports a code
+do not navigate away. `signInWithOidc()` resolves to a handle
+(`{ verificationUrl, verificationUri, userCode, expiresAt, cancel }`), and `<PolarisLogin>` turns
+into the hand-off: the code, **Open browser** (the one filled action, focused), Copy, the address
+for typing by hand, how long the code lasts, and Cancel (or Escape), which stops the polling and
+gives Sign in back without an error. At 0:00 the card says the code has expired and offers Sign
+in again; a refusal from the server lands in the card under Sign in. Links are shown and opened
+only when they are https (or loopback http); the web draws no QR. A custom screen reads the same
+handle and calls `handle.cancel?.()`.
+
+A refusal of what the person typed or started (a wrong key, the device limit, a failed sign-in)
+survives `refresh()`, including a refresh that fails, and clears when the licence is usable. A
+revoked or expired licence shows Sign in, "Use a different key" and Try again; in bearer mode its
+401s back off like a 5xx (an automatic refresh waits, Try again and `refresh()` from a hook go
+through).
+
+A page cross-origin to the Worker without `trust.pinnedKeys`, or with an origin the product does
+not list under `web.origins`, gets one `console.error` in development builds; its users see the
+neutral error screen and no developer words.
+
 ## Layered config
 
 `useManagedConfig().get(key, fallback)` resolves a config value through the **same precedence**
@@ -476,6 +498,11 @@ without `importBundle` reports bundle import as `bundle-import-unsupported`.
 
 ## Theming
 
+**A product accent: set the label colour yourself.** The kit does not resolve contrast for an
+accent yet (UK-03 brings `resolveAccent`). If you set `theme.tokens.accent`, set `accentText` (the
+label on a filled button) and `ring` (the focus ring) with it, and check the pair is at least 4.5:1
+for the label and 3:1 for the fill against the page, in both schemes. A pale accent such as
+`#f5c518` needs a dark label; a navy one needs a light one. Without an accent the primary is ink.
 Brand through the Provider's `theme` (tokens + copy + logo): no CSS-in-JS dependency. The
 Provider publishes the tokens as `--pk-*` custom properties **twice**: on a wrapper element, so
 two providers can carry different brands without leaking into each other, and on `:root`, so
