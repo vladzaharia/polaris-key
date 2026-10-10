@@ -204,15 +204,44 @@ export function validateTrustPolicy(input: unknown): Validation {
   return { ok: true, policy };
 }
 
-/** The stored policy, or the default for NULL and for anything that no longer validates. */
+/**
+ * The stored policy, or the default for NULL and for anything that no longer validates.
+ *
+ * Lenient where the admin PUT is strict (the expand step of the two-release rule, for a JSON
+ * column; plans/U-01b.md §6.1): a stored member this build does not know whose value is a trust
+ * level (`basic` or `attested`) is an operation a later build added (U-05's `cloudSyncWrite`), and
+ * is dropped, so every other member and `enforce` still read as stored. Without it, a revert past
+ * that later build would read each policy saved under it as `DEFAULT_TRUST_POLICY` and silently
+ * turn off `mint`, `gatedDelivery` and `commerceClaim` enforcement. Any other unknown member still
+ * makes the stored policy unreadable, as `validateTrustPolicy` (the PUT) does.
+ */
 export function parseTrustPolicy(json: string | null | undefined): TrustPolicy {
   if (!json) return DEFAULT_TRUST_POLICY;
   try {
-    const v = validateTrustPolicy(JSON.parse(json) as unknown);
+    const raw = JSON.parse(json) as unknown;
+    const v = validateTrustPolicy(withoutLaterOperations(raw));
     return v.ok ? v.policy : DEFAULT_TRUST_POLICY;
   } catch {
     return DEFAULT_TRUST_POLICY;
   }
+}
+
+const POLICY_MEMBERS: ReadonlySet<string> = new Set([
+  ...TRUST_OPERATIONS,
+  "enforce",
+  "appAttest",
+  "playIntegrity",
+]);
+
+/** A stored policy without the operations a later build added (unknown members whose value is a
+ *  trust level). Anything that is not an object is returned as it is. */
+function withoutLaterOperations(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return raw;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>))
+    if (POLICY_MEMBERS.has(k) || (v !== "basic" && v !== "attested"))
+      out[k] = v;
+  return out;
 }
 
 /** The product's policy (loaded with the product; a hand-built product reads as the default). */
