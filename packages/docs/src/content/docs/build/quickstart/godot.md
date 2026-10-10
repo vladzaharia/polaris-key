@@ -16,10 +16,12 @@ pkey sdk --lang godot --write   # writes polaris_key_config.gd beside project.go
 const PolarisConfig := preload("res://polaris_key_config.gd")
 
 func _ready() -> void:
-	var boot := await PolarisKey.boot({options = PolarisConfig.options(), allow_offline = true})
-	if boot.outcome == PKeyBoot.READY:
-		get_tree().change_scene_to_file("res://game/title.tscn")
+	await PolarisKey.boot({options = PolarisConfig.options(), allow_offline = true})
+	get_tree().change_scene_to_file("res://game/title.tscn")
 ```
+
+`boot()` returns once the player is through. A stop on the way (offline, a blocked build) keeps its
+card and Try again on screen, and the await waits through the retries.
 
 `options()` returns a `PKeyOptions` carrying the product facts; the version comes from
 `application/config/version`. To keep the setup dock's `res://polaris_key.tres` (with your own

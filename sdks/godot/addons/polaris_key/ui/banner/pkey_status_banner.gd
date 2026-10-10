@@ -52,7 +52,7 @@ func _card_variation() -> String:
 func _arrange(m: Dictionary) -> void:
 	_float_strip()
 	super(m)
-	var warn: bool = _grace_left() < 86400.0 and state.get("status") == "grace"
+	var warn: bool = (_grace_left() < 86400.0 and state.get("status") == "grace") or state.get("status") == "expired"
 	size_glyph(_glyph, 16.0, get_theme_color("font_color", "PKeyWarning") if warn else get_theme_color("font_color", "PKeyMuted"))
 
 
@@ -109,7 +109,7 @@ func _render() -> void:
 		# The first line says what is happening; the rest qualify it.
 		var l := label(_lines, "Line%d" % labels.size(), "" if labels.is_empty() else "PKeyMuted")
 		labels.append(l)
-	var grace_first: bool = not lines.is_empty() and lines[0][0] == "banner_grace"
+	var grace_first: bool = not lines.is_empty() and lines[0][0] in ["banner_grace", "banner_expired"]
 	for i in labels.size():
 		var l: Label = labels[i]
 		if i < lines.size():
@@ -117,7 +117,8 @@ func _render() -> void:
 			l.visible = true
 			# Less than a day of grace left is a warning; more is a fact.
 			if i == 0:
-				l.theme_type_variation = &"PKeyWarning" if grace_first and _grace_left() < 86400.0 else &""
+				var overdue: bool = lines[0][0] == "banner_expired"
+				l.theme_type_variation = &"PKeyWarning" if grace_first and (overdue or _grace_left() < 86400.0) else &""
 		else:
 			l.visible = false
 	_glyph.visible = grace_first

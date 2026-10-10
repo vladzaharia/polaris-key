@@ -83,11 +83,10 @@ unknown services, before touching the disk or the network.
 
 ```gdscript
 func _ready() -> void:
-	var boot := await PolarisKey.boot({allow_offline = true})
-	if boot.outcome == PKeyBoot.READY:
-		get_tree().change_scene_to_file("res://game/title.tscn")
-	# BLOCKED, OFFLINE and ERROR stay on the PKeyBoot card with Retry; a later stop arrives as
-	# PolarisKey.boot_finished(result).
+	await PolarisKey.boot({allow_offline = true})
+	get_tree().change_scene_to_file("res://game/title.tscn")
+	# Resolves at READY. BLOCKED, OFFLINE and ERROR stay on the PKeyBoot card with Try again and the
+	# await waits through the retries; `{resolve_on_stop = true}` resolves at the first stop instead.
 ```
 
 `PolarisKey.boot()` configures from `res://polaris_key.tres` when nothing has configured yet,
@@ -529,12 +528,20 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
 
 ```gdscript
 func _ready() -> void:
-	var boot := await PolarisKey.boot({allow_offline = true})   # or {view = $PKeyBoot, …}
-	if boot.outcome == PKeyBoot.READY:
-		get_tree().change_scene_to_file("res://game/title.tscn")
-	# BLOCKED, OFFLINE, ERROR: PKeyBoot shows the card with Retry; a later stop arrives as
-	# PolarisKey.boot_finished(result).
+	await PolarisKey.boot({allow_offline = true})   # or {view = $PKeyBoot, …}
+	get_tree().change_scene_to_file("res://game/title.tscn")
+	# Resolves at READY. BLOCKED, OFFLINE, ERROR: PKeyBoot shows the card with Try again, and the
+	# await waits through the retries (`resolve_on_stop = true`: resolve at the first stop; every
+	# stop is also `PolarisKey.boot_finished(result)`).
 ```
+
+- **Boot options.** `resolve_on_stop` (above); `confirm_identity` (a sign-in stops at "Is this you?"
+  with the account it found before handing back); `persistent_gate` (a gate stays on the boot's
+  layer as `PolarisKey.boot_gate`: hidden while the licence is usable, covering the game again with
+  the boot's screens when it is revoked, expired or signed out). A second `boot()` while one runs
+  joins it; after READY it starts a new boot (a sign-out, say) with a fresh gate. A
+  `PKeyUpdatePrompt` the game places replaces the one the boot kept over the game, so one update
+  prompt is on screen; a prompt with nothing to open or install offers Check again.
 
 - **One machine, many views.** `PKeyStages` (core/stages.gd) is the port of client-core's
   `stages.ts`; the `stage_matrix` suite (`--pkey-test stage-matrix` works too) replays every row,
@@ -1074,7 +1081,7 @@ template alike.
 ```gdscript
 # res://pkey_packs/pkey-content.json: the content stamp CI writes before the export (P4-03); a
 # build without one has no packs. Embedded baselines sit beside it with their markers.
-var boot := await PolarisKey.boot()            # FETCH, MOUNT and BACKGROUND drive packs
+await PolarisKey.boot()                        # FETCH, MOUNT and BACKGROUND drive packs
 PolarisKey.update.packs.pack_ready.connect(func(id): print(id, " is usable"))
 var r := await PolarisKey.update.packs.ensure(["diceroll.core3d"])   # outside PKeyBoot
 await PolarisKey.update.packs.mount()          # this boot's godot.pck packs (PKeyBoot does it)

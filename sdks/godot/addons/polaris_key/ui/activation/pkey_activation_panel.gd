@@ -27,8 +27,17 @@ signal mode_changed(mode: String)
 ## default: only a product with a free tier turns it on.
 @export var offer_enrollment := false
 ## Show key entry even on an App Store, TestFlight or Play build (off: hidden there, as the
-## stores' payment rules require; PKeyActivationController.STORE_OUTLETS).
+## stores' payment rules require; PKeyActivationController.store_hides_key_entry, which follows the
+## outlet's effective capabilities).
 @export var allow_key_entry_on_store := false
+
+## Sign-in stops at "Is this you?" with the account it found before handing back (the dialog's
+## `confirm_identity`).
+@export var confirm_identity := false:
+	set(value):
+		confirm_identity = value
+		if sign_in_dialog != null:
+			sign_in_dialog.confirm_identity = value
 
 ## Where the portal sends the player back once a seat is free (PX-W8): one of the product's
 ## declared return targets, or "" for none.
@@ -172,6 +181,7 @@ func _build() -> void:
 	_other_key = button(_limit_actions, "DifferentKey", _on_other_key)
 	sign_in_dialog = PKeySignInDialog.new()
 	sign_in_dialog.auto_sdk = false
+	sign_in_dialog.confirm_identity = confirm_identity
 	sign_in_dialog.closed.connect(_back)
 	sign_in_dialog.use_key_requested.connect(func() -> void: _key_after_back = true)
 	sign_in_dialog.finished.connect(func(r: PKeySignInResult): if r.ok: activated.emit())

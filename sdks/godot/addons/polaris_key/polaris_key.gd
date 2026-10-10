@@ -84,6 +84,16 @@ var boot_prompt: Node:
 					return c
 		return null
 
+## The gate `boot({persistent_gate: true})` left over the game (it follows the licence for the rest
+## of the session and covers the game again when the licence stops being usable), or null.
+var boot_gate: Node:
+	get:
+		if _boot_layer != null and is_instance_valid(_boot_layer):
+			for c in _boot_layer.get_children():
+				if c is PKeyGateView and not c.is_queued_for_deletion():
+					return c
+		return null
+
 var _boot_layer: CanvasLayer = null
 
 var _timer: Timer = null
@@ -122,19 +132,30 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 
 
 ## The boot (report §5.1, §5.8): runs the P1-09 stage machine through PKeyBoot and resolves at
-## the first stop with a PKeyBootResult whose `outcome` is PKeyBoot.READY, BLOCKED, OFFLINE or
-## ERROR. Configures from `opts.options` or res://polaris_key.tres when configure() has not run.
+## READY with a PKeyBootResult (`outcome` PKeyBoot.READY). Configures from `opts.options` or
+## res://polaris_key.tres when configure() has not run.
 ##
-##   var boot := await PolarisKey.boot({allow_offline = true})
-##   if boot.outcome == PKeyBoot.READY: get_tree().change_scene_to_file("res://title.tscn")
+##   await PolarisKey.boot({allow_offline = true})
+##   get_tree().change_scene_to_file("res://title.tscn")
+##
+## A stop on the way (OFFLINE, BLOCKED, ERROR) keeps the boot's own card on screen with the way
+## forward (Try again, update, key entry), and the await waits through any number of retries:
+## the game continues once the player is through. A game that draws its own stop UI passes
+## `resolve_on_stop: true` to resolve at the first stop instead (READY, BLOCKED, OFFLINE or ERROR)
+## and reads later stops from `boot_finished`. Calling boot() again while one is going on joins it,
+## and calling it after READY (a sign-out, a revoked licence) starts a new boot with its own gate.
 ##
 ## `opts`: allow_offline, allow_grace, required_packs (accepted; empty until P4-08),
-## sync_timeout_seconds, offer_enrollment, release_url, options, and `view` (a PKeyBoot already
-## in the game's own boot scene). Without a view, one is shown on a CanvasLayer above the game
-## and freed once READY has been announced; on BLOCKED, OFFLINE or ERROR it stays, with Retry,
-## and a later stop arrives as `boot_finished`. An update answer on screen at READY outlives the
-## view: its prompt stays on the layer, top-wide, as `boot_prompt` (`keep_update_prompt: false`
-## when the game shows its own PKeyUpdatePrompt, which replays update.last_available). A coroutine.
+## sync_timeout_seconds, offer_enrollment, release_url, options, resolve_on_stop, confirm_identity
+## (a sign-in stops at "Is this you?" with the account it found before handing back),
+## persistent_gate (`boot_gate`, below), and `view` (a PKeyBoot already in the game's own boot
+## scene). Without a view, one is shown on a CanvasLayer above the game and freed once READY has
+## been announced. With `persistent_gate` a gate stays on that layer for the session: it hides
+## while the licence is usable and covers the game again with the boot's screens when it is not
+## (revoked, expired, signed out). An update answer on screen at READY outlives the view: its
+## prompt stays on the layer, top-wide, as `boot_prompt` (`keep_update_prompt: false` when the game
+## shows its own PKeyUpdatePrompt, which replays update.last_available; a prompt the game places
+## replaces the kept one). A coroutine.
 func boot(opts: Dictionary = {}) -> PKeyBootResult:
 	var view = opts.get("view")
 	if view == null:
@@ -144,9 +165,9 @@ func boot(opts: Dictionary = {}) -> PKeyBootResult:
 				_boot_layer.name = "PKeyBootLayer"
 				_boot_layer.layer = 100
 				add_child(_boot_layer)
-			# A prompt kept from an earlier boot gives way to the new boot's own.
+			# A prompt, and a persistent gate, kept from an earlier boot give way to the new boot's own.
 			for c in _boot_layer.get_children():
-				if c is PKeyUpdatePrompt:
+				if c is PKeyUpdatePrompt or c is PKeyGateView:
 					c.queue_free()
 			boot_view = (load(BOOT_SCENE) as PackedScene).instantiate()
 			boot_view.free_on_ready = true
@@ -157,6 +178,15 @@ func boot(opts: Dictionary = {}) -> PKeyBootResult:
 	if not view.boot_finished.is_connected(_on_boot_finished):
 		view.boot_finished.connect(_on_boot_finished)
 	return await view.run(opts)
+
+
+## The drop-in names this device for the sign-in page and the customer's device list: the
+## computer's own name ("Ada's MacBook Pro") instead of "macOS" when the game's configuration
+## gives none. A game's `device_name`, and `send_device_name = false`, stay as they are.
+## The boot calls it once the SDK is configured.
+func use_friendly_device_name() -> void:
+	if core != null and core.options.device_name == "" and core.options.send_device_name:
+		core.options.device_name = PKeyDeviceLabel.friendly_default()
 
 
 func _on_boot_finished(r: PKeyBootResult) -> void:
@@ -295,9 +325,10 @@ func store_status() -> Dictionary:
 
 ## A token was minted (activate, enroll): sync at once, unconditionally, so the caller returns
 ## with the licence document (sdk-node `onLicenseAcquired`).
-func _on_license_acquired() -> void:
-	await sync(true)
+func _on_license_acquired() -> PKeySyncResult:
+	var r := await sync(true)
 	_emit_state()
+	return r
 
 
 ## deactivate() wiped the token and the cache: the gate and the config both read from them.

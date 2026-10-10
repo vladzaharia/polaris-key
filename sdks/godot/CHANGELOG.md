@@ -9,6 +9,26 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
+- **Drop-in fixes.** **Behaviour change:** `await PolarisKey.boot()` resolves at READY, through any
+  number of stops and retries (a stop keeps its card with Try again on screen); pass
+  `resolve_on_stop: true` for the old first-stop result. `boot()` is re-entrant (a second call while
+  one runs joins it; after READY it starts a new boot with a fresh gate), `persistent_gate: true`
+  leaves a gate over the session (`PolarisKey.boot_gate`) that covers the game again when the licence
+  is revoked, expired or signed out, and `confirm_identity: true` makes a sign-in stop at "Is this
+  you?" before handing back. `PKeyUiView.sdk` is a setter that hands the SDK to the views nested in
+  the view and renders again (a gate built before the SDK was known shows its dialogs' content). The
+  status banner has an expired state. Every control of a kit screen has an accessible name (Godot
+  4.5+). One update prompt at a time: a `PKeyUpdatePrompt` the game places replaces the kept one, and
+  a locked answer with nothing to open or install offers Check again. An activation (or sign-in) whose
+  license document does not verify (an unpinned signer, a clock two days off) is no longer reported as
+  "Activated.": it reads "This device couldn't verify the license it was given…" and logs a
+  `push_error` naming the pins and the clock; `PKeyUiCopy.for_result` is empty on ok and reads an
+  activation result with the panel's own words; network and timeout copy name the product. Key entry
+  follows the outlet's effective capabilities (commerce `store-iap`, which now includes the Microsoft
+  Store). The settings panel fetches the product's live schema once it opens. The drop-in names the
+  device by the computer's own name where the OS has one. Two reference cycles that Godot reported as
+  leaks at exit are gone (the `exit_leaks` suite runs a probe game and requires a clean exit).
+
 - **Review fixes: settings on a short landscape screen.** The settings list opens with the focus in
   view on a phone held sideways (it used to open scrolled to its last row, the Volume slider out
   of view): the head scrolls with the list when no rail is shown and it would leave the rows a few

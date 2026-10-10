@@ -96,7 +96,7 @@ func _row(t: PKeyTestContext, row: Dictionary) -> bool:
 	var finished: Array = []
 	sdk.boot_finished.connect(func(r): finished.append(r))
 	var first: Array = []
-	var opts := {"view": boot, "host": host, "sync_timeout_seconds": 1000}
+	var opts := {"resolve_on_stop": true, "view": boot, "host": host, "sync_timeout_seconds": 1000}
 	if init.has("allowOffline"):
 		opts["allow_offline"] = init["allowOffline"]
 	if init.has("allowGrace"):
@@ -170,7 +170,7 @@ func _boot_to_required(sdk: Node, answer: PKeyResult) -> PKeyBootResult:
 	var host := PKeyFakeBootHost.new()
 	host.update_result = answer
 	var first: Array = []
-	_capture(sdk, {"host": host, "sync_timeout_seconds": 1000, "release_url": "https://example.com/releases"}, first)
+	_capture(sdk, {"resolve_on_stop": true, "host": host, "sync_timeout_seconds": 1000, "release_url": "https://example.com/releases"}, first)
 	for e in [
 		{"type": "shell.done"}, {"type": "guard.done", "result": "ok"}, {"type": "sync.done", "result": "ok"},
 		{"type": "gate.status", "status": "ok"}, {"type": "decide.done", "decision": "required"},
@@ -222,7 +222,7 @@ const SC := preload("res://tests/ui/scenarios.gd")
 func _boot_to_ready(sdk: Node, answer: PKeyResult, extra := {}) -> PKeyBootResult:
 	var host := PKeyFakeBootHost.new()
 	host.update_result = answer
-	var opts := {"host": host, "sync_timeout_seconds": 1000}
+	var opts := {"resolve_on_stop": true, "host": host, "sync_timeout_seconds": 1000}
 	opts.merge(extra)
 	var first: Array = []
 	_capture(sdk, opts, first)
@@ -407,10 +407,10 @@ func _full_boots(t: PKeyTestContext) -> void:
 	view.auto_sdk = false
 	(Engine.get_main_loop() as SceneTree).root.add_child(view)
 	var host := _host(sdk)
-	var r: PKeyBootResult = await sdk.boot({"view": view, "host": host, "allow_offline": false})
+	var r: PKeyBootResult = await sdk.boot({"resolve_on_stop": true, "view": view, "host": host, "allow_offline": false})
 	t.check("server: offline first launch under allow_offline false stops at OFFLINE", r.outcome == PKeyBoot.OFFLINE and r.stages == ["shell", "guard", "sync", "offline"], "%s %s" % [r, r.stages])
 	# The same launch with the default allow_offline continues on its defaults to READY.
-	var r2: PKeyBootResult = await sdk.boot({"view": view, "host": host})
+	var r2: PKeyBootResult = await sdk.boot({"resolve_on_stop": true, "view": view, "host": host})
 	t.check("server: offline first launch continues to READY by default", r2.outcome == PKeyBoot.READY and r2.ok, "%s %s" % [r2, r2.stages])
 	view.queue_free()
 	sdk.queue_free()
@@ -423,7 +423,7 @@ func _full_boots(t: PKeyTestContext) -> void:
 	(Engine.get_main_loop() as SceneTree).root.add_child(view2)
 	var signals: Array = []
 	view2.stage_changed.connect(func(s, _p): signals.append(s))
-	var r3: PKeyBootResult = await sdk2.boot({"view": view2, "host": _host(sdk2)})
+	var r3: PKeyBootResult = await sdk2.boot({"resolve_on_stop": true, "view": view2, "host": _host(sdk2)})
 	t.check("server: a licensed device boots to READY", r3.outcome == PKeyBoot.READY and signals == ["shell", "guard", "sync", "gate", "decide", "fetch", "mount", "ready"], "%s %s" % [r3, signals])
 	view2.queue_free()
 	sdk2.queue_free()
@@ -435,7 +435,7 @@ func _full_boots(t: PKeyTestContext) -> void:
 	var view3 := PKeyBoot.new()
 	view3.auto_sdk = false
 	(Engine.get_main_loop() as SceneTree).root.add_child(view3)
-	var r4: PKeyBootResult = await sdk3.boot({"view": view3, "host": _host(sdk3), "allow_offline": false})
+	var r4: PKeyBootResult = await sdk3.boot({"resolve_on_stop": true, "view": view3, "host": _host(sdk3), "allow_offline": false})
 	t.check("server: a 403 build block reaches BLOCKED update-required", r4.outcome == PKeyBoot.BLOCKED and r4.reason == "update-required", str(r4))
 	view3.queue_free()
 	sdk3.queue_free()
@@ -449,7 +449,7 @@ func _deadline(t: PKeyTestContext) -> void:
 	(Engine.get_main_loop() as SceneTree).root.add_child(view)
 	var host := PKeyFakeBootHost.new()
 	var first: Array = []
-	_capture(sdk, {"view": view, "host": host, "sync_timeout_seconds": 0.3, "allow_offline": false}, first)
+	_capture(sdk, {"resolve_on_stop": true, "view": view, "host": host, "sync_timeout_seconds": 0.3, "allow_offline": false}, first)
 	# Read before the answer that arms the deadline, so load can only lengthen the measured wait.
 	var started := Time.get_ticks_msec()
 	host.answer({"type": "shell.done"})

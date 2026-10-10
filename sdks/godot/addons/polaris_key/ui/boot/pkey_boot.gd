@@ -28,7 +28,16 @@ extends PKeyUiView
 ## without threads, where a bundle verify runs in frame slices: never under 10 s natively or 30 s
 ## sliced, S-04), offer_enrollment (false), release_url (""), keep_update_prompt (true: see the
 ## property), options (a PKeyOptions used when PolarisKey is not configured yet), host (replaces
-## PKeyBootHost: tests, a custom pipeline).
+## PKeyBootHost: tests, a custom pipeline), resolve_on_stop (false: see below), confirm_identity
+## (false: a sign-in stops at "Is this you?" before handing back), persistent_gate (false: see
+## `PolarisKey.boot()`).
+##
+## `run()` resolves at READY, through any number of stops: a stop (OFFLINE, BLOCKED, ERROR) leaves
+## its card on screen with the way forward (Try again, the update action, key entry) and the awaiting
+## game stays paused until the player gets through, so `await boot()` followed by "change scene"
+## is the whole integration. A game that draws its own stop UI passes `resolve_on_stop: true`:
+## `run()` then resolves at the first stop (READY, BLOCKED, OFFLINE or ERROR) and a later stop
+## arrives only as `boot_finished`. Calling `run()` again while a run is going on joins it.
 ##
 ## The update prompt sits on a plain full-rect overlay that takes no input, so its answer is a
 ## strip at the top: a mandatory or blocked answer never covers the boot view or the game.
@@ -94,6 +103,8 @@ var stages: Array = []
 var update_result: PKeyResult = null
 ## The prompt handed over at READY (see keep_update_prompt), or null.
 var kept_prompt: PKeyUpdatePrompt = null
+## The gate left on the layer by the `persistent_gate` option, or null.
+var persistent_gate: PKeyGateView = null
 var rolled_back := false
 var verify_progress := -1.0
 
@@ -225,6 +236,7 @@ func _build() -> void:
 	add_child(_overlay)
 	prompt = PKeyUpdatePrompt.new()
 	prompt.auto_sdk = false
+	prompt.managed = true
 	prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_overlay.add_child(prompt)
 	# BACKGROUND's corner pill: optional packs installing after READY, never covering the game.
@@ -258,6 +270,11 @@ func _ready() -> void:
 
 ## Run the boot; resolves at the first stop. A coroutine (see the class doc for `opts`).
 func run(opts: Dictionary = {}) -> PKeyBootResult:
+	if _running and result == null:
+		# A second call while the boot is going on (a game's scene and an autoload both ask for
+		# it): the same boot, not a restart that would throw its progress away. After a stop it
+		# starts the boot again, with the new options.
+		return await _outcome(opts.get("resolve_on_stop", false) == true)
 	_opts = opts
 	result = null
 	stages = []
@@ -290,6 +307,7 @@ func run(opts: Dictionary = {}) -> PKeyBootResult:
 	state = PKeyStages.initial_boot_state(opts.get("allow_offline", true) == true, opts.get("allow_grace", true) == true, packs if packs is Array else [], essential if essential is Array else [])
 	gate.allow_grace = opts.get("allow_grace", true) == true
 	gate.offer_enrollment = opts.get("offer_enrollment", false) == true
+	gate.confirm_identity = opts.get("confirm_identity", false) == true
 	gate.release_url = String(opts.get("release_url", ""))
 	prompt.release_url = gate.release_url
 	gate.sdk = sdk
@@ -301,9 +319,17 @@ func run(opts: Dictionary = {}) -> PKeyBootResult:
 	set_process(true)
 	refresh_view()
 	send({"type": "start"})
-	if result != null:
-		return result
-	return await boot_finished
+	return await _outcome(opts.get("resolve_on_stop", false) == true)
+
+
+## The result to resolve `run()` with: the first stop when `on_stop`, else READY (a stop's card
+## stays on screen and a Retry carries the boot on). A coroutine.
+func _outcome(on_stop: bool) -> PKeyBootResult:
+	while true:
+		if result != null and (on_stop or result.outcome == READY):
+			return result
+		await boot_finished
+	return result
 
 
 ## Feed one event to the machine; returns true when it was accepted. Stage work, Retry, the gate's
@@ -528,12 +554,34 @@ func _stopped() -> void:
 	if outcome == READY and free_on_ready:
 		_running = false
 		var owner_layer := get_parent()
-		if _keep_prompt(owner_layer):
+		var gated := _keep_gate(owner_layer)
+		if _keep_prompt(owner_layer) or gated:
 			queue_free()
 		elif owner_layer is CanvasLayer:
 			owner_layer.queue_free()
 		else:
 			queue_free()
+
+
+## The `persistent_gate` option: leave a gate on `to` (the layer this view is freed from) that
+## follows the licence for the rest of the session: it stays out of the way while the licence is
+## usable and covers the game with the same screens as the boot when it stops being (revoked,
+## expired, signed out). False when the option is off.
+func _keep_gate(to: Node) -> bool:
+	if to == null or not bool(_opts.get("persistent_gate", false)) or sdk == null:
+		return false
+	var kept := PKeyGateView.new()
+	kept.name = "PKeyPersistentGate"
+	kept.auto_sdk = false
+	kept.allow_grace = gate.allow_grace
+	kept.offer_enrollment = gate.offer_enrollment
+	kept.confirm_identity = gate.confirm_identity
+	kept.release_url = gate.release_url
+	kept.sdk = sdk
+	to.add_child(kept)
+	kept.show_state(sdk.status())
+	persistent_gate = kept
+	return true
 
 
 ## Hand the visible update prompt to `to` (the layer or parent this node is freed from) so it
@@ -545,11 +593,13 @@ func _keep_prompt(to: Node) -> bool:
 	_overlay.remove_child(kept)
 	to.add_child(kept)
 	kept.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE, Control.PRESET_MODE_MINSIZE)
+	kept.set_meta(&"pkey_kept", true)
 	kept.follow_updates()
 	if not kept.model.get("locked", false):
 		kept.dismissed.connect(kept.queue_free)
 	prompt = PKeyUpdatePrompt.new()
 	prompt.auto_sdk = false
+	prompt.managed = true
 	prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_overlay.add_child(prompt)
 	kept_prompt = kept
@@ -698,7 +748,7 @@ func _render() -> void:
 	_retry.theme_type_variation = &"PKeyPrimary" if primary_lone or outcome == ERROR or outcome == OFFLINE else &""
 	if outcome == OFFLINE and state.get("canPlayOffline") == true:
 		_retry.theme_type_variation = &"PKeyPrimary"
-	prompt.visible = show_default_view and prompt.model.get("visible", false) and not prompt.is_dismissed
+	prompt.visible = show_default_view and prompt.model.get("visible", false) and not prompt.is_dismissed and not prompt.superseded
 
 
 ## Whether DECIDE's answer is the revoked-content hard stop (boot `required`, plans/P4-13.md

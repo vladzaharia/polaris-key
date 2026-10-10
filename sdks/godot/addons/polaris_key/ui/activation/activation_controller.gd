@@ -4,7 +4,9 @@ extends RefCounted
 ## copy for every PKeyActivationResult kind (Swift's PolarisLoginView is the model).
 ##
 ##   key entry          only when License is enabled (a key activates a licence), and never on
-##                      an App Store, TestFlight or Play build (store rules; STORE_OUTLETS)
+##                      a build whose outlet sells through its own store (the effective
+##                      capabilities' commerce `store-iap`: App Store, TestFlight, Play, Microsoft
+##                      Store; store rules)
 ##   Sign in            only when PolarisKey.identity.is_available()
 ##   Continue free      only when the game offers keyless enrolment, License is enabled, and
 ##                      never on web (a browser has no machine anchor)
@@ -15,19 +17,22 @@ extends RefCounted
 ##                      browser at hand (manage_presentation)
 
 
-## The outlet kinds whose store rules forbid unlocking with an externally bought key (App Store
-## 3.1.1, Google Play's payments policy): key entry and offline activation are hidden there
-## automatically. `PKeyActivationPanel.allow_key_entry_on_store` overrides it (a game sold only
-## outside the store, a B2B build).
-const STORE_OUTLETS := ["app-store", "testflight", "play", "play-testing"]
+## Outlets whose store rules forbid unlocking with an externally bought key (App Store 3.1.1, Google
+## Play's payments policy, the Microsoft Store's): key entry and offline activation are hidden there
+## automatically, decided by the outlet's effective capabilities (`commerce: store-iap`, narrowed by
+## platform and subkind), never by a list of its own. `PKeyActivationPanel.allow_key_entry_on_store`
+## overrides it (a game sold only outside the store, a B2B build).
+const STORE_COMMERCE := "store-iap"
 
 ## Runtimes whose players have a browser on the same device.
 const _BROWSER_OS := ["Windows", "macOS", "Linux", "FreeBSD", "NetBSD", "OpenBSD", "BSD", "Web", "Android", "iOS"]
 
 
-## True when this build's outlet is a store whose rules hide key entry.
-static func store_hides_key_entry(outlet_kind: String) -> bool:
-	return STORE_OUTLETS.has(outlet_kind)
+## True when an outlet of this kind (on `platform`, with `subkind`) is a store whose rules hide key
+## entry: its effective capabilities' commerce is the store's own.
+static func store_hides_key_entry(outlet_kind: String, platform := "", subkind: Variant = null) -> bool:
+	var caps := PKeyDecision.effective_capabilities(outlet_kind, {"platform": platform, "subkind": subkind, "server": null})
+	return caps.get("commerce") == STORE_COMMERCE
 
 
 ## {key_entry, sign_in, continue_free, offline} for these capabilities.
@@ -46,7 +51,8 @@ static func capabilities_from(sdk: Node, offer_enrollment: bool, web := OS.has_f
 	if sdk == null or sdk.get("core") == null:
 		return capabilities(false, false, false, web)
 	var core: PKeyCore = sdk.core
-	var store := not allow_key_on_store and store_hides_key_entry(String(core.update_outlet().get("kind", "")))
+	var outlet: Dictionary = core.update_outlet()
+	var store := not allow_key_on_store and store_hides_key_entry(String(outlet.get("kind", "")), core.update_platform(), outlet.get("subkind"))
 	return capabilities(core.enabled("license"), sdk.identity.is_available(), offer_enrollment, web, store)
 
 
@@ -83,6 +89,11 @@ static func message_for(r: PKeyActivationResult) -> Array:
 			return ["activation_attestation_required", null]
 		PKeyActivationResult.KIND_REFUSED:
 			return PKeyUiCopy.code_key(r.code)
+		PKeyActivationResult.KIND_ERROR:
+			# A transport or verification failure reads by its code where the kit has a line for it
+			# (no connection, a timeout, a license document that did not verify).
+			if r.code != &"" and PKeyUiCopy.DEFAULTS.has("error_" + String(r.code)):
+				return PKeyUiCopy.code_key(r.code)
 	return ["activation_error", null]
 
 

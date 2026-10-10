@@ -153,6 +153,8 @@ const DEFAULTS := {
 	"settings_title": "Settings",
 	"settings_empty": "There are no settings to show.",
 	"settings_advanced": "Show advanced settings",
+	"settings_decrease": "Decrease",
+	"settings_increase": "Increase",
 	"settings_reset": "Reset to default",
 	"settings_set_by": "Set by %s",
 	"settings_locked": "Locked",
@@ -164,6 +166,7 @@ const DEFAULTS := {
 	"settings_source_env": "Set by the environment",
 	# ── PKeyStatusBanner ────────────────────────────────────────────────────────────────────
 	"banner_grace": "Offline — %s left",
+	"banner_expired": "Your license needs an online check",
 	"banner_checked": "Checked %s ago",
 	"banner_checked_now": "Checked just now",
 	"banner_update": "An update is available",
@@ -261,8 +264,9 @@ const DEFAULTS := {
 	"error_unavailable": "The store couldn't be reached. Try again later.",
 	"error_download_auth_required": "Sign in or activate to download this.",
 	"error_internal_error": "The service had a problem. Try again later.",
-	"error_network-error": "Couldn't connect. Check your connection and try again.",
-	"error_timeout": "The connection timed out. Try again.",
+	"error_network-error": "{product} couldn't connect. Check your connection and try again.",
+	"error_timeout": "{product} didn't answer in time. Try again.",
+	"error_invalid-response": "This device couldn't verify the license it was given. Check its date and time and that the game is up to date, then try again.",
 	"error_service-unavailable": "This isn't enabled for this game.",
 	"error_no-token": "Activate or sign in first.",
 	"error_local-only": "This copy runs offline only.",
@@ -341,6 +345,7 @@ const DEFAULTS := {
 	"channel_locked": "This build's channel is set by where you got it (%s).",
 	"channel_restart": "The new channel applies at the next update check.",
 	# ── PKeyUpdatePrompt additions ──────────────────────────────────────────────────────────
+	"update_check_again": "Check again",
 	"update_notes": "What's new",
 	"update_downloading": "Downloading the update… %d%%",
 }
@@ -371,9 +376,22 @@ func text(key: String, args: Variant = null) -> String:
 	var s := tr(r[0])
 	if r[1] != "":
 		s = PKeyCopy.fill(s, r[1])
+	if s.contains("{product}"):
+		s = s.replace("{product}", _product_label())
 	if args == null:
 		return s
 	return s % (args if args is Array else [args])
+
+
+## The name a message gives the product: its identity's, else "the game".
+static func _product_label() -> String:
+	var n := String(PKeyUiTheme.product_identity()["name"])
+	return n if n != "" else "The game"
+
+
+## Codes whose message is the kit's own line (it names the product, which the core's names the
+## service) unless the game overrides the core one.
+const KIT_FIRST := ["network-error", "timeout", "invalid-response"]
 
 
 ## [template, core code] for `key`. An `error_<code>` key reads the core copy (PKeyCopy.shared(),
@@ -391,6 +409,8 @@ func _resolve(key: String) -> Array:
 	var core := PKeyCopy.shared()
 	if core.has_override(code):
 		return [core.message_template(code), code]
+	if KIT_FIRST.has(code) and DEFAULTS.has(key):
+		return [own, ""]
 	if DEFAULTS.has(key) and tr(own) != own:
 		return [own, ""]
 	if core.has(code):
@@ -423,6 +443,12 @@ func for_code(code: Variant, reason: Variant = "") -> String:
 func for_result(r: PKeyResult) -> String:
 	if r == null:
 		return for_code("unknown")
+	if r.ok:
+		return ""
+	if r is PKeyActivationResult:
+		# One copy path: the same words the activation panel shows for this result.
+		var m := PKeyActivationController.message_for(r as PKeyActivationResult)
+		return text(m[0], m[1])
 	var reason := ""
 	if r.detail is Dictionary:
 		var e = r.detail.get("error")

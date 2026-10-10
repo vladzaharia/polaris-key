@@ -361,6 +361,9 @@ func _poll(prompt: PKeySignInPrompt, current: int, decision: Variant) -> Diction
 			var synced: PKeySyncResult = null
 			if on_acquired.is_valid():
 				synced = await on_acquired.call()
+				var problem := PKeyLicense.unverified(core, synced, "the sign-in succeeded")
+				if not problem.is_empty():
+					return {"status": "error", "code": problem["code"], "message": problem["message"], "status_code": int(problem["status"])}
 			var attached: String = b["attached"] if b.get("attached") in ["claimed", "migrated"] else ""
 			return {"status": "ready", "identity": shown, "attached": attached, "stored": stored, "sync": synced}
 	return {"status": "error", "code": PKeyErrors.INVALID_RESPONSE, "message": "The poll answered an unknown state.", "status_code": status}

@@ -97,7 +97,7 @@ func run(t: PKeyTestContext) -> void:
 	var b := _boot(sdk, host, {}, log)
 	var est: Dictionary = await sdk.update.packs.estimate(["djdl.core"])
 	b.consent_needed.connect(func(_bytes, _m): b.answer_consent.call_deferred(true))
-	var r: PKeyBootResult = await b.run({"host": host, "consent": "always", "sync_timeout_seconds": 60})
+	var r: PKeyBootResult = await b.run({"resolve_on_stop": true, "host": host, "consent": "always", "sync_timeout_seconds": 60})
 	t.check("boot: a missing required pack ends READY", r.outcome == PKeyBoot.READY, str(r))
 	S.check_same(t, "boot: …through FETCH and MOUNT", _stages(log), ["shell", "guard", "sync", "gate", "decide", "fetch", "mount", "ready"])
 	t.check("boot: the consent card disclosed the download size first", log.has("consent:%d:false" % int(est["bytes"])) and int(est["bytes"]) > 0 and log.find("consent:%d:false" % int(est["bytes"])) < log.find("pack_progress:djdl.core"), S.canon(log))
@@ -115,7 +115,7 @@ func run(t: PKeyTestContext) -> void:
 	host2.sync_result = "offline"
 	var log2: Array = []
 	var b2 := _boot(sdk2, host2, {}, log2)
-	r = await b2.run({"host": host2, "sync_timeout_seconds": 60})
+	r = await b2.run({"resolve_on_stop": true, "host": host2, "sync_timeout_seconds": 60})
 	t.check("boot: offline with the required set present ends READY", r.outcome == PKeyBoot.READY and _stages(log2).has("fetch") and _stages(log2).has("mount"), "%s %s" % [r, S.canon(log2)])
 	b2.queue_free()
 	sdk2.queue_free()
@@ -126,7 +126,7 @@ func run(t: PKeyTestContext) -> void:
 	var host3 := Host.new(sdk3)
 	host3.sync_result = "offline"
 	var b3 := _boot(sdk3, host3, {}, [])
-	r = await b3.run({"host": host3, "sync_timeout_seconds": 60})
+	r = await b3.run({"resolve_on_stop": true, "host": host3, "sync_timeout_seconds": 60})
 	t.check("boot: a required pack missing and unreachable stops OFFLINE without Play offline", r.outcome == PKeyBoot.OFFLINE and not r.can_play_offline, str(r))
 	b3.queue_free()
 	sdk3.queue_free()
@@ -137,7 +137,7 @@ func run(t: PKeyTestContext) -> void:
 	var host4 := Host.new(sdk4)
 	var b4 := _boot(sdk4, host4, {}, [])
 	b4.consent_needed.connect(func(_bytes, _m): b4.answer_consent.call_deferred(false))
-	r = await b4.run({"host": host4, "consent": "always", "sync_timeout_seconds": 60})
+	r = await b4.run({"resolve_on_stop": true, "host": host4, "consent": "always", "sync_timeout_seconds": 60})
 	# (A tree's index is preflighted before the question, as client-core does; its payload is not.)
 	t.check("boot: a declined required download stops BLOCKED {content-declined}, fetching no payload", r.outcome == PKeyBoot.BLOCKED and r.reason == "content-declined" and tr4.calls.all(func(c): return c["sha256"] == req["indexSha256"]), "%s %s" % [r, S.canon(tr4.calls)])
 	b4.queue_free()
@@ -152,7 +152,7 @@ func run(t: PKeyTestContext) -> void:
 	host5.sync_result = "offline"
 	var log5: Array = []
 	var b5 := _boot(sdk5, host5, {}, log5)
-	r = await b5.run({"host": host5, "sync_timeout_seconds": 60})
+	r = await b5.run({"resolve_on_stop": true, "host": host5, "sync_timeout_seconds": 60})
 	t.check("boot: an essential pack missing offline stops OFFLINE with Play offline", r.outcome == PKeyBoot.OFFLINE and r.can_play_offline, str(r))
 	var finished: Array = []
 	b5.boot_finished.connect(func(x): finished.append(x))
@@ -176,7 +176,7 @@ func run(t: PKeyTestContext) -> void:
 	b6.stage_changed.connect(func(s, _p):
 		if s == "background":
 			pill_seen[0] = true)
-	r = await b6.run({"host": host6, "consent": "never", "sync_timeout_seconds": 60})
+	r = await b6.run({"resolve_on_stop": true, "host": host6, "consent": "never", "sync_timeout_seconds": 60})
 	for k in 60:
 		if sdk6.update.packs.state().get("running", {}).has("djdl.hd") and b6.state["stage"] == "ready" and not b6._background_running:
 			break
@@ -202,7 +202,7 @@ func _godot_pck(t: PKeyTestContext) -> void:
 	var host := Host.new(sdk)
 	var log: Array = []
 	var b := _boot(sdk, host, {}, log)
-	var r: PKeyBootResult = await b.run({"host": host, "consent": "never", "sync_timeout_seconds": 60})
+	var r: PKeyBootResult = await b.run({"resolve_on_stop": true, "host": host, "consent": "never", "sync_timeout_seconds": 60})
 	var packs: PKeyPacks = sdk.update.packs
 	t.check("boot: a missing required godot.pck ends READY, mounted from store/<sha256>.pck", r.outcome == PKeyBoot.READY and packs.mounted.has("diceroll.core3d") and String(packs.mounted["diceroll.core3d"]["location"]).ends_with("/store/%s.pck" % v1["payloadSha256"]), "%s %s" % [r, S.canon(log)])
 	var at_mount := log.find("stage:mount")
@@ -219,7 +219,7 @@ func _godot_pck(t: PKeyTestContext) -> void:
 	packs2.root = root
 	var host2 := Host.new(sdk2)
 	var b2 := _boot(sdk2, host2, {}, [])
-	var r2: PKeyBootResult = await b2.run({"host": host2, "sync_timeout_seconds": 60})
+	var r2: PKeyBootResult = await b2.run({"resolve_on_stop": true, "host": host2, "sync_timeout_seconds": 60})
 	t.check("boot: an installed godot.pck mounts at the next boot even when the stamp fetches nothing", r2.outcome == PKeyBoot.READY and packs2.mounted.has("diceroll.core3d"), "%s %s" % [r2, S.canon(packs2.mounted.keys())])
 	b2.queue_free()
 	sdk2.queue_free()

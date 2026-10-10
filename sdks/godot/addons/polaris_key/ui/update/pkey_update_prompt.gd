@@ -41,6 +41,11 @@ signal dismissed()
 var result: PKeyResult = null
 var is_dismissed := false
 var model: Dictionary = {}
+## Set for the prompts the kit places itself (PKeyBoot's own and the one it keeps over the game): a
+## prompt the game places replaces them, so there is one update prompt on screen at a time.
+var managed := false
+## A newer prompt took over this one's answer: it shows nothing (a kept prompt frees itself).
+var superseded := false
 
 var _card: BoxContainer
 var _product: PKeyProductHeader
@@ -192,12 +197,39 @@ func _fit() -> void:
 func follow_updates() -> void:
 	if sdk == null or sdk.get("update") == null:
 		return
+	_claim()
+	if superseded:
+		return
 	if not _bound:
 		_bound = true
 		sdk.update.update_available.connect(show_result)
 	var last = sdk.update.get("last_available")
 	if result == null and last is PKeyResult:
 		show_result(last)
+
+
+## One update prompt follows the SDK at a time: the latest one the game places, and the kit's own
+## only while the game has placed none. The prompt it replaces hides (a kept one is freed).
+func _claim() -> void:
+	var prior: Node = null
+	if sdk.has_meta(&"pkey_update_prompt"):
+		prior = (sdk.get_meta(&"pkey_update_prompt") as WeakRef).get_ref() as Node
+	if prior != null and prior != self and is_instance_valid(prior) and not prior.is_queued_for_deletion():
+		if managed and not prior.get("managed"):
+			superseded = true
+			refresh_view()
+			return
+		prior.call("_yield_to_newer")
+	superseded = false
+	sdk.set_meta(&"pkey_update_prompt", weakref(self))
+
+
+func _yield_to_newer() -> void:
+	superseded = true
+	if has_meta(&"pkey_kept"):
+		queue_free()
+	else:
+		refresh_view()
 
 
 func show_result(r: PKeyResult) -> void:
@@ -247,7 +279,7 @@ func _render() -> void:
 	var t := c()
 	model = PKeyUpdatePromptController.model(result, _outlet(), release_url, show_when_current, _plan())
 	var locked: bool = model["locked"]
-	visible = model["visible"] and (locked or not is_dismissed)
+	visible = model["visible"] and (locked or not is_dismissed) and not superseded
 	var as_modal := modal and not locked
 	if as_modal:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -289,6 +321,10 @@ func _render() -> void:
 	_product.visible = as_modal
 	if as_modal:
 		_product.refresh()
+	# A locked answer is never a dead end: with nothing to open or install, the action asks again.
+	if model["visible"] and locked and model["action"] == "" and model["state"] not in ["", "current"] and sdk != null and sdk.get("update") != null:
+		model["action"] = "update_check_again"
+		model["behaviour"] = "check"
 	show_text(_action, t.text(model["action"]) if model["action"] != "" else "")
 	_dismiss.visible = not locked and model["state"] != "current"
 	_dismiss.text = t.text("update_dismiss")
@@ -299,6 +335,12 @@ func _focus_chain() -> Array:
 
 
 func _on_action() -> void:
+	if model.get("behaviour", "") == "check":
+		action_taken.emit(result)
+		var again: PKeyUpdateCheck = await sdk.update.decide()
+		if is_inside_tree():
+			show_result(again)
+		return
 	if result is PKeyUpdateCheck and not _page_link and sdk != null and sdk.get("core") != null and sdk.get("update") != null and sdk.update.has_method("apply") and outlet == "":
 		action_taken.emit(result)
 		var applied: PKeyApplyResult = await sdk.update.apply(result)

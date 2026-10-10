@@ -381,6 +381,9 @@ func _render() -> void:
 		_bound = cfg
 		if cfg != null:
 			cfg.config_changed.connect(_on_config_changed)
+			# The live catalog (labels, order, widgets) arrives with the first fetch; the compiled
+			# mirror, when there is one, shows meanwhile.
+			_fetch_schema.call_deferred(cfg)
 	var t := c()
 	rows = PKeySettingsController.rows(cfg)
 	_product.refresh()
@@ -397,6 +400,19 @@ func _render() -> void:
 		_rebuild(shown)
 		_signature = sig
 	_update_values(shown)
+
+
+## Ask the Worker for the product's live catalog once per config; the fetch's refresh renders the
+## rows again. Every failure leaves what is shown as it is.
+func _fetch_schema(cfg: PKeyConfig) -> void:
+	if cfg == null or not is_instance_valid(cfg) or cfg != _bound or not cfg.enabled():
+		return
+	if cfg.has_meta(&"pkey_schema_asked"):
+		return
+	cfg.set_meta(&"pkey_schema_asked", true)
+	await cfg.fetch_schema()
+	if is_inside_tree() and cfg == _bound:
+		refresh_view()
 
 
 func _on_config_changed(_keys: PackedStringArray) -> void:
@@ -767,6 +783,14 @@ func _update_values(shown: Array) -> void:
 		var name_label: Label = n["label"]
 		name_label.text = tr(r["label"])
 		var input: Control = n["input"]
+		# A screen reader reads the setting's name with its control, and says which setting a Reset
+		# and the stepper buttons belong to.
+		var a11y_target: Control = (input as SpinBox).get_line_edit() if input is SpinBox else input
+		name_for_reader(a11y_target, name_label.text)
+		name_for_reader(n["reset"], "%s: %s" % [name_label.text, t.text("settings_reset")])
+		for k in ["minus", "plus"]:
+			if n.has(k):
+				name_for_reader(n[k], "%s %s" % [t.text("settings_decrease" if k == "minus" else "settings_increase"), name_label.text])
 		var v = r["value"]
 		if input is CheckButton:
 			(input as CheckButton).set_pressed_no_signal(v == true)

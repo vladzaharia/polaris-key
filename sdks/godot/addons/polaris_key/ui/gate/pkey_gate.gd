@@ -38,6 +38,12 @@ signal continue_offline_requested()
 		offer_enrollment = value
 		if activation != null:
 			activation.offer_enrollment = value
+## Sign-in stops at "Is this you?" before handing back (PKeyActivationPanel.confirm_identity).
+@export var confirm_identity := false:
+	set(value):
+		confirm_identity = value
+		if activation != null:
+			activation.confirm_identity = value
 ## The release page a direct build opens on "update required" (see PKeyUpdatePromptController).
 @export var release_url := ""
 ## Retry emits `retry_requested` only; the owner decides (PKeyBoot).
@@ -132,6 +138,7 @@ func _build() -> void:
 	_main.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	activation = PKeyActivationPanel.new()
 	activation.auto_sdk = false
+	activation.confirm_identity = confirm_identity
 	activation.show_product = false
 	activation.activated.connect(_on_activated)
 	# Sign-in and offline activation take the whole card: the gate re-renders around them.

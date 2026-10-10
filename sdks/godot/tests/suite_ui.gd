@@ -237,6 +237,17 @@ func _focus(t: PKeyTestContext, all: Array) -> void:
 				_press("ui_down")
 				await _tree().process_frame
 				steps += 1
+		# Every control a pad can reach has a name a screen reader can read (Godot 4.5+ has the
+		# property; a button reads its own text).
+		var unnamed: Array = []
+		for ctl in chain:
+			if not ("accessibility_name" in ctl):
+				continue
+			var named := String(ctl.get("accessibility_name")) != "" or (ctl is BaseButton and String(ctl.get("text")) != "")
+			if not named:
+				unnamed.append(String(v.get_path_to(ctl)))
+		if "accessibility_name" in v:
+			t.check("accessibility: %s / %s names every control" % [c[0], c[1]], unnamed.is_empty(), str(unnamed))
 		var missing: Array = want.filter(func(x): return not seen.has(x))
 		var names: Array = missing.map(func(x): return String(v.get_path_to(x)))
 		if t.check("focus: %s / %s reaches every control with ui_down" % [c[0], c[1]], missing.is_empty() and (want.is_empty() or not seen.is_empty()), "missing %s" % [names]):
@@ -777,10 +788,14 @@ func _controllers(t: PKeyTestContext) -> void:
 	# SDK parity §3.18: key entry is hidden on store outlets automatically (App Store 3.1.1, Play).
 	var store := PKeyActivationController.capabilities(true, true, true, false, true)
 	t.check("activation: a store outlet hides key entry and the offline file, keeps sign-in and enrolment", not store["key_entry"] and not store["offline"] and store["sign_in"] and store["continue_free"], str(store))
-	for kind in ["app-store", "testflight", "play", "play-testing"]:
+	# It follows the outlet's effective capabilities (commerce `store-iap`), never a list of its own.
+	for kind in ["app-store", "testflight", "play", "play-testing", "ms-store"]:
 		t.check("activation: %s hides key entry" % kind, PKeyActivationController.store_hides_key_entry(kind))
-	for kind in ["direct", "steam", "itch", "ms-store", ""]:
+	for kind in ["direct", "steam", "itch", "web", "flathub", "unknown", ""]:
 		t.check("activation: %s keeps key entry" % kind, not PKeyActivationController.store_hides_key_entry(kind))
+	for kind in PKeyDecision.CAPABILITY_DEFAULTS:
+		var commerce: String = PKeyDecision.effective_capabilities(kind, {"platform": ""})["commerce"]
+		t.check("activation: %s key entry follows commerce %s" % [kind, commerce], PKeyActivationController.store_hides_key_entry(kind) == (commerce == "store-iap"))
 	var panel := PKeyActivationPanel.new()
 	panel.auto_sdk = false
 	_sc.add(panel)

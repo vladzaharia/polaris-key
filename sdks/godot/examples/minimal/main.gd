@@ -3,7 +3,8 @@ extends Control
 ##
 ## 1. `PolarisKey.boot()` reads res://polaris_key.tres (the setup dock writes it), syncs, gates on
 ##    the licence (the activation and sign-in card appear on their own), checks for an update and
-##    fetches packs, on the PKeyBoot screen. Only READY reaches the game.
+##    fetches packs, on the PKeyBoot screen. `await` returns at READY: a stop keeps its card and
+##    Try again on screen, and the await waits through the retries.
 ## 2. The game then reads its licence (`is_entitled`), its config (`get_value`) and offers the
 ##    kit's settings panel and a store purchase of one licence flag.
 ##
@@ -29,14 +30,8 @@ func _ready() -> void:
 	add_child(_menu)
 	_menu.hide()
 	# Boot: everything before the game. BLOCKED, OFFLINE and ERROR stay on the PKeyBoot card with
-	# Retry, and a later READY arrives as boot_finished.
-	PolarisKey.boot_finished.connect(_on_boot)
-	_on_boot(await PolarisKey.boot({allow_offline = true}))
-
-
-func _on_boot(boot: PKeyBootResult) -> void:
-	if boot.outcome != PKeyBoot.READY or _menu.visible:
-		return
+	# Try again; the await returns once the player is through.
+	await PolarisKey.boot({allow_offline = true})
 	_menu.show()
 	_add_button("Settings", _open_settings)
 	_buy = _add_button("Buy dice skins", _purchase)

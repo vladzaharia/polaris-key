@@ -67,8 +67,20 @@ var copy: PKeyUiCopy = null:
 		copy = value
 		refresh_view()
 
-## The PolarisKey node this scene reads from and acts on, or null.
-var sdk: Node = null
+## The PolarisKey node this scene reads from and acts on, or null. Setting it hands the same node to
+## every view nested in this one that had none (or the old one) and renders again, so a gate built
+## before the SDK was known shows its dialogs' content (the offline request code, key entry).
+var sdk: Node = null:
+	set(value):
+		if sdk == value:
+			return
+		var old := sdk
+		sdk = value
+		for v in _nested_views():
+			if v.sdk == null or v.sdk == old:
+				v.sdk = value
+		if _built and is_inside_tree():
+			refresh_view()
 ## Use /root/PolarisKey when `sdk` is null at `_ready` (off: a scene driven only by its setters).
 var auto_sdk := true
 ## The widest the centred content gets, in logical pixels at scale 1 (0: fill the view, no
@@ -319,6 +331,7 @@ func refresh_view() -> void:
 			if v != self:
 				(v as PKeyUiView)._render()
 	auto_hide(self)
+	_name_controls()
 	wire_focus()
 	layout_content()
 	if outer:
@@ -387,6 +400,45 @@ func focus_order() -> Array[Control]:
 		if ctl != null and is_focusable(ctl):
 			out.append(ctl)
 	return out
+
+
+## Name a control for a screen reader (Godot 4.5+ has `accessibility_name`; earlier engines ignore
+## this): a button reads its own text, so only a field, a slider or a switch without text needs one.
+static func name_for_reader(ctl: Control, text: String) -> void:
+	if text != "" and "accessibility_name" in ctl:
+		ctl.set("accessibility_name", text)
+
+
+## Every control of this view's chain that has no text of its own is named after the label that sits
+## before it (the field's caption), unless the scene named it already.
+func _name_controls() -> void:
+	for n in _focus_chain():
+		var ctl := n as Control
+		if ctl == null or not ("accessibility_name" in ctl) or String(ctl.get("accessibility_name")) != "":
+			continue
+		if (ctl is BaseButton and String(ctl.get("text")) != "") or ctl is LinkButton:
+			continue
+		var caption := ""
+		var at: Node = ctl
+		while at != null and at != self and caption == "":
+			var p := at.get_parent()
+			if p == null:
+				break
+			var i := at.get_index() - 1
+			while i >= 0 and caption == "":
+				var sib := p.get_child(i)
+				if sib is Label and (sib as Label).visible and (sib as Label).text != "":
+					caption = (sib as Label).text
+				i -= 1
+			at = p
+		if caption == "" and ctl is LineEdit:
+			caption = (ctl as LineEdit).placeholder_text
+		if caption == "" and ctl is TextEdit:
+			caption = (ctl as TextEdit).placeholder_text
+		if caption == "":
+			caption = ctl.tooltip_text
+		if caption != "":
+			ctl.set("accessibility_name", caption)
 
 
 ## Link the visible, enabled controls into one wrapping chain (down/next and up/previous), and
@@ -1100,6 +1152,14 @@ static func _resort_all(n: Node) -> void:
 		(n as Control).update_minimum_size()
 		if n is Container:
 			(n as Container).queue_sort()
+
+
+## The views directly nested in this one (not their own nested views).
+func _nested_views() -> Array:
+	var out: Array = []
+	for ch in get_children():
+		_collect_views(ch, out)
+	return out
 
 
 ## This view and every PKeyUiView inside it, outermost first.
