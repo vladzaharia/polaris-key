@@ -338,6 +338,56 @@
       "status": "implemented",
       "note": "@polaris-key/node/cli, the terminal kit (UK-14): every CLI_VERBS verb runs a rail flow (masked key entry, browser or code sign-in, spinners and progress, OSC 8 links and OSC 52 copy, the half-block QR for offline requests), --json on every verb, grouped help and bash/zsh/fish completion, for commander and yargs. Proven by test/cli/golden.test.ts (every component x state in truecolor dark and light, ANSI-16, NO_COLOR and ASCII at 80 and 60 columns, with SVG and PNG baselines), test/cli/responsive.test.ts (the resolution matrix in a real emulator, @xterm/headless: 40/60/80/120 columns at 12 and 24 rows with long values, de and ja at 40 and 60, and an 80 to 50 resize mid-flow; no line wider than the terminal, no URL or code cut, the code, URL and keys in view) and test/cli/kit.test.ts; the plain command core keeps one test per verb (SP-N14)."
     },
+    "ui.gate": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.activate": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.signin": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.devicelimit": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.devices": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.update": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.settings": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.paywall": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.theme": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
+    "ui.i18n": {
+      "status": "planned",
+      "wp": "UK-06",
+      "note": "ui-core runner (UK-03) in testRoots; renders: the terminal (UK-14) and the bridge views of @polaris-key/node/electron"
+    },
     "commerce.receipt": {
       "status": "implemented",
       "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04)."

@@ -402,7 +402,7 @@
     },
     "LicenseChoice": {
       "priority": "must",
-      "family": null,
+      "family": "signIn",
       "states": {
         "loading": {
           "copy": ["signin.choice.title", "common.loading"]

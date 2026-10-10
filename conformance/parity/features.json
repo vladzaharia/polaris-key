@@ -1780,7 +1780,8 @@
           "reason": "runtime",
           "why": "A headless SDK ships no widget kit; its UI expectation is ui.cli, and hosts render ui.stages themselves."
         }
-      ]
+      ],
+      "note": "Superseded by the ten ui.* rows (plans/UK-02.md); UK-41 removes this row and retags its tests."
     },
     {
       "id": "ui.kit.manage",
@@ -1886,6 +1887,138 @@
         }
       ],
       "note": "Required on node and python, the headless SDKs, which ship no widget kit (plans/SP-00.md D6). One unit test per verb."
+    },
+    {
+      "id": "ui.gate",
+      "family": "ui",
+      "title": "Kit states: gate, boot, status screen, grace banner and toasts",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "gate" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [],
+      "note": "Components: PolarisKeyGate, Boot, StatusScreen, GraceBanner, Toast."
+    },
+    {
+      "id": "ui.activate",
+      "family": "ui",
+      "title": "Kit states: welcome, license key activation and offline activation",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "activate" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "ios",
+          "reason": "outlet",
+          "why": "Key entry is hidden where App Store guideline 3.1.1 or Play's payments policy requires it."
+        },
+        {
+          "runtime": "android",
+          "reason": "outlet",
+          "why": "Key entry is hidden where App Store guideline 3.1.1 or Play's payments policy requires it."
+        }
+      ],
+      "note": "Components: Welcome, Activate, OfflineActivation."
+    },
+    {
+      "id": "ui.signin",
+      "family": "ui",
+      "title": "Kit states: the one sign-in form, with its license choice and Replace a device",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "signIn" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [],
+      "note": "Components: SignIn, SignInHandoff, LicenseChoice, in the inline, sheet and browser presentations (plans/UK-02b.md D1)."
+    },
+    {
+      "id": "ui.devicelimit",
+      "family": "ui",
+      "title": "Kit states: the device-limit screen, in the app or in the browser",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "deviceLimit" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [],
+      "note": "Component: DeviceLimit."
+    },
+    {
+      "id": "ui.devices",
+      "family": "ui",
+      "title": "Kit states: the device list, rename and remove",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "devices" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [],
+      "note": "Component: Devices."
+    },
+    {
+      "id": "ui.update",
+      "family": "ui",
+      "title": "Kit states: update prompt, update progress and release notes",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "update" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [],
+      "note": "Components: UpdatePrompt, UpdateProgress, ReleaseNotes."
+    },
+    {
+      "id": "ui.settings",
+      "family": "ui",
+      "title": "Kit states: the account and license pane and settings",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "settings" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [],
+      "note": "Components: AccountAndLicense, Settings."
+    },
+    {
+      "id": "ui.paywall",
+      "family": "ui",
+      "title": "Kit states: paywall and entitlement gate",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "paywall" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [],
+      "note": "Components: Paywall, EntitlementGate."
+    },
+    {
+      "id": "ui.theme",
+      "family": "ui",
+      "title": "Theme resolution: name, accent source, colour scheme, icon and preset",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "theme" },
+        { "kind": "snapshot" }
+      ],
+      "allowedNa": [],
+      "note": "UI-KITS §1.2 and §3.4: integrator, then presentation, then the icon, then ink; native takes the host's accent."
+    },
+    {
+      "id": "ui.i18n",
+      "family": "ui",
+      "title": "Catalog lookup and the ICU-subset formatter in the launch locales",
+      "service": "sdk",
+      "proof": [
+        { "kind": "corpus", "file": "ui-matrix.json", "family": "i18n" },
+        { "kind": "snapshot" },
+        { "kind": "generated", "command": "pnpm gen:brand -- --check" }
+      ],
+      "allowedNa": [],
+      "note": "Kit copy and core copy per locale, per-key fallback, plural categories and the formFactor select."
     },
     {
       "id": "commerce.receipt",

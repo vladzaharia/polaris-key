@@ -569,6 +569,16 @@ public enum Feature {
     public static let uiKitManage = "ui.kit.manage"
     public static let uiKitKeyentry = "ui.kit.keyentry"
     public static let uiCli = "ui.cli"
+    public static let uiGate = "ui.gate"
+    public static let uiActivate = "ui.activate"
+    public static let uiSignin = "ui.signin"
+    public static let uiDevicelimit = "ui.devicelimit"
+    public static let uiDevices = "ui.devices"
+    public static let uiUpdate = "ui.update"
+    public static let uiSettings = "ui.settings"
+    public static let uiPaywall = "ui.paywall"
+    public static let uiTheme = "ui.theme"
+    public static let uiI18n = "ui.i18n"
     public static let commerceReceipt = "commerce.receipt"
 }
 
@@ -658,6 +668,16 @@ public let FEATURE_VALUES: [String] = [
     "ui.kit.manage",
     "ui.kit.keyentry",
     "ui.cli",
+    "ui.gate",
+    "ui.activate",
+    "ui.signin",
+    "ui.devicelimit",
+    "ui.devices",
+    "ui.update",
+    "ui.settings",
+    "ui.paywall",
+    "ui.theme",
+    "ui.i18n",
     "commerce.receipt",
 ]
 
@@ -1201,6 +1221,9 @@ public let DEVICE_LABEL_VERSION = 1
 /// `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
 public let PRESENTATION_MATRIX_VERSION = 1
 
+/// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
+public let UI_MATRIX_VERSION = 1
+
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 public let CONTENT_CORPUS_VERSION = 2
 
@@ -1502,8 +1525,18 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.manage": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit.keyentry": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "ui.gate": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.activate": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.signin": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.devicelimit": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.devices": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.update": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.settings": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.paywall": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.theme": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.i18n": CapabilityRow(status: "planned", service: "sdk", na: []),
     "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "4e74d559fc3ae2b25d91ff41c7847c04af3dba19b422be5ed869f3366e927603"
+public let CAPABILITY_DIGEST = "8637775a88a8e331d583a54ca498a3db6dfedab881c71a1ac61c8d705c5e15cd"

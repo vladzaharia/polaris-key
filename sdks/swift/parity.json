@@ -342,6 +342,56 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
+    "ui.gate": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.activate": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.signin": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.devicelimit": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.devices": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.update": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.settings": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.paywall": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.theme": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
+    "ui.i18n": {
+      "status": "planned",
+      "wp": "UK-07",
+      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+    },
     "commerce.receipt": {
       "status": "implemented",
       "note": "client.commerce (PolarisKey/CommerceClient.swift): binding() and claim(store:payload:) with claimAppStore/claimSteam/claimPlay, a forced sync after a granted claim, attest-and-retry on attestation_required; purchase(productID:) runs binding, StoreKit 2 purchase(appAccountToken: bindingId), claim, finish only after the claim, sync; restore() and the Transaction.updates loop claim and finish after the claim. Without StoreKit purchase/restore answer the typed runtime N/A."

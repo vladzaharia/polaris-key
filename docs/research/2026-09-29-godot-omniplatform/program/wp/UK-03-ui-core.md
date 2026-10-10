@@ -59,6 +59,7 @@ The [DX consolidation plan](../../../2026-10-07-dx-consolidation/README.md) reco
 These approved plans change this package. Where they differ from the text below, they win.
 
 - [`plans/UK-02b.md`](../plans/UK-02b.md) §8: adds the JS runner of §5 and `packages/ui-core/test` to the React and Node manifests' `testRoots`; runs the `signIn` family through `SignInModel`; moves UK-14's `models.ts` onto ui-core with byte-identical goldens; the `test/cli/scenarios.ts` stand-ins the matrix covers retire.
+- UK-02b declares DL7's delayed response as a gap (`ui-matrix.json` `vocabulary.gaps`, `dl7-delayed-response`): this package appends its rows with the 250–300 ms model timer as an input, bumps `uiMatrixVersion` (plans/UK-02b.md §4.8) and removes the gap entry.
 
 ## SDK usability review (2026-10-08)
 
