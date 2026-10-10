@@ -1159,7 +1159,7 @@
     <!-- Terminal help footer. {command} is a command line such as 'tidewater activate -help'. Arguments: 1=command. -->
     <string name="cli_help_more">Ejecuta %1$s para ver las opciones de un comando.</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
-    <string name="cli_verb_activate">Añadir clave de licencia (se pide, nunca como argumento)</string>
+    <string name="cli_verb_activate">Añadir una clave de licencia (se pide, o por stdin)</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">Obtener la licencia gratuita, si %1$s ofrece una</string>
     <!-- Terminal help: what the deactivate command does. -->
@@ -1345,7 +1345,7 @@
     <!-- Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press. -->
     <string name="cli_login_attach">¿Usar la clave de licencia de este dispositivo en tu cuenta? (y/N)</string>
     <!-- Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
-    <string name="cli_keys_confirm">y sí · n no · Esc cancelar</string>
+    <string name="cli_keys_confirm">y sí · n no · Esc cancelar el inicio de sesión</string>
     <!-- Terminal: the sign-in finished and only the name is known. {name} = the account's name. Arguments: 1=name. -->
     <string name="cli_signin_signedInName">Sesión iniciada como %1$s</string>
     <!-- Update progress: the download finished and the update is being checked before it is installed. -->
@@ -1354,24 +1354,20 @@
     <string name="cli_update_readyRestart">%1$s está lista · Reinicia para terminar</string>
     <!-- Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead. -->
     <string name="cli_update_notConfiguredTitle">Las actualizaciones no están configuradas</string>
-    <!-- Terminal: update apply on a build with no signed update feed set up, under the title above. {command} = a terminal command, shown as is. Arguments: 1=command. -->
-    <string name="cli_update_notConfigured">Ejecuta %1$s para ver si hay una versión más reciente.</string>
-    <!-- Terminal: update apply on an install that cannot update itself; the new version is downloaded by hand. {version} = a version string such as 2.5.0; {url} = a web address, shown as a link. Arguments: 1=version, 2=url. -->
-    <string name="cli_update_download">Descarga la versión %1$s en %2$s.</string>
-    <!-- Terminal: update apply when the product was started with npx. {command} = a terminal command, shown as is; {version} = a version string such as 2.5.0. Arguments: 1=command, 2=version. -->
-    <string name="cli_update_npx">npx ejecuta siempre la versión más reciente. Ejecuta %1$s para usar %2$s.</string>
+    <!-- Terminal: update apply on an install that cannot update itself. It ends in a colon: the download page follows on its own line, as a link. -->
+    <string name="cli_update_download">Descárgala aquí:</string>
     <!-- Terminal status: a device activated with a license key only, and the license is no longer valid. -->
     <string name="cli_status_keyRevoked_title">Esta clave de licencia ya no funciona</string>
-    <!-- Terminal status, under the title above. {url} = the product's account page on Polaris Key, shown as a link. Arguments: 1=url. -->
-    <string name="cli_status_keyRevoked_message">Puede que haya caducado o se haya desactivado. Compruébala en %1$s o activa con otra clave.</string>
-    <!-- Terminal activate: the server did not accept the license key. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. {url} = the product's account page on Polaris Key, shown as a link. Arguments: 1=url. -->
-    <string name="cli_activate_unauthorized">No se aceptó esa clave. Comprueba que no tenga errores. Si es correcta, puede que haya caducado o se haya desactivado: consulta %1$s.</string>
-    <!-- Terminal help: what the -reveal flag of the secret and mint commands does. secret and mint are command names; keep them as is. -->
-    <string name="cli_option_reveal">Mostrar el valor (sin esta opción, secret y mint no muestran nada)</string>
-    <!-- Terminal: the secret command without -reveal. {name} = the secret's name; {command} = a terminal command, shown as is. Arguments: 1=name, 2=command. -->
-    <string name="cli_secret_hidden">%1$s está definido. Para mostrar su valor, ejecuta %2$s.</string>
-    <!-- Terminal: the mint command without -reveal. {command} = a terminal command, shown as is. Arguments: 1=command. -->
-    <string name="cli_mint_hidden">No se generó nada. Para generar e imprimir un token, ejecuta %1$s.</string>
+    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <string name="cli_status_keyRevoked_message">Puede que haya caducado o se haya desactivado:</string>
+    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <string name="cli_activate_unauthorized">Comprueba que no tenga errores. Si es correcta, puede que haya caducado o se haya desactivado:</string>
+    <!-- Terminal help: what the -reveal flag does. A command-line flag; keep it as is. -->
+    <string name="cli_option_reveal">Mostrar el valor</string>
+    <!-- Terminal: the secret command without -reveal, as the title of a warning; the command that prints it follows as a command row. {name} = the secret's name. Arguments: 1=name. -->
+    <string name="cli_secret_hidden">%1$s está definido pero no se muestra</string>
+    <!-- Terminal: the mint command without -reveal, as the title of a warning; the command that mints and prints follows as a command row. -->
+    <string name="cli_mint_hidden">No se generó nada</string>
     <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
     <string name="cli_platform_macos">macOS</string>
     <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
@@ -1390,6 +1386,12 @@
     <string name="cli_platform_visionos">visionOS</string>
     <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
     <string name="cli_platform_watchos">watchOS</string>
+    <!-- Terminal sign-in: the person said yes to adding this device's license key to the account just signed in. -->
+    <string name="cli_login_attached">La clave de licencia ya está en tu cuenta.</string>
+    <!-- Terminal: update apply on an install that cannot update itself and has no download page to link. {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="cli_update_downloadNoLink">Consigue la nueva versión donde conseguiste %1$s.</string>
+    <!-- Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time. -->
+    <string name="cli_activate_noKeyPiped">No llegó ninguna clave de licencia por stdin.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Algo salió mal</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

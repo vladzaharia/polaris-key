@@ -2497,7 +2497,7 @@
       "note": "Terminal help footer. {command} is a command line such as 'tidewater activate --help'."
     },
     "cli.verb.activate": {
-      "value": "Add a license key (prompts; never an argument)",
+      "value": "Add a license key (prompted, or piped on stdin)",
       "role": "body",
       "note": "Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line."
     },
@@ -2962,7 +2962,7 @@
       "note": "Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press."
     },
     "cli.keys.confirm": {
-      "value": "y yes · n no · Esc cancel",
+      "value": "y yes · n no · Esc cancel sign-in",
       "role": "hint",
       "note": "Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators."
     },
@@ -2986,20 +2986,10 @@
       "role": "title",
       "note": "Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead."
     },
-    "cli.update.notConfigured": {
-      "value": "Run {command} to see if a newer version is out.",
-      "role": "body",
-      "note": "Terminal: update apply on a build with no signed update feed set up, under the title above. {command} = a terminal command, shown as is."
-    },
     "cli.update.download": {
-      "value": "Download {version} from {url}.",
+      "value": "Download it here:",
       "role": "body",
-      "note": "Terminal: update apply on an install that cannot update itself; the new version is downloaded by hand. {version} = a version string such as 2.5.0; {url} = a web address, shown as a link."
-    },
-    "cli.update.npx": {
-      "value": "npx runs the newest version each time. Run {command} to use {version}.",
-      "role": "body",
-      "note": "Terminal: update apply when the product was started with npx. {command} = a terminal command, shown as is; {version} = a version string such as 2.5.0."
+      "note": "Terminal: update apply on an install that cannot update itself. It ends in a colon: the download page follows on its own line, as a link."
     },
     "cli.status.keyRevoked.title": {
       "value": "This license key no longer works",
@@ -3007,29 +2997,29 @@
       "note": "Terminal status: a device activated with a license key only, and the license is no longer valid."
     },
     "cli.status.keyRevoked.message": {
-      "value": "It may have expired or been turned off. Check it at {url}, or activate with another key.",
+      "value": "It may have expired or been turned off:",
       "role": "body",
-      "note": "Terminal status, under the title above. {url} = the product's account page on Polaris Key, shown as a link."
+      "note": "Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link."
     },
     "cli.activate.unauthorized": {
-      "value": "That key wasn't accepted. Check it for typos. If it's right, it may have expired or been turned off: see {url}.",
+      "value": "Check it for typos. If it's right, it may have expired or been turned off:",
       "role": "body",
-      "note": "Terminal activate: the server did not accept the license key. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. {url} = the product's account page on Polaris Key, shown as a link."
+      "note": "Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link."
     },
     "cli.option.reveal": {
-      "value": "Print the value (without it, secret and mint print nothing)",
+      "value": "Print the value",
       "role": "body",
-      "note": "Terminal help: what the --reveal flag of the secret and mint commands does. secret and mint are command names; keep them as is."
+      "note": "Terminal help: what the --reveal flag does. A command-line flag; keep it as is."
     },
     "cli.secret.hidden": {
-      "value": "{name} is set. To print its value, run {command}.",
+      "value": "{name} is set but not printed",
       "role": "body",
-      "note": "Terminal: the secret command without --reveal. {name} = the secret's name; {command} = a terminal command, shown as is."
+      "note": "Terminal: the secret command without --reveal, as the title of a warning; the command that prints it follows as a command row. {name} = the secret's name."
     },
     "cli.mint.hidden": {
-      "value": "Nothing was minted. To mint and print a token, run {command}.",
+      "value": "Nothing was minted",
       "role": "body",
-      "note": "Terminal: the mint command without --reveal. {command} = a terminal command, shown as is."
+      "note": "Terminal: the mint command without --reveal, as the title of a warning; the command that mints and prints follows as a command row."
     },
     "cli.platform.macos": {
       "value": "macOS",
@@ -3075,6 +3065,21 @@
       "value": "watchOS",
       "role": "label",
       "note": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language."
+    },
+    "cli.login.attached": {
+      "value": "The license key is now on your account.",
+      "role": "body",
+      "note": "Terminal sign-in: the person said yes to adding this device's license key to the account just signed in."
+    },
+    "cli.update.downloadNoLink": {
+      "value": "Get the new version from where you got {product}.",
+      "role": "body",
+      "note": "Terminal: update apply on an install that cannot update itself and has no download page to link. {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "cli.activate.noKeyPiped": {
+      "value": "No license key arrived on stdin.",
+      "role": "body",
+      "note": "Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time."
     }
   }
 }

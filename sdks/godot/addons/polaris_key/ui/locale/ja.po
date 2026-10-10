@@ -3087,10 +3087,10 @@ msgstr "{product}のライセンスとアップデート"
 msgid "cli.help.more"
 msgstr "コマンドごとのオプションは{command}で確認できます。"
 
-#. Add a license key (prompts; never an argument)
+#. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
 msgid "cli.verb.activate"
-msgstr "ライセンスキーを追加（プロンプトで入力、引数は不可）"
+msgstr "ライセンスキーを追加（入力、または stdin から）"
 
 #. Get the free license, when {product} offers one
 #. Terminal help: what the enroll command does.
@@ -3552,10 +3552,10 @@ msgstr "ライセンスキーを使って{command}を実行してください。
 msgid "cli.login.attach"
 msgstr "このデバイスのライセンスキーをアカウントで使いますか？ (y/N)"
 
-#. y yes · n no · Esc cancel
+#. y yes · n no · Esc cancel sign-in
 #. Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
 msgid "cli.keys.confirm"
-msgstr "y はい · n いいえ · Esc キャンセル"
+msgstr "y はい · n いいえ · Esc サインインをキャンセル"
 
 #. Signed in as {name}
 #. Terminal: the sign-in finished and only the name is known. {name} = the account's name.
@@ -3577,50 +3577,40 @@ msgstr "{version}の準備ができました · 再起動して完了"
 msgid "cli.update.notConfiguredTitle"
 msgstr "アップデートが設定されていません"
 
-#. Run {command} to see if a newer version is out.
-#. Terminal: update apply on a build with no signed update feed set up, under the title above. {command} = a terminal command, shown as is.
-msgid "cli.update.notConfigured"
-msgstr "{command}を実行して新しいバージョンを確認してください。"
-
-#. Download {version} from {url}.
-#. Terminal: update apply on an install that cannot update itself; the new version is downloaded by hand. {version} = a version string such as 2.5.0; {url} = a web address, shown as a link.
+#. Download it here:
+#. Terminal: update apply on an install that cannot update itself. It ends in a colon: the download page follows on its own line, as a link.
 msgid "cli.update.download"
-msgstr "{url} から{version}をダウンロードしてください。"
-
-#. npx runs the newest version each time. Run {command} to use {version}.
-#. Terminal: update apply when the product was started with npx. {command} = a terminal command, shown as is; {version} = a version string such as 2.5.0.
-msgid "cli.update.npx"
-msgstr "npxは毎回最新バージョンを実行します。{command}で{version}を使えます。"
+msgstr "ここからダウンロード:"
 
 #. This license key no longer works
 #. Terminal status: a device activated with a license key only, and the license is no longer valid.
 msgid "cli.status.keyRevoked.title"
 msgstr "このライセンスキーは使えなくなりました"
 
-#. It may have expired or been turned off. Check it at {url}, or activate with another key.
-#. Terminal status, under the title above. {url} = the product's account page on Polaris Key, shown as a link.
+#. It may have expired or been turned off:
+#. Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.
 msgid "cli.status.keyRevoked.message"
-msgstr "期限切れか無効にされた可能性があります。{url} で確認するか、別のキーでアクティベートしてください。"
+msgstr "期限切れか無効にされた可能性があります。"
 
-#. That key wasn't accepted. Check it for typos. If it's right, it may have expired or been turned off: see {url}.
-#. Terminal activate: the server did not accept the license key. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. {url} = the product's account page on Polaris Key, shown as a link.
+#. Check it for typos. If it's right, it may have expired or been turned off:
+#. Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.
 msgid "cli.activate.unauthorized"
-msgstr "そのキーは受け付けられませんでした。入力を確認してください。正しい場合は、期限切れか無効にされた可能性があります。{url} をご確認ください。"
+msgstr "入力を確認してください。正しい場合は、期限切れか無効にされた可能性があります。"
 
-#. Print the value (without it, secret and mint print nothing)
-#. Terminal help: what the --reveal flag of the secret and mint commands does. secret and mint are command names; keep them as is.
+#. Print the value
+#. Terminal help: what the --reveal flag does. A command-line flag; keep it as is.
 msgid "cli.option.reveal"
-msgstr "値を出力（指定しないと secret と mint は何も出力しません）"
+msgstr "値を出力"
 
-#. {name} is set. To print its value, run {command}.
-#. Terminal: the secret command without --reveal. {name} = the secret's name; {command} = a terminal command, shown as is.
+#. {name} is set but not printed
+#. Terminal: the secret command without --reveal, as the title of a warning; the command that prints it follows as a command row. {name} = the secret's name.
 msgid "cli.secret.hidden"
-msgstr "{name}は設定されています。値を出力するには{command}を実行してください。"
+msgstr "{name}は設定されていますが、出力していません"
 
-#. Nothing was minted. To mint and print a token, run {command}.
-#. Terminal: the mint command without --reveal. {command} = a terminal command, shown as is.
+#. Nothing was minted
+#. Terminal: the mint command without --reveal, as the title of a warning; the command that mints and prints follows as a command row.
 msgid "cli.mint.hidden"
-msgstr "何も発行していません。トークンを発行して出力するには{command}を実行してください。"
+msgstr "何も発行していません"
 
 #. macOS
 #. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
@@ -3666,6 +3656,21 @@ msgstr "visionOS"
 #. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
 msgid "cli.platform.watchos"
 msgstr "watchOS"
+
+#. The license key is now on your account.
+#. Terminal sign-in: the person said yes to adding this device's license key to the account just signed in.
+msgid "cli.login.attached"
+msgstr "ライセンスキーがアカウントに追加されました。"
+
+#. Get the new version from where you got {product}.
+#. Terminal: update apply on an install that cannot update itself and has no download page to link. {product} = the product's name from ProductIdentity (never translated).
+msgid "cli.update.downloadNoLink"
+msgstr "{product}を入手した場所から新しいバージョンを入手してください。"
+
+#. No license key arrived on stdin.
+#. Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time.
+msgid "cli.activate.noKeyPiped"
+msgstr "stdin からライセンスキーが届きませんでした。"
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
