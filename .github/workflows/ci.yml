@@ -27,7 +27,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # The docs snippet lane (packages/docs/test/snippets) compiles every Python code block on a
       # covered docs page against the SDK with mypy, so it needs the SDK's own venv.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Python venv for the docs snippet lane
