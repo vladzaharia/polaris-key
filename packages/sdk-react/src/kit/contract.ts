@@ -18,6 +18,7 @@ export {
   onCopyLoaded,
   OPENS,
   placeKeys,
+  platformLabel,
   resolveFor,
   themeVars,
   watchProductIdentity,

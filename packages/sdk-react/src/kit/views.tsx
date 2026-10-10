@@ -3,9 +3,9 @@
 // device and license rows, progress, release notes and settings rows. The React twin of
 // `@polaris-key/elements` src/views.ts: the same DOM, so the shared stylesheet draws both alike.
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import type { View } from "@polaris-key/ui-core";
-import { LAYOUTS, placeKeys, type Layout } from "./contract.js";
+import { LAYOUTS, placeKeys, platformLabel, type Layout } from "./contract.js";
 
 import {
   a11yOnly,
@@ -26,6 +26,7 @@ import {
   seatMeter,
   shimmer,
   statusLine,
+  successMark,
   text,
   titles,
   type KitCtx,
@@ -117,7 +118,7 @@ function contentFor(c: KitCtx): ReactNode {
     case "DeviceLimit":
       return deviceLimitContent(c);
     case "LicenseChoice":
-      return licenseRows(c);
+      return c.view.state === "replace-open" ? replaceRows(c) : licenseRows(c);
     case "Devices":
       return deviceRows(c);
     case "ReleaseNotes":
@@ -172,6 +173,9 @@ function progressFor(c: KitCtx): ReactNode {
 /** A locked value (ChannelPicker, a managed setting): the lock glyph, named. */
 function locked(c: KitCtx): ReactNode {
   if (!c.view.copy.includes("a11y.locked")) return null;
+  // Settings name the lock on the locked row itself.
+  if (c.view.component === "Settings" && c.input.config?.some((r) => r.locked))
+    return null;
   return (
     <span
       role="img"
@@ -235,6 +239,11 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
       >
         {loading ? shimmer() : null}
         <div className="split passport">
+          {layout.split && c.resolved.iconUrl ? (
+            <div className="passport-ambient" aria-hidden="true">
+              <img src={c.resolved.iconUrl} alt="" />
+            </div>
+          ) : null}
           {showIdentity
             ? productHeader(c, layout.header, {
                 name: !titleNames,
@@ -242,8 +251,16 @@ function screen(c: KitCtx, layout: Layout): ReactNode {
               })
             : null}
         </div>
+        {view.component === "SignIn" && view.state === "done"
+          ? successMark()
+          : null}
         <div className="texts" data-part="texts">
-          {titles(c, p.titles, heroTitle ? "display" : "title")}
+          {titles(
+            c,
+            p.titles,
+            heroTitle ? "display" : "title",
+            layout.subtitles,
+          )}
           {paragraphs(
             c,
             body.filter((k) => k !== "common.byDeveloper"),
@@ -491,7 +508,7 @@ function deviceLimitContent(c: KitCtx): ReactNode {
                 <br />
                 <span className="meta">
                   {text(c, "signin.replace.meta", {
-                    platform: d.platform ?? "",
+                    platform: platformLabel(d.platform),
                     when: days(d.lastSeenDays),
                   })}
                   {i === leastRecent &&
@@ -623,7 +640,7 @@ function licenseRows(c: KitCtx): ReactNode {
       );
   return (
     <div
-      className="list"
+      className="list pk-stagger"
       role="radiogroup"
       aria-label={
         keys.has("signin.choice.group") ? plain(c, "signin.choice.group") : ""
@@ -671,7 +688,9 @@ function licenseRows(c: KitCtx): ReactNode {
               ) : null}
               {keys.has("signin.choice.meta") ? (
                 <span className="meta">
-                  {text(c, "signin.choice.meta", metaArgs)}
+                  {metaArgs.origin
+                    ? text(c, "signin.choice.meta", metaArgs)
+                    : metaArgs.term}
                 </span>
               ) : null}
               {full && keys.has("signin.choice.tag.full") ? (
@@ -696,6 +715,115 @@ function licenseRows(c: KitCtx): ReactNode {
         );
       })}
     </div>
+  );
+}
+
+/** "3 days ago", "last month": a relative time from epoch seconds (the server's `lastSeen`). */
+function since(epochSeconds: number, locale: string): string {
+  const d = Math.max(
+    0,
+    Math.floor((Date.now() - epochSeconds * 1000) / 86_400_000),
+  );
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  if (d < 45) return rtf.format(-d, "day");
+  if (d < 365) return rtf.format(-Math.round(d / 30), "month");
+  return rtf.format(-Math.round(d / 365), "year");
+}
+
+/** The Replace step (SIGN-IN.md §3.7): the license's devices, the least recent preselected, and
+ *  the one confirm under the list that names the picked device. */
+function replaceRows(c: KitCtx): ReactNode {
+  const rv = c.input.replaceView;
+  if (!rv) return null;
+  const keys = new Set(c.view.copy);
+  const pickId = (c.input as { replacePick?: string }).replacePick;
+  const devices = rv.devices;
+  const pick =
+    devices.find((d) => d.id === pickId) ??
+    devices.find((d) => d.leastRecent) ??
+    devices[0];
+  const name = (d: (typeof devices)[number]) =>
+    d.label ?? plain(c, "devices.unnamed");
+  const thisDevice = plain(c, "part.thisDevice", {
+    formFactor: c.input.platform?.formFactor ?? "computer",
+  });
+  const tag = (k: string) => (
+    <>
+      {" "}
+      <span className="pill" data-key={k}>
+        {text(c, k)}
+      </span>
+    </>
+  );
+  return (
+    <>
+      <div
+        className="list pk-stagger"
+        role="radiogroup"
+        aria-labelledby="pk-title"
+        data-part="device-list"
+      >
+        {devices.map((d, i) => (
+          <div
+            key={d.id}
+            className="row"
+            role="radio"
+            data-part="device-row"
+            tabIndex={d === pick ? 0 : -1}
+            aria-checked={d === pick ? "true" : "false"}
+            onClick={() => c.pick(d.id)}
+            onKeyDown={(e) =>
+              radioKeys(e, c, i, devices.length, (n) => devices[n]!.id)
+            }
+          >
+            <span
+              role="img"
+              aria-label={plain(c, "a11y.formFactor", {
+                formFactor: d.deviceType ?? "other",
+              })}
+            >
+              {GLYPHS.device(d.deviceType)}
+            </span>
+            <span>
+              <span className="row-title">
+                <bdi>{name(d)}</bdi>
+              </span>
+              {d.leastRecent ? tag("signin.replace.leastRecent") : null}
+              {d.activeNow ? tag("signin.replace.activeNow") : null}
+              {d.thisBrowser ? tag("signin.replace.thisBrowser") : null}
+              <br />
+              <span className="meta">
+                {text(c, "signin.replace.meta", {
+                  platform: platformLabel(d.platform),
+                  when: since(d.lastSeen, c.copy.locale),
+                })}
+              </span>
+            </span>
+            {d === pick ? GLYPHS.check() : <span />}
+          </div>
+        ))}
+      </div>
+      {pick && keys.has("signin.replace.title") ? (
+        <div className="callout" data-part="confirm" role="status">
+          <span className="callout-title" data-key="signin.replace.title">
+            {text(c, "signin.replace.title", { device: name(pick) })}
+          </span>
+          {keys.has("signin.replace.consequence") ? (
+            <span data-key="signin.replace.consequence">
+              {text(c, "signin.replace.consequence", {
+                device: name(pick),
+                thisDevice,
+              })}
+            </span>
+          ) : null}
+          {pick.activeNow ? (
+            <span className="message" data-tone="warning">
+              {text(c, "signin.replace.inUse", { device: name(pick) })}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -771,7 +899,7 @@ function deviceRows(c: KitCtx): ReactNode {
                 </>
               ) : null}
               {text(c, "devices.meta", {
-                platform: d.platform ?? "",
+                platform: platformLabel(d.platform),
                 when: days(d.lastSeenDays),
               })}
             </span>
@@ -820,51 +948,150 @@ function releaseNotes(c: KitCtx): ReactNode {
   );
 }
 
+/** A config row as the kit takes it: ui-core's row plus the catalog entry's `label`, when the
+ *  adapter passes it (every product catalog entry has one). */
+type SettingsRow = NonNullable<KitCtx["input"]["config"]>[number] & {
+  label?: string;
+};
+
+/** A setting's name: the catalog entry's label, else its key read as words (`audio.volume` →
+ *  "Audio volume"), never the raw key (DL8). */
+export function settingLabel(row: SettingsRow): string {
+  if (row.label?.trim()) return row.label.trim();
+  const phrase = row.key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[._\-\s/:]+/)
+    .filter(Boolean)
+    .map((w) => w.toLocaleLowerCase())
+    .join(" ");
+  return phrase ? phrase[0]!.toLocaleUpperCase() + phrase.slice(1) : row.key;
+}
+
 function settingsRows(c: KitCtx): ReactNode {
   const keys = new Set(c.view.copy);
-  const rows = c.input.config ?? [];
-  const shown = [...keys].filter(
+  const rows = (c.input.config ?? []) as SettingsRow[];
+  const used = new Set<string>();
+  const use = (k: string) => (keys.has(k) ? (used.add(k), true) : false);
+  // Each row: its name, where its value comes from (or who set it), and the value at the end.
+  const drawn = rows.map((r) => {
+    const meta: ReactNode[] = [];
+    const from = r.locked
+      ? r.org
+        ? "settings.setBy"
+        : "settings.setByGuardian"
+      : `settings.source.${r.source}`;
+    if (use(from))
+      meta.push(
+        <span key={from} data-key={from}>
+          {text(c, from, { org: r.org ?? "" })}
+        </span>,
+      );
+    if (
+      r.type === "number" &&
+      typeof r.min === "number" &&
+      typeof r.max === "number" &&
+      use("settings.range")
+    )
+      meta.push(
+        <span key="range" data-key="settings.range">
+          {text(c, "settings.range", { min: r.min, max: r.max })}
+        </span>,
+      );
+    let value: ReactNode = null;
+    if (typeof r.value === "boolean") {
+      const k = r.value ? "settings.on" : "settings.off";
+      use(k);
+      value = <span data-key={k}>{text(c, k)}</span>;
+    } else if (r.value !== undefined && r.value !== null)
+      value = <bdi>{String(r.value)}</bdi>;
+    return (
+      <li key={r.key} className="row" data-part="settings-row">
+        <span className="row-text">
+          <span className="row-title">
+            <bdi>{settingLabel(r)}</bdi>
+          </span>
+          {meta.length ? (
+            <span className="meta">
+              {meta.map((m, i) => (
+                <Fragment key={i}>
+                  {i ? " · " : ""}
+                  {m}
+                </Fragment>
+              ))}
+            </span>
+          ) : null}
+        </span>
+        <span className="row-value">
+          {r.locked && keys.has("a11y.locked") ? (
+            <span
+              role="img"
+              data-key="a11y.locked"
+              aria-label={plain(c, "a11y.locked")}
+            >
+              {GLYPHS.lock()}
+            </span>
+          ) : null}
+          {value}
+        </span>
+      </li>
+    );
+  });
+  // The provenance group's heading (B10: "From <Developer>" for what the person can change).
+  const group = use("settings.fromDeveloper") ? (
+    <h2 className="label group-label" data-key="settings.fromDeveloper">
+      {text(c, "settings.fromDeveloper")}
+    </h2>
+  ) : null;
+  const search = use("settings.search") ? (
+    <div className="field" data-part="search">
+      <input
+        type="search"
+        data-key="settings.search"
+        aria-label={plain(c, "settings.search")}
+        placeholder={plain(c, "settings.search")}
+        autoComplete="off"
+        onChange={(e) => c.edit("search", e.currentTarget.value)}
+      />
+    </div>
+  ) : null;
+  // A key of the state no row carried (an "On" with no boolean row) still shows, once.
+  const rest = [...keys].filter(
     (k) =>
-      k.startsWith("settings.") &&
+      !used.has(k) &&
       (k.startsWith("settings.source.") ||
         k === "settings.on" ||
         k === "settings.off" ||
         k === "settings.setBy" ||
         k === "settings.setByGuardian" ||
-        k === "settings.fromDeveloper" ||
-        k === "settings.range" ||
-        k === "settings.search"),
+        k === "settings.range"),
   );
-  if (rows.length === 0 && shown.length === 0) return null;
+  if (rows.length === 0 && rest.length === 0)
+    return group === null && search === null ? null : (
+      <>
+        {search}
+        {group}
+      </>
+    );
   return (
-    <ul className="list" data-part="settings-list">
-      {rows.map((r) => (
-        <li key={r.key} className="row" data-part="settings-row">
-          <span />
-          <span>
-            <span className="row-title">{r.key}</span>
-          </span>
-          <span className="meta">
-            {r.locked && keys.has("settings.setBy")
-              ? text(c, "settings.setBy", { org: r.org ?? "" })
-              : r.value === undefined
-                ? ""
-                : String(r.value)}
-          </span>
-        </li>
-      ))}
-      {shown
-        .filter((k) => !(k === "settings.setBy" && rows.some((r) => r.locked)))
-        .map((k) => (
-          <li key={k} className="row">
-            <span />
-            <span className="meta" data-key={k}>
-              {text(c, k)}
-            </span>
-            <span />
-          </li>
-        ))}
-    </ul>
+    <>
+      {search}
+      <div className="group" data-part="settings-group">
+        {group}
+        <ul className="list" data-part="settings-list">
+          {drawn}
+        </ul>
+        {rest.length ? (
+          <p className="meta">
+            {rest.map((k, i) => (
+              <Fragment key={k}>
+                {i ? " · " : ""}
+                <span data-key={k}>{text(c, k)}</span>
+              </Fragment>
+            ))}
+          </p>
+        ) : null}
+      </div>
+    </>
   );
 }
 

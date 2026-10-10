@@ -20,6 +20,8 @@ import {
 } from "@polaris-key/ui-core";
 import { KIT_COPY_EN } from "@polaris-key/brand/kit-copy";
 
+import { LAYOUTS } from "@polaris-key/elements/contract";
+
 import * as Kit from "../src/kit/index.js";
 
 type Obj = Record<string, unknown>;
@@ -196,7 +198,11 @@ for (const family of FAMILIES) {
           filled[0]!.getAttribute("data-key"),
         );
       // DL4/DL6: a view with a primary draws it as the one filled control.
-      if (view.decisions.primary !== null && component !== "PolarisKeyGate")
+      if (
+        view.decisions.primary !== null &&
+        component !== "PolarisKeyGate" &&
+        !(LAYOUTS[component].quiet ?? []).includes(view.decisions.primary)
+      )
         expect(
           root!.querySelector(
             `:is([data-variant="primary"],[data-variant="danger"])[data-key="${view.decisions.primary}"]`,
