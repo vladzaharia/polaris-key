@@ -1,7 +1,8 @@
 # Polaris Key UI kits: one design system for every SDK
 
 **Status:** approved, 2026-10-05, after two critique rounds (§8) and the owner decisions below. Design
-spec plus build plan; nothing here is implemented yet. The build items of §10 are work packages in
+spec plus build plan; the kits are built item by item, and a kit conforms when its §7.1 matrix cell
+has runtime evidence or a documented N/A. The build items of §10 are work packages in
 phase UK of the execution program
 ([`workpackages.json`](../research/2026-09-29-godot-omniplatform/program/workpackages.json), briefs in
 [`program/wp/UK-*.md`](../research/2026-09-29-godot-omniplatform/program/wp/)).
@@ -318,7 +319,7 @@ hosts and light game themes. _Evidence:_ `compose.accent`, `react.system-on-ligh
 
 - **Where:** a QR appears only where the device cannot browse: TV, console and pad-only screens,
   and an offline-activation request. Never on a phone, and never on a desktop surface (SIGN-IN.md
-  D-67), which retires the old web QR beside the code. Not on a tablet either: the Godot kit's desktop
+  D-67). Not on a tablet either: the Godot kit's desktop
   and tablet QR is removed, and Godot shows one only pad-only. A phone leads with Open browser,
   then the code with Copy. Terminals draw no QR for sign-in or the device limit; the offline
   request gets a half-block QR where the whole screen fits.
@@ -1651,7 +1652,7 @@ the same state as the animated one.
 
 | Kit                                   | Tool                                                                           | Variants, beyond the sizes above                                                                                                                                                                                                     | Baselines                                                             |
 | ------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| React, elements, Vue, Svelte, Angular | Playwright component tests (Chromium, WebKit)                                  | at 2x; `polaris-key` and `native`; `forced-colors` (dark only); keyboard-focus state shots                                                                                                                                           | `packages/<kit>/test/visual/__screenshots__/`                         |
+| React, elements, Vue, Svelte, Angular | Playwright component tests (Chromium, WebKit)                                  | at 2x; `polaris-key` and `native`; `forced-colors` (both schemes); keyboard-focus state shots                                                                                                                                        | `packages/<kit>/test/visual/__screenshots__/`                         |
 | SwiftUI, UIKit, AppKit                | swift-snapshot-testing on iOS 26 and macOS 26 simulators/hosts                 | iPhone, iPad and Mac devices for the matching rows; iOS 18 and macOS 15 fallbacks                                                                                                                                                    | `sdks/swift/Tests/PolarisKeyUISnapshotTests/__Snapshots__/`           |
 | Compose                               | Roborazzi (exists, 136 baselines) + Compose Desktop screenshot tests           | Windows, macOS and Linux chrome on the desktop rows; native preset                                                                                                                                                                   | `sdks/kotlin/ui/src/test/snapshots/`                                  |
 | Godot                                 | `tools/ui_screenshots.gd` (exists) promoted to a compared suite                | native; opaque fallback                                                                                                                                                                                                              | `sdks/godot/tests/ui/snapshots/`                                      |

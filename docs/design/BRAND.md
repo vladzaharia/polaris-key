@@ -413,8 +413,8 @@ the shopping-bag icon and the Pinned K (it requires License), never the Star Cut
 re-scoped to exactly that. Distribution and Commerce never sit side by side as one identity: the
 data-service decides, and the icon tells them apart.
 
-`on` is `#060912` on every dark solid (5.1–14.3:1) and on the light chartreuse and cyan solids
-(5.2–5.3:1); `#ffffff` on the other light solids (4.7–5.9:1). The full set (subtle values, bit colours) is in
+`on` is `#060912` on every dark solid (5.1–14.7:1) and on the light chartreuse and cyan solids
+(4.8 and 5.0:1); `#ffffff` on the other light solids (4.7–7.2:1). The full set (subtle values, bit colours) is in
 `tokens.json` and the preview.
 
 OKLCH design values (dark solid / light solid): violet = the kit's; chartreuse `0.88 0.19 121` /
@@ -485,9 +485,11 @@ the warning status (amber), and the danger status keeps the red end of the warm 
 
 ### 5.4 Using accents
 
-- Section chrome only: the active nav item (`subtle` background + `solid` marker), the section
-  header rule, the primary button in that section (`solid` + `on`), links in the section (`fg`),
-  charts that belong to the section.
+- Section chrome only: the active nav item (`subtle` background + a 3 px `solid` marker), the
+  section header rule, links in the section (`fg`), charts that belong to the section. The primary
+  button is never the accent: it is the neutral action ink (§4.7).
+- One flat section identifier per page header: a §7.8 tile at 64 px or less, never a solid accent
+  plate, never a glow. Platform pages show the kit app icon, never a recoloured K.
 - Never as a status. Never as a large background (use `subtle`). Never in the marks, except the
   [section bit](#6-the-section-bit).
 - States follow the service the element references (`data-service`; core violet on core and platform
@@ -705,7 +707,9 @@ stagger-list, success, skeleton, press; S-23 §6).
   section `subtle`/`solid`, static and upright. A single star, or the star with plenty of
   negative space. Never a constellation of sparkles, never animated, never rotated.
 - Empty-state copy: one `text-strong` line saying what is missing, one `text-muted` line saying
-  how to add it, one primary action.
+  how to add it, one primary action. An empty state is accepted only when its first-run and
+  filtered variants are rendered in the real runtime in both themes ([EXPERIENCE §7.3](EXPERIENCE.md#73-screen-acceptance)),
+  with the motif static and the action reachable by keyboard.
 - No stock illustration, no gradients, no blue/indigo, no rose (rose is for display treatments in
   marketing, not product UI).
 - **Flat surfaces.** Glows, radial washes, vignettes, coloured shadows and accent-tinted card
@@ -895,7 +899,7 @@ map it follows.
 | (none)                                                         | `--pk-info`, `--pk-signed`, `--pk-signed-*`                        | new                                                      |
 | `--pk-border`                                                  | `--pk-border-subtle`                                               |                                                          |
 | `--pk-input`                                                   | `--pk-border-strong`                                               | control boundaries need 3:1                              |
-| `--pk-ring`                                                    | `--pk-focus`                                                       | always violet; no longer per section                     |
+| `--pk-ring`                                                    | `--pk-state-ring` (`--pk-focus` outside any service)               | the referenced service's accent (§4.8, B17)              |
 | `--pk-shadow`                                                  | `--pk-elevation-{1,2,3}`                                           |                                                          |
 | `--pk-radius` (0.625rem)                                       | `--pk-radius-lg` (cards) / `--pk-radius-md` (controls)             |                                                          |
 | `[data-service="core"]`                                        | `[data-service="core"]`                                            | unchanged                                                |
@@ -994,14 +998,10 @@ kit reads, the accent resolver and the drift gate are UI-KITS §2 and §3.3.
   Pinned K's display cut at 48 px, so every section's bit is legible in both themes (proofs:
   `packages/brand/preview/proofs/section-bit-{dark,light}.png`). 32–47 px placements use the
   display cut without a bit; below 24 px, the favicon cut.
-- **Accent palette approved as tuned** (the table above), including Identity orchid. (This
-  originally also had Config cyan, Release teal and one shared green for Distribution and Update;
-  see the next entries.)
-- **Distribution and Update no longer share green (2026-10-03).** Distribution keeps `#39d075` /
-  `#05773b`; Update becomes tangerine.
+- **Accent palette approved as tuned** (§5.2), including Identity orchid.
 - **After the accent proofs (2026-10-03):** Config becomes yellow (`#fac700` / `#8b6902`, from the
   owner's `#ffd43b` / `#8a6a00`); Release, the only blue-green left, is re-tuned to the measured
-  optimum (`#00dbfd` / `#0390a6`); Update dark stays `#fe8001` and Update light returns to a bright
+  optimum (`#00dbfd` / `#008ca3`); Update dark stays `#fe8001` and Update light returns to a bright
   orange (`#b95800`, near the owner's `#b04a00`); License stays chartreuse. The gold distance no
   longer applies to section accents (only to the kit's signed artwork, the kit lockups, the signed
   indicator and statuses). The warning status moves to amber (`#c38d18` / `#814d00`) between
@@ -1013,31 +1013,16 @@ kit reads, the accent resolver and the drift gate are UI-KITS §2 and §3.3.
 
 ## Owner decisions (2026-10-04)
 
-- ~~**SDK UI is native by default; Polaris Key branding is opt-in.**~~ **Superseded (2026-10-05)
-  by [UI-KITS.md](UI-KITS.md):** the Polaris Key look is the kit default and `native` the opt-out
-  preset. Original text: The SDK UI kits (the SwiftUI
-  `PolarisKeyUI` first) render natively and neutrally out of the box: system fonts, the host app's
-  tint and system colours, no Polaris Key marks or palette. An integrator opts in to the brand
-  (the generated tokens, the bundled Rubik, the core accent and the bit-less Pinned K) with one
-  modifier or option, `.polarisKeyBranding(.polarisKey)` in SwiftUI. Inside the opt-in every rule
-  on this page applies unchanged.
+- **The SDK UI kits are Polaris Key by default and `native` is the opt-out preset** (UI-KITS.md,
+  2026-10-05, which replaced the 2026-10-04 native-by-default and neutral-React decisions): the
+  kit look is in the product's accent, `native` hands the look to the host, and kit screens show
+  no Polaris Key mark (UI-KITS §1.6).
 - **The "Powered by Polaris Key" badge is optional and off by default** in the SDK UI, in both
   modes; an integrator turns it on explicitly, and it then follows §1.5 and §7.2.
-- **Every SDK UI view is centred and polished** (stays; extended by UI-KITS.md §1.5): content centred horizontally and, for
-  full-screen states, vertically; a comfortable maximum width on iPad and desktop rather than edge
-  to edge; balanced padding, a clear type hierarchy, Dynamic Type at every size, consistent corner
-  radii and native materials where they fit.
-- ~~**React: SDK UI branding is optional.**~~ **Superseded (2026-10-05) by
-  [UI-KITS.md](UI-KITS.md)** (see the first bullet). Original text: The React SDK's built-in screens (gate,
-  activation, sign-in, offline grace, update prompts, settings, devices) are **neutral by
-  default**: a greyscale, host-friendly theme that inherits the app's font and shows no Polaris
-  Key mark, name or badge. Integrators opt in to this design system with one option
-  (`branding: "polaris-key"` on `<PolarisKeyProvider>`, or the `polarisKeyTheme` preset); only
-  then do the §7.1 marks (the Pinned K without a bit; the Star Cut on update screens) and the
-  brand tokens apply. The "Powered by Polaris Key" badge (§7.2) is a separate opt-in, off by
-  default under both. Every SDK surface is a centred, max-width card (centred vertically when
-  full-window), responsive from 320 px, in dark and light. The §2 row "React SDK UI" describes
-  the opt-in branding.
+- **Every SDK UI view is centred and polished** (extended by UI-KITS.md §1.5): content centred
+  horizontally and, for full-screen states, vertically; a comfortable maximum width on iPad and
+  desktop rather than edge to edge; balanced padding, a clear type hierarchy, Dynamic Type at
+  every size, consistent corner radii and native materials where they fit.
 
 ## Lead decisions (2026-10-09, Brand Guide Edition 04)
 
@@ -1127,6 +1112,20 @@ entry points; body copy uses glossary words, and no marketing name becomes a pro
 Eight slugs, nine marketing entry points, six console features. Ship builds is one console
 identity (Package glyph, Release cyan); the marketing identities (Delivery, Update tangerine, Packs
 orange) never split it in navigation.
+
+**Marketing glossary drift** (for the website owner; page titles and entry points may keep their
+marketing names, body copy uses the glossary words of `concepts.md`):
+
+| On plrs.im today                                                                   | Use instead                                                                              |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| "Choose an outlet", "Route to the selected outlet", "the product outlet"           | Channel                                                                                  |
+| "Channels with a purpose. Keep alpha, beta and stable releases", "Channel: Stable" | Release track, named for what it does ("Stable" is a track)                              |
+| "Release channels, artifacts and changelogs"                                       | Release tracks, builds and release notes                                                 |
+| "Content packs" in body copy                                                       | Pack; "Content Packs" stays as the marketing entry point and page title                  |
+| "Reach storefronts, downloads and registries"                                      | "Reach stores, downloads and package managers" (a storefront is where something is sold) |
+| "Cloud sync" in the menu                                                           | Cloud Sync, as everywhere else                                                           |
+| Releases, Distribution and Updates described as console areas                      | Ship builds                                                                              |
+| Identity described as a console area                                               | Sign-in                                                                                  |
 
 ### 14.5 Assets this section specifies (UK-57, UK-58)
 
