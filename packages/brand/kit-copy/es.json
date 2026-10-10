@@ -502,6 +502,7 @@
     "cli.help.options": "Opciones",
     "cli.help.lede": "Licencia y actualizaciones de {product}",
     "cli.help.more": "Ejecuta {command} para ver las opciones de un comando.",
+    "cli.help.group": "Licencia",
     "cli.verb.activate": "Añadir una clave de licencia (se pide, o por stdin)",
     "cli.verb.enroll": "Obtener la licencia gratuita, si {product} ofrece una",
     "cli.verb.deactivate": "Quitar tu licencia de este dispositivo y liberar su plaza",

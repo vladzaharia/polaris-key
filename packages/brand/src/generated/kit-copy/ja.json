@@ -495,6 +495,7 @@
   "cli.help.options": "オプション",
   "cli.help.lede": "{product}のライセンスとアップデート",
   "cli.help.more": "コマンドごとのオプションは{command}で確認できます。",
+  "cli.help.group": "ライセンス",
   "cli.verb.activate": "ライセンスキーを追加（入力、または stdin から）",
   "cli.verb.enroll": "無料ライセンスを取得（{product}が提供している場合）",
   "cli.verb.deactivate": "このデバイスでのライセンス使用を停止し、枠を解放",

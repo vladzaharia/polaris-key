@@ -1,6 +1,6 @@
 {
-  "uiMatrixVersion": 2,
-  "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy. Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 2: a changed row, input member or rule bumps it.",
+  "uiMatrixVersion": 3,
+  "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy. cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references. Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 3: a changed row, input member or rule bumps it.",
   "vocabulary": {
     "actions": {
       "open-card": "Start the sign-in on the hosted card in the browser (Continue in browser, Continue with email).",
@@ -256,7 +256,62 @@
     "colorSchemes": ["system", "dark", "light"],
     "icons": ["image", "monogram", "none"],
     "presets": ["polaris-key", "native"],
-    "locales": ["en", "de", "fr", "es", "pt-BR", "it", "ja", "ko", "zh-Hans"]
+    "locales": ["en", "de", "fr", "es", "pt-BR", "it", "ja", "ko", "zh-Hans"],
+    "cli": {
+      "sections": {
+        "verbs": "Verb ids are a verb's words joined with a space. endUser is the default mount; developer verbs mount only when options.verbs names them; aliases maps another name to a one-word verb.",
+        "mount": "Register the kit's verbs into a host CLI whose own top-level commands are input.host, with input.options. mounted: the commands the host gains, as typed (namespace first). error: the registration error (nothing is mounted): every host command equal to a namespace, a verb's first word or an alias, and the two options that resolve it. skipped: the verbs onCollision skip dropped; the kit warns once, naming them. hidden: the options help hides once config is given. The host's own commands are never renamed, removed or re-described.",
+        "help": "The root help page's sections in order: the host's, under its headings, then one section whose heading is the kit copy key `copy` with what the mount added at the top level (a namespace is one entry). commands is each section's set; within a section the kit keeps its order.",
+        "gate": "requireLicense(handler, {entitlement?}) before the host's command input.command. run: the action runs and exits as it does. flow: the kit's activate or sign-in flow runs inline, then the action. refuse: mark, the copy keys and the fix verbs as command rows, written once to stream (stderr: no escape off a terminal), the exit; with --json stdout carries only `result`, the envelope's result line (CLI_JSON_VERSION 1).",
+        "outcomes": "Drive the kit's verb in input.situation (situations) on a Unicode terminal (json false) or with --json, and compare: exit; mark, the outcome's step mark (that symbol is drawn and the other of fail and warn is not); error and code, the result's fields (null: no error); stdout (empty: nothing on stdout; screen: the flow is drawn on stdout; result: only JSON lines, the last the result); fix, the verb ids of the command rows drawn, as a set.",
+        "stdin": "activate with no key, stdin of kind input.stdin (stdinKinds) given input.lines, each followed by a newline (null: nothing is written and the writer stays open). read: prompt (the masked entry), key (the first non-empty line, here the fixture key, without waiting for the writer to close) or none (the copy key, the exit, the error, and with withinMs the run ends, process and all, within that many milliseconds).",
+        "capabilities": "detectTerminal over input.env, the streams (tty or pipe) and the flags (color false is --no-color), to colour, unicode, interactive, animate and links.",
+        "exit": "The exit codes every terminal kit uses."
+      },
+      "marks": {
+        "ok": "A check: done.",
+        "fail": "A cross: a failure, with what happened.",
+        "warn": "A triangle: a refusal the person can resolve, with its fix (DL6)."
+      },
+      "collision": {
+        "code": "polaris-verb-collision",
+        "fixes": ["namespace", "verbs"]
+      },
+      "helpGroup": "cli.help.group",
+      "configOptions": ["--base-url", "--product", "--trust"],
+      "usable": ["grace", "not-applicable", "ok"],
+      "inlineFlow": ["expired", "needs-activation", "revoked"],
+      "errors": {
+        "license_required": "A refused gate: the license is not usable, or the version is outside its allowed range.",
+        "not_entitled": "A refused gate: the license does not include the channel, or the entitlement the gate asks for.",
+        "usage": "An argument error (exit 2).",
+        "interrupted": "Ctrl-C (exit 130).",
+        "internal": "An unexpected exception (exit 1)."
+      },
+      "situations": {
+        "status-revoked": "`status` on a device signed in to an account, whose license the server revoked.",
+        "status-expired": "`status`: the license expired.",
+        "status-version-too-old": "`status`: this version is below the license's allowed range.",
+        "status-version-too-new": "`status`: this version is above the license's allowed range.",
+        "network": "`devices list`: the request fails with the registry code `network`.",
+        "key-refused": "`activate`, a well-formed key on a piped stdin: the server answers 401 `unauthorized`.",
+        "device-limit": "`activate`, a well-formed key on a piped stdin: the server answers `device_limit` with a `manageUrl`; no key reader, so the flow ends.",
+        "secret-hidden": "`secret api_key` for a secret that is set, without `--reveal`.",
+        "mint-hidden": "`mint cdn` without `--reveal`.",
+        "usage": "`devices rename` with no device id.",
+        "interrupt": "`activate` on an interactive terminal with no key: Ctrl-C at the key prompt.",
+        "sign-in-cancelled": "`login` on an interactive terminal: Esc while it waits for the browser."
+      },
+      "stdinKinds": {
+        "tty": "A terminal, on an interactive run.",
+        "tty-noninteractive": "A terminal, on a run that cannot prompt (`CI` is truthy).",
+        "file": "A regular file.",
+        "fifo": "A FIFO: a shell pipe.",
+        "socket": "A socket: what a Node parent's pipe is (`spawn`, `execSync({ input })`, execa).",
+        "char-device": "A character device such as /dev/null: never read."
+      },
+      "stdinWaitMs": 2000
+    }
   },
   "gate": [
     {
@@ -11167,5 +11222,2586 @@
       },
       "expect": "Enter a Tidewater key"
     }
-  ]
+  ],
+  "cli": {
+    "verbs": {
+      "endUser": [
+        "activate",
+        "deactivate",
+        "devices deauthorize",
+        "devices list",
+        "devices rename",
+        "login",
+        "logout",
+        "status",
+        "update apply",
+        "update check"
+      ],
+      "developer": [
+        "boot",
+        "changelog",
+        "completion",
+        "config get",
+        "config list",
+        "config reset",
+        "config set",
+        "doctor",
+        "enroll",
+        "import-bundle",
+        "mint",
+        "offline-request",
+        "packs ensure",
+        "packs status",
+        "register",
+        "secret"
+      ],
+      "aliases": { "sign-in": "login", "sign-out": "logout" }
+    },
+    "mount": [
+      {
+        "name": "the end-user set mounts at the root",
+        "input": { "host": ["build", "export"], "options": {} },
+        "expect": {
+          "mounted": [
+            "activate",
+            "deactivate",
+            "devices deauthorize",
+            "devices list",
+            "devices rename",
+            "login",
+            "logout",
+            "status",
+            "update apply",
+            "update check"
+          ],
+          "error": null,
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "a namespace nests every verb",
+        "input": {
+          "host": ["build", "export"],
+          "options": { "namespace": "license" }
+        },
+        "expect": {
+          "mounted": [
+            "license activate",
+            "license deactivate",
+            "license devices deauthorize",
+            "license devices list",
+            "license devices rename",
+            "license login",
+            "license logout",
+            "license status",
+            "license update apply",
+            "license update check"
+          ],
+          "error": null,
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "verbs picks a subset",
+        "input": {
+          "host": ["export"],
+          "options": { "verbs": ["activate", "login", "logout", "status"] }
+        },
+        "expect": {
+          "mounted": ["activate", "login", "logout", "status"],
+          "error": null,
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "developer verbs mount only by name",
+        "input": {
+          "host": ["export"],
+          "options": { "verbs": ["activate", "doctor", "secret", "status"] }
+        },
+        "expect": {
+          "mounted": ["activate", "doctor", "secret", "status"],
+          "error": null,
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "a host command equal to a mounted verb fails at registration",
+        "input": { "host": ["export", "status"], "options": {} },
+        "expect": {
+          "mounted": [],
+          "error": {
+            "code": "polaris-verb-collision",
+            "words": ["status"],
+            "fixes": ["namespace", "verbs"]
+          },
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "the error names every colliding word",
+        "input": { "host": ["devices", "export", "status"], "options": {} },
+        "expect": {
+          "mounted": [],
+          "error": {
+            "code": "polaris-verb-collision",
+            "words": ["devices", "status"],
+            "fixes": ["namespace", "verbs"]
+          },
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "an alias collides as its verb",
+        "input": { "host": ["sign-in"], "options": {} },
+        "expect": {
+          "mounted": [],
+          "error": {
+            "code": "polaris-verb-collision",
+            "words": ["sign-in"],
+            "fixes": ["namespace", "verbs"]
+          },
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "a namespace avoids the collision",
+        "input": { "host": ["status"], "options": { "namespace": "license" } },
+        "expect": {
+          "mounted": [
+            "license activate",
+            "license deactivate",
+            "license devices deauthorize",
+            "license devices list",
+            "license devices rename",
+            "license login",
+            "license logout",
+            "license status",
+            "license update apply",
+            "license update check"
+          ],
+          "error": null,
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "the namespace's own word can collide",
+        "input": { "host": ["license"], "options": { "namespace": "license" } },
+        "expect": {
+          "mounted": [],
+          "error": {
+            "code": "polaris-verb-collision",
+            "words": ["license"],
+            "fixes": ["namespace", "verbs"]
+          },
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "onCollision skip drops the verb and warns once",
+        "input": { "host": ["status"], "options": { "onCollision": "skip" } },
+        "expect": {
+          "mounted": [
+            "activate",
+            "deactivate",
+            "devices deauthorize",
+            "devices list",
+            "devices rename",
+            "login",
+            "logout",
+            "update apply",
+            "update check"
+          ],
+          "error": null,
+          "skipped": ["status"],
+          "hidden": []
+        }
+      },
+      {
+        "name": "skip drops every verb under a colliding word",
+        "input": { "host": ["devices"], "options": { "onCollision": "skip" } },
+        "expect": {
+          "mounted": [
+            "activate",
+            "deactivate",
+            "login",
+            "logout",
+            "status",
+            "update apply",
+            "update check"
+          ],
+          "error": null,
+          "skipped": ["devices deauthorize", "devices list", "devices rename"],
+          "hidden": []
+        }
+      },
+      {
+        "name": "verbs without the colliding one needs no skip",
+        "input": {
+          "host": ["status"],
+          "options": { "verbs": ["activate", "login", "logout"] }
+        },
+        "expect": {
+          "mounted": ["activate", "login", "logout"],
+          "error": null,
+          "skipped": [],
+          "hidden": []
+        }
+      },
+      {
+        "name": "config hides the product, trust and base URL options",
+        "input": { "host": ["export"], "options": { "config": true } },
+        "expect": {
+          "mounted": [
+            "activate",
+            "deactivate",
+            "devices deauthorize",
+            "devices list",
+            "devices rename",
+            "login",
+            "logout",
+            "status",
+            "update apply",
+            "update check"
+          ],
+          "error": null,
+          "skipped": [],
+          "hidden": ["--base-url", "--product", "--trust"]
+        }
+      }
+    ],
+    "help": [
+      {
+        "name": "the host's commands first, then the license verbs under one heading",
+        "input": {
+          "host": [{ "heading": "Commands", "commands": ["export", "import"] }],
+          "options": {}
+        },
+        "expect": {
+          "sections": [
+            { "heading": "Commands", "commands": ["export", "import"] },
+            {
+              "copy": "cli.help.group",
+              "commands": [
+                "activate",
+                "deactivate",
+                "devices deauthorize",
+                "devices list",
+                "devices rename",
+                "login",
+                "logout",
+                "status",
+                "update apply",
+                "update check"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "the host's headings keep their order",
+        "input": {
+          "host": [
+            { "heading": "Build", "commands": ["build", "watch"] },
+            { "heading": "Export", "commands": ["export"] }
+          ],
+          "options": {}
+        },
+        "expect": {
+          "sections": [
+            { "heading": "Build", "commands": ["build", "watch"] },
+            { "heading": "Export", "commands": ["export"] },
+            {
+              "copy": "cli.help.group",
+              "commands": [
+                "activate",
+                "deactivate",
+                "devices deauthorize",
+                "devices list",
+                "devices rename",
+                "login",
+                "logout",
+                "status",
+                "update apply",
+                "update check"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "a namespace is one entry under the heading",
+        "input": {
+          "host": [{ "heading": "Commands", "commands": ["export"] }],
+          "options": { "namespace": "license" }
+        },
+        "expect": {
+          "sections": [
+            { "heading": "Commands", "commands": ["export"] },
+            { "copy": "cli.help.group", "commands": ["license"] }
+          ]
+        }
+      },
+      {
+        "name": "verbs lists only the verbs it mounts",
+        "input": {
+          "host": [{ "heading": "Commands", "commands": ["export"] }],
+          "options": { "verbs": ["activate", "status"] }
+        },
+        "expect": {
+          "sections": [
+            { "heading": "Commands", "commands": ["export"] },
+            { "copy": "cli.help.group", "commands": ["activate", "status"] }
+          ]
+        }
+      },
+      {
+        "name": "a skipped verb is not listed",
+        "input": {
+          "host": [{ "heading": "Commands", "commands": ["export", "status"] }],
+          "options": { "onCollision": "skip" }
+        },
+        "expect": {
+          "sections": [
+            { "heading": "Commands", "commands": ["export", "status"] },
+            {
+              "copy": "cli.help.group",
+              "commands": [
+                "activate",
+                "deactivate",
+                "devices deauthorize",
+                "devices list",
+                "devices rename",
+                "login",
+                "logout",
+                "update apply",
+                "update check"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "with no host commands only the license heading",
+        "input": { "host": [], "options": {} },
+        "expect": {
+          "sections": [
+            {
+              "copy": "cli.help.group",
+              "commands": [
+                "activate",
+                "deactivate",
+                "devices deauthorize",
+                "devices list",
+                "devices rename",
+                "login",
+                "logout",
+                "status",
+                "update apply",
+                "update check"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "gate": [
+      {
+        "name": "ok, tty, text, entitled",
+        "input": {
+          "status": "ok",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "ok, tty, text, not entitled",
+        "input": {
+          "status": "ok",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "ok, tty, --json, entitled",
+        "input": {
+          "status": "ok",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "ok, tty, --json, not entitled",
+        "input": {
+          "status": "ok",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "ok, no tty, text, entitled",
+        "input": {
+          "status": "ok",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "ok, no tty, text, not entitled",
+        "input": {
+          "status": "ok",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "ok, no tty, --json, entitled",
+        "input": {
+          "status": "ok",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "ok, no tty, --json, not entitled",
+        "input": {
+          "status": "ok",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "grace, tty, text, entitled",
+        "input": {
+          "status": "grace",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "grace, tty, text, not entitled",
+        "input": {
+          "status": "grace",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "grace, tty, --json, entitled",
+        "input": {
+          "status": "grace",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "grace, tty, --json, not entitled",
+        "input": {
+          "status": "grace",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "grace, no tty, text, entitled",
+        "input": {
+          "status": "grace",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "grace, no tty, text, not entitled",
+        "input": {
+          "status": "grace",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "grace, no tty, --json, entitled",
+        "input": {
+          "status": "grace",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "grace, no tty, --json, not entitled",
+        "input": {
+          "status": "grace",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "expired, tty, text, entitled",
+        "input": {
+          "status": "expired",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "flow" }
+      },
+      {
+        "name": "expired, tty, text, not entitled",
+        "input": {
+          "status": "expired",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": { "outcome": "flow" }
+      },
+      {
+        "name": "expired, tty, --json, entitled",
+        "input": {
+          "status": "expired",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "expired, tty, --json, not entitled",
+        "input": {
+          "status": "expired",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "expired, no tty, text, entitled",
+        "input": {
+          "status": "expired",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "fix": ["activate", "login"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "expired, no tty, text, not entitled",
+        "input": {
+          "status": "expired",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "fix": ["activate", "login"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "expired, no tty, --json, entitled",
+        "input": {
+          "status": "expired",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "expired, no tty, --json, not entitled",
+        "input": {
+          "status": "expired",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.expired.message", "core.gate.expired.title"],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "revoked, tty, text, entitled",
+        "input": {
+          "status": "revoked",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "flow" }
+      },
+      {
+        "name": "revoked, tty, text, not entitled",
+        "input": {
+          "status": "revoked",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": { "outcome": "flow" }
+      },
+      {
+        "name": "revoked, tty, --json, entitled",
+        "input": {
+          "status": "revoked",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "revoked, tty, --json, not entitled",
+        "input": {
+          "status": "revoked",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "revoked, no tty, text, entitled",
+        "input": {
+          "status": "revoked",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "fix": ["activate", "login"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "revoked, no tty, text, not entitled",
+        "input": {
+          "status": "revoked",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "fix": ["activate", "login"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "revoked, no tty, --json, entitled",
+        "input": {
+          "status": "revoked",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "revoked, no tty, --json, not entitled",
+        "input": {
+          "status": "revoked",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": ["core.gate.revoked.message", "core.gate.revoked.title"],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "needs-activation, tty, text, entitled",
+        "input": {
+          "status": "needs-activation",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "flow" }
+      },
+      {
+        "name": "needs-activation, tty, text, not entitled",
+        "input": {
+          "status": "needs-activation",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": { "outcome": "flow" }
+      },
+      {
+        "name": "needs-activation, tty, --json, entitled",
+        "input": {
+          "status": "needs-activation",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.needs-activation.message",
+            "core.gate.needs-activation.title"
+          ],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "needs-activation, tty, --json, not entitled",
+        "input": {
+          "status": "needs-activation",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.needs-activation.message",
+            "core.gate.needs-activation.title"
+          ],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "needs-activation, no tty, text, entitled",
+        "input": {
+          "status": "needs-activation",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.needs-activation.message",
+            "core.gate.needs-activation.title"
+          ],
+          "fix": ["activate", "login"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "needs-activation, no tty, text, not entitled",
+        "input": {
+          "status": "needs-activation",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.needs-activation.message",
+            "core.gate.needs-activation.title"
+          ],
+          "fix": ["activate", "login"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "needs-activation, no tty, --json, entitled",
+        "input": {
+          "status": "needs-activation",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.needs-activation.message",
+            "core.gate.needs-activation.title"
+          ],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "needs-activation, no tty, --json, not entitled",
+        "input": {
+          "status": "needs-activation",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.needs-activation.message",
+            "core.gate.needs-activation.title"
+          ],
+          "fix": ["activate", "login"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "version-too-old, tty, text, entitled",
+        "input": {
+          "status": "version-too-old",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-old.message",
+            "core.gate.version-too-old.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-old, tty, text, not entitled",
+        "input": {
+          "status": "version-too-old",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-old.message",
+            "core.gate.version-too-old.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-old, tty, --json, entitled",
+        "input": {
+          "status": "version-too-old",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-old.message",
+            "core.gate.version-too-old.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "version-too-old, tty, --json, not entitled",
+        "input": {
+          "status": "version-too-old",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-old.message",
+            "core.gate.version-too-old.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "version-too-old, no tty, text, entitled",
+        "input": {
+          "status": "version-too-old",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-old.message",
+            "core.gate.version-too-old.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-old, no tty, text, not entitled",
+        "input": {
+          "status": "version-too-old",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-old.message",
+            "core.gate.version-too-old.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-old, no tty, --json, entitled",
+        "input": {
+          "status": "version-too-old",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-old.message",
+            "core.gate.version-too-old.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "version-too-old, no tty, --json, not entitled",
+        "input": {
+          "status": "version-too-old",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-old.message",
+            "core.gate.version-too-old.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "version-too-new, tty, text, entitled",
+        "input": {
+          "status": "version-too-new",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-new.message",
+            "core.gate.version-too-new.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-new, tty, text, not entitled",
+        "input": {
+          "status": "version-too-new",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-new.message",
+            "core.gate.version-too-new.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-new, tty, --json, entitled",
+        "input": {
+          "status": "version-too-new",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-new.message",
+            "core.gate.version-too-new.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "version-too-new, tty, --json, not entitled",
+        "input": {
+          "status": "version-too-new",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-new.message",
+            "core.gate.version-too-new.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "version-too-new, no tty, text, entitled",
+        "input": {
+          "status": "version-too-new",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-new.message",
+            "core.gate.version-too-new.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-new, no tty, text, not entitled",
+        "input": {
+          "status": "version-too-new",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-new.message",
+            "core.gate.version-too-new.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "version-too-new, no tty, --json, entitled",
+        "input": {
+          "status": "version-too-new",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-new.message",
+            "core.gate.version-too-new.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "version-too-new, no tty, --json, not entitled",
+        "input": {
+          "status": "version-too-new",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "license_required",
+          "copy": [
+            "core.gate.version-too-new.message",
+            "core.gate.version-too-new.title"
+          ],
+          "fix": ["update apply"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "license_required"
+          }
+        }
+      },
+      {
+        "name": "channel-not-entitled, tty, text, entitled",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.gate.channel-not-entitled.message",
+            "core.gate.channel-not-entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "channel-not-entitled, tty, text, not entitled",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.gate.channel-not-entitled.message",
+            "core.gate.channel-not-entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "channel-not-entitled, tty, --json, entitled",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.gate.channel-not-entitled.message",
+            "core.gate.channel-not-entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "channel-not-entitled, tty, --json, not entitled",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.gate.channel-not-entitled.message",
+            "core.gate.channel-not-entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "channel-not-entitled, no tty, text, entitled",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.gate.channel-not-entitled.message",
+            "core.gate.channel-not-entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "channel-not-entitled, no tty, text, not entitled",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.gate.channel-not-entitled.message",
+            "core.gate.channel-not-entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "channel-not-entitled, no tty, --json, entitled",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.gate.channel-not-entitled.message",
+            "core.gate.channel-not-entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "channel-not-entitled, no tty, --json, not entitled",
+        "input": {
+          "status": "channel-not-entitled",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.gate.channel-not-entitled.message",
+            "core.gate.channel-not-entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "not-applicable, tty, text, entitled",
+        "input": {
+          "status": "not-applicable",
+          "tty": true,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "not-applicable, tty, text, not entitled",
+        "input": {
+          "status": "not-applicable",
+          "tty": true,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "not-applicable, tty, --json, entitled",
+        "input": {
+          "status": "not-applicable",
+          "tty": true,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "not-applicable, tty, --json, not entitled",
+        "input": {
+          "status": "not-applicable",
+          "tty": true,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      },
+      {
+        "name": "not-applicable, no tty, text, entitled",
+        "input": {
+          "status": "not-applicable",
+          "tty": false,
+          "json": false,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "not-applicable, no tty, text, not entitled",
+        "input": {
+          "status": "not-applicable",
+          "tty": false,
+          "json": false,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stderr"
+        }
+      },
+      {
+        "name": "not-applicable, no tty, --json, entitled",
+        "input": {
+          "status": "not-applicable",
+          "tty": false,
+          "json": true,
+          "entitled": true,
+          "command": "export"
+        },
+        "expect": { "outcome": "run" }
+      },
+      {
+        "name": "not-applicable, no tty, --json, not entitled",
+        "input": {
+          "status": "not-applicable",
+          "tty": false,
+          "json": true,
+          "entitled": false,
+          "command": "export"
+        },
+        "expect": {
+          "outcome": "refuse",
+          "mark": "warn",
+          "exit": 4,
+          "error": "not_entitled",
+          "copy": [
+            "core.codes.not_entitled.message",
+            "core.codes.not_entitled.title"
+          ],
+          "fix": ["status"],
+          "stream": "stdout",
+          "result": {
+            "v": 1,
+            "command": "export",
+            "event": "result",
+            "ok": false,
+            "exit": 4,
+            "error": "not_entitled"
+          }
+        }
+      }
+    ],
+    "outcomes": [
+      {
+        "name": "status-revoked",
+        "input": {
+          "verb": "status",
+          "situation": "status-revoked",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen",
+          "fix": ["activate", "login"]
+        }
+      },
+      {
+        "name": "status-revoked, --json",
+        "input": {
+          "verb": "status",
+          "situation": "status-revoked",
+          "json": true
+        },
+        "expect": { "exit": 1, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "status-expired",
+        "input": {
+          "verb": "status",
+          "situation": "status-expired",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen",
+          "fix": ["activate", "login"]
+        }
+      },
+      {
+        "name": "status-expired, --json",
+        "input": {
+          "verb": "status",
+          "situation": "status-expired",
+          "json": true
+        },
+        "expect": { "exit": 1, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "status-version-too-old",
+        "input": {
+          "verb": "status",
+          "situation": "status-version-too-old",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen",
+          "fix": ["update apply"]
+        }
+      },
+      {
+        "name": "status-version-too-old, --json",
+        "input": {
+          "verb": "status",
+          "situation": "status-version-too-old",
+          "json": true
+        },
+        "expect": { "exit": 1, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "status-version-too-new",
+        "input": {
+          "verb": "status",
+          "situation": "status-version-too-new",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen",
+          "fix": []
+        }
+      },
+      {
+        "name": "status-version-too-new, --json",
+        "input": {
+          "verb": "status",
+          "situation": "status-version-too-new",
+          "json": true
+        },
+        "expect": { "exit": 1, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "network",
+        "input": {
+          "verb": "devices list",
+          "situation": "network",
+          "json": false
+        },
+        "expect": {
+          "mark": "fail",
+          "exit": 1,
+          "error": "network",
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "network, --json",
+        "input": {
+          "verb": "devices list",
+          "situation": "network",
+          "json": true
+        },
+        "expect": { "exit": 1, "error": "network", "stdout": "result" }
+      },
+      {
+        "name": "key-refused",
+        "input": {
+          "verb": "activate",
+          "situation": "key-refused",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "code": "unauthorized",
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "key-refused, --json",
+        "input": {
+          "verb": "activate",
+          "situation": "key-refused",
+          "json": true
+        },
+        "expect": {
+          "exit": 1,
+          "error": null,
+          "code": "unauthorized",
+          "stdout": "result"
+        }
+      },
+      {
+        "name": "device-limit",
+        "input": {
+          "verb": "activate",
+          "situation": "device-limit",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "code": "device_limit",
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "device-limit, --json",
+        "input": {
+          "verb": "activate",
+          "situation": "device-limit",
+          "json": true
+        },
+        "expect": {
+          "exit": 1,
+          "error": null,
+          "code": "device_limit",
+          "stdout": "result"
+        }
+      },
+      {
+        "name": "secret-hidden",
+        "input": {
+          "verb": "secret",
+          "situation": "secret-hidden",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 2,
+          "error": null,
+          "stdout": "empty"
+        }
+      },
+      {
+        "name": "secret-hidden, --json",
+        "input": {
+          "verb": "secret",
+          "situation": "secret-hidden",
+          "json": true
+        },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "mint-hidden",
+        "input": { "verb": "mint", "situation": "mint-hidden", "json": false },
+        "expect": {
+          "mark": "warn",
+          "exit": 2,
+          "error": null,
+          "stdout": "empty"
+        }
+      },
+      {
+        "name": "mint-hidden, --json",
+        "input": { "verb": "mint", "situation": "mint-hidden", "json": true },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "usage",
+        "input": {
+          "verb": "devices rename",
+          "situation": "usage",
+          "json": false
+        },
+        "expect": { "exit": 2 }
+      },
+      {
+        "name": "usage, --json",
+        "input": {
+          "verb": "devices rename",
+          "situation": "usage",
+          "json": true
+        },
+        "expect": { "exit": 2, "error": "usage", "stdout": "result" }
+      },
+      {
+        "name": "interrupt",
+        "input": {
+          "verb": "activate",
+          "situation": "interrupt",
+          "json": false
+        },
+        "expect": { "exit": 130, "error": "interrupted" }
+      },
+      {
+        "name": "sign-in-cancelled",
+        "input": {
+          "verb": "login",
+          "situation": "sign-in-cancelled",
+          "json": false
+        },
+        "expect": {
+          "mark": "fail",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen"
+        }
+      }
+    ],
+    "stdin": [
+      {
+        "name": "a terminal: the masked prompt",
+        "input": { "stdin": "tty", "lines": null },
+        "expect": { "read": "prompt" }
+      },
+      {
+        "name": "a terminal that cannot prompt: no key",
+        "input": { "stdin": "tty-noninteractive", "lines": null },
+        "expect": {
+          "read": "none",
+          "exit": 2,
+          "error": "usage",
+          "copy": ["cli.activate.noKey"]
+        }
+      },
+      {
+        "name": "a file: its first line",
+        "input": {
+          "stdin": "file",
+          "lines": ["pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"]
+        },
+        "expect": {
+          "read": "key",
+          "key": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"
+        }
+      },
+      {
+        "name": "a file: the first non-empty line",
+        "input": {
+          "stdin": "file",
+          "lines": [
+            "",
+            "",
+            "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG",
+            "second line"
+          ]
+        },
+        "expect": {
+          "read": "key",
+          "key": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"
+        }
+      },
+      {
+        "name": "an empty file: no key",
+        "input": { "stdin": "file", "lines": [] },
+        "expect": {
+          "read": "none",
+          "exit": 2,
+          "error": "usage",
+          "copy": ["cli.activate.noKeyPiped"]
+        }
+      },
+      {
+        "name": "a shell pipe left open: the line, without waiting for the writer",
+        "input": {
+          "stdin": "fifo",
+          "lines": ["pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"]
+        },
+        "expect": {
+          "read": "key",
+          "key": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"
+        }
+      },
+      {
+        "name": "a socket left open: the line, without waiting for the writer",
+        "input": {
+          "stdin": "socket",
+          "lines": ["pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"]
+        },
+        "expect": {
+          "read": "key",
+          "key": "pkey_tidewater_Q2xvdWRzT3ZlclRoZUhpbG"
+        }
+      },
+      {
+        "name": "a silent open pipe: no key within the bound, and the process exits",
+        "input": { "stdin": "fifo", "lines": null },
+        "expect": {
+          "read": "none",
+          "exit": 2,
+          "error": "usage",
+          "copy": ["cli.activate.noKeyPiped"],
+          "withinMs": 2000
+        }
+      },
+      {
+        "name": "a silent open socket: no key within the bound, and the process exits",
+        "input": { "stdin": "socket", "lines": null },
+        "expect": {
+          "read": "none",
+          "exit": 2,
+          "error": "usage",
+          "copy": ["cli.activate.noKeyPiped"],
+          "withinMs": 2000
+        }
+      },
+      {
+        "name": "/dev/null: never read",
+        "input": { "stdin": "char-device", "lines": null },
+        "expect": {
+          "read": "none",
+          "exit": 2,
+          "error": "usage",
+          "copy": ["cli.activate.noKeyPiped"]
+        }
+      }
+    ],
+    "capabilities": [
+      {
+        "name": "a terminal",
+        "input": {
+          "env": { "TERM": "xterm-256color" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": {}
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": true,
+          "interactive": true,
+          "animate": true,
+          "links": true
+        }
+      },
+      {
+        "name": "CI=true",
+        "input": {
+          "env": { "TERM": "xterm-256color", "CI": "true" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": {}
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": true,
+          "interactive": false,
+          "animate": false,
+          "links": false
+        }
+      },
+      {
+        "name": "CI=0 is not CI",
+        "input": {
+          "env": { "TERM": "xterm-256color", "CI": "0" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": {}
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": true,
+          "interactive": true,
+          "animate": true,
+          "links": true
+        }
+      },
+      {
+        "name": "CI=false is not CI",
+        "input": {
+          "env": { "TERM": "xterm-256color", "CI": "false" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": {}
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": true,
+          "interactive": true,
+          "animate": true,
+          "links": true
+        }
+      },
+      {
+        "name": "GITHUB_ACTIONS",
+        "input": {
+          "env": { "TERM": "xterm-256color", "GITHUB_ACTIONS": "true" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": {}
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": true,
+          "interactive": false,
+          "animate": false,
+          "links": false
+        }
+      },
+      {
+        "name": "BUILDKITE",
+        "input": {
+          "env": { "TERM": "xterm-256color", "BUILDKITE": "true" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": {}
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": true,
+          "interactive": false,
+          "animate": false,
+          "links": false
+        }
+      },
+      {
+        "name": "NO_COLOR keeps links on a terminal",
+        "input": {
+          "env": { "TERM": "xterm-256color", "NO_COLOR": "1" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": {}
+        },
+        "expect": {
+          "color": "none",
+          "unicode": true,
+          "interactive": true,
+          "animate": true,
+          "links": true
+        }
+      },
+      {
+        "name": "--no-color",
+        "input": {
+          "env": { "TERM": "xterm-256color" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": { "color": false }
+        },
+        "expect": {
+          "color": "none",
+          "unicode": true,
+          "interactive": true,
+          "animate": true,
+          "links": true
+        }
+      },
+      {
+        "name": "a pipe",
+        "input": {
+          "env": { "TERM": "xterm-256color" },
+          "stdout": "pipe",
+          "stdin": "pipe",
+          "flags": {}
+        },
+        "expect": {
+          "color": "none",
+          "unicode": true,
+          "interactive": false,
+          "animate": false,
+          "links": false
+        }
+      },
+      {
+        "name": "FORCE_COLOR on a pipe: colour, never links",
+        "input": {
+          "env": { "TERM": "xterm-256color", "FORCE_COLOR": "1" },
+          "stdout": "pipe",
+          "stdin": "pipe",
+          "flags": {}
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": true,
+          "interactive": false,
+          "animate": false,
+          "links": false
+        }
+      },
+      {
+        "name": "animation follows stdout, not stdin",
+        "input": {
+          "env": { "TERM": "xterm-256color" },
+          "stdout": "tty",
+          "stdin": "pipe",
+          "flags": {}
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": true,
+          "interactive": false,
+          "animate": true,
+          "links": true
+        }
+      },
+      {
+        "name": "TERM=dumb",
+        "input": {
+          "env": { "TERM": "dumb" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": {}
+        },
+        "expect": {
+          "color": "none",
+          "unicode": false,
+          "interactive": false,
+          "animate": false,
+          "links": false
+        }
+      },
+      {
+        "name": "--ascii",
+        "input": {
+          "env": { "TERM": "xterm-256color" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": { "ascii": true }
+        },
+        "expect": {
+          "color": "ansi16",
+          "unicode": false,
+          "interactive": true,
+          "animate": true,
+          "links": true
+        }
+      },
+      {
+        "name": "--json",
+        "input": {
+          "env": { "TERM": "xterm-256color" },
+          "stdout": "tty",
+          "stdin": "tty",
+          "flags": { "json": true }
+        },
+        "expect": {
+          "color": "none",
+          "unicode": true,
+          "interactive": false,
+          "animate": false,
+          "links": false
+        }
+      }
+    ],
+    "exit": {
+      "ok": 0,
+      "failed": 1,
+      "usage": 2,
+      "licenseRequired": 4,
+      "interrupted": 130
+    }
+  }
 }

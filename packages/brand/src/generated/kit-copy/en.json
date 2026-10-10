@@ -495,6 +495,7 @@
   "cli.help.options": "Options",
   "cli.help.lede": "{product} license and updates",
   "cli.help.more": "Run {command} for one command's options.",
+  "cli.help.group": "License",
   "cli.verb.activate": "Add a license key (prompted, or piped on stdin)",
   "cli.verb.enroll": "Get the free license, when {product} offers one",
   "cli.verb.deactivate": "Stop using your license on this device and free its seat",

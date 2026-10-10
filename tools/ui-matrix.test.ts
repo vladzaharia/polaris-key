@@ -8,14 +8,19 @@ import { describe, expect, it } from "vitest";
 import {
   buildUiMatrix,
   checkUiMatrix,
+  CLI_END_USER,
+  CLI_EXIT,
   COMPONENT_FAMILIES,
   FORM_FACTORS,
   LOADING_DELAY,
   LOCALES,
   loadUiMatrixSources,
   MUST_NOT,
+  refCapabilities,
   refFormat,
+  refGate,
   refLookup,
+  refMount,
   resolveTheme,
   servicesWithout,
   UI_MATRIX_VERSION,
@@ -42,7 +47,7 @@ describe("ui-matrix.json", () => {
     );
     const file = JSON.parse(text) as UiMatrix;
     expect(file.uiMatrixVersion).toBe(UI_MATRIX_VERSION);
-    expect(UI_MATRIX_VERSION).toBe(2);
+    expect(UI_MATRIX_VERSION).toBe(3);
     expect(JSON.parse(JSON.stringify(DOC))).toEqual(file);
     // eslint-disable-next-line no-control-regex
     expect(/[^\x00-\x7f]/.test(text)).toBe(false);
@@ -583,6 +588,81 @@ describe("the generator refuses", () => {
       },
       '"hidden" is reserved',
     ],
+    [
+      "a cli refusal drawn as a cross",
+      (d) => {
+        d.cli.outcomes.find((r) => r.name === "status-revoked")!.expect.mark =
+          "fail";
+      },
+      "a refusal is a triangle with its fix, never a cross (DL6)",
+    ],
+    [
+      "a refused gate that does not exit 4",
+      (d) => {
+        d.cli.gate.find((r) => r.expect.outcome === "refuse")!.expect.exit = 1;
+      },
+      "a refusal is a triangle and exits 4 (DL6)",
+    ],
+    [
+      "a gate cell left out",
+      (d) => {
+        d.cli.gate = d.cli.gate.filter(
+          (r) => r.name !== "revoked, no tty, --json, entitled",
+        );
+      },
+      "no row for revoked, tty false, json true, entitled true",
+    ],
+    [
+      "an exit table without exit 4",
+      (d) => {
+        (d.cli.exit as Record<string, number>).licenseRequired = 1;
+      },
+      "cli.exit: not the exit table",
+    ],
+    [
+      "a mount expectation the rule does not give",
+      (d) => {
+        d.cli.mount[0]!.expect.mounted.push("doctor");
+      },
+      "expectation is not the mount rule's",
+    ],
+    [
+      "a capability row edited by hand",
+      (d) => {
+        d.cli.capabilities.find(
+          (r) => r.name === "CI=0 is not CI",
+        )!.expect.interactive = false;
+      },
+      "expectation is not the capability rule's",
+    ],
+    [
+      "an outcome in an unknown situation",
+      (d) => {
+        d.cli.outcomes[0]!.input.situation = "offline";
+      },
+      "unknown situation offline",
+    ],
+    [
+      "a stdin row that reads another key",
+      (d) => {
+        d.cli.stdin.find((r) => r.expect.read === "key")!.expect.key = "pkey_x";
+      },
+      "a read key is the fixture key",
+    ],
+    [
+      "a verb both end-user and developer",
+      (d) => {
+        d.cli.verbs.developer = [...d.cli.verbs.developer, "status"].sort();
+      },
+      "status is both end-user and developer",
+    ],
+    [
+      "the help heading missing from the catalog",
+      (_d, s) => {
+        delete s.kit.en!["cli.help.group"];
+      },
+      "cli.help.group is not in kit-copy/en.json",
+    ],
   ];
 
   for (const [what, mutate, message] of cases)
@@ -695,5 +775,120 @@ describe("theme resolution (UI-KITS §1.2, §3.4)", () => {
         platform: { os: "android", formFactor: "tv" },
       }).colorScheme,
     ).toBe("dark");
+  });
+});
+
+describe("the cli family (plans/UK-51.md)", () => {
+  const cli = DOC.cli;
+
+  it("pins the exit table, with a refused gate at 4", () => {
+    expect(cli.exit).toEqual({
+      ok: 0,
+      failed: 1,
+      usage: 2,
+      licenseRequired: 4,
+      interrupted: 130,
+    });
+    expect(CLI_EXIT.licenseRequired).toBe(4);
+  });
+
+  it("mounts the end-user set by default and the developer verbs only by name", () => {
+    expect(cli.verbs.endUser).toEqual([...CLI_END_USER]);
+    expect(refMount({ host: [], options: {} }).mounted).toEqual([
+      ...CLI_END_USER,
+    ]);
+    expect(
+      refMount({ host: [], options: { verbs: ["doctor"] } }).mounted,
+    ).toEqual(["doctor"]);
+    expect(cli.verbs.aliases).toEqual({
+      "sign-in": "login",
+      "sign-out": "logout",
+    });
+  });
+
+  it("fails a colliding mount whole, and skip drops only the colliding verbs", () => {
+    const failed = refMount({ host: ["status"], options: {} });
+    expect(failed.mounted).toEqual([]);
+    expect(failed.error).toEqual({
+      code: "polaris-verb-collision",
+      words: ["status"],
+      fixes: ["namespace", "verbs"],
+    });
+    const skipped = refMount({
+      host: ["status"],
+      options: { onCollision: "skip" },
+    });
+    expect(skipped.skipped).toEqual(["status"]);
+    expect(skipped.mounted).not.toContain("status");
+  });
+
+  it("refuses with a triangle and exit 4, inline only where activating or signing in fixes it", () => {
+    const base = { tty: true, json: false, entitled: true, command: "export" };
+    expect(refGate({ ...base, status: "grace" }).outcome).toBe("run");
+    expect(refGate({ ...base, status: "revoked" }).outcome).toBe("flow");
+    expect(refGate({ ...base, status: "revoked", json: true })).toMatchObject({
+      outcome: "refuse",
+      mark: "warn",
+      exit: 4,
+      error: "license_required",
+      stream: "stdout",
+    });
+    expect(refGate({ ...base, status: "version-too-old" })).toMatchObject({
+      outcome: "refuse",
+      error: "license_required",
+      fix: ["update apply"],
+    });
+    expect(refGate({ ...base, status: "channel-not-entitled" })).toMatchObject({
+      error: "not_entitled",
+      fix: ["status"],
+    });
+    expect(refGate({ ...base, status: "ok", entitled: false })).toMatchObject({
+      error: "not_entitled",
+      stream: "stderr",
+    });
+    // Every licenseStatus, in all four quadrants, entitled or not.
+    expect(cli.gate).toHaveLength(S.enums.licenseStatus!.length * 8);
+  });
+
+  it("keeps UK-45's capability table verbatim", () => {
+    expect(cli.capabilities.map((r) => r.name)).toEqual([
+      "a terminal",
+      "CI=true",
+      "CI=0 is not CI",
+      "CI=false is not CI",
+      "GITHUB_ACTIONS",
+      "BUILDKITE",
+      "NO_COLOR keeps links on a terminal",
+      "--no-color",
+      "a pipe",
+      "FORCE_COLOR on a pipe: colour, never links",
+      "animation follows stdout, not stdin",
+      "TERM=dumb",
+      "--ascii",
+      "--json",
+    ]);
+    expect(
+      refCapabilities({
+        env: { TERM: "xterm-256color", FORCE_COLOR: "1" },
+        stdout: "pipe",
+        stdin: "pipe",
+        flags: {},
+      }),
+    ).toEqual({
+      color: "ansi16",
+      unicode: true,
+      interactive: false,
+      animate: false,
+      links: false,
+    });
+  });
+
+  it("draws no refusal as a cross", () => {
+    const crossed = cli.outcomes.filter(
+      (r) =>
+        r.expect.mark === "fail" &&
+        !["network", "sign-in-cancelled"].includes(r.input.situation),
+    );
+    expect(crossed).toEqual([]);
   });
 });

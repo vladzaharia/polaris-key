@@ -502,6 +502,7 @@
     "cli.help.options": "옵션",
     "cli.help.lede": "{product} 라이선스 및 업데이트",
     "cli.help.more": "명령별 옵션을 보려면 다음을 실행하세요: {command}",
+    "cli.help.group": "라이선스",
     "cli.verb.activate": "라이선스 키 추가 (입력하거나 stdin으로)",
     "cli.verb.enroll": "무료 라이선스 받기 ({product}에서 제공하는 경우)",
     "cli.verb.deactivate": "이 기기에서 라이선스 사용을 중지하고 자리 비우기",

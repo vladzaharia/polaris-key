@@ -495,6 +495,7 @@
   "cli.help.options": "Optionen",
   "cli.help.lede": "Lizenz und Updates für {product}",
   "cli.help.more": "Führen Sie {command} aus, um die Optionen eines Befehls zu sehen.",
+  "cli.help.group": "Lizenz",
   "cli.verb.activate": "Lizenzschlüssel hinzufügen (Eingabe oder über stdin)",
   "cli.verb.enroll": "Kostenlose Lizenz erhalten, falls {product} eine anbietet",
   "cli.verb.deactivate": "Lizenz auf diesem Gerät nicht mehr nutzen, Platz freigeben",

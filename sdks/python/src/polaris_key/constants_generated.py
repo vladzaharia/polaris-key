@@ -742,6 +742,7 @@ class Feature:
     UI_KIT_ACCOUNT: Final = "ui.kit.account"
     UI_CLI: Final = "ui.cli"
     UI_CLI_MOUNT: Final = "ui.cli.mount"
+    UI_CLI_CONTRACT: Final = "ui.cli.contract"
     UI_GATE: Final = "ui.gate"
     UI_ACTIVATE: Final = "ui.activate"
     UI_SIGNIN: Final = "ui.signin"
@@ -855,6 +856,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.kit.account",
     "ui.cli",
     "ui.cli.mount",
+    "ui.cli.contract",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -1553,7 +1555,7 @@ PRESENTATION_MATRIX_VERSION: Final[int] = 1
 
 
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 2
+UI_MATRIX_VERSION: Final[int] = 3
 
 
 #: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
@@ -1928,6 +1930,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.kit.account": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "ui.cli.mount": CapabilityRow("planned", "sdk", ()),
+        "ui.cli.contract": CapabilityRow("implemented", "sdk", ()),
         "ui.gate": CapabilityRow("planned", "sdk", ()),
         "ui.activate": CapabilityRow("planned", "sdk", ()),
         "ui.signin": CapabilityRow("planned", "sdk", ()),
@@ -1947,4 +1950,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "c00eee481737af0b49d831c99a5ca4826c33f7fa313243498aa7f7a349846e84"
+CAPABILITY_DIGEST: Final[str] = "f6259f2f42ada9d948e63c280f01bb6d7d665529d944ecaf69c4ea3aaa0ccf92"

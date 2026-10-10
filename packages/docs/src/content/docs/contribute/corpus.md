@@ -103,7 +103,7 @@ files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerpr
 `stageMatrixVersion` **3**, `headersVersion` **2**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
 `feedUrlMatrixVersion` **1**, `syncScenariosVersion` **2**, `deviceLabelVersion` **1**,
-`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **2** — and case counts, generated
+`contentCorpusVersion` **2**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **3** — and case counts, generated
 straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
@@ -284,7 +284,7 @@ is checked against the file like any other SDK, by its own test
 the implementation it checks cannot catch a bug in it.
 
 `ui-matrix.json` (`plans/UK-02.md` §4, `plans/UK-02b.md` §4) is generated from rows authored in
-`tools/ui-matrix.ts`, ASCII only and **append-only** within `uiMatrixVersion` 2: a new row keeps
+`tools/ui-matrix.ts`, ASCII only and **append-only** within `uiMatrixVersion` 3: a new row keeps
 the version; a changed row, input member or rule bumps it, and each runner checks the generated
 `UI_MATRIX_VERSION`. There is no reference state machine: the generator checks structure (every
 must state has a row and the rows' copy covers its `components.json` list, every component has a
@@ -303,6 +303,22 @@ Version 2 (UK-03) closed the one it held, DL7's delayed response: the `elapsedMs
 `vocabulary.loadingDelay` (`min` 250, `max` 300, and the loading states it applies to) pin a
 loading state that shows nothing before the delay and its usual copy after it, with no row inside
 the window, so each kit's model timer may wait anywhere in it. UK-15 renders the variant.
+
+Version 3 (UK-51) adds the `cli` family, the terminal drop-in contract. It has no component, so it
+is one object with typed sections rather than component rows: `verbs` (the end-user set a mount
+offers by default, the developer verbs it offers only by name, the aliases), `mount` and `help`
+(what registering into a host CLI mounts, refuses with `polaris-verb-collision`, skips, hides and
+lists under the `cli.help.group` heading), `gate` (every `licenseStatus` × TTY × `--json` ×
+entitlement: run, the inline flow, or a refusal drawn as ▲ with its fix that exits 4), `outcomes`
+(a kit verb in a named situation: its mark, exit, result fields, stdout and fix verbs), `stdin`
+(what `activate` with no key reads, per kind of stdin), `capabilities` (UK-45's terminal capability
+table) and `exit` (the exit table). `vocabulary.cli` holds the rules. The mount, help, gate and
+capability expectations are computed by references in `tools/ui-matrix.ts` that import nothing they
+check, and `checkCli` refuses a refusal drawn as ✗, a refused gate that does not exit 4 and a
+missing gate cell. The two terminal kits run `exit`, `capabilities`, `stdin` and `outcomes`
+(`packages/sdk-node/test/cli/cliContract.test.ts`, `sdks/python/tests/cli/test_cli_contract.py`, the
+second with strict xfails for the rows its kit does not pass yet, each with its owner); the framework
+adapters run `mount`, `help` and `gate`.
 
 `backend-matrix.json` is generated from rows authored in
 `tools/corpus/backend.ts`, ASCII only and **append-only** within `backendMatrixVersion` 1. Every

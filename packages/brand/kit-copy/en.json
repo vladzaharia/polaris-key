@@ -2496,6 +2496,11 @@
       "role": "hint",
       "note": "Terminal help footer. {command} is a command line such as 'tidewater activate --help'."
     },
+    "cli.help.group": {
+      "value": "License",
+      "role": "label",
+      "note": "Terminal help of a host's own command-line tool: the one heading over the license commands it mounted (activate, status, login…), after the tool's own headings."
+    },
     "cli.verb.activate": {
       "value": "Add a license key (prompted, or piped on stdin)",
       "role": "body",
