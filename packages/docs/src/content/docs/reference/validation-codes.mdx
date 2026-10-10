@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 237 distinct emit sites.
+codes with their JSON-pointer paths. 248 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -29,6 +29,8 @@ the offending value, or the allowed set.
 | `duplicate_artifact_id` | error | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} is declared twice; each entry declares one build. |
 | `duplicate_profile_id` | error | product | `/licensing/profiles/${i}/id` | Profile ids must be unique. |
 | `duplicate_tier_id` | error | product | `/licensing/tiers/${i}/id` | Tier ids must be unique. |
+| `identity_block_without_service` | warning | product | `/identity` | identity is declared but the identity service is off, so none of it applies. |
+| `identity_redirect_paths_without_origins` | warning | product | `/identity/redirectPaths` | identity.redirectPaths needs at least one web.origins entry: a redirect URI is an origin from web.origins and one of these paths. |
 | `incompatible_reserved_name` | error | schema | `/entries/${decl.index}` | $\{decl.key\} is a reserved entitlement name the platform sets itself: $\{decl.problem\}. Incompatible reserved-name declarations are refused on this platform. |
 | `incompatible_reserved_name` | warning | schema | `/entries/${decl.index}` | $\{decl.key\} is a reserved entitlement name the platform sets itself: $\{decl.problem\}. This is a warning for now; it becomes an error when the platform switches licensing.reservedNames to error. |
 | `invalid_admin_group` | error | product | `/product/adminGroup` | product.adminGroup must be a plain group name (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
@@ -88,6 +90,15 @@ the offending value, or the allowed set.
 | `invalid_fingerprint_mode` | error | product | `/fingerprint/defaultMode` | fingerprint.defaultMode must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |
 | `invalid_fingerprint` | error | product | `/fingerprint` | fingerprint must be an object. |
 | `invalid_group_name` | error | product | `/oidc/groupRoleMap/${group}` | oidc.groupRoleMap keys must be plain group names (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
+| `invalid_identity_claim_by_key` | error | product | `/identity/keyEntry/claimByKey` | identity.keyEntry.claimByKey must be true or false. |
+| `invalid_identity_key_entry_limit` | error | product | `/identity/keyEntry/limit` | identity.keyEntry.limit must be an integer from 1 to 100. |
+| `invalid_identity_redirect_paths` | error | product | `/identity/redirectPaths/${i}` | identity.redirectPaths entries $\{problem\}. |
+| `invalid_identity_redirect_paths` | error | product | `/identity/redirectPaths` | identity.redirectPaths must be an array of at most $\{MAX_IDENTITY_REDIRECT_PATHS\} paths. |
+| `invalid_identity_terms` | error | product | `/identity/terms` | identity.terms must be \{version, url?\}: a version of 1 to 32 characters of A-Z, a-z, 0-9, ., _ and -, and an https URL when url is given. |
+| `invalid_identity` | error | product | `/identity/${key}` | identity takes only keyEntry, terms and redirectPaths. |
+| `invalid_identity` | error | product | `/identity/keyEntry/${key}` | identity.keyEntry takes only limit and claimByKey. |
+| `invalid_identity` | error | product | `/identity/keyEntry` | identity.keyEntry must be an object with limit and claimByKey. |
+| `invalid_identity` | error | product | `/identity` | identity must be an object with keyEntry, terms and redirectPaths. |
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags/${i}` | deliverables.app.versioning.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags` | deliverables.app.versioning.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
 | `invalid_ignore_tags` | error | release | `/release/ignoreTags/${i}` | release.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
