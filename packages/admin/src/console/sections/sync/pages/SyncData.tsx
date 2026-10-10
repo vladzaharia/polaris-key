@@ -30,6 +30,7 @@ import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { PageSkeleton } from "../../../../ui/Skeleton.js";
 import { PageHeader } from "../../../../ui/PageHeader.js";
+import { ScrollTable } from "../../../../ui/ScrollTable.js";
 import { useProduct } from "../../../data/hooks.js";
 import { qk } from "../../../data/queries.js";
 import { Link } from "../../../router.js";
@@ -197,37 +198,38 @@ function SyncDataBody({
           {settings.length === 0 ? (
             <p className="text-sm text-fg-muted">No catalog key syncs.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">Synced settings</caption>
-                <thead className="text-xs text-fg-muted">
-                  <tr className="border-b border-border">
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Key
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Syncs
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      When devices disagree
-                    </th>
-                    <th scope="col" className="py-2 font-medium">
-                      In settings panels
-                    </th>
+            <ScrollTable
+              label="Synced settings table"
+              caption="Synced settings"
+              className="w-full text-left text-sm"
+            >
+              <thead className="text-xs text-fg-muted">
+                <tr className="border-b border-border">
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Key
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Syncs
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    When devices disagree
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    In settings panels
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {settings.map((e) => (
+                  <tr key={e.key}>
+                    <td className="py-2 pr-4">{mono(e.key)}</td>
+                    <td className="py-2 pr-4">{SYNC_LABEL[e.scope]}</td>
+                    <td className="py-2 pr-4">{CONFLICT_LABEL[e.policy]}</td>
+                    <td className="py-2">{e.listed ? "Shown" : "Hidden"}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {settings.map((e) => (
-                    <tr key={e.key}>
-                      <td className="py-2 pr-4">{mono(e.key)}</td>
-                      <td className="py-2 pr-4">{SYNC_LABEL[e.scope]}</td>
-                      <td className="py-2 pr-4">{CONFLICT_LABEL[e.policy]}</td>
-                      <td className="py-2">{e.listed ? "Shown" : "Hidden"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </ScrollTable>
           )}
         </div>
       </SettingsSection>
@@ -243,59 +245,60 @@ function SyncDataBody({
               No collections are declared.
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">Collections</caption>
-                <thead className="text-xs text-fg-muted">
-                  <tr className="border-b border-border">
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Name
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Records
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Conflicts
-                    </th>
-                    <th scope="col" className="py-2 pr-4 font-medium">
-                      Files
-                    </th>
-                    <th scope="col" className="py-2 font-medium">
-                      Needs entitlement
-                    </th>
+            <ScrollTable
+              label="Collections table"
+              caption="Collections"
+              className="w-full text-left text-sm"
+            >
+              <thead className="text-xs text-fg-muted">
+                <tr className="border-b border-border">
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Name
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Records
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Conflicts
+                  </th>
+                  <th scope="col" className="py-2 pr-4 font-medium">
+                    Files
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    Needs entitlement
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {collections.map((c) => (
+                  <tr key={c.name}>
+                    <td className="py-2 pr-4">
+                      {mono(c.name)}
+                      {c.label !== c.name ? (
+                        <span className="ml-2 text-fg-muted">{c.label}</span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-4">
+                      Up to {formatCount(c.maxRecords)} per player
+                    </td>
+                    <td className="py-2 pr-4">
+                      {CONFLICT_LABEL[c.conflict]}
+                      {c.conflictField ? (
+                        <> on {mono(c.conflictField)}</>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {formatBinaryBytes(c.files.maxBytes)}, last{" "}
+                      {formatCount(c.files.keepRevisions)}{" "}
+                      {c.files.keepRevisions === 1 ? "version" : "versions"}
+                    </td>
+                    <td className="py-2">
+                      {c.requires ? mono(c.requires) : muted("None")}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {collections.map((c) => (
-                    <tr key={c.name}>
-                      <td className="py-2 pr-4">
-                        {mono(c.name)}
-                        {c.label !== c.name ? (
-                          <span className="ml-2 text-fg-muted">{c.label}</span>
-                        ) : null}
-                      </td>
-                      <td className="py-2 pr-4">
-                        Up to {formatCount(c.maxRecords)} per player
-                      </td>
-                      <td className="py-2 pr-4">
-                        {CONFLICT_LABEL[c.conflict]}
-                        {c.conflictField ? (
-                          <> on {mono(c.conflictField)}</>
-                        ) : null}
-                      </td>
-                      <td className="py-2 pr-4">
-                        {formatBinaryBytes(c.files.maxBytes)}, last{" "}
-                        {formatCount(c.files.keepRevisions)}{" "}
-                        {c.files.keepRevisions === 1 ? "version" : "versions"}
-                      </td>
-                      <td className="py-2">
-                        {c.requires ? mono(c.requires) : muted("None")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </ScrollTable>
           )}
         </div>
       </SettingsSection>

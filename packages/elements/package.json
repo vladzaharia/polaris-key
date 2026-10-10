@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "The Polaris Key UI kit as web components (Lit 3): every UI-KITS §4.1 component as a pk-* element over @polaris-key/ui-core, the shared styles.css and data-part contract, in the product's accent.",
   "license": "MIT",
+  "private": true,
   "type": "module",
   "sideEffects": [
     "./dist/index.js",

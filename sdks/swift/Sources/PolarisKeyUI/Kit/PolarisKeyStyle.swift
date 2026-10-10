@@ -49,7 +49,7 @@ struct AnyPolarisKeyStyle {
 }
 
 private struct PolarisKeyStylesKey: EnvironmentKey {
-    nonisolated(unsafe) static let defaultValue: [KitComponent: AnyPolarisKeyStyle] = [:]
+    static let defaultValue: [KitComponent: AnyPolarisKeyStyle] = [:]
 }
 
 extension EnvironmentValues {

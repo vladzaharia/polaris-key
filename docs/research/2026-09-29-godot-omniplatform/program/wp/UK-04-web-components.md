@@ -148,7 +148,11 @@ Built so far on `wp/UK-04-elements` (`packages/elements`), in two slices:
    `examples/ui/elements/` static and htmx samples with fixture adapters and `--live`.
 5. **The CDN route** `key.plrs.im/elements/<major>/pk.js` (an esbuild bundle, immutable, SRI),
    its OpenAPI entry and `routeCoverage` row (rule 10), the THREAT-MODEL row, and the release
-   closure. A new public package needs a tag deploy to register on npm (UK-03's rule).
+   closure. A new public package needs a tag deploy to register on npm (UK-03's rule). Until
+   then `packages/elements/package.json` is `"private": true`, so the lockstep stamp, the pack
+   step and the release tests leave it out; the release closure removes it and follows UK-03's
+   `ba4184ea0` (`npm.elements` in `.pkey/release`, a `publish-sdks.yml` tier beside `cli`, the
+   package counts in `sdk-version.test.ts` and `feed-closure.test.ts`, the releasing page).
 6. **The rest of the acceptance list:** `pnpm ui:lint` over the element renders, `parity.json`
    for the elements with the `ui.*` rows, the docs framework page and kit tabs (UK-16 scaffold),
    the Tailwind v4 preset (from UK-22), and the UX reviews (`pkey-ux-reviewer`, BUILT mode).
