@@ -83,11 +83,10 @@ unknown services, before touching the disk or the network.
 
 ```gdscript
 func _ready() -> void:
-	var boot := await PolarisKey.boot({allow_offline = true})
-	if boot.outcome == PKeyBoot.READY:
-		get_tree().change_scene_to_file("res://game/title.tscn")
-	# BLOCKED, OFFLINE and ERROR stay on the PKeyBoot card with Retry; a later stop arrives as
-	# PolarisKey.boot_finished(result).
+	await PolarisKey.boot({allow_offline = true})
+	get_tree().change_scene_to_file("res://game/title.tscn")
+	# Resolves at READY. BLOCKED, OFFLINE and ERROR stay on the PKeyBoot card with Try again and the
+	# await waits through the retries; `{resolve_on_stop = true}` resolves at the first stop instead.
 ```
 
 `PolarisKey.boot()` configures from `res://polaris_key.tres` when nothing has configured yet,
@@ -277,25 +276,68 @@ controller: `PKeyBoot`, `PKeyGate` (class `PKeyGateView`), `PKeyActivationPanel`
 Every one is operable with ui_up, ui_down, ui_accept and ui_cancel alone, so it works on a
 gamepad or a TV remote.
 
-- **Layout.** Every scene centres itself: a full-screen scene (`PKeyGate`, `PKeyBoot`) centres
-  its card horizontally and vertically, and a dialog or panel centres its content at a comfortable
-  width (`max_content_width`, 520 px by default, 640 for the settings panel), never wider than the
-  viewport less a 16 px gutter on each side. It holds from a phone in portrait to 4K and under the
-  `canvas_items` and `viewport` stretch modes. A scene nested in another fills the space its parent
-  gives it; set `max_content_width = 0` to make a standalone one fill its rect instead (a sidebar,
-  say). The status banner and the entitlement badge centre their lines and chips across the width
-  they are given.
-- **Look: neutral by default.** Out of the box the scenes carry no Polaris Key branding. They take
+- **Layout: responsive.** Every scene lays itself out for the area it is given (its own rect, not
+  the OS), and follows a window resize live without losing the focused control:
+  - _Orientation._ Wider than tall is landscape: the device code stands beside its QR code, the
+    product and what the gate says beside the activation form, the offline request beside its
+    import. Narrow or tall stacks them in one column.
+  - _Scale._ With the Polaris Key look every size (text, padding, radii, the QR code, card
+    widths) follows the screen: 1 on 1280×720 (600×1080 in portrait), down to 0.75 on a 640×360
+    window, up to 2 on 2560×1440. The neutral look and your own theme keep your sizes and only
+    shrink on a screen too small for them. It holds under the `disabled`, `canvas_items` and
+    `viewport` stretch modes and `content_scale_factor`.
+  - _Density._ `options.ui_density` (`spacious`, the default, `comfortable` or `compact`) steps down
+    on its own when the screen is short or narrow.
+  - _Margins and width._ Content keeps at least `page_margin` (32 px at scale 1) from the screen's
+    edges and is capped in width and centred, so it never hugs an edge or floats adrift on 4K. On
+    a phone or tablet the device's safe area (`DisplayServer.get_display_safe_area()`) is kept
+    clear too. A QR code is at least 160 physical pixels and at most 42 % of the screen's shorter
+    side.
+  - _Two columns._ Side by side needs a landscape room of at least 680 layout px; the product beside
+    the activation form (and the settings rail) also needs an aspect of 1.5 or more.
+  - _Scale ladder._ 0.75 to 2 in steps of 1/8, raised on a phone or tablet until body text is
+    16 dp; the density steps down with it (spacious, comfortable, compact).
+  - _The user code_ is set in Rubik Bold: the bundled JetBrains Mono draws E, 8 and 0 as boxes in
+    Godot 4.7.
+  - _Phones._ A dialog over the running game (sign-in, offline activation, settings, the update
+    prompt) sits on an opaque sheet docked to the bottom; a tablet gets a centred column, not the
+    phone's full-width layout.
+  - _Gamepads._ The kit adds the pad's A and B to `ui_accept` and `ui_cancel` when your input map
+    has no joypad binding on them (yours are kept), and a dialog over the game takes the focus
+    and gives it back when it closes.
+  - _Last resort._ A card scrolls (following the focus) only when a theme's type is too large for
+    the screen; the Polaris Key look never needs to.
+
+  A scene nested in another fills the space its parent gives it; set `max_content_width = 0` to
+  make a standalone one fill its rect instead (a sidebar, say).
+
+- **Spacing and type.** One spacing scale on a 4 px base and the roles every scene uses
+  (`page_margin` 32, `card_padding` 40, `section_gap` 32, `stack_gap` 16, `tight_gap` 8,
+  `inline_gap` 12, `column_gap` 48, `control_height` 56 at scale 1, spacious) live in every stock
+  theme as constants of the type `PKeyLayout` and as the container variations `PKeyStack`,
+  `PKeyTight`, `PKeySections`, `PKeyRow`, `PKeyActions`, `PKeyColumns` and `PKeyGrid`; the type
+  scale is `PKeyTitle` 32, `PKeySection` 24, body 18, `PKeyMuted` 16 and `PKeyCode` 52
+  (`PKeyUiTheme.DENSITIES`, `MEASURES`). No scene writes a margin of its own.
+- **The product leads.** Gate, boot and sign-in screens lead with your product's icon and name
+  (`options.ui_product_name` / `ui_product_icon`, else the project's `application/config/name`
+  and icon, else a monogram tile of its initial); no kit screen shows a Polaris Key mark.
+- **Look: the Polaris Key design system by default.** Out of the box the scenes use the
+  design system's dark palette and Rubik, with your product's accent (derived from its icon, else
+  ink; never the platform violet by default), the kit's own switch, check box and chevron icons,
+  and a 3 px focus ring with a gap on every control. The product leads every screen; the kit's
+  own mark appears on none. A QR code stays black on white, and shows only on a TV, a console or
+  any pad-only device (which has no browser to open), and for the offline request code; a phone,
+  a tablet and a desktop open the browser (Open browser, Copy link).
+- **Your game's own look is one option away.** `options.ui_branding = "none"` makes the scenes take
   your game's own theme and font, as the scene's place in the tree resolves them (a Theme on an
   ancestor, else the project's `gui/theme/custom` and `gui/theme/custom_font`, else the engine's),
-  and add only a type hierarchy (title, muted and code sizes derived from your font size, a bold
-  face derived from your font), padded cards and centring. A QR code stays black on white.
-- **Polaris Key branding is opt-in.** One option on your `PKeyOptions` (applied by
-  `PolarisKey.configure()`):
+  and add only a type hierarchy (sizes derived from your font size, a bold face derived from your
+  font), padded cards, an ink primary action and centring. One option on your `PKeyOptions`
+  (applied by `PolarisKey.configure()`):
 
   ```gdscript
-  options.ui_branding = "polaris-key"   # the Polaris Key theme: its palette, Rubik, the Pinned K
-  options.ui_brand_scheme = "light"     # its light theme (default "dark")
+  options.ui_branding = "none"          # your game's theme and font ("polaris-key" is the default)
+  options.ui_brand_scheme = "light"     # the Polaris Key light theme (default "dark")
   options.ui_accent = Color("#39d075")  # your accent for the primary action and chips (optional)
   options.ui_theme = preload("res://ui/my_theme.tres")  # or your whole Theme, whatever the branding
   options.ui_powered_by = true          # the "Powered by Polaris Key" badge (off by default)
@@ -307,17 +349,18 @@ gamepad or a TV remote.
   Kit scenes already on screen re-theme when `configure()` applies the options. A game that only
   calls `PolarisKey.boot()` gets its UI options from `res://polaris_key.tres`, which boot
   configures from once its view is showing: put `ui_branding`, `ui_powered_by` and the rest in
-  that resource (the setup dock's file), not in statics set before `boot()`. With branding on, the gate card and the boot screen show the Pinned K (the display cut, never the
-  terminal bit) and the kit uses the design system's dark or light palette, the platform violet
-  (or your accent), Rubik, and a 2 px violet focus ring on every control. With `ui_powered_by`,
+  that resource (the setup dock's file), not in statics set before `boot()`. With `ui_powered_by`,
   the gate, boot and settings scenes end with the compact "Powered by Polaris Key" badge, at its
   kit minimum of 232 × 88 or larger and never cropped; it is off unless you turn it on, with or
   without branding.
 
 - **Your own theme.** A scene given a Theme of its own (in the inspector or in code) keeps it; only
-  a scene still on the kit's stock theme follows the options. A replacement Theme should style the
-  type variations `PKeyTitle`, `PKeyMuted`, `PKeyCode`, `PKeyError`, `PKeyBadge`, `PKeyBanner`,
-  `PKeyCard` and `PKeyPrimary`; `PKeyQrRect` reads the colours `dark` and `light`. `PKeyBoot`'s
+  a scene still on the kit's stock theme follows the options. `ui_theme` is layered: your Theme
+  wins wherever it sets an item, over the kit's neutral structure (type hierarchy, spacing, card
+  padding) derived from your font size, so a partial theme still lays out well. A replacement
+  Theme may style the type variations `PKeyTitle`, `PKeySection`, `PKeyMuted`, `PKeyCode`,
+  `PKeyMono`, `PKeyStrong`, `PKeyError`, `PKeyBadge`, `PKeyBanner`, `PKeyCard`, `PKeyQrTile` and
+  `PKeyPrimary`; `PKeyQrRect` reads the colours `dark` and `light`. `PKeyBoot`'s
   `theme` option applies a Theme a mounted pack provides. `PKeyUiTheme.build(dark, accent, font,
 bold_font)` makes the Polaris Key theme with your accent or fonts if you want a starting point.
 - **Font.** With branding on, Rubik (Regular for text, Bold for titles and codes) ships in
@@ -485,12 +528,22 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
 
 ```gdscript
 func _ready() -> void:
-	var boot := await PolarisKey.boot({allow_offline = true})   # or {view = $PKeyBoot, …}
-	if boot.outcome == PKeyBoot.READY:
-		get_tree().change_scene_to_file("res://game/title.tscn")
-	# BLOCKED, OFFLINE, ERROR: PKeyBoot shows the card with Retry; a later stop arrives as
-	# PolarisKey.boot_finished(result).
+	await PolarisKey.boot({allow_offline = true})   # or {view = $PKeyBoot, …}
+	get_tree().change_scene_to_file("res://game/title.tscn")
+	# Resolves at READY. BLOCKED, OFFLINE, ERROR: PKeyBoot shows the card with Try again, and the
+	# await waits through the retries (`resolve_on_stop = true`: resolve at the first stop; every
+	# stop is also `PolarisKey.boot_finished(result)`).
 ```
+
+- **Boot options.** `resolve_on_stop` (above); `confirm_identity` (a sign-in stops at "Is this you?"
+  with the account it found before handing back); `persistent_gate` (a gate stays on the boot's
+  layer as `PolarisKey.boot_gate`: hidden while the licence is usable, covering the game again with
+  the boot's screens when it is revoked, expired or signed out). A second `boot()` while one runs
+  joins it; after READY it starts a new boot (a sign-out, say) with a fresh gate. A
+  `PKeyUpdatePrompt` the game places replaces the one the boot kept over the game, so one update
+  prompt is on screen; a prompt with nothing to open or install offers Check again. The boot names
+  the device for the sign-in page and the customer's device list by the computer's own name
+  ("Ada's MacBook Pro") where the OS has one, unless `PKeyOptions.device_name` says otherwise.
 
 - **One machine, many views.** `PKeyStages` (core/stages.gd) is the port of client-core's
   `stages.ts`; the `stage_matrix` suite (`--pkey-test stage-matrix` works too) replays every row,
@@ -527,6 +580,12 @@ func _ready() -> void:
   `PKeyDevMenuSection` (a Control, and `rows()` for a data-driven dev menu). Every string goes
   through `PKeyUiCopy` and `tr()`; every interactive control is in one wrapping focus chain, so
   ui_up / ui_down / ui_accept / ui_cancel operate every screen on a gamepad or a TV remote.
+- **A full-screen scene owns its offsets.** A scene anchored across an axis of its parent (a
+  full-rect `PKeyGate`, `PKeySettingsPanel` or dialog) is exactly as big as that parent: the kit
+  resets its offsets on that axis at every layout, so a game's `set_anchors_and_offsets_preset()`
+  (which writes the scene's minimum size at that moment into them) never leaves it wider or shorter
+  than the screen. To keep deliberate margins around a scene, wrap it in a `MarginContainer`, or
+  keep its offsets with `view.set_meta(PKeyUiView.KEEP_OFFSETS_META, true)` (meta `pkey_keep_offsets`).
 - **Update answers never cover the game.** A mandatory or blocked decision is a persistent banner
   with no dismiss in `PKeyUpdatePrompt`, whatever its `modal` setting; only a dismissable answer
   may use the modal card. The banner is a strip at the top in any parent: PKeyBoot hosts it on a
@@ -542,8 +601,16 @@ func _ready() -> void:
 - **Tests.** `boot` drives every stage-matrix row through `PolarisKey.boot()` with a scripted
   host, and the sync classes and keyless registration through the fake server; `ui` pins every
   scene state as a structural snapshot (`tests/ui/snapshots/`), walks focus with ui_down alone,
-  and checks every visible string is PKeyUiCopy text under a pseudo-locale. Headless runs have no
-  renderer; `tools/ui_screenshots.gd` renders the same states to PNGs for review.
+  and checks every visible string is PKeyUiCopy text under a pseudo-locale. `ui_matrix` (a `run_tests.sh` step of its own) lays every
+  drop-in screen out across the resolution matrix (`tests/ui/matrix.gd`: 640×360, 800×600,
+  1280×720, 1280×800, 1920×1080, 2560×1440, 3840×2160 at scale 2, a phone in portrait and
+  landscape with a safe area (2532×1170@3, 1334×750@2 and 750×1334@2 among them), a 4:3 tablet, and five common stretch settings), in the Polaris Key,
+  native and custom looks and in English, German and Japanese, and fails on any control outside
+  its container or the screen's safe area, overlapping controls, clipped text, a margin under
+  16 px, a QR code under 160 physical pixels, a landscape screen laid out in portrait, or a Polaris
+  Key card that needs its scroll fallback. Headless runs have no renderer; `tools/ui_matrix/ui_matrix.gd`
+  renders the matrix to PNGs (`godot --path sdks/godot --script tools/ui_matrix/ui_matrix.gd --
+--out DIR --sheets`) and `tools/ui_screenshots.gd` every pinned state.
 - Timings (M-series Mac, 4.7.2): `stage_matrix` 15 ms in the editor and 13 ms on the release
   template (56 rows, 6,594 probe transitions); `boot` about 6.3 s on both (five deliberate 1 s
   request deadlines); `ui` about 12 s on both (67 states, three passes each).
@@ -659,7 +726,7 @@ await PolarisKey.identity.sign_out()             # cancel, forget, license.deact
   `#key=` to an `/activate` link and `PKeyManage.with_return(url, return_url)` adds `return=`.
   `PKeyActivationPanel` shows **Replace a device** under the error: a button that calls
   `OS.shell_open`, or a QR code where a joypad is the only input (a console, or a TV). Set
-  `return_url` on the panel, and `manage_mode` to force `button` or `qr`. The QR code never
+  `return_url` on the panel, and `manage_mode` to `button` to keep the button there too. The QR code never
   carries the key (anyone who can see the screen can scan it): `manage_link(..., for_qr = true)`
   leaves `#key=` out, and the phone's page asks for the key. Do the same in a custom QR.
 
@@ -1017,7 +1084,7 @@ template alike.
 ```gdscript
 # res://pkey_packs/pkey-content.json: the content stamp CI writes before the export (P4-03); a
 # build without one has no packs. Embedded baselines sit beside it with their markers.
-var boot := await PolarisKey.boot()            # FETCH, MOUNT and BACKGROUND drive packs
+await PolarisKey.boot()                        # FETCH, MOUNT and BACKGROUND drive packs
 PolarisKey.update.packs.pack_ready.connect(func(id): print(id, " is usable"))
 var r := await PolarisKey.update.packs.ensure(["diceroll.core3d"])   # outside PKeyBoot
 await PolarisKey.update.packs.mount()          # this boot's godot.pck packs (PKeyBoot does it)

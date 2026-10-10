@@ -50,7 +50,7 @@ func _guard_restarts(t: PKeyTestContext) -> void:
 	await sdk.update.updater.stage_sidecar(S.sidecar_check("1.5.0", fresh))
 	var e: PKeyFakeUpdaterEnv = inst["env"]
 	var view := _view(sdk)
-	view.run({"sync_timeout_seconds": 1000})
+	view.run({"resolve_on_stop": true, "sync_timeout_seconds": 1000})
 	var restarted := await _until(func(): return e.restarts == 1)
 	await PKeyTestFixtures.frames(5)
 	t.check("boot: GUARD applies the staged pack and restarts", restarted and S.read(inst["pck"]) == fresh, "restarts=%d" % e.restarts)
@@ -64,7 +64,7 @@ func _guard_restarts(t: PKeyTestContext) -> void:
 		l.queue_free()
 	var l3: Node = await sup.launch(inst, "1.5.0")
 	var v3 := _view(l3)
-	v3.run({"sync_timeout_seconds": 1000})
+	v3.run({"resolve_on_stop": true, "sync_timeout_seconds": 1000})
 	var rolled := await _until(func(): return e.restarts == 2)
 	await PKeyTestFixtures.frames(5)
 	t.check("boot: GUARD rolls back after two failed boots, restarts, and sends nothing", rolled and S.read(inst["pck"]) == old and v3.stages == ["shell", "guard"], "%s restarts=%d" % [v3.stages, e.restarts])
@@ -95,7 +95,7 @@ func _rolled_back(t: PKeyTestContext) -> void:
 	var view := _view(l)
 	var fired := [0]
 	view.boot_rolled_back.connect(func(): fired[0] += 1)
-	view.run({"sync_timeout_seconds": 1000})
+	view.run({"resolve_on_stop": true, "sync_timeout_seconds": 1000})
 	var waited := await _until(func(): return view.state["outcome"] == PKeyBoot.WAITING)
 	var counted: float = float(l.update.updater.slots.load_state()["failedBoots"])
 	t.check("boot: guard.done rolled-back emits boot_rolled_back and the boot goes on to the gate", waited and fired[0] == 1 and view.rolled_back and view.stages.slice(0, 4) == ["shell", "guard", "sync", "gate"], "%s fired=%d" % [view.stages, fired[0]])
@@ -142,7 +142,7 @@ func _decide(t: PKeyTestContext) -> void:
 	var e: PKeyFakeUpdaterEnv = inst["env"]
 	t.check("boot: native is declared, but with no Sparkle plugin only download reaches the decision", sdk.update.updater.methods() == ["download"], str(sdk.update.updater.methods()))
 	var view := _view(sdk)
-	var r: PKeyBootResult = await view.run({"sync_timeout_seconds": 1000})
+	var r: PKeyBootResult = await view.run({"resolve_on_stop": true, "sync_timeout_seconds": 1000})
 	var d: Dictionary = r.update.decision if r.update is PKeyUpdateCheck else {}
 	t.check("boot: the boot reaches READY with the binary offer (download), never blocked by it", r.outcome == PKeyBoot.READY and d.get("action") == "binary" and d.get("method") == "download", "%s %s" % [r, d])
 	var want := S.DL + "/djdl/distribution/builds/1.5.0/macos-dmg"

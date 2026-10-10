@@ -127,7 +127,13 @@ func attach(core: PKeyCore) -> void:
 	updater.attach(core)
 	if not updater.update_staged.is_connected(_on_staged):
 		updater.update_staged.connect(_on_staged)
-		updater.download_progress.connect(func(got: int, total: int) -> void: download_progress.emit(got, total))
+		# A weak capture: the updater holds this connection and this holds the updater, and a
+		# lambda holding `self` would keep both alive past the SDK's exit.
+		var me: WeakRef = weakref(self)
+		updater.download_progress.connect(func(got: int, total: int) -> void:
+			var u := me.get_ref() as PKeyUpdate
+			if u != null:
+				u.download_progress.emit(got, total))
 
 
 func _core() -> PKeyCore:

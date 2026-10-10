@@ -54,9 +54,14 @@ func _init(p_product: String, p_backend: PKeyKeyringBackend = null, root := "use
 	service = SERVICE_PREFIX + p_product
 	backend = p_backend if p_backend != null else PKeyKeyringBackend.for_platform()
 	files = PKeyFileStore.new(p_product, root)
+	# A weak capture: `files` holds this connection and this holds `files`, and a lambda holding
+	# `self` would keep both alive past the SDK's exit.
+	var me: WeakRef = weakref(self)
 	files.failed.connect(func(err: Dictionary) -> void:
-		last_error = err
-		failed.emit(err))
+		var store := me.get_ref() as PKeyKeyringStore
+		if store != null:
+			store.last_error = err
+			store.failed.emit(err))
 
 
 ## The store PKeyCore uses when PKeyOptions.store is null, after the iOS Keychain and Android

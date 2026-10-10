@@ -371,13 +371,13 @@ the §6.1 samples.
 
 ## 0. Where the kits are today
 
-| Kit          | Screens that exist                                                                                                               | Verdict (2026 scale)                                                                                                                                                                                                                               |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React        | Gate, login card, logout, devices, config panel, update prompt, Powered-by; 11 headless hooks                                    | Correct and accessible, plain 2019 admin look: inline styles, no hover/pressed/disabled visuals, no motion, an opaque full-window "dialog", violet only, neutral default (RE). Half the catalogue missing.                                         |
-| SwiftUI      | One screen, `PolarisLoginView` (activation card, grace banner, message card)                                                     | An iOS 17 kit: no Liquid Glass, forced 10 pt rounded rectangles over iOS 26 capsules, a flash of the sign-in card on every launch, "this Mac" copy on iPhone, unreadable prominent buttons in inactive macOS windows, ~10 % of the catalogue (SW). |
-| Compose      | Boot, gate, activation, device-code sign-in, devices, update offer, pack progress, read-only settings                            | Material 3 at its 2023 level (no Expressive), one centred 480 dp column everywhere, no one-line flow, Android only, toolchain pinned to the Godot template (KO).                                                                                   |
-| Godot        | Boot, gate, activation, sign-in with QR, offline activation, update prompt, status banner, entitlement badge, settings, dev menu | Solid plumbing (focus chain, controllers, tr()), dated pixels: 1 px outlined boxes, engine-default bitmap toggles and spinners, no icons, no motion, no surfaces on half the screens, raw codes in copy (GO). About 4/10 for polish.               |
-| Python, Node | Plain-text CLI verbs only                                                                                                        | No kit. `ui.kit` is marked `na` (headless) in both `parity.json` files, which hides the two largest framework gaps (Qt, Electron) from the parity gate (GA).                                                                                       |
+| Kit          | Screens that exist                                                                                                               | Verdict (2026 scale)                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React        | Gate, login card, logout, devices, config panel, update prompt, Powered-by; 11 headless hooks                                    | Correct and accessible, plain 2019 admin look: inline styles, no hover/pressed/disabled visuals, no motion, an opaque full-window "dialog", violet only, neutral default (RE). Half the catalogue missing.                                                                                                                                                                                   |
+| SwiftUI      | One screen, `PolarisLoginView` (activation card, grace banner, message card)                                                     | An iOS 17 kit: no Liquid Glass, forced 10 pt rounded rectangles over iOS 26 capsules, a flash of the sign-in card on every launch, "this Mac" copy on iPhone, unreadable prominent buttons in inactive macOS windows, ~10 % of the catalogue (SW).                                                                                                                                           |
+| Compose      | Boot, gate, activation, device-code sign-in, devices, update offer, pack progress, read-only settings                            | Material 3 at its 2023 level (no Expressive), one centred 480 dp column everywhere, no one-line flow, Android only, toolchain pinned to the Godot template (KO).                                                                                                                                                                                                                             |
+| Godot        | Boot, gate, activation, sign-in with QR, offline activation, update prompt, status banner, entitlement badge, settings, dev menu | Solid plumbing (focus chain, controllers, tr()), dated pixels: 1 px outlined boxes, engine-default bitmap toggles and spinners, no icons, no motion, no surfaces on half the screens, raw codes in copy (GO). About 4/10 for polish. The responsive round gave it a spacing scale, the product-led header, full-bleed phones and a themed native look (`ui_branding none`); no QR on phones. |
+| Python, Node | Plain-text CLI verbs only                                                                                                        | No kit. `ui.kit` is marked `na` (headless) in both `parity.json` files, which hides the two largest framework gaps (Qt, Electron) from the parity gate (GA).                                                                                                                                                                                                                                 |
 
 What is worth keeping everywhere: the headless cores (React hooks and `/core`, Compose's stateless
 screens and pure state holders, Godot's per-scene controllers, `ui.stages` in every SDK), the
@@ -585,6 +585,20 @@ window that cannot be transparent. The close button of a kit dialog cancels that
 blocking gate window asks the host and by default quits; Sign out lives only in Settings → Account
 and the app menu (SIGN-IN.md D-71), never beside Cancel or Close. Each desktop kit declares a
 minimum window size (the 480×520 Mac sheet is the floor).
+
+**Layout rules the Godot kit measures** (tests/ui/matrix.gd; the other kits follow DL1-DL18 on
+`program/ui-language`):
+
+- The scale ladder runs 0.75 to 2 in steps of 1/8 (1 at 1280×720, or 600×1080 in portrait), and the
+  density steps down from spacious to comfortable and compact on a short or narrow screen.
+- The device's safe-area insets are kept clear on a phone or tablet.
+- A QR code is at least 160 physical pixels and at most 42 % of the screen's shorter side, and shows
+  only on a pad-only device (a TV, a console: no browser to open) and for the offline request code.
+- Two columns need a landscape room of at least 680 layout px; the identity-plus-form screens also
+  need an aspect of 1.5 or more.
+- The user code is set in Rubik: the bundled JetBrains Mono draws E, 8 and 0 as boxes in Godot 4.7.
+- A dialog over a running game is an opaque sheet docked to the bottom on a phone, never text on
+  the scrim.
 
 ### 1.5 Nothing dated: the hard rules
 
@@ -908,8 +922,8 @@ hand-tuned mockup colours and were replaced by it. The rules the draft left open
   button styles (`.glassProminent` / `.borderedProminent`).
 - **Compose:** the host `MaterialTheme` (including dynamic colour); status colours mapped to the host
   scheme's error and a computed warning, not tertiary/primary (KO).
-- **Godot:** derives from the ancestor or project theme (today's "neutral" builder, kept and
-  polished).
+- **Godot:** `ui_branding none` derives from the ancestor or project theme (the "neutral" builder,
+  polished: ink primary, ring that reads on the game's ground); the Polaris Key look is the default.
 - **Qt:** the platform `QStyle` (or the Qt Quick native style) with only spacing and typography
   hierarchy applied.
 

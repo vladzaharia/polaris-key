@@ -1,7 +1,7 @@
 class_name PKeyDevMenuController
 extends RefCounted
 ## PKeyDevMenuSection's headless logic: the facts a developer or tester needs about this build,
-## the channel picker's choices and lock, and the COPY DIAGNOSTICS text.
+## the channel picker's choices and lock, and the "Copy diagnostics" text.
 ##
 ## The channel is locked ("locked by <outlet>") when the install's outlet does not allow a channel
 ## switch: PKeyDecision.effective_capabilities(kind, platform, subkind, the committed feed's entry)
@@ -93,7 +93,7 @@ static func channels(current: String, entitled: Array) -> Array:
 	return out
 
 
-## The text COPY DIAGNOSTICS puts on the clipboard: one `key: value` line per fact, in
+## The text "Copy diagnostics" puts on the clipboard: one `key: value` line per fact, in
 ## DIAGNOSTIC_KEYS order. Never a credential.
 static func diagnostics(f: Dictionary) -> String:
 	var lines: PackedStringArray = []

@@ -80,6 +80,8 @@ func shell(opts: Dictionary) -> Dictionary:
 		var c: PKeyResult = sdk.configure(o)
 		if not c.ok:
 			return _fail(c.code)
+	if sdk.has_method("use_friendly_device_name"):
+		sdk.use_friendly_device_name()
 	if not sdk.core.started:
 		var r: PKeyResult = await sdk.start()
 		if not r.ok:
