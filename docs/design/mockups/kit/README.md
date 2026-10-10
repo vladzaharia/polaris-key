@@ -3745,3 +3745,54 @@ chips (`commerce.offer-price-invalid`), the "In the same change" summary box
 (`commerce.add-to-offer`), phone bottom-sheet dialogs with the primary above Cancel, the drawer
 timeline (`commerce.purchase`), and typed-confirm gating (the primary disabled until the word is
 typed, `commerce.offer-stop-selling`).
+
+## Desktop kit flows by window shape (`uk56-desktop-kits`)
+
+`sdk.macos-gate`, `sdk.windows-gate` and `sdk.gnome-gate` draw one fixture product's gate on a
+desktop kit, in both presets, by window shape. Appended at the end of `mockup.css`; no earlier rule
+was edited.
+
+- **`.kit-welcome.shape`**: DL1 on a window. The panes read the window's own width (the
+  `.kit-host` container), not the board's: two panes from 560, a 56px strip below. The start pane
+  is `.art` (product art) under `polaris-key` and `.kit-pane` (the icon on `surface-sunken`) under
+  `native`. The end pane is top-aligned. `.short` is a 300px landscape window with the header on one
+  line (`.kit-head.inline`); `.sheet` inside a `.kit-stage` is the large window: a sheet-scale card
+  on a flat ground.
+- **`.window.mac`, `.window.win`, `.window.gnome`**: the host's window chrome (never the kit's).
+  The kit draws no title bar and no static accent rule under it.
+- **`.kit-host[data-pk-platform][data-pk-preset="native"]`**: the host's tint (the OS's own, not a
+  brand colour), the macOS bordered field and the Fluent field. `polaris-key` is the default and
+  needs no attribute: the product's accent drives every role.
+- **`.kit-stack.cap`**: a stack of block buttons capped at 320. **`.kit-input.mid`**: a key that
+  middle-elides at rest (the text carries the ellipsis).
+- Order of buttons: macOS Cancel then the default; Windows the primary first; GNOME Cancel then the
+  suggested pill at the end.
+
+## Stage frames and the Qt, tvOS and visionOS kits (`uk56-tv-vision-qt-kits`)
+
+Appended at the end of `mockup.css`, in the `uk56-tv-vision-qt-kits` block; no earlier rule was
+edited. `sdk.qt-gate`, `sdk.tvos-gate` and `sdk.visionos-gate` are the references.
+
+- **`.kit-scale`** (`.tv` 1920×1080, `.vision` 1280×800, `.vision-tall` 640×800, at most 420 wide):
+  a size container that holds one `.kit-canvas`, a stage drawn at its true size and scaled to the
+  cell (`scale(tan(atan2(100cqw, stage width)))`), so type, targets and insets keep the platform's
+  real measures. A button's padding on a stage is drawn by `::before` and `::after` spacers, which
+  scale with it. A stage under 24px of target at phone width fails the target-size check, so a
+  board hides its large stages on a phone (`.hide-phone`, with a `.show-phone` note) and keeps the
+  tall one.
+- **`.kit-canvas[data-pk-preset="native"]`**: the system's tint (`#0a60c8`, `#409cff` in dark) in
+  place of the product accent, a flat ground in place of the product's ambient, and on tvOS the
+  system's lifted white focus.
+- **tvOS** (`.kit-canvas.tv`): 90px capsule controls, 38px body, 76px titles, 435px QR tile (whole
+  15px modules, under 42% of the short side), `.tv-safe` (the 90 × 60 title-safe insets, two
+  panes; `.message` for one block), `.tv-start`, `.tv-end`, `.tv-url`, `.tv-code`, `.tv-qr`,
+  `.tv-device`, `.tv-actions` (`.row` for a message screen), `.tv-ground` (the blurred product art),
+  and `.kit-btn.focus` (lift 1.05, a 3px ring at a 2px offset).
+- **visionOS** (`.kit-canvas.vp`): 60px capsule targets, 17pt body, the room, `.vp-window` (glass,
+  `.tall` for the narrow window, `.single` for a host window), `.vp-art` and `.vp-pane` (the product
+  art, or the icon alone under native), `.vp-ornament` (links and banners on the window's bottom
+  edge) and `.kit-btn.gaze` (gaze hover: brightened and lifted, no ring).
+- **`.kit-pairs`**: stage frames two to a row from 1280px (polaris-key beside native).
+- **Qt on KDE Plasma**: `data-pk-platform="kde"` (32px controls at radius 5, Breeze blue under
+  native), `.window.kde`, `.kit-actions.end` (affirmative first, then Cancel, right-aligned) and
+  `.kit-host.plain` (a host with one dialog form, no welcome grid).

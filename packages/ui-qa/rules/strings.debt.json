@@ -173,98 +173,13 @@
     },
     {
       "board": "apple",
-      "state": "tvos",
-      "text": "1. Scan the code, or go to tidewater.app/link"
-    },
-    {
-      "board": "apple",
-      "state": "tvos",
-      "text": "2. Enter WDJB-MJHT"
-    },
-    {
-      "board": "apple",
-      "state": "tvos",
-      "text": "3. Sign in to your Harbor Audio account"
-    },
-    {
-      "board": "apple",
-      "state": "tvos",
-      "text": "Sign in on your phone"
-    },
-    {
-      "board": "apple",
-      "state": "visionos",
-      "text": "by Harbor Audio"
-    },
-    {
-      "board": "apple",
-      "state": "visionos",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "apple",
-      "state": "visionos",
-      "text": "Welcome"
-    },
-    {
-      "board": "apple",
-      "state": "watch",
-      "text": "Open Tidewater Studio on your iPhone to finish."
-    },
-    {
-      "board": "apple",
-      "state": "watch",
-      "text": "Sign in on iPhone"
-    },
-    {
-      "board": "desktop",
-      "state": "activate",
-      "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "desktop",
-      "state": "device-limit",
-      "text": "Remove \"Work laptop\" and Continue"
-    },
-    {
-      "board": "desktop",
-      "state": "device-limit",
-      "text": "Tidewater Studio signs out on Work laptop."
-    },
-    {
-      "board": "desktop",
-      "state": "device-limit",
-      "text": "To use it on this Mac, remove one. You can add it back later."
-    },
-    {
-      "board": "desktop",
-      "state": "device-limit",
-      "text": "Work laptop Least recent Windows 11 · last used 41 days ago"
+      "state": "watch-states",
+      "text": "Continue on iPhone"
     },
     {
       "board": "desktop",
       "state": "gate",
       "text": "by Harbor Audio"
-    },
-    {
-      "board": "desktop",
-      "state": "gate",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "desktop",
-      "state": "gate",
-      "text": "Start a 14-day trial"
-    },
-    {
-      "board": "desktop",
-      "state": "macos15",
-      "text": "by Harbor Audio"
-    },
-    {
-      "board": "desktop",
-      "state": "macos15",
-      "text": "Your key is in the purchase email from Harbor Audio."
     },
     {
       "board": "desktop",
@@ -274,27 +189,7 @@
     {
       "board": "desktop",
       "state": "settings",
-      "text": "Channel"
-    },
-    {
-      "board": "desktop",
-      "state": "settings",
-      "text": "Check for Updates"
-    },
-    {
-      "board": "desktop",
-      "state": "settings",
       "text": "General"
-    },
-    {
-      "board": "desktop",
-      "state": "settings",
-      "text": "Install updates automatically"
-    },
-    {
-      "board": "desktop",
-      "state": "settings",
-      "text": "Manage…"
     },
     {
       "board": "desktop",
@@ -304,72 +199,7 @@
     {
       "board": "desktop",
       "state": "settings",
-      "text": "Sign Out…"
-    },
-    {
-      "board": "desktop",
-      "state": "settings",
       "text": "Stable"
-    },
-    {
-      "board": "desktop",
-      "state": "settings",
-      "text": "This Mac, Mara's iPad · 2 of 3"
-    },
-    {
-      "board": "desktop",
-      "state": "settings",
-      "text": "Up to date · checked 2 min ago"
-    },
-    {
-      "board": "desktop",
-      "state": "sign-in",
-      "text": "Scan with your phone"
-    },
-    {
-      "board": "desktop",
-      "state": "sign-in",
-      "text": "Waiting · code expires in 4:12"
-    },
-    {
-      "board": "desktop",
-      "state": "sign-in",
-      "text": "We opened the sign-in page. Check the code there matches this one."
-    },
-    {
-      "board": "desktop",
-      "state": "states",
-      "text": "Can't reach Harbor Audio"
-    },
-    {
-      "board": "desktop",
-      "state": "states",
-      "text": "Check your connection. You can keep working offline for 3 more days."
-    },
-    {
-      "board": "desktop",
-      "state": "states",
-      "text": "Renew…"
-    },
-    {
-      "board": "desktop",
-      "state": "states",
-      "text": "Tidewater Studio Pro ended on 30 September. Renew to keep working on your sessions."
-    },
-    {
-      "board": "desktop",
-      "state": "states",
-      "text": "Use a Different Key…"
-    },
-    {
-      "board": "desktop",
-      "state": "states",
-      "text": "Your license has ended"
-    },
-    {
-      "board": "desktop",
-      "state": "update",
-      "text": "Release Notes"
     },
     {
       "board": "godot",
@@ -750,126 +580,6 @@
       "board": "ios",
       "state": "update-required",
       "text": "This update is required. Your library moved to a new format, and 2.4.1 can't open it."
-    },
-    {
-      "board": "linux",
-      "state": "activate",
-      "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "linux",
-      "state": "gate",
-      "text": "by Harbor Audio"
-    },
-    {
-      "board": "linux",
-      "state": "gate",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "linux",
-      "state": "gate",
-      "text": "Start a 14-day trial"
-    },
-    {
-      "board": "linux",
-      "state": "states",
-      "text": "Can't reach Harbor Audio"
-    },
-    {
-      "board": "linux",
-      "state": "states",
-      "text": "Check your connection. You can keep working offline for 3 more days."
-    },
-    {
-      "board": "linux",
-      "state": "states",
-      "text": "Tidewater Studio Pro ended on 30 September. Renew to keep working on your sessions."
-    },
-    {
-      "board": "linux",
-      "state": "states",
-      "text": "Your license has ended"
-    },
-    {
-      "board": "qt",
-      "state": "quick-activate",
-      "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "qt",
-      "state": "quick-gate",
-      "text": "by Harbor Audio"
-    },
-    {
-      "board": "qt",
-      "state": "quick-gate",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "qt",
-      "state": "quick-gate",
-      "text": "Start a 14-day trial"
-    },
-    {
-      "board": "qt",
-      "state": "states",
-      "text": "Can't reach Harbor Audio"
-    },
-    {
-      "board": "qt",
-      "state": "states",
-      "text": "Check your connection. You can keep working offline for 3 more days."
-    },
-    {
-      "board": "qt",
-      "state": "states",
-      "text": "Tidewater Studio Pro ended on 30 September. Renew to keep working on your sessions."
-    },
-    {
-      "board": "qt",
-      "state": "states",
-      "text": "Your license has ended"
-    },
-    {
-      "board": "qt",
-      "state": "widgets",
-      "text": "last used 41 days ago"
-    },
-    {
-      "board": "qt",
-      "state": "widgets",
-      "text": "Lifetime license, 3 devices."
-    },
-    {
-      "board": "qt",
-      "state": "widgets",
-      "text": "MacBook Pro today"
-    },
-    {
-      "board": "qt",
-      "state": "widgets",
-      "text": "Mara's iPad yesterday"
-    },
-    {
-      "board": "qt",
-      "state": "widgets",
-      "text": "today"
-    },
-    {
-      "board": "qt",
-      "state": "widgets",
-      "text": "Where is my key?"
-    },
-    {
-      "board": "qt",
-      "state": "widgets",
-      "text": "Work laptop last used 41 days ago"
-    },
-    {
-      "board": "qt",
-      "state": "widgets",
-      "text": "yesterday"
     },
     {
       "board": "terminal",
@@ -1458,26 +1168,6 @@
     },
     {
       "board": "windows",
-      "state": "activate",
-      "text": "Your key is in the purchase email from Harbor Audio."
-    },
-    {
-      "board": "windows",
-      "state": "gate",
-      "text": "by Harbor Audio"
-    },
-    {
-      "board": "windows",
-      "state": "gate",
-      "text": "Sign in or add your license to start."
-    },
-    {
-      "board": "windows",
-      "state": "gate",
-      "text": "Start a 14-day trial"
-    },
-    {
-      "board": "windows",
       "state": "settings",
       "text": "Audio"
     },
@@ -1485,46 +1175,6 @@
       "board": "windows",
       "state": "settings",
       "text": "General"
-    },
-    {
-      "board": "windows",
-      "state": "settings",
-      "text": "Install updates automatically"
-    },
-    {
-      "board": "windows",
-      "state": "settings",
-      "text": "Share crash reports Set by Fennick Studio"
-    },
-    {
-      "board": "windows",
-      "state": "settings",
-      "text": "Up to date · checked 2 min ago"
-    },
-    {
-      "board": "windows",
-      "state": "states",
-      "text": "Can't reach Harbor Audio"
-    },
-    {
-      "board": "windows",
-      "state": "states",
-      "text": "Check your connection. You can keep working offline for 3 more days."
-    },
-    {
-      "board": "windows",
-      "state": "states",
-      "text": "Tidewater Studio Pro ended on 30 September. Renew to keep working on your sessions."
-    },
-    {
-      "board": "windows",
-      "state": "states",
-      "text": "Your license has ended"
-    },
-    {
-      "board": "windows",
-      "state": "update",
-      "text": "Release notes"
     }
   ]
 }
