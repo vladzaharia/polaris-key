@@ -24,7 +24,7 @@ import {
   feedAccessChoice,
   feedAccessMode,
   feedSetupSnippets,
-} from "../src/console/areas/feeds/model.js";
+} from "../src/console/sections/feeds/model/model.js";
 
 /** The shared setup-snippet cases and goldens (F-12), also run by the CLI's test. */
 const SHARED_FIXTURES = join(

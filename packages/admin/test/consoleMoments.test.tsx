@@ -66,10 +66,11 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ApiError } = await import("../src/api.js");
-const { OverviewPage } = await import("../src/console/pages/core/Overview.js");
+const { OverviewPage } =
+  await import("../src/console/sections/core/pages/Overview.js");
 const { KeysPage, forgetFilledRefreshLines } =
-  await import("../src/console/pages/core/Keys.js");
-const { Home } = await import("../src/console/pages/global/Home.js");
+  await import("../src/console/sections/core/pages/Keys.js");
+const { Home } = await import("../src/console/sections/global/pages/Home.js");
 const { forgetFirstLoads } =
   await import("../src/console/templates/Dashboard.js");
 const { RECENT_SECONDS } = await import("../src/console/components/Moment.js");

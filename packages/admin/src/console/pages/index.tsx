@@ -11,14 +11,14 @@ import type { SectionPageProps } from "./types.js";
 type Loader = () => Promise<{ default: React.ComponentType<SectionPageProps> }>;
 
 const LOADERS: Record<SectionKey, Loader> = {
-  core: () => import("./core.js"),
-  license: () => import("./license.js"),
-  config: () => import("./config.js"),
-  release: () => import("./release.js"),
-  distribution: () => import("./distribution.js"),
-  update: () => import("./update.js"),
-  identity: () => import("./identity.js"),
-  sync: () => import("./sync.js"),
+  core: () => import("../sections/core/index.js"),
+  license: () => import("../sections/license/index.js"),
+  config: () => import("../sections/config/index.js"),
+  release: () => import("../sections/release/index.js"),
+  distribution: () => import("../sections/distribution/index.js"),
+  update: () => import("../sections/update/index.js"),
+  identity: () => import("../sections/identity/index.js"),
+  sync: () => import("../sections/sync/index.js"),
 };
 
 const LAZY = Object.fromEntries(

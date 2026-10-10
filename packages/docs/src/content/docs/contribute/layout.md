@@ -159,7 +159,7 @@ work down the list until it passes.
    every new route to the spec and to `routeCoverage.test.ts` (rule 10).
 9. **Console.** A `SECTIONS` entry in `packages/admin/src/console/nav.ts` with the table's accent (the
    slug) and its pages (each with a path, an icon and a docs link), a page module in
-   `packages/admin/src/console/pages/`, a section accent in
+   `packages/admin/src/console/sections/`, a section accent in
    `@polaris-key/brand` (`packages/brand/src/tokens/services.ts`; its `services.test.ts` fails
    until there is one, and `gen brand` emits the `[data-service="<slug>"]` rule), and the row's
    icon in `ServicesCard`'s `SERVICE_ICONS` (a type error until it is there).

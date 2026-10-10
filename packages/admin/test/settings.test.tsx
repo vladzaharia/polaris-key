@@ -32,7 +32,8 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ApiError } = await import("../src/api.js");
-const { SettingsPage } = await import("../src/console/pages/core/Settings.js");
+const { SettingsPage } =
+  await import("../src/console/sections/core/pages/Settings.js");
 
 function product(over: Partial<ProductDetail> = {}): ProductDetail {
   return {

@@ -1577,10 +1577,10 @@ Cell drawer (2.4.0 × Google Play) ───────────────
 
 **Notes (chunk 9 as built, 2026-10-04).** Where the build differs from the text above:
 
-- **Where things live.** The pages are in `src/console/areas/distribution/` (Matrix with its
+- **Where things live.** The pages are in `src/console/sections/distribution/` (Matrix with its
   `CellDrawer`, Rollouts, Outlets & feeds, Access, Health, Outlet credentials, the shared
-  `RolloutDialogs` and `StoreControls`) and `src/console/areas/update/FeedPage.tsx`; their reads
-  are one fetcher per key family in `areas/distribution/data.ts`. The matrix key is
+  `RolloutDialogs` and `StoreControls`) and `src/console/sections/update/pages/UpdateChannelsPage.tsx`; their reads
+  are one fetcher per key family in `sections/distribution/data.ts`. The matrix key is
   `qk.matrix(slug, "<deliverable>:<limit>")`; `qk.health(slug, windowHours)` gained the window;
   `qk.outlets`, `qk.distributionKeys` and `qk.connectors` are new, with their writes in
   `mutations.ts` (`setRollout`, the three readiness writes, capability narrow and revert, key put
@@ -2541,8 +2541,8 @@ capability reachable, whatever order 5, 7 and 9 merge in.
 (product Settings, A-3). The `confirmSlug` auto-fill (lead decision, 2026-10-03) is fixed for both
 callers.
 
-**Where things live.** `src/console/pages/global/` holds Home, Products, the wizard
-(`ProductNew`) and the attention model (`attention.ts`); `src/console/pages/platform.tsx` is the
+**Where things live.** `src/console/sections/global/` holds Home, Products, the wizard
+(`ProductNew`) and the attention model (`attention.ts`); `src/console/sections/platform/index.tsx` is the
 Platform section's lazy chunk (Deployment and the Platform activity panel), with Settings in
 `platformSettings.tsx`, Operations in `platformOperations.tsx` and Store connections in
 `platformStores.tsx` beside it;
@@ -2588,7 +2588,7 @@ deleted.
 
 Where the License build differs from the text above:
 
-- **Where things live.** The pages are in `src/console/pages/license/` (`LicensesPage`,
+- **Where things live.** The pages are in `src/console/sections/license/` (`LicensesPage`,
   `CreateLicenseDialog`, `LicenseRecord` with `LicenseTerms`, `LicenseKeys`, `LicenseDevices`,
   `LicenseConfig` and `LicenseDialogs`, `TiersPage`, `TierRecord` with `TierForm`,
   `EnrollmentPage`, and `shared.tsx`); `pages/license.tsx` routes between them. The tier record
@@ -2622,7 +2622,7 @@ id>` (LDT-17). The History tab joins the record's `tabs` in `nav.ts` once A-2 la
 #### Chunk 7 as built (2026-10-04)
 
 Config: Catalog, the catalog editor, Profiles, the
-profile record, the payload editor and Edge mint, at `src/console/pages/config/`. Where the build
+profile record, the payload editor and Edge mint, at `src/console/sections/config/`. Where the build
 differs from the text above:
 
 - **Where things live.** `SchemaForm.tsx` is split into `src/schema/` (`entry.ts`: the validator,
@@ -2655,7 +2655,7 @@ differs from the text above:
 
 **Platform → Settings** (`#/platform/settings`, T4) is built on A-13's settings API, and
 `platform-settings` is `ready` in `nav.ts`, so `#/platform` now lands on Settings. The page is
-`src/console/pages/platformSettings.tsx`, in the Platform lazy chunk. Its help link is
+`src/console/sections/platform/pages/platformSettings.tsx`, in the Platform lazy chunk. Its help link is
 `/docs/admin/platform-settings/`, and the Keyring section links `/docs/admin/kek/`.
 
 - **Background jobs.** Each of the four settings is its own save scope:

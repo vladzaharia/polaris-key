@@ -68,13 +68,13 @@ vi.mock("../src/api.js", async (importOriginal) => ({
 }));
 
 const { DeliverablesPage } =
-  await import("../src/console/pages/release/DeliverablesPage.js");
+  await import("../src/console/sections/release/pages/DeliverablesPage.js");
 const { PackRecord } =
-  await import("../src/console/pages/release/PackRecord.js");
+  await import("../src/console/sections/release/pages/PackRecord.js");
 const { ContentKeysPage } =
-  await import("../src/console/pages/release/ContentKeysPage.js");
+  await import("../src/console/sections/release/pages/ContentKeysPage.js");
 const { ReleaseRecord } =
-  await import("../src/console/pages/release/ReleaseRecord.js");
+  await import("../src/console/sections/release/pages/ReleaseRecord.js");
 
 const SLUG = "diceroll";
 const CORE = "diceroll.core3d";

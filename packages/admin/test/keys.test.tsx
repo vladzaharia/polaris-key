@@ -37,7 +37,7 @@ vi.mock("../src/api.js", async () => {
 
 const { ApiError } = await import("../src/api.js");
 const { KeysPage, refreshedCopy } =
-  await import("../src/console/pages/core/Keys.js");
+  await import("../src/console/sections/core/pages/Keys.js");
 
 const NOW = 1_800_000_000;
 

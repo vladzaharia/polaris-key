@@ -22,7 +22,7 @@ import {
   endpointRows,
   shippedPlatforms,
   updaterNote,
-} from "../src/console/areas/update/FeedPage.js";
+} from "../src/console/sections/update/pages/UpdateChannelsPage.js";
 
 const axe = configureAxe({
   rules: { "color-contrast": { enabled: false }, region: { enabled: false } },

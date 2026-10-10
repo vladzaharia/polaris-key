@@ -4,7 +4,7 @@ import { errorCopy } from "../../lib/errorCopy.js";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.js";
 import { toast } from "../../ui/toast.js";
 import { mutate } from "../data/mutations.js";
-import { intentOf } from "../pages/core/confirmGate.js";
+import { intentOf } from "../sections/core/pages/confirmGate.js";
 
 /** The claimable settings by registry key (worker `core/settingsClaims.ts` `CLAIM_KEYS`). */
 export const CLAIM_LABELS: Record<ClaimKey, string> = {

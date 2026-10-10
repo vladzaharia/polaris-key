@@ -16,7 +16,7 @@ import {
   confirmLevel,
   formatSettingValue,
 } from "../src/console/components/ProductSettingsSection.js";
-import { LICENSING_PENDING } from "../src/console/pages/license/LicenseSettingsPage.js";
+import { LICENSING_PENDING } from "../src/console/sections/license/pages/LicenseSettingsPage.js";
 
 beforeEach(resetConsole);
 afterEach(cleanup);

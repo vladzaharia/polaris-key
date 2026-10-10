@@ -25,7 +25,7 @@ import { API, CATALOG, NOW_S, writes } from "./licenseFixture.js";
 import {
   accountOverrideCatalog,
   accountPayload,
-} from "../src/console/pages/core/accountOverrides.js";
+} from "../src/console/sections/core/pages/accountOverrides.js";
 
 const axe = configureAxe({
   rules: {

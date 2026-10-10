@@ -199,11 +199,11 @@ describe("the lazy route fallback is a skeleton", () => {
 describe("no page pulses", () => {
   it("the platform pages and Home draw pk-skeleton blocks", () => {
     for (const f of [
-      "console/pages/platform.tsx",
-      "console/pages/platformOperations.tsx",
-      "console/pages/platformSettings.tsx",
-      "console/pages/platformStores.tsx",
-      "console/pages/global/Home.tsx",
+      "console/sections/platform/index.tsx",
+      "console/sections/platform/pages/platformOperations.tsx",
+      "console/sections/platform/pages/platformSettings.tsx",
+      "console/sections/platform/pages/platformStores.tsx",
+      "console/sections/global/pages/Home.tsx",
     ])
       expect(read(f), f).toContain("pk-skeleton");
   });

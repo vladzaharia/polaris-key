@@ -17,8 +17,8 @@ import type {
 } from "../src/api.js";
 import { boot, resetConsole, type FetchLog } from "./consoleHarness.js";
 import { bootLicense } from "./licenseFixture.js";
-import { migrationGates } from "../src/console/pages/platformOverrideMigration.js";
-import { migrationNoticeText } from "../src/console/pages/license/OverrideMigrationNotice.js";
+import { migrationGates } from "../src/console/sections/platform/pages/platformOverrideMigration.js";
+import { migrationNoticeText } from "../src/console/sections/license/components/OverrideMigrationNotice.js";
 import { confirmFor } from "../src/lib/actions.js";
 import { formatDate, fromSeconds } from "../src/lib/format.js";
 

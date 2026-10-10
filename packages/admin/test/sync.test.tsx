@@ -34,9 +34,9 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { SyncDataPage, formatBinaryBytes } =
-  await import("../src/console/pages/sync/SyncData.js");
+  await import("../src/console/sections/sync/pages/SyncData.js");
 const { CatalogEntryForm } =
-  await import("../src/console/pages/config/CatalogEntryForm.js");
+  await import("../src/console/sections/config/components/CatalogEntryForm.js");
 
 const axe = configureAxe({
   rules: {
