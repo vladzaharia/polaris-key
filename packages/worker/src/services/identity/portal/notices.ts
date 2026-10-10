@@ -333,6 +333,24 @@ export function signInMethodRemovedNotice(input: {
   });
 }
 
+/** The primary email changed. Names no address: it goes to every verified one (PX-W19). */
+export function primaryEmailChangedNotice(input: {
+  origin: string;
+}): NoticeMessage {
+  return buildNotice({
+    subject: "Your Polaris Key primary email was changed",
+    paragraphs: [
+      "Another verified email on your Polaris Key account is now its primary. Security notices and the email apps see for you now go there.",
+    ],
+    action: {
+      label: "See your sign-in methods",
+      url: appLink(input.origin, "account/methods"),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
 /** The account was deleted at the holder's request (sent before the rows go). */
 export function accountDeletedNotice(input: { origin: string }): NoticeMessage {
   return buildNotice({

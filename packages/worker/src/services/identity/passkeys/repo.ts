@@ -49,6 +49,8 @@ export interface PasskeyRow {
   last_used_at: number | null;
   /** `PasskeyDetails` as JSON; NULL on a row read before the column existed. */
   details_json?: string | null;
+  /** The name the holder gave it (PX-W19); NULL when unnamed. */
+  name?: string | null;
 }
 
 /** Display facts about a passkey (`details_json`). Never read by verification. */
@@ -251,4 +253,23 @@ export async function recordPasskeyUse(
     row.sign_count,
   );
   return changed > 0;
+}
+
+/**
+ * Set or clear one passkey's name, only while it is still the account's (the account id is in the
+ * WHERE, so a merge racing the rename cannot name another account's row). True when a row changed.
+ */
+export async function setPasskeyName(
+  db: Db,
+  accountId: string,
+  credentialId: string,
+  name: string | null,
+): Promise<boolean> {
+  const changes = await db.runChanges(
+    "UPDATE account_passkeys SET name = ? WHERE credential_id = ? AND account_id = ?",
+    name,
+    credentialId,
+    accountId,
+  );
+  return changes > 0;
 }

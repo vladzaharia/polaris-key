@@ -134,7 +134,7 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/signin/passkey/verify", ["post"]],
     ["/api/me/passkeys", ["get", "post"]],
     ["/api/me/passkeys/options", ["post"]],
-    ["/api/me/passkeys/{passkeyId}", ["delete"]],
+    ["/api/me/passkeys/{passkeyId}", ["delete", "patch"]],
     // PX-23 (S-24 D19): Remove from my library. The licence detail GET stays narrative.
     ["/api/licenses/{product}/{licenseId}", ["delete"]],
     // PX-W12 (G27): sign-in methods, and Link an existing account with its 72-hour undo.
@@ -142,6 +142,7 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/me/methods/{kind}/start", ["post"]],
     ["/api/me/methods/email/verify", ["post"]],
     ["/api/me/methods/{methodId}", ["delete"]],
+    ["/api/me/methods/{methodId}/primary", ["post"]],
     ["/api/me/link", ["get"]],
     ["/api/me/link/start", ["post"]],
     ["/api/me/link/confirm", ["post"]],

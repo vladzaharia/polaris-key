@@ -6210,6 +6210,11 @@ merge and deletion) apply to it unchanged.
   `403 forbidden` only after the passkey's own signature verified, so only the holder of that
   passkey learns it. Both card routes share 30 requests a minute per client address and fail
   closed; account changes are limited to 10 a minute per account.
+- **Rename (PX-W19).** `PATCH /api/me/passkeys/<id>` sets a label only: owner-only (the account id
+  is in the UPDATE, and an unknown id and another account's answer the same 404), step-up, 1 to 64
+  characters with no control or bidirectional characters, body read under a 1 KiB cap. The name is
+  never read by verification, never put in an email or audit summary, and is shown to its owner as
+  text (the console renders it escaped).
 - **Residuals.** Whoever holds an unlocked device with a synced passkey, or the sync account
   behind it, can sign in as the person: that is the authenticator's security, as for any passkey
   site. Pocket ID passkeys (`rp_id = id.plrs.im`) cannot carry over; migrated users enrol again
@@ -6272,6 +6277,15 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   into it would hand the second join's data and aliases to the first join's absorbed account on
   undo. The snapshot holds the absorbed person's details: it is cleared by the undo, deleted
   nightly once the window ends, and deleted with either account (docs/PRIVACY.md).
+- **Make primary (PX-W19).** `POST /api/me/methods/<id>/primary` needs the same step-up as a
+  connect, takes only one of the caller's own email methods (an unknown id and another account's
+  answer the same 404; another kind is 422), and writes `primary_email` with one conditional
+  statement that holds only while that link still belongs to the account, so a removal racing it
+  cannot leave a primary with no method. Every email method exists only after its code or a
+  provider's verified claim, so no unverified address becomes primary. A change is audited and a
+  notice naming no address goes to every verified address, the old primary included. Products
+  see the new address on their next read of the consent view and developers on the next
+  product-user contact read; nothing is pushed to them.
 - **Residuals.** Someone with a fresh session for an account can already change it directly
   (connect their own method, disconnect the others, delete it); joining gives them nothing more,
   and the notices to every verified address of both accounts are the detection. Deleting the kept

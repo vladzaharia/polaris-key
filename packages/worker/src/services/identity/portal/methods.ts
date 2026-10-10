@@ -6,6 +6,7 @@
  *                                             redirect), `email` (a code), `passkey` (I-16's
  *                                             registration challenge)
  *   POST   /api/me/methods/email/verify       the email code: connects the address
+ *   POST   /api/me/methods/<id>/primary       make a verified email the primary (PX-W19; step-up)
  *   DELETE /api/me/methods/<id>               disconnect one (step-up; never the last)
  *
  * A provider's callback is its registered sign-in callback (`/login/<provider>/callback`), which
@@ -95,7 +96,13 @@ import {
   readJsonObject,
   wrongCodeMessage,
 } from "../card/http.js";
-import { portalEmailConfigured, sendSignInEmail } from "./email.js";
+import {
+  portalEmailConfigured,
+  sendSecurityNotice,
+  sendSignInEmail,
+} from "./email.js";
+import { primaryEmailChangedNotice } from "./notices.js";
+import { portalAudit, productCountsByEmail } from "./repo.js";
 
 /** Method changes (connect starts, codes, removals) by one account per minute. */
 export const METHOD_CHANGES_PER_ACCOUNT_MINUTE = 10;
@@ -172,7 +179,7 @@ function displayOf(
     case "email":
       return link.subject;
     case "passkey":
-      return passkey?.addedFrom ?? null;
+      return passkey?.name ?? passkey?.addedFrom ?? null;
     case "google":
     case "apple":
       return link.email ?? link.display_name ?? profileName(link);
@@ -252,6 +259,11 @@ export async function handleAccountMethods(
       return cardJson({ error: "method_not_allowed" }, 405);
     return emailVerify(req, env, db, caller, now);
   }
+  if (rest.length === 2 && rest[1] === "primary") {
+    if (req.method !== "POST")
+      return cardJson({ error: "method_not_allowed" }, 405);
+    return makePrimary(req, env, db, caller, rest[0]!, now);
+  }
   if (rest.length === 2 && rest[1] === "start") {
     if (req.method !== "POST")
       return cardJson({ error: "method_not_allowed" }, 405);
@@ -303,6 +315,7 @@ export async function methodsView(
   const byId = new Map(methods.map((m) => [m.id, m]));
   const configured = new Set(configuredSignInProviders(env));
   const addable = await passkeyAddable(db, caller.accountId);
+  const productCounts = await productCountsByEmail(db, caller.accountId);
   return {
     methods,
     // The primary first, then the others oldest first.
@@ -317,6 +330,8 @@ export async function methodsView(
         methodId: l.id,
         email: l.subject,
         primary: l.subject === primaryEmail,
+        // Products this address brought in (the Library lists them).
+        productCount: productCounts.get(l.subject.toLowerCase()) ?? 0,
         connectedAt: l.created_at,
         lastUsedAt: l.last_used_at,
         canRemove: byId.get(l.id)?.canRemove ?? false,
@@ -574,6 +589,81 @@ async function emailVerify(
     },
     linked.already ? 200 : 201,
   );
+}
+
+// ── Make primary ────────────────────────────────────────────────────────────────────────────
+
+/** `POST /api/me/methods/<id>/primary`: one of the caller's own verified emails becomes primary. */
+async function makePrimary(
+  req: Request,
+  env: Env,
+  db: Db,
+  caller: MethodsCaller,
+  methodId: string,
+  now: number,
+): Promise<Response> {
+  if (!(await changesAllowed(env, caller, now)))
+    return cardJson({ error: "rate_limited" }, 429);
+  if (!fresh(caller, now)) return stepUpRequired();
+  const link = (await listLinks(db, caller.accountId)).find(
+    (l) => l.id === methodId,
+  );
+  if (!link) return cardJson({ error: "not_found" }, 404);
+  if (link.issuer_key !== EMAIL_ISSUER) {
+    return cardJson(
+      {
+        error: "bad_request",
+        message: "Only an email address can be the primary.",
+      },
+      422,
+    );
+  }
+  const account = await getAccountRow(db, caller.accountId);
+  if (account?.primary_email !== link.subject) {
+    // One conditional write: it holds only while the address is still this account's method, so a
+    // removal racing it cannot leave a primary with no method. Every email method is verified
+    // (it exists only after its code, or a provider's verified claim).
+    const changed = await db.runChanges(
+      `UPDATE accounts SET primary_email = ?, primary_email_verified_at = ?, modified_at = ?
+        WHERE id = ? AND primary_email IS NOT ?
+          AND EXISTS (SELECT 1 FROM account_links
+                       WHERE id = ? AND account_id = ? AND issuer_key = ? AND subject = ?)`,
+      link.subject,
+      link.created_at,
+      now,
+      caller.accountId,
+      link.subject,
+      link.id,
+      caller.accountId,
+      EMAIL_ISSUER,
+      link.subject,
+    );
+    if (changed === 0) {
+      // Either it became primary meanwhile (fine) or the method went (not found).
+      const after = await getAccountRow(db, caller.accountId);
+      if (after?.primary_email !== link.subject)
+        return cardJson({ error: "not_found" }, 404);
+    } else {
+      await portalAudit(db, {
+        accountId: caller.accountId,
+        action: "account.email.primary",
+        targetKind: "link",
+        targetId: link.id,
+        summary: "Changed the primary email",
+        now,
+      });
+      await sendSecurityNotice(
+        env,
+        db,
+        caller.accountId,
+        // The old primary hears of it too, even if it is no longer a method.
+        account?.primary_email,
+        primaryEmailChangedNotice({ origin: originOf(req) }),
+        now,
+      );
+    }
+  }
+  return cardJson(await methodsView(env, db, caller, now));
 }
 
 // ── Disconnect ──────────────────────────────────────────────────────────────────────────────

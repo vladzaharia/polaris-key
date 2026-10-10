@@ -13067,6 +13067,65 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
   /api/me/passkeys/{passkeyId}:
+    patch:
+      operationId: renameAccountPasskey
+      tags: [portal]
+      summary: Name or unname a passkey
+      description: >
+        Needs a sign-in in the last 5 minutes. `name` is trimmed and must be 1 to 64 characters
+        with no control characters (`bad_request`, 422); `null` or an empty string clears it. An
+        unknown passkey and another account's answer the same 404. Audited without the name; no
+        email is sent, because a label is not a way to sign in. The answer is the passkeys list.
+      parameters:
+        - {
+            name: passkeyId,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The credential id (base64url), as the list names it.",
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: [string, "null"], maxLength: 64 }
+      responses:
+        "200":
+          description: Renamed. The account's passkeys, as `GET /api/me/passkeys`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [passkeys, canAdd, reason]
+                properties:
+                  passkeys:
+                    type: array
+                    items: { $ref: "#/components/schemas/AccountPasskey" }
+                  canAdd: { type: boolean }
+                  reason:
+                    type: [string, "null"]
+                    enum: [email_unverified, limit, null]
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: "`bad_request`: the name is too long, has control characters or is not a string."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many passkey changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
     delete:
       operationId: removeAccountPasskey
       tags: [portal]
@@ -13189,6 +13248,11 @@ paths:
                         methodId: { type: string }
                         email: { type: string }
                         primary: { type: boolean }
+                        productCount:
+                          {
+                            type: integer,
+                            description: "Distinct products this address brought in (licences whose own email it is; deleted and portal-off products left out).",
+                          }
                         connectedAt: { type: integer }
                         lastUsedAt: { type: [integer, "null"] }
                         canRemove: { type: boolean }
@@ -13351,6 +13415,51 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: Too many code attempts from this address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/methods/{methodId}/primary:
+    post:
+      operationId: makeAccountEmailPrimary
+      tags: [portal]
+      summary: Make an email the primary
+      description: >
+        No body. Needs a sign-in in the last 5 minutes. `methodId` must be one of the caller's own
+        email methods (an unknown id and another account's answer the same 404; another kind of
+        method is 422 `bad_request`). One conditional write that holds only while the address is
+        still this account's method. Already primary answers 200 and writes nothing. A change is
+        audited and emailed, without any address, to every verified address, the old primary
+        included. The answer is the body of `GET /api/me/methods`.
+      parameters:
+        - {
+            name: methodId,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The email method's `methodId` from `emails`.",
+          }
+      responses:
+        "200":
+          description: The methods, as `GET /api/me/methods`.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422":
+          description: "`bad_request`: the method is not an email."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many method changes by this account (10 a minute).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -19619,8 +19728,14 @@ components:
           synced,
           aaguid,
           addedFrom,
+          name,
         ]
       properties:
+        name:
+          {
+            type: [string, "null"],
+            description: "The name its holder gave it (1 to 64 characters), or null. Show it as text.",
+          }
         id:
           {
             type: string,

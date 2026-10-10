@@ -171,7 +171,7 @@ this page or fails the freshness gate.
 | `subject_events` | 0068_a_accounts.sql | `product`, `id`, `type`, `subject`, `payload_json`, `created_at` |
 | `account_sessions` | 0068_a_accounts.sql | `id_hash`, `account_id`, `created_at`, `last_seen_at`, `expires_at`, `revoked_at`, `user_agent`, `amr_json` |
 | `account_product_grants` | 0068_a_accounts.sql | `account_id`, `product`, `claims_json`, `granted_at`, `modified_at`, `scope_hash (0087)` |
-| `account_passkeys` | 0068_a_accounts.sql | `credential_id`, `account_id`, `public_key`, `sign_count`, `transports_json`, `rp_id`, `user_handle`, `created_at`, `last_used_at`, `details_json (0094)` |
+| `account_passkeys` | 0068_a_accounts.sql | `credential_id`, `account_id`, `public_key`, `sign_count`, `transports_json`, `rp_id`, `user_handle`, `created_at`, `last_used_at`, `details_json (0094)`, `name (00XX)` |
 | `account_terms_acceptances` | 0091_account_terms_acceptances.sql | `account_id`, `product`, `version`, `url`, `accepted_at` |
 | `license_relinks` | 0082_license_relinks.sql | `product`, `id`, `license_id`, `from_account_id`, `to_account_id`, `from_subject`, `to_subject`, `reason`, `actor_sub`, `actor_name`, `notices_sent`, `created_at`, `undo_until`, `undone_at`, `undone_by`, `undo_reason`, `holder_json (0104)` |
 | `account_avatars` | 0093_account_avatars.sql | `asset`, `account_id`, `origin`, `bytes`, `created_at` |
