@@ -1306,10 +1306,14 @@ async function handleClaimRevert(
     session.principal,
   );
   if (!result.ok)
-    return err(result.status, 
-      result.status === 403 ? ErrorCode.Forbidden : ErrorCode.BadRequest, result.message, {
-      reason: result.reason,
-    });
+    return err(
+      result.status,
+      result.status === 403 ? ErrorCode.Forbidden : ErrorCode.BadRequest,
+      result.message,
+      {
+        reason: result.reason,
+      },
+    );
   return adminJson(
     result.applied
       ? { ok: true, key, applied: true, value: result.value }

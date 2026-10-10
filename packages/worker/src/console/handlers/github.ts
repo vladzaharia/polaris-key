@@ -26,11 +26,7 @@ import type { Env } from "../../platform/env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
 import type { AdminSession } from "../../core/console/session.js";
-import {
-  adminJson,
-  err,
-  notFound,
-} from "../../core/console/respond.js";
+import { adminJson, err, notFound } from "../../core/console/respond.js";
 import {
   getAppInfo,
   listInstallationRepositories,

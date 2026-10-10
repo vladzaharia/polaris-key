@@ -130,18 +130,23 @@ async function snapshotManifest(db: Db, product: ProductRow): Promise<unknown> {
 }
 
 function refusal(r: RowSettingRefusal, product: ProductRow): Response {
-  return err(r.status, r.status === 403 ? ErrorCode.Forbidden : ErrorCode.BadRequest, r.message, {
-    reason: r.reason,
-    ...(r.current
-      ? {
-          current: dto(
-            r.current,
-            parseServices(product.services_json).services,
-            undefined,
-          ),
-        }
-      : {}),
-  });
+  return err(
+    r.status,
+    r.status === 403 ? ErrorCode.Forbidden : ErrorCode.BadRequest,
+    r.message,
+    {
+      reason: r.reason,
+      ...(r.current
+        ? {
+            current: dto(
+              r.current,
+              parseServices(product.services_json).services,
+              undefined,
+            ),
+          }
+        : {}),
+    },
+  );
 }
 
 export async function handleProductSettings(

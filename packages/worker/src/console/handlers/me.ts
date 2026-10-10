@@ -97,7 +97,8 @@ export interface MePermissions {
 }
 
 const PLATFORM_AREAS: readonly AreaId[] = AREAS.filter(
-  (a) => a.scope === "membership" || a.scope === "platform" || a.scope === "both",
+  (a) =>
+    a.scope === "membership" || a.scope === "platform" || a.scope === "both",
 ).map((a) => a.id);
 
 function levels(
