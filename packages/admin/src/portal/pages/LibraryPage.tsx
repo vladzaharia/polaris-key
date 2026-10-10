@@ -8,6 +8,8 @@ import type { PortalAccount } from "../api.js";
 import { AttentionShelf } from "../components/AttentionShelf.js";
 import { DiscoverTeaser } from "../components/DiscoverTeaser.js";
 import { LibraryEmpty } from "../components/LibraryEmpty.js";
+import { LibraryKeyTile } from "../components/LibraryKeyTile.js";
+import { MissingLicense } from "../components/MissingLicense.js";
 import { LibraryHero } from "../components/LibraryHero.js";
 import { LibraryTile } from "../components/LibraryTile.js";
 import { ErrorPanel } from "../components/States.js";
@@ -65,7 +67,7 @@ export function LibraryPage({
     // A short screen (§8) tightens the gap under the title, so a hero's download is on screen.
     <section className="pk-vt-scope space-y-8 short:space-y-4">
       <div className="space-y-2">
-        <h1 className="text-3xl font-semibold leading-tight text-fg-strong desk:text-display">
+        <h1 className="text-page-title-sm font-semibold text-fg-strong desk:text-page-title">
           Your library
         </h1>
         <p className="text-fg-muted">
@@ -87,16 +89,20 @@ export function LibraryPage({
         <>
           <LibraryEmpty discoverCount={lib.discoverCount} />
           <DiscoverTeaser discoverCount={lib.discoverCount} />
+          <MissingLicense />
         </>
       ) : (
-        <LibraryBody
-          products={lib.products!}
-          device={lib.device}
-          email={account.email}
-          discoverCount={lib.discoverCount}
-          params={params}
-          firstLoad={firstLoad}
-        />
+        <>
+          <LibraryBody
+            products={lib.products!}
+            device={lib.device}
+            email={account.email}
+            discoverCount={lib.discoverCount}
+            params={params}
+            firstLoad={firstLoad}
+          />
+          <MissingLicense />
+        </>
       )}
     </section>
   );
@@ -169,6 +175,7 @@ function LibraryBody({
               />
             </li>
           ))}
+          <LibraryKeyTile count={products.length} />
         </ul>
       </section>
     );

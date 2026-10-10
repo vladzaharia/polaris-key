@@ -58,6 +58,8 @@ export function LibraryTile({
   const confirming = ask > 0;
   const menuButton = React.useRef<HTMLButtonElement>(null);
   const entry = product.kind === "entry";
+  // No hosted cover: the stored tint over a short field, the icon centred on it.
+  const noArt = !pres.headerUrl;
   return (
     <div ref={cue.ref} className="pk-lift pk-pressable-card grid rounded-xl">
       <article
@@ -76,15 +78,30 @@ export function LibraryTile({
           tint={pres.tint}
           src={pres.headerUrl}
           variant="tile"
-          // No cover: a bare tint field. The icon (or its letter tile) already sits in front of the
-          // art's lower edge, so a big letter here would show the product's letter twice; the
-          // product page drops it the same way.
-          letter={false}
+          // No cover: a short field of the stored tint with the product's icon large and centred
+          // (never a wall of empty colour, M9); with a cover the icon overlaps its lower edge.
+          letter={noArt && !pres.iconUrl}
           liftArt
-          // The listing's header is 16:9 (PORTAL.md Q-2): the card shows all of it, centred, the
-          // same art the product page's hero shows a centred band of.
-          className="aspect-video"
+          // The listing's header is 16:9 (PORTAL.md Q-2): the card shows all of it, edge to edge,
+          // contained over a blurred copy of itself where the cap (280 px tall) is lower than the
+          // column's 16:9, so a single wide column never crops it.
+          fit="contain"
+          className={cn(
+            "w-full",
+            noArt ? "h-32" : "aspect-video max-h-[17.5rem]",
+          )}
         >
+          {noArt && pres.iconUrl ? (
+            <ProductIcon
+              slug={product.slug}
+              name={product.name}
+              tint={pres.tint}
+              src={pres.iconUrl}
+              size={64}
+              lift
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            />
+          ) : null}
           {/* The header's safe bottom-right corner, inset by the card's own padding; the top-right
               one on a narrow compact tile, where the bottom one meets the icon. */}
           <span
@@ -93,6 +110,7 @@ export function LibraryTile({
               compact
                 ? "bottom-4 right-4 @max-[17rem]/tile:bottom-auto @max-[17rem]/tile:right-3 @max-[17rem]/tile:top-3"
                 : "bottom-5 right-5",
+              noArt && "bottom-auto right-3 top-3",
             )}
           >
             <ProductStatusPill status={product.status} onArt />
@@ -104,22 +122,27 @@ export function LibraryTile({
             compact && "px-4 pb-4",
           )}
         >
-          <div className="-mt-7 flex items-start gap-3">
-            <ProductIcon
-              slug={product.slug}
-              name={product.name}
-              tint={pres.tint}
-              src={pres.iconUrl}
-              size={64}
-              lift
-              className="relative"
-              tileClassName="border-[3px] border-surface-raised"
-            />
+          <div
+            className={cn("flex items-start gap-3", noArt ? "mt-4" : "-mt-7")}
+          >
+            {noArt ? null : (
+              <ProductIcon
+                slug={product.slug}
+                name={product.name}
+                tint={pres.tint}
+                src={pres.iconUrl}
+                size={64}
+                lift
+                className="relative"
+                tileClassName="border-[3px] border-surface-raised"
+              />
+            )}
             {/* Below the art, never over it: the icon overlaps the art by 1.75 rem. The
                 rest of the row is the name's, so its link spans it (PS-05 review v2). */}
-            <div className="min-w-0 flex-1 pt-9">
+            <div className={cn("min-w-0 flex-1", !noArt && "pt-9")}>
               <h3
                 id={`tile-${product.slug}`}
+                dir="auto"
                 className={cn(
                   "truncate font-medium text-fg-strong",
                   compact

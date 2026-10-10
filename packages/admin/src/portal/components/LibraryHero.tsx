@@ -66,6 +66,7 @@ export function LibraryHero({
           <div className="min-w-0">
             <h2
               id="hero-name"
+              dir="auto"
               className="truncate text-2xl font-semibold text-fg-strong desk:text-3xl"
             >
               {product.name}

@@ -55,15 +55,6 @@ export function LibraryEmpty({
             </Button>
           ) : null}
         </div>
-        <p className="border-t border-border pt-5 text-sm text-fg-muted">
-          Bought with a different email or on Steam?{" "}
-          <a
-            href={href.account("methods")}
-            className="font-medium text-accent-fg hover:underline"
-          >
-            Add it in Account → Sign-in methods
-          </a>
-        </p>
       </div>
       <div
         aria-hidden

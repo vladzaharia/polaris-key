@@ -163,14 +163,12 @@ describe("Library on today's data (PX-02)", () => {
     const emberTile = screen.getByRole("article", { name: "Ember Tactics" });
     expect(within(emberTile).getByText("Expired")).toBeTruthy();
     expect(within(emberTile).getByText(/^Ended /)).toBeTruthy();
-    // No cover art: the banner is a bare tint field, so the letter shows once (the icon's tile).
-    const banner = emberTile.querySelector(
-      "[data-art='fallback'].aspect-video",
-    );
+    // No cover art: a short tint field with the letter once, in the art; no icon row over it.
+    const banner = emberTile.querySelector("[data-art='fallback'].h-32");
     expect(banner).not.toBeNull();
-    expect(banner!.querySelector(":scope > span[aria-hidden]")).toBeNull();
+    expect(banner!.className).not.toContain("aspect-video");
     expect(
-      [...emberTile.querySelectorAll("[data-art]")].filter(
+      [...emberTile.querySelectorAll("span[aria-hidden]")].filter(
         (el) => el.textContent === "E",
       ),
     ).toHaveLength(1);
@@ -223,6 +221,110 @@ describe("Library on today's data (PX-02)", () => {
         .getAttribute("href"),
     ).toBe("https://northpaw.example/renew");
     expect(screen.getAllByRole("article")).toHaveLength(10);
+  });
+
+  it("the shelf's only solid action is the most urgent item's (B12)", async () => {
+    const many = Array.from({ length: 8 }, (_, i) =>
+      license({
+        product: `p${i}`,
+        productName: `Product ${i}`,
+        activatedAt: NOW_S - i * DAY,
+      }),
+    );
+    const branding = {
+      developerName: "Northpaw Type",
+      supportUrl: "https://northpaw.example/renew",
+    };
+    many.push(
+      license({
+        product: "glyphsmith",
+        productName: "Glyphsmith",
+        expiresAt: NOW_S + 9 * DAY,
+        productBranding: branding,
+      }),
+      license({
+        product: "ember-tactics",
+        productName: "Ember Tactics",
+        expiresAt: NOW_S - 2 * DAY,
+        usable: false,
+        productBranding: branding,
+      }),
+    );
+    mockFetch(signedIn(many));
+    renderPortal();
+    await library();
+    const shelf = await screen.findByRole("region", {
+      name: /Needs attention/,
+    });
+    const actions = within(shelf).getAllByRole("link", { name: /^Renew with/ });
+    expect(actions).toHaveLength(2);
+    const solid = actions.filter(
+      (a) => a.getAttribute("data-variant") === "primary",
+    );
+    expect(solid).toHaveLength(1);
+    // Ember's license ended, so it comes first and is the solid one; Glyphsmith's is outlined.
+    expect(actions[0]!.closest("li")!.textContent).toContain("Ember Tactics");
+    expect(solid[0]).toBe(actions[0]);
+    expect(actions[1]!.getAttribute("data-variant")).toBe("quiet");
+  });
+
+  it("2-7 products end with the key tile and the Missing a license strip; no other size does (B12)", async () => {
+    mockFetch(signedIn([nightfall, tidewater, ember]));
+    renderPortal();
+    await library();
+    const tile = await screen.findByRole("complementary", {
+      name: "Have a license key?",
+    });
+    expect(
+      within(tile).getByText("Activate it to add its product here."),
+    ).toBeTruthy();
+    // Three products: it fills the fourth place at two columns and spans the row at three.
+    expect(tile.parentElement!.className).toMatch(/desk:col-span-1/);
+    expect(tile.parentElement!.className).toMatch(/wide:col-span-3/);
+    expect(tile.className).toContain("border-dashed");
+    const strip = screen.getByRole("region", { name: "Missing a license?" });
+    expect(
+      within(strip)
+        .getByRole("link", { name: "Sign-in methods" })
+        .getAttribute("href"),
+    ).toMatch(/methods/);
+    expect(within(strip).getByText("Sent to another email?")).toBeTruthy();
+    expect(within(strip).getByText("Bought in a store?")).toBeTruthy();
+    await userEvent.click(
+      within(tile).getByRole("button", { name: "Activate license" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: "Activate a license" }),
+    ).toBeTruthy();
+    // Negative control: the hero (one product) has the strip but no key tile.
+    cleanup();
+    mockFetch(signedIn([nightfall]));
+    renderPortal();
+    await screen.findByRole("article", { name: "Nightfall" });
+    expect(
+      screen.queryByRole("complementary", { name: "Have a license key?" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("region", { name: "Missing a license?" }),
+    ).toBeTruthy();
+  });
+
+  it("tile names and the page title follow their own direction and the display size", async () => {
+    mockFetch(signedIn([nightfall, tidewater]));
+    renderPortal();
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Your library",
+    });
+    expect(h1.className).toContain("desk:text-page-title");
+    expect(h1.className).toContain("text-page-title-sm");
+    expect(h1.textContent).not.toMatch(/\.$/);
+    for (const name of ["Nightfall", "Tidewater Studio"]) {
+      const tile = await screen.findByRole("article", { name });
+      expect(
+        within(tile).getByRole("heading", { level: 3 }).getAttribute("dir"),
+      ).toBe("auto");
+    }
   });
 
   it("shows the error with Retry instead of an empty library", async () => {
