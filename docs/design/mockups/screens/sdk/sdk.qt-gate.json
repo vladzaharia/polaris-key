@@ -1,0 +1,33 @@
+{
+  "id": "sdk.qt-gate",
+  "title": "Qt kit: gate",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 23,
+  "packages": [
+    "UK-56",
+    "UK-12"
+  ],
+  "uxRows": [],
+  "summary": "The Qt Quick kit's gate in both presets, drawn as a labelled fixture of DJDL: Welcome at the default, narrow, short and large window, inline license activation, Finish in your browser (no QR) and the device limit's browser hand-off, the KDE Plasma sheet form, and the integrator's three lines.",
+  "compare": [
+    "The product is the hero: DJDL's icon leads every step, its accent comes from the icon (kits are not service-accented), no Polaris Key mark appears, and the name is said once.",
+    "DL1 on a window: two panes from 560px of window, a one-line strip of art below; the end pane is top-aligned; the short landscape window drops the by-line and links instead of scrolling; the large window is one capped card on a flat ground.",
+    "polaris-key: the start pane is DJDL's art and the head carries its icon; native: the icon alone on the quiet ground, the head carries none, and the tint, fields and button style are the platform Qt style's, with only spacing and hierarchy applied.",
+    "Inline is the default presentation (D-79) for activation and sign-in; the dialog form is the labelled alternative, drawn once in the KDE Breeze form.",
+    "No QR on a desktop surface (DL14): the hand-off shows the code, Copy, the countdown and Open browser again with the external-action glyph.",
+    "DL6: the device limit on the key path is a neutral callout, and its fix, Replace a device with the external-action glyph, is the one primary; there is no in-app removal on this path.",
+    "Button order comes from the platform's DialogButtonBox: primary first on Windows, affirmative before Cancel in the KDE form (Qt only).",
+    "One primary per state; the key middle-elides at rest and its end stays visible; weights 400/500/600; hairlines only; the host draws the window chrome and no static accent line sits under it.",
+    "Copy is the kit catalog's. The welcome lede ('Sign in or use a license key to continue.') is left out here because it restates the two buttons (DL8); the sibling desktop boards still draw it, which the lead settles.",
+    "Board copy: captions are the state name plus at most one clause; the presentation option is named once, in the caption of the activation frame."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 0,
+    "reviewer": "Pending",
+    "date": "2026-10-09",
+    "verdict": "Not reviewed yet.",
+    "findings": []
+  }
+}
