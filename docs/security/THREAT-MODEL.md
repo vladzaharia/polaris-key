@@ -6586,6 +6586,11 @@ and expiry (`core/downloadTicket.ts`). The `files` byte route accepts it in plac
 bearer, on the bytes host only. No table, no migration, no new route. With the key unset nothing
 is minted and a presented ticket verifies against nothing, so deleting it is the kill switch.
 
+HA-09: for a non-public deliverable `downloadTarget` tries the ticketed bytes-host copy FIRST,
+public or private repository alike; GitHub's own URL is only the fallback, and only for a public
+repository. A licensed download therefore does not hand out a GitHub address when the bytes host
+can serve the file, and a private repository's address is never handed out at all.
+
 - **Token leakage.** The portal token is unchanged: 300 s, single use (a conditional `UPDATE`,
   R9-05b), bound to the account that minted it and re-checked at redemption.
 - **Ticket leakage.** A ticket opens one file, by content, for at most 120 s. It carries no

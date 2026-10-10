@@ -94,7 +94,7 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] A licensed private-repo fixture returns a dl URL with `?ticket=` (test).
+- [x] A licensed private-repo fixture returns a dl URL with `?ticket=` (test).
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
