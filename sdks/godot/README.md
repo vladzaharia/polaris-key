@@ -318,12 +318,17 @@ gamepad or a TV remote.
   `PKeyTight`, `PKeySections`, `PKeyRow`, `PKeyActions`, `PKeyColumns` and `PKeyGrid`; the type
   scale is `PKeyTitle` 32, `PKeySection` 24, body 18, `PKeyMuted` 16 and `PKeyCode` 52
   (`PKeyUiTheme.DENSITIES`, `MEASURES`). No scene writes a margin of its own.
-- **The product leads.** Gate, boot and sign-in screens lead with your product's icon and name
-  (`options.ui_product_name` / `ui_product_icon`, else the project's `application/config/name`
-  and icon, else a monogram tile of its initial); no kit screen shows a Polaris Key mark.
+- **The product leads.** Gate, boot and sign-in screens lead with your product's icon and name:
+  `options.ui_product_name` / `ui_product_icon`, else the product's presentation from discovery
+  (below), else the project's `application/config/name` and icon, else a monogram tile of its
+  initial. No kit screen shows a Polaris Key mark. The name is drawn bidi-isolated, so a
+  right-to-left name never reorders the text around it, and a long name steps its type down
+  rather than break a word.
 - **Look: the Polaris Key design system by default.** Out of the box the scenes use the
-  design system's dark palette and Rubik, with your product's accent (derived from its icon, else
-  ink; never the platform violet by default), the kit's own switch, check box and chevron icons,
+  design system's dark palette and Rubik, with your product's accent (its presentation's
+  `accentDark` in the dark scheme or `accent`, else derived from its icon, else ink; never the
+  platform violet by default; `options.ui_accent` wins over all of them; `PKeyUiTheme.accent_source()`
+  says which applied), the kit's own switch, check box and chevron icons,
   and a 3 px focus ring with a gap on every control. The product leads every screen; the kit's
   own mark appears on none. A QR code stays black on white, and shows only on a TV, a console or
   any pad-only device (which has no browser to open), and for the offline request code; a phone,
@@ -379,6 +384,34 @@ bold_font)` makes the Polaris Key theme with your accent or fonts if you want a 
   dark file on a dark ground and the light file on a light one; never cropped, never recoloured,
   and never smaller than the kit minimum (`PKeyUiTheme.powered_by_size("compact", wanted)` raises
   a smaller size to 232 × 88, keeping the proportions).
+
+### Product presentation (`core.presentation`)
+
+Discovery carries the product's presentation: its name, developer, accents and an icon hosted by
+Polaris Key. Every successful `discover()` (the boot runs one) parses it again; the kit takes its
+default name, icon and accent from it and re-renders when it changes.
+
+```gdscript
+var p := PolarisKey.presentation()            # {name, developerName?, accent?, accentDark?, icon?}, or {}
+var tex := await PolarisKey.presentation_icon(64, 2.0)   # ImageTexture for 64 pt at 2x, or null
+PolarisKey.presentation_source.changed.connect(func(member): print(member))
+```
+
+- **Fetch.** One size from the icon's WebP ladder (or the original), on a transport of its own:
+  no `Authorization` and no `X-PKey-*` header, no redirect followed (a 3xx is a miss), a 10 s
+  deadline and a 10 MiB cap, https only (plain http only for loopback) and only on the original's
+  origin. Nothing is retried and no error is surfaced: the kit falls back to the project's icon or
+  the monogram.
+- **Verify.** Bytes are shown and cached only when their SHA-256 matches the one discovery names.
+  The image header's dimensions are checked before decoding (16384 px a side, 16 megapixels at
+  most).
+- **Decodable types.** PNG, JPEG and WebP. An AVIF or GIF original with no WebP sizes shows the
+  monogram.
+- **Cache.** `user://polaris_key/presentation/<sha256>`, with the last member in
+  `presentation.json` beside it, so an offline start still shows the product. At most four icon
+  files are kept; a file whose hash no longer matches is deleted.
+- **Web.** The browser follows a redirect itself; no credential is sent and the hash check still
+  gates the bytes. `user://` is IndexedDB there and may not persist across sessions.
 
 ## Supported engines
 

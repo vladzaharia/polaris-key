@@ -9,7 +9,18 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
-Local-trust fixes.
+Local-trust fixes, and the product's presentation.
+
+- **Product presentation (`core.presentation`).** `PolarisKey.presentation()` returns the
+  product's name, developer, accents and icon from discovery ({} for none);
+  `PolarisKey.presentation_icon(px, scale)` fetches one icon size without credentials or
+  redirects, verifies its SHA-256 and the image header (16 MP at most) before decoding PNG, JPEG or
+  WebP, and caches it under `user://polaris_key/presentation/`. The kit's name, icon and accent
+  default to it after `ui_product_name`, `ui_product_icon` and `ui_accent`; `accentDark` applies
+  in the dark scheme (`PKeyUiTheme.presentation_accent_dark`). Product names are drawn
+  bidi-isolated in the header and the settings "Set by" line.
+- **`PKeyTransport.follow_redirects`.** `false` hands a 3xx back as its status, with no second
+  request.
 
 - **Pin two keys, and a pinned key can be revoked.** A trust manifest signed by one pinned key that
   lists another pinned key as `revoked` (with its exact bytes) removes that pin on the install for
