@@ -1,6 +1,6 @@
 ---
 title: "Other messages"
-description: "Connection, settings and \"something went wrong\" messages."
+description: 'Connection, settings and "something went wrong" messages.'
 type: "help-messages"
 status: "stub"
 sidebar:

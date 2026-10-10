@@ -1,6 +1,6 @@
 ---
 title: "Secure your account"
-description: "What to do after an email asks \"Wasn't you?\"."
+description: 'What to do after an email asks "Wasn''t you?".'
 type: "help"
 status: "stub"
 sidebar:
