@@ -19,7 +19,7 @@ const tabClass = (active: boolean) =>
     "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 text-sm",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
     active
-      ? "border-transparent font-bold text-fg-strong"
+      ? "border-transparent font-medium text-fg-strong"
       : "border-transparent text-fg-muted hover:border-border-strong hover:text-fg-strong",
   );
 

@@ -78,7 +78,7 @@ function explanation(source: Source, path?: string): React.ReactNode {
       return (
         <>
           Set in console: survives a resync.{" "}
-          <strong className="font-bold">Revert to manifest</strong> hands it
+          <strong className="font-semibold">Revert to manifest</strong> hands it
           back.
         </>
       );

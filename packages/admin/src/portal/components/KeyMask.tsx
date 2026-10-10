@@ -25,7 +25,7 @@ export function KeyMask({
       <span aria-hidden className="text-fg-subtle">
         pkey_
       </span>
-      <span aria-hidden className="font-bold text-accent-fg">
+      <span aria-hidden className="font-medium text-accent-fg">
         {slug}
       </span>
       <span aria-hidden className="text-fg-subtle">

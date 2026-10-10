@@ -194,7 +194,7 @@ function ProbesShell({
       aria-busy={busy || undefined}
       className="scroll-mt-20 rounded-lg border border-border bg-surface-raised"
     >
-      <p className="border-b border-border px-5 py-3 text-base font-bold text-fg-strong">
+      <p className="border-b border-border px-5 py-3 text-base font-semibold text-fg-strong">
         Probes
       </p>
       <div className="px-5 py-4">{children}</div>

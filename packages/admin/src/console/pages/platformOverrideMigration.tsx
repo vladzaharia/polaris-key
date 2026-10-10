@@ -974,7 +974,7 @@ function ProductFilter({
   const options = useProductOptions();
   return (
     <div className="min-w-56 space-y-1">
-      <label htmlFor={id} className="block text-sm font-bold text-fg-strong">
+      <label htmlFor={id} className="block text-sm font-medium text-fg-strong">
         Products
       </label>
       <Select

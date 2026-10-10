@@ -38,7 +38,9 @@ export function ShortcutSheet({
       <DialogBody className="space-y-4 pb-6">
         {groups.map((g) => (
           <section key={g.title}>
-            <h3 className="mb-1 text-xs font-bold text-fg-muted">{g.title}</h3>
+            <h3 className="mb-1 text-xs font-semibold text-fg-muted">
+              {g.title}
+            </h3>
             <dl className="divide-y divide-border">
               {g.items.map((s) => (
                 <div

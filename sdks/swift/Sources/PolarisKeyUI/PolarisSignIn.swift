@@ -87,6 +87,27 @@ public final class PolarisSignInModel {
         phase = .idle
     }
 
+    /// "Not you?" on the ready screen: sign out the identity it named (release the seat, wipe the
+    /// credential) and start the sign-in again. A sign-out that fails is shown, not skipped.
+    public func notYou() {
+        guard case .ready = phase else { return }
+        task?.cancel()
+        phase = .starting
+        let client = self.client
+        task = Task { [weak self] in
+            do {
+                try await client.identity.signOut()
+                guard !Task.isCancelled else { return }
+                self?.start()
+            } catch is CancellationError {
+            } catch let e as PolarisError {
+                self?.phase = .failed(code: e.code, message: ErrorCopy.message(e.code))
+            } catch {
+                self?.phase = .failed(code: ErrorCode.signInFailed, message: "\(error)")
+            }
+        }
+    }
+
     private func settle(_ result: SignInResult, prompt: SignInPrompt) {
         switch result {
         case .ready(let ready): phase = .ready(ready)
@@ -143,15 +164,14 @@ public struct PolarisSignIn: View {
             onOpen: { url in openURL(url) },
             onAccept: { model.accept(attachLicense: attach) },
             onRetry: { model.start() },
+            onDone: { onFinish(true) },
+            onNotYou: { model.notYou() },
             onCancel: {
                 model.cancel()
                 onFinish(false)
             }
         )
         .task { if case .idle = model.phase { model.start() } }
-        .onChange(of: model.phase) { _, phase in
-            if case .ready = phase { onFinish(true) }
-        }
         .onDisappear { model.cancel() }
     }
 }
@@ -172,6 +192,10 @@ struct PolarisSignInSurface: View {
     let onOpen: (URL) -> Void
     let onAccept: () -> Void
     let onRetry: () -> Void
+    /// Continue from the ready screen (the sign-in is complete).
+    var onDone: () -> Void = {}
+    /// "Not you?" on the ready screen.
+    var onNotYou: () -> Void = {}
     let onCancel: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
@@ -216,9 +240,11 @@ struct PolarisSignInSurface: View {
             PolarisPageHeading(
                 title: copy.confirmTitle, identity: identity, style: style, layout: layout,
                 symbol: "person.crop.circle.badge.checkmark")
-        case .ready:
+        case .ready(let ready):
             PolarisPageHeading(
-                title: copy.signedInAs, identity: identity, style: style, layout: layout,
+                title: Self.identityLines(ready.identity).isEmpty
+                    ? copy.signedInTitle : copy.signedInAs,
+                identity: identity, style: style, layout: layout,
                 symbol: "checkmark.circle.fill")
         case .expired:
             PolarisPageHeading(
@@ -296,8 +322,12 @@ struct PolarisSignInSurface: View {
                     secondaryTitle: copy.cancelButton, secondary: onCancel, layout: layout,
                     style: style)
             }
-        case .ready:
-            EmptyView()
+        case .ready(let ready):
+            // Who signed in, before the sheet closes; the wrong person can start again.
+            PolarisPageActions(
+                primaryTitle: copy.confirmContinue, primary: onDone,
+                secondaryTitle: Self.identityLines(ready.identity).isEmpty ? nil : copy.notYouButton,
+                secondary: onNotYou, layout: layout, style: style, secondaryCancels: false)
         case .expired, .failed:
             PolarisPageActions(
                 primaryTitle: copy.tryAgainButton, primary: onRetry,

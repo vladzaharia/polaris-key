@@ -562,7 +562,7 @@ export const stories: Story[] = [
               e.target ? (
                 <a
                   href="#/__kit"
-                  className="font-bold text-accent-fg hover:underline"
+                  className="font-medium text-accent-fg hover:underline"
                 >
                   {e.target}
                 </a>

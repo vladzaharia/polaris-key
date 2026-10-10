@@ -203,7 +203,7 @@ function DeviceFacts({
   return (
     <div className="space-y-6">
       <section aria-labelledby="device-status" className="space-y-3">
-        <h3 id="device-status" className="text-sm font-bold text-fg-strong">
+        <h3 id="device-status" className="text-sm font-semibold text-fg-strong">
           Device
         </h3>
         <DescriptionList
@@ -273,7 +273,10 @@ function DeviceFacts({
       </section>
 
       <section aria-labelledby="device-software" className="space-y-3">
-        <h3 id="device-software" className="text-sm font-bold text-fg-strong">
+        <h3
+          id="device-software"
+          className="text-sm font-semibold text-fg-strong"
+        >
           Software
         </h3>
         <DescriptionList
@@ -330,7 +333,10 @@ function DeviceFacts({
       </section>
 
       <section aria-labelledby="device-hardware" className="space-y-3">
-        <h3 id="device-hardware" className="text-sm font-bold text-fg-strong">
+        <h3
+          id="device-hardware"
+          className="text-sm font-semibold text-fg-strong"
+        >
           Hardware
         </h3>
         <DescriptionList
@@ -356,7 +362,7 @@ function DeviceFacts({
         />
         {probes.length ? (
           <div className="space-y-2">
-            <h4 className="text-xs font-bold text-fg-muted">Probes</h4>
+            <h4 className="text-xs font-semibold text-fg-muted">Probes</h4>
             <DescriptionList
               columns={2}
               items={probes.map(([id, p]) => ({
@@ -373,7 +379,7 @@ function DeviceFacts({
       <section aria-labelledby="device-fingerprint" className="space-y-3">
         <h3
           id="device-fingerprint"
-          className="text-sm font-bold text-fg-strong"
+          className="text-sm font-medium text-fg-strong"
         >
           Hardware binding
         </h3>
@@ -426,7 +432,9 @@ function DeviceFacts({
             />
             {components.length ? (
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-fg-muted">Components</h4>
+                <h4 className="text-xs font-semibold text-fg-muted">
+                  Components
+                </h4>
                 <DescriptionList
                   columns={2}
                   items={components.map(([name, value]) => ({

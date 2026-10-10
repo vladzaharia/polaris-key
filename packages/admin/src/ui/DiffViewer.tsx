@@ -105,7 +105,7 @@ function StructuredView<T extends object>({
   const breaking = model.removed.filter((r) => referencedBy[r.key]?.length);
   return (
     <div className={cn("space-y-3", className)}>
-      <p className="text-sm font-bold text-fg-strong">
+      <p className="text-sm font-medium text-fg-strong">
         {diffSummary(model, noun)}
         {breaking.length ? (
           <span className="ml-2 inline-flex items-center gap-1 font-normal text-danger">
@@ -143,7 +143,9 @@ function ChangeRow<T>({
   return (
     <li className={cn("rounded-md border px-3 py-2 text-sm", k.row)}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className={cn("inline-flex items-center gap-1 font-bold", k.fg)}>
+        <span
+          className={cn("inline-flex items-center gap-1 font-medium", k.fg)}
+        >
           <Icon aria-hidden className="size-4" />
           {k.label}
         </span>
@@ -265,7 +267,7 @@ function TextView({
               onClick={() => setView(v)}
               className={cn(
                 "h-7 rounded-md px-2 capitalize text-fg-muted hover:bg-hover hover:text-fg-strong",
-                view === v && "bg-hover font-bold text-fg-strong",
+                view === v && "bg-hover font-medium text-fg-strong",
               )}
             >
               {v}

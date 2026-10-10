@@ -29,7 +29,7 @@ export function DiscoverTeaser({
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2
           id="ready-h"
-          className="flex flex-wrap items-baseline gap-x-3 text-lg font-bold text-fg-strong"
+          className="flex flex-wrap items-baseline gap-x-3 text-lg font-semibold text-fg-strong"
         >
           Ready to add
           <span className="text-sm font-normal text-fg-muted">
@@ -38,7 +38,7 @@ export function DiscoverTeaser({
         </h2>
         <a
           href={href.discover()}
-          className="inline-flex items-center gap-1 text-sm font-bold text-accent-fg hover:underline"
+          className="inline-flex items-center gap-1 text-sm font-medium text-accent-fg hover:underline"
         >
           See all
           <ArrowRight aria-hidden className="size-4" />
@@ -61,7 +61,7 @@ export function DiscoverTeaser({
                 className="aspect-video w-28 shrink-0 rounded-lg"
               />
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-bold text-fg-strong">
+                <span className="block truncate font-medium text-fg-strong">
                   {o.name}
                 </span>
                 <span className="block text-sm text-fg-muted">

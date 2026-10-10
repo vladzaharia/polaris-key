@@ -154,10 +154,36 @@ jobs:
             echo "::error::$RELEASE_TAG ($commit) is not an ancestor of origin/main." >&2
             exit 1
           fi
-      - uses: actions/download-artifact@v4
+      # actions/download-artifact@v4 can stall on a slow blob read, give up after 30 s and still
+      # exit 0 with an empty dist-feed (v0.9.3 maven.packs: "no POM ... matches"). So the download
+      # is verified and, once, retried; a still-incomplete directory fails here with that cause.
+      - id: download
+        uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: ${{ inputs.artifact }}
           path: dist-feed
+      - id: arrived
+        name: The artifact arrived whole
+        continue-on-error: true
+        env:
+          DELIVERABLE: ${{ inputs.deliverable }}
+          VERSION: ${{ inputs.version }}
+          SUBDIR: ${{ inputs.dir }}
+        run: tools/check-feed-download.sh
+      - name: Download the artifact again
+        if: steps.arrived.outcome == 'failure'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact }}
+          path: dist-feed
+      - name: The artifact arrived whole (second look)
+        if: steps.arrived.outcome == 'failure'
+        env:
+          DELIVERABLE: ${{ inputs.deliverable }}
+          VERSION: ${{ inputs.version }}
+          SUBDIR: ${{ inputs.dir }}
+        run: tools/check-feed-download.sh
       - if: startsWith(inputs.deliverable, 'npm.')
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:

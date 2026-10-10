@@ -45,7 +45,7 @@ export function ErrorState({
           className="mt-0.5 size-4 shrink-0 text-danger"
         />
         <p className="min-w-0 flex-1">
-          <span id={titleId} className="font-bold text-fg-strong">
+          <span id={titleId} className="font-semibold text-fg-strong">
             {copy.title}.
           </span>{" "}
           <span className="text-fg-muted">{copy.description}</span>
@@ -66,7 +66,7 @@ export function ErrorState({
     >
       <AlertTriangle aria-hidden className="size-8 text-danger" />
       <div className="max-w-md space-y-1">
-        <p id={titleId} className="text-base font-bold text-fg-strong">
+        <p id={titleId} className="text-base font-semibold text-fg-strong">
           {copy.title}
         </p>
         <p className="text-sm text-fg-muted">{copy.description}</p>

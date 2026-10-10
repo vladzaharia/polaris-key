@@ -168,7 +168,7 @@ export function PageHeader({
               tabIndex={-1}
               data-page-title=""
               className={cn(
-                "font-bold tracking-tight text-fg-strong outline-hidden",
+                "font-medium tracking-tight text-fg-strong outline-hidden",
                 size === "display" ? "text-3xl lg:text-display" : "text-2xl",
               )}
             >
@@ -270,7 +270,7 @@ export function PageHeader({
           data-condensed-header=""
           className="fixed inset-x-0 top-16 z-30 flex h-12 items-center justify-between gap-3 border-b border-border bg-surface-raised px-6 lg:left-(--sidebar-w)"
         >
-          <span aria-hidden className="truncate font-bold text-fg-strong">
+          <span aria-hidden className="truncate font-medium text-fg-strong">
             {title}
           </span>
           <span className="shrink-0">{primaryAction}</span>
