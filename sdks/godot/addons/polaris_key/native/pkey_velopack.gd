@@ -136,15 +136,10 @@ static func _refused(r: PKeyResult) -> bool:
 	return not r.ok and r.code == PKeyErrors.NETWORK and refused_by_delivery(String((r.detail if r.detail is Dictionary else {}).get("message", "")))
 
 
-## Hand the downloaded update to Update.exe and quit; it applies and (with `restart`) starts the
-## shim again.
-func apply_on_exit(restart := true) -> PKeyResult:
-	var r = _native().call("apply_on_exit", restart)
-	var d: Dictionary = r if r is Dictionary else {}
-	if not d.get("ok", false):
-		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "Velopack: %s" % String(d.get("message", d.get("error", "apply failed"))), d)
-	quit()
-	return PKeyResult.success(d)
+## Refuse installation until the exact applied package supports release-record verification.
+func apply_on_exit(_restart := true) -> PKeyResult:
+	# A direct call must not bypass the install hook's release-record requirement.
+	return unsupported(PKeyConstants.UnsupportedReason.RUNTIME, "Velopack installation is disabled: the native API cannot expose the exact applied package for pinned-key-signed release-record verification.")
 
 
 ## Velopack has no UI of its own: a check (OK when it answered).
@@ -157,23 +152,10 @@ func check_now(feed_url: String) -> int:
 	return succeeded() if c.ok else failed(c)
 
 
-## Open, check, download, apply on exit and quit (P3-10's hook). A coroutine; FAILED when the
-## feed has no update (the adapter then opens the build's download link). last_result says why.
-func install_and_relaunch(feed_url: String) -> int:
-	if _opened_url != feed_url:
-		var o := open(feed_url)
-		if not o.ok:
-			return failed(o)
-	var c := await check()
-	if not c.ok:
-		return failed(c)
-	if String(c.detail.get("status", "")) != "available":
-		return failed(PKeyResult.failure(PKeyErrors.NOT_FOUND, "Velopack: the feed offers no update (%s)." % String(c.detail.get("status", ""))))
-	var d := await download()
-	if not d.ok:
-		return failed(d)
-	var a := apply_on_exit(true)
-	return succeeded() if a.ok else failed(a)
+## Installation hook: fail closed before opening a feed or invoking native code. The adapter
+## may still offer a manual download link; last_result explains the verification limitation.
+func install_and_relaunch(_feed_url: String) -> int:
+	return failed(apply_on_exit(true))
 
 
 ## Whether a download error is the delivery host refusing the request (401 or 403): what a

@@ -35,12 +35,22 @@ func run(t: PKeyTestContext) -> void:
 		env.os = pair[0]
 		var r: PKeyApplyResult = await b.install_and_relaunch()
 		var c: PKeyApplyResult = await b.check_now()
-		t.check("bridges: %s with no plugin is unavailable and answers unsupported (dependency)" % b.id(), not b.is_available() and not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "dependency" and r.detail.get("feature") == "update.driver" and not c.ok and c.detail.get("reason") == "dependency", str(r))
+		t.check("bridges: %s with no plugin is unavailable and answers unsupported (dependency)" % b.id(), not b.is_available() and not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == ("runtime" if b.id() == "velopack" else "dependency") and r.detail.get("feature") == "update.driver" and not c.ok and c.detail.get("reason") == "dependency", str(r))
 	env.os = "linux"
 
 	var native := Native.new()
 	env.singletons["PolarisKeySparkle"] = native
 	var sparkle := PKeySparkleBridge.new(env, "https://x/appcast.xml")
+	var velopack := PKeyVelopackBridge.new(env, "https://x/velopack/")
+	var unsafe := Native.new()
+	velopack.native = unsafe
+	var blocked: PKeyApplyResult = await velopack.install_and_relaunch()
+	t.check("bridges: custom Velopack native hooks cannot bypass release verification", not blocked.ok and blocked.code == PKeyErrors.UNSUPPORTED and blocked.detail.get("reason") == "runtime" and unsafe.calls.is_empty())
+	velopack.native = null
+	env.singletons["PolarisKeyVelopack"] = unsafe
+	blocked = await velopack.install_and_relaunch()
+	t.check("bridges: Velopack Engine singletons cannot bypass release verification", not blocked.ok and unsafe.calls.is_empty())
+
 	var r: PKeyApplyResult = await sparkle.install_and_relaunch()
 	t.check("bridges: the Sparkle singleton gets install_and_relaunch with the appcast", sparkle.is_available() and r.ok and r.behaviour == "hook" and r.bridge == "sparkle" and native.calls == [["install_and_relaunch", "https://x/appcast.xml"]], str(native.calls))
 	native.ok = false

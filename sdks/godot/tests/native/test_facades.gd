@@ -13,8 +13,8 @@ extends RefCounted
 #   velopack     outside a Velopack install: `runtime`; a 401/403 download is retried once (a
 #                fresh download ticket, SP-09) and a second one is `product`; any other failure
 #                is not retried; open() passes the headers; check and
-#                download wait for the deferred native events; install_and_relaunch() applies on
-#                exit and quits; no update or a failed download hands back FAILED
+#                download wait for the deferred native events; install_and_relaunch() and
+#                apply_on_exit() refuse packages without release-record verification
 #   winsparkle   no public key: `invalid-options`; start() gets the appcast, key, identity and
 #                headers; shutdown_request quits the game
 #   storecontext no package identity: `runtime` (not a Store install); the HRESULTs a non-Store
@@ -153,11 +153,16 @@ func _velopack(t: PKeyTestContext) -> void:
 	n.open_answer = {"ok": true, "current_version": "1.0.0"}
 	n.calls.clear()
 	var r: int = await f.install_and_relaunch("https://x/update/stable/velopack/")
-	t.check("velopack: install_and_relaunch opens with the headers, checks, downloads, applies on exit with restart and quits", r == OK and n.calls == [["open", "https://x/update/stable/velopack/", {"Authorization": "Bearer t"}], ["check_async"], ["download_async"], ["apply_on_exit", true]] and quits[0] == 1, str(n.calls))
+	t.check("velopack: unverified install hook fails before native calls", r == FAILED and is_unsupported(f.last_result, "runtime") and n.calls.is_empty() and quits[0] == 0, str(n.calls))
+	var blocked := f.apply_on_exit(true)
+	t.check("velopack: direct apply also refuses an unverified package", is_unsupported(blocked, "runtime") and n.calls.is_empty() and quits[0] == 0)
+	f.open("https://x/update/stable/velopack/")
+	await f.check()
 	var progress: Array = []
 	f.event.connect(func(ev, d): if ev == "progress": progress.append(d.get("percent")))
 	var d := await f.download()
 	t.check("velopack: download reports progress events", d.ok and progress == [50], str(progress))
+	t.check("velopack: even a downloaded feed package cannot be applied without release verification", is_unsupported(f.apply_on_exit(true), "runtime") and not n.calls.has(["apply_on_exit", true]) and quits[0] == 0)
 
 	n.check_answer = {"status": "none"}
 	n.calls.clear()
@@ -165,7 +170,7 @@ func _velopack(t: PKeyTestContext) -> void:
 	n.check_answer = {"status": "available"}
 	n.download_ok = false
 	n.calls.clear()
-	t.check("velopack: a failed download applies nothing", await f.install_and_relaunch("https://x/update/stable/velopack/") == FAILED and not n.calls.has(["apply_on_exit", true]) and quits[0] == 1)
+	t.check("velopack: a failed download applies nothing", await f.install_and_relaunch("https://x/update/stable/velopack/") == FAILED and not n.calls.has(["apply_on_exit", true]) and quits[0] == 0)
 	n.check_answer = {"status": "available"}
 	n.download_message = "Network error: http status: 403 Forbidden"
 	n.calls.clear()
@@ -193,7 +198,7 @@ func _velopack(t: PKeyTestContext) -> void:
 	n.check_answer = {"status": "available"}
 	n.download_ok = false
 	n.download_message = "http status: 401 Unauthorized"
-	t.check("velopack: install_and_relaunch keeps the typed reason in last_result", await f.install_and_relaunch("https://x/update/beta/velopack/") == FAILED and is_unsupported(f.last_result, "product"), str(f.last_result))
+	t.check("velopack: install_and_relaunch keeps the typed reason in last_result", await f.install_and_relaunch("https://x/update/beta/velopack/") == FAILED and is_unsupported(f.last_result, "runtime"), str(f.last_result))
 	n.download_message = "os error 123"
 	var e2 := env_on("windows", "C:/Games/Game/Game_godot.exe")
 	e2.files["C:/Games/Game/sq.version"] = true

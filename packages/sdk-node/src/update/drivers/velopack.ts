@@ -10,7 +10,8 @@
 //   }));
 //
 // As with every driver, the SDK's verified decision is the authority: Velopack's feed must
-// offer exactly the decided version.
+// offer exactly the decided version. Installation is currently disabled because this
+// manager API cannot expose the exact package bytes for release-record verification.
 
 import {
   unsupported,
@@ -68,41 +69,13 @@ export function velopackDriver(opts: VelopackDriverOptions): InstallDriver {
         velopackChannel: opts.velopackChannel,
       });
       if (!feed.supported) return unsupported(feed.reason, feed.detail);
-      // Velopack's HTTP source takes the directory and appends releases.<channel>.json itself.
-      const base = feed.url.replace(/\/releases\.[^/]+\.json(\?.*)?$/, "");
-      const manager = opts.createManager(base, opts.velopackChannel);
-      const version = decision.release.version;
-      const info = await manager.checkForUpdatesAsync();
-      const offered = info?.TargetFullRelease?.Version ?? null;
-      if (!info || offered !== version)
-        return unsupported(
-          "version",
-          `the Velopack feed offers ${offered ?? "nothing"}, the signed decision ${version}.`,
-        );
-      await manager.downloadUpdateAsync(info, (percent) =>
-        ctx.onProgress?.(percent, 100),
+      // Feed versions/checksums share the distribution server's trust domain. They cannot
+      // authorize executable bytes on behalf of the independently pinned release key.
+      // Do not create a manager: an implementation may download automatically on check.
+      return unsupported(
+        "runtime",
+        "Velopack installation is disabled until the exact applied package can be verified against the pinned-key-signed release record (version, size and SHA-256).",
       );
-      await ctx.journal("update_downloaded", {
-        release: version,
-        fromRelease: ctx.currentVersion,
-      });
-      return {
-        kind: "restartRequired",
-        version,
-        restart: async () => {
-          await ctx.journal("update_applied", {
-            release: version,
-            fromRelease: ctx.currentVersion,
-          });
-          manager.waitExitThenApplyUpdate(
-            info,
-            false,
-            true,
-            opts.restartArgs ?? [],
-          );
-          (opts.exit ?? (() => process.exit(0)))();
-        },
-      };
     },
   };
 }

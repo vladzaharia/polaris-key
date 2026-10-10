@@ -325,6 +325,10 @@ the state directory. `config.set` refuses a key the signed document enforces or 
   `this_platform()` picks this install's row.
 - `client.update.feed_url(kind)` returns discovery's updater feed URL (appcast, WinSparkle,
   Velopack, AppInstaller, zsync), or a typed `Unsupported`.
+- Velopack automatic installation currently returns `unsupported` (`runtime`). Its manager
+  cannot expose the exact applied package for verification against the pinned-key-signed release
+  record. Feed checksums and version equality do not authorize executable bytes. Use a verified
+  download or another installer until the integration can enforce version, size and SHA-256 at apply.
 - `client.update.install(decision)` runs the install driver: `VelopackDriver` (PyInstaller or
   Briefcase apps with the `velopack` package), `SelfReplaceDriver` (a frozen single-file CLI)
   or `StoreLinkDriver` (a store build opens its listing). Without a usable driver it returns
