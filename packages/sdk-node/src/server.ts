@@ -1,4 +1,4 @@
-// Server-side recipes (SDK parity pass §2.1 "Servers", §3.14): verify a licence a client presents,
+// Server-side recipes (SDK parity pass §2.1 "Servers", §3.14): verify a license a client presents,
 // with no device state, and the crash-tag convention the Worker's Sentry hook reads.
 //
 // `verifyLicenseDocument` is for a product's own backend: the desktop app sends its cached
@@ -46,7 +46,7 @@ export type VerifiedLicense =
     }
   | { ok: false; reason: "invalid" };
 
-/** Verify a licence document a client presented. See the file header. */
+/** Verify a license document a client presented. See the file header. */
 export async function verifyLicenseDocument(
   jws: string,
   opts: VerifyLicenseDocumentOptions,

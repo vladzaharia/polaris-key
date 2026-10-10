@@ -72,8 +72,18 @@ program now has every verb, grouped on its help page by the service that owns it
 
 `activate` asks for the key with masked entry. A key piped on stdin works too
 (`echo "$KEY" | tidewater activate`); a key typed on the command line still works, and warns that
-it is now in the shell's history. `completion bash`, `zsh` or `fish` prints a completion script
-generated from the same verb table.
+it is now in the shell's history. A piped key is read only when stdin is a file, a pipe or a socket, stops at the first
+non-empty line and is given up on after about two seconds, so a server with an open, silent stdin
+ends in "No license key" (exit 2) and never waits on a hidden prompt. `completion bash`, `zsh` or
+`fish` prints a completion script generated from the same verb table.
+
+`login` on a device that holds a license key asks before adding that license to the account
+(`y`, `n`, Enter for No); with no one to ask (a pipe, `CI`, `--json`) the key license is kept.
+`update apply` ends in a next step: the upgrade command when a package manager installed the
+program (`npm install -g`, `pnpm add -g`, `brew upgrade`; set `update.packageName` so the command
+names your package), a download link when no install driver is configured, and `update check`
+when the build has no signed update feed. A finished download reads "Verifying…", then "2.5.0 is
+ready · Restart to finish". `secret` and `mint` print their value only with `--reveal`.
 
 The options, beside `productSlug`, `version`, `pinnedKeys` and `expectedServices` (handed to the
 client factory):
@@ -246,7 +256,7 @@ The theme goes in the adapter's options as `theme` (or to `createKitContext`). I
 | Field                                                        | In a terminal                                                                                                                                                                                                                                                                                  |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `preset`                                                     | `"polaris-key"` (default) draws the product chip in the product's accent; `"native"` hands the look to the terminal: ANSI roles only (the user's own palette), an inverse chip and no `colors`. `NO_COLOR` still drops every colour in both                                                    |
-| `colorScheme`                                                | `"system"` (default) follows `PKEY_THEME`, then `COLORFGBG`, then the terminal's answer to OSC 11; `"dark"` and `"light"` pin it. It changes only the truecolor chip and the QR's polarity                                                                                                     |
+| `colorScheme`                                                | `"system"` (default) follows `PKEY_THEME`, then `COLORFGBG`, then the terminal's answer to OSC 11 (asked only on a colour terminal where neither decides it, never under `NO_COLOR`); `"dark"` and `"light"` pin it. It changes only the truecolor chip and the QR's polarity                  |
 | `accent`                                                     | `"product"` (default) takes the integrator's colour, then the presentation's, then one derived from the icon, then ink; `"core"` is Polaris violet; a hex colour is the integrator's own; `"service"` has no section in a terminal and behaves as `"product"`                                  |
 | `colors`                                                     | Per-role overrides as hex, per scheme: `{ dark: { success: "#3fb27f" } }`, over the roles `accent`, `success`, `warning`, `danger`, `info`, `muted`, `strong` and `link`. Drawn only where the terminal draws truecolor; ANSI-16 keeps the user's palette. The Python kit takes the same value |
 | `density`                                                    | `"compact"` drops the blank rail rows between steps; `"comfortable"` (default) and `"spacious"` keep them. A terminal of 16 rows or fewer always drops them                                                                                                                                    |
@@ -374,11 +384,12 @@ the page for the script to show, then the result line.
 
 No `--json` line carries a license key, a device token, the sign-in poll credential, a secret's
 value or a minted token. Off `--json`, `secret` and `mint` print the value alone on stdout for a
-script that pipes it. Inside a CI job whose runner reads commands from its log (`GITHUB_ACTIONS`,
+script that pipes it, and only with `--reveal`: without it `secret` and `mint` print nothing, say how to
+ask for it and exit 2 (`mint` also mints nothing). Inside a CI job whose runner reads commands from its log (`GITHUB_ACTIONS`,
 `TF_BUILD` for Azure Pipelines, or `TEAMCITY_VERSION` set), a value with a line the runner would
 obey (`::…` at the start of a line, or `##[`, `##vso[` or `##teamcity[`) is not printed when stdout
 is not a terminal: the command exits 1 and says so on stderr. The value is never altered, so a
-script that captures it (`TOKEN=$(tidewater mint cdn --allow-workflow-commands)`) adds
+script that captures it (`TOKEN=$(tidewater mint cdn --reveal --allow-workflow-commands)`) adds
 `--allow-workflow-commands` to have it printed as it is.
 
 ## Server text and links

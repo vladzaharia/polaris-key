@@ -6,7 +6,7 @@
 // is in assembling its inputs, and each one comes from exactly one owner:
 //
 //   licenseServiceEnabled  `ctx.licenseGateEnabled()`: the build's `expectedServices` (default
-//                          licence + config) OR a discovery loaded this session. Unsigned
+//                          license + config) OR a discovery loaded this session. Unsigned
 //                          discovery can switch the gate on, never off. FALSE
 //                          short-circuits the machine to `not-applicable` with `isUsable:
 //                          true`, which is how a config-only product (one that names
@@ -22,7 +22,7 @@
 // Activation itself does not call `sync()` directly. It stores the token and RAISES AN EVENT;
 // the facade wires that to `core.sync()`. The pre-suite client called refresh inline, which
 // meant every activation path had to remember to, and a config-only product had no way to say
-// "there is no licence here, sync anyway".
+// "there is no license here, sync anyway".
 
 import { CHANNEL_STABLE, type JSONValue } from "@polaris-key/protocol/core";
 import type {
@@ -55,7 +55,7 @@ export interface LicenseInfo {
   tier: string | null;
   /** `license.tierLabel`, the tier's display name. */
   tierLabel: string | null;
-  /** `deviceLimit`, the seats this licence holds. */
+  /** `deviceLimit`, the seats this license holds. */
   deviceLimit: number | null;
   profile: DocProfile | null;
   entitledChannels: string[];
@@ -96,7 +96,7 @@ export class LicenseClient {
   activation(): ActivationSource | null {
     if (this.tokens.current !== null) return "token";
     // A bundle activates ONLY when the cached bundle re-verified on the reload profile and its
-    // licence document is the cached one, byte for byte (WIRE-CONTRACT-V4 §4.1, §7) — a
+    // license document is the cached one, byte for byte (WIRE-CONTRACT-V4 §4.1, §7) — a
     // config-only bundle imports settings and grants nothing.
     if (this.cache.state.bundle?.activates && this.cache.state.license)
       return "bundle";
@@ -126,7 +126,7 @@ export class LicenseClient {
   }
 
   /**
-   * Whether the licence grants the boolean entitlement `name`. FALSE whenever the gate is not
+   * Whether the license grants the boolean entitlement `name`. FALSE whenever the gate is not
    * usable (S-19 G11): a revoked, expired or blocked device holds a signed document that still
    * lists its grants, and reading them past the gate would keep paid features on after a
    * revocation. A behaviour change from earlier releases, which read the cached document alone.
@@ -138,7 +138,7 @@ export class LicenseClient {
   }
 
   /** The raw value of entitlement `name` (a number, string, list or object), or null when the
-   *  licence does not carry it or the gate is not usable (G11). */
+   *  license does not carry it or the gate is not usable (G11). */
   entitlementValue(name: string, now = nowSec()): JSONValue | null {
     if (!isUsable(this.status(now))) return null;
     const e = this.doc?.entitlements[name];
@@ -146,10 +146,10 @@ export class LicenseClient {
   }
 
   /**
-   * A summary of the licence for an account screen (SDK parity pass §3.3), read from the
+   * A summary of the license for an account screen (SDK parity pass §3.3), read from the
    * enforced entitlement names (`license.tier`, `license.tierLabel`, `deviceLimit`, `channels`)
-   * and the signed profile. Null when no licence document is held. The document carries no
-   * licence expiry or device count today (W3 adds `licenseExpiresAt`), so neither is invented.
+   * and the signed profile. Null when no license document is held. The document carries no
+   * license expiry or device count today (W3 adds `licenseExpiresAt`), so neither is invented.
    */
   licenseInfo(): LicenseInfo | null {
     const doc = this.doc;
@@ -178,14 +178,14 @@ export class LicenseClient {
   }
 
   /**
-   * The channels this licence grants: the `channels` entitlement's string values, in order, as
+   * The channels this license grants: the `channels` entitlement's string values, in order, as
    * granted — or `["stable"]` when the entitlement is absent or not an array. This is the
    * Worker's own answer (`entitledChannels` in core/entitlements.ts), and the same list every
    * SDK returns for the same document.
    *
    * The grants are RAW: `staging` is not rewritten to `beta` here. Whether a grant covers a
    * channel is the entitlement rule's question (WIRE-CONTRACT-V3 §5.1 rule 4, `channelEntitled`),
-   * not this list's; `stable` is the floor every licence holds whether or not it is listed.
+   * not this list's; `stable` is the floor every license holds whether or not it is listed.
    */
   entitledChannels(): string[] {
     const value = this.doc?.entitlements["channels"]?.value;
@@ -207,7 +207,7 @@ export class LicenseClient {
     return this.fingerprintEnabled ? this.devices.fingerprint() : null;
   }
 
-  /** Obtain a licence with no key and no sign-in, when the product offers a free tier. */
+  /** Obtain a license with no key and no sign-in, when the product offers a free tier. */
   async enroll(): Promise<ActivationResult> {
     const r = await enroll(this.ctx, this.fingerprint());
     if (r.kind === "ok") await this.acquire(r.token, "enroll");

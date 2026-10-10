@@ -17028,6 +17028,78 @@
       "built": "partial",
       "brandV2": "no",
       "evidence": "packages/worker/test/portalNotices.test.ts + __snapshots__/portalNotices.test.ts.snap snapshot subject+plain text of every notice template and the HTML of only 2 (licenseAdded, methodRemoved) plus dark-palette/escaping assertions; sign-in code/magic-link email..."
+    },
+    {
+      "id": "sdk.macos-gate",
+      "kind": "screen",
+      "title": "macOS kit: gate",
+      "source": "docs/design/mockups/screens/sdk/sdk.macos-gate",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["UK-08", "UK-24", "UK-56"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board and artifact screen drawn by UK-56; no kit code yet (owner package todo or optional)"
+    },
+    {
+      "id": "sdk.windows-gate",
+      "kind": "screen",
+      "title": "Windows kit: gate",
+      "source": "docs/design/mockups/screens/sdk/sdk.windows-gate",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["UK-60", "UK-56"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board and artifact screen drawn by UK-56; no kit code yet (owner package todo or optional)"
+    },
+    {
+      "id": "sdk.gnome-gate",
+      "kind": "screen",
+      "title": "GNOME kit: gate",
+      "source": "docs/design/mockups/screens/sdk/sdk.gnome-gate",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["UK-61", "UK-56"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board and artifact screen drawn by UK-56; no kit code yet (owner package todo or optional)"
+    },
+    {
+      "id": "sdk.qt-gate",
+      "kind": "screen",
+      "title": "Qt kit: gate",
+      "source": "docs/design/mockups/screens/sdk/sdk.qt-gate",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["UK-12", "UK-56"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board and artifact screen drawn by UK-56; no kit code yet (owner package todo or optional)"
+    },
+    {
+      "id": "sdk.tvos-gate",
+      "kind": "screen",
+      "title": "tvOS kit: gate",
+      "source": "docs/design/mockups/screens/sdk/sdk.tvos-gate",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["UK-27", "UK-56"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board and artifact screen drawn by UK-56; no kit code yet (owner package todo or optional)"
+    },
+    {
+      "id": "sdk.visionos-gate",
+      "kind": "screen",
+      "title": "visionOS kit: gate",
+      "source": "docs/design/mockups/screens/sdk/sdk.visionos-gate",
+      "area": "sdk",
+      "surface": "kit",
+      "owners": ["UK-26", "UK-56"],
+      "built": "mockup-only",
+      "brandV2": "no",
+      "evidence": "board and artifact screen drawn by UK-56; no kit code yet (owner package todo or optional)"
     }
   ]
 }

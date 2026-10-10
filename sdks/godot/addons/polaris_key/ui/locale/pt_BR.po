@@ -2798,10 +2798,10 @@ msgstr "Agora há um dispositivo livre nesta licença."
 msgid "signin.replace.opensBrowser"
 msgstr "Abre o Polaris Key no navegador"
 
-#. Opening Polaris Key in your browser…
+#. Opening your browser…
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.opening"
-msgstr "Abrindo o Polaris Key no navegador…"
+msgstr "Abrindo o navegador…"
 
 #. If it didn't open, go to {url}
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is.
@@ -3107,10 +3107,10 @@ msgstr "Licença e atualizações de {product}"
 msgid "cli.help.more"
 msgstr "Execute {command} para ver as opções de um comando."
 
-#. Add a license key (prompts; never an argument)
+#. Add a license key (prompted, or piped on stdin)
 #. Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line.
 msgid "cli.verb.activate"
-msgstr "Adicionar chave de licença (pedida, nunca como argumento)"
+msgstr "Adicionar uma chave de licença (digitada ou via stdin)"
 
 #. Get the free license, when {product} offers one
 #. Terminal help: what the enroll command does.
@@ -3557,15 +3557,140 @@ msgstr "Verifique sua conexão e execute {command} novamente."
 msgid "cli.import.fix"
 msgstr "Peça um novo arquivo a quem o enviou."
 
-#. {product} doesn't use Polaris Key sign-in.
-#. Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product.
+#. {product} doesn't offer account sign-in.
+#. Terminal sign-in: the product has no account sign-in. {product} is the product.
 msgid "cli.identityOff.notice"
-msgstr "{product} não usa o login do Polaris Key."
+msgstr "{product} não oferece login com conta."
 
 #. Run {command} with your license key.
 #. Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'.
 msgid "cli.identityOff.fix"
 msgstr "Execute {command} com a sua chave de licença."
+
+#. Use this device's license key on your account? (y/N)
+#. Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press.
+msgid "cli.login.attach"
+msgstr "Usar a chave de licença deste dispositivo na sua conta? (y/N)"
+
+#. y yes · n no · Esc cancel sign-in
+#. Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "cli.keys.confirm"
+msgstr "y sim · n não · Esc cancelar o login"
+
+#. Signed in as {name}
+#. Terminal: the sign-in finished and only the name is known. {name} = the account's name.
+msgid "cli.signin.signedInName"
+msgstr "Conectado como {name}"
+
+#. Verifying…
+#. Update progress: the download finished and the update is being checked before it is installed.
+msgid "update.verifying"
+msgstr "Verificando…"
+
+#. {version} is ready · Restart to finish
+#. Terminal: an update was downloaded and checked; it takes effect after a restart. {version} = a version string such as 2.5.0. Keep the ' · ' separator.
+msgid "cli.update.readyRestart"
+msgstr "{version} está pronta · Reinicie para concluir"
+
+#. Updates aren't set up
+#. Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead.
+msgid "cli.update.notConfiguredTitle"
+msgstr "As atualizações não estão configuradas"
+
+#. Download it here:
+#. Terminal: update apply on an install that cannot update itself. It ends in a colon: the download page follows on its own line, as a link.
+msgid "cli.update.download"
+msgstr "Baixe aqui:"
+
+#. This license key no longer works
+#. Terminal status: a device activated with a license key only, and the license is no longer valid.
+msgid "cli.status.keyRevoked.title"
+msgstr "Esta chave de licença não funciona mais"
+
+#. It may have expired or been turned off:
+#. Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.
+msgid "cli.status.keyRevoked.message"
+msgstr "Ela pode ter expirado ou sido desativada:"
+
+#. Check it for typos. If it's right, it may have expired or been turned off:
+#. Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.
+msgid "cli.activate.unauthorized"
+msgstr "Confira se não há erros de digitação. Se estiver certa, ela pode ter expirado ou sido desativada:"
+
+#. Print the value
+#. Terminal help: what the --reveal flag does. A command-line flag; keep it as is.
+msgid "cli.option.reveal"
+msgstr "Mostrar o valor"
+
+#. {name} is set but not printed
+#. Terminal: the secret command without --reveal, as the title of a warning; the command that prints it follows as a command row. {name} = the secret's name.
+msgid "cli.secret.hidden"
+msgstr "{name} está definido, mas não foi mostrado"
+
+#. Nothing was minted
+#. Terminal: the mint command without --reveal, as the title of a warning; the command that mints and prints follows as a command row.
+msgid "cli.mint.hidden"
+msgstr "Nada foi gerado"
+
+#. macOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.macos"
+msgstr "macOS"
+
+#. iOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.ios"
+msgstr "iOS"
+
+#. Android
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.android"
+msgstr "Android"
+
+#. Windows
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.windows"
+msgstr "Windows"
+
+#. Linux
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.linux"
+msgstr "Linux"
+
+#. Web
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.web"
+msgstr "Web"
+
+#. tvOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.tvos"
+msgstr "tvOS"
+
+#. visionOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.visionos"
+msgstr "visionOS"
+
+#. watchOS
+#. Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.
+msgid "cli.platform.watchos"
+msgstr "watchOS"
+
+#. The license key is now on your account.
+#. Terminal sign-in: the person said yes to adding this device's license key to the account just signed in.
+msgid "cli.login.attached"
+msgstr "A chave de licença agora está na sua conta."
+
+#. Get the new version from where you got {product}.
+#. Terminal: update apply on an install that cannot update itself and has no download page to link. {product} = the product's name from ProductIdentity (never translated).
+msgid "cli.update.downloadNoLink"
+msgstr "Obtenha a nova versão de onde você baixou {product}."
+
+#. No license key arrived on stdin.
+#. Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time.
+msgid "cli.activate.noKeyPiped"
+msgstr "Nenhuma chave de licença chegou pelo stdin."
 
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).

@@ -1,4 +1,4 @@
-// `@polaris-key/node/commerce` — store purchases to licence flags (SDK parity pass §3.9).
+// `@polaris-key/node/commerce` — store purchases to license flags (SDK parity pass §3.9).
 
 export {
   CommerceClient,

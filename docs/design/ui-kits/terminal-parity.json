@@ -7,5 +7,6 @@
   "login-cancelled": "┌   Tidewater Studio  · login\n│\n✗  Sign-in cancelled\n│\n└  tidewater login   Sign in again",
   "status-active": "┌   Tidewater Studio  · status\n│\n✓  License   Pro · mara@fennick.studio\n✓  Offline   until Oct 19\n✓  Version   2.4.1 · stable",
   "status-none": "┌   Tidewater Studio  · status\n│\n◆  Activate\n│\n│  tidewater activate   Use a license key\n└  tidewater login      Sign in",
-  "update-check": "┌   Tidewater Studio  · update check\n│\n◆  2.5.0 is available · 61 MB\n│  You have 2.4.1\n│\n│  tidewater update apply   Install\n└  tidewater changelog      What's new"
+  "update-check": "┌   Tidewater Studio  · update check\n│\n◆  2.5.0 is available · 61 MB\n│  You have 2.4.1\n│\n│  tidewater update apply   Install\n└  tidewater changelog      What's new",
+  "status-key-only": "┌   Tidewater Studio  · status\n│\n✓  License   Pro · Activated with a license key\n✓  Offline   until Oct 19\n✓  Version   2.4.1 · stable"
 }

@@ -1,0 +1,44 @@
+{
+  "id": "sdk.gnome-gate",
+  "title": "Desktop kits on GNOME: gate",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 22,
+  "packages": ["UK-56", "UK-06", "UK-10", "UK-12"],
+  "uxRows": [],
+  "summary": "The gate on GNOME, drawn as a labelled fixture of DJDL in both presets: Welcome at the default, narrow, short and large window, inline license activation, Finish in your browser (no QR) and the device limit's browser hand-off, plus the one line the integrator writes.",
+  "compare": [
+    "The product is the hero: DJDL's icon leads every step, its accent comes from the icon (kits are not service-accented), no Polaris Key mark appears, and the name is said once (the title).",
+    "DL1 on a window: two panes from 560px of window, a one-line strip below; the end pane is top-aligned; the short landscape window drops the lede and links instead of scrolling; the large window is one capped card on a flat ground.",
+    "Under polaris-key the start pane is the product art and the head carries the icon; under native it is the icon alone on the quiet ground and the head carries none, with the host's tint, fields and button style.",
+    "Inline is the default presentation (D-79) for activation and sign-in; the dialog form is the labelled alternative and is not drawn.",
+    "No QR on a desktop surface (DL14): the browser hand-off shows the code, Copy, the countdown and Open browser again with the external-action glyph.",
+    "DL6: the device limit on the key path is a neutral callout under the heading, and its fix is the one primary, Open in browser, with the external-action glyph (the key path has no in-app removal).",
+    "One primary per state; the key middle-elides at rest and its end is visible; weights 400/500/600; hairlines only; no static accent line under the title bar.",
+    "The host draws the window chrome (dots, caption buttons or header bar); the kit draws none.",
+    "GNOME: the suggested action as a pill at the end, 34px controls, libadwaita blue under native."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots, mockup mode)",
+    "date": "2026-10-09",
+    "verdict": "Good after one fix round: no QR on a desktop surface, every refusal neutral, one primary per frame; the clipped visionOS panel, copy drift between boards and screens, mixed accents on the polaris-key cards and weak polaris focus rings were fixed.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Copy for the same step differed between the boards and these screens (sign-in wording, Back and Cancel on inline steps, offline action, expired code).",
+        "resolution": "One wording everywhere: the sign-in step reads 'Check the code there matches this one.' with 'Or go to <url>'; inline steps say Back, only sheets say Cancel; the offline action is Try again; the expired code uses the catalog sentence."
+      },
+      {
+        "severity": "major",
+        "issue": "The visionOS panel clipped Cancel on sign-in and device limit.",
+        "resolution": "The window follows its content."
+      },
+      {
+        "issue": "Vertical centring of the TV and desktop columns.",
+        "resolution": "declined: DL1 top-aligns the panes with the panel's content."
+      }
+    ]
+  }
+}

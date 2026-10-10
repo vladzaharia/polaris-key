@@ -9,7 +9,7 @@
 // an `Error` carrying `code` and `detail`.
 //
 // State pushes go the other way: the main process sends `<prefix>:stateChanged` to every
-// renderer that subscribed (`<prefix>:subscribe`), whenever `client.events` reports a licence or
+// renderer that subscribed (`<prefix>:subscribe`), whenever `client.events` reports a license or
 // config change, and after any verb that changes state.
 
 /** The PolarisBridge protocol revision this host speaks (`@polaris-key/react`'s BRIDGE_VERSION). */

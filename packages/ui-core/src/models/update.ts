@@ -209,7 +209,8 @@ export function updateProgressView(
     case "install":
       return makeView(ctx, "UpdateProgress", {
         state: "installing",
-        copy: ["updateProgress.installing"],
+        // The update is checked before it is applied: the copy never says installed early.
+        copy: ["updateProgress.installing", "update.verifying"],
         args,
         focus: null,
       });

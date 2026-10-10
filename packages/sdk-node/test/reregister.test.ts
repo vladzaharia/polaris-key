@@ -1,10 +1,10 @@
 // @pkey-feature license.reregister
-// Re-register on 401 for licence-less devices (wire contract v3 §5, P1b-06).
+// Re-register on 401 for license-less devices (wire contract v3 §5, P1b-06).
 //
 // §5: "exactly one POST /<p>/license/token re-acquire attempt, then one retry of the failed
 // fetch. (Registered-without-license devices re-register instead; same single-attempt rule.)"
 // These pins cover the route CHOICE (`chooseReacquireRoute`) and the client behaviour around
-// it: the licensed path is unchanged, the licence-less path sends a keyless
+// it: the licensed path is unchanged, the license-less path sends a keyless
 // `POST /devices/register`, two parallel 401s still make one call, and a refused registration
 // records the hard 401 without a second attempt.
 
@@ -202,7 +202,7 @@ describe("re-register on 401 (§5)", () => {
     expect(client.getSyncState().lastSyncUnauthorized).toBe(false);
   });
 
-  it("a licence-less device re-registers with no Authorization header, stores the token and retries once", async () => {
+  it("a license-less device re-registers with no Authorization header, stores the token and retries once", async () => {
     const m = plane();
     const store = new InMemoryStore(PRODUCT);
     const client = await PolarisKeyClient.create({
@@ -228,7 +228,7 @@ describe("re-register on 401 (§5)", () => {
   });
 
   it("after a restart with License enabled, an unknown-source token keeps /license/token (the sync-errors transcript)", async () => {
-    // A licensed device with an empty cache and a licence-less one look the same after a
+    // A licensed device with an empty cache and a license-less one look the same after a
     // restart; the recorded transcript pins this state to /license/token.
     const m = plane();
     const store = new InMemoryStore(PRODUCT);
@@ -331,7 +331,7 @@ describe("re-register on 401 (§5)", () => {
 
   it("an edge-mint 401 on a registered device re-registers once, then retries the mint", async () => {
     // The edge-mint's own single re-acquire takes the same route a document fetch's would:
-    // §5's rule is about the device token, and a licence-less device has no license/token.
+    // §5's rule is about the device token, and a license-less device has no license/token.
     const m = plane();
     const store = new InMemoryStore(PRODUCT);
     const client = await PolarisKeyClient.create({

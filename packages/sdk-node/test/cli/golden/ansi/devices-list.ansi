@@ -3,11 +3,11 @@
 [2m│[22m
 [38;2;114;202;190m◆[39m  [1mYour devices[22m [2m· 3[22m
 [2m│[22m  [38;2;114;202;190m● [39m[1mWork laptop[22m
-[2m│[22m    [2mlinux x64 · last seen today[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
+[2m│[22m    [2mLinux x64[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
 [2m│[22m  [2m○ [22mMara's iPad
-[2m│[22m    [2miPadOS[22m[2m · [22m[2mdev_4hQ8[22m
+[2m│[22m    [2miOS · last seen 3 days ago[22m[2m · [22m[2mdev_4hQ8[22m
 [2m│[22m  [2m○ [22mMacBook Pro
-[2m│[22m    [2mmacOS arm64[22m[2m · [22m[2mdev_7tR1[22m
+[2m│[22m    [2mmacOS arm64 · last seen yesterday[22m[2m · [22m[2mdev_7tR1[22m
 [2m│[22m
 [2m│[22m  [1mtidewater devices rename <id> <name>[22m   [2mRename[22m
 [2m└[22m  [1mtidewater devices deauthorize <id>[22m     [2mRemove[22m
@@ -17,11 +17,11 @@
 [2m│[22m
 [38;2;20;121;111m◆[39m  [1mYour devices[22m [2m· 3[22m
 [2m│[22m  [38;2;20;121;111m● [39m[1mWork laptop[22m
-[2m│[22m    [2mlinux x64 · last seen today[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
+[2m│[22m    [2mLinux x64[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
 [2m│[22m  [2m○ [22mMara's iPad
-[2m│[22m    [2miPadOS[22m[2m · [22m[2mdev_4hQ8[22m
+[2m│[22m    [2miOS · last seen 3 days ago[22m[2m · [22m[2mdev_4hQ8[22m
 [2m│[22m  [2m○ [22mMacBook Pro
-[2m│[22m    [2mmacOS arm64[22m[2m · [22m[2mdev_7tR1[22m
+[2m│[22m    [2mmacOS arm64 · last seen yesterday[22m[2m · [22m[2mdev_7tR1[22m
 [2m│[22m
 [2m│[22m  [1mtidewater devices rename <id> <name>[22m   [2mRename[22m
 [2m└[22m  [1mtidewater devices deauthorize <id>[22m     [2mRemove[22m
@@ -31,11 +31,11 @@
 [2m│[22m
 [36m◆[39m  [1mYour devices[22m [2m· 3[22m
 [2m│[22m  [36m● [39m[1mWork laptop[22m
-[2m│[22m    [2mlinux x64 · last seen today[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
+[2m│[22m    [2mLinux x64[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
 [2m│[22m  [2m○ [22mMara's iPad
-[2m│[22m    [2miPadOS[22m[2m · [22m[2mdev_4hQ8[22m
+[2m│[22m    [2miOS · last seen 3 days ago[22m[2m · [22m[2mdev_4hQ8[22m
 [2m│[22m  [2m○ [22mMacBook Pro
-[2m│[22m    [2mmacOS arm64[22m[2m · [22m[2mdev_7tR1[22m
+[2m│[22m    [2mmacOS arm64 · last seen yesterday[22m[2m · [22m[2mdev_7tR1[22m
 [2m│[22m
 [2m│[22m  [1mtidewater devices rename <id> <name>[22m   [2mRename[22m
 [2m└[22m  [1mtidewater devices deauthorize <id>[22m     [2mRemove[22m
@@ -45,11 +45,11 @@
 │
 ◆  [1mYour devices[22m · 3
 │  ● [1mWork laptop[22m
-│    linux x64 · last seen today · dev_9fK2Lw7QmZ · This computer
+│    Linux x64 · dev_9fK2Lw7QmZ · This computer
 │  ○ Mara's iPad
-│    iPadOS · dev_4hQ8
+│    iOS · last seen 3 days ago · dev_4hQ8
 │  ○ MacBook Pro
-│    macOS arm64 · dev_7tR1
+│    macOS arm64 · last seen yesterday · dev_7tR1
 │
 │  [1mtidewater devices rename <id> <name>[22m   Rename
 └  [1mtidewater devices deauthorize <id>[22m     Remove
@@ -59,11 +59,11 @@
 [2m|[22m
 [36m*[39m  [1mYour devices[22m [2m- 3[22m
 [2m|[22m  [36m(*) [39m[1mWork laptop[22m
-[2m|[22m    [2mlinux x64 - last seen today[22m[2m - [22m[2mdev_9fK2Lw7QmZ[22m[2m - [22m[2mThis computer[22m
+[2m|[22m    [2mLinux x64[22m[2m - [22m[2mdev_9fK2Lw7QmZ[22m[2m - [22m[2mThis computer[22m
 [2m|[22m  [2m( ) [22mMara's iPad
-[2m|[22m    [2miPadOS[22m[2m - [22m[2mdev_4hQ8[22m
+[2m|[22m    [2miOS - last seen 3 days ago[22m[2m - [22m[2mdev_4hQ8[22m
 [2m|[22m  [2m( ) [22mMacBook Pro
-[2m|[22m    [2mmacOS arm64[22m[2m - [22m[2mdev_7tR1[22m
+[2m|[22m    [2mmacOS arm64 - last seen yesterday[22m[2m - [22m[2mdev_7tR1[22m
 [2m|[22m
 [2m|[22m  [1mtidewater devices rename <id> <name>[22m   [2mRename[22m
 [2m`[22m  [1mtidewater devices deauthorize <id>[22m     [2mRemove[22m
@@ -73,12 +73,11 @@
 [2m│[22m
 [38;2;114;202;190m◆[39m  [1mYour devices[22m [2m· 3[22m
 [2m│[22m  [38;2;114;202;190m● [39m[1mWork laptop[22m
-[2m│[22m    [2mlinux x64 · last seen today[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m
-[2m│[22m    [2mThis computer[22m
+[2m│[22m    [2mLinux x64[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
 [2m│[22m  [2m○ [22mMara's iPad
-[2m│[22m    [2miPadOS[22m[2m · [22m[2mdev_4hQ8[22m
+[2m│[22m    [2miOS · last seen 3 days ago[22m[2m · [22m[2mdev_4hQ8[22m
 [2m│[22m  [2m○ [22mMacBook Pro
-[2m│[22m    [2mmacOS arm64[22m[2m · [22m[2mdev_7tR1[22m
+[2m│[22m    [2mmacOS arm64 · last seen yesterday[22m[2m · [22m[2mdev_7tR1[22m
 [2m│[22m
 [2m│[22m  [1mtidewater devices rename <id> <name>[22m   [2mRename[22m
 [2m└[22m  [1mtidewater devices deauthorize <id>[22m     [2mRemove[22m
@@ -88,12 +87,11 @@
 [2m│[22m
 [38;2;20;121;111m◆[39m  [1mYour devices[22m [2m· 3[22m
 [2m│[22m  [38;2;20;121;111m● [39m[1mWork laptop[22m
-[2m│[22m    [2mlinux x64 · last seen today[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m
-[2m│[22m    [2mThis computer[22m
+[2m│[22m    [2mLinux x64[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
 [2m│[22m  [2m○ [22mMara's iPad
-[2m│[22m    [2miPadOS[22m[2m · [22m[2mdev_4hQ8[22m
+[2m│[22m    [2miOS · last seen 3 days ago[22m[2m · [22m[2mdev_4hQ8[22m
 [2m│[22m  [2m○ [22mMacBook Pro
-[2m│[22m    [2mmacOS arm64[22m[2m · [22m[2mdev_7tR1[22m
+[2m│[22m    [2mmacOS arm64 · last seen yesterday[22m[2m · [22m[2mdev_7tR1[22m
 [2m│[22m
 [2m│[22m  [1mtidewater devices rename <id> <name>[22m   [2mRename[22m
 [2m└[22m  [1mtidewater devices deauthorize <id>[22m     [2mRemove[22m
@@ -103,12 +101,11 @@
 [2m│[22m
 [36m◆[39m  [1mYour devices[22m [2m· 3[22m
 [2m│[22m  [36m● [39m[1mWork laptop[22m
-[2m│[22m    [2mlinux x64 · last seen today[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m
-[2m│[22m    [2mThis computer[22m
+[2m│[22m    [2mLinux x64[22m[2m · [22m[2mdev_9fK2Lw7QmZ[22m[2m · [22m[2mThis computer[22m
 [2m│[22m  [2m○ [22mMara's iPad
-[2m│[22m    [2miPadOS[22m[2m · [22m[2mdev_4hQ8[22m
+[2m│[22m    [2miOS · last seen 3 days ago[22m[2m · [22m[2mdev_4hQ8[22m
 [2m│[22m  [2m○ [22mMacBook Pro
-[2m│[22m    [2mmacOS arm64[22m[2m · [22m[2mdev_7tR1[22m
+[2m│[22m    [2mmacOS arm64 · last seen yesterday[22m[2m · [22m[2mdev_7tR1[22m
 [2m│[22m
 [2m│[22m  [1mtidewater devices rename <id> <name>[22m   [2mRename[22m
 [2m└[22m  [1mtidewater devices deauthorize <id>[22m     [2mRemove[22m
@@ -118,12 +115,11 @@
 │
 ◆  [1mYour devices[22m · 3
 │  ● [1mWork laptop[22m
-│    linux x64 · last seen today · dev_9fK2Lw7QmZ
-│    This computer
+│    Linux x64 · dev_9fK2Lw7QmZ · This computer
 │  ○ Mara's iPad
-│    iPadOS · dev_4hQ8
+│    iOS · last seen 3 days ago · dev_4hQ8
 │  ○ MacBook Pro
-│    macOS arm64 · dev_7tR1
+│    macOS arm64 · last seen yesterday · dev_7tR1
 │
 │  [1mtidewater devices rename <id> <name>[22m   Rename
 └  [1mtidewater devices deauthorize <id>[22m     Remove
@@ -133,12 +129,11 @@
 [2m|[22m
 [36m*[39m  [1mYour devices[22m [2m- 3[22m
 [2m|[22m  [36m(*) [39m[1mWork laptop[22m
-[2m|[22m    [2mlinux x64 - last seen today[22m[2m - [22m[2mdev_9fK2Lw7QmZ[22m[2m -[22m
-[2m|[22m    [2mThis computer[22m
+[2m|[22m    [2mLinux x64[22m[2m - [22m[2mdev_9fK2Lw7QmZ[22m[2m - [22m[2mThis computer[22m
 [2m|[22m  [2m( ) [22mMara's iPad
-[2m|[22m    [2miPadOS[22m[2m - [22m[2mdev_4hQ8[22m
+[2m|[22m    [2miOS - last seen 3 days ago[22m[2m - [22m[2mdev_4hQ8[22m
 [2m|[22m  [2m( ) [22mMacBook Pro
-[2m|[22m    [2mmacOS arm64[22m[2m - [22m[2mdev_7tR1[22m
+[2m|[22m    [2mmacOS arm64 - last seen yesterday[22m[2m - [22m[2mdev_7tR1[22m
 [2m|[22m
 [2m|[22m  [1mtidewater devices rename <id> <name>[22m   [2mRename[22m
 [2m`[22m  [1mtidewater devices deauthorize <id>[22m     [2mRemove[22m

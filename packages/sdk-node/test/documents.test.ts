@@ -23,7 +23,7 @@
 //
 // §5 gives each document its OWN conditional-request validator, cached in its own slice
 // (`CacheRecordV3.etags.{license,config}`). That is what stops a settings edit from forcing a
-// licence re-download and a tier change from forcing a settings refetch. Sending the licence's
+// license re-download and a tier change from forcing a settings refetch. Sending the license's
 // ETag on the config request would 304 a config document the client has never seen — so the
 // last describe below pins that it cannot happen.
 
@@ -101,7 +101,7 @@ describe.each(DOCUMENTS)("$name document — request construction", (doc) => {
 
     expect(calls[0]?.url).toBe(doc.url);
     const h = new Headers(calls[0]!.init.headers);
-    // The `pkeyt_` DEVICE token — never a licence key. Both documents are device-scoped.
+    // The `pkeyt_` DEVICE token — never a license key. Both documents are device-scoped.
     expect(h.get("authorization")).toBe(`Bearer ${TOKEN}`);
     expect(h.get("x-pkey-device")).toBe(ctx.deviceId);
     expect(h.get("x-pkey-version")).toBe("1.2.3");

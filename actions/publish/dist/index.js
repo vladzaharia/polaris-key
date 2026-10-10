@@ -12016,7 +12016,7 @@ function wrapPieces(spans, width, ellipsis) {
       if (span.break) {
         const tw = cellWidth(span.text);
         if (w > 0 && w + tw > width && !onlyWhitespace()) {
-          const lead = pullLeadIn(cur(), cellWidth(breakPieces(span.text, span.break, width)[0] ?? ""), width);
+          const lead = tw <= width ? pullLeadIn(cur(), tw, width) : [];
           newLine();
           for (const p of lead) {
             cur().push(p);

@@ -225,7 +225,7 @@ export function activationOutcome(
       component: "Activate",
       state: "done",
       copy: ["core.activation.ok.title", "core.activation.ok.message"],
-      tier: info?.tierLabel ?? info?.tier ?? null,
+      tier: tierName(info),
     };
   if (r.kind === "device-limit") {
     const d = r as Extract<TerminalActivationResult, { kind: "device-limit" }>;
@@ -386,6 +386,8 @@ export interface StatusFix {
 export type StatusView =
   | (View<"AccountAndLicense", "signed-in" | "key-only"> & {
       tier: string | null;
+      /** Who holds the license: the signed-in name or email, else the profile's. Null for a key
+       *  only device, and for a signed-in one whose account has neither. */
       holder: string | null;
       graceUntil: number | null;
     })
@@ -408,6 +410,9 @@ export interface StatusInput {
   status: GateStatus | string;
   graceUntil?: number;
   info: Pick<TerminalLicenseInfo, "tier" | "tierLabel" | "profile"> | null;
+  /** `identity.current()`: who this device is signed in as, or null for a key only device.
+   *  Whether it is signed in comes from here, never from the license profile. */
+  identity?: { name?: string | null; email?: string | null } | null;
   /** Epoch seconds. */
   now: number;
   /** What the product offers, so a fix is never a verb that cannot work. */
@@ -415,6 +420,26 @@ export interface StatusInput {
 }
 
 const DAY = 86_400;
+
+/** A string with something in it, trimmed; an empty or blank one counts as absent. */
+export function present(v: string | null | undefined): string | null {
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+}
+
+/** `pro` is shown as `Pro` when the server sent no label for the tier. */
+function titleCase(v: string | null): string | null {
+  return v === null ? null : v.charAt(0).toUpperCase() + v.slice(1); // ui-lint: allow terminal-uppercase initial capital of a tier id
+}
+
+/** The tier as a person reads it: the server's label, else its id with a capital. */
+export function tierName(
+  info:
+    | Partial<Pick<TerminalLicenseInfo, "tier" | "tierLabel">>
+    | null
+    | undefined,
+): string | null {
+  return present(info?.tierLabel) ?? titleCase(present(info?.tier));
+}
 
 /** The status view for the gate. */
 export function statusView(i: StatusInput): StatusView {
@@ -425,20 +450,30 @@ export function statusView(i: StatusInput): StatusView {
   ];
   switch (i.status) {
     case "ok": {
-      const holder = i.info?.profile?.email ?? i.info?.profile?.name ?? null;
+      // The sign-in decides the state; the holder is a name or an email (an empty string counts
+      // as absent), the email first as the parity board shows it, the signed-in account's before the
+      // license profile's.
+      const signedIn = i.identity != null;
+      const holder =
+        present(i.identity?.email) ??
+        present(i.identity?.name) ??
+        present(i.info?.profile?.email) ??
+        present(i.info?.profile?.name);
       return {
         component: "AccountAndLicense",
-        state: holder ? "signed-in" : "key-only",
+        state: signedIn ? "signed-in" : "key-only",
         copy: [
           "cli.status.license",
           "account.tier",
           "cli.status.offline",
           "cli.status.offlineUntil",
           "cli.status.version",
-          ...(holder ? [] : ["account.keyOnly"]),
+          ...(signedIn ? [] : ["account.keyOnly"]),
         ],
-        tier: i.info?.tierLabel ?? i.info?.tier ?? null,
-        holder,
+        tier: tierName(i.info),
+        // A key only device shows no holder: an email on its license is the purchaser's, and must
+        // not read as a signed-in account.
+        holder: signedIn ? holder : null,
         graceUntil: i.graceUntil ?? null,
       };
     }

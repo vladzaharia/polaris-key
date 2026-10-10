@@ -1,0 +1,44 @@
+{
+  "id": "sdk.tvos-gate",
+  "title": "tvOS kit: sign-in",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 24,
+  "packages": ["UK-56", "UK-27"],
+  "uxRows": [],
+  "summary": "The tvOS kit's sign-in in both presets on a 1920 x 1080 stage inside the title-safe area, drawn as a labelled fixture of Diceroll: the code view with its QR, URL, code and countdown, the device limit with its QR to the phone, and Code expired, plus the one line the integrator writes.",
+  "compare": [
+    "The only surface in this set that draws a QR (DL14: TV, console and pad-only screens): 435px (under 42% of the 1080 short side), whole 15px modules, a 92% white tile with a quiet zone of two modules, beside the URL and the code in text; the QR, the URL and the code carry the same sign-in.",
+    "DL1 on a TV: two panes, the start pane holds the product header, title, instruction, the URL on its own line, the code and the countdown; the end pane holds the QR, the device line and the controls; top-aligned inside the 90 x 60 title-safe insets. The expired state is a message screen: one block with trailing actions, no split.",
+    "DL9: the focus engine replaces the kit's ring. polaris-key draws the lifted (1.05) primary in the accent with a 3px ring at a 2px offset; native draws the system's lifted white control. First focus is Use a license key instead (never an opener), and Try again after a refusal.",
+    "DL6: the device limit is a neutral callout, no danger colour or error glyph; the fix is on the phone, so the one primary is Try again and Cancel stays.",
+    "polaris-key tints the stage with Diceroll's art, blurred and faded (the ambient); native has a flat system ground. The accent is Diceroll's (kits are not service-accented).",
+    "Type is at the TV floor (29px and up; 76px titles), controls are 90px capsules, weights 400/500/600, no glow.",
+    "The device line is 'This TV' (part.thisDeviceTitle, tv). The manage URL on the device-limit frame stands in for the integrator's manageUrl.",
+    "The stage is drawn at its true size and scaled to the cell, so text measures are the TV's, not the board's.",
+    "Phone: the 1920 x 1080 frames are hidden below tablet width, as the landscape phones are on the other kit boards, because a TV scaled to 390px has no legible type or targets."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots, mockup mode)",
+    "date": "2026-10-09",
+    "verdict": "Good after one fix round: no QR on a desktop surface, every refusal neutral, one primary per frame; the clipped visionOS panel, copy drift between boards and screens, mixed accents on the polaris-key cards and weak polaris focus rings were fixed.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Copy for the same step differed between the boards and these screens (sign-in wording, Back and Cancel on inline steps, offline action, expired code).",
+        "resolution": "One wording everywhere: the sign-in step reads 'Check the code there matches this one.' with 'Or go to <url>'; inline steps say Back, only sheets say Cancel; the offline action is Try again; the expired code uses the catalog sentence."
+      },
+      {
+        "severity": "major",
+        "issue": "The visionOS panel clipped Cancel on sign-in and device limit.",
+        "resolution": "The window follows its content."
+      },
+      {
+        "issue": "Vertical centring of the TV and desktop columns.",
+        "resolution": "declined: DL1 top-aligns the panes with the panel's content."
+      }
+    ]
+  }
+}

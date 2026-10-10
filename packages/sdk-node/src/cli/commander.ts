@@ -190,12 +190,18 @@ export function registerPolarisCommands(
       for (const o of VERB_OPTIONS[verb.path[0]!] ?? []) cmd.option(o.flags);
       cmd.allowUnknownOption();
       cmd.allowExcessArguments?.(true);
+    } else if (verb.path[0] === "secret" || verb.path[0] === "mint") {
+      // Even the pre-kit output prints a value only when asked for.
+      cmd.option("--reveal");
     }
     cmd.action(async function action(this: Command, ...args: unknown[]) {
       // commander passes the positionals, then the options object and the command.
       const positional = args.slice(0, verb.args.length);
       if (!kit) {
-        const r = await verb.run(await buildClient(this), positional, io);
+        const r = await verb.run(await buildClient(this), positional, {
+          ...io,
+          reveal: this.opts().reveal === true,
+        });
         say(r.message);
         setExitCode(r.ok ? 0 : 1);
         return;
@@ -211,6 +217,7 @@ export function registerPolarisCommands(
           yes: flags.yes === true,
           deviceCode: flags.deviceCode === true,
           allowWorkflowCommands: flags.allowWorkflowCommands === true,
+          reveal: flags.reveal === true,
         },
         () => buildClient(this),
         {

@@ -13,8 +13,8 @@
 // acquisition event activation does, so the facade's forced sync runs exactly as it would after
 // `license.activateWithKey()`.
 //
-// A device-code sign-in yields the SIGNED-IN IDENTITY'S OWN licence and nothing else. The
-// Worker's callback merges nothing (P1-06): a device that was on an anonymous enrolled licence is
+// A device-code sign-in yields the SIGNED-IN IDENTITY'S OWN license and nothing else. The
+// Worker's callback merges nothing (P1-06): a device that was on an anonymous enrolled license is
 // not attached to the account by signing in, and nothing here offers or implies that it is. The
 // opt-in, device-confirmed attach (P1-07) is two optional fields on the same poll
 // (`confirmIdentity`, then `attachLicense` with the device's bearer). This client sends them only
@@ -72,14 +72,14 @@ export type SignInPoll =
   | { status: "slow-down"; interval: number }
   /** Signed in: the device token is stored and the post-acquisition sync has run. `identity`
    *  is who the device is now signed in as; `attached` says whether its anonymous enrolled
-   *  licence was claimed or migrated into the account (only after an attach opt-in). */
+   *  license was claimed or migrated into the account (only after an attach opt-in). */
   | {
       status: "ready";
       identity?: ShownIdentity;
       attached?: "claimed" | "migrated";
     }
   /** The attach opt-in (P1-07): the device must show `identity` and send the player's decision
-   *  (`attachLicense`) on the next poll; `attachable` says whether there is a licence to attach. */
+   *  (`attachLicense`) on the next poll; `attachable` says whether there is a license to attach. */
   | { status: "confirm"; identity: ShownIdentity; attachable: boolean }
   /** The code expired (or the server no longer knows it). Begin again. */
   | { status: "expired" }
@@ -102,7 +102,7 @@ export interface CurrentIdentity extends ShownIdentity {
 export interface AttachOptIn {
   /** Hold the flow at the identity so the device can show it first. */
   confirmIdentity?: boolean;
-  /** The player's decision after seeing the identity: attach this device's anonymous licence. */
+  /** The player's decision after seeing the identity: attach this device's anonymous license. */
   attachLicense?: boolean;
 }
 
@@ -122,7 +122,7 @@ export interface WaitForSignInOptions {
   /**
    * Opt in to the device-confirmed attach (P1-07): the wait first asks the server to hold at the
    * identity, calls `confirm` with it, and sends the answer as `attachLicense`. Without it no
-   * opt-in is sent and the sign-in yields the identity's own licence only.
+   * opt-in is sent and the sign-in yields the identity's own license only.
    */
   confirm?: (identity: ShownIdentity, attachable: boolean) => Promise<boolean>;
 }
@@ -382,7 +382,7 @@ export class IdentityClient {
     if (optIn.confirmIdentity) body.confirmIdentity = true;
     if (typeof optIn.attachLicense === "boolean")
       body.attachLicense = optIn.attachLicense;
-    // The attach names the licence by the device's own bearer; an ordinary poll sends none.
+    // The attach names the license by the device's own bearer; an ordinary poll sends none.
     const token =
       optIn.confirmIdentity || typeof optIn.attachLicense === "boolean"
         ? this.tokens.current

@@ -132,7 +132,7 @@ describe("Windows SignatureKind (SP-N15)", () => {
 describe("verifyLicenseDocument and crashTags (SP-N16)", () => {
   const trust = { [TEST_KID]: TEST_PUB };
 
-  it("verifies a presented licence, binding, audience and gate, with no device state", async () => {
+  it("verifies a presented license, binding, audience and gate, with no device state", async () => {
     const at = 1_700_000_000;
     const jws = await signedLicense({ pro: true, seats: 4 }, at);
     const ok = await verifyLicenseDocument(jws, {

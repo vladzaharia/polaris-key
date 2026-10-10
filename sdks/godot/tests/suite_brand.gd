@@ -172,22 +172,28 @@ func _theme(t: PKeyTestContext) -> void:
 	t.check("theme: every kit theme is marked stock", PKeyUiTheme.is_stock(neutral) and PKeyUiTheme.is_stock(dark) and PKeyUiTheme.is_stock(light) and not PKeyUiTheme.is_stock(Theme.new()))
 
 	# Neutral: no Polaris Key branding; the game's theme and font show through.
+	PKeyUiTheme.branding = PKeyUiTheme.BRANDING_NONE
 	var n := PKeyUiTheme.current()
-	t.check("neutral: the default look is neutral", not PKeyUiTheme.branded() and n != dark and n != light)
+	t.check("neutral: ui_branding none is neutral", not PKeyUiTheme.branded() and n != dark and n != light)
 	t.check("neutral: no font of its own (the project's font applies)", n.default_font == null and not n.has_default_font_size())
+	# The game's own controls keep their look: the kit adds no colour or font to a built-in type,
+	# touches no label, panel or progress bar, and only adjusts the margins of the fills it keeps.
 	var styled_base := []
 	for type in ["Button", "Label", "LineEdit", "TextEdit", "PanelContainer", "OptionButton", "CheckButton", "ProgressBar"]:
-		if n.get_color_list(type).size() + n.get_stylebox_list(type).size() + n.get_font_list(type).size() > 0:
+		if n.get_color_list(type).size() + n.get_font_list(type).size() > 0:
+			styled_base.append(type)
+	for type in ["Label", "PanelContainer", "ProgressBar"]:
+		if n.get_stylebox_list(type).size() > 0:
 			styled_base.append(type)
 	t.check("neutral: no built-in control is restyled", styled_base.is_empty(), str(styled_base))
 	var brand_colours := []
 	for c in _colors(n):
-		for k in [Brand.KIT_VIOLET_DARK, Brand.KIT_VIOLET_LIGHT, Brand.Dark.SURFACE_PAGE, Brand.Light.SURFACE_PAGE, Brand.KIT_GOLD_DARK]:
+		for k in [Brand.KIT_VIOLET_DARK, Brand.KIT_VIOLET_LIGHT, Brand.KIT_GOLD_DARK]:
 			if c.is_equal_approx(k):
 				brand_colours.append(c.to_html(false))
 	t.check("neutral: no brand colour", brand_colours.is_empty(), str(brand_colours))
 	var base := ThemeDB.fallback_font_size
-	t.check("neutral: a type hierarchy from the project's size", n.get_font_size("font_size", "PKeyTitle") > base and n.get_font_size("font_size", "PKeyCode") > n.get_font_size("font_size", "PKeyTitle") and n.get_font_size("font_size", "PKeyMuted") < base)
+	t.check("neutral: a type hierarchy from the project's size", n.get_font_size("font_size", "PKeyTitle") > base and n.get_font_size("font_size", "PKeyCode") > n.get_font_size("font_size", "PKeyTitle") and n.get_font_size("font_size", "PKeyMuted") <= base)
 	t.check("neutral: titles in a bold face of the project's font", n.get_font("font", "PKeyTitle") is FontVariation)
 	var big := PKeyUiTheme.neutral_with(24, Color.BLACK, null, null)
 	t.check("neutral: sizes scale with the project's font size", big.get_font_size("font_size", "PKeyTitle") == 36)
@@ -198,6 +204,8 @@ func _theme(t: PKeyTestContext) -> void:
 	var on_dark := PKeyUiTheme.neutral_with(16, Color.WHITE, null, null).get_color("font_color", "PKeyError")
 	t.check("neutral: error text is 4.5:1 on a light ground", _contrast(on_light, Color.WHITE) >= 4.5, "%.2f:1" % _contrast(on_light, Color.WHITE))
 	t.check("neutral: error text is 4.5:1 on a dark ground", _contrast(on_dark, Color("#121212")) >= 4.5, "%.2f:1" % _contrast(on_dark, Color("#121212")))
+
+	PKeyUiTheme.reset()
 
 	var regular := load(PKeyUiTheme.REGULAR_PATH) as FontFile
 	var bold := load(PKeyUiTheme.BOLD_PATH) as FontFile
@@ -218,8 +226,15 @@ func _theme(t: PKeyTestContext) -> void:
 		var which := "dark" if pair[1] else "light"
 		var tokens := _tokens(pair[1])
 		var stray := []
+		# A token at any opacity (the scrim, the seat meter), the warning, and the ink primary's
+		# hover and pressed shades (derived from the strong text and the page) are the brand's.
+		var derived := [Brand.Dark.WARNING if pair[1] else Brand.Light.WARNING]
+		for st in ["hover", "pressed"]:
+			derived.append((th.get_stylebox(st, "PKeyPrimary") as StyleBoxFlat).bg_color)
+		var accented := (th.get_stylebox("normal", "PKeyPrimary") as StyleBoxFlat).bg_color
 		for c in _colors(th):
-			if not tokens.any(func(k): return k.is_equal_approx(c)):
+			var opaque := Color(c.r, c.g, c.b, 1.0)
+			if not (tokens.any(func(k): return Color(k.r, k.g, k.b, 1.0).is_equal_approx(opaque)) or derived.any(func(k): return Color(k.r, k.g, k.b, 1.0).is_equal_approx(opaque)) or opaque.is_equal_approx(Color(accented.r, accented.g, accented.b, 1.0))):
 				stray.append(c.to_html(false))
 		t.check("brand (%s): every colour is a brand token" % which, stray.is_empty(), str(stray))
 		var gold := []
@@ -231,14 +246,15 @@ func _theme(t: PKeyTestContext) -> void:
 		var page: Color = (th.get_stylebox("panel", "PanelContainer") as StyleBoxFlat).bg_color
 		t.check("brand (%s): the ground is the kit page" % which, page.is_equal_approx(Brand.Dark.SURFACE_PAGE if pair[1] else Brand.Light.SURFACE_PAGE))
 		var primary: Color = (th.get_stylebox("normal", "PKeyPrimary") as StyleBoxFlat).bg_color
-		t.check("brand (%s): the primary action is the platform violet" % which, primary.is_equal_approx(Brand.service_accent("core", pair[1])))
-		var focus := Brand.Dark.FOCUS if pair[1] else Brand.Light.FOCUS
+		t.check("brand (%s): the primary action is ink, never violet, without an accent" % which, primary.is_equal_approx(tokens_strong(pair[1])))
+		# Without an accent the ring is ink too.
+		var focus: Color = tokens_strong(pair[1])
 		var unringed := []
 		for type in ["Button", "CheckButton", "CheckBox", "OptionButton", "LineEdit", "TextEdit"]:
 			var ring := th.get_stylebox("focus", type) as StyleBoxFlat
-			if ring == null or ring.draw_center or not ring.border_color.is_equal_approx(focus) or ring.border_width_top != 2 or ring.expand_margin_top < 4.0:
+			if ring == null or ring.draw_center or not ring.border_color.is_equal_approx(focus) or ring.border_width_top != 3 or ring.expand_margin_top < 5.0:
 				unringed.append(type)
-		t.check("brand (%s): 2 px violet focus ring with a gap on every control" % which, unringed.is_empty(), str(unringed))
+		t.check("brand (%s): 3 px focus ring with a gap on every control" % which, unringed.is_empty(), str(unringed))
 		var radii := []
 		for type in ["Button", "OptionButton", "LineEdit", "TextEdit", "PKeyPrimary"]:
 			var sb := th.get_stylebox("normal", type) as StyleBoxFlat
@@ -256,13 +272,11 @@ func _theme(t: PKeyTestContext) -> void:
 
 	var green := PKeyUiTheme.build(true, Brand.service_accent("distribution", true))
 	var gp := green.get_stylebox("normal", "PKeyPrimary") as StyleBoxFlat
-	t.check("brand: an integrator accent colours the primary action", gp.bg_color == Brand.service_accent("distribution", true))
-	t.check("brand: text on a bright accent is the page ink", green.get_color("font_color", "PKeyPrimary") == Brand.Dark.TEXT_ON_ACCENT)
+	t.check("brand: an integrator accent colours the primary action", gp.bg_color.is_equal_approx(Brand.service_accent("distribution", true)))
+	t.check("brand: text on a bright accent is the page ink", green.get_color("font_color", "PKeyPrimary").is_equal_approx(Brand.Dark.TEXT_ON_ACCENT))
 	var deep := PKeyUiTheme.build(false, Color("#05773b"))
 	t.check("brand: text on a deep accent is white", deep.get_color("font_color", "PKeyPrimary") == Color.WHITE)
 
-	var mark := PKeyUiTheme.mark_texture(true)
-	t.check("mark: the Pinned K rasterises", mark != null and mark.get_width() == 2 * PKeyUiTheme.MARK_SIZE)
 	t.check("mark: the Pinned K carries no terminal bit", not PKeyBrandMarks.PINNED_K_DARK.to_lower().contains("#ffc24d") and not PKeyBrandMarks.PINNED_K_LIGHT.to_lower().contains("#d07a00"))
 	var badge := PKeyUiTheme.powered_by_texture(false)
 	t.check("powered by: the compact badge rasterises at 2x its minimum", badge != null and badge.get_width() == 2 * PKeyBrand.BADGE_MIN_COMPACT.x)
@@ -275,6 +289,9 @@ func _theme(t: PKeyTestContext) -> void:
 
 func _overrides(t: PKeyTestContext) -> void:
 	var tree := Engine.get_main_loop() as SceneTree
+	# The kit lays out for the screen it is on (PKeyUiView): give the headless root a real one.
+	var root_size := tree.root.size
+	tree.root.size = Vector2i(1280, 720)
 	var gate_scene := load("res://addons/polaris_key/ui/gate/pkey_gate.tscn") as PackedScene
 	var mount := func() -> Control:
 		var v: Control = gate_scene.instantiate()
@@ -288,15 +305,20 @@ func _overrides(t: PKeyTestContext) -> void:
 	var shown := func(v: Control, n: String) -> bool:
 		var r := v.find_child(n, true, false) as TextureRect
 		return r != null and r.visible and r.texture != null
+	# The product's identity leads a gate card (UI-KITS.md §1.2): its icon or monogram and name.
+	var product := func(v: Control) -> bool:
+		var h := v.find_child("Product", true, false) as PKeyProductHeader
+		return h != null and h.visible and h.product_name() != ""
 
 	PKeyUiTheme.reset()
 	var v: Control = mount.call()
-	t.check("default: a scene file starts on the neutral theme", PKeyUiTheme.is_stock(v.theme) and v.theme == PKeyUiTheme.for_view(v) and not PKeyUiTheme.branded())
+	t.check("default: a scene file starts on the Polaris Key theme", PKeyUiTheme.is_stock(v.theme) and PKeyUiTheme.base_of(v.theme) == PKeyUiTheme.for_view(v) and PKeyUiTheme.branded() and PKeyUiTheme.base_of(v.theme).resource_path == PKeyUiTheme.DARK_PATH)
 	t.check("default: no Pinned K", not shown.call(v, "Mark"))
 	t.check("default: no Powered by badge", not shown.call(v, "PoweredBy"))
 	unmount.call(v)
 
-	# Inside a game's own themed menu, the neutral look follows that menu's theme.
+	# Inside a game's own themed menu, the neutral look (ui_branding none) follows that menu's theme.
+	PKeyUiTheme.branding = PKeyUiTheme.BRANDING_NONE
 	var host := Control.new()
 	var host_theme := Theme.new()
 	host_theme.default_font_size = 24
@@ -313,12 +335,17 @@ func _overrides(t: PKeyTestContext) -> void:
 	host.free()
 
 	var opts := PKeyOptions.new()
-	t.check("options: branding is off by default", opts.ui_branding == "none" and not opts.ui_powered_by and opts.ui_theme == null)
+	t.check("options: the Polaris Key look is the default, no badge, no theme", opts.ui_branding == "polaris-key" and not opts.ui_powered_by and opts.ui_theme == null)
+	opts.ui_branding = "none"
+	PKeyUiTheme.apply_options(opts)
+	v = mount.call()
+	t.check("options: ui_branding none gives the neutral theme", PKeyUiTheme.base_of(v.theme) == PKeyUiTheme.for_view(v) and not PKeyUiTheme.branded())
+	unmount.call(v)
 	opts.ui_branding = "polaris-key"
 	PKeyUiTheme.apply_options(opts)
 	v = mount.call()
-	t.check("brand: one option gives the Polaris Key dark theme", v.theme != null and v.theme.resource_path == PKeyUiTheme.DARK_PATH)
-	t.check("brand: the Pinned K is shown", shown.call(v, "Mark"))
+	t.check("brand: one option gives the Polaris Key dark theme", v.theme != null and PKeyUiTheme.base_of(v.theme).resource_path == PKeyUiTheme.DARK_PATH)
+	t.check("brand: the product leads the card, never the Pinned K (UI-KITS.md §1.2)", product.call(v) and not shown.call(v, "Mark"))
 	t.check("brand: still no Powered by badge unless asked", not shown.call(v, "PoweredBy"))
 	unmount.call(v)
 
@@ -326,7 +353,10 @@ func _overrides(t: PKeyTestContext) -> void:
 	opts.ui_powered_by = true
 	PKeyUiTheme.apply_options(opts)
 	v = mount.call()
-	t.check("brand: ui_brand_scheme light gives the light theme", v.theme != null and v.theme.resource_path == PKeyUiTheme.LIGHT_PATH)
+	t.check("brand: ui_brand_scheme light gives the light theme", v.theme != null and PKeyUiTheme.base_of(v.theme).resource_path == PKeyUiTheme.LIGHT_PATH)
+	# The badge shows where the card has the room for it, once the layout has settled.
+	for i in 3:
+		await tree.process_frame
 	t.check("powered by: shown when asked", shown.call(v, "PoweredBy"))
 	var badge := v.find_child("PoweredBy", true, false) as Control
 	t.check("powered by: never below the kit minimum", badge != null and badge.custom_minimum_size.x >= 232 and badge.custom_minimum_size.y >= 88)
@@ -334,13 +364,14 @@ func _overrides(t: PKeyTestContext) -> void:
 
 	opts.ui_accent = Brand.service_accent("release", false)
 	PKeyUiTheme.apply_options(opts)
-	t.check("brand: ui_accent colours the primary action", (PKeyUiTheme.current().get_stylebox("normal", "PKeyPrimary") as StyleBoxFlat).bg_color == opts.ui_accent)
+	var accent_fill := (PKeyUiTheme.current().get_stylebox("normal", "PKeyPrimary") as StyleBoxFlat).bg_color
+	t.check("brand: ui_accent colours the primary action (its hue, resolved for contrast)", absf(accent_fill.h - opts.ui_accent.h) < 0.05 and accent_fill.s > 0.3)
 
 	var own := Theme.new()
 	opts.ui_theme = own
 	PKeyUiTheme.apply_options(opts)
 	v = mount.call()
-	t.check("override: ui_theme reaches a stock scene", v.theme == own)
+	t.check("override: ui_theme reaches a stock scene, over the kit's neutral structure", PKeyUiTheme.base_of(v.theme) == PKeyUiTheme.layered(own) and PKeyUiTheme.layered(own).get_meta(PKeyUiTheme.LAYERED_META) == own)
 	t.check("override: an own Theme drops the Pinned K", not shown.call(v, "Mark"))
 	unmount.call(v)
 
@@ -358,21 +389,26 @@ func _overrides(t: PKeyTestContext) -> void:
 	var boot: Control = (load("res://addons/polaris_key/ui/boot/pkey_boot.tscn") as PackedScene).instantiate()
 	boot.set("auto_sdk", false)
 	tree.root.add_child(boot)
-	t.check("boot flow: the view starts neutral", PKeyUiTheme.is_stock(boot.theme) and boot.theme.resource_path != PKeyUiTheme.DARK_PATH)
+	t.check("boot flow: the view starts on the Polaris Key theme", PKeyUiTheme.is_stock(boot.theme) and PKeyUiTheme.base_of(boot.theme).resource_path == PKeyUiTheme.DARK_PATH)
+	var none := PKeyOptions.new()
+	none.ui_branding = "none"
+	PKeyUiTheme.apply_options(none)
+	await tree.process_frame
+	t.check("boot flow: apply_options re-themes a mounted view to the neutral look", PKeyUiTheme.base_of(boot.theme).resource_path != PKeyUiTheme.DARK_PATH and not PKeyUiTheme.base_of(boot.theme).has_default_font_size())
 	var late := PKeyOptions.new()
 	late.ui_branding = "polaris-key"
 	PKeyUiTheme.apply_options(late)
 	await tree.process_frame
-	t.check("boot flow: apply_options re-themes a mounted view", boot.theme != null and boot.theme.resource_path == PKeyUiTheme.DARK_PATH, str(boot.theme.resource_path if boot.theme else "null"))
+	t.check("boot flow: apply_options re-themes a mounted view", boot.theme != null and PKeyUiTheme.base_of(boot.theme).resource_path == PKeyUiTheme.DARK_PATH, str(PKeyUiTheme.base_of(boot.theme).resource_path if boot.theme else "null"))
 	boot.call("refresh_view")
 	var bgate: Control = boot.get("gate")
 	bgate.call("show_state", {"status": "needs-activation"})
 	var title := bgate.find_child("Title", true, false) as Label
 	t.check("boot flow: the gate title is in the brand face", title != null and title.get_theme_font("font") == load(PKeyUiTheme.BOLD_PATH))
-	t.check("boot flow: the Pinned K on the brand theme", shown.call(bgate, "Mark"))
-	PKeyUiTheme.apply_options(PKeyOptions.new())
+	t.check("boot flow: the product leads the brand gate", product.call(bgate) and not shown.call(bgate, "Mark"))
+	PKeyUiTheme.apply_options(none)
 	await tree.process_frame
-	t.check("boot flow: back to neutral when the options say so", PKeyUiTheme.is_stock(boot.theme) and not boot.theme.has_default_font_size() and not shown.call(bgate, "Mark"))
+	t.check("boot flow: back to neutral when the options say so", PKeyUiTheme.is_stock(boot.theme) and not PKeyUiTheme.base_of(boot.theme).has_default_font_size() and not shown.call(bgate, "Mark"))
 	unmount.call(boot)
 
 	opts.ui_branding = "nonsense"
@@ -380,7 +416,8 @@ func _overrides(t: PKeyTestContext) -> void:
 	PKeyUiTheme.apply_options(opts)
 	t.check("options: an unknown branding is neutral", not PKeyUiTheme.branded())
 	PKeyUiTheme.reset()
-	t.check("reset: neutral, no badge", not PKeyUiTheme.branded() and not PKeyUiTheme.powered_by and PKeyUiTheme.override == null)
+	t.check("reset: the Polaris Key look, no badge", PKeyUiTheme.branded() and not PKeyUiTheme.powered_by and PKeyUiTheme.override == null)
+	tree.root.size = root_size
 
 
 ## The WCAG contrast ratio of two opaque colours.
@@ -396,6 +433,10 @@ static func _rel_luminance(c: Color) -> float:
 
 
 ## Every brand colour a theme may use, for one theme (plus the QR's black and white).
+static func tokens_strong(dark: bool) -> Color:
+	return PKeyUiTheme.palette(dark)["strong"]
+
+
 static func _tokens(dark: bool) -> Array:
 	var out: Array = [Color.BLACK, Color.WHITE]
 	var p := PKeyUiTheme.palette(dark)

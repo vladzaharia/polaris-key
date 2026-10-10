@@ -1,115 +1,113 @@
 == license on, identity on, enrolment on, native ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/SignIn: Button "Sign in" [focus 3]
-Stack/Main/ContinueFree: Button "Continue free" [focus 4]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 5]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Card/Scroll/Stack/Main/Form/FreeBlock/ContinueFree: Button "Continue free" [focus 4]
+Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 5]
 == license on, identity on, enrolment on, web ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/SignIn: Button "Sign in" [focus 3]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
 == license on, identity on, enrolment off, native ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/SignIn: Button "Sign in" [focus 3]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
 == license on, identity on, enrolment off, web ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/SignIn: Button "Sign in" [focus 3]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 3]
+Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
 == license on, identity off, enrolment on, native ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/ContinueFree: Button "Continue free" [focus 3]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Card/Scroll/Stack/Main/Form/FreeBlock/ContinueFree: Button "Continue free" [focus 3]
+Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 4]
 == license on, identity off, enrolment on, web ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 3]
 == license on, identity off, enrolment off, native ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 3]
 == license on, identity off, enrolment off, web ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/KeyField/KeyLabel: Label "License key"
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
+Card/Scroll/Stack/Main/Form/KeyField/KeyRow/Activate: Button "Activate" [focus 2]
+Card/Scroll/Stack/Main/Form/OfflineActivation: Button "Activate offline" [focus 3]
 == license off, identity on, enrolment on, native ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Sign in to continue."
-Stack/Main/SignIn: Button "Sign in" [focus 1]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 1]
 == license off, identity on, enrolment on, web ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Sign in to continue."
-Stack/Main/SignIn: Button "Sign in" [focus 1]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 1]
 == license off, identity on, enrolment off, native ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Sign in to continue."
-Stack/Main/SignIn: Button "Sign in" [focus 1]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 1]
 == license off, identity on, enrolment off, web ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Sign in to continue."
-Stack/Main/SignIn: Button "Sign in" [focus 1]
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Main/Form/SignInBlock/SignIn: Button "Sign in" [focus 1]
 == license off, identity off, enrolment on, native ==
-Stack/Main/Title: Label "Activate"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
 == license off, identity off, enrolment on, web ==
-Stack/Main/Title: Label "Activate"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
 == license off, identity off, enrolment off, native ==
-Stack/Main/Title: Label "Activate"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
 == license off, identity off, enrolment off, web ==
-Stack/Main/Title: Label "Activate"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Main/Pane/Intro/Product/Name: Label "Polaris Key SDK"
 == device limit ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key or sign in to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/SignIn: Button "Sign in" [focus 3]
-Stack/Main/ContinueFree: Button "Continue free" [focus 4]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 5]
-Stack/Main/Message: Label "This license has reached its device limit (3 of 3 devices)."
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Title: Label "Your license is on 3 of 3 devices"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Lede: Label "To use it on this device, replace one. You can add it back later."
+Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Try again" [focus 1]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 2]
 == device limit, replace a device (button) ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 4]
-Stack/Main/Message: Label "This license has reached its device limit (1 of 1 devices)."
-Stack/Main/FreeDevice: Button "Replace a device" [focus 3]
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Title: Label "Your license is on 1 of 1 device"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Lede: Label "To use it on this device, replace one. You can add it back later."
+Card/Scroll/Stack/Limit/Columns/Right/Actions/FreeDevice: Button "Replace a device" [focus 1]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Try again" [focus 2]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 3]
 == device limit, replace a device (QR) ==
-Stack/Main/Title: Label "Activate"
-Stack/Main/Subtitle: Label "Enter a license key to continue."
-Stack/Main/KeyLabel: Label "License key"
-Stack/Main/KeyRow/KeyInput: LineEdit [placeholder "Paste your key", focus 1]
-Stack/Main/KeyRow/Activate: Button "Activate" [focus 2]
-Stack/Main/OfflineActivation: Button "Offline activation…" [focus 3]
-Stack/Main/Message: Label "This license has reached its device limit (1 of 1 devices)."
-Stack/Main/FreeDeviceQr: PKeyQrRect "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64&return=mygame%3A%2F%2Factivated"
-Stack/Main/FreeDeviceCaption: Label "Scan with your phone to free a device, then try again."
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Monogram/Initial: Label "P"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Product/Name: Label "Polaris Key SDK"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Title: Label "Your license is on 1 of 1 device"
+Card/Scroll/Stack/Limit/Columns/Left/Head/Lede: Label "To use it on this device, replace one. You can add it back later."
+Card/Scroll/Stack/Limit/Columns/Right/Actions/FreeDevice: Button "Replace a device" [focus 1]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/TryAgain: Button "Try again" [focus 2]
+Card/Scroll/Stack/Limit/Columns/Right/Actions/DifferentKey: Button "Use a different key" [focus 3]

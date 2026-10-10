@@ -93,9 +93,9 @@ async function setup(
   routes: Record<string, Handler> = {},
   token: string | null = "pkeyt_seed",
 ) {
-  const licence = await signedLicense({ pro: true });
+  const license = await signedLicense({ pro: true });
   const seeded = await seededClient({
-    license: licence,
+    license: license,
     token,
     extra: {
       expectedServices: ["license", "config", "identity", "release"] as never,
@@ -146,7 +146,7 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
   });
 
   it("keeps the device code in the main process and pushes state on ready", async () => {
-    const licence = await signedLicense({ pro: true });
+    const license = await signedLicense({ pro: true });
     let ready = false;
     const { bridge } = await setup({
       "POST /djdl/identity/auth/device/start": () => json(START),
@@ -157,7 +157,7 @@ describe("PolarisBridge v3 over IPC (SP-N10)", () => {
             : { status: "pending" },
         ),
       "GET /djdl/license/document": () =>
-        new Response(licence, { status: 200 }),
+        new Response(license, { status: 200 }),
       "GET /djdl/config/document": () => new Response("", { status: 404 }),
       "POST /djdl/devices/report": () => json({}),
     });

@@ -632,6 +632,13 @@ export class UpdateClient {
     return this.configured?.detected ?? null;
   }
 
+  /** The product's npm package name (`update.packageName`), or null: what a CLI prints in the
+   *  command that upgrades an npm, pnpm or npx install. */
+  get packageName(): string | null {
+    const name = this.configured?.opts.packageName;
+    return typeof name === "string" && name !== "" ? name : null;
+  }
+
   /** The configured install driver, or null. */
   get driver(): InstallDriver | null {
     return this.installDriver;

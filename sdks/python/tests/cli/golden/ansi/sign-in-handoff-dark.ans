@@ -1,7 +1,7 @@
 ── truecolor · 80 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
-[32m◇[0m  Opening Polaris Key in your browser…
+[32m◇[0m  Opening your browser…
 [2m│[0m  If it didn't open, go to ]8;;https://key.plrs.im/device?user_code=WDJB-MJHT\[4mkey.plrs.im/device?user_code=WDJB-MJHT[0m]8;;\
 [2m│[0m
 [2m⠹[0m  Waiting for your browser…
@@ -9,7 +9,7 @@
 ── ansi16 · 80 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
-[32m◇[0m  Opening Polaris Key in your browser…
+[32m◇[0m  Opening your browser…
 [2m│[0m  If it didn't open, go to ]8;;https://key.plrs.im/device?user_code=WDJB-MJHT\[4mkey.plrs.im/device?user_code=WDJB-MJHT[0m]8;;\
 [2m│[0m
 [2m⠹[0m  Waiting for your browser…
@@ -17,7 +17,7 @@
 ── no-color · 80 ──
 ┌  [7m Tidewater Studio [0m · login
 │
-◇  Opening Polaris Key in your browser…
+◇  Opening your browser…
 │  If it didn't open, go to key.plrs.im/device?user_code=WDJB-MJHT
 │
 ⠹  Waiting for your browser…
@@ -25,7 +25,7 @@
 ── ascii · 80 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
 [2m|[0m
-[32mo[0m  Opening Polaris Key in your browser…
+[32mo[0m  Opening your browser…
 [2m|[0m  If it didn't open, go to ]8;;https://key.plrs.im/device?user_code=WDJB-MJHT\[4mkey.plrs.im/device?user_code=WDJB-MJHT[0m]8;;\
 [2m|[0m
 [2m-[0m  Waiting for your browser…
@@ -33,7 +33,7 @@
 ── truecolor · 60 ──
 [2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
-[32m◇[0m  Opening Polaris Key in your browser…
+[32m◇[0m  Opening your browser…
 [2m│[0m  If it didn't open,
 [2m│[0m  go to ]8;;https://key.plrs.im/device?user_code=WDJB-MJHT\[4mkey.plrs.im/device?user_code=WDJB-MJHT[0m]8;;\
 [2m│[0m
@@ -42,7 +42,7 @@
 ── ansi16 · 60 ──
 [2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
 [2m│[0m
-[32m◇[0m  Opening Polaris Key in your browser…
+[32m◇[0m  Opening your browser…
 [2m│[0m  If it didn't open,
 [2m│[0m  go to ]8;;https://key.plrs.im/device?user_code=WDJB-MJHT\[4mkey.plrs.im/device?user_code=WDJB-MJHT[0m]8;;\
 [2m│[0m
@@ -51,7 +51,7 @@
 ── no-color · 60 ──
 ┌  [7m Tidewater Studio [0m · login
 │
-◇  Opening Polaris Key in your browser…
+◇  Opening your browser…
 │  If it didn't open,
 │  go to key.plrs.im/device?user_code=WDJB-MJHT
 │
@@ -60,7 +60,7 @@
 ── ascii · 60 ──
 [2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
 [2m|[0m
-[32mo[0m  Opening Polaris Key in your browser…
+[32mo[0m  Opening your browser…
 [2m|[0m  If it didn't open,
 [2m|[0m  go to ]8;;https://key.plrs.im/device?user_code=WDJB-MJHT\[4mkey.plrs.im/device?user_code=WDJB-MJHT[0m]8;;\
 [2m|[0m
@@ -68,7 +68,7 @@
 [2m`[0m  [1mEnter[0m [2mopen again - [0m[1mc[0m [2muse a code - [0m[1mEsc[0m [2mcancel[0m
 ── pipe · 80 ──
 Tidewater Studio · login
-Opening Polaris Key in your browser…
+Opening your browser…
 If it didn't open, go to key.plrs.im/device?user_code=WDJB-MJHT
 
 Waiting for your browser…

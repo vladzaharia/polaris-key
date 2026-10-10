@@ -1029,7 +1029,7 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_opensBrowser">Öffnet Polaris Key in Ihrem Browser</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
-    <string name="signin_cli_opening">Polaris Key wird in Ihrem Browser geöffnet…</string>
+    <string name="signin_cli_opening">Ihr Browser wird geöffnet…</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
     <string name="signin_cli_ifNotOpened">Falls er sich nicht geöffnet hat, öffnen Sie %1$s</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
@@ -1149,7 +1149,7 @@
     <!-- Terminal help footer. {command} is a command line such as 'tidewater activate -help'. Arguments: 1=command. -->
     <string name="cli_help_more">Führen Sie %1$s aus, um die Optionen eines Befehls zu sehen.</string>
     <!-- Terminal help: what the activate command does. The key is typed at a prompt or piped in, never written on the command line. -->
-    <string name="cli_verb_activate">Lizenzschlüssel hinzufügen (per Abfrage, nie als Argument)</string>
+    <string name="cli_verb_activate">Lizenzschlüssel hinzufügen (Eingabe oder über stdin)</string>
     <!-- Terminal help: what the enroll command does. Arguments: 1=product. -->
     <string name="cli_verb_enroll">Kostenlose Lizenz erhalten, falls %1$s eine anbietet</string>
     <!-- Terminal help: what the deactivate command does. -->
@@ -1328,10 +1328,60 @@
     <string name="cli_changelog_fix">Prüfen Sie Ihre Verbindung und führen Sie %1$s erneut aus.</string>
     <!-- Terminal offline activation: what to do after an activation file was refused. -->
     <string name="cli_import_fix">Bitten Sie den Absender um eine neue Datei.</string>
-    <!-- Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product. Arguments: 1=product. -->
-    <string name="cli_identityOff_notice">%1$s verwendet die Polaris Key-Anmeldung nicht.</string>
+    <!-- Terminal sign-in: the product has no account sign-in. {product} is the product. Arguments: 1=product. -->
+    <string name="cli_identityOff_notice">%1$s bietet keine Kontoanmeldung.</string>
     <!-- Terminal sign-in: what to do instead when the product has no sign-in. {command} is a command line such as 'tidewater activate'. Arguments: 1=command. -->
     <string name="cli_identityOff_fix">Führen Sie %1$s mit Ihrem Lizenzschlüssel aus.</string>
+    <!-- Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press. -->
+    <string name="cli_login_attach">Den Lizenzschlüssel dieses Geräts für Ihr Konto verwenden? (y/N)</string>
+    <!-- Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
+    <string name="cli_keys_confirm">y ja · n nein · Esc Anmeldung abbrechen</string>
+    <!-- Terminal: the sign-in finished and only the name is known. {name} = the account's name. Arguments: 1=name. -->
+    <string name="cli_signin_signedInName">Angemeldet als %1$s</string>
+    <!-- Update progress: the download finished and the update is being checked before it is installed. -->
+    <string name="update_verifying">Wird überprüft…</string>
+    <!-- Terminal: an update was downloaded and checked; it takes effect after a restart. {version} = a version string such as 2.5.0. Keep the ' · ' separator. Arguments: 1=version. -->
+    <string name="cli_update_readyRestart">%1$s ist bereit · Zum Abschließen neu starten</string>
+    <!-- Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead. -->
+    <string name="cli_update_notConfiguredTitle">Aktualisierungen sind nicht eingerichtet</string>
+    <!-- Terminal: update apply on an install that cannot update itself. It ends in a colon: the download page follows on its own line, as a link. -->
+    <string name="cli_update_download">Hier herunterladen:</string>
+    <!-- Terminal status: a device activated with a license key only, and the license is no longer valid. -->
+    <string name="cli_status_keyRevoked_title">Dieser Lizenzschlüssel funktioniert nicht mehr</string>
+    <!-- Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <string name="cli_status_keyRevoked_message">Er ist möglicherweise abgelaufen oder deaktiviert:</string>
+    <!-- Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link. -->
+    <string name="cli_activate_unauthorized">Prüfen Sie ihn auf Tippfehler. Stimmt er, ist er vielleicht abgelaufen oder deaktiviert:</string>
+    <!-- Terminal help: what the -reveal flag does. A command-line flag; keep it as is. -->
+    <string name="cli_option_reveal">Den Wert ausgeben</string>
+    <!-- Terminal: the secret command without -reveal, as the title of a warning; the command that prints it follows as a command row. {name} = the secret's name. Arguments: 1=name. -->
+    <string name="cli_secret_hidden">%1$s ist gesetzt, aber nicht ausgegeben</string>
+    <!-- Terminal: the mint command without -reveal, as the title of a warning; the command that mints and prints follows as a command row. -->
+    <string name="cli_mint_hidden">Es wurde nichts erzeugt</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_macos">macOS</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_ios">iOS</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_android">Android</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_windows">Windows</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_linux">Linux</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_web">Web</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_tvos">tvOS</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_visionos">visionOS</string>
+    <!-- Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language. -->
+    <string name="cli_platform_watchos">watchOS</string>
+    <!-- Terminal sign-in: the person said yes to adding this device's license key to the account just signed in. -->
+    <string name="cli_login_attached">Der Lizenzschlüssel gehört jetzt zu Ihrem Konto.</string>
+    <!-- Terminal: update apply on an install that cannot update itself and has no download page to link. {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="cli_update_downloadNoLink">Holen Sie sich die neue Version dort, wo Sie %1$s bekommen haben.</string>
+    <!-- Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time. -->
+    <string name="cli_activate_noKeyPiped">Auf stdin ist kein Lizenzschlüssel angekommen.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Ein Fehler ist aufgetreten</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

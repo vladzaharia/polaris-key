@@ -105,7 +105,7 @@ export function describeFailure(
 }
 
 // ── license ────────────────────────────────────────────────────────────────────────────
-/** Activate this device with a licence `key` and pull the first documents. */
+/** Activate this device with a license `key` and pull the first documents. */
 export async function activate(
   client: PolarisKeyClient,
   key: string,
@@ -118,7 +118,7 @@ export async function activate(
   return describeFailure(r, "Activation");
 }
 
-/** Obtain a licence with no key and no sign-in, when the product offers a free tier.
+/** Obtain a license with no key and no sign-in, when the product offers a free tier.
  *  `platform` only selects the failure hint; it defaults to this process's. */
 export async function enroll(
   client: PolarisKeyClient,
@@ -205,7 +205,7 @@ export async function register(
         ok: false,
         message:
           "Registration failed: this product does not accept keyless registration. " +
-          "Activate with a licence key instead.",
+          "Activate with a license key instead.",
         data: r,
       };
     case "rate-limited":

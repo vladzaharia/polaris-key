@@ -77,8 +77,10 @@ export interface CliIO {
   signal?: AbortSignal;
   /** Read a file named on the command line. */
   readFile?(path: string): Promise<string>;
-  /** Read a licence key from stdin (when `activate` is given none). */
+  /** Read a license key from stdin (when `activate` is given none). */
   readKey?(): Promise<string>;
+  /** `--reveal`: `secret` and `mint` print their value. Without it they print nothing. */
+  reveal?: boolean;
 }
 
 function errorResult(verb: string, e: unknown): CommandResult {
@@ -178,7 +180,7 @@ export function offlineRequest(
   return {
     ok: true,
     message: [
-      "Send this request code to whoever issues your licence:",
+      "Send this request code to whoever issues your license:",
       `Product: ${client.product}`,
       `Request code: ${deviceId}`,
       "Then run import-bundle <file> with the bundle you receive.",
@@ -287,21 +289,38 @@ export function configReset(
   });
 }
 
-export function secret(client: PolarisKeyClient, key: string): CommandResult {
+export function secret(
+  client: PolarisKeyClient,
+  key: string,
+  reveal = false,
+): CommandResult {
   const value = client.config.getSecret(key);
-  return value === null
-    ? {
+  if (value === null)
+    return {
+      ok: false,
+      message: `${key}: no client-scoped secret is delivered here.`,
+    };
+  // The value is printed only when asked for; the result carries only that it is set.
+  return reveal
+    ? { ok: true, message: value, data: { key } }
+    : {
         ok: false,
-        message: `${key}: no client-scoped secret is delivered here.`,
-      }
-    : { ok: true, message: value, data: { key } };
+        message: `${key} is set but not printed. To print its value, run: secret ${key} --reveal`,
+        data: { key },
+      };
 }
 
 export function mint(
   client: PolarisKeyClient,
   recipeId: string,
+  reveal = false,
 ): Promise<CommandResult> {
   return guarded("Mint", async () => {
+    if (!reveal)
+      return {
+        ok: false,
+        message: `Nothing was minted. To mint and print a token, run: mint ${recipeId} --reveal`,
+      };
     const t = await client.config.mintToken(recipeId);
     return {
       ok: true,
@@ -545,12 +564,13 @@ export type CliGroup =
   | "packs"
   | "core";
 
-/** The per-verb flags the terminal kit reads (`--yes`, `--device-code`,
+/** The per-verb flags the terminal kit reads (`--yes`, `--device-code`, `--reveal`,
  *  `--allow-workflow-commands`). */
 export interface VerbFlags {
   yes?: boolean;
   deviceCode?: boolean;
   allowWorkflowCommands?: boolean;
+  reveal?: boolean;
 }
 
 /** One verb, as both adapters declare it. */
@@ -621,13 +641,13 @@ export const CLI_VERBS: readonly CliVerb[] = [
     path: ["activate"],
     args: ["[key]"],
     describe:
-      "Activate this device with a licence key (prompted, or piped on stdin)",
+      "Activate this device with a license key (prompted, or piped on stdin)",
     describeKey: "cli.verb.activate",
     run: async (c, a, io) => {
       const key = one(a[0]) || (io.readKey ? await io.readKey() : "");
       return key
         ? activate(c, key)
-        : { ok: false, message: "Activation failed: no licence key given." };
+        : { ok: false, message: "Activation failed: no license key given." };
     },
     flow: (ctx, c, a) =>
       activateFlow(ctx, need(c), { key: one(a[0]) || undefined }),
@@ -636,7 +656,7 @@ export const CLI_VERBS: readonly CliVerb[] = [
     group: "license",
     path: ["status"],
     args: [],
-    describe: "Show the current licence gate status",
+    describe: "Show the current license gate status",
     describeKey: "cli.verb.status",
     run: async (c) => status(c, await c.storeStatus()),
     flow: (ctx, c) => statusFlow(ctx, need(c)),
@@ -645,7 +665,7 @@ export const CLI_VERBS: readonly CliVerb[] = [
     group: "license",
     path: ["enroll"],
     args: [],
-    describe: "Obtain a licence with no key, when the product offers one",
+    describe: "Obtain a license with no key, when the product offers one",
     describeKey: "cli.verb.enroll",
     run: (c) => enroll(c),
     flow: (ctx, c) => enrollFlow(ctx, need(c)),
@@ -693,7 +713,7 @@ export const CLI_VERBS: readonly CliVerb[] = [
     group: "devices",
     path: ["devices", "list"],
     args: [],
-    describe: "List the devices on this licence",
+    describe: "List the devices on this license",
     describeKey: "cli.verb.devicesList",
     run: (c) => devicesList(c),
     flow: (ctx, c) => devicesListFlow(ctx, need(c)),
@@ -760,7 +780,7 @@ export const CLI_VERBS: readonly CliVerb[] = [
     args: ["<key>"],
     describe: "Print a client-scoped secret",
     describeKey: "cli.verb.secret",
-    run: (c, a) => secret(c, one(a[0])),
+    run: (c, a, io) => secret(c, one(a[0]), io.reveal === true),
     flow: (ctx, c, a, f) => secretFlow(ctx, need(c), one(a[0]), f),
   },
   {
@@ -769,7 +789,7 @@ export const CLI_VERBS: readonly CliVerb[] = [
     args: ["<recipeId>"],
     describe: "Mint a short-lived token from an edge-mint recipe",
     describeKey: "cli.verb.mint",
-    run: (c, a) => mint(c, one(a[0])),
+    run: (c, a, io) => mint(c, one(a[0]), io.reveal === true),
     flow: (ctx, c, a, f) => mintFlow(ctx, need(c), one(a[0]), f),
   },
   {

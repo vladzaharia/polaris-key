@@ -356,7 +356,7 @@ export function sep(ctx: KitContext, text: string): string {
 export function problemRows(
   mark: Mark,
   title: string,
-  message?: string,
+  message?: string | Line,
 ): RailRow[] {
   return [stepRow(mark, title), ...(message ? [textRow(message)] : [])];
 }

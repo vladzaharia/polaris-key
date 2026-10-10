@@ -2,7 +2,7 @@
 //
 // It moved out of the config service in v3 (`POST /<p>/config/report` is gone) because it was
 // never config: it is the device's software facts plus a snapshot of what it BELIEVES it was
-// granted, which is licence anti-fraud data. It is a Core surface now, available under every
+// granted, which is license anti-fraud data. It is a Core surface now, available under every
 // registration policy, and a config-only product reports on it too.
 //
 // ── THE SNAPSHOT IS BUILT FROM RE-VERIFIED DOCUMENTS ────────────────────────────────────────

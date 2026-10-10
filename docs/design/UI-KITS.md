@@ -371,13 +371,13 @@ the §6.1 samples.
 
 ## 0. Where the kits are today
 
-| Kit          | Screens that exist                                                                                                               | Verdict (2026 scale)                                                                                                                                                                                                                               |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| React        | Gate, login card, logout, devices, config panel, update prompt, Powered-by; 11 headless hooks                                    | Correct and accessible, plain 2019 admin look: inline styles, no hover/pressed/disabled visuals, no motion, an opaque full-window "dialog", violet only, neutral default (RE). Half the catalogue missing.                                         |
-| SwiftUI      | One screen, `PolarisLoginView` (activation card, grace banner, message card)                                                     | An iOS 17 kit: no Liquid Glass, forced 10 pt rounded rectangles over iOS 26 capsules, a flash of the sign-in card on every launch, "this Mac" copy on iPhone, unreadable prominent buttons in inactive macOS windows, ~10 % of the catalogue (SW). |
-| Compose      | Boot, gate, activation, device-code sign-in, devices, update offer, pack progress, read-only settings                            | Material 3 at its 2023 level (no Expressive), one centred 480 dp column everywhere, no one-line flow, Android only, toolchain pinned to the Godot template (KO).                                                                                   |
-| Godot        | Boot, gate, activation, sign-in with QR, offline activation, update prompt, status banner, entitlement badge, settings, dev menu | Solid plumbing (focus chain, controllers, tr()), dated pixels: 1 px outlined boxes, engine-default bitmap toggles and spinners, no icons, no motion, no surfaces on half the screens, raw codes in copy (GO). About 4/10 for polish.               |
-| Python, Node | Plain-text CLI verbs only                                                                                                        | No kit. `ui.kit` is marked `na` (headless) in both `parity.json` files, which hides the two largest framework gaps (Qt, Electron) from the parity gate (GA).                                                                                       |
+| Kit          | Screens that exist                                                                                                               | Verdict (2026 scale)                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| React        | Gate, login card, logout, devices, config panel, update prompt, Powered-by; 11 headless hooks                                    | Correct and accessible, plain 2019 admin look: inline styles, no hover/pressed/disabled visuals, no motion, an opaque full-window "dialog", violet only, neutral default (RE). Half the catalogue missing.                                                                                                                                                                                   |
+| SwiftUI      | One screen, `PolarisLoginView` (activation card, grace banner, message card)                                                     | An iOS 17 kit: no Liquid Glass, forced 10 pt rounded rectangles over iOS 26 capsules, a flash of the sign-in card on every launch, "this Mac" copy on iPhone, unreadable prominent buttons in inactive macOS windows, ~10 % of the catalogue (SW).                                                                                                                                           |
+| Compose      | Boot, gate, activation, device-code sign-in, devices, update offer, pack progress, read-only settings                            | Material 3 at its 2023 level (no Expressive), one centred 480 dp column everywhere, no one-line flow, Android only, toolchain pinned to the Godot template (KO).                                                                                                                                                                                                                             |
+| Godot        | Boot, gate, activation, sign-in with QR, offline activation, update prompt, status banner, entitlement badge, settings, dev menu | Solid plumbing (focus chain, controllers, tr()), dated pixels: 1 px outlined boxes, engine-default bitmap toggles and spinners, no icons, no motion, no surfaces on half the screens, raw codes in copy (GO). About 4/10 for polish. The responsive round gave it a spacing scale, the product-led header, full-bleed phones and a themed native look (`ui_branding none`); no QR on phones. |
+| Python, Node | Plain-text CLI verbs only                                                                                                        | No kit. `ui.kit` is marked `na` (headless) in both `parity.json` files, which hides the two largest framework gaps (Qt, Electron) from the parity gate (GA).                                                                                                                                                                                                                                 |
 
 What is worth keeping everywhere: the headless cores (React hooks and `/core`, Compose's stateless
 screens and pure state holders, Godot's per-scene controllers, `ui.stages` in every SDK), the
@@ -553,7 +553,8 @@ included, as a `\u` escape). Each line on stdout is one JSON object (NDJSON) wit
 - **Never on a `--json` line:** a license key, a device token, a sign-in poll credential, a
   secret's value or a minted token.
 - **Off `--json`,** the Node kit's `secret` and `mint` print the value alone on stdout for a script
-  to capture byte for byte; the Python kit's never print it. Inside a CI job whose runner obeys
+  to capture byte for byte, and only with `--reveal` (without it both print nothing and exit 2, and
+  `mint` mints nothing); the Python kit's never print it. Inside a CI job whose runner obeys
   commands in its log (`GITHUB_ACTIONS`, `TF_BUILD`, `TEAMCITY_VERSION`), with stdout not a
   terminal, the Node kit withholds a value with a line the runner would obey (`::`, `##[`,
   `##vso[`, `##teamcity[`) and exits 1, unless `--allow-workflow-commands` is given. It never
@@ -564,7 +565,7 @@ interactive, animate, links) in the UK-51 `cli` rows runs in both kits' tests. P
 Node: CI is truthy over `CI`, `GITHUB_ACTIONS` and `BUILDKITE` (`CI=0` is not CI); `FORCE_COLOR`
 forces colour on a pipe but never OSC 8 (links only on a TTY stdout); animation follows a TTY
 stdout, not stdin; no OSC 11 query under `NO_COLOR`. `activate` with no key reads piped stdin only
-when it is a file or FIFO, stops at the first non-empty line and gives up after about 2 s (exit 2,
+when it is a file, FIFO or socket (a Node parent's pipe is a socket), stops at the first non-empty line and gives up after about 2 s (exit 2,
 `cli.activate.noKey`), so a headless server never waits on a hidden prompt. `NO_COLOR` and
 `--no-color` drop colour; on a terminal bold, reverse video and OSC 8 links stay.
 
@@ -585,6 +586,20 @@ window that cannot be transparent. The close button of a kit dialog cancels that
 blocking gate window asks the host and by default quits; Sign out lives only in Settings → Account
 and the app menu (SIGN-IN.md D-71), never beside Cancel or Close. Each desktop kit declares a
 minimum window size (the 480×520 Mac sheet is the floor).
+
+**Layout rules the Godot kit measures** (tests/ui/matrix.gd; the other kits follow DL1-DL18 on
+`program/ui-language`):
+
+- The scale ladder runs 0.75 to 2 in steps of 1/8 (1 at 1280×720, or 600×1080 in portrait), and the
+  density steps down from spacious to comfortable and compact on a short or narrow screen.
+- The device's safe-area insets are kept clear on a phone or tablet.
+- A QR code is at least 160 physical pixels and at most 42 % of the screen's shorter side, and shows
+  only on a pad-only device (a TV, a console: no browser to open) and for the offline request code.
+- Two columns need a landscape room of at least 680 layout px; the identity-plus-form screens also
+  need an aspect of 1.5 or more.
+- The user code is set in Rubik: the bundled JetBrains Mono draws E, 8 and 0 as boxes in Godot 4.7.
+- A dialog over a running game is an opaque sheet docked to the bottom on a phone, never text on
+  the scrim.
 
 ### 1.5 Nothing dated: the hard rules
 
@@ -908,8 +923,8 @@ hand-tuned mockup colours and were replaced by it. The rules the draft left open
   button styles (`.glassProminent` / `.borderedProminent`).
 - **Compose:** the host `MaterialTheme` (including dynamic colour); status colours mapped to the host
   scheme's error and a computed warning, not tertiary/primary (KO).
-- **Godot:** derives from the ancestor or project theme (today's "neutral" builder, kept and
-  polished).
+- **Godot:** `ui_branding none` derives from the ancestor or project theme (the "neutral" builder,
+  polished: ink primary, ring that reads on the game's ground); the Polaris Key look is the default.
 - **Qt:** the platform `QStyle` (or the Qt Quick native style) with only spacing and typography
   hierarchy applied.
 
@@ -1824,14 +1839,35 @@ the Live Activity (a content-pack download, not an app update), and boot, status
 
 #### iPadOS, visionOS, tvOS and watchOS
 
-iPad at regular width with the activate form sheet, the welcome window in a visionOS room (glass is
-always the system material; a gaze-hover state), tvOS device-code sign-in under the focus engine,
-and the watchOS glance.
+iPad is the built SwiftUI kit's board. visionOS (UK-26, to evaluate) draws the window's glass as the
+system material, ornaments for banners, gaze hover as the focus signal and 60 pt targets; dark is a dark
+room and light a bright one. tvOS (UK-27) is always landscape at 1920 × 1080 inside the title-safe area: identity, title,
+instruction, URL, code and countdown on the start pane, the QR (DL14), the device line and the controls on the end pane, with the
+focus engine's lift as the ring. watchOS (UK-33, to evaluate) is dark only, one column, and hands sign-in to the iPhone. Each flow is drawn in
+both presets (`polaris-key` and `native`) where the platform allows it.
 
-| iPad                                    | visionOS                                    | tvOS                                    | watchOS                                  |
-| --------------------------------------- | ------------------------------------------- | --------------------------------------- | ---------------------------------------- |
-| ![](ui-kits/shots/apple-ipad-dark.png)  | ![](ui-kits/shots/apple-visionos-dark.png)  | ![](ui-kits/shots/apple-tvos-dark.png)  | ![](ui-kits/shots/apple-watch-dark.png)  |
-| ![](ui-kits/shots/apple-ipad-light.png) | ![](ui-kits/shots/apple-visionos-light.png) | ![](ui-kits/shots/apple-tvos-light.png) | ![](ui-kits/shots/apple-watch-light.png) |
+| Dark                                                                                        | Light                                                                                        |
+| ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| ![iPad](ui-kits/shots/apple-ipad-dark.png)                                                  | ![iPad](ui-kits/shots/apple-ipad-light.png)                                                  |
+| ![visionOS Welcome](ui-kits/shots/apple-visionos-gate-dark.png)                             | ![visionOS Welcome](ui-kits/shots/apple-visionos-gate-light.png)                             |
+| ![visionOS Welcome, native](ui-kits/shots/apple-visionos-gate-native-dark.png)              | ![visionOS Welcome, native](ui-kits/shots/apple-visionos-gate-native-light.png)              |
+| ![visionOS sign-in code](ui-kits/shots/apple-visionos-sign-in-dark.png)                     | ![visionOS sign-in code](ui-kits/shots/apple-visionos-sign-in-light.png)                     |
+| ![visionOS sign-in code, native](ui-kits/shots/apple-visionos-sign-in-native-dark.png)      | ![visionOS sign-in code, native](ui-kits/shots/apple-visionos-sign-in-native-light.png)      |
+| ![visionOS device limit](ui-kits/shots/apple-visionos-device-limit-dark.png)                | ![visionOS device limit](ui-kits/shots/apple-visionos-device-limit-light.png)                |
+| ![visionOS device limit, native](ui-kits/shots/apple-visionos-device-limit-native-dark.png) | ![visionOS device limit, native](ui-kits/shots/apple-visionos-device-limit-native-light.png) |
+| ![visionOS narrow, tall window](ui-kits/shots/apple-visionos-narrow-dark.png)               | ![visionOS narrow, tall window](ui-kits/shots/apple-visionos-narrow-light.png)               |
+| ![visionOS gaze hover](ui-kits/shots/apple-visionos-gaze-dark.png)                          | ![visionOS gaze hover](ui-kits/shots/apple-visionos-gaze-light.png)                          |
+| ![visionOS banners](ui-kits/shots/apple-visionos-banners-dark.png)                          | ![visionOS banners](ui-kits/shots/apple-visionos-banners-light.png)                          |
+| ![tvOS Welcome](ui-kits/shots/apple-tvos-gate-dark.png)                                     | ![tvOS Welcome](ui-kits/shots/apple-tvos-gate-light.png)                                     |
+| ![tvOS Welcome, native](ui-kits/shots/apple-tvos-gate-native-dark.png)                      | ![tvOS Welcome, native](ui-kits/shots/apple-tvos-gate-native-light.png)                      |
+| ![tvOS sign-in code](ui-kits/shots/apple-tvos-sign-in-dark.png)                             | ![tvOS sign-in code](ui-kits/shots/apple-tvos-sign-in-light.png)                             |
+| ![tvOS sign-in code, native](ui-kits/shots/apple-tvos-sign-in-native-dark.png)              | ![tvOS sign-in code, native](ui-kits/shots/apple-tvos-sign-in-native-light.png)              |
+| ![tvOS device limit](ui-kits/shots/apple-tvos-device-limit-dark.png)                        | ![tvOS device limit](ui-kits/shots/apple-tvos-device-limit-light.png)                        |
+| ![tvOS device limit, native](ui-kits/shots/apple-tvos-device-limit-native-dark.png)         | ![tvOS device limit, native](ui-kits/shots/apple-tvos-device-limit-native-light.png)         |
+| ![tvOS code expired](ui-kits/shots/apple-tvos-expired-dark.png)                             | ![tvOS code expired](ui-kits/shots/apple-tvos-expired-light.png)                             |
+| ![tvOS focus](ui-kits/shots/apple-tvos-focus-dark.png)                                      | ![tvOS focus](ui-kits/shots/apple-tvos-focus-light.png)                                      |
+| ![watchOS glance, 41, 45 and 49 mm](ui-kits/shots/apple-watch-glance-dark.png)              | ![watchOS glance, 41, 45 and 49 mm](ui-kits/shots/apple-watch-glance-light.png)              |
+| ![watchOS states](ui-kits/shots/apple-watch-states-dark.png)                                | ![watchOS states](ui-kits/shots/apple-watch-states-light.png)                                |
 
 #### Android (Compose, Material 3 Expressive)
 
@@ -1854,49 +1890,114 @@ and error:
 
 #### macOS 26 (SwiftUI; Electron and Tauri on macOS)
 
-The macOS board is drawn at Mac scale: the split Welcome window with product art, inset rounded
-sheets below the title-bar row, the single-column update window, and the Settings scene.
+The macOS board is one Welcome component whose arrangement follows its window (DL1): 900 × 640, a 480
+narrow window with the one-line header strip, a 760 × 420 short landscape and a 1440 × 900 large window. Activation and
+sign-in are the inline steps of the Welcome end pane (D-79; no QR on desktop, D-67); the dialog shots are captioned `presentation: "sheet"`.
+The `polaris-key` and `native` presets are drawn for the Welcome, activation, sign-in and device limit. A refusal is a neutral callout with its fix as the
+one primary, and an action that leaves the app carries the new-window glyph.
 
-| Dark                                                          | Light                                                          |
-| ------------------------------------------------------------- | -------------------------------------------------------------- |
-| ![Gate](ui-kits/shots/desktop-gate-dark.png)                  | ![Gate](ui-kits/shots/desktop-gate-light.png)                  |
-| ![Activate](ui-kits/shots/desktop-activate-dark.png)          | ![Activate](ui-kits/shots/desktop-activate-light.png)          |
-| ![Sign in](ui-kits/shots/desktop-sign-in-dark.png)            | ![Sign in](ui-kits/shots/desktop-sign-in-light.png)            |
-| ![Device limit](ui-kits/shots/desktop-device-limit-dark.png)  | ![Device limit](ui-kits/shots/desktop-device-limit-light.png)  |
-| ![Update](ui-kits/shots/desktop-update-dark.png)              | ![Update](ui-kits/shots/desktop-update-light.png)              |
-| ![Settings](ui-kits/shots/desktop-settings-dark.png)          | ![Settings](ui-kits/shots/desktop-settings-light.png)          |
-| ![macOS 15](ui-kits/shots/desktop-macos15-dark.png)           | ![macOS 15](ui-kits/shots/desktop-macos15-light.png)           |
-| ![Boot, status, error](ui-kits/shots/desktop-states-dark.png) | ![Boot, status, error](ui-kits/shots/desktop-states-light.png) |
+| Dark                                                                         | Light                                                                         |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| ![Welcome, 900 × 640](ui-kits/shots/desktop-gate-dark.png)                   | ![Welcome, 900 × 640](ui-kits/shots/desktop-gate-light.png)                   |
+| ![Welcome, native](ui-kits/shots/desktop-gate-native-dark.png)               | ![Welcome, native](ui-kits/shots/desktop-gate-native-light.png)               |
+| ![Welcome, narrow 480](ui-kits/shots/desktop-gate-480-dark.png)              | ![Welcome, narrow 480](ui-kits/shots/desktop-gate-480-light.png)              |
+| ![Welcome, short landscape](ui-kits/shots/desktop-gate-760-dark.png)         | ![Welcome, short landscape](ui-kits/shots/desktop-gate-760-light.png)         |
+| ![Welcome, large 1440](ui-kits/shots/desktop-gate-1440-dark.png)             | ![Welcome, large 1440](ui-kits/shots/desktop-gate-1440-light.png)             |
+| ![Keyboard focus](ui-kits/shots/desktop-gate-focus-dark.png)                 | ![Keyboard focus](ui-kits/shots/desktop-gate-focus-light.png)                 |
+| ![Add your license, inline](ui-kits/shots/desktop-activate-dark.png)         | ![Add your license, inline](ui-kits/shots/desktop-activate-light.png)         |
+| ![Add your license, native](ui-kits/shots/desktop-activate-native-dark.png)  | ![Add your license, native](ui-kits/shots/desktop-activate-native-light.png)  |
+| ![Key error](ui-kits/shots/desktop-activate-error-dark.png)                  | ![Key error](ui-kits/shots/desktop-activate-error-light.png)                  |
+| ![Add your license, sheet](ui-kits/shots/desktop-activate-sheet-dark.png)    | ![Add your license, sheet](ui-kits/shots/desktop-activate-sheet-light.png)    |
+| ![Sign in, inline](ui-kits/shots/desktop-sign-in-dark.png)                   | ![Sign in, inline](ui-kits/shots/desktop-sign-in-light.png)                   |
+| ![Sign in, native](ui-kits/shots/desktop-sign-in-native-dark.png)            | ![Sign in, native](ui-kits/shots/desktop-sign-in-native-light.png)            |
+| ![Sign in, sheet](ui-kits/shots/desktop-sign-in-sheet-dark.png)              | ![Sign in, sheet](ui-kits/shots/desktop-sign-in-sheet-light.png)              |
+| ![Device limit](ui-kits/shots/desktop-device-limit-dark.png)                 | ![Device limit](ui-kits/shots/desktop-device-limit-light.png)                 |
+| ![Device limit, native](ui-kits/shots/desktop-device-limit-native-dark.png)  | ![Device limit, native](ui-kits/shots/desktop-device-limit-native-light.png)  |
+| ![Device limit, sheet](ui-kits/shots/desktop-device-limit-sheet-dark.png)    | ![Device limit, sheet](ui-kits/shots/desktop-device-limit-sheet-light.png)    |
+| ![Update](ui-kits/shots/desktop-update-dark.png)                             | ![Update](ui-kits/shots/desktop-update-light.png)                             |
+| ![Settings](ui-kits/shots/desktop-settings-dark.png)                         | ![Settings](ui-kits/shots/desktop-settings-light.png)                         |
+| ![macOS 15](ui-kits/shots/desktop-macos15-dark.png)                          | ![macOS 15](ui-kits/shots/desktop-macos15-light.png)                          |
+| ![Boot, expired, signed out, offline](ui-kits/shots/desktop-states-dark.png) | ![Boot, expired, signed out, offline](ui-kits/shots/desktop-states-light.png) |
+| ![Grace](ui-kits/shots/desktop-grace-dark.png)                               | ![Grace](ui-kits/shots/desktop-grace-light.png)                               |
 
 #### Windows 11 and GNOME (Electron, Tauri, Compose Desktop, Qt Quick)
 
-The Windows board has a Mica window, a `ContentDialog` on a smoke layer, keyboard focus in the Fluent
-ring, and a NavigationView settings page. The GNOME board has a header bar, a pill suggested-action
-and an `AdwDialog`.
+Both boards are one container-driven window (DL1) at the default 900 × 600, a 480 narrow window, a short 900 × 400 window and a large 1440 × 900 window,
+in `polaris-key` and `native` (Fluent and libadwaita). Windows has a Mica window, primary first at equal width, and a `ContentDialog` on a smoke layer for the
+sheet shots. GNOME has a header bar, pill buttons with the suggested action at the end, centred pills on message screens and an `AdwDialog`. Sign-in and
+activation are inline (no QR); the sheet shots are captioned `presentation: "sheet"`. Settings has the provenance groups.
 
-| Windows dark                                 | Windows light                                 |
-| -------------------------------------------- | --------------------------------------------- |
-| ![](ui-kits/shots/windows-gate-dark.png)     | ![](ui-kits/shots/windows-gate-light.png)     |
-| ![](ui-kits/shots/windows-activate-dark.png) | ![](ui-kits/shots/windows-activate-light.png) |
-| ![](ui-kits/shots/windows-update-dark.png)   | ![](ui-kits/shots/windows-update-light.png)   |
-| ![](ui-kits/shots/windows-settings-dark.png) | ![](ui-kits/shots/windows-settings-light.png) |
-| ![](ui-kits/shots/linux-gate-dark.png)       | ![](ui-kits/shots/linux-gate-light.png)       |
-| ![](ui-kits/shots/linux-activate-dark.png)   | ![](ui-kits/shots/linux-activate-light.png)   |
-| ![](ui-kits/shots/windows-states-dark.png)   | ![](ui-kits/shots/windows-states-light.png)   |
-| ![](ui-kits/shots/linux-states-dark.png)     | ![](ui-kits/shots/linux-states-light.png)     |
+**Windows**
+
+| Dark                                                                        | Light                                                                        |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| ![Welcome](ui-kits/shots/windows-gate-dark.png)                             | ![Welcome](ui-kits/shots/windows-gate-light.png)                             |
+| ![Welcome, native](ui-kits/shots/windows-gate-native-dark.png)              | ![Welcome, native](ui-kits/shots/windows-gate-native-light.png)              |
+| ![Welcome, narrow and short](ui-kits/shots/windows-gate-shapes-dark.png)    | ![Welcome, narrow and short](ui-kits/shots/windows-gate-shapes-light.png)    |
+| ![Welcome, large](ui-kits/shots/windows-gate-large-dark.png)                | ![Welcome, large](ui-kits/shots/windows-gate-large-light.png)                |
+| ![Enter your license key, inline](ui-kits/shots/windows-activate-dark.png)  | ![Enter your license key, inline](ui-kits/shots/windows-activate-light.png)  |
+| ![Narrow and short](ui-kits/shots/windows-activate-shapes-dark.png)         | ![Narrow and short](ui-kits/shots/windows-activate-shapes-light.png)         |
+| ![Sheet](ui-kits/shots/windows-activate-sheet-dark.png)                     | ![Sheet](ui-kits/shots/windows-activate-sheet-light.png)                     |
+| ![Sign in, inline](ui-kits/shots/windows-sign-in-dark.png)                  | ![Sign in, inline](ui-kits/shots/windows-sign-in-light.png)                  |
+| ![Sign in, native](ui-kits/shots/windows-sign-in-native-dark.png)           | ![Sign in, native](ui-kits/shots/windows-sign-in-native-light.png)           |
+| ![Narrow and short](ui-kits/shots/windows-sign-in-shapes-dark.png)          | ![Narrow and short](ui-kits/shots/windows-sign-in-shapes-light.png)          |
+| ![Large](ui-kits/shots/windows-sign-in-large-dark.png)                      | ![Large](ui-kits/shots/windows-sign-in-large-light.png)                      |
+| ![Sheet](ui-kits/shots/windows-sign-in-sheet-dark.png)                      | ![Sheet](ui-kits/shots/windows-sign-in-sheet-light.png)                      |
+| ![Device limit](ui-kits/shots/windows-device-limit-dark.png)                | ![Device limit](ui-kits/shots/windows-device-limit-light.png)                |
+| ![Device limit, native](ui-kits/shots/windows-device-limit-native-dark.png) | ![Device limit, native](ui-kits/shots/windows-device-limit-native-light.png) |
+| ![Narrow and short](ui-kits/shots/windows-device-limit-shapes-dark.png)     | ![Narrow and short](ui-kits/shots/windows-device-limit-shapes-light.png)     |
+| ![Large](ui-kits/shots/windows-device-limit-large-dark.png)                 | ![Large](ui-kits/shots/windows-device-limit-large-light.png)                 |
+| ![Keyboard focus](ui-kits/shots/windows-focus-dark.png)                     | ![Keyboard focus](ui-kits/shots/windows-focus-light.png)                     |
+| ![Settings](ui-kits/shots/windows-settings-dark.png)                        | ![Settings](ui-kits/shots/windows-settings-light.png)                        |
+| ![Update](ui-kits/shots/windows-update-dark.png)                            | ![Update](ui-kits/shots/windows-update-light.png)                            |
+| ![Boot, grace, offline](ui-kits/shots/windows-states-dark.png)              | ![Boot, grace, offline](ui-kits/shots/windows-states-light.png)              |
+| ![Signed out and expired](ui-kits/shots/windows-revoked-dark.png)           | ![Signed out and expired](ui-kits/shots/windows-revoked-light.png)           |
+
+**GNOME**
+
+| Dark                                                                      | Light                                                                      |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| ![Welcome](ui-kits/shots/linux-gate-dark.png)                             | ![Welcome](ui-kits/shots/linux-gate-light.png)                             |
+| ![Welcome, native](ui-kits/shots/linux-gate-native-dark.png)              | ![Welcome, native](ui-kits/shots/linux-gate-native-light.png)              |
+| ![Welcome, narrow and short](ui-kits/shots/linux-gate-shapes-dark.png)    | ![Welcome, narrow and short](ui-kits/shots/linux-gate-shapes-light.png)    |
+| ![Welcome, large](ui-kits/shots/linux-gate-large-dark.png)                | ![Welcome, large](ui-kits/shots/linux-gate-large-light.png)                |
+| ![Enter your license key, inline](ui-kits/shots/linux-activate-dark.png)  | ![Enter your license key, inline](ui-kits/shots/linux-activate-light.png)  |
+| ![Narrow and short](ui-kits/shots/linux-activate-shapes-dark.png)         | ![Narrow and short](ui-kits/shots/linux-activate-shapes-light.png)         |
+| ![Sheet](ui-kits/shots/linux-activate-sheet-dark.png)                     | ![Sheet](ui-kits/shots/linux-activate-sheet-light.png)                     |
+| ![Sign in, inline](ui-kits/shots/linux-sign-in-dark.png)                  | ![Sign in, inline](ui-kits/shots/linux-sign-in-light.png)                  |
+| ![Sign in, native](ui-kits/shots/linux-sign-in-native-dark.png)           | ![Sign in, native](ui-kits/shots/linux-sign-in-native-light.png)           |
+| ![Narrow and short](ui-kits/shots/linux-sign-in-shapes-dark.png)          | ![Narrow and short](ui-kits/shots/linux-sign-in-shapes-light.png)          |
+| ![Large](ui-kits/shots/linux-sign-in-large-dark.png)                      | ![Large](ui-kits/shots/linux-sign-in-large-light.png)                      |
+| ![Sheet](ui-kits/shots/linux-sign-in-sheet-dark.png)                      | ![Sheet](ui-kits/shots/linux-sign-in-sheet-light.png)                      |
+| ![Device limit](ui-kits/shots/linux-device-limit-dark.png)                | ![Device limit](ui-kits/shots/linux-device-limit-light.png)                |
+| ![Device limit, native](ui-kits/shots/linux-device-limit-native-dark.png) | ![Device limit, native](ui-kits/shots/linux-device-limit-native-light.png) |
+| ![Narrow and short](ui-kits/shots/linux-device-limit-shapes-dark.png)     | ![Narrow and short](ui-kits/shots/linux-device-limit-shapes-light.png)     |
+| ![Large](ui-kits/shots/linux-device-limit-large-dark.png)                 | ![Large](ui-kits/shots/linux-device-limit-large-light.png)                 |
+| ![Keyboard focus](ui-kits/shots/linux-focus-dark.png)                     | ![Keyboard focus](ui-kits/shots/linux-focus-light.png)                     |
+| ![Settings](ui-kits/shots/linux-settings-dark.png)                        | ![Settings](ui-kits/shots/linux-settings-light.png)                        |
+| ![Update](ui-kits/shots/linux-update-dark.png)                            | ![Update](ui-kits/shots/linux-update-light.png)                            |
+| ![Boot, grace, offline](ui-kits/shots/linux-states-dark.png)              | ![Boot, grace, offline](ui-kits/shots/linux-states-light.png)              |
+| ![Signed out and expired](ui-kits/shots/linux-revoked-dark.png)           | ![Signed out and expired](ui-kits/shots/linux-revoked-light.png)           |
 
 #### Qt (Qt Quick and QWidget, Python)
 
-Drawn as Qt draws them, from the generated `Theme.qml` and QSS: the Qt Quick gate on Windows, the
-activate dialog on Linux in the KDE Breeze frame with KDE's affirmative-first button order, the QWidget parts by object name, and boot, status
-and error.
+Drawn as Qt draws them, from the generated `Theme.qml` and QSS, in `polaris-key` and `native` (the platform style with only spacing and hierarchy applied).
+The Qt Quick Welcome runs the container-query shapes (DL1) on Windows 11; activation and sign-in are inline (no QR); the sheet shots show KDE's affirmative-first
+order on the Breeze form and the GNOME form elsewhere, captioned `presentation: "sheet"`. Settings has the provenance groups, and the QWidget parts are drawn by object name.
 
-| Dark                                          | Light                                          |
-| --------------------------------------------- | ---------------------------------------------- |
-| ![](ui-kits/shots/qt-quick-gate-dark.png)     | ![](ui-kits/shots/qt-quick-gate-light.png)     |
-| ![](ui-kits/shots/qt-quick-activate-dark.png) | ![](ui-kits/shots/qt-quick-activate-light.png) |
-| ![](ui-kits/shots/qt-widgets-dark.png)        | ![](ui-kits/shots/qt-widgets-light.png)        |
-| ![](ui-kits/shots/qt-states-dark.png)         | ![](ui-kits/shots/qt-states-light.png)         |
+| Dark                                                                              | Light                                                                              |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| ![Welcome, both presets](ui-kits/shots/qt-quick-gate-dark.png)                    | ![Welcome, both presets](ui-kits/shots/qt-quick-gate-light.png)                    |
+| ![Narrow and short landscape](ui-kits/shots/qt-quick-shapes-dark.png)             | ![Narrow and short landscape](ui-kits/shots/qt-quick-shapes-light.png)             |
+| ![Large](ui-kits/shots/qt-quick-large-dark.png)                                   | ![Large](ui-kits/shots/qt-quick-large-light.png)                                   |
+| ![Enter your license key, inline](ui-kits/shots/qt-quick-activate-dark.png)       | ![Enter your license key, inline](ui-kits/shots/qt-quick-activate-light.png)       |
+| ![Sign in, inline](ui-kits/shots/qt-quick-sign-in-dark.png)                       | ![Sign in, inline](ui-kits/shots/qt-quick-sign-in-light.png)                       |
+| ![Device limit](ui-kits/shots/qt-quick-device-limit-dark.png)                     | ![Device limit](ui-kits/shots/qt-quick-device-limit-light.png)                     |
+| ![Sheet (KDE Breeze, GNOME form)](ui-kits/shots/qt-quick-activate-sheet-dark.png) | ![Sheet (KDE Breeze, GNOME form)](ui-kits/shots/qt-quick-activate-sheet-light.png) |
+| ![Keyboard focus](ui-kits/shots/qt-quick-focus-dark.png)                          | ![Keyboard focus](ui-kits/shots/qt-quick-focus-light.png)                          |
+| ![Settings](ui-kits/shots/qt-settings-dark.png)                                   | ![Settings](ui-kits/shots/qt-settings-light.png)                                   |
+| ![Boot, grace, signed out, offline](ui-kits/shots/qt-states-dark.png)             | ![Boot, grace, signed out, offline](ui-kits/shots/qt-states-light.png)             |
+| ![QWidget parts](ui-kits/shots/qt-widgets-dark.png)                               | ![QWidget parts](ui-kits/shots/qt-widgets-light.png)                               |
 
 #### Godot (Control nodes)
 

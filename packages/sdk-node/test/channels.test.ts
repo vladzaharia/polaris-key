@@ -60,7 +60,7 @@ describe("license.entitledChannels()", () => {
     });
   }
 
-  it("with no licence document at all, the floor: stable", () => {
+  it("with no license document at all, the floor: stable", () => {
     const cache = { state: { license: null } };
     const c = new LicenseClient(
       {} as never,

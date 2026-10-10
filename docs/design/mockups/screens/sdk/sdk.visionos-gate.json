@@ -1,0 +1,44 @@
+{
+  "id": "sdk.visionos-gate",
+  "title": "visionOS kit: gate",
+  "area": "sdk",
+  "surface": "kit",
+  "order": 25,
+  "packages": ["UK-56", "UK-26"],
+  "uxRows": [],
+  "summary": "The visionOS kit's gate in both presets, drawn as a labelled fixture of DJDL and as a starting point to evaluate on the simulator: Welcome in the default window and in a narrow, tall one, Finish in your browser (no QR), the device limit's browser hand-off and an Offline grace ornament.",
+  "compare": [
+    "Open questions, to settle on the simulator before the look is committed: does Rubik at 400 read on glass where system text is heavier, and what 'both schemes' means with no switch (the board's two themes stand in for a light and a dark environment).",
+    "The window's glass is always the system material, so the ambient is off: polaris-key shows only in the accent, the type and the identity (the art in the start pane); native is the icon alone on a quiet pane with the system tint.",
+    "DL1: the default window is landscape, so the gate is two panes; the narrow, tall window takes the one-column form with a one-line art strip. Content is top-aligned, never centred in a void.",
+    "Targets are 60pt capsules; gaze hover is the DL9 focus signal, drawn as a brightened, slightly lifted primary with no ring and no glow. Banners (grace, update) are ornaments on the window's bottom edge; so are the tertiary links.",
+    "No QR (DL14): the hand-off shows the code, Copy, the countdown and Open browser again with the external-action glyph.",
+    "DL6: the device limit is a neutral callout with its fix, Replace a device, as the one primary.",
+    "One primary per state; weights 400/500/600; copy from the catalog; the welcome lede is left out (it restates the buttons, DL8).",
+    "The stage is drawn at its true size (1280 x 800 pt; 640 x 800 for the tall window) and scaled to the cell.",
+    "Phone: the default-window frames are hidden below tablet width (a 1280pt window scaled to 390px has no legible type or targets); the narrow, tall window stays."
+  ],
+  "status": "mockup",
+  "designReview": {
+    "round": 1,
+    "reviewer": "UX designer (visual critique of rendered screenshots, mockup mode)",
+    "date": "2026-10-09",
+    "verdict": "Good after one fix round: no QR on a desktop surface, every refusal neutral, one primary per frame; the clipped visionOS panel, copy drift between boards and screens, mixed accents on the polaris-key cards and weak polaris focus rings were fixed.",
+    "findings": [
+      {
+        "severity": "major",
+        "issue": "Copy for the same step differed between the boards and these screens (sign-in wording, Back and Cancel on inline steps, offline action, expired code).",
+        "resolution": "One wording everywhere: the sign-in step reads 'Check the code there matches this one.' with 'Or go to <url>'; inline steps say Back, only sheets say Cancel; the offline action is Try again; the expired code uses the catalog sentence."
+      },
+      {
+        "severity": "major",
+        "issue": "The visionOS panel clipped Cancel on sign-in and device limit.",
+        "resolution": "The window follows its content."
+      },
+      {
+        "issue": "Vertical centring of the TV and desktop columns.",
+        "resolution": "declined: DL1 top-aligns the panes with the panel's content."
+      }
+    ]
+  }
+}

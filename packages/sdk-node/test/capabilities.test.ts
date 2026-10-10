@@ -15,7 +15,7 @@
 // off until something says otherwise, and `ctx.requireService(slug)` makes a sub-client of a
 // service this product does not run throw `PolarisError("service-unavailable")` BEFORE it dials.
 // The OFFLINE-FIRST half: discovery is a network read, so an unreachable control plane must
-// never be able to take a licence gate away — a 500 on `/.well-known/polaris.json` leaves
+// never be able to take a license gate away — a 500 on `/.well-known/polaris.json` leaves
 // whatever was already resolved exactly where it was.
 //
 // ── D-08, THE REASON ANY OF THIS EXISTS ─────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ describe("capabilities — the suite default (D-21)", () => {
       license: { enabled: true },
       config: { enabled: true },
     });
-    // The licence gate is live, so an unactivated client reports the normal v2 state.
+    // The license gate is live, so an unactivated client reports the normal v2 state.
     expect(client.license.status().status).toBe("needs-activation");
     expect(client.isLicensed()).toBe(false);
     expect(client.config.enabled).toBe(true);
@@ -272,7 +272,7 @@ describe("capabilities — the expectedServices fallback (D-08/D-21)", () => {
       ...NONE,
       config: { enabled: true },
     });
-    // D-08: there is no licence here to be missing, so the gate short-circuits rather than
+    // D-08: there is no license here to be missing, so the gate short-circuits rather than
     // holding the product hostage to an activation that will never happen.
     expect(client.license.status().status).toBe("not-applicable");
     expect(client.isLicensed()).toBe(true);
@@ -316,9 +316,9 @@ describe("capabilities — the expectedServices fallback (D-08/D-21)", () => {
 // The expectation is what this BUILD believed; the document is what the PRODUCT says. Once
 // loaded, the document wins in both directions — it can take a service away and it can grant one.
 describe("capabilities — a discovery document wins (D-21)", () => {
-  // Discovery is unsigned, so it can switch the licence gate ON but never OFF. It
+  // Discovery is unsigned, so it can switch the license gate ON but never OFF. It
   // still governs which sub-clients exist (the `capabilities()` assertion below).
-  it("does NOT turn the licence gate off against a build that expected it", async () => {
+  it("does NOT turn the license gate off against a build that expected it", async () => {
     const m = mockFetch({
       [WELL_KNOWN]: () =>
         json(
@@ -423,7 +423,7 @@ describe("capabilities — an unreachable control plane changes nothing", () => 
 
     expect(res.kind).toBe("error");
     expect(res.kind === "error" ? res.status : 0).toBe(500);
-    // The licence gate survives: losing it here would lock every offline user out of a product
+    // The license gate survives: losing it here would lock every offline user out of a product
     // whose control plane merely hiccuped.
     expect(client.capabilities()).toEqual({
       ...NONE,
@@ -455,7 +455,7 @@ describe("capabilities — an unreachable control plane changes nothing", () => 
 
 // ── 5. The config-only product, end to end ────────────────────────────────────────────────
 // The wire-level proof of D-08: a device principal with a real credential, a signed config
-// document fetched on it, and no licence anywhere in the exchange.
+// document fetched on it, and no license anywhere in the exchange.
 describe("the config-only product flow (D-08)", () => {
   it("registers keylessly, syncs ONLY the config document, and gates as not-applicable", async () => {
     const issuedAt = nowSec();
@@ -508,14 +508,14 @@ describe("the config-only product flow (D-08)", () => {
     expect(client.getConfig("quality.floor", "mp3")).toBe("flac");
     expect(client.config.schemaVersion()).toBe(4);
 
-    // …and the licence gate reports "there is no licence here", usably.
+    // …and the license gate reports "there is no license here", usably.
     expect(client.license.status().status).toBe("not-applicable");
     expect(client.isLicensed()).toBe(true);
 
     const state = client.getSyncState();
     // A registered device holds a real credential, so it IS activated — by token…
     expect(state.activation).toBe("token");
-    // …and there is no licence document behind it. Both halves are the point of D-08.
+    // …and there is no license document behind it. Both halves are the point of D-08.
     expect(state.doc).toBeNull();
     expect(state.highWaterMark).toBe(issuedAt);
   });
@@ -553,7 +553,7 @@ describe("getSyncState() — the React bridge contract", () => {
     expect(m.calls).toEqual([]);
   });
 
-  it("(b) after a licence activation: token, the verified doc, and the floor at its issuedAt", async () => {
+  it("(b) after a license activation: token, the verified doc, and the floor at its issuedAt", async () => {
     const issuedAt = nowSec();
     const m = mockFetch({
       "/license/activate": () => json({ token: "pkeyt_act", schemaVersion: 4 }),

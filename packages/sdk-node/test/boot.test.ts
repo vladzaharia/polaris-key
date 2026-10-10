@@ -110,17 +110,17 @@ describe("app boot guard (§3.15)", () => {
 });
 
 describe("client.boot() (§3.4)", () => {
-  const docs = (licence: string) => ({
-    "GET /djdl/license/document": () => new Response(licence, { status: 200 }),
+  const docs = (license: string) => ({
+    "GET /djdl/license/document": () => new Response(license, { status: 200 }),
     "GET /djdl/config/document": () => new Response("", { status: 404 }),
     "POST /djdl/devices/report": () => json({}),
   });
 
   it("a licensed device boots to ready through every stage", async () => {
-    const licence = await signedLicense({ pro: true });
+    const license = await signedLicense({ pro: true });
     const { client } = await seededClient({
-      license: licence,
-      routes: docs(licence),
+      license: license,
+      routes: docs(license),
       extra: { expectedServices: ["license", "config"] as never },
     });
     const stages: string[] = [];
@@ -146,13 +146,13 @@ describe("client.boot() (§3.4)", () => {
     expect(r.guard?.result).toBe("ok");
   });
 
-  it("no licence: registers on an open product, else ends waiting (never invents a prompt)", async () => {
-    const licence = await signedLicense({});
+  it("no license: registers on an open product, else ends waiting (never invents a prompt)", async () => {
+    const license = await signedLicense({});
     let registered = false;
     const { client, seen } = await seededClient({
       token: null,
       routes: {
-        ...docs(licence),
+        ...docs(license),
         "GET /djdl/.well-known/polaris.json": () =>
           json({
             product: "djdl",
@@ -175,11 +175,11 @@ describe("client.boot() (§3.4)", () => {
   });
 
   it("ensureActivated enrols where the free tier exists", async () => {
-    const licence = await signedLicense({ free: true });
+    const license = await signedLicense({ free: true });
     const { client } = await seededClient({
       token: null,
       routes: {
-        ...docs(licence),
+        ...docs(license),
         "POST /djdl/license/enroll": () =>
           json({ token: "pkeyt_e", schemaVersion: 3 }),
       },

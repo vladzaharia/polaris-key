@@ -2,7 +2,7 @@
 //
 // The stored device id is a plain file next to the token and the cache. Copy that directory to
 // another machine and, before this, the clone kept the original's identity: the server saw one
-// device, the licence document verified (it is bound to that id), and a revoked seat was
+// device, the license document verified (it is bound to that id), and a revoked seat was
 // resurrected by pasting the old state over the new. So the desktop file store no longer
 // TRUSTS its stored id: at every start the id is re-derived from the platform anchor
 // (`deviceIdFromRaw(product, raw)`, the same formula that minted it) and a stored id that

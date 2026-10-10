@@ -10,6 +10,7 @@ const CONFIG := preload("res://tests/config/support.gd")
 ## A settings catalog with every row kind the panel must handle.
 const SETTINGS_CATALOG := [
 	{"key": "audio.volume", "kind": "config", "category": "Audio", "label": "Volume", "description": "Master volume.", "schema": {"type": "integer", "minimum": 0, "maximum": 100}, "default": 80, "ui": {"widget": "stepper", "order": 1, "unit": "%"}, "accessor": "audio.volume"},
+	{"key": "audio.pitch", "kind": "config", "category": "Audio", "label": "Pitch", "description": "Any number.", "schema": {"type": "number"}, "default": 1.5, "ui": {"order": 3, "unit": "x"}},
 	{"key": "audio.muted", "kind": "config", "category": "Audio", "label": "Mute", "description": "", "schema": {"type": "boolean"}, "default": false, "ui": {"order": 2}},
 	{"key": "ui.theme", "kind": "config", "category": "Interface", "label": "Theme", "description": "Colour theme.", "schema": {"type": "string", "enum": ["dark", "light"]}, "default": "dark", "ui": {"widget": "select", "order": 3, "optionLabels": {"dark": "Dark", "light": "Light"}}},
 	{"key": "ui.reducedMotion", "kind": "config", "category": "Interface", "label": "Reduce motion", "description": "Only with the dark theme.", "schema": {"type": "boolean"}, "default": false, "ui": {"order": 4}, "dependsOn": {"key": "ui.theme", "equals": "dark"}},
@@ -25,6 +26,7 @@ const SETTINGS_CATALOG := [
 ## The verified document's states for that catalog.
 const SETTINGS_DOC := {
 	"audio.volume": {"state": "default", "value": 60, "updatedAt": NOW},
+	"audio.pitch": {"state": "default", "value": 1.5, "updatedAt": NOW},
 	"audio.muted": {"state": "default", "value": false, "updatedAt": NOW},
 	"ui.theme": {"state": "default", "value": "dark", "updatedAt": NOW},
 	"game.killSwitch": {"state": "enforced", "value": true, "updatedAt": NOW},
@@ -55,6 +57,16 @@ func all() -> Array:
 	out.append(["gate", "loading", gate.bind("", true, "")])
 	out.append(["gate", "needs-activation after an error", gate.bind("needs-activation", true, "That license key wasn't accepted.")])
 	out.append(["gate", "version-too-old with a store action", gate_store])
+	out.append(["gate", "network error", gate_network.bind(true)])
+	out.append(["gate", "network error, no lease", gate_network.bind(false)])
+	out.append(["gate", "not available (version-too-new)", gate_not_available])
+	# The gate with sign-in and offline activation open inside it (what a player sees after
+	# choosing them on the needs-activation card).
+	out.append(["gate", "sign-in pending", gate_flow.bind("sign-in")])
+	out.append(["gate", "offline activation", gate_flow.bind("offline")])
+	# The device limit reached through the gate (type a key, Activate, the licence is on every seat).
+	out.append(["gate", "device limit", gate_limit.bind("button")])
+	out.append(["gate", "device limit, replace a device (QR)", gate_limit.bind("qr")])
 	# ── PKeyActivationPanel: every capability combination.
 	for lic in [true, false]:
 		for idn in [true, false]:
@@ -71,7 +83,6 @@ func all() -> Array:
 	out.append(["sign_in", "confirm, attachable", sign_in.bind("confirm")])
 	out.append(["sign_in", "ok", sign_in.bind("ok")])
 	out.append(["sign_in", "expired", sign_in.bind("expired")])
-	out.append(["sign_in", "cancelled", sign_in.bind("cancelled")])
 	out.append(["sign_in", "denied", sign_in.bind("denied")])
 	# ── PKeyOfflineDialog.
 	out.append(["offline", "native", offline.bind(false, "")])
@@ -92,6 +103,7 @@ func all() -> Array:
 	# ── PKeyEntitlementBadge.
 	out.append(["badge", "two grants", badge.bind(["Supporter", "Founder"])])
 	out.append(["badge", "none", badge.bind([])])
+	out.append(["badge", "eight grants", badge.bind(["Supporter", "Founder", "Beta tester", "Speedrunner", "Moderator", "Translator", "Artist", "Contributor"])])
 	# ── PKeyDevMenuSection.
 	out.append(["dev_menu", "editor", dev_menu.bind("")])
 	out.append(["dev_menu", "steam build", dev_menu.bind("steam")])
@@ -101,6 +113,7 @@ func all() -> Array:
 	out.append(["boot", "blocked update-required", boot.bind("update-required")])
 	out.append(["boot", "blocked not-available", boot.bind("not-available")])
 	out.append(["boot", "waiting needs-activation", boot.bind("waiting")])
+	out.append(["boot", "syncing", boot.bind("syncing")])
 	# ── PKeyBoot's pack stages (P4-08): the consent card, a declined download, the pill.
 	out.append(["boot", "consent metered", boot.bind("consent")])
 	out.append(["boot", "blocked content-declined", boot.bind("declined")])
@@ -130,6 +143,24 @@ func gate(status: String, allow_grace: bool, err: String) -> Control:
 	return g
 
 
+func gate_network(lease: bool) -> Control:
+	var g := PKeyGateView.new()
+	g.network_error = true
+	g.can_continue_offline = lease
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(g)
+	g.show_state({"status": "needs-activation"}, "network-error")
+	return g
+
+
+func gate_not_available() -> Control:
+	var g := PKeyGateView.new()
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(g)
+	g.show_state({"status": "version-too-new", "allowed_range": {"max": "1.4.0"}})
+	return g
+
+
 func gate_store() -> Control:
 	var g := PKeyGateView.new()
 	g.outlet = "steam"
@@ -137,6 +168,40 @@ func gate_store() -> Control:
 	add(g)
 	g.update_result = update_check({"action": "store", "release": {"version": "2.0.0", "seq": 3}, "listingUrl": "https://store.steampowered.com/app/480", "mandatory": true, "critical": false, "discardStaged": false})
 	g.show_state({"status": "version-too-old"})
+	return g
+
+
+## The needs-activation gate with sign-in (a code showing) or offline activation open.
+func gate_flow(which: String) -> Control:
+	var g := PKeyGateView.new()
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+	add(g)
+	g.show_state({"status": "needs-activation"})
+	var panel := g.activation
+	if which == "sign-in":
+		panel.sign_in_dialog.now_source = func(): return NOW
+		panel.open_mode("sign-in")
+		panel.sign_in_dialog.show_prompt(prompt_fixture())
+	else:
+		panel.offline_dialog.web_override = 0
+		panel.offline_dialog.product = "djdl"
+		panel.offline_dialog.device_id = "Q2hYlBg0Zx9uR7m1VvC4tKpE8sWnJ3aD"
+		panel.open_mode("offline")
+	return g
+
+
+## The gate after a key was refused with the device limit: the activation panel holds the limit view.
+func gate_limit(how: String) -> Control:
+	var g := PKeyGateView.new()
+	g.activation.manage_mode = how
+	g.activation.set_capabilities(PKeyActivationController.capabilities(true, true, true, false))
+	add(g)
+	g.show_state({"status": "needs-activation"})
+	var r := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
+	r.limit = 3
+	r.device_count = 3
+	r.manage_url = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64"
+	g.activation.show_result(r, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV")
 	return g
 
 
@@ -206,8 +271,6 @@ func sign_in(state: String) -> Control:
 			d.show_result(PKeySignInResult.signed_in({"name": "Ada"}, "", true, null))
 		"expired":
 			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_EXPIRED, PKeyErrors.SIGN_IN_EXPIRED, ""))
-		"cancelled":
-			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_CANCELLED, PKeyErrors.CANCELLED, ""))
 		"denied":
 			d.show_result(PKeySignInResult.ended(PKeySignInResult.KIND_DENIED, PKeyErrors.SIGN_IN_DENIED, ""))
 	return d
@@ -243,7 +306,16 @@ func settings(advanced: bool, overrides: Dictionary) -> Control:
 	p.sdk = sdk
 	p.show_advanced = advanced
 	add(p)
-	p.tree_exited.connect(sdk.queue_free)
+	# The SDK goes with the panel, not when a harness re-parents the panel (the matrix does, to put
+	# it in its game stand-in): a freed SDK left every later layout of the panel with an empty list.
+	var panel_ref: WeakRef = weakref(p)
+	var sdk_ref: WeakRef = weakref(sdk)
+	p.tree_exited.connect(func() -> void:
+		(func() -> void:
+			var s := sdk_ref.get_ref() as Node
+			var panel := panel_ref.get_ref() as Node
+			if s != null and (panel == null or not panel.is_inside_tree()):
+				s.queue_free()).call_deferred())
 	return p
 
 
@@ -338,6 +410,9 @@ func boot(stop: String) -> Control:
 	host.answer({"type": "shell.done"})
 	host.answer({"type": "guard.done", "result": "ok"})
 	match stop:
+		"syncing":
+			# Still at SYNC, a sliced bundle verify reporting its progress.
+			b.set_verify_progress(0.42)
 		"offline":
 			host.answer({"type": "sync.done", "result": "offline"})
 		"error":

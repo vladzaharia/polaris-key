@@ -8777,7 +8777,7 @@
       "expect": {
         "component": "UpdateProgress",
         "state": "installing",
-        "copy": ["updateProgress.installing"]
+        "copy": ["update.verifying", "updateProgress.installing"]
       }
     },
     {

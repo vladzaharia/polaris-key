@@ -1,7 +1,7 @@
 // The Devices sub-client — the Core device principal's own surface (wire contract v3 §6).
 //
 // `register()` is the headline: until v3 the only way to become a device was to present a
-// licence key, which made "device" a licensing concept. D-08 undoes that — a config-only
+// license key, which made "device" a licensing concept. D-08 undoes that — a config-only
 // product's installs need an identity to fetch a document AS and a credential to fetch it
 // WITH, and `POST /<p>/devices/register` is where they get one, keylessly, under the `open`
 // registration policy.

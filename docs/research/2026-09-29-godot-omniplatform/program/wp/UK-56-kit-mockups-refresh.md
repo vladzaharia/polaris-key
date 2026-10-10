@@ -140,12 +140,12 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 ## Acceptance criteria
 
-- [ ] Every board listed draws its DL1 shape variants and both presets for the gate, sign-in and
+- [x] Every board listed draws its DL1 shape variants and both presets for the gate, sign-in and
       device limit, in both themes.
-- [ ] No desktop board shows a QR, and the tvOS board's QR follows DL14.
-- [ ] `pnpm ui:lint` passes on the boards with no new exception in `boards.ts`.
-- [ ] UI-KITS.md §8 links every new shot.
-- [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
+- [x] No desktop board shows a QR, and the tvOS board's QR follows DL14.
+- [x] `pnpm ui:lint` passes on the boards with no new exception in `boards.ts`.
+- [x] UI-KITS.md §8 links every new shot.
+- [x] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify

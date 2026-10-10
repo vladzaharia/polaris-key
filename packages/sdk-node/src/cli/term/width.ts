@@ -292,7 +292,8 @@ const runWidth = (run: readonly Span[]) =>
       .trimEnd(),
   );
 
-/** Pull a short trailing lead-in ("go to") off `line` down onto a URL's own line, when it fits. */
+/** Pull a short trailing lead-in ("go to") off `line` down onto a URL's own line, when the URL
+ *  (`first` cells) and the words fit on it. */
 function pullLeadIn(line: Span[], first: number, width: number): Span[] {
   const moved: Span[] = [];
   let w = first;
@@ -347,11 +348,10 @@ function wrapPieces(spans: Line, width: number, ellipsis: string): Span[][] {
       if (span.break) {
         const tw = cellWidth(span.text);
         if (w > 0 && w + tw > width && !onlyWhitespace()) {
-          const lead = pullLeadIn(
-            cur(),
-            cellWidth(breakPieces(span.text, span.break, width)[0] ?? ""),
-            width,
-          );
+          // The lead-in words go down with the link only when they and the whole link fit one
+          // line; a link that has to break anyway leaves the words where they are.
+          const lead =
+            tw <= width ? pullLeadIn(cur(), tw, width) : ([] as Span[]);
           newLine();
           for (const p of lead) {
             cur().push(p);

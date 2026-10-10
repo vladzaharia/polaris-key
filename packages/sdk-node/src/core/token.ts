@@ -1,8 +1,8 @@
 // The device credential — wire contract v3 §6.
 //
 // A `pkeyt_` token is what a device authenticates every document fetch with. Core holds it
-// because it is the DEVICE's credential, not the licence's: a config-only product's registered
-// devices hold real tokens with no licence behind them (D-08), and the token survives a licence
+// because it is the DEVICE's credential, not the license's: a config-only product's registered
+// devices hold real tokens with no license behind them (D-08), and the token survives a license
 // changing tier or expiring.
 //
 // ── THE ONE RE-ACQUIRE ──────────────────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@
 // lose its credential for good on its first 401. `chooseReacquireRoute` picks
 // `POST /<p>/devices/register` for such a device; the budget above is shared, so it is still
 // one network call per pass whichever route is taken. A wrong guess is safe: register answers
-// a licensed device `registration_closed`, license/token answers a licence-less one 401, and
+// a licensed device `registration_closed`, license/token answers a license-less one 401, and
 // either way the single attempt is spent and the hard-401 path applies.
 
 import { printAs, REDACTED } from "./redact.js";
@@ -62,9 +62,9 @@ export interface ReacquireInputs {
  *     `devices-register`;
  *   * otherwise ⇒ `license-token`, as before.
  *
- * There is deliberately NO restart heuristic ("no verified licence document and no bundle ⇒
+ * There is deliberately NO restart heuristic ("no verified license document and no bundle ⇒
  * register"). After a restart a licensed device whose cache is empty is indistinguishable from
- * a licence-less one, and the recorded `sync-errors` transcript pins that state to
+ * a license-less one, and the recorded `sync-errors` transcript pins that state to
  * `POST /license/token`. Telling them apart needs the token source persisted, which is a
  * client-core store-contract (CacheRecordV3) change and therefore plan-mode.
  */
@@ -150,7 +150,7 @@ export class TokenManager {
    *
    * It takes the SAME route a document fetch's 401 would (`chooseReacquireRoute`): §5's
    * single-attempt rule is about the device token, not about which call presented it, and a
-   * licence-less device has no `license/token` route to take — sending it there would spend
+   * license-less device has no `license/token` route to take — sending it there would spend
    * the one attempt on a guaranteed 401.
    */
   async reacquire(): Promise<boolean> {

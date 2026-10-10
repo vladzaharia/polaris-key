@@ -4063,6 +4063,66 @@
         }
       }
     },
+    "cli.activate.noKeyPiped": {
+      "comment": "Terminal: activate read a piped stdin (a file, pipe or socket) and no key arrived in time.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No license key arrived on stdin."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf stdin ist kein Lizenzschlüssel angekommen."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune clé de licence n’est arrivée sur stdin."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No llegó ninguna clave de licencia por stdin."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma chave de licença chegou pelo stdin."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna chiave di licenza è arrivata da stdin."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stdin からライセンスキーが届きませんでした。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stdin으로 라이선스 키가 들어오지 않았어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stdin 上没有收到许可证密钥。"
+          }
+        }
+      }
+    },
     "cli.activate.otherProduct": {
       "comment": "Terminal key prompt: the key belongs to a different product. {app} is that product's slug, {product} the product this command is for. Arguments: 1=app, 2=product.",
       "extractionState": "manual",
@@ -4119,6 +4179,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "此密钥属于另一款产品（%1$@）。请使用%2$@的密钥。"
+          }
+        }
+      }
+    },
+    "cli.activate.unauthorized": {
+      "comment": "Terminal activate: the server did not accept the license key, under the title 'Key not accepted'. It answers the same for a wrong key and for one that expired or was turned off, so the text covers both. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check it for typos. If it's right, it may have expired or been turned off:"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prüfen Sie ihn auf Tippfehler. Stimmt er, ist er vielleicht abgelaufen oder deaktiviert:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez qu’elle ne contient pas de faute. Si elle est correcte, elle a peut-être expiré ou été désactivée :"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprueba que no tenga errores. Si es correcta, puede que haya caducado o se haya desactivado:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confira se não há erros de digitação. Se estiver certa, ela pode ter expirado ou sido desativada:"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Controlla di non aver sbagliato a digitarla. Se è giusta, potrebbe essere scaduta o disattivata:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "入力を確認してください。正しい場合は、期限切れか無効にされた可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오타가 없는지 확인하세요. 맞다면 만료되었거나 꺼졌을 수 있어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请检查是否有输入错误。如果无误，它可能已过期或被停用："
           }
         }
       }
@@ -5984,61 +6104,61 @@
       }
     },
     "cli.identityOff.notice": {
-      "comment": "Terminal sign-in: the product does not use Polaris Key sign-in. {product} is the product. Arguments: 1=product.",
+      "comment": "Terminal sign-in: the product has no account sign-in. {product} is the product. Arguments: 1=product.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ doesn't use Polaris Key sign-in."
+            "value": "%1$@ doesn't offer account sign-in."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ verwendet die Polaris Key-Anmeldung nicht."
+            "value": "%1$@ bietet keine Kontoanmeldung."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ n’utilise pas la connexion Polaris Key."
+            "value": "%1$@ ne propose pas la connexion avec un compte."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ no usa el inicio de sesión de Polaris Key."
+            "value": "%1$@ no ofrece inicio de sesión con cuenta."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ não usa o login do Polaris Key."
+            "value": "%1$@ não oferece login com conta."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ non usa l’accesso con Polaris Key."
+            "value": "%1$@ non offre l’accesso con un account."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@はPolaris Keyのサインインを使いません。"
+            "value": "%1$@はアカウントでのサインインに対応していません。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@은(는) Polaris Key 로그인을 사용하지 않아요."
+            "value": "%1$@은(는) 계정 로그인을 지원하지 않아요."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@不使用 Polaris Key 登录。"
+            "value": "%1$@不支持账户登录。"
           }
         }
       }
@@ -6283,6 +6403,66 @@
         }
       }
     },
+    "cli.keys.confirm": {
+      "comment": "Terminal key hints under a yes or no question. Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y yes · n no · Esc cancel sign-in"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y ja · n nein · Esc Anmeldung abbrechen"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y oui · n non · Esc annuler la connexion"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y sí · n no · Esc cancelar el inicio de sesión"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y sim · n não · Esc cancelar o login"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y sì · n no · Esc annulla l’accesso"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y はい · n いいえ · Esc サインインをキャンセル"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y 예 · n 아니요 · Esc 로그인 취소"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "y 是 · n 否 · Esc 取消登录"
+          }
+        }
+      }
+    },
     "cli.keys.deviceLimit": {
       "comment": "Terminal key hints when every device on the license is in use: Enter opens the page that replaces a device. Keep the key first and the ' · ' separators.",
       "extractionState": "manual",
@@ -6463,6 +6643,126 @@
         }
       }
     },
+    "cli.login.attach": {
+      "comment": "Terminal sign-in, after the browser sign-in finished on a device that holds a license key: add that license to the account just signed in? Answers: y, n, Enter for No (the default). Keep the (y/N) prompt; it names the keys to press.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use this device's license key on your account? (y/N)"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den Lizenzschlüssel dieses Geräts für Ihr Konto verwenden? (y/N)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Utiliser la clé de licence de cet appareil sur votre compte ? (y/N)"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Usar la clave de licencia de este dispositivo en tu cuenta? (y/N)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar a chave de licença deste dispositivo na sua conta? (y/N)"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usare la chiave di licenza di questo dispositivo sul tuo account? (y/N)"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このデバイスのライセンスキーをアカウントで使いますか？ (y/N)"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 기기의 라이선스 키를 계정에서 사용할까요? (y/N)"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要在你的账户中使用此设备的许可证密钥吗？(y/N)"
+          }
+        }
+      }
+    },
+    "cli.login.attached": {
+      "comment": "Terminal sign-in: the person said yes to adding this device's license key to the account just signed in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The license key is now on your account."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Lizenzschlüssel gehört jetzt zu Ihrem Konto."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clé de licence est maintenant sur votre compte."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clave de licencia ya está en tu cuenta."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A chave de licença agora está na sua conta."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La chiave di licenza è ora sul tuo account."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライセンスキーがアカウントに追加されました。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이선스 키가 계정에 추가되었어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "许可证密钥已添加到你的账户。"
+          }
+        }
+      }
+    },
     "cli.logout.done": {
       "comment": "Terminal: sign-out finished. Arguments: 1=product.",
       "extractionState": "manual",
@@ -6519,6 +6819,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "已在此设备上退出登录%1$@。"
+          }
+        }
+      }
+    },
+    "cli.mint.hidden": {
+      "comment": "Terminal: the mint command without --reveal, as the title of a warning; the command that mints and prints follows as a command row.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was minted"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Es wurde nichts erzeugt"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rien n’a été généré"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se generó nada"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada foi gerado"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non è stato generato nulla"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "何も発行していません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아무것도 발급하지 않았어요"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未生成任何内容"
           }
         }
       }
@@ -7003,6 +7363,66 @@
         }
       }
     },
+    "cli.option.reveal": {
+      "comment": "Terminal help: what the --reveal flag does. A command-line flag; keep it as is.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Print the value"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Den Wert ausgeben"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Afficher la valeur"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar el valor"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar o valor"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostra il valore"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "値を出力"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "값을 출력"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "输出该值"
+          }
+        }
+      }
+    },
     "cli.option.yes": {
       "comment": "Terminal help: what the --yes flag does.",
       "extractionState": "manual",
@@ -7243,6 +7663,546 @@
         }
       }
     },
+    "cli.platform.android": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Android"
+          }
+        }
+      }
+    },
+    "cli.platform.ios": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS"
+          }
+        }
+      }
+    },
+    "cli.platform.linux": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Linux"
+          }
+        }
+      }
+    },
+    "cli.platform.macos": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "macOS"
+          }
+        }
+      }
+    },
+    "cli.platform.tvos": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "tvOS"
+          }
+        }
+      }
+    },
+    "cli.platform.visionos": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "visionOS"
+          }
+        }
+      }
+    },
+    "cli.platform.watchos": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "watchOS"
+          }
+        }
+      }
+    },
+    "cli.platform.web": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Web"
+          }
+        }
+      }
+    },
+    "cli.platform.windows": {
+      "comment": "Terminal: the name of an operating system, shown in the device list (macos is macOS). A product name; keep it as is in every language.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Windows"
+          }
+        }
+      }
+    },
     "cli.register.done": {
       "comment": "Terminal: keyless device registration finished.",
       "extractionState": "manual",
@@ -7299,6 +8259,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "此设备已注册。"
+          }
+        }
+      }
+    },
+    "cli.secret.hidden": {
+      "comment": "Terminal: the secret command without --reveal, as the title of a warning; the command that prints it follows as a command row. {name} = the secret's name. Arguments: 1=name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ is set but not printed"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ist gesetzt, aber nicht ausgegeben"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ est défini mais non affiché"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ está definido pero no se muestra"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ está definido, mas não foi mostrado"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ è impostato ma non mostrato"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@は設定されていますが、出力していません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@이(가) 설정되어 있지만 출력하지 않았어요"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 已设置，但未输出"
           }
         }
       }
@@ -7365,6 +8385,66 @@
     },
     "cli.signin.signedInEmail": {
       "comment": "Terminal: the sign-in finished and only the email is known. Arguments: 1=email.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Signed in as %1$@"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angemeldet als %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecté en tant que %1$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesión iniciada como %1$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conectado como %1$@"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accesso effettuato come %1$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@としてサインインしました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 계정으로 로그인됨"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已登录为%1$@"
+          }
+        }
+      }
+    },
+    "cli.signin.signedInName": {
+      "comment": "Terminal: the sign-in finished and only the name is known. {name} = the account's name. Arguments: 1=name.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -7599,6 +8679,126 @@
           "stringUnit": {
             "state": "translated",
             "value": "要继续使用%1$@："
+          }
+        }
+      }
+    },
+    "cli.status.keyRevoked.message": {
+      "comment": "Terminal status, under the title above. It ends in a colon: the product's account page on Polaris Key follows on its own line, as a link.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It may have expired or been turned off:"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Er ist möglicherweise abgelaufen oder deaktiviert:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elle a peut-être expiré ou été désactivée :"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Puede que haya caducado o se haya desactivado:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ela pode ter expirado ou sido desativada:"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Potrebbe essere scaduta o disattivata:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "期限切れか無効にされた可能性があります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "만료되었거나 꺼졌을 수 있어요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "它可能已过期或被停用："
+          }
+        }
+      }
+    },
+    "cli.status.keyRevoked.title": {
+      "comment": "Terminal status: a device activated with a license key only, and the license is no longer valid.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This license key no longer works"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieser Lizenzschlüssel funktioniert nicht mehr"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette clé de licence ne fonctionne plus"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta clave de licencia ya no funciona"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta chave de licença não funciona mais"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa chiave di licenza non funziona più"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このライセンスキーは使えなくなりました"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 라이선스 키는 더 이상 사용할 수 없어요"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此许可证密钥已失效"
           }
         }
       }
@@ -8083,6 +9283,126 @@
         }
       }
     },
+    "cli.update.download": {
+      "comment": "Terminal: update apply on an install that cannot update itself. It ends in a colon: the download page follows on its own line, as a link.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download it here:"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier herunterladen:"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Téléchargez-la ici :"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descárgala aquí:"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Baixe aqui:"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scaricala qui:"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ここからダウンロード:"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "여기서 내려받으세요:"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在此下载："
+          }
+        }
+      }
+    },
+    "cli.update.downloadNoLink": {
+      "comment": "Terminal: update apply on an install that cannot update itself and has no download page to link. {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get the new version from where you got %1$@."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Holen Sie sich die neue Version dort, wo Sie %1$@ bekommen haben."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récupérez la nouvelle version là où vous avez obtenu %1$@."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consigue la nueva versión donde conseguiste %1$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtenha a nova versão de onde você baixou %1$@."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scarica la nuova versione da dove hai ottenuto %1$@."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@を入手した場所から新しいバージョンを入手してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@을(를) 받은 곳에서 새 버전을 받으세요."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "请从你获取 %1$@ 的地方获取新版本。"
+          }
+        }
+      }
+    },
     "cli.update.figures": {
       "comment": "Terminal update progress: how much of the download is done. {size} is a bare number and {total} carries the unit, so 'of' joins '38' and '61 MB'. Arguments: 1=size, 2=total.",
       "extractionState": "manual",
@@ -8323,6 +9643,66 @@
         }
       }
     },
+    "cli.update.notConfiguredTitle": {
+      "comment": "Terminal: update apply on a build with no signed update feed set up. The title; the body line under it says what to run instead.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updates aren't set up"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aktualisierungen sind nicht eingerichtet"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les mises à jour ne sont pas configurées"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las actualizaciones no están configuradas"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As atualizações não estão configuradas"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gli aggiornamenti non sono configurati"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アップデートが設定されていません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "업데이트가 설정되지 않았어요"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未设置更新"
+          }
+        }
+      }
+    },
     "cli.update.nothingInstalled": {
       "comment": "Terminal: an update download failed; nothing was changed on this device.",
       "extractionState": "manual",
@@ -8503,6 +9883,66 @@
         }
       }
     },
+    "cli.update.readyRestart": {
+      "comment": "Terminal: an update was downloaded and checked; it takes effect after a restart. {version} = a version string such as 2.5.0. Keep the ' · ' separator. Arguments: 1=version.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ is ready · Restart to finish"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ ist bereit · Zum Abschließen neu starten"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ est prête · Redémarrez pour terminer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ está lista · Reinicia para terminar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ está pronta · Reinicie para concluir"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ è pronta · Riavvia per completare"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@の準備ができました · 再起動して完了"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 준비 완료 · 다시 시작하면 끝나요"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ 已就绪 · 重新启动以完成"
+          }
+        }
+      }
+    },
     "cli.update.restart": {
       "comment": "Terminal: after an update downloaded, what the person does next.",
       "extractionState": "manual",
@@ -8630,55 +10070,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Add a license key (prompts; never an argument)"
+            "value": "Add a license key (prompted, or piped on stdin)"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lizenzschlüssel hinzufügen (per Abfrage, nie als Argument)"
+            "value": "Lizenzschlüssel hinzufügen (Eingabe oder über stdin)"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ajouter une clé de licence (demandée, jamais en argument)"
+            "value": "Ajouter une clé de licence (saisie, ou via stdin)"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Añadir clave de licencia (se pide, nunca como argumento)"
+            "value": "Añadir una clave de licencia (se pide, o por stdin)"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Adicionar chave de licença (pedida, nunca como argumento)"
+            "value": "Adicionar uma chave de licença (digitada ou via stdin)"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aggiungi chiave di licenza (chiesta, mai come argomento)"
+            "value": "Aggiungi una chiave di licenza (richiesta, o da stdin)"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ライセンスキーを追加（プロンプトで入力、引数は不可）"
+            "value": "ライセンスキーを追加（入力、または stdin から）"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "라이선스 키 추가 (입력 요청, 인수로는 받지 않음)"
+            "value": "라이선스 키 추가 (입력하거나 stdin으로)"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "添加许可证密钥（提示输入，不可作为参数）"
+            "value": "添加许可证密钥（提示输入，或通过 stdin）"
           }
         }
       }
@@ -45140,55 +46580,55 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Opening Polaris Key in your browser…"
+            "value": "Opening your browser…"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Polaris Key wird in Ihrem Browser geöffnet…"
+            "value": "Ihr Browser wird geöffnet…"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ouverture de Polaris Key dans votre navigateur…"
+            "value": "Ouverture de votre navigateur…"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abriendo Polaris Key en tu navegador…"
+            "value": "Abriendo tu navegador…"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Abrindo o Polaris Key no navegador…"
+            "value": "Abrindo o navegador…"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apertura di Polaris Key nel browser…"
+            "value": "Apertura del browser…"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "ブラウザでPolaris Keyを開いています…"
+            "value": "ブラウザを開いています…"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "브라우저에서 Polaris Key를 여는 중…"
+            "value": "브라우저를 여는 중…"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在浏览器中打开Polaris Key…"
+            "value": "正在打开浏览器…"
           }
         }
       }
@@ -59553,6 +60993,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "已是最新版本"
+          }
+        }
+      }
+    },
+    "update.verifying": {
+      "comment": "Update progress: the download finished and the update is being checked before it is installed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifying…"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird überprüft…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérification…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando…"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifica in corso…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検証中…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "확인하는 중…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在验证…"
           }
         }
       }

@@ -1,6 +1,6 @@
 // Software facts: the OS/runtime/hardware summary and the product-declared probe results the
 // client reports through POST /<product>/devices/report (relocated from the config service in
-// wire contract v3 §6 — it was licence anti-fraud data living under a config path).
+// wire contract v3 §6 — it was license anti-fraud data living under a config path).
 //
 // Deliberately narrow. There is no installed-application enumeration — a product declares the
 // companion apps it cares about and the client answers only those, so the payload stays small

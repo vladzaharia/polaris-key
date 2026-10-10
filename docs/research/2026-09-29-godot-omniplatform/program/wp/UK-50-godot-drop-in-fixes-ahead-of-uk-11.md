@@ -100,6 +100,22 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - **Builds or backs 3 mockup item(s):** `kitboard:godot.html:gate`, `kitboard:godot.html:sign-in`, `kitboard:godot.html:update-toast`.
 - `B10.3`, `kitboard:godot.html:update-toast`: B10: the toast keeps title-safe placement and the host-owns-pause rule (set process_mode so kit dialogs survive tree pause; verify in the engine); tell the Godot builder the desktop/tablet QR is dropped; QR-allowed contexts become a ui-matrix row (UK-02b).
 - `kitboard:godot.html:sign-in`: B10: the Godot QR is for pad-only/console input only; drop it on desktop, tablet and phone; show the vanity URL.
+## Corrections (verified against the code)
+
+- The branch is based on `fix/godot-ui-responsive`, so registering that worktree is this branch.
+  Its review nits and the settings-on-a-short-screen defect are the first commits.
+- `boot()` resolves at READY in `PKeyBoot.run()`, so the scene and the autoload agree;
+  `resolve_on_stop` is read there. A second call joins a run in progress and, after a stop, restarts.
+- "Not ok until documents verify" covers a document that arrives and does not verify (an unpinned
+  signer, a clock outside its window). A document that does not arrive (no answer, a 5xx) keeps the
+  activation ok: the token is good and the next sync fetches it (`license/test_reregister.gd`).
+- The friendly device name is the boot's host setting (`options.device_name` when empty); the
+  contract's default (model, else the OS name) is unchanged.
+- Key entry follows the outlet's `commerce` capability (`store-iap`), so the Microsoft Store now
+  hides it too.
+- The matrix gains 2532x1170@3 and 750x1334@2 for the settings list. The other screens fail there
+  today (the offline dialog's Import below the fold in the native and custom looks, the German and
+  Japanese gate a few points wide at 375 pt, a Polaris Key card that scrolls at 844x390): UK-11.
 
 ## Acceptance criteria
 
@@ -114,6 +130,16 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 - [ ] `pkey-ux-reviewer` passes every changed screen.
 - [ ] The acceptance in "Design language v2 (2026-10-08)" above holds.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate in the header.
+- [x] OFFLINE → Try again → READY resolves the awaited `boot()` and changes the scene.
+- [x] Every dialog opened from a live gate renders its content.
+- [x] A re-boot after `sign_out()` shows key entry and Sign in.
+- [x] From a cold boot with no pointer, focus lands on the first control and `ui_down` walks the chain.
+- [x] The branded and neutral sign-in cards fit 1280×720 and 1280×800.
+- [x] A wrong pin and a +2-day clock never show "Activated.".
+- [x] No product screen shows the Pinned K.
+- [x] No leak warning at exit.
+- [x] `pkey-ux-reviewer` passes every changed screen.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate in the header.
 
 ## Verify
 

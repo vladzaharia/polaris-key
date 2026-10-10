@@ -1,7 +1,7 @@
 class_name PKeyDevMenuSection
 extends PKeyUiView
 ## A section for the game's own developer menu: a channel picker (locked, with the reason, when
-## the build's outlet owns the channel), build info, COPY DIAGNOSTICS, and Force check.
+## the build's outlet owns the channel), build info, Copy diagnostics, and Force check.
 ##
 ## Two ways in, so either menu shape works (report §5.8 says Diceroll registers sections with
 ## `DevMenu.register_section`, notes/A4 §4.1 says `DevMenu.register_row`; D-02 confirms which):
@@ -17,7 +17,7 @@ extends PKeyUiView
 ## next update check uses it, and staged code from the old channel is dropped at once, notes/A4
 ## P11); the licence gate keeps this build's channel.
 signal channel_selected(channel: String)
-## COPY DIAGNOSTICS put this text on the clipboard.
+## Copy diagnostics put this text on the clipboard.
 signal diagnostics_copied(text: String)
 ## Force check finished: the sync and the update check it ran.
 signal checked(sync: PKeySyncResult, update: PKeyResult)
@@ -41,26 +41,34 @@ var _channels: Array = []
 
 func _build() -> void:
 	name = "PKeyDevMenuSection"
-	var box := vbox(self, "Body", 8)
-	_title = label(box, "Title", "PKeyTitle")
-	var ch := hbox(box, "ChannelRow")
+	max_content_width = 600.0
+	var box := vbox(card_panel(), "Body", "PKeySections")
+	_title = label(box, "Title", "PKeySection")
+	var channel := vbox(box, "ChannelField", "PKeyTight")
+	var ch := hbox(channel, "ChannelRow")
 	_channel_label = label(ch, "ChannelLabel")
 	_channel_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_channel_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_channel = OptionButton.new()
 	_channel.name = "Channel"
 	_channel.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	_channel.set_meta(DATA_META, true)
 	_channel.item_selected.connect(func(i: int): select_channel(_channels[i]))
 	ch.add_child(_channel)
-	_lock = label(box, "ChannelLock", "PKeyMuted")
+	_lock = label(channel, "ChannelLock", "PKeyMuted")
 	_facts = GridContainer.new()
 	_facts.name = "Facts"
+	_facts.theme_type_variation = "PKeyGrid"
 	_facts.columns = 2
 	box.add_child(_facts)
-	var actions := hbox(box, "Actions")
+	var actions := actions_row(box, "Actions", FlowContainer.ALIGNMENT_BEGIN)
 	_copy = button(actions, "CopyDiagnostics", copy_diagnostics)
 	_check = button(actions, "ForceCheck", force_check)
-	_status = label(box, "Status", "PKeyMuted")
+	_status = label(actions.get_parent(), "Status", "PKeyMuted")
+
+
+func _bleeds() -> bool:
+	return true
 
 
 func facts() -> Dictionary:
@@ -115,8 +123,14 @@ func _render() -> void:
 	var cells := _facts.get_children()
 	while cells.size() < fact_rows.size() * 2:
 		var idx := cells.size()
-		var l := label(_facts, "Fact%d%s" % [idx / 2, "Name" if idx % 2 == 0 else "Value"], "PKeyMuted" if idx % 2 == 0 else "", idx % 2 == 1)
-		l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		# Identifiers and values in the mono face, where I and l differ.
+		var l := label(_facts, "Fact%d%s" % [idx / 2, "Name" if idx % 2 == 0 else "Value"], "PKeyMuted" if idx % 2 == 0 else "PKeyMono", idx % 2 == 1)
+		if idx % 2 == 0:
+			l.autowrap_mode = TextServer.AUTOWRAP_OFF
+		else:
+			# A value (a 32-character device id) wraps inside its column on a narrow screen.
+			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			l.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 		cells.append(l)
 	for i in fact_rows.size():
 		(cells[i * 2] as Label).text = fact_rows[i]["label"]
