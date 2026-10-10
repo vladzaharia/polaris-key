@@ -334,7 +334,7 @@ jobs:
             python: "3.12"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the qt source rules of
