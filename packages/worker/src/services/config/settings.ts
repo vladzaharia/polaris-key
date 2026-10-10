@@ -24,7 +24,7 @@ export const CONFIG_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "The product's catalog of config keys, flags and secrets, claimed as one unit: a console edit claims the whole catalog.",
       keywords: ["schema", "flags", "keys"],
-      docs: "/docs/services/config/catalog/",
+      docs: "/docs/features/managed-config/catalog/",
       value: { kind: "json", schema: "schema.schema.json" },
       defaultValue: null,
       allowUnset: true,
@@ -44,7 +44,7 @@ export const CONFIG_SETTINGS_SLICE: ServiceSettingsSlice = {
       label: "Profiles",
       description:
         "Reusable managed-payload baselines tiers point at. Each row is claimed on its own (S-18 D3).",
-      docs: "/docs/services/config/profiles/",
+      docs: "/docs/features/managed-config/profiles/",
       value: { kind: "json", schema: "profiles (product.schema.json)" },
       defaultValue: [],
       merge: "cascade",
@@ -64,7 +64,7 @@ export const CONFIG_SETTINGS_SLICE: ServiceSettingsSlice = {
       label: "Edge-mint recipes",
       description:
         "Recipes that mint short-lived third-party credentials at the edge for licensed devices. Each recipe still needs an operator approval.",
-      docs: "/docs/services/config/edge-mint/",
+      docs: "/docs/features/managed-config/edge-mint/",
       value: { kind: "json", schema: "edgeMint (product.schema.json)" },
       defaultValue: null,
       allowUnset: true,

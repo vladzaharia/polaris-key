@@ -26,7 +26,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "The oldest and newest app versions a licence document admits. Builds outside it are refused at activation and refresh.",
       keywords: ["compatMin", "compatMax", "version window"],
-      docs: "/docs/services/release/compatibility/",
+      docs: "/docs/features/ship-builds/releases/compatibility/",
       value: { kind: "json", schema: "{ min, max } semver bounds" },
       defaultValue: null,
       allowUnset: true,
@@ -54,7 +54,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       label: "Artifact policy",
       description:
         "Which channels, architectures and installers a GitHub release must carry before it is accepted.",
-      docs: "/docs/services/release/artifacts/",
+      docs: "/docs/features/ship-builds/releases/artifacts/",
       value: { kind: "json", schema: "artifactPolicy (release.schema.json)" },
       defaultValue: null,
       allowUnset: true,
@@ -79,7 +79,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "The Ed25519 public key appcast signatures are checked against. Whoever holds the matching private key can sign updates.",
       keywords: ["sparkle", "appcast", "signature"],
-      docs: "/docs/services/release/github-sync/",
+      docs: "/docs/features/ship-builds/releases/github-sync/",
       value: { kind: "string", pattern: "^[A-Za-z0-9+/=]+$", maxLength: 64 },
       defaultValue: null,
       allowUnset: true,
@@ -116,7 +116,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
         "feeds",
         "cleanup",
       ],
-      docs: "/docs/build/install-from-feeds/",
+      docs: "/docs/build/install/",
       value: { kind: "boolean" },
       // Off for a tenant product, which opts in; the system product is locked on (`prune.ts`).
       defaultValue: false,

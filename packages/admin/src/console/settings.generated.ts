@@ -53,7 +53,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Lets products opted in to lazy hot-pair deltas count demand and generate deltas. Off stops the subsystem in both Worker scripts.",
     keywords: ["delta", "patch", "kill switch"],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -71,7 +71,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The largest payload, on either side of a pair, the delta consumer will encode. It can only be lowered below the measured 32 MiB ceiling.",
     keywords: [],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -89,7 +89,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Runs the nightly collector that deletes blob-store objects nothing has referenced for the grace period. Off only costs storage.",
     keywords: ["garbage collection", "gc", "storage", "kill switch"],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -107,7 +107,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How long an object stays unreferenced before the collector may delete it. The bucket's 180-day age lock still bounds every deletion.",
     keywords: [],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -125,7 +125,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How a product catalog flag that declares a system key (channels, deviceLimit, app.*, license.*, pkey.*) with an incompatible type is treated: warn and accept it, or refuse the manifest or catalog.",
     keywords: ["reserved", "entitlement", "system key", "catalog"],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -143,7 +143,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How a product name or listing name that uses a platform or store name (Polaris Key, Apple, Google Play, Steam and others) is treated: warn and accept it, or refuse the manifest or listing.",
     keywords: ["reserved", "display name", "spoofing", "sign-in"],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -161,7 +161,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Platform or store names, beyond the built-in list, that a product or developer name may not use.",
     keywords: ["reserved", "display name", "spoofing"],
-    docs: "/docs/admin/platform-settings/",
+    docs: "/docs/operate/platform/settings/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -179,7 +179,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Lets Identity products refuse key entry past the per-licence limit and on owned licences. Counting runs either way; turn it on once the SDKs that show the refusals are released.",
     keywords: ["key entry", "key_entry_limit", "license_owned", "rollout"],
-    docs: "/docs/services/identity/",
+    docs: "/docs/features/sign-in/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -197,7 +197,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The most key entries any product may allow per licence that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
     keywords: ["key entry", "activations", "floating licence"],
-    docs: "/docs/services/identity/",
+    docs: "/docs/features/sign-in/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -215,7 +215,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working.",
     keywords: ["discover", "library", "storefront", "kill switch"],
-    docs: "/docs/services/identity/portal/",
+    docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -233,7 +233,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Serves Polaris Key's own copies of products' images from the image host and mirrors their release files. Off returns every image surface to the developer's own URLs and copies no new release file; release files already copied keep serving from their copies, and every stored copy stays.",
     keywords: ["image host", "img", "mirror", "kill switch", "rollback"],
-    docs: "/docs/admin/presentation/",
+    docs: "/docs/operate/console/presentation/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -251,7 +251,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How many bytes of hosted images (originals and their sizes, not release files) a product may hold when it sets no quota of its own. Past it, a new image is refused and the current copy keeps serving.",
     keywords: ["hosted assets", "storage", "quota", "images"],
-    docs: "/docs/admin/presentation/",
+    docs: "/docs/operate/console/presentation/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -269,7 +269,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How many bytes of mirrored release files a product may hold when it sets no quota of its own. Past it, mirroring stops and GitHub keeps serving the files.",
     keywords: ["hosted assets", "storage", "quota", "mirror", "releases"],
-    docs: "/docs/admin/presentation/",
+    docs: "/docs/operate/console/presentation/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -287,7 +287,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The device limit a product starts from when it sets none of its own. A change reaches every product that inherits it.",
     keywords: ["seats", "devices"],
-    docs: "/docs/services/license/policy/",
+    docs: "/docs/features/licensing/access/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -305,7 +305,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How many days a device may run offline when its product sets no window of its own. A change reaches every product that inherits it.",
     keywords: ["grace", "offline", "graceUntil"],
-    docs: "/docs/services/license/policy/",
+    docs: "/docs/features/licensing/access/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -323,7 +323,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The display name shown in the console, the portal and the discovery document.",
     keywords: [],
-    docs: "/docs/admin/products/",
+    docs: "/docs/operate/console/products/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -341,7 +341,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The identity-provider group named by the manifest as this product's administrators. Not enforced: console access is platform-wide. Manifest-only (owner decision 1).",
     keywords: [],
-    docs: "/docs/admin/products/",
+    docs: "/docs/operate/console/products/",
     ownership: "manifest",
     critical: true,
     secret: false,
@@ -359,7 +359,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Browser origins allowed to call this product's endpoints (the CORS allow-list). Adding one lets that site's scripts call the product.",
     keywords: ["cors", "origin", "browser"],
-    docs: "/docs/build/onboarding/",
+    docs: "/docs/start/first-product/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -377,7 +377,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The product's .pkey/ is the only writer of its display name, licence defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
     keywords: ["break-glass", "gitops", "claims", "lock", "single writer"],
-    docs: "/docs/admin/products/",
+    docs: "/docs/operate/console/products/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -395,7 +395,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which opt-in services this product runs. A service that is off does not exist from outside.",
     keywords: ["modules", "enablement"],
-    docs: "/docs/admin/services-enablement/",
+    docs: "/docs/operate/console/products/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -413,7 +413,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Who may mint a device token: open, requires-identity or requires-license. Unset follows the services: requires-license with License on, else requires-identity with Identity on, else open. Opening it lets any client register a device.",
     keywords: ["devices.registration", "register", "device token", "open"],
-    docs: "/docs/services/core/device-principal/",
+    docs: "/docs/reference/protocol/device-principal/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -436,7 +436,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
       "sealed",
       "missing secrets",
     ],
-    docs: "/docs/admin/secrets-and-keys/",
+    docs: "/docs/operate/console/keys-and-secrets/",
     ownership: "manifest",
     critical: false,
     secret: true,
@@ -472,7 +472,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which attestation a device must present to enrol (App Attest, Play Integrity) and whether it is enforced. Relaxing it lets unattested clients enrol.",
     keywords: ["attestation", "app attest", "play integrity"],
-    docs: "/docs/services/core/device-trust/",
+    docs: "/docs/features/licensing/device-trust/",
     ownership: "operator",
     critical: true,
     secret: false,
@@ -490,7 +490,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Whether the Polaris Key library lists this product. Auto lists it where auto-issue or a mapped group would give it to the person (today's Discover); Listed adds every other way to obtain it; Unlisted hides it in the portal while every policy keeps working.",
     keywords: ["discover", "library", "storefront", "unlisted", "visibility"],
-    docs: "/docs/services/identity/portal/",
+    docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -508,7 +508,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Who sees the listing. Eligible shows it only to a person who can obtain it now; Everyone shows it to every signed-in person, the one exception to never revealing a product a person cannot get.",
     keywords: ["discover", "visibility", "enumeration", "everyone"],
-    docs: "/docs/services/identity/portal/",
+    docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",
     critical: true,
     secret: false,
@@ -526,7 +526,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which reasons may list the product for a person (a mapped group, auto-issue, an open product, store ownership, the product's own sign-in, an email domain). Unset offers every one, including ways added later.",
     keywords: ["obtain paths", "eligibility", "discover"],
-    docs: "/docs/services/identity/portal/",
+    docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -544,7 +544,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       'How an identity-provider group is named on the listing ("Included with Aperture Seven"), at most 40 characters. A group without a label shows as "For members of <group>".',
     keywords: ["groups", "copy", "discover"],
-    docs: "/docs/services/identity/portal/",
+    docs: "/docs/features/sign-in/customer-portal/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -562,7 +562,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Keeps Polaris Key's own copy of every app release file the product publishes on GitHub or at a URL, and serves it first. Off copies no new release file for this product, so GitHub serves the files without a copy; the copies already made keep serving.",
     keywords: ["mirror", "release files", "github", "r2", "downloads"],
-    docs: "/docs/admin/presentation/",
+    docs: "/docs/operate/console/presentation/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -580,7 +580,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How many bytes of hosted images (originals and their sizes, not release files) this product may hold. Past it, a new image is refused and the current copy keeps serving. Unset follows the platform default.",
     keywords: ["hosted assets", "storage", "quota", "images"],
-    docs: "/docs/admin/presentation/",
+    docs: "/docs/operate/console/presentation/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -598,7 +598,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How many bytes of mirrored release files this product may hold. Past it, mirroring stops and GitHub keeps serving the files. Unset follows the platform default.",
     keywords: ["hosted assets", "storage", "quota", "mirror", "releases"],
-    docs: "/docs/admin/presentation/",
+    docs: "/docs/operate/console/presentation/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -616,7 +616,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How many devices a licence may activate when neither its tier nor the licence sets a limit.",
     keywords: ["seats", "devices", "activations"],
-    docs: "/docs/services/license/policy/",
+    docs: "/docs/features/licensing/access/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -634,7 +634,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How many days a device may run without reaching the server when neither its tier nor the licence sets a window.",
     keywords: ["grace", "offline", "graceUntil"],
-    docs: "/docs/services/license/policy/",
+    docs: "/docs/features/licensing/access/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -652,7 +652,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which hashed hardware components identify a device, and how many may change before it counts as a new device.",
     keywords: ["hwid", "hardware", "device identity"],
-    docs: "/docs/services/core/fingerprints/",
+    docs: "/docs/features/licensing/fingerprints/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -670,7 +670,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Mints a licence on first activation (anonymously, on sign-in, or both) instead of requiring a key. Turning it on gives the product away at the chosen tier.",
     keywords: ["free", "trial", "anonymous", "discover"],
-    docs: "/docs/services/license/enrollment/",
+    docs: "/docs/features/licensing/access/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -688,7 +688,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The product's tiers: device limit, expiry, channels, version window and profile per tier. Each row is claimed on its own (S-18 D3).",
     keywords: ["plans", "editions", "skus"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -706,7 +706,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Whether devices see the combined entitlements of every grant their holder has, or only their own licence's (the legacy model). Products registered before 2026-10-06 start on legacy; newer ones start combined.",
     keywords: ["combined", "legacy", "grants", "holder report"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -724,7 +724,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Whose entitlements a device sees: the account signed in on that device (device), or the licence owner's whole set (owner). Owner lets anyone with a shared key reach everything the owner holds.",
     keywords: ["owner", "device", "shared key"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -742,7 +742,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Ends a device's offline grace no later than its licence's expiry, so an expired licence cannot keep running offline.",
     keywords: ["grace", "offline", "graceUntil", "expiry"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -760,7 +760,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which of a holder's licences a device runs on: the highest-ranked tier, the one with the most free seats, or the oldest.",
     keywords: ["anchor", "rank", "seats"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -778,7 +778,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "When a device may move to a better anchor licence: never, or on activation. Moving on every refresh is not available yet.",
     keywords: ["anchor", "onActivation"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -796,7 +796,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Hours a refunded or charged-back grant keeps working before it is revoked. Zero revokes at once. It only delays the revocation; a refund always revokes.",
     keywords: ["refund", "chargeback", "revoke"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -814,7 +814,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Days a subscription grant keeps working while the store retries a failed renewal. Zero follows the store's own billing grace only.",
     keywords: ["dunning", "billing", "subscription"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -832,7 +832,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The product's catalog of config keys, flags and secrets, claimed as one unit: a console edit claims the whole catalog.",
     keywords: ["schema", "flags", "keys"],
-    docs: "/docs/services/config/catalog/",
+    docs: "/docs/features/managed-config/catalog/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -850,7 +850,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Reusable managed-payload baselines tiers point at. Each row is claimed on its own (S-18 D3).",
     keywords: [],
-    docs: "/docs/services/config/profiles/",
+    docs: "/docs/features/managed-config/profiles/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -868,7 +868,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Recipes that mint short-lived third-party credentials at the edge for licensed devices. Each recipe still needs an operator approval.",
     keywords: [],
-    docs: "/docs/services/config/edge-mint/",
+    docs: "/docs/features/managed-config/edge-mint/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -886,7 +886,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The oldest and newest app versions a licence document admits. Builds outside it are refused at activation and refresh.",
     keywords: ["compatMin", "compatMax", "version window"],
-    docs: "/docs/services/release/compatibility/",
+    docs: "/docs/features/ship-builds/releases/compatibility/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -904,7 +904,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The GitHub repository releases are read from. Linking the product (Settings → Repository) sets it, with the repository's GitHub App installation. .pkey/release names it as provider: { type: github, owner, repo }, which is validated and, for the platform's own product, must match the platform repository. Changing it changes whose releases are served and who can publish.",
     keywords: ["provider", "owner", "repo", "repository", "link"],
-    docs: "/docs/services/release/github-sync/",
+    docs: "/docs/features/ship-builds/releases/github-sync/",
     ownership: "manifest",
     critical: true,
     secret: false,
@@ -922,7 +922,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The executable's name in artifact file names and in the install script users pipe into sh. Unset means the repository's name.",
     keywords: ["executable", "install.sh", "artifact names"],
-    docs: "/docs/services/release/github-sync/",
+    docs: "/docs/features/ship-builds/releases/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -940,7 +940,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The GitHub Actions workflow (a file name or numeric id) whose successful runs make the beta and pr-<n> channels: beta is the newest tag a run built from the beta branch, pr-<n> the newest from that pull request. Unset, both fall back to prerelease tags.",
     keywords: ["beta", "pull request", "actions", "workflow runs"],
-    docs: "/docs/services/release/github-sync/",
+    docs: "/docs/features/ship-builds/releases/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -958,7 +958,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The branch whose channel-workflow runs make the beta channel. Used only with a channel workflow.",
     keywords: ["beta", "branch"],
-    docs: "/docs/services/release/github-sync/",
+    docs: "/docs/features/ship-builds/releases/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -976,7 +976,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The HTML-comment marker that fences a release's summary in its GitHub release notes (<!-- pkey:summary --> … <!-- /pkey:summary -->). The changelog route and the appcast show the fenced text, else the first paragraph above the first ## heading.",
     keywords: ["changelog", "release notes", "summary"],
-    docs: "/docs/services/release/github-sync/",
+    docs: "/docs/features/ship-builds/releases/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -994,7 +994,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licences grant them and SDKs request them like any other channel.",
     keywords: ["nightly", "canary", "channels", "regex"],
-    docs: "/docs/services/release/github-sync/",
+    docs: "/docs/features/ship-builds/releases/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -1012,7 +1012,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "What the product releases: its app (versioning, channels and artifact map), its packs and its packages. Unset means one implicit app deliverable whose files are classified by name.",
     keywords: ["app", "packs", "packages", "artifact map", "versioning"],
-    docs: "/docs/build/manifest/authoring/",
+    docs: "/docs/build/manifest/product/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -1030,7 +1030,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Per deliverable and channel: the pointer, the pin, the channels it includes, the device floor and the critical flag. The manifest declares includes; a promote, pin or floor change from the console or CI claims that row until Revert.",
     keywords: ["promote", "pin", "yank", "floor", "includes", "minSupported"],
-    docs: "/docs/services/release/channels/",
+    docs: "/docs/features/ship-builds/releases/channels/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -1048,7 +1048,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which GitHub Actions workflow and environment may exchange their OIDC token for a short-lived pkeyci_ token, and with which scopes. Pointing it at another workflow or environment changes who can publish.",
     keywords: ["ci", "oidc", "pkeyci", "publish", "workflow", "environment"],
-    docs: "/docs/services/release/artifacts/",
+    docs: "/docs/features/ship-builds/releases/artifacts/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -1066,7 +1066,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The Ed25519 public keys CI signs release records with (pkey-release+jws), one to four. A record is accepted only when signed by one of them, and a release without one is never a feed target, so whoever holds a matching private key can publish releases devices are offered. Public keys only.",
     keywords: ["releaseKeys", "release records", "signing", "kid"],
-    docs: "/docs/services/update/signed-feed/",
+    docs: "/docs/features/ship-builds/updates/signed-feed/",
     ownership: "manifest",
     critical: true,
     secret: false,
@@ -1084,7 +1084,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which channels, architectures and installers a GitHub release must carry before it is accepted.",
     keywords: [],
-    docs: "/docs/services/release/artifacts/",
+    docs: "/docs/features/ship-builds/releases/artifacts/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -1102,7 +1102,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The Ed25519 public key appcast signatures are checked against. Whoever holds the matching private key can sign updates.",
     keywords: ["sparkle", "appcast", "signature"],
-    docs: "/docs/services/release/github-sync/",
+    docs: "/docs/features/ship-builds/releases/github-sync/",
     ownership: "manifest",
     critical: true,
     secret: false,
@@ -1127,7 +1127,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
       "feeds",
       "cleanup",
     ],
-    docs: "/docs/build/install-from-feeds/",
+    docs: "/docs/build/install/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -1145,7 +1145,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Who may download each deliverable's bytes: anyone, a registered device, a licensed one, or an entitled one. Loosening it gives the files away.",
     keywords: ["artifacts", "downloads", "licensed", "public"],
-    docs: "/docs/services/distribution/delivery/",
+    docs: "/docs/features/ship-builds/channels/delivery/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -1163,7 +1163,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "What an install that arrived through each outlet may do (fetch new code, run downloaded scripts, sell things). The starting point is the compiled default for the outlet's kind; an operator may only narrow it.",
     keywords: ["codeUpdates", "downloadedScripts", "commerce", "outlets"],
-    docs: "/docs/services/distribution/",
+    docs: "/docs/features/ship-builds/channels/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -1181,7 +1181,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The places the product is distributed (direct, App Store, Play, Steam, …) with each store's identity for it.",
     keywords: ["stores", "appleId", "bundleId", "packageName"],
-    docs: "/docs/services/distribution/",
+    docs: "/docs/features/ship-builds/channels/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -1199,7 +1199,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
     keywords: ["pkey-cdn", "embedded", "play-pad", "apple-ba", "steam-depot"],
-    docs: "/docs/services/distribution/delivery/",
+    docs: "/docs/features/ship-builds/channels/delivery/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -1217,7 +1217,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which store purchases unlock what, and whether sandbox and test purchases count. Operator-only by design: a repo push must never decide which purchases unlock a flag.",
     keywords: ["purchases", "iap", "steam", "sandbox"],
-    docs: "/docs/services/distribution/commerce/",
+    docs: "/docs/features/ship-builds/commerce/",
     ownership: "operator",
     critical: true,
     secret: false,
@@ -1235,7 +1235,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Who may read release metadata and update feeds: anyone, a registered device, or a licensed one. Loosening it exposes what the product ships.",
     keywords: ["public", "licensed", "authenticated", "entitled", "feed"],
-    docs: "/docs/services/update/",
+    docs: "/docs/features/ship-builds/updates/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -1253,7 +1253,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Operator-owned update requirements no manifest can loosen: a required Sparkle signature and the minimum OS.",
     keywords: [],
-    docs: "/docs/services/update/",
+    docs: "/docs/features/ship-builds/updates/",
     ownership: "operator",
     critical: true,
     secret: false,
@@ -1271,7 +1271,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How many times the key of a licence that is in no account may be entered on new devices while Identity is on. Past it, with key-entry refusals on, key entry is refused with a link to the portal.",
     keywords: ["key entry", "key_entry_limit", "activations"],
-    docs: "/docs/services/identity/",
+    docs: "/docs/features/sign-in/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -1289,7 +1289,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The identity provider products sign users in with: issuer, client and group-to-role map. Changing the issuer moves who can sign in, so it is manifest-only and passes the issuer allowlist.",
     keywords: ["sso", "issuer", "groupRoleMap"],
-    docs: "/docs/services/identity/oidc/",
+    docs: "/docs/features/sign-in/oidc/",
     ownership: "manifest",
     critical: true,
     secret: false,
@@ -1307,7 +1307,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
     keywords: ["claims", "entitlements", "provisioning_config"],
-    docs: "/docs/services/identity/oidc/",
+    docs: "/docs/features/sign-in/oidc/",
     ownership: "manifest",
     critical: true,
     secret: false,
@@ -1325,7 +1325,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How long a product sign-in in the browser lasts. A product may shorten it, never lengthen it past the platform's 30 days.",
     keywords: ["session", "sign out", "cookie"],
-    docs: "/docs/services/identity/sessions/",
+    docs: "/docs/features/sign-in/sessions/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -1343,7 +1343,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Lets this product's name or developer name use a reserved platform or store name. Only the platform operator can set it; the sign-in card then shows the name instead of the product slug.",
     keywords: ["reserved", "display name", "reserved_display_name"],
-    docs: "/docs/build/manifest/authoring/",
+    docs: "/docs/build/manifest/product/",
     ownership: "operator",
     critical: false,
     secret: false,
@@ -1361,7 +1361,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Whether a sign-in may move a licence to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
     keywords: ["groupRoleMap", "tier", "upgrade"],
-    docs: "/docs/services/identity/oidc/",
+    docs: "/docs/features/sign-in/oidc/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -1379,7 +1379,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "How much Cloud Sync data one licensed person may keep on the product: total bytes, user-settings bytes, records, collection bytes and save slots. Never above the platform's per-person ceilings.",
     keywords: ["quota", "storage", "saves", "slots"],
-    docs: "/docs/services/sync/",
+    docs: "/docs/features/cloud-sync/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -1397,7 +1397,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Per-tier limits that replace the per-person limits for people whose highest-ranked contributing licence is on that tier. Each tier is held to the same ceilings.",
     keywords: ["quota", "tier", "plan"],
-    docs: "/docs/services/sync/",
+    docs: "/docs/features/cloud-sync/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -1415,7 +1415,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The numeric catalog flags (combined by max) that raise a person's total bytes or save slots, so a purchase can grant more storage.",
     keywords: ["quota", "entitlement", "flag", "storage"],
-    docs: "/docs/services/sync/",
+    docs: "/docs/features/cloud-sync/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -1433,7 +1433,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Limits for signed-in people with no usable licence, and whether they may use save slots. Never above the licensed limits.",
     keywords: ["free", "unlicensed", "quota", "saves"],
-    docs: "/docs/services/sync/",
+    docs: "/docs/features/cloud-sync/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -1451,7 +1451,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Whether a write needs a usable licence on the device, and the lowest device trust level that may write. Reads of one's own data are always allowed.",
     keywords: ["requireLicense", "minTrust", "attested", "access"],
-    docs: "/docs/services/sync/",
+    docs: "/docs/features/cloud-sync/",
     ownership: "claimable",
     critical: true,
     secret: false,

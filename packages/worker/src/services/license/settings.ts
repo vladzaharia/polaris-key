@@ -33,7 +33,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     description:
       "How many devices a licence may activate when neither its tier nor the licence sets a limit.",
     keywords: ["seats", "devices", "activations"],
-    docs: "/docs/services/license/policy/",
+    docs: "/docs/features/licensing/access/",
     value: { kind: "integer", unit: "count", min: 1, max: DEVICE_LIMIT_MAX },
     defaultValue: DEFAULT_DEVICE_LIMIT,
     merge: "cascade",
@@ -58,7 +58,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     description:
       "How many days a device may run without reaching the server when neither its tier nor the licence sets a window.",
     keywords: ["grace", "offline", "graceUntil"],
-    docs: "/docs/services/license/policy/",
+    docs: "/docs/features/licensing/access/",
     value: { kind: "integer", unit: "days", min: 0, max: OFFLINE_DAYS_MAX },
     defaultValue: DEFAULT_MAX_OFFLINE_DAYS,
     merge: "cascade",
@@ -84,7 +84,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     description:
       "Which hashed hardware components identify a device, and how many may change before it counts as a new device.",
     keywords: ["hwid", "hardware", "device identity"],
-    docs: "/docs/services/core/fingerprints/",
+    docs: "/docs/features/licensing/fingerprints/",
     value: { kind: "json", schema: "fingerprint (product.schema.json)" },
     defaultValue: null,
     allowUnset: true,
@@ -109,7 +109,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     description:
       "Mints a licence on first activation (anonymously, on sign-in, or both) instead of requiring a key. Turning it on gives the product away at the chosen tier.",
     keywords: ["free", "trial", "anonymous", "discover"],
-    docs: "/docs/services/license/enrollment/",
+    docs: "/docs/features/licensing/access/",
     value: { kind: "json", schema: "autoIssue (product.schema.json)" },
     defaultValue: null,
     allowUnset: true,
@@ -131,7 +131,7 @@ const LICENSE_SETTINGS: readonly SettingDef[] = [
     description:
       "The product's tiers: device limit, expiry, channels, version window and profile per tier. Each row is claimed on its own (S-18 D3).",
     keywords: ["plans", "editions", "skus"],
-    docs: "/docs/services/license/model/",
+    docs: "/docs/features/licensing/model/",
     value: { kind: "json", schema: "tiers (product.schema.json)" },
     defaultValue: [],
     merge: "cascade",

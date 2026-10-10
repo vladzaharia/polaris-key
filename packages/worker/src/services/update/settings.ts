@@ -24,7 +24,7 @@ export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "Who may read release metadata and update feeds: anyone, a registered device, or a licensed one. Loosening it exposes what the product ships.",
       keywords: ["public", "licensed", "authenticated", "entitled", "feed"],
-      docs: "/docs/services/update/",
+      docs: "/docs/features/ship-builds/updates/",
       value: {
         kind: "enum",
         values: ["public", "authenticated", "licensed", "entitled"],
@@ -53,7 +53,7 @@ export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
       label: "Operator update policy",
       description:
         "Operator-owned update requirements no manifest can loosen: a required Sparkle signature and the minimum OS.",
-      docs: "/docs/services/update/",
+      docs: "/docs/features/ship-builds/updates/",
       value: { kind: "json", schema: "operator_policy_json (update/admin.ts)" },
       defaultValue: null,
       allowUnset: true,

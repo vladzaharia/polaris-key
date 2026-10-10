@@ -30,7 +30,7 @@ import {
  * Columns on Identity's `portal_product_settings` (migration 0085), beside `discover_enabled`,
  * which still forces `unlisted` until PS-11 (`core/storefront/polarisKeyListing.ts`).
  */
-const STOREFRONT_DOCS = "/docs/services/identity/portal/";
+const STOREFRONT_DOCS = "/docs/features/sign-in/customer-portal/";
 const STOREFRONT_READERS = [
   "core/storefront/polarisKeyListing.ts",
   "services/identity/portal/storefrontListing.ts",
@@ -50,7 +50,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     label: "Product name",
     description:
       "The display name shown in the console, the portal and the discovery document.",
-    docs: "/docs/admin/products/",
+    docs: "/docs/operate/console/products/",
     value: { kind: "string", maxLength: 200 },
     defaultValue: "",
     merge: "cascade",
@@ -69,7 +69,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     label: "Admin group",
     description:
       "The identity-provider group named by the manifest as this product's administrators. Not enforced: console access is platform-wide. Manifest-only (owner decision 1).",
-    docs: "/docs/admin/products/",
+    docs: "/docs/operate/console/products/",
     value: { kind: "string", maxLength: 200 },
     defaultValue: null,
     allowUnset: true,
@@ -92,7 +92,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     description:
       "Browser origins allowed to call this product's endpoints (the CORS allow-list). Adding one lets that site's scripts call the product.",
     keywords: ["cors", "origin", "browser"],
-    docs: "/docs/build/onboarding/",
+    docs: "/docs/start/first-product/",
     value: {
       kind: "list",
       of: { kind: "string", pattern: "^https?://", maxLength: 2048 },
@@ -119,7 +119,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     description:
       "The product's .pkey/ is the only writer of its display name, licence defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
     keywords: ["break-glass", "gitops", "claims", "lock", "single writer"],
-    docs: "/docs/admin/products/",
+    docs: "/docs/operate/console/products/",
     value: { kind: "boolean" },
     defaultValue: false,
     merge: "cascade",
@@ -147,7 +147,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     description:
       "Which opt-in services this product runs. A service that is off does not exist from outside.",
     keywords: ["modules", "enablement"],
-    docs: "/docs/admin/services-enablement/",
+    docs: "/docs/operate/console/products/",
     value: { kind: "json", schema: "ServicesMap (core/services.ts)" },
     defaultValue: null,
     allowUnset: true,
@@ -172,7 +172,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     description:
       "Who may mint a device token: open, requires-identity or requires-license. Unset follows the services: requires-license with License on, else requires-identity with Identity on, else open. Opening it lets any client register a device.",
     keywords: ["devices.registration", "register", "device token", "open"],
-    docs: "/docs/services/core/device-principal/",
+    docs: "/docs/reference/protocol/device-principal/",
     value: {
       kind: "enum",
       values: ["open", "requires-identity", "requires-license"],
@@ -217,7 +217,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
       "sealed",
       "missing secrets",
     ],
-    docs: "/docs/admin/secrets-and-keys/",
+    docs: "/docs/operate/console/keys-and-secrets/",
     value: {
       kind: "json",
       schema:
@@ -276,7 +276,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     description:
       "Which attestation a device must present to enrol (App Attest, Play Integrity) and whether it is enforced. Relaxing it lets unattested clients enrol.",
     keywords: ["attestation", "app attest", "play integrity"],
-    docs: "/docs/services/core/device-trust/",
+    docs: "/docs/features/licensing/device-trust/",
     value: { kind: "json", schema: "TrustPolicy (core/deviceTrust.ts)" },
     defaultValue: null,
     allowUnset: true,
