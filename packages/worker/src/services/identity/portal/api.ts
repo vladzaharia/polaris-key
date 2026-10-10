@@ -418,6 +418,8 @@ export async function accountMayDownload(
 /**
  * Where a download goes (R6-12, PX-W3). One of:
  *
+ *   - HA-09: for a NON-public deliverable the ticket below is tried FIRST; GitHub's own URL is
+ *     the fallback, only for a PUBLIC repository.
  *   - `{kind: "redirect", url}`, tried in this order:
  *       1. For a PUBLIC deliverable, Distribution's bytes-host URL for the file
  *          (`delivery.deliveryUrl`), accepted only when it is `https` on the configured bytes
@@ -458,10 +460,26 @@ export async function downloadTarget(
     const hosted = await bytesHostTarget(env, artifact, gate);
     if (hosted !== null) return { kind: "redirect", url: hosted.toString() };
   }
+  if (mode !== "public") {
+    // HA-09: a licensed file the bytes host serves (its mirrored R2 copy, or a private
+    // repository's asset streamed there) goes by ticket BEFORE any GitHub URL, so the licensed
+    // download never depends on, or hands out, a GitHub address.
+    const ticketed = await ticketTarget(env, artifact, gate);
+    if (ticketed !== null) return ticketed;
+  }
   const source = redirectableSourceUrl(artifact);
   if (source !== null && (await gate.repositoryPublic()))
     return { kind: "redirect", url: source };
-  if (mode === "public") return null;
+  return null;
+}
+
+/** The ticketed target for a non-public deliverable's file, or `null` (no tickets configured,
+ *  no recorded SHA-256, or no bytes-host URL for it). */
+async function ticketTarget(
+  env: Env,
+  artifact: PortalArtifactRow,
+  gate: DeliveryGate,
+): Promise<DownloadTarget | null> {
   if (!artifact.sha256 || !downloadTicketsEnabled(env)) return null;
   const hosted = await bytesHostTarget(env, artifact, gate);
   // A ticket is honoured on the bytes host alone (origin isolation, THREAT-MODEL §3), so the
