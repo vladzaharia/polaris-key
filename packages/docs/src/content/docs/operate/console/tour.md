@@ -11,12 +11,19 @@ product runs. Every page, its URL, its icon and its docs link come from one tabl
 `packages/admin/src/console/nav.ts`), and this page walks that table. It describes the shell; the
 mechanics behind each page have their own pages, linked as they come up.
 
-## Signed in as a platform admin
+## Who can open what
 
-There is exactly one admin identity: signed in, or not. `/manage/api/me` returns every product
-you may administer or none. There is no per-product grant, and a product's manifest
-`adminGroup` field is display metadata that authorizes nothing (see
-[Products](/docs/admin/products/)).
+Every console route belongs to one **area** (Core, Licensing, Managed config, Ship builds,
+Sign-in, Cloud Sync, Commerce, Keys & secrets, Settings, Members, Platform, Docs, and Console for
+what every member uses), and a member's **roles** say which areas they hold: Superadmin (all of
+them), Platform admin (Platform, Members and Docs), Product admin (one product's areas, or a few
+of them) and Console access (the console itself, no product). The worker checks the area on every
+request; the console only hides what you cannot open.
+
+Today one role exists in practice: membership of the platform's admin group at the console's
+identity provider makes you a Superadmin, so every operator sees everything. `/manage/api/me`
+returns the products you hold and your `permissions`. A product's manifest `adminGroup` field
+authorizes nothing (see [Products](/docs/admin/products/)).
 
 The session is a hard 8 hours. The account menu shows when it ends ("Session ends 18:40"), so
 you know before you start a long edit.
@@ -175,6 +182,10 @@ The console never quietly shows a different page than the one you asked for.
   part of the path it could not match.
 - **A product that does not exist.** "Unknown product" lists the slugs that are one or two edits
   away, and links to Products.
+- **An area your role does not include.** "You don't have access to DJDL → Licensing" names your
+  role, lists up to three people who can give you access, each with an address to copy, and
+  offers the pages you can open. A member with no product yet sees the same on Home. Nothing from
+  the refused page is loaded.
 
 ## Keyboard
 

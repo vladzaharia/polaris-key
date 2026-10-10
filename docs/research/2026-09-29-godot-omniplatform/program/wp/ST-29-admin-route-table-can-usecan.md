@@ -26,6 +26,41 @@ These approved plans change this package. Where they differ from the text below,
 - [`plans/CM-29.md`](../plans/CM-29.md) §10: the `commerce` row names PS-06's `storefronts/*` explicitly, as a Core route; `distribution/storefronts/**` stays `ship`. CM-29's admin routes are declared `commerce` and keep that area across the move.
 - [docs plan](../../../2026-10-08-docs/README.md) §10 amendment 2, as the owner's 2026-10-08 decision (D2) changes it: the docs gate is tiered. Help and the developer sections (`start/`, `build/`, `features/`, `reference/`) are public and need no session; Operate → Console admits any console member; Operate → Platform, Contribute and the runbook stay on `can('platform.docs')`. A reader without the right session reaches the public access page, never a bare console sign-in. This replaces the scope's single `platform.docs` gate on `/docs`.
 
+## Corrections from the build (2026-10-10)
+
+The code is the fact; where it differed from the text above or the ST-28 plan, ST-29 did this.
+
+- **`THREAT-MODEL.md:5166`** ("or a product admin group") was already corrected on main; the
+  bullet now names the role model instead.
+- **Widening keys the plan did not map:** `identity.keyEntry.claimByKey` is `settings`,
+  `identity.oidc.syncTierOnSignIn` is `keys`. `core.secrets` is `keys`; `distribution.commerce`
+  and the four `storefront.polarisKey.*` keys are `commerce`. `identity.issuer.clients` and
+  `identity.exchange.*` are not registered yet; their rows stay in `SECURITY_WIDENING_AREAS`.
+- **Sync has no `adminHandle`.** Its prefix row is declared (`sync`) and answers 404, as before.
+- **Step-up stays a 403 `step_up_required`** (the response the console already handles), not the
+  plan's 401. It now runs in the dispatcher before the handler, so deleting the system product asks
+  for the step-up before its 409. `POST /platform/override-migration/run` had an inline step-up
+  missing from `STEP_UP_ROUTES`; it is now a step-up row and listed.
+- **A principal with no grant** is refused every route before matching (one 403, no route
+  oracle). A product-scope denial keeps the budgeted `access.denied` row; a platform-scope one
+  writes nothing, as before.
+- **Docs tiers.** The developer door, the landing page and the site assets are public. **Help
+  stays member-tier** until the owner's support address exists (docs plan D4, owner steps 8f):
+  `HELP_TIER` in `docs.ts` is DOC-03b's one-line public switch. The search index is admin-tier
+  until DOC-03b splits it per tier. A sessionless reader of a gated page still goes to sign-in;
+  DOC-03b's access page replaces that.
+- **"Who can give you access"** has no member store before ST-30 and ST-31, so `GET
+/access/admins` names the Superadmins who signed in within the root rule's 8 h, by their latest
+  audited action. Sign-in rows carry no address: security events never do
+  (`platformOidc.test.ts`).
+- **Write controls.** New product (`platform`) and Delete product (`settings`) take the
+  `disabledReason`. Every other control sits on a page whose area the member holds, and every
+  role grants view and edit alike, so no other control can be refused today. The settings index
+  carries `rbacArea` for ST-07 and ST-31 to gate per-key rows once narrowed roles exist.
+- **Docs pages.** ST-29's part of `operate/console/members` and `reference/roles` is the console
+  tour's "Who can open what" and the runbook's lockout recovery. The pages are ST-35's, and the
+  generated roles matrix is ST-31's.
+
 ## Goal
 
 Admin route table, can(), useCan and NoAccessPage (absorbs ST-21), as scoped below. Done when every acceptance criterion holds and the green gate passes.

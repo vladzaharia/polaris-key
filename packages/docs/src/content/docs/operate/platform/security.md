@@ -11,7 +11,7 @@ audiences. This page is a pointer, not a copy — nothing below is mirrored onto
 ## The disclosure policy — public, at the repo root
 
 [`SECURITY.md`](https://github.com/vladzaharia/polaris-key/blob/main/SECURITY.md) is the one
-document in this list meant to be read by someone **outside** the platform-admin gate: how to
+document in this list meant to be read by someone **outside** the console: how to
 report a vulnerability privately (a GitHub security advisory or email, never a public issue),
 response-time targets, what's in and out of scope, and the accepted-risk boundary — a licensed
 user bypassing client-side enforcement on their own machine is documented and out of scope; the
@@ -23,7 +23,7 @@ same bypass yielding something the _server_ would not have sent is very much in 
 this site, on the same "repo-only by decision" basis the wire contract's normative spec already
 documents at [The wire contract](/docs/build/wire/#where-the-truth-lives-in-repo). Reaching
 these files means having a checkout, not an admin session — a deliberate extra step, on top of
-the gate this whole `/docs` site already sits behind.
+the platform-admin gate this section of `/docs` already sits behind.
 
 | What                                                                            | Path                                |
 | ------------------------------------------------------------------------------- | ----------------------------------- |
