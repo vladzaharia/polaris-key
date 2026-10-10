@@ -219,7 +219,7 @@ amendment says.
 - **I-13** exchange and **I-15** native redirect: the request carries `deviceName` under §2.1,
   and the entry creates a `native` handle.
 - **I-15** must offer a pushed-request step (RFC 9126 style, `POST /<p>/identity/request` →
-  `{request, authorizeUrl}`), because a label in an `authorize` query string would be a display
+  `request_uri`, I-27 §2.1), because a label in an `authorize` query string would be a display
   query parameter.
 - **I-21**: OAuth clients, if added, extend `ClientRecord`. They do not replace it.
 
