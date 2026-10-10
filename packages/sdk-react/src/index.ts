@@ -57,6 +57,17 @@ export {
 // ui.boot (SP-12): the one-call boot as a hook.
 export { useBoot, type UseBoot, type UseBootOptions } from "./react/useBoot.js";
 
+// ── The kit (UI-KITS.md §4.2): the one-line drop-in and its theme; every other §4.1 component,
+// the stylesheet helpers and the headless models are on `@polaris-key/react/kit`.
+export {
+  PolarisKeyGate,
+  PolarisKeyTheme,
+  type KitAction,
+  type KitProps,
+  type KitTheme,
+  type PolarisKeyGateProps,
+} from "./kit/component.js";
+
 // ── Components ───────────────────────────────────────────────────────────────
 export {
   LicenseGate,

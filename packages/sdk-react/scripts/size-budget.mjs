@@ -45,6 +45,11 @@ createRoot(document.getElementById("root")).render(
   createElement(PolarisKeyProvider, { baseUrl: "https://example.test", productId: "p" },
     createElement(LicenseGate, null, "app")));
 `,
+  "polaris-key-gate": `${REACT}
+import { PolarisKeyGate } from "@polaris-key/react";
+createRoot(document.getElementById("root")).render(
+  createElement(PolarisKeyGate, { input: { gate: { status: "ok" } } }, "app"));
+`,
   "provider+use-license": `${REACT}
 import { PolarisKeyProvider, useLicense } from "@polaris-key/react";
 function App() { return createElement("div", null, String(useLicense().state)); }

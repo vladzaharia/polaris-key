@@ -488,6 +488,9 @@ importers:
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
+      '@polaris-key/elements':
+        specifier: workspace:*
+        version: link:../elements
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol

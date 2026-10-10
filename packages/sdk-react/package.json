@@ -3,7 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/styles.css"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -46,7 +48,12 @@
     "./packs": {
       "types": "./dist/packs/index.d.ts",
       "default": "./dist/packs/index.js"
-    }
+    },
+    "./kit": {
+      "types": "./dist/kit/index.d.ts",
+      "default": "./dist/kit/index.js"
+    },
+    "./styles.css": "./dist/styles.css"
   },
   "files": [
     "dist",
@@ -56,7 +63,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node scripts/copy-styles.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "vitest run -c vitest.browser.config.ts",
@@ -68,6 +75,7 @@
     "@polaris-key/brand": "workspace:*",
     "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
+    "@polaris-key/elements": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
     "@polaris-key/ui-core": "workspace:*",
     "@polaris-key/zstd-wasm": "workspace:*",
