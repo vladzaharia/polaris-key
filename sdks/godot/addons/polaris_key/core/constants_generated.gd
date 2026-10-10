@@ -1180,16 +1180,16 @@ static func capabilities() -> Dictionary:
 		"ui.kit.account": {"status": "planned", "service": "sdk", "na": []},
 		"ui.cli": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"ui.cli.mount": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
-		"ui.gate": {"status": "planned", "service": "sdk", "na": []},
-		"ui.activate": {"status": "planned", "service": "sdk", "na": []},
-		"ui.signin": {"status": "planned", "service": "sdk", "na": []},
-		"ui.devicelimit": {"status": "planned", "service": "sdk", "na": []},
-		"ui.devices": {"status": "planned", "service": "sdk", "na": []},
-		"ui.update": {"status": "planned", "service": "sdk", "na": []},
-		"ui.settings": {"status": "planned", "service": "sdk", "na": []},
-		"ui.paywall": {"status": "planned", "service": "sdk", "na": []},
-		"ui.theme": {"status": "planned", "service": "sdk", "na": []},
-		"ui.i18n": {"status": "planned", "service": "sdk", "na": []},
+		"ui.gate": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.activate": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.signin": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.devicelimit": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.devices": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.update": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.settings": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.paywall": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.theme": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.i18n": {"status": "implemented", "service": "sdk", "na": []},
 		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
 		"server.license": {"status": "na", "service": "license", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"server.signin": {"status": "na", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
@@ -1198,4 +1198,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "4cb7b7a1eb1bcf790bcb713b8504f9e1fb24ba26f97cfab6f08e7995e7d08fe0"
+const CAPABILITY_DIGEST := "6af9d75b1e08d85e50ad5a510d175ef2958f53f357c4c277a87b6ef8c84aabb7"

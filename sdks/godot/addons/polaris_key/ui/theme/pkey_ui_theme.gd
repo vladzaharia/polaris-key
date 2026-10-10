@@ -287,6 +287,10 @@ static var presentation_accent_dark := "":
 		_cache = null
 static var _on_presentation := Callable()
 static var _derived := {}
+## DL16: `auto` (follow the system where the engine reports it), `on` or `off`
+## (PKeyOptions.ui_reduce_motion and ui_reduce_transparency).
+static var reduce_motion_mode := "auto"
+static var reduce_transparency_mode := "auto"
 
 static var _cache: Theme = null
 static var _textures := {}
@@ -305,6 +309,10 @@ static func apply_options(opts: Resource) -> void:
 	powered_by = opts.get("ui_powered_by") == true
 	var d = opts.get("ui_density")
 	density = d if d is String and DENSITIES.has(d) else DEFAULT_DENSITY
+	var rm = opts.get("ui_reduce_motion")
+	reduce_motion_mode = rm if rm is String and rm in ["auto", "on", "off"] else "auto"
+	var rt = opts.get("ui_reduce_transparency")
+	reduce_transparency_mode = rt if rt is String and rt in ["auto", "on", "off"] else "auto"
 	var pn = opts.get("ui_product_name")
 	product_name = pn if pn is String else ""
 	product_icon = opts.get("ui_product_icon") as Texture2D
@@ -329,7 +337,31 @@ static func reset() -> void:
 	density = DEFAULT_DENSITY
 	product_name = ""
 	product_icon = null
+	reduce_motion_mode = "auto"
+	reduce_transparency_mode = "auto"
 	use_presentation(null)
+
+
+## DL16: true when the kit's screens hold their indicators still and swap states at once (the
+## option, else the system's reduced-motion setting where the engine reports it: Godot 4.5+).
+static func reduce_motion() -> bool:
+	if reduce_motion_mode != "auto":
+		return reduce_motion_mode == "on"
+	return _system_flag("accessibility_should_reduce_animation")
+
+
+## DL16: true when every scrim (and glass surface) is drawn opaque (the option, else the system's
+## reduced-transparency setting where the engine reports it).
+static func reduce_transparency() -> bool:
+	if reduce_transparency_mode != "auto":
+		return reduce_transparency_mode == "on"
+	return _system_flag("accessibility_should_reduce_transparency")
+
+
+static func _system_flag(method: String) -> bool:
+	if not DisplayServer.has_method(method):
+		return false
+	return bool(DisplayServer.call(method))
 
 
 ## Read the product's presentation from `source` (PolarisKey.configure() passes its
@@ -821,8 +853,36 @@ static func _project_stylebox(item: StringName, type: StringName) -> StyleBox:
 ## The brand theme with the bundled Rubik. `p_accent` (alpha 0: the platform
 ## violet) colours the primary button, the chips and the hover border; give it a colour with at
 ## least 3:1 against the theme's surfaces. `regular` / `bold` replace Rubik.
+## Rubik's three weights (UI-KITS.md DL12): 400 for body text, 500 for buttons, 600 for headings
+## (titles, sections and the user code), the last two from the bundled variable face. 700 (the
+## static Rubik Bold, BOLD_PATH) is the game wordmark's fallback only.
 static func build(dark := true, p_accent := Color(0, 0, 0, 0), regular: Font = null, bold: Font = null) -> Theme:
-	return build_with(dark, p_accent, regular if regular != null else load(REGULAR_PATH) as Font, bold if bold != null else load(BOLD_PATH) as Font, system_mono())
+	var heading: Font = bold if bold != null else weighted(600)
+	var medium: Font = bold if bold != null else weighted(500)
+	return build_with(dark, p_accent, regular if regular != null else load(REGULAR_PATH) as Font, heading, system_mono(), medium)
+
+
+## The bundled variable Rubik at weight 500 or 600: the committed FontVariation at
+## `weight_path(w)` (tools/gen_theme.gd writes it from `weight_variation()`), so the committed
+## themes reference the same resource.
+static func weighted(w: int) -> Font:
+	var path := weight_path(w)
+	if ResourceLoader.exists(path):
+		return load(path) as Font
+	return weight_variation(w)
+
+
+static func weight_path(w: int) -> String:
+	return "res://addons/polaris_key/ui/theme/rubik_%d.tres" % w
+
+
+## A new FontVariation of the bundled variable Rubik at weight `w`.
+static func weight_variation(w: int) -> FontVariation:
+	var v := FontVariation.new()
+	v.base_font = load(PKeyKitTokens.RUBIK_VARIABLE_PATH) as Font
+	# Keyed by the axis tag: a String key ("wght") is not applied.
+	v.variation_opentype = {TextServerManager.get_primary_interface().name_to_tag("wght"): w}
+	return v
 
 
 ## The platform's monospace face for ids (SF Mono or Menlo, Consolas, DejaVu Sans Mono…;
@@ -833,7 +893,7 @@ static func system_mono() -> Font:
 
 
 ## `build()` with exactly these fonts: null keeps the engine's default font for that role.
-static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, mono: Font = null) -> Theme:
+static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, mono: Font = null, medium: Font = null) -> Theme:
 	var p := palette(dark)
 	_resolve_accent(p, dark, p_accent)
 	var t := Theme.new()
@@ -877,7 +937,7 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, m
 	if bold != null:
 		t.set_font("font", "PKeyTitle", bold)
 		t.set_font("font", "PKeySection", bold)
-	# The user code in Rubik Bold (the display face); ids in the platform's monospace.
+	# The user code in the heading weight (the display face); ids in the platform's monospace.
 	if bold != null:
 		t.set_font("font", "PKeyCode", bold)
 	if mono != null:
@@ -909,8 +969,8 @@ static func build_with(dark: bool, p_accent: Color, regular: Font, bold: Font, m
 	t.set_stylebox("pressed", "PKeyPrimary", _box(p.accent_pressed, p.accent_pressed, 1, RADIUS_CONTROL, 0))
 	for c in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
 		t.set_color(c, "PKeyPrimary", p.on_accent)
-	if bold != null:
-		t.set_font("font", "PKeyPrimary", bold)
+	if medium != null or bold != null:
+		t.set_font("font", "PKeyPrimary", medium if medium != null else bold)
 	for type in ["LineEdit", "TextEdit"]:
 		t.set_stylebox("normal", type, _box(p.sunken, p.border_strong, 1, RADIUS_CONTROL, 0))
 		t.set_stylebox("read_only", type, _box(p.raised, p.border, 1, RADIUS_CONTROL, 0))

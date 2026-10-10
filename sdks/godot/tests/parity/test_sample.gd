@@ -17,8 +17,10 @@ func run(t: PKeyTestContext) -> void:
 	script.source_code = source
 	t.check("sample: main.gd compiles against the SDK", script.reload() == OK)
 	t.check("sample: main.gd can be instantiated", script.can_instantiate())
-	for call in ["PolarisKey.boot(", "PolarisKey.license.is_entitled(", "PolarisKey.config.get_value(", "PolarisKey.commerce.purchase(", "PolarisKey.commerce.restore()", "pkey_settings_panel.tscn"]:
+	for call in ["PolarisKey.boot(", "PolarisKey.license.is_entitled(", "PolarisKey.config.get_value(", "PolarisKey.commerce.purchase(", "PolarisKey.commerce.restore()", "PKeySettingsPanel.open("]:
 		t.check("sample: uses %s" % call, source.contains(call))
+	# DL18: the kit's one line, with no layout code of the game's around it.
+	t.check("sample: no dialog wrapped around the settings", not source.contains("AcceptDialog"))
 	var scene := FileAccess.get_file_as_string(DIR.path_join("main.tscn"))
 	t.check("sample: main.tscn runs main.gd", scene.contains("path=\"res://main.gd\""))
 	var project := ConfigFile.new()

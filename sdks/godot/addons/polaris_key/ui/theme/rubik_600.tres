@@ -1,0 +1,9 @@
+[gd_resource type="FontVariation" format=3]
+
+[ext_resource type="FontFile" path="res://addons/polaris_key/ui/theme/fonts/rubik_variable.tres" id="1_n00vn"]
+
+[resource]
+base_font = ExtResource("1_n00vn")
+variation_opentype = {
+2003265652: 600
+}

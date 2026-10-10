@@ -9,7 +9,42 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
-Local-trust fixes, and the product's presentation.
+Local-trust fixes, the product's presentation, and the UI kit's headless layer.
+
+- **The UI kit's headless layer (`addons/polaris_key/ui/model/`).** One view model per kit
+  component (the gate, boot, status screen, grace banner and toasts; Welcome, Activate and offline
+  activation; the sign-in form, its hand-off and the license choice; the device limit and devices;
+  the update prompt, progress and release notes; account, settings, paywall, entitlement gate,
+  Cloud Sync status, About and the channel picker), each a pure function of one input Dictionary
+  that answers the state, the catalog copy keys, the actions and the design decisions (the one
+  primary, the tone, where an error sits, what takes focus, which links and QR codes may show).
+  `models.gd`'s `view_of(component, input)` is the entry point; `sign_in_session.gd` is the sign-in
+  form's state machine over the SDK's sign-in primitives; `theme.gd` resolves the product's
+  identity and accent; `copy_format.gd` formats the catalog's messages (plurals and the form-factor
+  select) from the generated `.po` tables in the launch locales. A game that draws its own screens
+  gets the same states and copy as the drop-in. The new `ui_core` suite runs every row of
+  `ui-matrix.json` (all ten families) through them.
+- **The activation form on a phone.** On a phone's screen the gate's and the activation panel's
+  form docks to the bottom of the page, the primary on top, under the product and a one-line lede
+  at the top (it used to float in the middle of an empty page). Activate goes under the key field
+  on a phone, and wherever the field beside it could not hold its placeholder; a placeholder the
+  field cannot hold even then is left out, never cut.
+- **The license key field is visible and private.** It is drawn in clear and typed on an
+  on-screen keyboard that neither corrects nor learns it (the password keyboard type).
+- **A title never breaks a word, and a button never widens the screen.** A title too narrow for
+  its longest word (German on a 375 pt phone) steps its type down, never under the body size,
+  until the word fits; a button label wider than the screen wraps at its words.
+- **Three weights.** The Polaris Key look draws headings, sections and the user code at 600 and
+  the primary button at 500, from the bundled variable Rubik (`rubik_600.tres`,
+  `rubik_500.tres`); Rubik Bold (700) is no longer used for them.
+- **`ui_reduce_motion` and `ui_reduce_transparency`** (`auto`, `on`, `off`; DL16). `auto` follows
+  the system's setting where the engine reports it (Godot 4.5+). Reduced motion holds the loading
+  shimmer still; reduced transparency puts a dialog over the game on the opaque page instead of
+  the scrim.
+- **`PKeySettingsPanel.open(parent)`** shows the settings over the game in one line, with Close
+  (and Escape or a pad's B), gives the focus back and frees itself; `closable` and the `closed`
+  signal are the parts. A panel a game's own menu holds has no Close. The minimal example uses it
+  instead of wrapping the panel in an AcceptDialog.
 
 - **Product presentation (`core.presentation`).** `PolarisKey.presentation()` returns the
   product's name, developer, accents and icon from discovery ({} for none);

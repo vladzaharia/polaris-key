@@ -163,7 +163,7 @@ export const UI_KITS: readonly UiKit[] = [
     tier: "must",
     package: "the addons/polaris_key addon",
     status: { ships: true },
-    current: { label: "Godot SDK", href: "/docs/build/sdks/godot/" },
+    current: { label: "Godot", href: "/docs/build/ui/frameworks/godot/" },
   },
   {
     id: "godot-dotnet",

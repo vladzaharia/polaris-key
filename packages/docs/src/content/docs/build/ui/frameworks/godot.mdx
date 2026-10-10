@@ -1,0 +1,92 @@
+---
+title: "Godot"
+description: "The Godot SDK's UI kit: the drop-in boot and gate, the scenes it is built from, and the headless view models a game's own UI can use."
+type: "reference"
+lastReviewed: "2026-10-10"
+sidebar:
+  order: 6
+---
+
+import KitCoverage from "../../../../../components/ui/KitCoverage.astro";
+import KitFacts from "../../../../../components/ui/KitFacts.astro";
+
+The Godot SDK's UI kit, in GDScript, for desktop, phones, tablets, the Steam Deck and TVs. One call
+gates a game and runs every screen the license needs: the boot, Activate with the key field, the
+sign-in form, offline activation, Replace a device, the blocking states with their fixes, offline
+grace, the update prompt and the settings. Every screen is also a scene of its own, and every
+state comes from headless view models that run the shared
+[UI state matrix](/docs/reference/corpus/), so a game that draws its own menus gets the same
+states, copy and actions. The rest of the Godot SDK is on the [Godot](/docs/build/sdks/godot/) page.
+
+<KitFacts kit="godot" />
+
+## Install
+
+The kit is part of the addon at `res://addons/polaris_key/`, installed from Polaris Key's Godot
+feed ([Installing the SDKs from the feeds](/docs/build/install-from-feeds/)). It runs on Godot 4.4
+and later, and bundles Rubik and JetBrains Mono (both OFL).
+
+## The one-line flow
+
+```gdscript
+await PolarisKey.boot()
+```
+
+`boot()` reads `res://polaris_key.tres`, syncs, gates on the license and checks for an update on
+the `PKeyBoot` screen, and returns once the player is through. A stop keeps its card on screen
+with Try again. The settings open over the game in one line too, and close with Close, Escape or
+a pad's B:
+
+```gdscript
+PKeySettingsPanel.open(self)
+```
+
+## Piecemeal
+
+Each screen is a `Control` scene a game can place itself: `PKeyGateView`, `PKeyActivationPanel`,
+`PKeySignInDialog`, `PKeyOfflineDialog`, `PKeyUpdatePrompt`, `PKeyStatusBanner`,
+`PKeySettingsPanel` and `PKeyEntitlementBadge`. A scene lays itself out for its window: two panes
+on a wide landscape panel, one column at 4:3, and on a phone the page full-bleed with the product
+at the top and the actions docked at the bottom, the primary on top. A scene a game's own menu
+holds draws no card of its own.
+
+## Headless
+
+The view models are in `addons/polaris_key/ui/model/`. Each is a pure function of one input
+Dictionary and answers the state, the catalog copy keys, the actions and the design decisions
+(the one primary, what takes focus, which links and QR codes may show):
+
+```gdscript
+const Models := preload("res://addons/polaris_key/ui/model/models.gd")
+
+var view := Models.view_of("PolarisKeyGate", {"gate": {"status": "revoked"}})
+# view["state"] == "blocked"
+```
+
+`sign_in_session.gd` is the sign-in form's state machine over the SDK's sign-in primitives, and
+`copy_format.gd` formats a copy key in the player's locale.
+
+## Theming
+
+The Polaris Key look is the default, dark, in the product's accent; `ui_branding = "none"`
+follows the game's own theme. The options are on `PKeyOptions` (`ui_brand_scheme`, `ui_accent`,
+`ui_theme`, `ui_density`, `ui_product_name`, `ui_product_icon`); the fields are on
+[Theming](/docs/build/ui/theming/). `ui_reduce_motion` and `ui_reduce_transparency` follow the
+system's settings by default (`auto`, from Godot 4.5) and can be forced `on` or `off`.
+
+## Localisation
+
+The kit's copy is generated as gettext tables in `addons/polaris_key/ui/locale/`, one per launch
+locale. `PKeyUiCopy.overrides` renames any string without forking a scene.
+
+## Baselines
+
+The kit's structural snapshots and its resolution matrix are in `sdks/godot/tests/`. Baselines
+matched to the [component catalog](/docs/build/ui/components/):
+
+<KitCoverage kit="godot" />
+
+## Sample
+
+`sdks/godot/examples/minimal/` boots, reads the license and the config, opens the settings and
+buys a store item, in one script.

@@ -80,6 +80,8 @@ var _glyph: TextureRect
 var _title: Label
 var _body: Label
 var _detail: Label
+## The form's lede on a phone, where the product heads the page and the form docks to the bottom.
+var _lede: Label
 var _update: Button
 var _retry: Button
 var _offline_btn: Button
@@ -133,6 +135,8 @@ func _build() -> void:
 	_title = label(_head, "Title", "PKeyTitle")
 	_body = label(_head, "Message", "PKeyMuted")
 	_detail = label(_head, "Detail", "PKeyMuted")
+	_lede = label(_head, "Lede", "PKeyMuted")
+	_lede.visible = false
 	_main = vbox(_split, "Form", "PKeySections")
 	_main.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_main.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -206,22 +210,27 @@ func _arrange(m: Dictionary) -> void:
 			_pane.remove_theme_stylebox_override("panel")
 	elif not _pane.has_theme_stylebox_override("panel"):
 		_pane.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	# The product names the screen when it has the pane; otherwise a leading header over the title.
-	_product.hero = two
-	_product.as_title = two
+	# On a phone the activation form docks to the bottom of the page, the primary on top, under the
+	# product and the form's lede at the top (DL1: full-bleed, top-aligned, actions docked).
+	var docked_form: bool = bleed and activation.visible and not _activation_owns_screen()
+	# The product names the screen when it has the pane, and heads a phone's page; otherwise a
+	# leading header over the title.
+	_product.hero = two or docked_form
+	_product.as_title = two or docked_form
 	_product.centered = two
+	show_text(_lede, activation.lede_text() if docked_form and squeeze_level() < 3 else "")
 	_aside.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var lead := HORIZONTAL_ALIGNMENT_CENTER if _glyph.visible else _title_start
 	_title.horizontal_alignment = lead
 	_body.horizontal_alignment = lead
 	_detail.horizontal_alignment = lead
+	_lede.horizontal_alignment = lead
 	size_glyph(_glyph, 40.0, get_theme_color("font_color", "PKeyWarning"))
-	# On a phone the activation form and the product above it sit together in the middle of the page
-	# (no small form floating at the top of an empty screen); a message docks its actions instead.
-	var centred_form := bleed and activation.visible and not _activation_owns_screen()
-	_split.alignment = BoxContainer.ALIGNMENT_CENTER if centred_form else BoxContainer.ALIGNMENT_BEGIN
-	_main.size_flags_vertical = Control.SIZE_FILL if centred_form else Control.SIZE_EXPAND_FILL
-	_spacer.visible = bleed and not _activation_owns_screen() and not centred_form
+	_split.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_main.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_main.alignment = BoxContainer.ALIGNMENT_END if docked_form else BoxContainer.ALIGNMENT_BEGIN
+	# A message docks its own actions to the bottom.
+	_spacer.visible = bleed and not _activation_owns_screen() and not docked_form
 	# A dialog the gate holds fills the page on a phone, docking its own actions to the bottom.
 	activation.size_flags_vertical = Control.SIZE_EXPAND_FILL if bleed and _activation_owns_screen() else Control.SIZE_FILL
 	if bleed:

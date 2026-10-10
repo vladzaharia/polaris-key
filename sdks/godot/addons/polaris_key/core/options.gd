@@ -155,6 +155,14 @@ const CONFIG_ENV_NEVER := 2
 ## The kit's spacing (PKeyUiTheme.DENSITIES; UI-KITS.md §3.1): `spacious` (the default, for a
 ## game at TV distance), `comfortable` or `compact`. A screen too small for it steps down.
 @export_enum("spacious", "comfortable", "compact") var ui_density := "spacious"
+## Motion in the kit's screens (UI-KITS.md DL16): `auto` follows the system's reduced-motion
+## setting where the engine reports it (Godot 4.5+), `on` holds every loading and busy indicator
+## still and swaps states at once, `off` always animates.
+@export_enum("auto", "on", "off") var ui_reduce_motion := "auto"
+## Transparency in the kit's screens (DL16): `auto` follows the system's reduced-transparency
+## setting where the engine reports it, `on` draws the scrim behind a dialog over the game opaque,
+## `off` keeps it see-through.
+@export_enum("auto", "on", "off") var ui_reduce_transparency := "auto"
 ## The product name the kit's screens lead with; empty: the project's `application/config/name`.
 @export var ui_product_name := ""
 ## The product icon beside it; null: the project's `application/config/icon` (else a monogram
