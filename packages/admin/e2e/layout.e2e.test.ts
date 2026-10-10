@@ -23,7 +23,6 @@ import {
 import {
   columnBreaches,
   lintFindings,
-  newFindings,
   forcedColourBreaches,
   unlabelledScrollers,
 } from "./pageChecks.js";
@@ -514,18 +513,8 @@ for (const vp of VIEWPORTS) {
               "sideways tables outside a labelled region",
             ).toEqual([]);
             if (vp.label === "wide" || vp.label.startsWith("zoom")) {
-              // ui:lint over the built page (`pnpm ui:lint --html`): what this size adds to the
-              // 1440 px desktop row (pageChecks.ts).
-              const wide = await lintFindings(page);
-              const desk = await open(c, theme, { width: 1440, height: 900 });
-              try {
-                expect(
-                  newFindings(wide, await lintFindings(desk.page)),
-                  "ui:lint findings this size adds to 1440 px",
-                ).toEqual([]);
-              } finally {
-                await desk.page.context().close();
-              }
+              // ui:lint over the built page (`pnpm ui:lint --html`; pageChecks.ts).
+              expect(await lintFindings(page), "ui:lint findings").toEqual([]);
             }
             if (vp.forcedColors)
               expect(

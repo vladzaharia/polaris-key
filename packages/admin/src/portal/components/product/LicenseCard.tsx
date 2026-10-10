@@ -76,7 +76,9 @@ export function LicenseCard({
   return (
     <SectionCard
       id="license"
-      title={`${product.name} license`}
+      // A no-break space before the last word, so a narrow or zoomed heading never leaves
+      // "license" alone on its own line.
+      title={`${product.name}\u00a0license`}
       aside={
         selected || ownIssue ? (
           <div

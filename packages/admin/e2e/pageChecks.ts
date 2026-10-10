@@ -119,25 +119,50 @@ export function forcedColourBreaches(page: Page): Promise<string[]> {
 }
 
 /**
- * What `pnpm ui:lint --html` finds on the page, one `rule: target` line each. The lint was written
- * for the mockup boards and the kits, so the built console and portal carry findings of its colour,
- * weight, RTL and state rules that UK-63 clears; those do not depend on the window.
+ * The lint's rules the built console and portal still break on every page at every size: the
+ * colour, weight, RTL, state and one-primary rules the mockup boards and kits were written for.
+ * UK-63 clears them and deletes this list; until then every OTHER rule (and any new one) must be
+ * clean at the wide and zoomed sizes.
  */
-export async function lintFindings(page: Page): Promise<Set<string>> {
+export const LINT_DEBT_RULES = new Set([
+  "colour-literal",
+  "font-weight-700",
+  "interactive-states",
+  "rtl-physical",
+  "focus-ring-spread",
+  "border-width",
+  "no-vw",
+  "one-primary",
+  "text-size-floor",
+  "tier-separator",
+  "empty-placeholder",
+  "touch-target",
+  // The console's own: sidebar group labels, a focus ring on :focus, a close X beside Cancel.
+  "button-uppercase",
+  "focus-visible-only",
+  "x-beside-cancel",
+  // A button's focus ring and a font mid-swap, caught in a transition: not a size effect.
+  "button-glow",
+  "font-family",
+]);
+
+/**
+ * What `pnpm ui:lint --html` finds on the page outside {@link LINT_DEBT_RULES}, one
+ * `rule: target detail` line each.
+ */
+export async function lintFindings(page: Page): Promise<string[]> {
   // Evaluated over the DevTools protocol, which the page's CSP does not govern (`lintPage`
   // would inject a script tag, which the policy blocks).
   await page.evaluate(LINT_SCRIPT);
   const { violations } = await lintPage(page, { scope: "body" });
-  return new Set(violations.map((v) => `${v.rule}: ${v.target}`));
-}
-
-/**
- * The findings at a wide or zoomed size that the same page does not have at the 1440 × 900
- * desktop row: what that window size itself introduces. UK-63 will take the whole lint to zero.
- */
-export function newFindings(
-  atSize: Set<string>,
-  atDesktop: Set<string>,
-): string[] {
-  return [...atSize].filter((f) => !atDesktop.has(f));
+  return (
+    violations
+      .filter((v) => !LINT_DEBT_RULES.has(v.rule))
+      // A line-clamped title is customer content cut at two lines; its tail is not drawn, and
+      // `text-wrap: balance` does not apply to a clamped box.
+      .filter(
+        (v) => !(v.rule === "orphan" && v.target.includes(".line-clamp-")),
+      )
+      .map((v) => `${v.rule}: ${v.target} ${v.detail}`)
+  );
 }

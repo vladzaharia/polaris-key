@@ -345,6 +345,15 @@
     overflow-wrap: break-word;
   }
 
+  /* Headings balance their lines, so a wrap at 200 % zoom or 320 px never leaves one word alone
+     on the last line (the lint's `orphan` rule) and never truncates. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
   /* Visible focus everywhere keyboard users land: 2 px violet with a 2 px offset in the surface
      colour (BRAND.md §7.4). */
   :focus-visible {
