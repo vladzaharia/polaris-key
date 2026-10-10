@@ -54,9 +54,9 @@ Filed by the [DX consolidation plan](../../../2026-10-07-dx-consolidation/README
 
 ## Acceptance criteria
 
-- [ ] A test bans local respond/body helpers in console and portal handlers
-- [ ] Oversized or malformed portal bodies answer 413/400, never {}
-- [ ] Device transcripts byte-identical
+- [x] A test bans local respond/body helpers in console and portal handlers
+- [x] Oversized or malformed portal bodies answer 413/400, never {}
+- [x] Device transcripts byte-identical
 - [ ] The green gate passes (`AGENTS.md`), including any drift gate this work package touches.
 
 ## Verify
