@@ -158,7 +158,7 @@ jobs:
       # exit 0 with an empty dist-feed (v0.9.3 maven.packs: "no POM ... matches"). So the download
       # is verified and, once, retried; a still-incomplete directory fails here with that cause.
       - id: download
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: ${{ inputs.artifact }}
@@ -173,7 +173,7 @@ jobs:
         run: tools/check-feed-download.sh
       - name: Download the artifact again
         if: steps.arrived.outcome == 'failure'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.artifact }}
           path: dist-feed
