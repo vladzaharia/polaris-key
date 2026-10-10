@@ -14,6 +14,7 @@
  *   - The email-less count: `GET /manage/api/platform/identity-migration`, counts only.
  */
 
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportJWK,
@@ -129,6 +130,8 @@ function installIdp(claims: Record<string, unknown>): void {
           ? input.toString()
           : input.url;
     fetched.push(u);
+    const meta = await issuerMetadataResponse(u, idpKey.getKey);
+    if (meta) return meta;
     if (u === `${ISSUER}/api/oidc/token`) {
       const idToken = await new SignJWT(claims)
         .setProtectedHeader({ alg: "ES256", kid: "test-idp" })

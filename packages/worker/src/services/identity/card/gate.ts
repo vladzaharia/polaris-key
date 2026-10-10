@@ -87,7 +87,7 @@ import {
   clearAccountRealmCookie,
   readCookie,
 } from "../../../core/accounts/accountCookies.js";
-import { portalAudit } from "../portal/repo.js";
+import { portalAudit, recordLinkAssertion } from "../portal/repo.js";
 import { portalEmailConfigured, sendSignInEmail } from "../portal/email.js";
 import { checkAccountSession } from "../portal/accountSessions.js";
 import {
@@ -191,6 +191,20 @@ export interface ProviderSignIn {
     label: string;
     birthdate?: string | null;
   } | null;
+  /**
+   * I-30: what a connection asserted, written onto the link this sign-in lands on (its groups and
+   * access-rule claims, `recordLinkAssertion`), on the fast path at once and otherwise when the
+   * gate passes. Never the birth date.
+   */
+  linkAssertion?: LinkAssertion | null;
+  /** The session's `amr` (I-30: `connection:<id>`). Defaults to the identity's kind. */
+  amr?: readonly string[] | null;
+}
+
+/** A connection's assertion for the link (I-30). */
+interface LinkAssertion {
+  groups: string[] | null;
+  claims: Record<string, string> | null;
 }
 
 type Identity = NonNullable<ReturnType<typeof normalizeIdentity>>;
@@ -239,6 +253,9 @@ interface GateRecord {
   birthdate?: BirthdateChoice | null;
   /** FinishStep's Initials: the provider's picture declined, as an explicit choice. */
   initials?: boolean;
+  // ── I-30 (absent on a record opened by an earlier Worker: nothing to write) ──
+  linkAssertion?: LinkAssertion | null;
+  amr?: string[] | null;
 }
 
 async function gateRefFor(env: Env, secret: string): Promise<ArtefactRef> {
@@ -378,6 +395,9 @@ export async function beginProviderSignIn(
         },
         now,
       );
+      if (input.linkAssertion) {
+        await recordLinkAssertion(db, result.linkId, input.linkAssertion);
+      }
       const fresh =
         (await getAccountRow(db, result.account.id)) ?? result.account;
       const finished = await finishSignIn(
@@ -386,7 +406,7 @@ export async function beginProviderSignIn(
         req,
         fresh,
         {
-          amr: [id.kind],
+          amr: input.amr?.length ? [...input.amr] : [id.kind],
           action: `portal.login.${id.kind}`,
           summary: `Signed in with ${id.kind}`,
         },
@@ -429,6 +449,8 @@ export async function beginProviderSignIn(
       : birthdateOffer(input.connection, now),
     birthdate: null,
     initials: false,
+    linkAssertion: input.linkAssertion ?? null,
+    amr: input.amr?.length ? [...input.amr] : null,
   };
   return cardRedirect(EMAIL_GATE_LANDING, [await storeGate(env, gate)]);
 }
@@ -1251,6 +1273,9 @@ async function completeGate(
     },
     now,
   );
+  if (gate.linkAssertion) {
+    await recordLinkAssertion(db, done.linkId, gate.linkAssertion);
+  }
   const account = await getAccountRow(db, done.accountId);
   if (!account) return gateRefused(403, ACCOUNT_DISABLED_MESSAGE);
   const finished = await finishSignIn(
@@ -1259,7 +1284,7 @@ async function completeGate(
     req,
     account,
     {
-      amr: [gate.identity.kind],
+      amr: gate.amr?.length ? gate.amr : [gate.identity.kind],
       action: `portal.login.${gate.identity.kind}`,
       summary: done.joined
         ? `Signed in with ${gate.identity.kind} and joined it to this account`

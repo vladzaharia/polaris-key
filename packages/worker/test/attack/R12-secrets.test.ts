@@ -6,6 +6,7 @@
  * or REFUTES a hypothesis (the assertion encodes the safe behaviour that already holds).
  */
 
+import { issuerMetadataResponse } from "../oidcIssuerFake.js";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -670,6 +671,8 @@ function installIdpFetch(idToken: string): void {
           : input instanceof URL
             ? input.toString()
             : input.url;
+      const meta = await issuerMetadataResponse(u, idpKey.getKey, { kid: "r12-idp" });
+      if (meta) return meta;
       if (u.includes("/api/oidc/token")) {
         return new Response(JSON.stringify({ id_token: idToken }), {
           status: 200,

@@ -6,7 +6,7 @@
  * the legacy product engine (`services/identity/oidc.ts`, until I-32b) and the login card's
  * built-in Google and Apple providers (`services/identity/providers/`). Steam stays OpenID 2.0 and
  * uses only the gated fetch below. Before I-30 three of those sites each hard-coded Pocket ID's
- * paths and verified keys through jose's `createRemoteJWKSet`, which dials outside any guard.
+ * paths and verified keys through jose's remote key-set helper, which dials outside any guard.
  *
  * ── THE GATED FETCH ─────────────────────────────────────────────────────────────────────────
  *
@@ -268,6 +268,23 @@ export function connectionHosts(
     }
   }
   return [...hosts];
+}
+
+/**
+ * The relying party of a Worker-configured client (the console's `ADMIN_OIDC_*`, the legacy
+ * engine's `PLATFORM_OIDC_*`): its allowlist is the issuer's host alone.
+ */
+export function issuerRelyingParty(
+  label: string,
+  cfg: { issuer: string; clientId: string; clientSecret?: string | null },
+): RelyingParty {
+  return {
+    label,
+    issuer: cfg.issuer,
+    clientId: cfg.clientId,
+    clientSecret: cfg.clientSecret ?? null,
+    allowedHosts: connectionHosts(cfg.issuer),
+  };
 }
 
 export interface DiscoveredIssuer {

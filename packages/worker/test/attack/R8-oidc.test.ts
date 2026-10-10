@@ -23,6 +23,7 @@
  * guards it shared with `/device/poll` (`pollAuthFlow`: the flow's device binding and its
  * confirmation) are asserted through `/device/poll`.
  */
+import { issuerMetadataResponse } from "../oidcIssuerFake.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportJWK,
@@ -195,6 +196,8 @@ function installFetchMock(idToken: string): void {
           : input instanceof URL
             ? input.toString()
             : input.url;
+      const meta = await issuerMetadataResponse(u, idpKey.getKey);
+      if (meta) return meta;
       if (u.includes("/api/oidc/token")) {
         return new Response(JSON.stringify({ id_token: idToken }), {
           status: 200,

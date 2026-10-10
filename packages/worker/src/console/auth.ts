@@ -9,19 +9,21 @@
  *                             OR product admin group, set the session cookie, 302 to /manage/.
  *
  * The token-exchange + ID-token verification is delegated to an injectable `IdTokenVerifier`
- * so tests can drive the flow without a live IdP (production wires the jose-backed verifier).
+ * so tests can drive the flow without a live IdP. Production wires the one relying-party client
+ * (`core/oidc/client.ts`, I-30): discovery, the gated fetch, `createLocalJWKSet`, RFC 9207.
  * The IdP config comes from `adminOidcConfig` (I-03): the console's own client (`ADMIN_OIDC_*`)
  * when it is set, else the shared platform client (`PLATFORM_OIDC_*`). Either way admin auth is
  * independent of any single product's OIDC client.
  */
 
 import { recordPlatformSecurityEvent } from "../core/ops/securityEvents.js";
-import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
-  ALLOWED_ID_TOKEN_ALGS,
-  ID_TOKEN_CLOCK_TOLERANCE,
-  ID_TOKEN_MAX_AGE,
-} from "../services/identity/public.js";
+  authorizationUrl,
+  discover,
+  issuerRelyingParty,
+  newFlowSecrets,
+  redeemAuthorizationCode,
+} from "../core/oidc/client.js";
 import type { Env } from "../platform/env.js";
 import type { Db } from "../db/types.js";
 import { hashKey } from "../platform/crypto.js";
@@ -42,7 +44,6 @@ import { adminOidcConfig } from "../platform/platformOidc.js";
 import { brandedHtmlSecurityHeaders } from "../core/securityHeaders.js";
 import { renderBrandPage } from "../core/brandHtml.js";
 import { escapeHtml } from "../platform/html.js";
-import { pkcePair } from "../platform/pkce.js";
 import { randomToken } from "../platform/random.js";
 import { hasAnyAdminGrant } from "./authz.js";
 import {
@@ -125,6 +126,8 @@ export interface IdTokenVerifier {
   /** Exchange `code` + verify the resulting ID token; return mapped claims or null. */
   verify(input: {
     code: string;
+    /** RFC 9207: the authorization response's `iss`, when the IdP sent one. */
+    iss?: string | null;
     flow: FlowRecord;
     env: Env;
   }): Promise<SessionIdentity | null>;
@@ -153,50 +156,32 @@ function mapClaims(payload: Record<string, unknown>): SessionIdentity {
   };
 }
 
-/** The production verifier: token exchange against the IdP + jose JWKS verification. */
-const joseIdTokenVerifier: IdTokenVerifier = {
-  async verify({ code, flow, env }) {
-    const cfg = adminOidcConfig(env);
-    if (!cfg) return null;
-    const tokenRes = await fetch(
-      `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
-      {
-        method: "POST",
-        signal: AbortSignal.timeout(10_000),
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: flow.redirectUri,
-          client_id: cfg.clientId,
-          code_verifier: flow.verifier,
-          ...(cfg.clientSecret ? { client_secret: cfg.clientSecret } : {}),
-        }),
-      },
-    );
-    if (!tokenRes.ok) return null;
-    const tokens = (await tokenRes.json()) as { id_token?: string };
-    if (!tokens.id_token) return null;
-    const jwks = createRemoteJWKSet(
-      new URL(`${cfg.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
-    );
+/** The console IdP as a relying party of the one client (I-30), or `null` when unset. */
+function consoleRelyingParty(env: Env) {
+  const cfg = adminOidcConfig(env);
+  return cfg ? issuerRelyingParty("console-idp", cfg) : null;
+}
+
+/**
+ * The production verifier: the one relying-party client redeems the code (discovery, RFC 9207
+ * `iss`, the gated token request) and verifies the ID token (gated JWKS, `createLocalJWKSet`,
+ * exact `aud`/`azp`, freshness, this flow's nonce).
+ */
+const clientIdTokenVerifier: IdTokenVerifier = {
+  async verify({ code, iss, flow, env }) {
+    const rp = consoleRelyingParty(env);
+    if (!rp) return null;
     try {
-      const verified = await jwtVerify(tokens.id_token, jwks, {
-        issuer: cfg.issuer,
-        audience: cfg.clientId,
-        algorithms: ALLOWED_ID_TOKEN_ALGS,
-        // Same freshness rules as the portal and product sign-ins; `exp` alone is
-        // the IdP's choice.
-        clockTolerance: ID_TOKEN_CLOCK_TOLERANCE,
-        maxTokenAge: ID_TOKEN_MAX_AGE,
-        requiredClaims: ["sub", "exp", "iat"],
+      const { claims } = await redeemAuthorizationCode(rp, {
+        code,
+        iss: iss ?? null,
+        redirectUri: flow.redirectUri,
+        codeVerifier: flow.verifier,
+        nonce: flow.nonce,
       });
-      const claims = verified.payload as Record<string, unknown>;
-      // Reject unconditionally on a missing or mismatched nonce — a token with no nonce
-      // must never satisfy the binding to this flow (replay / token-injection defense).
-      if (typeof claims.nonce !== "string" || claims.nonce !== flow.nonce)
-        return null;
-      return mapClaims(claims);
+      // A token with no nonce never satisfies the binding to this flow (replay defence).
+      if (typeof claims.nonce !== "string") return null;
+      return mapClaims(claims as Record<string, unknown>);
     } catch {
       return null;
     }
@@ -259,11 +244,15 @@ export async function handleAdminLogin(
       429,
       "Too many sign-in attempts. Please wait and try again.",
     );
-  const cfg = adminOidcConfig(env);
-  if (!cfg) return htmlError(500, "Admin sign-in is not configured.");
-  const state = randomToken(16);
-  const nonce = randomToken(16);
-  const { verifier, challenge } = await pkcePair();
+  const rp = consoleRelyingParty(env);
+  if (!rp) return htmlError(500, "Admin sign-in is not configured.");
+  let discovered;
+  try {
+    discovered = await discover(rp);
+  } catch {
+    return htmlError(502, "Sign-in isn't working right now. Try again later.");
+  }
+  const { state, nonce, verifier, challenge } = await newFlowSecrets();
   const url = new URL(req.url);
   const redirectUri = `${adminOrigin(env, url)}/manage/callback`;
   const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));
@@ -284,25 +273,20 @@ export async function handleAdminLogin(
     FLOW_TTL_SECONDS,
   );
 
-  const authorize = new URL(`${cfg.issuer.replace(/\/$/, "")}/authorize`);
-  authorize.searchParams.set("response_type", "code");
-  authorize.searchParams.set("client_id", cfg.clientId);
-  authorize.searchParams.set("redirect_uri", redirectUri);
-  authorize.searchParams.set("scope", "openid email profile groups");
-  authorize.searchParams.set("state", state);
-  authorize.searchParams.set("nonce", nonce);
-  authorize.searchParams.set("code_challenge", challenge);
-  authorize.searchParams.set("code_challenge_method", "S256");
-  if (stepUp) {
-    // I-12: re-authenticate now, not a silent SSO. The callback checks `auth_time` when the IdP
-    // sends one, so an IdP that ignores these still cannot pass off an old sign-in as fresh.
-    authorize.searchParams.set("prompt", "login");
-    authorize.searchParams.set("max_age", "0");
-  }
+  const authorize = authorizationUrl(discovered, rp, {
+    redirectUri,
+    scope: "openid email profile groups",
+    state,
+    nonce,
+    codeChallenge: challenge,
+    // I-12: a step-up re-authenticates now, not a silent SSO. The callback checks `auth_time`
+    // when the IdP sends one, so an IdP that ignores these still cannot pass off an old sign-in.
+    extra: stepUp ? { prompt: "login", max_age: "0" } : undefined,
+  });
   return new Response(null, {
     status: 302,
     headers: {
-      location: authorize.toString(),
+      location: authorize,
       "set-cookie": accountRealmCookie(
         ADMIN_FLOW_COOKIE,
         binding,
@@ -319,7 +303,7 @@ export async function handleAdminCallback(
   env: Env,
   db: Db,
   now: number,
-  verifier: IdTokenVerifier = joseIdTokenVerifier,
+  verifier: IdTokenVerifier = clientIdTokenVerifier,
 ): Promise<Response> {
   const ok = await rateLimitOk(
     env,
@@ -367,7 +351,12 @@ export async function handleAdminCallback(
     return htmlError(400, "This sign-in link has expired. Try again.");
   }
 
-  const identity = await verifier.verify({ code, flow, env });
+  const identity = await verifier.verify({
+    code,
+    iss: url.searchParams.get("iss"),
+    flow,
+    env,
+  });
   if (!identity || !identity.sub) {
     await recordPlatformSecurityEvent(db, {
       action: "admin.signin.failed",
