@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   OUTLET_KINDS,
@@ -8,9 +9,6 @@ import {
 } from "../packages/shared-protocol/src/distribution.js";
 import { DEFAULT_OUTLET_TRACKS } from "../packages/shared-manifest/src/distribution.js";
 import { OUTLET_SUBKINDS } from "../packages/shared-protocol/src/distribution.js";
-import { STOREFRONT_ADAPTERS } from "../packages/worker/src/core/storefront/adapter.js";
-import { STOREFRONT_OPS } from "../packages/worker/src/core/storefront/adapter.js";
-import { PLATFORM_CREDENTIALS } from "../packages/worker/src/core/platformCredentials.js";
 import {
   VERBS,
   loadTable,
@@ -21,6 +19,31 @@ import {
   type ChannelRow,
   type ChannelTable,
 } from "./gen-channels.js";
+
+// The Worker is read through a variable specifier so tools' typecheck does not compile the Worker
+// tree (it needs the Worker's own type environment); the shapes below are what this test reads.
+interface AdapterShape {
+  id: string;
+  label: string;
+  outletKinds: readonly string[];
+  credential: string | null;
+  gate: unknown;
+  ci: unknown;
+  pr: unknown;
+}
+const WORKER = fileURLToPath(
+  new URL("../packages/worker/src/core/", import.meta.url),
+);
+const adapterModule = (await import(
+  /* @vite-ignore */ WORKER + "storefront/adapter.ts"
+)) as {
+  STOREFRONT_ADAPTERS: readonly AdapterShape[];
+  STOREFRONT_OPS: readonly string[];
+};
+const { STOREFRONT_ADAPTERS, STOREFRONT_OPS } = adapterModule;
+const { PLATFORM_CREDENTIALS } = (await import(
+  /* @vite-ignore */ WORKER + "platformCredentials.ts"
+)) as { PLATFORM_CREDENTIALS: Record<string, unknown> };
 
 const TABLE = loadTable();
 const row = (id: string): ChannelRow =>
