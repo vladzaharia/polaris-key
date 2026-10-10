@@ -1610,6 +1610,12 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Core → Settings; Core → Overview",
   },
   {
+    thing: "Connection records (where a connection row came from)",
+    reason:
+      "A record of how a connection was created: env for the seeded platform sign-in, console or manifest later. The connection itself is configured as a whole, not as a setting.",
+    shows: "Platform → Connections",
+  },
+  {
     thing: "Customer licence links",
     reason:
       "Customer data: how a portal account came to hold a licence, not Polaris behaviour.",
