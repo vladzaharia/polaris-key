@@ -345,54 +345,44 @@
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "ui.gate": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "PolarisKeyUICore runs the gate family of ui-matrix.json (UIMatrixTests); PolarisKeyUI's .polarisKeyGate draws PolarisKeyGate, Boot (the first paint), StatusScreen, GraceBanner and the toast, rendered on the iOS 26 simulator in both schemes with performAccessibilityAudit (examples/ui/swiftui KitRenderTests; baselines in Tests/PolarisKeyUISnapshotTests/__Snapshots__). iOS and iPadOS; the Mac pass is UK-08."
     },
     "ui.activate": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The activate family (UIMatrixTests; KeyVerdict is the Worker's key shape, so the Activate/parsed row's 20-character key is recorded as a corpus defect); Welcome and Activate rendered on the simulator, both schemes, AX3 and AX5, landscape, native and the iOS 18 material fallback. OfflineActivation is the core's only (off on iOS)."
     },
     "ui.signin": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The signIn family (SignIn, SignInHandoff, LicenseChoice) in UIMatrixTests; the one sign-in form (SignInView) over the SDK's device-code primitives, every state rendered. The in-app license choice draws from I-04's views once the SDK carries the grant (I-10a)."
     },
     "ui.devicelimit": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The deviceLimit family; DeviceLimitView (the browser mode on the key path, and the radio list when the inputs carry devices) rendered on the simulator."
     },
     "ui.devices": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The devices family; DevicesSection, a pane for the host's settings, rendered on the simulator."
     },
     "ui.update": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The update family; UpdatePromptView (the glass banner, the mandatory screen), UpdateProgressView and ReleaseNotesView rendered on the simulator."
     },
     "ui.settings": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The settings family; AccountAndLicenseSection and SettingsSection, panes in the host's font, rendered on the simulator."
     },
     "ui.paywall": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The paywall family; PaywallView (the browser hand-off; StoreKit's store view is UK-25) and EntitlementGate rendered on the simulator."
     },
     "ui.theme": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The theme family (KitIdentity.theme); .polarisKeyTheme with the product accent through PolarisAccent, native, Drift Kart's light accent and the ink fallback rendered on the simulator; KitRulesTests."
     },
     "ui.i18n": {
-      "status": "planned",
-      "wp": "UK-07",
-      "note": "iOS kit; macOS via UK-08; UIKit and AppKit are hosting recipes"
+      "status": "implemented",
+      "note": "The i18n family against the ICU tables gen:brand writes for the core (Resources/kit-copy.json); de and ja renders of the main states on the simulator."
     },
     "commerce.receipt": {
       "status": "implemented",
