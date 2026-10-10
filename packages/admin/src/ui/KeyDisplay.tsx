@@ -64,7 +64,7 @@ export function KeyDisplay({
       aria-labelledby={id}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <span id={id} className="text-xs font-bold text-fg-muted">
+        <span id={id} className="text-xs font-medium text-fg-muted">
           {label}
         </span>
         {kind === "signing" ? <SignedBadge kid={kid} by="signing key" /> : null}

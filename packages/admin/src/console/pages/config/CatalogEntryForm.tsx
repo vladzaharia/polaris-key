@@ -876,7 +876,7 @@ function UserSettingFields({
               </FormField>
               {offered.length === 1 ? (
                 <div className="space-y-1">
-                  <p className="text-sm font-bold text-fg-strong">
+                  <p className="text-sm font-medium text-fg-strong">
                     When two devices disagree
                   </p>
                   <p className="text-sm">{USER_CONFLICT_LABELS.lastWrite}</p>
@@ -955,7 +955,7 @@ function Group({
       onToggle={(e) => onOpenChange(e.currentTarget.open)}
       className="group rounded-md border border-border"
     >
-      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-4 py-3 text-sm font-bold text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-4 py-3 text-sm font-medium text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
         <ChevronRight
           aria-hidden
           className="size-4 shrink-0 text-fg-muted transition-transform group-open:rotate-90"

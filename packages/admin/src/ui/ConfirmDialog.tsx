@@ -156,7 +156,7 @@ export function ConfirmDialog({
                 className="mt-0.5 size-4 shrink-0 text-danger"
               />
               <div className="space-y-0.5">
-                <p className="font-bold text-fg-strong">{err.title}</p>
+                <p className="font-semibold text-fg-strong">{err.title}</p>
                 {err.description ? (
                   <p className="text-fg">{err.description}</p>
                 ) : null}

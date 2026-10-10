@@ -26,7 +26,7 @@ function StateHeading({ children }: { children: React.ReactNode }) {
   return (
     <h1
       tabIndex={-1}
-      className="text-2xl font-bold tracking-tight text-fg-strong outline-hidden"
+      className="text-2xl font-semibold tracking-tight text-fg-strong outline-hidden"
     >
       {children}
     </h1>
@@ -297,7 +297,7 @@ export function BootScreen({
             </div>
             <h1
               id="boot-error-title"
-              className="text-xl font-bold tracking-tight text-fg-strong"
+              className="text-xl font-semibold tracking-tight text-fg-strong"
             >
               Can’t load the console
             </h1>

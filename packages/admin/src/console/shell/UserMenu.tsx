@@ -68,7 +68,7 @@ export function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Account menu">
-          <span className="flex size-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-on">
+          <span className="flex size-7 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-on">
             {initials || "PK"}
           </span>
         </Button>
@@ -76,7 +76,9 @@ export function UserMenu({
       <DropdownMenuContent align="end" className="min-w-60">
         <DropdownMenuLabel>
           <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-bold text-fg-strong">{me.name}</span>
+            <span className="text-sm font-medium text-fg-strong">
+              {me.name}
+            </span>
             <span className="truncate text-xs font-normal text-fg-muted">
               {me.email}
             </span>

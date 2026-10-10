@@ -740,7 +740,7 @@ function RefusalFix({
       href={DOCS_LINKS.createProduct}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex items-center gap-1 text-sm font-bold underline underline-offset-4"
+      className="inline-flex items-center gap-1 text-sm font-medium underline underline-offset-4"
     >
       {fix.label}
       <ArrowRight aria-hidden className="size-3.5" />

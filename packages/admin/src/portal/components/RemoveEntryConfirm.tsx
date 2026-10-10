@@ -102,7 +102,7 @@ export function RemoveEntryConfirm({
         className,
       )}
     >
-      <p id={`${id}-h`} className="font-bold text-fg-strong">
+      <p id={`${id}-h`} className="font-medium text-fg-strong">
         Remove {name} from your library?
       </p>
       <p id={`${id}-d`} className="text-sm text-fg-muted">

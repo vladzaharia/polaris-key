@@ -286,7 +286,7 @@ export function AttentionList({
         data-card-header=""
         className="flex items-center justify-between border-b border-border px-5 py-2"
       >
-        <h2 id={id} className="text-sm font-bold text-fg-strong">
+        <h2 id={id} className="text-sm font-semibold text-fg-strong">
           {title}
         </h2>
         <StatusPill tone="warning" icon={false} size="sm">
@@ -307,7 +307,7 @@ export function AttentionList({
                 row and truncates (full text in the tooltip), and the reason keeps a 16ch floor so
                 a long name cannot crush it to a letter per line. */}
             <span
-              className="min-w-0 max-w-full truncate text-sm font-bold text-fg-strong sm:max-w-[40%]"
+              className="min-w-0 max-w-full truncate text-sm font-medium text-fg-strong sm:max-w-[40%]"
               title={
                 item.objectTitle ??
                 (typeof item.object === "string" ? item.object : undefined)

@@ -142,7 +142,7 @@ export function DropdownMenuLabel({
     <DropdownMenuPrimitive.Label
       ref={ref}
       className={cn(
-        "px-2 py-1.5 text-xs font-bold text-fg-muted",
+        "px-2 py-1.5 text-xs font-medium text-fg-muted",
         inset && "pl-8",
         className,
       )}

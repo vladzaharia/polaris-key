@@ -33,7 +33,7 @@ export function ChartTable({
                 key={c}
                 scope="col"
                 className={cn(
-                  "px-2 py-1 text-xs font-bold text-fg-muted",
+                  "px-2 py-1 text-xs font-medium text-fg-muted",
                   i === 0 ? "text-left" : "text-right",
                 )}
               >
@@ -95,7 +95,9 @@ export function ChartFrame({
         <figcaption className="min-w-0 flex-1">
           <span
             className={
-              titleHidden ? "sr-only" : "block text-sm font-bold text-fg-strong"
+              titleHidden
+                ? "sr-only"
+                : "block text-sm font-semibold text-fg-strong"
             }
           >
             {title}

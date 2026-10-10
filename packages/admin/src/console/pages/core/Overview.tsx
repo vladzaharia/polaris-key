@@ -772,7 +772,7 @@ function ChecklistPanel({
             >
               <span
                 className={cn(
-                  "inline-flex items-center gap-1.5 text-xs font-bold",
+                  "inline-flex items-center gap-1.5 text-xs font-medium",
                   st.className,
                 )}
               >
@@ -844,7 +844,7 @@ function TileFrame({
       <div data-card-header="" className="flex items-center gap-2">
         <h2
           id={id}
-          className="flex min-w-0 flex-1 items-center gap-2 text-sm font-bold text-fg-strong"
+          className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-fg-strong"
         >
           <ServiceGlyph id={service} />
           {serviceLabel(service)}
@@ -876,7 +876,9 @@ function TileFrame({
 
 function Big({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
-    <p className="text-xl font-bold tabular-nums text-fg-strong">{children}</p>
+    <p className="text-xl font-semibold tabular-nums text-fg-strong">
+      {children}
+    </p>
   );
 }
 
@@ -1244,7 +1246,7 @@ function TrustPanel({
         )}
         {jwks ? (
           <div className="space-y-1">
-            <p className="text-xs font-bold text-fg-muted">JWKS</p>
+            <p className="text-xs font-medium text-fg-muted">JWKS</p>
             <p className="flex items-center gap-1">
               <code className="min-w-0 flex-1 font-mono text-xs text-fg [overflow-wrap:anywhere]">
                 {jwks}
@@ -1257,7 +1259,7 @@ function TrustPanel({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label
               htmlFor={SDK_QUICK_START_ID}
-              className="text-xs font-bold text-fg-muted"
+              className="text-xs font-medium text-fg-muted"
             >
               SDK quick start
             </label>
@@ -1275,7 +1277,7 @@ function TrustPanel({
           </p>
           {install.map((s) => (
             <div key={s.id} className="space-y-1.5">
-              <p className="text-xs font-bold text-fg-muted">{s.title}</p>
+              <p className="text-xs font-semibold text-fg-muted">{s.title}</p>
               {s.warning ? <Callout tone="warning">{s.warning}</Callout> : null}
               {s.description ? (
                 <p className="text-sm text-fg-muted">{s.description}</p>
@@ -1290,7 +1292,7 @@ function TrustPanel({
           ))}
           {note ? <p className="text-sm text-fg-muted">{note}</p> : null}
           <div className="space-y-1.5">
-            <p className="text-xs font-bold text-fg-muted">
+            <p className="text-xs font-medium text-fg-muted">
               Initialise the client
             </p>
             {staged ? (

@@ -215,11 +215,11 @@ function FreeDevice({
     pres.supportUrl ??
     (pres.supportEmail ? `mailto:${pres.supportEmail}` : null);
   const goBack = returnUrl ? (
-    <Button asChild size="lg" className="h-12 w-full font-bold sm:w-auto">
+    <Button asChild size="lg" className="h-12 w-full font-medium sm:w-auto">
       <a href={returnUrl}>Back to {name}</a>
     </Button>
   ) : (
-    <Button asChild size="lg" className="h-12 w-full font-bold sm:w-auto">
+    <Button asChild size="lg" className="h-12 w-full font-medium sm:w-auto">
       <a href={href.product(product.product, "devices")}>See your devices</a>
     </Button>
   );
@@ -250,7 +250,7 @@ function FreeDevice({
         <h1
           ref={headingRef}
           tabIndex={-1}
-          className="flex items-center gap-3 text-headline font-bold leading-tight text-fg-strong outline-none"
+          className="flex items-center gap-3 text-headline font-medium leading-tight text-fg-strong outline-none"
         >
           {/* The success check draws once (S-23 §6.4): no sparks, freeing a device is not a
               first-time moment. It sits in a ring the size of the icon it replaces. */}
@@ -279,7 +279,7 @@ function FreeDevice({
         <h1
           ref={titleRef}
           tabIndex={-1}
-          className="text-headline font-bold leading-tight text-fg-strong outline-none"
+          className="text-headline font-medium leading-tight text-fg-strong outline-none"
         >
           Your license has a free device
         </h1>
@@ -311,7 +311,7 @@ function FreeDevice({
       <h1
         ref={titleRef}
         tabIndex={-1}
-        className="text-headline font-bold leading-tight text-fg-strong outline-none desk:text-headline-lg"
+        className="text-headline font-medium leading-tight text-fg-strong outline-none desk:text-headline-lg"
       >
         Your license is on {inUse} of {limit}{" "}
         {limit === 1 ? "device" : "devices"}
@@ -336,7 +336,7 @@ function FreeDevice({
           value: d.deviceId,
           icon: <DeviceGlyph platform={d.platform} />,
           label: (
-            <span className="font-bold text-fg-strong">{deviceName(d)}</span>
+            <span className="font-medium text-fg-strong">{deviceName(d)}</span>
           ),
           // "Least recent" is plain text in the meta, not a pill: pills are for issues
           // (FLOWS.md §2 C20, P-6).
@@ -373,7 +373,7 @@ function FreeDevice({
         </Button>
         <Button
           size="lg"
-          className="h-12 font-bold sm:flex-1"
+          className="h-12 font-medium sm:flex-1"
           loading={remove.isPending}
           disabledReason={
             pickedDevice ? undefined : "Choose a device to remove"
@@ -394,7 +394,7 @@ function FreeDevice({
             href={support}
             target="_blank"
             rel="noreferrer"
-            className="font-bold text-accent-fg hover:underline"
+            className="font-medium text-accent-fg hover:underline"
           >
             Ask {pres.developer ?? "the developer"}
           </a>

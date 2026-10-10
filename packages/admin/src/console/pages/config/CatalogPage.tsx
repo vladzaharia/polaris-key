@@ -458,7 +458,7 @@ function KeyDrawer({
             <section className="space-y-2" aria-labelledby="overridden-by">
               <h3
                 id="overridden-by"
-                className="text-sm font-bold text-fg-strong"
+                className="text-sm font-medium text-fg-strong"
               >
                 Overridden by
               </h3>
@@ -628,7 +628,7 @@ function HistoryDrawer({
                 >
                   <span className="min-w-0 space-y-0.5">
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono font-bold text-fg-strong">
+                      <span className="font-mono font-medium text-fg-strong">
                         v{v.version}
                       </span>
                       {v.active ? (
@@ -669,7 +669,7 @@ function HistoryDrawer({
               className="space-y-2"
               aria-label={`Changes from v${selected} to v${active.schemaVersion}`}
             >
-              <h3 className="text-sm font-bold text-fg-strong">
+              <h3 className="text-sm font-semibold text-fg-strong">
                 v{selected} → v{active.schemaVersion}
               </h3>
               {other.isPending ? (
