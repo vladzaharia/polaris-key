@@ -675,8 +675,13 @@ describe("the Worker reads the birth date in the person's own paths only", () =>
             ? [join(dir, e.name)]
             : [],
       );
+    // A migration's file name (LATEST_MIGRATION in core/deployIdentity.ts) is not a read.
     const naming = walk(src)
-      .filter((f) => /birth_?date/i.test(readFileSync(f, "utf8")))
+      .filter((f) =>
+        /birth_?date/i.test(
+          readFileSync(f, "utf8").replace(/\b\d{4}_\w+\.sql\b/g, ""),
+        ),
+      )
       .map((f) => f.slice(src.length + 1));
     expect(naming.length).toBeGreaterThan(0);
     for (const f of naming)
