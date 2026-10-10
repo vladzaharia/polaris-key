@@ -89,9 +89,9 @@ never reached the feed cannot install. GitHub occasionally leaves one deployment
 published anyway: `jws@0.8.28` and `protocol@0.8.29` never landed, and nine versions pin them. Three
 things keep that from happening again:
 
-- **Tiers.** `publish-sdks.yml` publishes the npm packages in five jobs, each needing the one
+- **Tiers.** `publish-sdks.yml` publishes the npm packages in six jobs, each needing the one
   below: `brand`, `protocol`, `zstd-wasm`; then `catalog`, `jws`; then `client-core`, `manifest`;
-  then `node`, `react`; then `cli`. A leg that fails, is cancelled or stays in `waiting` stops every
+  then `ui-core`; then `node`, `react`; then `cli`. A leg that fails, is cancelled or stays in `waiting` stops every
   tier above it. `releaseWorkflows.test.ts` derives the order from each package's dependencies and
   simulates a stuck leg in every tier, so a new dependency that breaks the order fails CI.
 - **The gate.** Before any npm publish, `publish-package.yml` reads the packed tarball's

@@ -1068,7 +1068,7 @@ nothing to bump and no per-SDK tag:
   shows up here too; rerun the failed jobs, then the drift job. npm's `latest` must be a stable
   release: a prerelease there (no stable release yet) fails a `main` or `beta` build's check.
 - **npm order and closure (P0-52):** the npm packages pin each other exactly, so they publish in
-  five tiers (`npm-tier-0` … `npm-tier-4`), each needing the one below, and `publish-package.yml`
+  six tiers (`npm-tier-0` … `npm-tier-5`), each needing the one below, and `publish-package.yml`
   publishes an npm package only once the feed lists every `@polaris-key` version it pins
   (`tools/feed-closure.mjs requires`, waiting up to ten minutes for the render queue). The drift
   job then checks every pin of the build's version, and `npm-install` installs from the feed in

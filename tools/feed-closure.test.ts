@@ -513,13 +513,20 @@ describe("the command line", () => {
     expect(broken.code).toBe(1);
     for (const l of BROKEN_2026_10_08) expect(broken.out).toContain(`  ${l}`);
     expect(broken.out).toContain(
-      "npm: 9 of 177 versions of 10 packages pin a sibling the feed does not have:",
+      "npm: 9 of 177 versions of 11 packages pin a sibling the feed does not have:",
     );
     expect(broken.out).toContain(
       "pypi: all 1 versions of polaris-key have a file to install.",
     );
 
-    // Today's release is whole and closed: the nine are warnings, not errors.
+    // Today's release is whole and closed: the nine are warnings, not errors. The recording
+    // predates @polaris-key/ui-core (UK-03), which .pkey/release now declares: give it the
+    // recorded release so the set is whole as it was.
+    feed = recordedFeed();
+    feed.set("@polaris-key/ui-core", {
+      "dist-tags": { latest: "0.8.33" },
+      versions: { "0.8.33": { dependencies: {} } },
+    });
     const scoped = await cli([
       "--origin",
       origin,
@@ -564,7 +571,7 @@ describe("the command line", () => {
     const repaired = await cli(["--origin", origin, "--ecosystem", "npm"]);
     expect(repaired.code).toBe(0);
     expect(repaired.out).toContain(
-      "npm: every pin of all 179 versions of 10 packages resolves.",
+      "npm: every pin of all 179 versions of 11 packages resolves.",
     );
   });
 });

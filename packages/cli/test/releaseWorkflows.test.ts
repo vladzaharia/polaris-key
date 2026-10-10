@@ -85,6 +85,7 @@ const NPM_TIERS = [
   "npm-tier-2",
   "npm-tier-3",
   "npm-tier-4",
+  "npm-tier-5",
 ];
 const LEGACY = [
   "release.yml",
@@ -676,7 +677,7 @@ describe("the npm packages publish in dependency order (P0-52, feed coherence)",
 
   it("installs from the feed as an adopter would, once the whole set is there", () => {
     const job = wf.jobs["npm-install"]!;
-    expect(needsOf(job)).toEqual(["version", "npm-tier-4"]);
+    expect(needsOf(job)).toEqual(["version", "npm-tier-5"]);
     const runs = (job.steps ?? []).map((s) => s.run ?? "");
     const wait = runs.findIndex((r) => r.includes("tools/feed-closure.mjs"));
     expect(runs[wait]).toContain('--version "$VERSION" --complete');
