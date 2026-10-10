@@ -1,0 +1,299 @@
+// @pkey-feature ui.settings ui.devices ui.paywall
+// The panes that join the host (DL2): AccountAndLicense, Devices and Settings as SwiftUI `Section`
+// sets the host drops into its own `Form` or `List` (they inherit the host's look), plus Paywall's
+// browser hand-off and EntitlementGate. UI-KITS §4.3: inset grouped rows, the product row first,
+// Manage with the external-link glyph, Sign out in its own group in danger text, provenance as
+// text, locked rows as a value with a lock and "Set by <org>", never a dimmed switch.
+
+import PolarisKeyUICore
+import SwiftUI
+
+/// The settings pane's account and license, as sections.
+public struct AccountAndLicenseSection: View {
+    let screen: KitScreen<AccountState>
+    var tier: String?
+    var holder: String?
+    var version: String?
+    var devices: String?
+    var onManage: () -> Void
+    var onSignOut: () -> Void
+    @Binding var autoUpdate: Bool
+    var onCheckNow: () -> Void
+
+    @State private var confirmingSignOut = false
+    @Environment(\.polarisKeyStrings) private var strings
+
+    public init(
+        screen: KitScreen<AccountState>, tier: String? = nil, holder: String? = nil,
+        version: String? = nil, devices: String? = nil, autoUpdate: Binding<Bool> = .constant(true),
+        onManage: @escaping () -> Void, onSignOut: @escaping () -> Void,
+        onCheckNow: @escaping () -> Void = {}
+    ) {
+        self.screen = screen
+        self.tier = tier
+        self.holder = holder
+        self.version = version
+        self.devices = devices
+        self._autoUpdate = autoUpdate
+        self.onManage = onManage
+        self.onSignOut = onSignOut
+        self.onCheckNow = onCheckNow
+    }
+
+    public var body: some View {
+        kitStyle { style in
+            Section {
+                HStack(spacing: style.space(.sm)) {
+                    ProductIcon(size: 56)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(style.identity.name)
+                            .font(style.font(.label))
+                            .foregroundStyle(style.palette.textStrong)
+                        if screen.shows("account.tier") {
+                            KitText(CopyLine("account.tier", ["tier": .text(tier ?? "")]), .meta, color: .muted)
+                        }
+                        if screen.shows("account.holder"), let holder {
+                            KitText(CopyLine("account.holder", ["name": .text(holder)]), .meta, color: .muted)
+                        } else if screen.shows("account.keyOnly") {
+                            KitText(CopyLine("account.keyOnly"), .meta, color: .muted)
+                        } else if screen.shows("account.offline") {
+                            StatusPill(CopyLine("part.status.grace"), tone: .warning)
+                        }
+                    }
+                }
+                .padding(.vertical, 4)
+                .accessibilityElement(children: .combine)
+                if screen.shows("common.manage") {
+                    Button(action: onManage) {
+                        HStack {
+                            KitText(CopyLine("common.manage"), .body, color: .default)
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                                .foregroundStyle(style.palette.textMuted)
+                                .accessibilityLabel(strings.string("a11y.externalLink"))
+                        }
+                    }
+                }
+                if screen.shows("account.devices") {
+                    LabeledContent {
+                        Text(devices ?? "")
+                    } label: {
+                        KitText(CopyLine("account.devices"), .body, color: .default)
+                    }
+                }
+                if screen.shows("account.cloudSync") {
+                    KitText(CopyLine("account.cloudSync"), .body, color: .default)
+                }
+            }
+            if screen.shows("account.updates") {
+                Section {
+                    if screen.shows("account.autoUpdate") {
+                        Toggle(isOn: $autoUpdate) {
+                            KitText(CopyLine("account.autoUpdate"), .body, color: .default)
+                        }
+                        .tint(style.palette.accentSolid)
+                    }
+                    if let version, screen.shows("account.version") {
+                        LabeledContent {
+                            Text(version)
+                        } label: {
+                            KitText(CopyLine("account.version", ["version": .text(version)]), .body, color: .default)
+                        }
+                    }
+                    if screen.shows("update.checkNow") {
+                        Button(action: onCheckNow) {
+                            KitText(CopyLine("update.checkNow"), .body, color: .accent)
+                        }
+                    }
+                } header: {
+                    KitText(CopyLine("account.updates"), .footnote, color: .muted)
+                }
+            }
+            if screen.shows("common.signOut") {
+                Section {
+                    Button(role: .destructive) {
+                        confirmingSignOut = true
+                    } label: {
+                        KitText(CopyLine("common.signOut"), .body, color: .danger)
+                    }
+                    .confirmationDialog(
+                        strings.string("common.signOut"), isPresented: $confirmingSignOut,
+                        titleVisibility: .hidden
+                    ) {
+                        Button(strings.string("common.signOut"), role: .destructive, action: onSignOut)
+                    }
+                }
+            }
+            if screen.shows("part.poweredBy") {
+                Section { PoweredBy() }
+            }
+        }
+    }
+}
+
+/// The license's devices as a section: rename inline, remove with a confirm (never a dead end).
+public struct DevicesSection: View {
+    let screen: KitScreen<DevicesState>
+    let devices: [KitDevice]
+    var onRemove: (KitDevice) -> Void
+    var onRetry: () -> Void
+    @Environment(\.polarisKeyStrings) private var strings
+
+    public init(
+        screen: KitScreen<DevicesState>, devices: [KitDevice], onRemove: @escaping (KitDevice) -> Void,
+        onRetry: @escaping () -> Void
+    ) {
+        self.screen = screen
+        self.devices = devices
+        self.onRemove = onRemove
+        self.onRetry = onRetry
+    }
+
+    public var body: some View {
+        Section {
+            switch screen.state {
+            case .loading:
+                LoadingIndicator(CopyLine("common.loading"))
+            case .error:
+                if let line = screen.copy.first(where: { $0.key != "common.tryAgain" }) {
+                    KitText(line, .body, color: .default)
+                }
+                Button(strings.string("common.tryAgain"), action: onRetry)
+            case .empty:
+                KitText(CopyLine("devices.empty"), .body, color: .muted)
+            case .browserMode:
+                KitText(CopyLine("devices.browser"), .body, color: .default)
+            default:
+                ForEach(Array(devices.enumerated()), id: \.offset) { _, device in
+                    DeviceRow(
+                        name: device.name, formFactor: device.formFactor.rawValue,
+                        meta: strings.string(
+                            "devices.meta",
+                            ["platform": .text(device.platform), "when": .text(KitFormat.daysAgo(device.lastSeenDays))]))
+                    .swipeActions {
+                        Button(strings.string("devices.remove"), role: .destructive) { onRemove(device) }
+                    }
+                }
+            }
+        } header: {
+            KitText(CopyLine("devices.title"), .footnote, color: .muted)
+        }
+    }
+}
+
+/// Catalog-driven settings as a section: typed controls, provenance as text, locked rows as text.
+public struct SettingsSection: View {
+    let screen: KitScreen<SettingsState>
+    let rows: [KitConfigRow]
+    @Environment(\.polarisKeyStrings) private var strings
+
+    public init(screen: KitScreen<SettingsState>, rows: [KitConfigRow]) {
+        self.screen = screen
+        self.rows = rows
+    }
+
+    public var body: some View {
+        kitStyle { style in
+            Section {
+                ForEach(rows, id: \.key) { row in
+                    LabeledContent {
+                        if row.locked {
+                            HStack(spacing: 4) {
+                                Image(systemName: "lock.fill").font(.system(size: 14))
+                                    .accessibilityLabel(strings.string("a11y.locked"))
+                                Text(value(row))
+                            }
+                            .foregroundStyle(style.palette.textMuted)
+                        } else {
+                            Text(value(row)).foregroundStyle(style.palette.textMuted)
+                        }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.key).font(style.font(.body))
+                            if row.locked {
+                                KitText(
+                                    row.org.map { CopyLine("settings.setBy", ["org": .text($0)]) }
+                                        ?? CopyLine("settings.setByGuardian"), .footnote, color: .muted)
+                            }
+                        }
+                    }
+                }
+            } header: {
+                KitText(CopyLine("settings.title"), .footnote, color: .muted)
+            }
+        }
+    }
+
+    private func value(_ row: KitConfigRow) -> String {
+        switch row.value {
+        case .bool(let b)?: return strings.string(b ? "settings.on" : "settings.off")
+        case .number(let n)?: return n.formatted()
+        case .string(let s)?: return s
+        case nil: return strings.string("settings.source.default")
+        }
+    }
+}
+
+/// The upsell without a store (UI-KITS §4.1 Paywall): what the tier adds, and the browser or a
+/// code. StoreKit's own view is the Paywall on Apple when the product sells in-app (UK-25); the kit
+/// never invents checkout.
+public struct PaywallView: View {
+    let screen: KitScreen<PaywallState>
+    var onPortal: () -> Void
+    var onRedeem: () -> Void
+
+    public init(
+        screen: KitScreen<PaywallState>, onPortal: @escaping () -> Void, onRedeem: @escaping () -> Void
+    ) {
+        self.screen = screen
+        self.onPortal = onPortal
+        self.onRedeem = onRedeem
+    }
+
+    public var body: some View {
+        KitScreenScaffold(hero: true, header: false) {
+            if let title = screen.line("paywall.title") ?? screen.line("paywall.notAvailable") {
+                KitText(title, .title, color: .strong, alignment: .center)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        } content: {
+            if let includes = screen.line("paywall.includes") {
+                KitText(includes, .body, color: .muted, alignment: .center)
+            }
+        } actions: {
+            KitActionStack {
+                if screen.shows("paywall.portal") {
+                    KitButton(line: CopyLine("paywall.portal"), kind: .primary, glyph: "arrow.up.right", action: onPortal)
+                }
+                if screen.shows("paywall.redeem") {
+                    KitButton(line: CopyLine("paywall.redeem"), kind: .secondary, action: onRedeem)
+                }
+            }
+        }
+    }
+}
+
+/// Renders `content` only while the entitlement holds; otherwise `locked`. A theme or style never
+/// unlocks it: only the entitlement decides.
+public struct EntitlementGate<Content: View, Locked: View>: View {
+    let screen: KitScreen<EntitlementGateState>
+    @ViewBuilder let content: () -> Content
+    @ViewBuilder let locked: () -> Locked
+
+    public init(
+        screen: KitScreen<EntitlementGateState>, @ViewBuilder content: @escaping () -> Content,
+        @ViewBuilder locked: @escaping () -> Locked
+    ) {
+        self.screen = screen
+        self.content = content
+        self.locked = locked
+    }
+
+    public var body: some View {
+        switch screen.state {
+        case .entitled: content()
+        case .loading: LoadingIndicator(CopyLine("common.loading"))
+        default: locked()
+        }
+    }
+}

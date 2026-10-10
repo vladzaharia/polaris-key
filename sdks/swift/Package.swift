@@ -196,6 +196,8 @@ let package = Package(
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform",
+                // The presentation core the kit's views draw (UK-07).
+                "PolarisKeyUICore",
             ],
             // The launch kit's Rubik (with its OFL), the bit-less Pinned K and the "Powered by"
             // badges, unchanged from packages/brand/kit (tools/sync-brand-assets.sh;
