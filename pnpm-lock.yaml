@@ -383,6 +383,9 @@ importers:
       '@polaris-key/protocol':
         specifier: workspace:*
         version: link:../shared-protocol
+      '@polaris-key/ui-core':
+        specifier: workspace:*
+        version: link:../ui-core
       '@polaris-key/zstd-wasm':
         specifier: workspace:*
         version: link:../zstd-wasm
@@ -500,6 +503,22 @@ importers:
         version: 3.0.1(ajv@8.20.0)
 
   packages/shared-protocol: {}
+
+  packages/ui-core:
+    dependencies:
+      '@polaris-key/client-core':
+        specifier: workspace:*
+        version: link:../client-core
+      '@polaris-key/protocol':
+        specifier: workspace:*
+        version: link:../shared-protocol
+    devDependencies:
+      '@polaris-key/brand':
+        specifier: workspace:*
+        version: link:../brand
+      '@types/node':
+        specifier: ^22.14.0
+        version: 22.20.0
 
   packages/ui-qa:
     devDependencies:
