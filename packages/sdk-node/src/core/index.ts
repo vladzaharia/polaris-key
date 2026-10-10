@@ -64,3 +64,12 @@ export {
 } from "./dirs.js";
 
 export { copy, registerCopy, setCopyLocale, type CopyEntry } from "./copy.js";
+export {
+  PRESENTATION_MEMBER_FILE,
+  PresentationStore,
+  fetchIconBytes,
+  namedIconFiles,
+  safeIconUrl,
+  type PresentationIconOptions,
+  type PresentationStoreOptions,
+} from "./presentation.js";

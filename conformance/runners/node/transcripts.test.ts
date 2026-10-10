@@ -10,6 +10,7 @@
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
+// @pkey-feature core.presentation
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -256,6 +257,8 @@ async function act(
       break;
     case "discover":
       out.result = (await client.discover()).kind;
+      // core.presentation (HA-13): the member the client exposes after this discovery.
+      out.presentation = client.presentation() as JsonValue;
       break;
     case "sync": {
       const r = await client.sync({ force: step.args.force === true });
@@ -524,6 +527,8 @@ async function replay(t: Transcript): Promise<void> {
     // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
     deviceName: t.initial.deviceName ?? "",
     stateDir,
+    // The presentation cache (HA-13) too, so a replay never writes into the developer's home.
+    cacheDir: stateDir,
     ...(services ? { expectedServices: services as never } : {}),
     ...(u
       ? {

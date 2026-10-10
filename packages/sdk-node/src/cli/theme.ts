@@ -25,9 +25,13 @@
 //                and without effect here (a terminal has no tiles, radii, faces or ambient art).
 //
 // Product identity resolves in the §1.2 order: the integrator's `product`, then the SDK's
-// presentation source (the HA-13 accessor, read through `PresentationSource`), then the bundle
-// (`productName` and `author` in the entry's package.json), then the product slug. The kit never
-// fetches discovery or an icon itself.
+// presentation source (the client's `presentationSource()`, client-core's `PresentationSource`),
+// then the bundle (`productName` and `author` in the entry's package.json), then the product slug.
+// The kit never fetches discovery or an icon itself.
+//
+// The kit's own `{ presentation() }` seam predates HA-13 and stays as a thin adapter
+// (plans/HA-13.md D1) until UK-03's terminal views import client-core's seam: `readPresentation`
+// takes either shape.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -37,6 +41,10 @@ import {
   resolveAccent,
   type AccentScheme,
 } from "./accent.js";
+import type {
+  PresentationSource as CorePresentationSource,
+  ProductPresentation as CoreProductPresentation,
+} from "@polaris-key/client-core/presentation";
 import type { CopyOptions } from "./copy.js";
 import type { ChipColors, RoleColors } from "./term/paint.js";
 
@@ -54,24 +62,30 @@ export interface ProductIdentity {
   deviceCodeUrl?: string;
 }
 
-/** What the SDK's presentation accessor returns (discovery `core.presentation`, HA-13). */
-export interface ProductPresentation {
-  name?: string;
-  developerName?: string;
-  accent?: string;
-  accentDark?: string;
-  /** The verified icon, decoded, when the SDK has it. */
+/** What the kit reads of discovery's `core.presentation` (client-core's member, HA-13). */
+export interface ProductPresentation extends Partial<
+  Pick<
+    CoreProductPresentation,
+    "name" | "developerName" | "accent" | "accentDark"
+  >
+> {
+  /** The verified icon, decoded, when the host has it. */
   iconPixels?: ArrayLike<number>;
 }
 
-/** The seam the SDK plugs its presentation accessor into (HA-13); the kit only reads it. */
-export interface PresentationSource {
+/** The kit's original seam: an object with `presentation()` (the thin adapter, D1). */
+export interface LegacyPresentationSource {
   presentation():
     | ProductPresentation
     | null
     | undefined
     | Promise<ProductPresentation | null | undefined>;
 }
+
+/** What the kit reads the presentation through: client-core's seam, or the original one. */
+export type PresentationSource =
+  | Pick<CorePresentationSource, "current">
+  | LegacyPresentationSource;
 
 export interface PolarisKeyTerminalTheme {
   preset?: "polaris-key" | "native";
@@ -177,19 +191,39 @@ export async function readPresentation(
 ): Promise<ProductPresentation | null> {
   if (!source) return null;
   try {
-    return (await source.presentation()) ?? null;
+    if ("current" in source && typeof source.current === "function")
+      return source.current() ?? null;
+    return (await (source as LegacyPresentationSource).presentation()) ?? null;
   } catch {
     return null;
   }
 }
 
-/** A client that carries the SDK's presentation accessor (HA-13), duck-typed. */
+/**
+ * The client's presentation seam, duck-typed: `presentationSource()` (the SDK's accessor, HA-13),
+ * else an object with the original `presentation()` method.
+ */
 export function presentationSourceOf(
   client: unknown,
 ): PresentationSource | null {
-  const c = client as { presentation?: unknown } | null;
+  const c = client as {
+    presentationSource?: unknown;
+    presentation?: unknown;
+  } | null;
+  if (c && typeof c.presentationSource === "function") {
+    try {
+      const s = (c.presentationSource as () => unknown).call(c) as
+        | Partial<CorePresentationSource>
+        | null
+        | undefined;
+      if (s && typeof s.current === "function")
+        return s as CorePresentationSource;
+    } catch {
+      // A broken accessor reads as no presentation.
+    }
+  }
   return c && typeof c.presentation === "function"
-    ? (c as unknown as PresentationSource)
+    ? (c as unknown as LegacyPresentationSource)
     : null;
 }
 

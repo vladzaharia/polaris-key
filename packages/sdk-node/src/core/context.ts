@@ -352,6 +352,21 @@ export class CoreContext {
     return withRedirectPolicy(this.fetchImpl ?? ((...a) => fetch(...a)));
   }
 
+  /**
+   * The bare transport, with no redirect policy: for the one public request that must follow no
+   * redirect at all (the presentation icon, plans/HA-13.md §3). It refuses in local-only mode
+   * exactly as `fetcher()` does.
+   */
+  plainFetcher(): typeof fetch {
+    if (this.localOnly) {
+      throw new PolarisError(
+        "local-only",
+        "This client is in local-only mode; network calls are refused.",
+      );
+    }
+    return this.fetchImpl ?? ((...a) => fetch(...a));
+  }
+
   /** A fresh deadline for one request. */
   deadline(): AbortSignal | undefined {
     return this.requestTimeoutMs > 0
