@@ -138,7 +138,7 @@ describe("OCI pull on workerd", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       name: NAME,
-      tags: ["0.8.0", "1.0.0", "1.1.0-beta.1", "beta", "latest"],
+      tags: ["0.8.0", "1.0.0", "1.1.0-beta.1", "beta", "dev", "latest"],
     });
     const e = env as unknown as Env;
     // The write-back runs in waitUntil; give it a moment, then the object is there.
