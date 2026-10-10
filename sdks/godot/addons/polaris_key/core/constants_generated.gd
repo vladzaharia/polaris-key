@@ -1156,18 +1156,18 @@ static func capabilities() -> Dictionary:
 		"ui.kit.keyentry": {"status": "planned", "service": "sdk", "na": []},
 		"ui.kit.account": {"status": "planned", "service": "sdk", "na": []},
 		"ui.cli": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
-		"ui.gate": {"status": "planned", "service": "sdk", "na": []},
-		"ui.activate": {"status": "planned", "service": "sdk", "na": []},
-		"ui.signin": {"status": "planned", "service": "sdk", "na": []},
-		"ui.devicelimit": {"status": "planned", "service": "sdk", "na": []},
-		"ui.devices": {"status": "planned", "service": "sdk", "na": []},
-		"ui.update": {"status": "planned", "service": "sdk", "na": []},
-		"ui.settings": {"status": "planned", "service": "sdk", "na": []},
-		"ui.paywall": {"status": "planned", "service": "sdk", "na": []},
-		"ui.theme": {"status": "planned", "service": "sdk", "na": []},
-		"ui.i18n": {"status": "planned", "service": "sdk", "na": []},
+		"ui.gate": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.activate": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.signin": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.devicelimit": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.devices": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.update": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.settings": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.paywall": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.theme": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.i18n": {"status": "implemented", "service": "sdk", "na": []},
 		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "a0cf7965a68c5dd0a9849da022c9c5ae6e00a75965496f5ec7536f5bb956ac55"
+const CAPABILITY_DIGEST := "574cbaa5e53705f3c6a10f5a0cd476c01573494e9320794ddda8d1605f395609"

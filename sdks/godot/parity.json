@@ -470,44 +470,44 @@
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "ui.gate": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): PolarisKeyGate, Boot, StatusScreen, GraceBanner and Toast. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
     },
     "ui.activate": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): Welcome, Activate and OfflineActivation. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
     },
     "ui.signin": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): SignIn, SignInHandoff and LicenseChoice through the sign-in form's session (ui/model/sign_in_session.gd). suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
     },
     "ui.devicelimit": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): DeviceLimit. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
     },
     "ui.devices": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): Devices. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
     },
     "ui.update": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): UpdatePrompt, UpdateProgress and ReleaseNotes. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
     },
     "ui.settings": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): AccountAndLicense, Settings, CloudSyncStatus, About and ChannelPicker. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
     },
     "ui.paywall": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json row of the family through the kit's headless models (addons/polaris_key/ui/model/, the port of ui-core): Paywall and EntitlementGate. suite_ui_core, on 4.7.2 and the 4.4.1 floor; the drop-in screens' structural snapshots and resolution matrix are suite_ui and suite_ui_matrix."
     },
     "ui.theme": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json theme row through the port of ui-core's resolveTheme (ui/model/theme.gd, suite_ui_core); the kit's own resolver (PKeyUiTheme) is held to the presentation and integrator rows in suite_ui."
     },
     "ui.i18n": {
-      "status": "planned",
-      "wp": "UK-11"
+      "status": "implemented",
+      "note": "Every ui-matrix.json i18n row through the catalog lookup and the ICU-subset formatter over brand's generated .po tables (ui/model/copy_format.gd, suite_ui_core)."
     },
     "commerce.receipt": {
       "status": "implemented",

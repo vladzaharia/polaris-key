@@ -9,7 +9,21 @@ as the GitHub Release notes, and the same text is the Asset Store version's chan
 
 ## Unreleased
 
-Local-trust fixes, and the product's presentation.
+Local-trust fixes, the product's presentation, and the UI kit's headless layer.
+
+- **The UI kit's headless layer (`addons/polaris_key/ui/model/`).** One view model per kit
+  component (the gate, boot, status screen, grace banner and toasts; Welcome, Activate and offline
+  activation; the sign-in form, its hand-off and the license choice; the device limit and devices;
+  the update prompt, progress and release notes; account, settings, paywall, entitlement gate,
+  Cloud Sync status, About and the channel picker), each a pure function of one input Dictionary
+  that answers the state, the catalog copy keys, the actions and the design decisions (the one
+  primary, the tone, where an error sits, what takes focus, which links and QR codes may show).
+  `models.gd`'s `view_of(component, input)` is the entry point; `sign_in_session.gd` is the sign-in
+  form's state machine over the SDK's sign-in primitives; `theme.gd` resolves the product's
+  identity and accent; `copy_format.gd` formats the catalog's messages (plurals and the form-factor
+  select) from the generated `.po` tables in the launch locales. A game that draws its own screens
+  gets the same states and copy as the drop-in. The new `ui_core` suite runs every row of
+  `ui-matrix.json` (all ten families) through them.
 
 - **Product presentation (`core.presentation`).** `PolarisKey.presentation()` returns the
   product's name, developer, accents and icon from discovery ({} for none);
