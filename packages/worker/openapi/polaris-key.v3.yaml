@@ -18403,6 +18403,10 @@ components:
         batchId:
           type: [string, "null"]
           description: "LX-28: the batch the licence was created in; `null` for a licence created on its own."
+        access:
+          type: string
+          enum: [seats, account]
+          description: "I-09 (plans/I-04.md §F.6): `account` for a sign-in licence (held by an account, no key ever issued), else `seats`. Display only; a sign-in licence is device-limited like any other."
         keyEntries:
           oneOf:
             - { $ref: "#/components/schemas/KeyEntries" }
