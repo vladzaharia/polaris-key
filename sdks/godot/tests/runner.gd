@@ -27,7 +27,7 @@ const Context := preload("res://tests/support/test_context.gd")
 ## Named suite sets. Later work packages append their suites to `ci`; `profile` stays outside, and
 ## so does `ui_matrix` (about a minute), which run_tests.sh runs as a step of its own.
 const SETS := {
-	"ci": ["sha512", "ed25519", "conformance", "core", "config", "license", "transcripts", "devices", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "commerce", "transports", "parity", "ui_lint", "exit_leaks"],
+	"ci": ["sha512", "ed25519", "conformance", "core", "config", "license", "transcripts", "devices", "platform", "identity", "qr", "build_stamp", "update", "stage_matrix", "boot", "ui", "updater", "packs", "provides", "brand", "native_apple", "native_android", "native_desktop", "keyring", "commerce", "transports", "parity", "ui_lint", "exit_leaks", "dropin"],
 	## The brief spells the suite with a hyphen.
 	"stage-matrix": ["stage_matrix"],
 }
