@@ -2290,6 +2290,8 @@ describe("R8-03 login CSRF / flow-fixation", () => {
     ) as Record<string, unknown>;
     expect(Object.keys(flow).sort()).toEqual([
       "bindingHash",
+      // I-30: the flow names the connection it was started through.
+      "connectionId",
       "nonce",
       "redirectUri",
       "verifier",
@@ -2632,7 +2634,8 @@ describe("R8-05 claim trust", () => {
     }
   });
 
-  // R8-05d — maxTokenAge + clockTolerance are enforced. azp/at_hash/hd remain unchecked.
+  // R8-05d — maxTokenAge + clockTolerance are enforced; I-30's one client also checks azp.
+  // at_hash/hd remain unchecked.
   it("ATTACK: no maxTokenAge/clockTolerance/azp/at_hash/hd check — an ID token minted long ago still activates", async () => {
     await artefacts(ctx.env).put(
       await flowKey(ctx.env, "djdl", "S"),
@@ -2658,8 +2661,26 @@ describe("R8-05 claim trust", () => {
       await ctx.db.first("SELECT id FROM licenses WHERE sub = 'stale-user'"),
     ).toBeNull();
 
-    // Control: the same claims minted now (azp/hd still unchecked — see the finding doc) are
-    // accepted, so the age check is what rejected the stale one.
+    // FIXED (I-30): the one client checks `azp` exactly, so the same claims minted now with a
+    // foreign `azp` are refused too.
+    await artefacts(ctx.env).put(
+      await flowKey(ctx.env, "djdl", "S-azp"),
+      JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
+    );
+    vi.restoreAllMocks();
+    installFetchMock(
+      await signIdToken(ctx, {
+        sub: "fresh-user",
+        groups: ["members"],
+        nonce: "N",
+        azp: "some-other-client",
+        hd: "attacker.test",
+      }),
+    );
+    expect((await callback(ctx, "S-azp")).status).toBe(401);
+
+    // Control: minted now without the foreign `azp` (`hd` is not a platform IdP check), it is
+    // accepted, so the age and `azp` checks are what rejected the others.
     await artefacts(ctx.env).put(
       await flowKey(ctx.env, "djdl", "S-fresh"),
       JSON.stringify({ verifier: "v", nonce: "N", redirectUri: REDIRECT }),
@@ -2670,7 +2691,6 @@ describe("R8-05 claim trust", () => {
         sub: "fresh-user",
         groups: ["members"],
         nonce: "N",
-        azp: "some-other-client",
         hd: "attacker.test",
       }),
     );

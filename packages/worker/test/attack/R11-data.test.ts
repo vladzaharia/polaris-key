@@ -132,6 +132,9 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
       // HA-08: a release file's mirror job is meaningless without the file; a new table, so it
       // declares the cascade from the start (no rebuild, no triggers to reconstruct).
       "release_mirrors",
+      // I-30: a domain proof is meaningless without its connection; a new table, so it declares
+      // the cascade from the start.
+      "identity_connection_domains",
     ];
     for (const table of cascading) {
       const fks = await db.all<{ on_delete: string; table: string }>(
@@ -660,6 +663,11 @@ describe("R11-05 product scoping", () => {
       // the typed `PLATFORM_SETTINGS` registry (background-job switches and tunables, no tenant
       // data). Written and read only by the platform-admin settings endpoint and the resolver.
       "platform_settings",
+      // I-30 — connections and their domain proofs carry `scope` (`platform`, or
+      // `product:<slug>` from I-32) instead of a `product` column: a platform connection belongs
+      // to no product, and every reader filters by scope (`core/oidc/connections.ts`).
+      "identity_connections",
+      "identity_connection_domains",
       // 0057 (A-14) — self-reported operations: one row per cron step family or failed step
       // (`platform_job_runs`) and one heartbeat per Worker script (`platform_heartbeats`). Both
       // describe the deployment's own background work, are written only by the cron and the

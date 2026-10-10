@@ -4,7 +4,7 @@
  * A connection is an upstream OpenID Connect provider at platform or product scope, with
  * DNS-verified email domains (each optionally enforced), an audience and a claim map. Identity
  * owns `identity_connections` and `identity_connection_domains` and is their only writer; every
- * other reader goes through this Core accessor (rule 6), so the console (I-31, ST-32), access
+ * other reader goes through this Core accessor (rule 6): the operator pages (I-31, ST-32), access
  * rules (LX-36) and the router never query the tables themselves.
  *
  * The domain rules every reader relies on live here too, so there is one definition of each:
@@ -27,7 +27,7 @@ export const CONNECTION_AUDIENCES = ["customers", "operators", "both"] as const;
 export type ConnectionAudience = (typeof CONNECTION_AUDIENCES)[number];
 export type ConnectionSource = "env" | "console" | "manifest";
 export type ConnectionStatus = "active" | "disabled";
-/** Who is signing in: an app's customers on the card, or an operator on the console. */
+/** Who is signing in: an app's customers on the card, or an operator in the console UI. */
 export type SignInSurface = "customers" | "operators";
 
 /** A connection id: also the `<id>` of `connection:<id>` in `amr` and in a birth date's source. */

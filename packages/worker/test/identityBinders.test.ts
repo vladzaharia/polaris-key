@@ -2,6 +2,7 @@
  * The `returnTo` shape, same-origin JSON on the card endpoints, the browser-session cookie
  * and key exchange, the portal logout, and the admin sign-in's origin and timeout.
  */
+import { issuerMetadataResponse } from "./oidcIssuerFake.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -262,9 +263,13 @@ describe("admin sign-in origin and timeouts", () => {
     const seen: (AbortSignal | null | undefined)[] = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (_u: unknown, init?: RequestInit) => {
+      vi.fn(async (u: unknown, init?: RequestInit) => {
         seen.push(init?.signal);
-        return new Response("{}", { status: 400 });
+        // I-30: the one client discovers the issuer first; the token request is refused.
+        return (
+          (await issuerMetadataResponse(String(u), null)) ??
+          new Response("{}", { status: 400 })
+        );
       }),
     );
     const login = await handleAdminLogin(
@@ -283,7 +288,8 @@ describe("admin sign-in origin and timeouts", () => {
       NOW,
     );
     expect(res.headers.get("cache-control")).toBe("no-store");
-    expect(seen).toHaveLength(1);
-    expect(seen[0]).toBeInstanceOf(AbortSignal);
+    // Discovery, then the token exchange: every call carries a timeout.
+    expect(seen).toHaveLength(2);
+    for (const signal of seen) expect(signal).toBeInstanceOf(AbortSignal);
   });
 });

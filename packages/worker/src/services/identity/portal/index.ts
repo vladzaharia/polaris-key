@@ -26,6 +26,7 @@ import type { Env } from "../../../platform/env.js";
 import {
   handleMagicVerify,
   handlePortalCallback,
+  handleConnectionLogin,
   handlePortalLogin,
   handlePortalLogout,
 } from "./auth.js";
@@ -119,6 +120,16 @@ export async function handlePortal(
     path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
   if (clean === "/login") return handlePortalLogin(req, env, db, now);
+  // I-30: a platform connection's sign-in (`state` names the connection; `/callback` finishes it).
+  if (clean.startsWith("/login/sso/")) {
+    return handleConnectionLogin(
+      req,
+      env,
+      db,
+      clean.slice("/login/sso/".length),
+      now,
+    );
+  }
   // I-06: Google, Apple and Steam on the login card (`../providers/flow.ts`).
   if (clean.startsWith("/login/")) {
     return handleProviderSignInPath(req, env, db, clean, {

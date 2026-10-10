@@ -12,8 +12,7 @@
  *   - **Down** (`downPlatformConnectionSeed`): deletes the row (and its domains, by cascade).
  *
  * The row: id `platform-sso`, label "Single sign-on" (the card's word for the platform IdP),
- * audience `both` (`operators` when `PLATFORM_OIDC_MIGRATION` is `operators-only` or the I-17
- * sunset has passed; I-32b fixes it once from their last value), the `groups` claim mapped, no
+ * audience `both` (owner Q3, 2026-10-08; see `seededAudience`), the `groups` claim mapped, no
  * domains. P0-49's runner (not built yet) will run these three steps and record the report in
  * P0-24's ledger; until it lands the maintenance cron applies the seed, and the sign-in paths
  * apply it on first need, both through the same idempotent apply.
@@ -32,7 +31,6 @@ import {
 import { isSafeIssuerUrl } from "@polaris-key/manifest";
 import { LEGACY_OIDC_ISSUER } from "../accounts/repo.js";
 import { portalIdentityIssuerKey } from "../portal/repo.js";
-import { platformOidcMigration } from "../accounts/platformMigration.js";
 import { DEFAULT_PLATFORM_CLAIM_MAP } from "./claims.js";
 
 /** The env seed's connection id. */
@@ -60,10 +58,13 @@ export interface PlatformConnectionSeedPlan {
   linksLegacyOidc: number;
 }
 
-function seededAudience(env: Env, now: number): ConnectionAudience {
-  const m = platformOidcMigration(env);
-  if (m.mode === "operators-only") return "operators";
-  if (m.sunset && now >= m.sunset.at) return "operators";
+/**
+ * The seeded row's audience: `both`. The owner's Q3 (2026-10-08) keeps Pocket ID a connection
+ * with audience `both` and withdraws the I-17 sunset, so the seed no longer derives `operators`
+ * from `PLATFORM_OIDC_MIGRATION`; while the switch is still read, I-17's policy applies at
+ * `/login` and `/callback` instead (`ended` refuses, `operators-only` refuses an unknown subject).
+ */
+function seededAudience(): ConnectionAudience {
   return "both";
 }
 
@@ -96,7 +97,7 @@ export async function planPlatformConnectionSeed(
             issuer: cfg.issuer,
             clientId: cfg.clientId,
             hasSecret: Boolean(cfg.clientSecret),
-            audience: seededAudience(env, now),
+            audience: seededAudience(),
             claimMap: DEFAULT_PLATFORM_CLAIM_MAP,
             source: "env",
           }
