@@ -1,6 +1,6 @@
 {
   "uiMatrixVersion": 1,
-  "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 1: a changed row, input member or rule bumps it.",
+  "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within uiMatrixVersion 1: a changed row, input member or rule bumps it.",
   "vocabulary": {
     "actions": {
       "open-card": "Start the sign-in on the hosted card in the browser (Continue in browser, Continue with email).",
@@ -175,6 +175,15 @@
         "update.reload": "The web outlet's decision is `platform` (update-matrix.json), drawn with update.platform.web."
       }
     },
+    "gaps": [
+      {
+        "id": "dl7-delayed-response",
+        "what": "The delayed-response variant of UI-KITS \u00a74.1's verification recipe and the brief's brand transition: a response slower than DL7's 250-300 ms threshold, before which a loading state shows nothing and after which it shows the identity, a muted label and the shimmer.",
+        "why": "Every row is time-independent. Pinning the delay needs a new input member (the time since the request started), and a new input member bumps uiMatrixVersion (plans/UK-02b.md \u00a74.8).",
+        "owner": "UK-03",
+        "then": "UK-03 owns the 250-300 ms loading delay as a model timer: it appends the delayed-response rows with that input and bumps uiMatrixVersion. UK-15 renders the variant at the phone-portrait and desktop rows; the reduced-motion render reaches the same state."
+      }
+    ],
     "kits": [
       "elements",
       "react",

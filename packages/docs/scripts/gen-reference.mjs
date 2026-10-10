@@ -757,6 +757,15 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
         ]),
       ),
       "",
+      "### Declared gaps",
+      "",
+      "Variants the matrix does not pin yet, each with the work package that appends its rows (`vocabulary.gaps`):",
+      "",
+      ...(uiMatrix.vocabulary?.gaps ?? []).map(
+        (g) =>
+          `- \`${g.id}\` (${g.owner}): ${mdxProse(g.what)} ${mdxProse(g.then)}`,
+      ),
+      "",
       "### States to handle",
       "",
       "Every state a kit, or an app drawing its own UI, handles, with the copy keys the rows show for it (kit keys from `packages/brand/kit-copy/`, `core.*` keys from `conformance/parity/copy.<locale>.json`).",

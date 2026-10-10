@@ -141,5 +141,14 @@ Generated from `ux-coverage.json` (read `ux-coverage.md` for the whole map). Do 
 
 Each core runs these fixtures in its own suite; UK-15 renders every fixture state in every kit for the report.
 
+- **Declared gap.** DL7's delayed-response variant (a loading state slower than 250–300 ms) is not
+  pinned: every row is time-independent, and the time input it needs bumps `uiMatrixVersion`. It is
+  declared in `vocabulary.gaps` (`GAPS` in `tools/ui-matrix.ts`). UK-03 appends the rows with its
+  model timer; UK-15 renders the variant.
+- **Catalog follow-up.** `vocabulary.unreached` lists the `components.json` keys no row can show.
+  `signin.handoff.check` and `signin.handoff.expires` are device-code keys filed under
+  SignInHandoff `waiting`; they belong under `code` (device-code `waiting` selects `code`, §4.5).
+  The card-only keys under SignIn `code` and `choose` move out of the kit states the same way.
+
 The role agent sets `--set UK-02b in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set UK-02b done`.

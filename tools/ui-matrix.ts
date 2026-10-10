@@ -470,6 +470,28 @@ export const UNREACHED: Readonly<
   },
 };
 
+/** A variant the matrix does not pin yet, declared rather than silently left out, with the work
+ *  package that appends its rows. */
+export interface Gap {
+  id: string;
+  what: string;
+  why: string;
+  owner: string;
+  then: string;
+}
+
+/** The declared gaps. The build fails on a gap with no owner or no reason; the package that
+ *  appends the rows removes its entry. */
+export const GAPS: readonly Gap[] = [
+  {
+    id: "dl7-delayed-response",
+    what: "The delayed-response variant of UI-KITS §4.1's verification recipe and the brief's brand transition: a response slower than DL7's 250-300 ms threshold, before which a loading state shows nothing and after which it shows the identity, a muted label and the shimmer.",
+    why: "Every row is time-independent. Pinning the delay needs a new input member (the time since the request started), and a new input member bumps uiMatrixVersion (plans/UK-02b.md §4.8).",
+    owner: "UK-03",
+    then: "UK-03 owns the 250-300 ms loading delay as a model timer: it appends the delayed-response rows with that input and bumps uiMatrixVersion. UK-15 renders the variant at the phone-portrait and desktop rows; the reduced-motion render reaches the same state.",
+  },
+];
+
 /** What a member an input omits stands for. */
 export const DEFAULTS: Obj = {
   presentation: {
@@ -3941,6 +3963,24 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
     if (!(doc.i18n ?? []).some((t) => t.args.formFactor === ff))
       errors.push(`i18n: no row for formFactor ${ff}`);
 
+  // Declared gaps: each names its owner and its reason.
+  const gaps = (doc.vocabulary.gaps ?? []) as Obj[];
+  if (!Array.isArray(gaps)) errors.push("vocabulary.gaps: not a list");
+  else
+    for (const g of gaps) {
+      for (const k of ["id", "what", "why", "then"])
+        if (typeof g[k] !== "string" || !(g[k] as string).trim())
+          errors.push(`vocabulary.gaps ${String(g.id)}: no ${k}`);
+      if (
+        !/^[A-Z][A-Za-z0-9]*-(?:[A-Z][0-9]{1,2}|[0-9]{2})[a-z]?$/.test(
+          String(g.owner),
+        )
+      )
+        errors.push(
+          `vocabulary.gaps ${String(g.id)}: owner ${String(g.owner)} is not a work package id`,
+        );
+    }
+
   // No control character in any string (the file is written ASCII-escaped, so nothing else can
   // reach a runner that reads it as bytes).
   const walk = (v: unknown, at: string): void => {
@@ -3989,6 +4029,7 @@ const DESCRIPTION = [
   "A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off.",
   "copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet.",
   "actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser.",
+  "vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows.",
   "mustNot marks a negative case (UI-KITS §4.1): the expectation holds and none of its states, copy or actions appear.",
   "Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6).",
   "theme rows pin UI-KITS §1.2 and §3.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter).",
@@ -4043,6 +4084,7 @@ export function buildUiMatrix(
       identityOnlyKeys: [...IDENTITY_ONLY_KEYS],
       mustNot: MUST_NOT as Obj,
       unreached: UNREACHED as unknown as Obj,
+      gaps: GAPS.map((g) => ({ ...g })),
       kits: [...KITS],
       platforms: [...MUST_OS],
       formFactors: [...FORM_FACTORS],

@@ -90,6 +90,38 @@ describe("ui-matrix.json", () => {
       if (rows.has(c)) expect(MUST_NOT[c], c).toBe(rows.get(c));
   });
 
+  it("declares the variants it does not pin, each with an open owner", () => {
+    const gaps = DOC.vocabulary.gaps as unknown as {
+      id: string;
+      owner: string;
+      why: string;
+    }[];
+    expect(gaps.map((g) => g.id)).toContain("dl7-delayed-response");
+    expect(gaps.find((g) => g.id === "dl7-delayed-response")?.owner).toBe(
+      "UK-03",
+    );
+    const program = JSON.parse(
+      readFileSync(
+        join(
+          ROOT,
+          "docs",
+          "research",
+          "2026-09-29-godot-omniplatform",
+          "program",
+          "workpackages.json",
+        ),
+        "utf8",
+      ),
+    ) as { workPackages: { id: string; status: string }[] };
+    const wps = program.workPackages;
+    for (const g of gaps) {
+      const wp = wps.find((w) => w.id === g.owner);
+      expect(wp, g.owner).toBeDefined();
+      expect(wp?.status, g.owner).not.toBe("done");
+      expect(g.why.length).toBeGreaterThan(0);
+    }
+  });
+
   it("closes a services list under requires (ST-38)", () => {
     expect(servicesWithout(S.services, "release")).toEqual([
       "license",
@@ -451,6 +483,14 @@ describe("the generator refuses", () => {
         d.i18n[0]!.key = "welcome.nope";
       },
       "no table has welcome.nope",
+    ],
+    [
+      "a declared gap with no work package owner",
+      (d) => {
+        (d.vocabulary.gaps as unknown as Record<string, unknown>[])[0]!.owner =
+          "someone";
+      },
+      "is not a work package id",
     ],
     [
       "a components.json state named hidden",

@@ -286,6 +286,12 @@ and its rows in one PR and holds the corpus lane while it regenerates. **A copy-
 reworded or translated key) changes the file only through the computed i18n strings: run
 `pnpm gen:corpus` and commit the result, without the lane (`plans/UK-02b.md` D13).
 
+A variant the matrix cannot pin yet is declared, never left out silently: `GAPS` in
+`tools/ui-matrix.ts` (written to `vocabulary.gaps`) names it, says why and names the work package
+that appends its rows, and the build fails on an entry without an owner. Today it holds DL7's
+delayed response (a loading state slower than 250–300 ms), which needs a time input and so a
+`uiMatrixVersion` bump: UK-03 appends those rows with its model timer, and UK-15 renders the variant.
+
 `update-matrix.json` and `outlet-matrix.json` (wire contract v4) are hand-authored from the
 plan's row lists (`plans/P3-01.md` §4.6, §4.7) and **append-only** as well. The generator carries
 its own reference `compareVersions`, `effectiveCapabilities`, `resolveUpdateOutlet`,

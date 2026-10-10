@@ -108,6 +108,12 @@ The UI kits' layer (c), pinned once for every language (`plans/UK-02b.md`): each
 | `settings` | AccountAndLicense, Settings | 25 |
 | `paywall` | Paywall, EntitlementGate | 15 |
 
+### Declared gaps
+
+Variants the matrix does not pin yet, each with the work package that appends its rows (`vocabulary.gaps`):
+
+- `dl7-delayed-response` (UK-03): The delayed-response variant of UI-KITS §4.1's verification recipe and the brief's brand transition: a response slower than DL7's 250-300 ms threshold, before which a loading state shows nothing and after which it shows the identity, a muted label and the shimmer. UK-03 owns the 250-300 ms loading delay as a model timer: it appends the delayed-response rows with that input and bumps uiMatrixVersion. UK-15 renders the variant at the phone-portrait and desktop rows; the reduced-motion render reaches the same state.
+
 ### States to handle
 
 Every state a kit, or an app drawing its own UI, handles, with the copy keys the rows show for it (kit keys from `packages/brand/kit-copy/`, `core.*` keys from `conformance/parity/copy.<locale>.json`).

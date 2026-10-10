@@ -67,6 +67,8 @@ mise exec node@22 -- pnpm ui:report
 
 ## Hand-off
 
+The delayed-response variant (DL7, `ui-matrix.json` `vocabulary.gaps` `dl7-delayed-response`) renders here once UK-03 appends its rows: at the phone-portrait and desktop rows, with the reduced-motion render reaching the same state.
+
 Every kit adds `ui:lint` (or its per-kit equivalent) to its acceptance; the report grows as kits land.
 
 The role agent sets `--set UK-15 in-review` when it hands off. After review, the lead adds the last
