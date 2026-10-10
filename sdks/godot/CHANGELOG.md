@@ -48,6 +48,105 @@ Local-trust fixes.
 - Licence, config and trust-manifest verification on the network path use the effective clock.
 - **`PKEY_DESKTOP_KEYRING=0` is honoured only in debug builds**; a shipped build ignores it. On
   Linux the Secret Service tool is run as `/usr/bin/secret-tool`, never found through `PATH`.
+- **Second review fixes.** The persistent gate carries the kit's theme over the game. Dialogs opened
+  from the boot's gate (Sign in, Activate offline, "Is this you?") take the focus and give it back.
+  The settings panel shows "Loading settings…" instead of raw keys while the live schema loads, names
+  an uncategorised group "General", takes the focus from the game when its first rows arrive, and its
+  list fills the room the screen leaves it. "Check again" says "Checking…", "No update yet." or
+  "Couldn't check."; a store build with no way to activate says "Get {product} from {store} to
+  play." (with Restore purchases where it works). The product header grows with a large title and
+  is not drawn for this repository's own project name. A `boot()` during a retry or READY's
+  background installs joins the run. Copy: "Connecting…", the blocked-update line, the
+  verify-failure line.
+
+- **Drop-in fixes.** **Behaviour change:** `await PolarisKey.boot()` resolves at READY, through any
+  number of stops and retries (a stop keeps its card with Try again on screen); pass
+  `resolve_on_stop: true` for the old first-stop result. `boot()` is re-entrant (a second call while
+  one runs joins it; after READY it starts a new boot with a fresh gate), `persistent_gate: true`
+  leaves a gate over the session (`PolarisKey.boot_gate`) that covers the game again when the licence
+  is revoked, expired or signed out, and `confirm_identity: true` makes a sign-in stop at "Is this
+  you?" before handing back. `PKeyUiView.sdk` is a setter that hands the SDK to the views nested in
+  the view and renders again (a gate built before the SDK was known shows its dialogs' content). The
+  status banner has an expired state. Every control of a kit screen has an accessible name (Godot
+  4.5+). One update prompt at a time: a `PKeyUpdatePrompt` the game places replaces the kept one, and
+  a locked answer with nothing to open or install offers Check again. An activation (or sign-in) whose
+  license document does not verify (an unpinned signer, a clock two days off) is no longer reported as
+  "Activated.": it reads "This device couldn't verify the license it was given…" and logs a
+  `push_error` naming the pins and the clock; `PKeyUiCopy.for_result` is empty on ok and reads an
+  activation result with the panel's own words; network and timeout copy name the product. Key entry
+  follows the outlet's effective capabilities (commerce `store-iap`, which now includes the Microsoft
+  Store). The settings panel fetches the product's live schema once it opens. The drop-in names the
+  device by the computer's own name where the OS has one. Two reference cycles that Godot reported as
+  leaks at exit are gone (the `exit_leaks` suite runs a probe game and requires a clean exit).
+
+- **Review fixes: settings on a short landscape screen.** The settings list opens with the focus in
+  view on a phone held sideways (it used to open scrolled to its last row, the Volume slider out
+  of view): the head scrolls with the list when no rail is shown and it would leave the rows a few
+  control heights, the list reveals the focused control once the layout settles (also the advanced
+  switch, and the control itself when a stacked row is taller than the list), and the first focus
+  is the first editable row, else the selected rail item. A locked value, the advanced switch and a
+  stepper's gaps line up with the other rows; the native look's settings fit 375 pt. A scene
+  anchored across the screen keeps a game's deliberate offsets when it carries the
+  `pkey_keep_offsets` meta (documented). A view the game re-parents keeps the control that opened
+  it. The matrix gains 2532×1170@3, 1334×750@2 and 750×1334@2, and settings opened the way a game
+  opens them.
+
+- **Second review round.** The gate-hosted device limit takes the focus (a view nested in another
+  asks the outermost view for it); the sign-in user code fits its width on one line (never under the
+  title's size; at most a break at its hyphen); a full-screen view's offsets are the kit's (a
+  game's `set_anchors_and_offsets_preset()` no longer leaves it wider or shorter than the screen);
+  the update modal and the settings fit a phone's safe area and width laid out fresh at the size
+  (the settings rail gives way to one column when it does not fit); scroll areas follow the focus
+  once the layout settles; the settings slider draws a focus ring in every look; the settings
+  column ends on one right edge, the rail's other sections have lighter borders and its heading is
+  not said twice; settings freed by the game gives the focus back; the offline request QR shows on
+  a pad-only device that is flagged mobile. The `ui_matrix` suite lays every screen out fresh at
+  every size as well as resized, and checks tight cases by focusing the primary and requiring it
+  inside the visible scroll area.
+
+- **Review round on the drop-in screens.** A pad's A and B work under Godot's default input map
+  (the kit adds `JOY_BUTTON_A` and `JOY_BUTTON_B` to `ui_accept` and `ui_cancel` when they have no
+  joypad binding); a dialog opened over a focused game control takes the focus and gives it back;
+  number settings answer the D-pad and the stick and keep their focus (an unbounded one steps with
+  left and right); the gate's device-limit view takes the whole card and keeps the product header;
+  focus neighbours are wired after the layout moves nodes; **behaviour change:** a QR code shows
+  only on a pad-only device and for the offline request code (never on a desktop, tablet or phone);
+  phone dialogs sit on an opaque bottom sheet; a tablet gets a centred column; the product name is
+  no longer repeated as header and title; a busy button keeps its label and shows an indicator.
+
+- **Responsive drop-in screens.** Every UI kit scene lays itself out for the area it is given:
+  side by side in landscape (the device code beside its QR code, the product beside the activation
+  form, the offline request beside its import), one column in portrait, following a resize live.
+  The Polaris Key look scales with the screen (0.75 on 640×360 to 2 on 2560×1440), every look
+  keeps the page margin, caps its width and centres, keeps a phone's safe area clear and never
+  draws a QR code under 160 physical pixels. A card scrolls only as a last resort for a game's
+  oversized theme. New `options.ui_density` (spacious, comfortable, compact; it steps down on a
+  small screen), `ui_product_name` and `ui_product_icon`.
+- **A spacing system and type scale** in every stock theme (`PKeyLayout` constants and the
+  container variations `PKeyStack`, `PKeyTight`, `PKeySections`, `PKeyRow`, `PKeyActions`,
+  `PKeyColumns`, `PKeyGrid`; `PKeySection`, `PKeyMono`, `PKeyStrong` and `PKeyQrTile` join the type
+  variations). Gate, boot and sign-in screens lead with the product's icon and name; **behaviour
+  change:** the Pinned K no longer heads the branded gate and boot screens (UI-KITS.md §1.2). The
+  branded theme draws its own switch, check box and chevron icons; banners float as cards; QR
+  codes sit on a rounded white tile. `ui_theme` is now layered over the kit's neutral structure
+  (your items win), so a partial theme keeps the kit's spacing.
+- **Fixed:** offline activation opened from the activation panel showed no request code until
+  re-rendered; it now renders with the SDK it is given. A layout switch could leave a container
+  unsorted after a resize (the engine drops a re-sort asked for mid-sort); views now verify their
+  sort for a few frames after each layout pass.
+- **Fix round (review of the responsive screens).** The Polaris Key look is the default
+  (`ui_branding` `polaris-key`; `none` is the game-theme look), with ink as the primary colour
+  unless the product has an accent, a 3 px focus ring and the kit's lock, cloud-off and warning
+  glyphs. A banner is a card with a glyph in every look. A phone's portrait screen is full-bleed
+  with its actions docked at the bottom, also inside the gate; gamepad focus starts inside the
+  screen (ui_down on a cold screen lands on its primary action) and survives a layout change;
+  number settings are a slider (or spin box) that left and right change, with pointer-only minus
+  and plus buttons; a screen too short for its content squeezes in steps (smaller QR, actions
+  into a column, secondary lines dropped) before it scrolls. **Behaviour change:** a QR code never
+  shows on a phone (the old "Use another device" button is gone); tablets, desktops and TVs keep
+  it. Host fonts of 28 and 36 px, and 18-20 px type on a 360 px tall canvas, are tight cases: the
+  primary action stays reachable through the card's scroll fallback.
+- **Tests:** the `ui_matrix` suite (its own `run_tests.sh` step) and `tools/ui_matrix/ui_matrix.gd` (PNGs).
 
 The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
 

@@ -1,0 +1,7 @@
+[gd_resource type="SystemFont" format=3]
+
+; The platform's monospace face, for ids in the kit (PKeyMono): the bundled JetBrains Mono
+; variable font draws E, 8 and 0 as solid boxes in Godot 4.7, so the kit leaves it unused.
+
+[resource]
+font_names = PackedStringArray("SF Mono", "Menlo", "Consolas", "Cascadia Mono", "DejaVu Sans Mono", "Liberation Mono", "monospace")

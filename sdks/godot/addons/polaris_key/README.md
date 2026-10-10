@@ -23,13 +23,14 @@ https://github.com/vladzaharia/polaris-key/tree/main/sdks/godot#readme
 
 ```gdscript
 func _ready() -> void:
-	var boot := await PolarisKey.boot({allow_offline = true})
-	if boot.outcome == PKeyBoot.READY:
-		get_tree().change_scene_to_file("res://title.tscn")
+	await PolarisKey.boot({allow_offline = true})
+	get_tree().change_scene_to_file("res://title.tscn")
 ```
 
 `PolarisKey.boot()` configures from `res://polaris_key.tres`, syncs, gates on the licence and
-checks for an update, showing the `PKeyBoot` screen while it works. Then read config with
+checks for an update, showing the `PKeyBoot` screen while it works. It returns once the player is
+through: a stop (offline, a blocked build, an error) keeps its card and Try again on screen, and the
+await waits through the retries. Then read config with
 `PolarisKey.config.get_value("key", fallback)`, check `PolarisKey.license.is_entitled("name")`,
 and so on.
 

@@ -58,11 +58,11 @@ static func copy_for(screen: String, status: String, allowed_range: Variant = nu
 		"loading":
 			return {"title": "", "body": "gate_loading", "detail": ""}
 		"grace-blocked":
-			return {"title": "grace_title", "body": "grace_blocked_body", "detail": ""}
+			return {"title": "boot_offline_title", "body": "grace_blocked_body", "detail": ""}
 		"activation":
 			return {"title": "", "body": "", "detail": ""}
 		"revoked":
-			return {"title": "revoked_title", "body": "revoked_body", "detail": ""}
+			return {"title": "revoked_title", "body": "", "detail": ""}
 		"expired":
 			return {"title": "expired_title", "body": "expired_body", "detail": ""}
 		"update-required":
@@ -80,7 +80,7 @@ static func copy_for(screen: String, status: String, allowed_range: Variant = nu
 ## Which controls a screen shows: {activation, retry, update_action, banner}.
 static func controls_for(screen: String, has_update_action: bool) -> Dictionary:
 	return {
-		"activation": screen == "activation" or screen == "revoked" or screen == "error",
+		"activation": screen == "activation" or screen == "revoked" or screen == "error" or screen == "not-available",
 		"retry": screen in ["grace-blocked", "expired", "update-required", "not-available", "error"],
 		"update_action": screen == "update-required" and has_update_action,
 		"banner": screen == "grace",

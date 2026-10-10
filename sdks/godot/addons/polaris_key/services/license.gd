@@ -52,7 +52,8 @@ extends RefCounted
 const FEATURE_ENROLL := PKeyConstants.Feature.LICENSE_ENROLL
 
 ## Awaited after a token is minted (activate, enroll): the autoload runs a forced sync, so the
-## result returns with the licence document in hand.
+## result returns with the licence document in hand. It returns that sync's PKeySyncResult, which
+## decides whether the activation counts (see `_acquire`).
 var on_acquired: Callable
 ## Called after the local state changed without a sync (deactivate's wipe).
 var on_changed: Callable
@@ -181,8 +182,35 @@ func _acquire(pair: Array, source: String) -> PKeyActivationResult:
 		return PKeyActivationResult.of(PKeyActivationResult.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, "The SDK was reconfigured during activation.")
 	res.stored = core.tokens.set_token(pair[1], source)
 	if on_acquired.is_valid():
-		await on_acquired.call()
+		var synced = await on_acquired.call()
+		var problem := unverified(core, synced, "the key was accepted")
+		if not problem.is_empty():
+			# The key was accepted, but the document it earned did not arrive or did not verify:
+			# the device is not activated, whatever the answer said. The token stays, so a retry
+			# after the clock or the pins are fixed needs no key.
+			return PKeyActivationResult.of(PKeyActivationResult.KIND_ERROR, problem["code"], problem["message"], int(problem["status"]))
 	return res
+
+
+## What stopped a just-minted token from earning a usable licence document: {} when nothing did,
+## else {code, message, status} with code `invalid-response`: the Worker answered with a document
+## that did not verify (an unpinned signer, a clock outside its window), so the activation does not
+## count. A document that did not arrive (no answer, a 5xx) is not this: the token is good and the
+## next sync fetches it.
+static func unverified(core: PKeyCore, synced: Variant, what := "the token was minted") -> Dictionary:
+	if core == null or not core.enabled("license") or not (synced is PKeySyncResult):
+		return {}
+	var s: PKeySyncResult = synced
+	var kind := String(s.documents.get("license", ""))
+	if kind != "error":
+		return {}
+	var e: Dictionary = s.errors.get("license", {"status": 0, "code": ""})
+	var status := int(e.get("status", 0))
+	var code := String(e.get("code", ""))
+	if status == 200 or code == String(PKeyErrors.INVALID_RESPONSE):
+		push_error("Polaris Key: %s but the license document did not verify. Check that the pinned trust keys (pinned_trust_keys, polaris_key.tres) are the product's signing keys and that this device's clock is right (a document is only valid inside its window)." % what)
+		return {"code": PKeyErrors.INVALID_RESPONSE, "message": "The license document did not verify.", "status": 200}
+	return {}
 
 
 func _precheck() -> Variant:

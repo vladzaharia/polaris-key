@@ -96,7 +96,7 @@ func _row(t: PKeyTestContext, row: Dictionary) -> bool:
 	var finished: Array = []
 	sdk.boot_finished.connect(func(r): finished.append(r))
 	var first: Array = []
-	var opts := {"view": boot, "host": host, "sync_timeout_seconds": 1000}
+	var opts := {"resolve_on_stop": true, "view": boot, "host": host, "sync_timeout_seconds": 1000}
 	if init.has("allowOffline"):
 		opts["allow_offline"] = init["allowOffline"]
 	if init.has("allowGrace"):
@@ -170,7 +170,7 @@ func _boot_to_required(sdk: Node, answer: PKeyResult) -> PKeyBootResult:
 	var host := PKeyFakeBootHost.new()
 	host.update_result = answer
 	var first: Array = []
-	_capture(sdk, {"host": host, "sync_timeout_seconds": 1000, "release_url": "https://example.com/releases"}, first)
+	_capture(sdk, {"resolve_on_stop": true, "host": host, "sync_timeout_seconds": 1000, "release_url": "https://example.com/releases"}, first)
 	for e in [
 		{"type": "shell.done"}, {"type": "guard.done", "result": "ok"}, {"type": "sync.done", "result": "ok"},
 		{"type": "gate.status", "status": "ok"}, {"type": "decide.done", "decision": "required"},
@@ -222,7 +222,7 @@ const SC := preload("res://tests/ui/scenarios.gd")
 func _boot_to_ready(sdk: Node, answer: PKeyResult, extra := {}) -> PKeyBootResult:
 	var host := PKeyFakeBootHost.new()
 	host.update_result = answer
-	var opts := {"host": host, "sync_timeout_seconds": 1000}
+	var opts := {"resolve_on_stop": true, "host": host, "sync_timeout_seconds": 1000}
 	opts.merge(extra)
 	var first: Array = []
 	_capture(sdk, opts, first)
@@ -263,7 +263,8 @@ func _dropin(t: PKeyTestContext) -> void:
 		if kept:
 			var rect: Rect2 = p.get_global_rect()
 			t.check("dropin: the kept %s prompt is a strip at the top, not full-screen" % kind, rect.size.y > 0.0 and rect.size.y < screen.y * 0.25 and is_equal_approx(rect.position.y, 0.0) and p.presentation() == "banner", "%s on %s" % [rect, screen])
-			t.check("dropin: the kept %s prompt has no dismiss" % kind, not (p.get_node("Body/Actions/Dismiss") as Button).visible)
+			t.check("dropin: the kept %s prompt keeps the kit's theme over the game" % kind, p.theme != null and PKeyUiTheme.is_stock(p.theme) and p._action.theme_type_variation == &"PKeyPrimary" and p.get_theme_stylebox("normal", "PKeyPrimary") is StyleBoxFlat)
+			t.check("dropin: the kept %s prompt has no dismiss" % kind, not (p.find_child("Dismiss", true, false) as Button).visible)
 			p._on_dismiss()
 			await tree.process_frame
 			t.check("dropin: the kept %s prompt cannot be dismissed" % kind, is_instance_valid(p) and p.is_visible_in_tree())
@@ -290,7 +291,7 @@ func _dropin(t: PKeyTestContext) -> void:
 	var optional = sc.update_check({"action": "binary", "method": "download", "release": rel, "build": "b", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false})
 	await _boot_to_ready(sdk3, optional)
 	var p3 = sdk3.boot_prompt
-	var ok3: bool = p3 is PKeyUpdatePrompt and p3.is_visible_in_tree() and (p3.get_node("Body/Actions/Dismiss") as Button).visible
+	var ok3: bool = p3 is PKeyUpdatePrompt and p3.is_visible_in_tree() and (p3.find_child("Dismiss", true, false) as Button).visible
 	t.check("dropin: a dismissable answer stays with its dismiss", ok3)
 	if ok3:
 		p3._on_dismiss()
@@ -407,10 +408,10 @@ func _full_boots(t: PKeyTestContext) -> void:
 	view.auto_sdk = false
 	(Engine.get_main_loop() as SceneTree).root.add_child(view)
 	var host := _host(sdk)
-	var r: PKeyBootResult = await sdk.boot({"view": view, "host": host, "allow_offline": false})
+	var r: PKeyBootResult = await sdk.boot({"resolve_on_stop": true, "view": view, "host": host, "allow_offline": false})
 	t.check("server: offline first launch under allow_offline false stops at OFFLINE", r.outcome == PKeyBoot.OFFLINE and r.stages == ["shell", "guard", "sync", "offline"], "%s %s" % [r, r.stages])
 	# The same launch with the default allow_offline continues on its defaults to READY.
-	var r2: PKeyBootResult = await sdk.boot({"view": view, "host": host})
+	var r2: PKeyBootResult = await sdk.boot({"resolve_on_stop": true, "view": view, "host": host})
 	t.check("server: offline first launch continues to READY by default", r2.outcome == PKeyBoot.READY and r2.ok, "%s %s" % [r2, r2.stages])
 	view.queue_free()
 	sdk.queue_free()
@@ -423,7 +424,7 @@ func _full_boots(t: PKeyTestContext) -> void:
 	(Engine.get_main_loop() as SceneTree).root.add_child(view2)
 	var signals: Array = []
 	view2.stage_changed.connect(func(s, _p): signals.append(s))
-	var r3: PKeyBootResult = await sdk2.boot({"view": view2, "host": _host(sdk2)})
+	var r3: PKeyBootResult = await sdk2.boot({"resolve_on_stop": true, "view": view2, "host": _host(sdk2)})
 	t.check("server: a licensed device boots to READY", r3.outcome == PKeyBoot.READY and signals == ["shell", "guard", "sync", "gate", "decide", "fetch", "mount", "ready"], "%s %s" % [r3, signals])
 	view2.queue_free()
 	sdk2.queue_free()
@@ -435,7 +436,7 @@ func _full_boots(t: PKeyTestContext) -> void:
 	var view3 := PKeyBoot.new()
 	view3.auto_sdk = false
 	(Engine.get_main_loop() as SceneTree).root.add_child(view3)
-	var r4: PKeyBootResult = await sdk3.boot({"view": view3, "host": _host(sdk3), "allow_offline": false})
+	var r4: PKeyBootResult = await sdk3.boot({"resolve_on_stop": true, "view": view3, "host": _host(sdk3), "allow_offline": false})
 	t.check("server: a 403 build block reaches BLOCKED update-required", r4.outcome == PKeyBoot.BLOCKED and r4.reason == "update-required", str(r4))
 	view3.queue_free()
 	sdk3.queue_free()
@@ -449,7 +450,7 @@ func _deadline(t: PKeyTestContext) -> void:
 	(Engine.get_main_loop() as SceneTree).root.add_child(view)
 	var host := PKeyFakeBootHost.new()
 	var first: Array = []
-	_capture(sdk, {"view": view, "host": host, "sync_timeout_seconds": 0.3, "allow_offline": false}, first)
+	_capture(sdk, {"resolve_on_stop": true, "view": view, "host": host, "sync_timeout_seconds": 0.3, "allow_offline": false}, first)
 	# Read before the answer that arms the deadline, so load can only lengthen the measured wait.
 	var started := Time.get_ticks_msec()
 	host.answer({"type": "shell.done"})
