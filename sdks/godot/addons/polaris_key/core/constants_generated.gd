@@ -168,10 +168,14 @@ class ErrorCode:
 	const PACK_REVOKED := "pack-revoked"
 	const PACK_NOT_DATA_ONLY := "pack-not-data-only"
 	const MARKER_REJECTED := "marker-rejected"
+	const LICENSE_REQUIRED := "license_required"
+	const LICENSE_INVALID := "license_invalid"
+	const LICENSE_STALE := "license_stale"
+	const SIGN_IN_REQUIRED := "sign_in_required"
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "identity_disabled", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "identity_disabled", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "invalid-options", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "license_required", "license_invalid", "license_stale", "sign_in_required"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -331,6 +335,10 @@ const ERROR_CODE_KINDS := {
 	"pack-revoked": "client",
 	"pack-not-data-only": "client",
 	"marker-rejected": "client",
+	"license_required": "backend",
+	"license_invalid": "backend",
+	"license_stale": "backend",
+	"sign_in_required": "backend",
 }
 
 
@@ -348,6 +356,7 @@ class Feature:
 	const CORE_CAPS := "core.caps"
 	const CORE_STORE := "core.store"
 	const CORE_COPY := "core.copy"
+	const CORE_BACKEND := "core.backend"
 	const LICENSE_GATE := "license.gate"
 	const LICENSE_ACTIVATE := "license.activate"
 	const LICENSE_ENROLL := "license.enroll"
@@ -428,6 +437,7 @@ class Feature:
 	const UI_KIT_KEYENTRY := "ui.kit.keyentry"
 	const UI_KIT_ACCOUNT := "ui.kit.account"
 	const UI_CLI := "ui.cli"
+	const UI_CLI_MOUNT := "ui.cli.mount"
 	const UI_GATE := "ui.gate"
 	const UI_ACTIVATE := "ui.activate"
 	const UI_SIGNIN := "ui.signin"
@@ -439,10 +449,14 @@ class Feature:
 	const UI_THEME := "ui.theme"
 	const UI_I18N := "ui.i18n"
 	const COMMERCE_RECEIPT := "commerce.receipt"
+	const SERVER_LICENSE := "server.license"
+	const SERVER_SIGNIN := "server.signin"
+	const SERVER_CONFIG := "server.config"
+	const SERVER_WEBHOOKS := "server.webhooks"
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.cli", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.cli", "ui.cli.mount", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -487,7 +501,7 @@ class Arch:
 const ARCH_VALUES := ["arm64", "x86_64", "armv7", "wasm32"]
 
 
-## The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands.
+## The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands. A server core (WIRE-CONTRACT-V4 §14) sends `<language>-server` on its trust-manifest fetch.
 class SdkId:
 	const NODE := "node"
 	const REACT := "react"
@@ -495,10 +509,14 @@ class SdkId:
 	const SWIFT := "swift"
 	const GODOT := "godot"
 	const KOTLIN := "kotlin"
+	const NODE_SERVER := "node-server"
+	const PYTHON_SERVER := "python-server"
+	const SWIFT_SERVER := "swift-server"
+	const KOTLIN_SERVER := "kotlin-server"
 
 
 ## Every `SdkId` value, in source order.
-const SDK_ID_VALUES := ["node", "react", "python", "swift", "godot", "kotlin"]
+const SDK_ID_VALUES := ["node", "react", "python", "swift", "godot", "kotlin", "node-server", "python-server", "swift-server", "kotlin-server"]
 
 
 ## Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal.
@@ -808,6 +826,7 @@ class HeaderName:
 	const ARCH := "X-PKey-Arch"
 	const CHANNEL := "X-PKey-Channel"
 	const DEVICE := "X-PKey-Device"
+	const LICENSE := "X-PKey-License"
 	const PLATFORM := "X-PKey-Platform"
 	const SDK_NAME := "X-PKey-SDK"
 	const SDK_VERSION := "X-PKey-SDK-Version"
@@ -815,7 +834,7 @@ class HeaderName:
 
 
 ## Every `HeaderName` value, in source order.
-const HEADER_NAME_VALUES := ["X-PKey-Arch", "X-PKey-Channel", "X-PKey-Device", "X-PKey-Platform", "X-PKey-SDK", "X-PKey-SDK-Version", "X-PKey-Version"]
+const HEADER_NAME_VALUES := ["X-PKey-Arch", "X-PKey-Channel", "X-PKey-Device", "X-PKey-License", "X-PKey-Platform", "X-PKey-SDK", "X-PKey-SDK-Version", "X-PKey-Version"]
 
 
 ## The opt-in services (tools/services.json). Core is not a service — it is always on.
@@ -1076,6 +1095,7 @@ static func capabilities() -> Dictionary:
 		"core.caps": {"status": "implemented", "service": "core", "na": []},
 		"core.store": {"status": "implemented", "service": "core", "na": []},
 		"core.copy": {"status": "implemented", "service": "sdk", "na": []},
+		"core.backend": {"status": "planned", "service": "license", "na": []},
 		"license.gate": {"status": "implemented", "service": "license", "na": []},
 		"license.activate": {"status": "implemented", "service": "license", "na": []},
 		"license.enroll": {"status": "implemented", "service": "license", "na": [{"runtime": "web", "reason": "runtime"}]},
@@ -1156,6 +1176,7 @@ static func capabilities() -> Dictionary:
 		"ui.kit.keyentry": {"status": "planned", "service": "sdk", "na": []},
 		"ui.kit.account": {"status": "planned", "service": "sdk", "na": []},
 		"ui.cli": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"ui.cli.mount": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"ui.gate": {"status": "planned", "service": "sdk", "na": []},
 		"ui.activate": {"status": "planned", "service": "sdk", "na": []},
 		"ui.signin": {"status": "planned", "service": "sdk", "na": []},
@@ -1167,7 +1188,11 @@ static func capabilities() -> Dictionary:
 		"ui.theme": {"status": "planned", "service": "sdk", "na": []},
 		"ui.i18n": {"status": "planned", "service": "sdk", "na": []},
 		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
+		"server.license": {"status": "na", "service": "license", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"server.signin": {"status": "na", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"server.config": {"status": "na", "service": "config", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"server.webhooks": {"status": "na", "service": "core", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "a0cf7965a68c5dd0a9849da022c9c5ae6e00a75965496f5ec7536f5bb956ac55"
+const CAPABILITY_DIGEST := "4cb7b7a1eb1bcf790bcb713b8504f9e1fb24ba26f97cfab6f08e7995e7d08fe0"

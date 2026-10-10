@@ -5242,6 +5242,46 @@ msgstr "应用版本出现问题"
 msgid "core.codes.marker-rejected.message"
 msgstr "此版本的内置内容无效。请重新安装应用或联系开发者。"
 
+#. License needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_required.title"
+msgstr "需要许可证"
+
+#. Activate the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_required.message"
+msgstr "请激活应用，然后重试。"
+
+#. License not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_invalid.title"
+msgstr "许可证未被接受"
+
+#. Your license couldn't be verified. Reconnect the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_invalid.message"
+msgstr "无法验证你的许可证。请重新连接应用，然后重试。"
+
+#. License needs refreshing
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_stale.title"
+msgstr "许可证需要刷新"
+
+#. Connect to the internet so the app can refresh your license, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_stale.message"
+msgstr "请连接互联网，以便应用刷新你的许可证，然后重试。"
+
+#. Sign-in needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign_in_required.title"
+msgstr "需要登录"
+
+#. Sign in to your Polaris Key account in the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign_in_required.message"
+msgstr "请在应用中登录你的Polaris Key账户，然后重试。"
+
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"

@@ -163,6 +163,10 @@ export const ErrorCode = {
   packRevoked: "pack-revoked",
   packNotDataOnly: "pack-not-data-only",
   markerRejected: "marker-rejected",
+  licenseRequired: "license_required",
+  licenseInvalid: "license_invalid",
+  licenseStale: "license_stale",
+  signInRequired: "sign_in_required",
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
@@ -324,10 +328,14 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "pack-revoked",
   "pack-not-data-only",
   "marker-rejected",
+  "license_required",
+  "license_invalid",
+  "license_stale",
+  "sign_in_required",
 ];
 
-/** `wire`: appears in a Worker response body. `client`: raised only by an SDK. */
-export type ErrorCodeKind = "wire" | "client";
+/** `wire`: appears in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14). */
+export type ErrorCodeKind = "wire" | "client" | "backend";
 
 /** The registry: every error code and its kind. */
 export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
@@ -487,6 +495,10 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "pack-revoked": "client",
   "pack-not-data-only": "client",
   "marker-rejected": "client",
+  license_required: "backend",
+  license_invalid: "backend",
+  license_stale: "backend",
+  sign_in_required: "backend",
 };
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */
@@ -503,6 +515,7 @@ export const Feature = {
   coreCaps: "core.caps",
   coreStore: "core.store",
   coreCopy: "core.copy",
+  coreBackend: "core.backend",
   licenseGate: "license.gate",
   licenseActivate: "license.activate",
   licenseEnroll: "license.enroll",
@@ -583,6 +596,7 @@ export const Feature = {
   uiKitKeyentry: "ui.kit.keyentry",
   uiKitAccount: "ui.kit.account",
   uiCli: "ui.cli",
+  uiCliMount: "ui.cli.mount",
   uiGate: "ui.gate",
   uiActivate: "ui.activate",
   uiSignin: "ui.signin",
@@ -594,6 +608,10 @@ export const Feature = {
   uiTheme: "ui.theme",
   uiI18n: "ui.i18n",
   commerceReceipt: "commerce.receipt",
+  serverLicense: "server.license",
+  serverSignin: "server.signin",
+  serverConfig: "server.config",
+  serverWebhooks: "server.webhooks",
 } as const;
 export type Feature = (typeof Feature)[keyof typeof Feature];
 
@@ -611,6 +629,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "core.caps",
   "core.store",
   "core.copy",
+  "core.backend",
   "license.gate",
   "license.activate",
   "license.enroll",
@@ -691,6 +710,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.kit.keyentry",
   "ui.kit.account",
   "ui.cli",
+  "ui.cli.mount",
   "ui.gate",
   "ui.activate",
   "ui.signin",
@@ -702,6 +722,10 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.theme",
   "ui.i18n",
   "commerce.receipt",
+  "server.license",
+  "server.signin",
+  "server.config",
+  "server.webhooks",
 ];
 
 /** Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2). */
@@ -768,7 +792,7 @@ export const ARCH_VALUES: readonly Arch[] = [
   "wasm32",
 ];
 
-/** The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands. */
+/** The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands. A server core (WIRE-CONTRACT-V4 §14) sends `<language>-server` on its trust-manifest fetch. */
 export const SdkId = {
   node: "node",
   react: "react",
@@ -776,6 +800,10 @@ export const SdkId = {
   swift: "swift",
   godot: "godot",
   kotlin: "kotlin",
+  nodeServer: "node-server",
+  pythonServer: "python-server",
+  swiftServer: "swift-server",
+  kotlinServer: "kotlin-server",
 } as const;
 export type SdkId = (typeof SdkId)[keyof typeof SdkId];
 
@@ -787,6 +815,10 @@ export const SDK_ID_VALUES: readonly SdkId[] = [
   "swift",
   "godot",
   "kotlin",
+  "node-server",
+  "python-server",
+  "swift-server",
+  "kotlin-server",
 ];
 
 /** Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal. */
@@ -1258,6 +1290,7 @@ export const HeaderName = {
   arch: "X-PKey-Arch",
   channel: "X-PKey-Channel",
   device: "X-PKey-Device",
+  license: "X-PKey-License",
   platform: "X-PKey-Platform",
   sdkName: "X-PKey-SDK",
   sdkVersion: "X-PKey-SDK-Version",
@@ -1270,6 +1303,7 @@ export const HEADER_NAME_VALUES: readonly HeaderName[] = [
   "X-PKey-Arch",
   "X-PKey-Channel",
   "X-PKey-Device",
+  "X-PKey-License",
   "X-PKey-Platform",
   "X-PKey-SDK",
   "X-PKey-SDK-Version",
@@ -1563,6 +1597,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "core.copy": { status: "implemented", service: "sdk", na: [] },
+  "core.backend": { status: "planned", service: "license", na: [] },
   "license.gate": { status: "implemented", service: "license", na: [] },
   "license.activate": { status: "implemented", service: "license", na: [] },
   "license.enroll": {
@@ -1755,6 +1790,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
+  "ui.cli.mount": {
+    status: "na",
+    service: "sdk",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "ui.gate": { status: "planned", service: "sdk", na: [] },
   "ui.activate": { status: "planned", service: "sdk", na: [] },
   "ui.signin": { status: "planned", service: "sdk", na: [] },
@@ -1766,8 +1809,40 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.theme": { status: "planned", service: "sdk", na: [] },
   "ui.i18n": { status: "planned", service: "sdk", na: [] },
   "commerce.receipt": { status: "implemented", service: "license", na: [] },
+  "server.license": {
+    status: "na",
+    service: "license",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "server.signin": {
+    status: "na",
+    service: "identity",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "server.config": {
+    status: "na",
+    service: "config",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
+  "server.webhooks": {
+    status: "na",
+    service: "core",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "550261fc37927bd2ffd3c9aa47cf9b684ffa307f2c98943259c32022df7853bc";
+  "974e1145b12bcfad05980d5aa0aaa1ee535d1f32e410499ccaf8eaee3357d712";

@@ -306,6 +306,10 @@ class ErrorCode:
     PACK_REVOKED: Final = "pack-revoked"
     PACK_NOT_DATA_ONLY: Final = "pack-not-data-only"
     MARKER_REJECTED: Final = "marker-rejected"
+    LICENSE_REQUIRED: Final = "license_required"
+    LICENSE_INVALID: Final = "license_invalid"
+    LICENSE_STALE: Final = "license_stale"
+    SIGN_IN_REQUIRED: Final = "sign_in_required"
 
 
 #: Every ``ErrorCode`` value, in source order.
@@ -466,6 +470,10 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
+    "license_required",
+    "license_invalid",
+    "license_stale",
+    "sign_in_required",
 )
 
 
@@ -628,6 +636,10 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "pack-revoked": "client",
         "pack-not-data-only": "client",
         "marker-rejected": "client",
+        "license_required": "backend",
+        "license_invalid": "backend",
+        "license_stale": "backend",
+        "sign_in_required": "backend",
     }
 )
 
@@ -647,6 +659,7 @@ class Feature:
     CORE_CAPS: Final = "core.caps"
     CORE_STORE: Final = "core.store"
     CORE_COPY: Final = "core.copy"
+    CORE_BACKEND: Final = "core.backend"
     LICENSE_GATE: Final = "license.gate"
     LICENSE_ACTIVATE: Final = "license.activate"
     LICENSE_ENROLL: Final = "license.enroll"
@@ -727,6 +740,7 @@ class Feature:
     UI_KIT_KEYENTRY: Final = "ui.kit.keyentry"
     UI_KIT_ACCOUNT: Final = "ui.kit.account"
     UI_CLI: Final = "ui.cli"
+    UI_CLI_MOUNT: Final = "ui.cli.mount"
     UI_GATE: Final = "ui.gate"
     UI_ACTIVATE: Final = "ui.activate"
     UI_SIGNIN: Final = "ui.signin"
@@ -738,6 +752,10 @@ class Feature:
     UI_THEME: Final = "ui.theme"
     UI_I18N: Final = "ui.i18n"
     COMMERCE_RECEIPT: Final = "commerce.receipt"
+    SERVER_LICENSE: Final = "server.license"
+    SERVER_SIGNIN: Final = "server.signin"
+    SERVER_CONFIG: Final = "server.config"
+    SERVER_WEBHOOKS: Final = "server.webhooks"
 
 
 #: Every ``Feature`` value, in source order.
@@ -754,6 +772,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "core.caps",
     "core.store",
     "core.copy",
+    "core.backend",
     "license.gate",
     "license.activate",
     "license.enroll",
@@ -834,6 +853,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.kit.keyentry",
     "ui.kit.account",
     "ui.cli",
+    "ui.cli.mount",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -845,6 +865,10 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.theme",
     "ui.i18n",
     "commerce.receipt",
+    "server.license",
+    "server.signin",
+    "server.config",
+    "server.webhooks",
 )
 
 
@@ -915,7 +939,7 @@ ARCH_VALUES: Tuple[str, ...] = (
 
 
 class SdkId:
-    """The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands."""
+    """The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands. A server core (WIRE-CONTRACT-V4 §14) sends `<language>-server` on its trust-manifest fetch."""
 
     NODE: Final = "node"
     REACT: Final = "react"
@@ -923,6 +947,10 @@ class SdkId:
     SWIFT: Final = "swift"
     GODOT: Final = "godot"
     KOTLIN: Final = "kotlin"
+    NODE_SERVER: Final = "node-server"
+    PYTHON_SERVER: Final = "python-server"
+    SWIFT_SERVER: Final = "swift-server"
+    KOTLIN_SERVER: Final = "kotlin-server"
 
 
 #: Every ``SdkId`` value, in source order.
@@ -933,6 +961,10 @@ SDK_ID_VALUES: Tuple[str, ...] = (
     "swift",
     "godot",
     "kotlin",
+    "node-server",
+    "python-server",
+    "swift-server",
+    "kotlin-server",
 )
 
 
@@ -1431,6 +1463,7 @@ class HeaderName:
     ARCH: Final = "X-PKey-Arch"
     CHANNEL: Final = "X-PKey-Channel"
     DEVICE: Final = "X-PKey-Device"
+    LICENSE: Final = "X-PKey-License"
     PLATFORM: Final = "X-PKey-Platform"
     SDK_NAME: Final = "X-PKey-SDK"
     SDK_VERSION: Final = "X-PKey-SDK-Version"
@@ -1442,6 +1475,7 @@ HEADER_NAME_VALUES: Tuple[str, ...] = (
     "X-PKey-Arch",
     "X-PKey-Channel",
     "X-PKey-Device",
+    "X-PKey-License",
     "X-PKey-Platform",
     "X-PKey-SDK",
     "X-PKey-SDK-Version",
@@ -1807,6 +1841,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.caps": CapabilityRow("implemented", "core", ()),
         "core.store": CapabilityRow("implemented", "core", (CapabilityNa("python", "dependency"),)),
         "core.copy": CapabilityRow("implemented", "sdk", ()),
+        "core.backend": CapabilityRow("planned", "license", ()),
         "license.gate": CapabilityRow("implemented", "license", ()),
         "license.activate": CapabilityRow("implemented", "license", ()),
         "license.enroll": CapabilityRow("implemented", "license", ()),
@@ -1887,6 +1922,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.kit.keyentry": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.account": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
+        "ui.cli.mount": CapabilityRow("planned", "sdk", ()),
         "ui.gate": CapabilityRow("planned", "sdk", ()),
         "ui.activate": CapabilityRow("planned", "sdk", ()),
         "ui.signin": CapabilityRow("planned", "sdk", ()),
@@ -1898,8 +1934,12 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.theme": CapabilityRow("planned", "sdk", ()),
         "ui.i18n": CapabilityRow("planned", "sdk", ()),
         "commerce.receipt": CapabilityRow("implemented", "license", ()),
+        "server.license": CapabilityRow("planned", "license", ()),
+        "server.signin": CapabilityRow("planned", "identity", ()),
+        "server.config": CapabilityRow("planned", "config", ()),
+        "server.webhooks": CapabilityRow("planned", "core", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "33e4c9879463e824319faf8b3600dd2d0d2e5c27cfa34919a4c98a8879c55601"
+CAPABILITY_DIGEST: Final[str] = "c00eee481737af0b49d831c99a5ca4826c33f7fa313243498aa7f7a349846e84"

@@ -89,7 +89,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 // ── Sources ────────────────────────────────────────────────────────────────────────────────
 
-export type ErrorKind = "wire" | "client";
+/** `wire`: in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an
+ *  SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14, SP-53); the
+ *  Worker scan neither requires one nor allows the Worker to emit one. */
+export type ErrorKind = "wire" | "client" | "backend";
 
 export interface ErrorEntry {
   code: string;
@@ -433,7 +436,9 @@ export function scanWorkerSource(src: WorkerSource): ScannedCodes {
   return found;
 }
 
-/** errors.json against the scan: wire codes it lacks, and `wire` entries nothing emits. */
+/** errors.json against the scan: wire codes it lacks, `wire` entries nothing emits, and any
+ *  `client` or `backend` code the Worker emits. A `backend` entry is never required to be
+ *  emitted: SDK server cores answer it, never the Worker (WIRE-CONTRACT-V4 §14). */
 export function checkCoverage(
   errors: readonly ErrorEntry[],
   scanned: ScannedCodes,
@@ -445,6 +450,10 @@ export function checkCoverage(
     if (!entry) {
       problems.push(
         `the Worker emits "${code}" (${where[0]}${where.length > 1 ? `, +${where.length - 1} more` : ""}) but conformance/parity/errors.json has no entry — add one`,
+      );
+    } else if (entry.kind === "backend") {
+      problems.push(
+        `"${code}" is emitted by the Worker (${where[0]}) but errors.json marks it kind "backend" — a backend code is answered only by an SDK's server core (WIRE-CONTRACT-V4 §14); give the Worker its own code`,
       );
     } else if (entry.kind !== "wire") {
       problems.push(
@@ -1222,8 +1231,8 @@ export type ${g.name} = (typeof ${g.name})[keyof typeof ${g.name}];
 export const ${valuesName(g)}: readonly ${g.name}[] = [${g.members.map((m) => q(m.value)).join(", ")}];
 `);
     if (g.name === "ErrorCode") {
-      out.push(`/** \`wire\`: appears in a Worker response body. \`client\`: raised only by an SDK. */
-export type ErrorCodeKind = "wire" | "client";
+      out.push(`/** \`wire\`: appears in a Worker response body. \`client\`: raised only by an SDK. \`backend\`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14). */
+export type ErrorCodeKind = "wire" | "client" | "backend";
 
 /** The registry: every error code and its kind. */
 export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {

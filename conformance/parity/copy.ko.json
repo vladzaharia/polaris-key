@@ -632,6 +632,22 @@
     "marker-rejected": {
       "title": "앱 빌드 문제",
       "message": "이 빌드의 내장 콘텐츠가 유효하지 않아요. 앱을 다시 설치하거나 개발자에게 문의하세요."
+    },
+    "license_required": {
+      "title": "라이선스 필요",
+      "message": "앱을 활성화한 후 다시 시도하세요."
+    },
+    "license_invalid": {
+      "title": "라이선스를 확인할 수 없음",
+      "message": "라이선스를 확인하지 못했어요. 앱을 다시 연결한 후 다시 시도하세요."
+    },
+    "license_stale": {
+      "title": "라이선스 새로 고침 필요",
+      "message": "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요."
+    },
+    "sign_in_required": {
+      "title": "로그인 필요",
+      "message": "앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
     }
   },
   "gate": {

@@ -58,6 +58,10 @@
       "status": "implemented",
       "note": "copy.message/title/activation over src/copy.generated.ts (pnpm gen constants, from conformance/parity/copy.en.json): the error-code, gate and activation tables, COPY_FALLBACK naming an unknown code; registerCopy adds a locale that falls back to the generated English per key."
     },
+    "core.backend": {
+      "status": "planned",
+      "wp": "SP-58"
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -356,6 +360,10 @@
       "status": "implemented",
       "note": "@polaris-key/node/cli, the terminal kit (UK-14): every CLI_VERBS verb runs a rail flow (masked key entry, browser or code sign-in, spinners and progress, OSC 8 links and OSC 52 copy, the half-block QR for offline requests), --json on every verb, grouped help and bash/zsh/fish completion, for commander and yargs. Proven by test/cli/golden.test.ts (every component x state in truecolor dark and light, ANSI-16, NO_COLOR and ASCII at 80 and 60 columns, with SVG and PNG baselines), test/cli/responsive.test.ts (the resolution matrix in a real emulator, @xterm/headless: 40/60/80/120 columns at 12 and 24 rows with long values, de and ja at 40 and 60, and an 80 to 50 resize mid-flow; no line wider than the terminal, no URL or code cut, the code, URL and keys in view) and test/cli/kit.test.ts; the plain command core keeps one test per verb (SP-N14)."
     },
+    "ui.cli.mount": {
+      "status": "planned",
+      "wp": "UK-46"
+    },
     "ui.gate": {
       "status": "planned",
       "wp": "UK-06",
@@ -425,6 +433,22 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-22"
+    },
+    "server.license": {
+      "status": "planned",
+      "wp": "SP-55"
+    },
+    "server.signin": {
+      "status": "planned",
+      "wp": "SP-55"
+    },
+    "server.config": {
+      "status": "planned",
+      "wp": "SP-63"
+    },
+    "server.webhooks": {
+      "status": "planned",
+      "wp": "SP-67"
     }
   }
 }

@@ -204,14 +204,36 @@ function errorCodes() {
       `\`${entry.service}\``,
       mdxProse(entry.description),
     ]);
+  // WIRE-CONTRACT-V4 §14.3 (SP-53): a product backend's problem `type` is this page with the code
+  // as its fragment, so each code a backend answers with gets its own heading (its anchor).
+  // `not_entitled` is the existing wire code, reused for a route's entitlement requirement.
+  const backendEntries = registry.filter((entry) => entry.kind === "backend");
+  const notEntitled = registry.find((entry) => entry.code === "not_entitled");
+  const backendSections = [
+    ...backendEntries,
+    ...(notEntitled
+      ? [
+          {
+            ...notEntitled,
+            description:
+              "403 from a product backend: the route needs an entitlement the licence document does not grant as `true` (WIRE-CONTRACT-V4 §14.2 step 6). The existing wire code, reused. Never retried; the client half surfaces it with the upgrade link, if any.",
+          },
+        ]
+      : []),
+  ].flatMap((entry) => [
+    `### \`${entry.code}\``,
+    "",
+    `${mdxProse(entry.description)} Service: \`${entry.service}\`.`,
+    "",
+  ]);
   return page(
     "Wire error codes",
-    "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode enum, and the client codes the SDKs raise.",
+    "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode enum, the client codes the SDKs raise, and the codes a product backend answers with.",
     `Wire-v3 errors are nested — \`{"error":{"code":…}}\` — and the not-found body is ONE
 shape for "no such product", "service not enabled", and "no such route" (hide-don't-reveal).
 ${codes.length} protocol codes; the worker enum maps each to its response site.
 
-Every code, wire and client, is registered in \`conformance/parity/errors.json\`
+Every code, wire, client and backend, is registered in \`conformance/parity/errors.json\`
 (${registry.length} codes), and \`pnpm gen constants\` generates each SDK's \`ErrorCode\` constants
 from it. A new code needs an entry there first.`,
     [
@@ -230,6 +252,12 @@ from it. A new code needs an entry there first.`,
       "Raised by an SDK, never sent by the Worker. Hosts match on the exact string.",
       "",
       table(["Code", "Service", "Meaning"], clientRows),
+      "",
+      "## Backend codes (`conformance/parity/errors.json`)",
+      "",
+      "Answered by an SDK's server core when an app calls its own backend with `X-PKey-License` (WIRE-CONTRACT-V4 §14), never by the Worker. The body is `application/problem+json`, `Cache-Control: no-store`, and its `type` is this page with the code as the fragment. A 401 also carries `WWW-Authenticate: PKey-License realm=\"<product>\", error=\"<code>\"`.",
+      "",
+      ...backendSections,
     ].join("\n"),
   );
 }

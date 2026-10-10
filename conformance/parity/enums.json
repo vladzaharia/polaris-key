@@ -24,8 +24,19 @@
     },
     {
       "name": "sdkId",
-      "description": "The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands.",
-      "values": ["node", "react", "python", "swift", "godot", "kotlin"]
+      "description": "The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands. A server core (WIRE-CONTRACT-V4 §14) sends `<language>-server` on its trust-manifest fetch.",
+      "values": [
+        "node",
+        "react",
+        "python",
+        "swift",
+        "godot",
+        "kotlin",
+        "node-server",
+        "python-server",
+        "swift-server",
+        "kotlin-server"
+      ]
     },
     {
       "name": "storeBackend",

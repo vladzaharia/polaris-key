@@ -169,6 +169,10 @@ public object ErrorCode {
     public const val packRevoked: String = "pack-revoked"
     public const val packNotDataOnly: String = "pack-not-data-only"
     public const val markerRejected: String = "marker-rejected"
+    public const val licenseRequired: String = "license_required"
+    public const val licenseInvalid: String = "license_invalid"
+    public const val licenseStale: String = "license_stale"
+    public const val signInRequired: String = "sign_in_required"
 }
 
 /** Every `ErrorCode` value, in source order. */
@@ -329,6 +333,10 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
+    "license_required",
+    "license_invalid",
+    "license_stale",
+    "sign_in_required",
 )
 
 /** The registry: every error code and its kind (`wire` or `client`). */
@@ -489,6 +497,10 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "pack-revoked" to "client",
     "pack-not-data-only" to "client",
     "marker-rejected" to "client",
+    "license_required" to "backend",
+    "license_invalid" to "backend",
+    "license_stale" to "backend",
+    "sign_in_required" to "backend",
 )
 
 /** Every feature id in the parity registry (conformance/parity/features.json). */
@@ -505,6 +517,7 @@ public object Feature {
     public const val coreCaps: String = "core.caps"
     public const val coreStore: String = "core.store"
     public const val coreCopy: String = "core.copy"
+    public const val coreBackend: String = "core.backend"
     public const val licenseGate: String = "license.gate"
     public const val licenseActivate: String = "license.activate"
     public const val licenseEnroll: String = "license.enroll"
@@ -585,6 +598,7 @@ public object Feature {
     public const val uiKitKeyentry: String = "ui.kit.keyentry"
     public const val uiKitAccount: String = "ui.kit.account"
     public const val uiCli: String = "ui.cli"
+    public const val uiCliMount: String = "ui.cli.mount"
     public const val uiGate: String = "ui.gate"
     public const val uiActivate: String = "ui.activate"
     public const val uiSignin: String = "ui.signin"
@@ -596,6 +610,10 @@ public object Feature {
     public const val uiTheme: String = "ui.theme"
     public const val uiI18n: String = "ui.i18n"
     public const val commerceReceipt: String = "commerce.receipt"
+    public const val serverLicense: String = "server.license"
+    public const val serverSignin: String = "server.signin"
+    public const val serverConfig: String = "server.config"
+    public const val serverWebhooks: String = "server.webhooks"
 }
 
 /** Every `Feature` value, in source order. */
@@ -612,6 +630,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "core.caps",
     "core.store",
     "core.copy",
+    "core.backend",
     "license.gate",
     "license.activate",
     "license.enroll",
@@ -692,6 +711,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.kit.keyentry",
     "ui.kit.account",
     "ui.cli",
+    "ui.cli.mount",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -703,6 +723,10 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.theme",
     "ui.i18n",
     "commerce.receipt",
+    "server.license",
+    "server.signin",
+    "server.config",
+    "server.webhooks",
 )
 
 /** Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2). */
@@ -765,7 +789,7 @@ public val ARCH_VALUES: List<String> = listOf(
     "wasm32",
 )
 
-/** The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands. */
+/** The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands. A server core (WIRE-CONTRACT-V4 §14) sends `<language>-server` on its trust-manifest fetch. */
 public object SdkId {
     public const val node: String = "node"
     public const val react: String = "react"
@@ -773,6 +797,10 @@ public object SdkId {
     public const val swift: String = "swift"
     public const val godot: String = "godot"
     public const val kotlin: String = "kotlin"
+    public const val nodeServer: String = "node-server"
+    public const val pythonServer: String = "python-server"
+    public const val swiftServer: String = "swift-server"
+    public const val kotlinServer: String = "kotlin-server"
 }
 
 /** Every `SdkId` value, in source order. */
@@ -783,6 +811,10 @@ public val SDK_ID_VALUES: List<String> = listOf(
     "swift",
     "godot",
     "kotlin",
+    "node-server",
+    "python-server",
+    "swift-server",
+    "kotlin-server",
 )
 
 /** Where a token store keeps the token, the `backend` of `Store.status()` (P1b-09). Mirrors `STORE_BACKENDS` in `@polaris-key/client-core/store`; a test keeps them equal. */
@@ -1233,6 +1265,7 @@ public object HeaderName {
     public const val arch: String = "X-PKey-Arch"
     public const val channel: String = "X-PKey-Channel"
     public const val device: String = "X-PKey-Device"
+    public const val license: String = "X-PKey-License"
     public const val platform: String = "X-PKey-Platform"
     public const val sdkName: String = "X-PKey-SDK"
     public const val sdkVersion: String = "X-PKey-SDK-Version"
@@ -1244,6 +1277,7 @@ public val HEADER_NAME_VALUES: List<String> = listOf(
     "X-PKey-Arch",
     "X-PKey-Channel",
     "X-PKey-Device",
+    "X-PKey-License",
     "X-PKey-Platform",
     "X-PKey-SDK",
     "X-PKey-SDK-Version",
@@ -1497,6 +1531,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "core.caps" to CapabilityRow("implemented", "core", listOf()),
     "core.store" to CapabilityRow("implemented", "core", listOf(CapabilityNa("jvm", "dependency"))),
     "core.copy" to CapabilityRow("implemented", "sdk", listOf()),
+    "core.backend" to CapabilityRow("planned", "license", listOf()),
     "license.gate" to CapabilityRow("implemented", "license", listOf()),
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
     "license.enroll" to CapabilityRow("implemented", "license", listOf()),
@@ -1577,6 +1612,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.kit.keyentry" to CapabilityRow("planned", "sdk", listOf()),
     "ui.kit.account" to CapabilityRow("planned", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
+    "ui.cli.mount" to CapabilityRow("planned", "sdk", listOf(CapabilityNa("android", "runtime"))),
     "ui.gate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.activate" to CapabilityRow("planned", "sdk", listOf()),
     "ui.signin" to CapabilityRow("planned", "sdk", listOf()),
@@ -1588,7 +1624,11 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.theme" to CapabilityRow("planned", "sdk", listOf()),
     "ui.i18n" to CapabilityRow("planned", "sdk", listOf()),
     "commerce.receipt" to CapabilityRow("implemented", "license", listOf()),
+    "server.license" to CapabilityRow("planned", "license", listOf(CapabilityNa("android", "runtime"))),
+    "server.signin" to CapabilityRow("planned", "identity", listOf(CapabilityNa("android", "runtime"))),
+    "server.config" to CapabilityRow("planned", "config", listOf(CapabilityNa("android", "runtime"))),
+    "server.webhooks" to CapabilityRow("planned", "core", listOf(CapabilityNa("android", "runtime"))),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "c51f7fdf5c8a71c53cffc5e07cd32c410462ceac9c3ca5d2f9fa38943cfaa79a"
+public const val CAPABILITY_DIGEST: String = "4cd3437189744b9bbbc09a3e650d22d6f7f527239e44d5d2d1bcd8d2954b514e"

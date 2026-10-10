@@ -67,6 +67,10 @@
       "status": "implemented",
       "note": "im.plrs.key.core.Copy serves the generated Copy.generated.kt tables (from copy.en.json): message(code)/title(code) read COPY_CODES, then COPY_GATE, then COPY_ACTIVATION; activationMessage/activationTitle read COPY_ACTIVATION only (any kind spelling); an unknown code reads COPY_FALLBACK naming it; {name} placeholders fill from params or drop; registerLocale(\"en\", ...) is the host override layer and other locales fall back to English (CopyTest checks every table against copy.en.json). The Android kit's PolarisCopy keeps its own fields (host overrides and string resources still win) and reads Copy.message for every other refusal code the catalog knows (PolarisCopyMappingTest)."
     },
+    "core.backend": {
+      "status": "planned",
+      "wp": "SP-59"
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -397,6 +401,18 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
+    "ui.cli.mount": {
+      "status": "planned",
+      "wp": "UK-54",
+      "except": [
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "note": "An Android app has no terminal."
+        }
+      ],
+      "note": "The JVM terminal kit on Mordant, with Clikt and picocli."
+    },
     "ui.gate": {
       "status": "planned",
       "wp": "UK-09",
@@ -466,6 +482,52 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-23"
+    },
+    "server.license": {
+      "status": "planned",
+      "wp": "SP-57",
+      "except": [
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "note": "An Android app is not a server."
+        }
+      ],
+      "note": "polaris-key-server and the Ktor plugin; Spring Boot follows (SP-61)."
+    },
+    "server.signin": {
+      "status": "planned",
+      "wp": "SP-57",
+      "except": [
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "note": "An Android app is not a server."
+        }
+      ]
+    },
+    "server.config": {
+      "status": "planned",
+      "unowned": true,
+      "except": [
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "note": "An Android app is not a server."
+        }
+      ],
+      "note": "No package yet: the framework drop-ins plan (§5.7) gives serverClient() to Node and Python only (SP-63). The normal client with a memory store works on a server today."
+    },
+    "server.webhooks": {
+      "status": "planned",
+      "wp": "SP-67",
+      "except": [
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "note": "An Android app is not a server."
+        }
+      ]
     }
   }
 }

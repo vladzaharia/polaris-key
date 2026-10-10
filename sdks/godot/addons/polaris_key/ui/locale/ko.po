@@ -5242,6 +5242,46 @@ msgstr "앱 빌드 문제"
 msgid "core.codes.marker-rejected.message"
 msgstr "이 빌드의 내장 콘텐츠가 유효하지 않아요. 앱을 다시 설치하거나 개발자에게 문의하세요."
 
+#. License needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_required.title"
+msgstr "라이선스 필요"
+
+#. Activate the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_required.message"
+msgstr "앱을 활성화한 후 다시 시도하세요."
+
+#. License not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_invalid.title"
+msgstr "라이선스를 확인할 수 없음"
+
+#. Your license couldn't be verified. Reconnect the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_invalid.message"
+msgstr "라이선스를 확인하지 못했어요. 앱을 다시 연결한 후 다시 시도하세요."
+
+#. License needs refreshing
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_stale.title"
+msgstr "라이선스 새로 고침 필요"
+
+#. Connect to the internet so the app can refresh your license, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_stale.message"
+msgstr "앱이 라이선스를 새로 고칠 수 있도록 인터넷에 연결한 후 다시 시도하세요."
+
+#. Sign-in needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign_in_required.title"
+msgstr "로그인 필요"
+
+#. Sign in to your Polaris Key account in the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign_in_required.message"
+msgstr "앱에서 Polaris Key 계정에 로그인한 후 다시 시도하세요."
+
 #. License active
 #. Core copy (conformance/parity/copy.en.json, gate).
 msgid "core.gate.ok.title"

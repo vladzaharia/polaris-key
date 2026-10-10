@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/parity/errors.schema.json",
   "title": "Polaris Key error-code registry (conformance/parity/errors.json)",
-  "description": "Every error code the Worker or an SDK emits, with its kind, owning service and meaning (PARITY §2.1 'Same failures'). Hand-written; tools/gen-sdk-constants.ts validates it against this schema, checks it against the codes the Worker's source emits, and generates every SDK's ErrorCode constants from it.",
+  "description": "Every error code the Worker, an SDK or an SDK's server core emits, with its kind, owning service and meaning (PARITY §2.1 'Same failures'). Hand-written; tools/gen-sdk-constants.ts validates it against this schema, checks it against the codes the Worker's source emits, and generates every SDK's ErrorCode constants from it.",
   "type": "object",
   "additionalProperties": false,
   "required": ["registryVersion", "codes"],
@@ -28,8 +28,8 @@
           "pattern": "^[a-z][a-z0-9]*([_-][a-z0-9]+)*$"
         },
         "kind": {
-          "description": "`wire`: appears in a Worker response body. `client`: raised only by an SDK.",
-          "enum": ["wire", "client"]
+          "description": "`wire`: appears in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14), and read by the client halves; the Worker never emits one.",
+          "enum": ["wire", "client", "backend"]
         },
         "service": {
           "description": "The service whose behaviour the code reports, or `core` for the always-on substrate.",

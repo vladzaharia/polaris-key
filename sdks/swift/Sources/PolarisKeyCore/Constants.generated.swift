@@ -167,6 +167,10 @@ public enum ErrorCode {
     public static let packRevoked = "pack-revoked"
     public static let packNotDataOnly = "pack-not-data-only"
     public static let markerRejected = "marker-rejected"
+    public static let licenseRequired = "license_required"
+    public static let licenseInvalid = "license_invalid"
+    public static let licenseStale = "license_stale"
+    public static let signInRequired = "sign_in_required"
 }
 
 /// Every `ErrorCode` value, in source order.
@@ -327,6 +331,10 @@ public let ERROR_CODE_VALUES: [String] = [
     "pack-revoked",
     "pack-not-data-only",
     "marker-rejected",
+    "license_required",
+    "license_invalid",
+    "license_stale",
+    "sign_in_required",
 ]
 
 /// The registry: every error code and its kind (`wire` or `client`).
@@ -487,6 +495,10 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "pack-revoked": "client",
     "pack-not-data-only": "client",
     "marker-rejected": "client",
+    "license_required": "backend",
+    "license_invalid": "backend",
+    "license_stale": "backend",
+    "sign_in_required": "backend",
 ]
 
 /// Every feature id in the parity registry (conformance/parity/features.json).
@@ -503,6 +515,7 @@ public enum Feature {
     public static let coreCaps = "core.caps"
     public static let coreStore = "core.store"
     public static let coreCopy = "core.copy"
+    public static let coreBackend = "core.backend"
     public static let licenseGate = "license.gate"
     public static let licenseActivate = "license.activate"
     public static let licenseEnroll = "license.enroll"
@@ -583,6 +596,7 @@ public enum Feature {
     public static let uiKitKeyentry = "ui.kit.keyentry"
     public static let uiKitAccount = "ui.kit.account"
     public static let uiCli = "ui.cli"
+    public static let uiCliMount = "ui.cli.mount"
     public static let uiGate = "ui.gate"
     public static let uiActivate = "ui.activate"
     public static let uiSignin = "ui.signin"
@@ -594,6 +608,10 @@ public enum Feature {
     public static let uiTheme = "ui.theme"
     public static let uiI18n = "ui.i18n"
     public static let commerceReceipt = "commerce.receipt"
+    public static let serverLicense = "server.license"
+    public static let serverSignin = "server.signin"
+    public static let serverConfig = "server.config"
+    public static let serverWebhooks = "server.webhooks"
 }
 
 /// Every `Feature` value, in source order.
@@ -610,6 +628,7 @@ public let FEATURE_VALUES: [String] = [
     "core.caps",
     "core.store",
     "core.copy",
+    "core.backend",
     "license.gate",
     "license.activate",
     "license.enroll",
@@ -690,6 +709,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.kit.keyentry",
     "ui.kit.account",
     "ui.cli",
+    "ui.cli.mount",
     "ui.gate",
     "ui.activate",
     "ui.signin",
@@ -701,6 +721,10 @@ public let FEATURE_VALUES: [String] = [
     "ui.theme",
     "ui.i18n",
     "commerce.receipt",
+    "server.license",
+    "server.signin",
+    "server.config",
+    "server.webhooks",
 ]
 
 /// Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -763,7 +787,7 @@ public let ARCH_VALUES: [String] = [
     "wasm32",
 ]
 
-/// The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands.
+/// The canonical X-PKey-SDK value (WIRE-CONTRACT-V3 §5.2): which SDK made the request. The SDK's version is X-PKey-SDK-Version. An SDK adds its id when it lands. A server core (WIRE-CONTRACT-V4 §14) sends `<language>-server` on its trust-manifest fetch.
 public enum SdkId {
     public static let node = "node"
     public static let react = "react"
@@ -771,6 +795,10 @@ public enum SdkId {
     public static let swift = "swift"
     public static let godot = "godot"
     public static let kotlin = "kotlin"
+    public static let nodeServer = "node-server"
+    public static let pythonServer = "python-server"
+    public static let swiftServer = "swift-server"
+    public static let kotlinServer = "kotlin-server"
 }
 
 /// Every `SdkId` value, in source order.
@@ -781,6 +809,10 @@ public let SDK_ID_VALUES: [String] = [
     "swift",
     "godot",
     "kotlin",
+    "node-server",
+    "python-server",
+    "swift-server",
+    "kotlin-server",
 ]
 
 /// The 17 outlet kinds, in `OUTLET_KINDS` order (README §3.1, plans/P3-01.md §2.9). `unknown` is a detection result, not a kind, and is not listed.
@@ -1193,6 +1225,7 @@ public enum HeaderName {
     public static let arch = "X-PKey-Arch"
     public static let channel = "X-PKey-Channel"
     public static let device = "X-PKey-Device"
+    public static let license = "X-PKey-License"
     public static let platform = "X-PKey-Platform"
     public static let sdkName = "X-PKey-SDK"
     public static let sdkVersion = "X-PKey-SDK-Version"
@@ -1204,6 +1237,7 @@ public let HEADER_NAME_VALUES: [String] = [
     "X-PKey-Arch",
     "X-PKey-Channel",
     "X-PKey-Device",
+    "X-PKey-License",
     "X-PKey-Platform",
     "X-PKey-SDK",
     "X-PKey-SDK-Version",
@@ -1475,6 +1509,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.caps": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.store": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.copy": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "core.backend": CapabilityRow(status: "planned", service: "license", na: []),
     "license.gate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.enroll": CapabilityRow(status: "implemented", service: "license", na: []),
@@ -1555,6 +1590,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.kit.keyentry": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.kit.account": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "ui.cli.mount": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.gate": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.activate": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.signin": CapabilityRow(status: "planned", service: "sdk", na: []),
@@ -1566,7 +1602,11 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.theme": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.i18n": CapabilityRow(status: "planned", service: "sdk", na: []),
     "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
+    "server.license": CapabilityRow(status: "planned", service: "license", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "server.signin": CapabilityRow(status: "planned", service: "identity", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "server.config": CapabilityRow(status: "planned", service: "config", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "server.webhooks": CapabilityRow(status: "planned", service: "core", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f3e8ce85fe7354f862859e8900327a92a4a65d2272a197a8a23098141ab59162"
+public let CAPABILITY_DIGEST = "eebea774e5b428eaca4b7576cf40a457cb6c174f53467fa96ecaba1238b35e28"

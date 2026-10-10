@@ -632,6 +632,22 @@
     "marker-rejected": {
       "title": "应用版本出现问题",
       "message": "此版本的内置内容无效。请重新安装应用或联系开发者。"
+    },
+    "license_required": {
+      "title": "需要许可证",
+      "message": "请激活应用，然后重试。"
+    },
+    "license_invalid": {
+      "title": "许可证未被接受",
+      "message": "无法验证你的许可证。请重新连接应用，然后重试。"
+    },
+    "license_stale": {
+      "title": "许可证需要刷新",
+      "message": "请连接互联网，以便应用刷新你的许可证，然后重试。"
+    },
+    "sign_in_required": {
+      "title": "需要登录",
+      "message": "请在应用中登录你的Polaris Key账户，然后重试。"
     }
   },
   "gate": {

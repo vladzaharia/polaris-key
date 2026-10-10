@@ -62,6 +62,11 @@
       "status": "implemented",
       "note": "English is src/copy.generated.ts (pnpm gen constants, from conformance/parity/copy.en.json): copyMessage/copyTitle read the error-code, gate and activation tables, describeError reads a typed activation result from the activation table only. French is the hand-written proof locale until SP-03."
     },
+    "core.backend": {
+      "status": "planned",
+      "wp": "SP-58",
+      "note": "usePolarisFetch(); in Electron through the bridge (SP-31)."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -409,6 +414,12 @@
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
+    "ui.cli.mount": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal drop-ins are the headless SDKs' expectation."
+    },
     "ui.gate": {
       "status": "planned",
       "wp": "UK-05",
@@ -478,6 +489,30 @@
     "sync.saves": {
       "status": "planned",
       "wp": "U-22"
+    },
+    "server.license": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser app or desktop renderer is not a server; the backend uses @polaris-key/server (SP-55)."
+    },
+    "server.signin": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser app or desktop renderer is not a server; the backend uses @polaris-key/server (SP-55)."
+    },
+    "server.config": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser app or desktop renderer is not a server; the backend uses @polaris-key/server (SP-55)."
+    },
+    "server.webhooks": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser app or desktop renderer is not a server; the backend uses @polaris-key/server (SP-55)."
     }
   }
 }

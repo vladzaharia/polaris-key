@@ -1,6 +1,6 @@
 ---
 title: "Wire error codes"
-description: "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode enum, and the client codes the SDKs raise."
+description: "The PolarisErrorCode taxonomy (protocol), the worker's ErrorCode enum, the client codes the SDKs raise, and the codes a product backend answers with."
 ---
 
 {/* GENERATED PAGE — do not edit. Regenerate with `pnpm --filter @polaris-key/docs gen`.
@@ -10,8 +10,8 @@ Wire-v3 errors are nested — `{"error":{"code":…}}` — and the not-found bod
 shape for "no such product", "service not enabled", and "no such route" (hide-don't-reveal).
 16 protocol codes; the worker enum maps each to its response site.
 
-Every code, wire and client, is registered in `conformance/parity/errors.json`
-(156 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
+(160 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -162,3 +162,28 @@ Raised by an SDK, never sent by the Worker. Hosts match on the exact string.
 | `pack-revoked` | `update` | The pack engine refused to activate or mount a release that a verified, CI-signed revocation names (an install, a pinned release or an embedded baseline), or an embedded baseline of a pack whose revocations must be re-learned, when no other copy can be fetched (detail `relearn`) (plans/P4-13.md §2.5), or a delegated release whose delegation a verified revocation names (detail `delegation`, plans/P4-19.md §2.6). |
 | `pack-not-data-only` | `update` | A pack release signed by a delegated content key holds a file the data-only rule refuses (plans/P4-19.md §2.5): its extension is not in `DATA_ONLY_EXTENSIONS` (detail `extension`, checked over the files index before any payload object is fetched), or its first 64 or last 65,557 decoded bytes carry a Godot resource, pack, script, archive or native-binary magic (detail `content`). The plan is aborted and staging discarded; `path` names the file. |
 | `marker-rejected` | `release` | An embedded pack's marker (`pkey-marker/1`) was refused: not strict JSON, another `format`, its `release` record failed verification, or its pack, payload or pin does not match the embedded bytes or the content stamp (plans/P4-01.md §2.8). |
+
+## Backend codes (`conformance/parity/errors.json`)
+
+Answered by an SDK's server core when an app calls its own backend with `X-PKey-License` (WIRE-CONTRACT-V4 §14), never by the Worker. The body is `application/problem+json`, `Cache-Control: no-store`, and its `type` is this page with the code as the fragment. A 401 also carries `WWW-Authenticate: PKey-License realm="<product>", error="<code>"`.
+
+### `license_required`
+
+401 from a product backend: the request carries no `X-PKey-License` (WIRE-CONTRACT-V4 §14.2 step 1). The client half shows its gate. Service: `license`.
+
+### `license_invalid`
+
+401 from a product backend: the `X-PKey-License` value is longer than 16 384 bytes, is not three base64url segments, or fails the strict verifier, its issuer, its product, its device or its `issuedAt` (WIRE-CONTRACT-V4 §14.2 steps 2 and 3). The client half syncs and retries once. Service: `license`.
+
+### `license_stale`
+
+401 from a product backend: the licence document is past its freshness window (`expiresAt`, or the backend's `maxAgeSeconds`, plus 300 s) or the gate finds it unusable (WIRE-CONTRACT-V4 §14.2 steps 4 and 5). The client half syncs and retries once. Service: `license`.
+
+### `sign_in_required`
+
+403 from a product backend: the route needs a signed-in account and the licence document names none (`profile.user.subject` absent or malformed; WIRE-CONTRACT-V4 §14.2 step 6). Never retried; the client half offers sign-in. Service: `identity`.
+
+### `not_entitled`
+
+403 from a product backend: the route needs an entitlement the licence document does not grant as `true` (WIRE-CONTRACT-V4 §14.2 step 6). The existing wire code, reused. Never retried; the client half surfaces it with the upgrade link, if any. Service: `license`.
+
